@@ -107,7 +107,7 @@ internal static class MovePlayerApi
         {
             RoomController rooms = RoomController.World;
             Room? room = rooms != null ? rooms.GetRoom(new WorldGrid(point).Value) : null;
-            return new PlaceView(GameLookup.ViewOf(point), room != null ? RoomsApi.IdOf(room) : null,
+            return new PlaceView(GameLookup.ViewOf(point), room != null ? ClosedRooms.IdOf(room) : null,
                 room?.RoomType.ToString());
         }
     }

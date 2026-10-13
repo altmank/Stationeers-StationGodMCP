@@ -22,15 +22,8 @@
   "Api/ControlIcExecution.cs": [
     "Argument 'action' must be pause, step, resume, or restart."
   ],
-  "Api/DeepMinerSpots.cs": [
-    "Argument '{name}' must be from {minimum.ToString(CultureInfo.InvariantCulture)} to {maximum.ToString(CultureInfo.InvariantCulture)}.",
-    "pass count (max {MaximumCount}); the search stopped at count spots, so more may lie farther out"
-  ],
   "Api/FeedPathsApi.cs": [
     "{root.PrefabName} {root.ReferenceId} is on {networks.Count} {kind.Noun} networks [{string.Join(\", \", networks)}]; name one with network_id or port (connections lists them)."
-  ],
-  "Api/FindItems.cs": [
-    "Argument 'group_by' must be {ItemGroupings.Holder} or {ItemGroupings.Prefab}; '{given}' is neither."
   ],
   "Api/FindSpot.cs": [
     "a port's joining cell is blocked (ports_reachable)",
@@ -89,7 +82,7 @@
     "More than {GasJoins.MaximumMembers} atmospheres are joined; pass joined: false to move from the named one only."
   ],
   "Api/MoveGasPlaces.cs": [
-    "'{name}': none of the {grids.Count} cells of room {RoomsApi.IdOf(room)} has air of its own yet, so there is nothing to take and nowhere the game would keep it.",
+    "'{name}': none of the {grids.Count} cells of room {ClosedRooms.IdOf(room)} has air of its own yet, so there is nothing to take and nowhere the game would keep it.",
     "'{name}': the planet only gives gas up (from \"planet\" with delete: true); gas is not moved into it."
   ],
   "Api/MoveGasPlan.cs": [
@@ -210,9 +203,6 @@
   "Api/RocketStatus.cs": [
     "The landing check assumes {view.MaxExpectedN:0} N but the fuel now gives {view.AchievableFullN:0} N at full throttle: a landing it passes can still crash. See rocket_forecast.",
     "{Names.Of(parts.Unmodelled[index])} is a {parts.Unmodelled[index].GetType().Name}, none of the game's six engine classes: rocket_forecast refuses it."
-  ],
-  "Api/Rooms.cs": [
-    "No closed room has room_id {roomId}; the rooms tool lists them (a room's id changes when it is worked out again)."
   ],
   "Api/RunConsoleCommand.cs": [
     " {capture.ConcurrentLines} further line(s) were printed into the console from a background thread while this command ran; Unity mirrors errors and their stack traces in that way. They are deliberately not mixed into the output above, and are visible through read_console.",
@@ -592,7 +582,6 @@
   "Api/ThingHealth.cs": [
     "Argument 'kind' must be pipe, cable or chute.",
     "Argument 'reference_id' must be an Int64 encoded as a string.",
-    "Argument '{name}' must be at least 0 and below 1.",
     "Pass one of reference_id, reference_ids or network_id.",
     "Unknown thing_health form.",
     "network_id",

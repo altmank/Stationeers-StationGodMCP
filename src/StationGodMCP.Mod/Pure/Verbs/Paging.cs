@@ -47,6 +47,13 @@ internal sealed record Paging(int? Limit, int Offset, ListOrder Order, string? C
         return new Page<T>(shown, entries.Count, Offset, Limit, start + count < entries.Count);
     }
 
+    /// <summary>
+    /// A what whose list pages by offset only (its entries are no things a walk can keep): "open" keeps nothing, and a
+    /// cursor id is a problem, since no walk of it can exist.
+    /// </summary>
+    internal OptionProblem? OffsetOnly() =>
+        CursorId != null ? new OptionProblem("cursor", "this list pages by offset only; it keeps no cursor") : null;
+
     private static string? CursorOf(string? given) => string.IsNullOrWhiteSpace(given) ? null : given!.Trim();
 
     // The verb words: nearest, or id for the stable reference id order; absent is nearest.

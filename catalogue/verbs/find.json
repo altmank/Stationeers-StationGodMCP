@@ -235,7 +235,8 @@
             }
           }
         ],
-        "types": ["Vec3"]
+        "types": ["Vec3"],
+        "x-wire": {"cursor_id": "str | None"}
       },
       "brief": "holders with items"
     },
@@ -274,7 +275,8 @@
             }
           }
         ],
-        "types": ["Vec3"]
+        "types": ["Vec3"],
+        "x-wire": {"cursor_id": "str | None"}
       },
       "brief": "outer frames"
     },
@@ -527,7 +529,8 @@
             }
           }
         ],
-        "types": ["Error", "Vec3"]
+        "types": ["Error", "Vec3"],
+        "x-wire": {"cursor_id": "str | None"}
       },
       "brief": "damaged and broken things"
     }

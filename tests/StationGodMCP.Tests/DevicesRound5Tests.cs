@@ -95,17 +95,6 @@ public sealed class DevicesRound5Tests
     }
 
     [Fact]
-    public void ListGatewaysNamesEveryStatus()
-    {
-        string description = ToolDescription("list_gateways");
-
-        foreach (string status in new[] { "bypass", "ready", "incomplete", "no_data_network" })
-        {
-            Assert.Contains(status, description);
-        }
-    }
-
-    [Fact]
     public void ModInfoPromisesElapsedMsOnlyInThePipeEnvelope()
     {
         string description = ToolDescription("mod_info");

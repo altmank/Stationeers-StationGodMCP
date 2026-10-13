@@ -5,47 +5,6 @@ using StationGodMCP.Api.Shared;
 
 namespace StationGodMCP.Api.Views;
 
-/// <summary>outer_frames: one page of frames, in the order asked, and the counts over all of them.</summary>
-internal sealed class OuterFramesView
-{
-    internal OuterFramesView(Slice<FrameView> page, int totalFrames, int totalOuter, bool includeInner,
-        LocalPlayerView? localPlayer)
-    {
-        Frames = page.Items;
-        Count = page.Items.Count;
-        TotalFrames = totalFrames;
-        TotalOuter = totalOuter;
-        Offset = page.Offset;
-        Limit = page.Limit;
-        Total = page.Total;
-        HasMore = page.HasMore;
-        IncludeInner = includeInner;
-        LocalPlayer = localPlayer;
-    }
-
-    public List<FrameView> Frames { get; }
-
-    public int Count { get; }
-
-    /// <summary>Frames considered, after near_player_m.</summary>
-    public int TotalFrames { get; }
-
-    public int TotalOuter { get; }
-
-    public int Offset { get; }
-
-    public int Limit { get; }
-
-    /// <summary>Frames listed across all pages: the outer ones, or every frame with include_inner.</summary>
-    public int Total { get; }
-
-    public bool HasMore { get; }
-
-    public bool IncludeInner { get; }
-
-    public LocalPlayerView? LocalPlayer { get; }
-}
-
 /// <summary>One frame: which faces touch the world's air, whether it is airtight, and its paint.</summary>
 internal sealed class FrameView
 {

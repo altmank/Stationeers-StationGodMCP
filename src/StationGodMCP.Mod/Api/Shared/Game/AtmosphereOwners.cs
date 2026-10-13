@@ -15,7 +15,7 @@ namespace StationGodMCP.Api.Shared.Game;
 
 /// <summary>
 /// What owns an atmosphere (an item, a structure or a pipe network) and what it holds, for atmosphere_contents and
-/// water_sources.
+/// find water.
 /// </summary>
 internal static class AtmosphereOwners
 {

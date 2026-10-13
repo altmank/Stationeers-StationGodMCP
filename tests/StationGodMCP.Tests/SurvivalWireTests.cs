@@ -8,7 +8,7 @@ using Xunit;
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// player_vitals, consumables, atmosphere_contents and water_sources: the old StationApi.Survival shapes against the
+/// player_vitals and atmosphere_contents: the old StationApi.Survival shapes against the
 /// new views, with the renames each test lists. Each note is compared as the new text: it names renamed
 /// fields.
 /// </summary>
@@ -100,96 +100,6 @@ public sealed class SurvivalWireTests
     }
 
     [Fact]
-    public void ConsumablesSameWireAfterRenames()
-    {
-        var old = new
-        {
-            food = new List<object>
-            {
-                new
-                {
-                    reference_id = "30", prefab_name = "ItemCerealBar", display_name = "Thing 30", quantity = 2.0,
-                    max_quantity = (double?)10.0, location = "stored", carried_by = (string?)null,
-                    held_in = new List<object> { OldHeldIn() }, position = new { x = 1.0, y = 2.0, z = 3.0 },
-                    distance_m = (double?)4.5, nutrition_each = 5.0, nutrition = 10.0, food_quality = "Good",
-                    decay_seconds_left = (int?)600, in_package = "40", package_name = "Box"
-                }
-            },
-            drinks = new List<object>
-            {
-                new
-                {
-                    reference_id = "31", prefab_name = "ItemWaterBottle", display_name = "Thing 31", quantity = 1.5,
-                    max_quantity = (double?)10.0, location = "stored", carried_by = (string?)null,
-                    held_in = new List<object> { OldHeldIn() }, position = new { x = 1.0, y = 2.0, z = 3.0 },
-                    distance_m = (double?)4.5, litres = 1.5, hydration = 7.5, in_package = (string?)null,
-                    package_name = (string?)null
-                }
-            },
-            packages = new List<object>
-            {
-                new
-                {
-                    reference_id = "40", prefab_name = "ItemCardboardBox", display_name = "Box", location = "stored",
-                    carried_by = (string?)null, held_in = new List<object> { OldHeldIn() },
-                    position = new { x = 1.0, y = 2.0, z = 3.0 }, distance_m = (double?)4.5,
-                    runtime_type = "CardboardBox",
-                    contents = new List<object>
-                    {
-                        new { prefab_name = "ItemCerealBar", display_name = "Thing 30", items = 1, quantity = 2.0 }
-                    },
-                    nutrition = 10.0, litres = 0.0, hydration = 0.0
-                }
-            },
-            not_counted = new List<object>
-            {
-                new
-                {
-                    prefab_name = "SeedBag_Corn", display_name = "Corn Seeds", reason = "seed", items = 1,
-                    quantity = 3.0
-                }
-            },
-            totals = new
-            {
-                nutrition = 10.0, nutrition_in_packages = 10.0, litres = 1.5, litres_in_packages = 0.0,
-                hydration = 7.5, hydration_in_packages = 0.0, food_items = 1, drink_items = 1
-            },
-            local_player = (object?)null
-        };
-        Dictionary<string, string> renames = new Dictionary<string, string>
-        {
-            ["food[].decay_seconds_left"] = "decay_time_left_s",
-            ["drinks[].litres"] = "liquid_l",
-            ["packages[].litres"] = "liquid_l",
-            ["totals.litres"] = "liquid_l",
-            ["totals.litres_in_packages"] = "liquid_in_packages_l"
-        };
-        WireCheck.SameAfterRenames(old, NewConsumables(), renames);
-    }
-
-    private static ConsumablesView NewConsumables()
-    {
-        ItemPlace place = NewFields(40, "ItemCardboardBox", 1).Place;
-        return new ConsumablesView(
-            new List<FoodView>
-            {
-                new FoodView(NewFields(30, "ItemCerealBar", 2.0), new FoodValue(5.0, 10.0, "Good", 600),
-                    new PackageRef(new ThingId(40), "Box"))
-            },
-            new List<DrinkView> { new DrinkView(NewFields(31, "ItemWaterBottle", 1.5), 1.5, 7.5, PackageRef.None) },
-            new List<PackageView>
-            {
-                new PackageView(new ThingView(new ThingId(40), "ItemCardboardBox", "Box"), place, "CardboardBox",
-                    new List<PackedView> { new PackedView("ItemCerealBar", "Thing 30", 1, 2.0) },
-                    new ConsumableAmounts(10.0, 0.0, 0.0))
-            },
-            new List<NotCountedView> { new NotCountedView("SeedBag_Corn", "Corn Seeds", "seed", 1, 3.0) },
-            new ConsumableTotalsView(new ConsumableAmounts(10.0, 1.5, 7.5), new ConsumableAmounts(10.0, 0.0, 0.0), 1,
-                1),
-            null);
-    }
-
-    [Fact]
     public void AtmosphereContentsSameWireAfterRenames()
     {
         object owner = new
@@ -276,48 +186,5 @@ public sealed class SurvivalWireTests
         WireCheck.Same(oldNetwork, new NetworkOwnerView(new ThingId(60), new NetworkKind("PipeNetwork", "Liquid", 12),
             new List<ThingView> { new ThingView(new ThingId(61), "StructurePump", "Pump") },
             new PositionView(5.0, 0.0, 5.0), 7.1));
-    }
-
-    [Fact]
-    public void WaterSourcesSameWireAfterRenames()
-    {
-        object owner = new
-        {
-            kind = "structure", reference_id = "50", prefab_name = "StructureTankSmall", display_name = "Tank",
-            runtime_type = "Tank", position = new { x = 0.0, y = 0.0, z = 0.0 }, distance_m = (double?)null
-        };
-        WaterSourcesView view = new WaterSourcesView(
-            new List<WaterSourceView>
-            {
-                new WaterSourceView(true,
-                    new StructureOwnerView("structure",
-                        new ThingView(new ThingId(50), "StructureTankSmall", "Tank"), "Tank",
-                        new PositionView(0.0, 0.0, 0.0), null),
-                    new ThingId(51), new AtmosphereState(100.0, 101.3, 293.15, 0.0, 0.0), NewWater())
-            },
-            NewWater(), 1.0, null);
-        var old = new
-        {
-            sources = new List<object>
-            {
-                new
-                {
-                    kind = "thing", owner, atmosphere_id = "51", volume_l = 100.0, pressure_kpa = 101.3,
-                    temperature_k = 293.15, water = OldWater()
-                }
-            },
-            count = 1,
-            totals = OldWater(),
-            min_moles = 1.0,
-            local_player = (object?)null
-        };
-        Dictionary<string, string> renames = WaterRenames("sources[].water.");
-        foreach (KeyValuePair<string, string> total in WaterRenames("totals."))
-        {
-            renames[total.Key] = total.Value;
-        }
-
-        renames["min_moles"] = "min_mol";
-        WireCheck.SameAfterRenames(old, view, renames);
     }
 }

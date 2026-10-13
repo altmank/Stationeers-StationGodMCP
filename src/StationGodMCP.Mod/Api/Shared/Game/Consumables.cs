@@ -5,13 +5,12 @@ using System.Collections.Generic;
 using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Items;
 using StationGodMCP.Api.Shared;
-using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 
-namespace StationGodMCP.Api;
+namespace StationGodMCP.Api.Shared.Game;
 
 /// <summary>
-/// consumables: every food and drink in the world, wherever it is. Read only.
+/// Consumables: every food and drink in the world, wherever it is. Read only.
 ///
 /// Food is any item with INutrition: nutrition = INutrition.Nutrition(quantity), what Human.OnConsumeFood adds when
 /// the whole stack is eaten. Drinks are IHydration items (water bottles and packets): Quantity is litres and
@@ -20,9 +19,10 @@ namespace StationGodMCP.Api;
 /// unpacking only moves out, so their contents are counted like any other item and each says which package it is in.
 /// What rotten food turns into (Item.CreateDecayFood makes a DecayedFood) is not INutrition and cannot be eaten.
 /// </summary>
-internal static class ConsumablesApi
+internal static class Consumables
 {
-    internal static ConsumablesView Handle(Args args)
+    /// <summary>Every food and drink, nearest first, sorted and summed.</summary>
+    internal static ConsumableTally Take()
     {
         PlayerOrigin origin = PlayerOrigin.Current();
         List<Item> items = WorldItems.All();
@@ -39,7 +39,7 @@ internal static class ConsumablesApi
             tally.Add(records[index]);
         }
 
-        return tally.ToView();
+        return tally;
     }
 }
 

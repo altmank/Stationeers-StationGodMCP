@@ -14,90 +14,11 @@ using Xunit;
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// From live use on a big base: find_items narrowed to one deck (an exact prefab and an area, near
-/// with radius_m), describe_prefab without its cell list by default, and the plan route tools' dry run in short.
+/// From live use on a big base: describe_prefab without its cell list by default, and the plan route tools' dry run in
+/// short.
 /// </summary>
 public sealed class FindFiltersAndSlimRepliesTests
 {
-    // ---- prefab and prefab_contains ----
-
-    [Fact]
-    public void AnExactPrefabKeepsThatPrefabOnlyInAnyCase()
-    {
-        PrefabMatch frame = new PrefabMatch("StructureFrame", null);
-
-        Assert.True(frame.Keeps("StructureFrame"));
-        Assert.True(frame.Keeps("structureframe"));
-        Assert.False(frame.Keeps("StructureFrameCorner"));
-        Assert.False(frame.Keeps(null));
-    }
-
-    [Fact]
-    public void PrefabAndPrefabContainsMustBothMatch()
-    {
-        Assert.True(new PrefabMatch("StructureFrame", "Frame").Keeps("StructureFrame"));
-        Assert.False(new PrefabMatch("StructureFrame", "Wall").Keeps("StructureFrame"));
-        Assert.True(new PrefabMatch(null, "frame").Keeps("StructureFrameCorner"));
-    }
-
-    [Fact]
-    public void NeitherKeepsEveryName()
-    {
-        Assert.True(PrefabMatch.Any.Keeps("Anything"));
-        Assert.True(new PrefabMatch("", "").Keeps(null));
-    }
-
-    [Fact]
-    public void ThePrefabArgumentIsTrimmed()
-    {
-        PrefabMatch read = PrefabMatches.Parse(new Args(JObject.Parse("""{"prefab": " StructureFrame "}""")));
-
-        Assert.Equal(new[] { "StructureFrame" }, read.Exact);
-        Assert.Null(read.Contains);
-    }
-
-    // ---- the area ----
-
-    [Fact]
-    public void NearWithRadiusKeepsTheSphere()
-    {
-        PointArea deck = AreaArgs.Parse(new Args(JObject.Parse("""{"near": [100, 20, 50], "radius_m": 9}""")));
-
-        Assert.True(deck.Contains(new Vec3(107, 20, 50)));
-        Assert.False(deck.Contains(new Vec3(110, 20, 50)));
-    }
-
-    [Theory]
-    [InlineData("""{"near": [1, 2, 3]}""", "near needs radius_m")]
-    [InlineData("""{"radius_m": 5}""", "radius_m needs near")]
-    [InlineData("""{"near": [1, 2, 3], "radius_m": 5, "min": [0, 0, 0], "max": [1, 1, 1]}""", "not both")]
-    [InlineData("""{"near": [1, 2, 3], "radius_m": 5000}""", "at most 1000")]
-    public void AnIncompleteOrDoubleAreaIsRefused(string arguments, string reason)
-    {
-        ApiException refused = Assert.Throws<ApiException>(() => AreaArgs.Parse(new Args(JObject.Parse(arguments))));
-
-        Assert.Equal(ApiErrors.InvalidArgumentCode, refused.Code);
-        Assert.Contains(reason, refused.Message);
-    }
-
-    [Theory]
-    [InlineData("find_items")]
-    [InlineData("item_totals")]
-    public void TheListToolsTakeAPrefabAndAnArea(string tool)
-    {
-        Assert.Empty(Problems(tool, """{"prefab": "StructureFrame", "near": [100, 20, 50], "radius_m": 9}"""));
-        Assert.Empty(Problems(tool, """{"prefab_contains": "Frame", "min": [90, 15, 40], "max": [105, 25, 50]}"""));
-        Assert.Single(Problems(tool, """{"near": [1, 2, 3], "radius_m": "far"}"""));
-    }
-
-    [Fact]
-    public void FindItemsKeepsItsLocations()
-    {
-        Assert.Empty(Problems("find_items", """{"prefab_contains": "Ingot", "location": "ground"}"""));
-        Assert.Empty(Problems("find_items", """{"location": "player"}"""));
-        Assert.Empty(Problems("find_items", """{"location": "stored"}"""));
-    }
-
     // ---- describe_prefab ----
 
     [Fact]

@@ -23,6 +23,15 @@ internal static class NearCentres
         _ => throw new System.InvalidOperationException("Unknown near point.")
     };
 
+    /// <summary>
+    /// Where a list's selector keeps things: near "player" with radius is a distance from the player (any size), any
+    /// other near a sphere of radius metres around the point it names, box the box, neither anywhere.
+    /// </summary>
+    internal static SelectorPlace Place(Selector selector, string label) =>
+        selector.Near is { } near and not NearPoint.Player && selector.Radius is { } radius
+            ? new SelectorPlace(null, PointArea.Near(Of(near, label), radius))
+            : new SelectorPlace(selector.AroundPlayerM, selector.AreaAround(null));
+
     private static Thing Crosshair(string label)
     {
         Thing? thing = PlayerView.Current().Require(label).Target;
@@ -44,3 +53,6 @@ internal static class NearCentres
 
     private static Vec3 Point(Vector3 position) => new Vec3(position.x, position.y, position.z);
 }
+
+/// <summary>A selector's place: metres around the player (near "player"), and the area things must stand in.</summary>
+internal sealed record SelectorPlace(double? AroundPlayerM, PointArea Area);

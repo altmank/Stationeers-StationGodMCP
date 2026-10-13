@@ -9,21 +9,16 @@ using Assets.Scripts.Atmospherics;
 using Newtonsoft.Json.Linq;
 using Reagents;
 using StationGodMCP.Api.Shared;
-using StationGodMCP.Api.Shared.Game;
-using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using TerrainSystem;
 using Trading;
 using UnityEngine;
 
-using StationGodMCP.Pure.Protocol;
-using StationGodMCP.Pure.Shaping;
-
-namespace StationGodMCP.Api;
+namespace StationGodMCP.Api.Shared.Game;
 
 /// <summary>
-/// deep_miner_spots: where a deep miner would mine what. The game gives a miner the first of the world's deep-mining
+/// Deep miner spots: where a deep miner would mine what. The game gives a miner the first of the world's deep-mining
 /// profiles (WorldSettingData.DeepMinablesData) whose conditions hold at its position when it is registered
 /// (DeepMiner.OnRegistered); a profile's condition is a region (RegionCondition: RegionManager reads the region set's
 /// map texture at the position's x and z). This tool asks the same profiles the same way, through the position form
@@ -32,14 +27,8 @@ namespace StationGodMCP.Api;
 /// terrain's density (VoxelTerrain.GetDensityAtSize), with the miner's own terrain rule (DeepMiner.CanConstruct: world
 /// volume at its position at most 6000 L). Read only.
 /// </summary>
-internal static class DeepMinerSpotsApi
+internal static class DeepMinerSpots
 {
-    private const double DefaultRadiusM = 500.0;
-    private const double MaximumRadiusM = 3000.0;
-    private const int DefaultCount = ReplyDefaults.DeepMinerSpots;
-    private const int MaximumCount = 20;
-    private const double DefaultSeparationM = 100.0;
-    private const int MaximumOres = 4;
     private const int MaximumSamples = 250000;
     private const double FallbackStepM = 4.0;
     private const long SearchBudgetMs = 8000;
@@ -52,22 +41,27 @@ internal static class DeepMinerSpotsApi
         typeof(ReagentAction).GetFields(BindingFlags.Public | BindingFlags.Instance),
         static field => field.FieldType == typeof(double));
 
-    internal static DeepMinerSpotsView Handle(Args args)
+    /// <summary>
+    /// The profile at centre and every profile of the world; with ores, the search: the count nearest spots within
+    /// radius whose profile holds every ore, at least separation apart, sampled every step metres (null: the finest the
+    /// budget allows, never finer than the region map). An ore no profile of this world holds is refused, naming those
+    /// they hold.
+    /// </summary>
+    internal static DeepMinerSpotsView Report(Vector3 centre, IReadOnlyList<string>? ores, double radius, int count,
+        double separation, double? step)
     {
         List<DeepMinablesGenerationData> profiles = WorldSetting.Current?.Data?.DeepMinablesData ??
-                                                    throw ApiErrors.Refused("no_world", "No world is loaded.");
-        Vector3 centre = Centre(args);
+                                                    throw ApiErrors.Refused("no_world", "find ore: no world is loaded.");
         Dictionary<DeepMinablesGenerationData, ProfileFacts> facts = Facts(profiles);
         List<MinerProfileView> profileViews = profiles.ConvertAll(profile => facts[profile].View);
         MinerPointView at = new MinerPointView(GameLookup.ViewOf(centre), RegionsAt(centre),
             ProfileAt(profiles, centre.x, centre.z)?.Id);
-        if (!args.Has("ores"))
+        if (ores == null)
         {
-            args.Reject("a point report (without ores)", "radius_m", "count", "min_separation_m", "step_m");
             return new DeepMinerSpotsView(at, profileViews, null, null, null);
         }
 
-        OreQuery query = Ores(args, facts);
+        OreQuery query = Ores(ores, facts);
         HashSet<DeepMinablesGenerationData> wanted = new HashSet<DeepMinablesGenerationData>();
         foreach (DeepMinablesGenerationData profile in profiles)
         {
@@ -77,43 +71,23 @@ internal static class DeepMinerSpotsApi
             }
         }
 
-        return Search(args, profiles, wanted, query, centre, at, profileViews);
-    }
-
-    private static DeepMinerSpotsView Search(Args args, List<DeepMinablesGenerationData> profiles,
-        HashSet<DeepMinablesGenerationData> wanted, OreQuery query, Vector3 centre, MinerPointView at,
-        List<MinerProfileView> profileViews)
-    {
-        double radius = Bounded(args, "radius_m", DefaultRadiusM, 1.0, MaximumRadiusM);
-        int count = args.OptionalInt("count", 1, MaximumCount) ?? DefaultCount;
-        double separation = Bounded(args, "min_separation_m", DefaultSeparationM, 0.0, MaximumRadiusM);
         double finest = RegionMapStep();
-        double step = Math.Max(finest, args.Has("step_m")
-            ? Bounded(args, "step_m", finest, 0.5, 500.0)
-            : MinerSpotSearch.StepFor(radius, finest, MaximumSamples));
+        double sampled = Math.Max(finest, step ?? MinerSpotSearch.StepFor(radius, finest, MaximumSamples));
         Stopwatch clock = Stopwatch.StartNew();
         MinerSearchResult result = wanted.Count == 0
             ? new MinerSearchResult(new List<MinerSample>(), 0, 0, radius, false)
-            : new MinerSpotSearch(step, radius, separation, count, MaximumSamples).Run(centre.x, centre.z,
+            : new MinerSpotSearch(sampled, radius, separation, count, MaximumSamples).Run(centre.x, centre.z,
                 (x, z) => ProfileAt(profiles, x, z) is DeepMinablesGenerationData found && wanted.Contains(found),
                 () => clock.ElapsedMilliseconds < SearchBudgetMs);
         List<MinerSpotView> spots = new List<MinerSpotView>(result.Spots.Count);
         List<MinerBeaconView> beacons = new List<MinerBeaconView>(result.Spots.Count);
-        string ores = string.Join("+", query.Ores);
+        string named = string.Join("+", query.Ores);
         foreach (MinerSample spot in result.Spots)
         {
             MinerSpotView view = SpotView(profiles, spot, centre);
             spots.Add(view);
             beacons.Add(new MinerBeaconView(new[] { view.At.X, view.At.Y, view.At.Z },
-                $"{ores} {Math.Round(spot.Distance)} m {view.Compass}"));
-        }
-
-        if (result.Spots.Count >= count)
-        {
-            Truncations.Note("spots", result.Spots.Count, result.Spots.Count,
-                $"pass {Vocabulary.Arg("count")} (max {MaximumCount}); the search stopped at count spots, so more " +
-                "may lie farther out",
-                atLeast: true);
+                $"{named} {Math.Round(spot.Distance)} m {view.Compass}"));
         }
 
         List<string> profileIds = new List<string>();
@@ -126,22 +100,11 @@ internal static class DeepMinerSpotsApi
         }
 
         return new DeepMinerSpotsView(at, profileViews,
-            new MinerSearchView(query.Ores, profileIds, radius, step, separation, result.Samples, result.Matched,
+            new MinerSearchView(query.Ores, profileIds, radius, sampled, separation, result.Samples, result.Matched,
                 result.SearchedRadius, result.Truncated), spots, beacons);
     }
 
-    // at, else the player.
-    private static Vector3 Centre(Args args)
-    {
-        if (args.Has("at"))
-        {
-            return RunArgs.PositionOf(args.Optional("at")!, "at");
-        }
-
-        return PlayerOrigin.RequireHuman().Position;
-    }
-
-    private static OreQuery Ores(Args args, Dictionary<DeepMinablesGenerationData, ProfileFacts> facts)
+    private static OreQuery Ores(IReadOnlyList<string> given, Dictionary<DeepMinablesGenerationData, ProfileFacts> facts)
     {
         SortedSet<string> known = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (ProfileFacts profile in facts.Values)
@@ -155,15 +118,14 @@ internal static class DeepMinerSpotsApi
             }
         }
 
-        JArray array = args.Array("ores", MaximumOres);
-        List<string> ores = new List<string>(array.Count);
-        foreach (JToken entry in array)
+        List<string> ores = new List<string>(given.Count);
+        foreach (string entry in given)
         {
-            string? ore = entry.Type == JTokenType.String ? entry.Value<string>()?.Trim() : null;
-            if (ore == null || !known.Contains(ore))
+            string ore = entry.Trim();
+            if (!known.Contains(ore))
             {
                 throw ApiErrors.InvalidArgument(
-                    $"ores: '{entry}' is in no deep-mining profile of this world; they hold " +
+                    $"find ore: ores: '{entry}' is in no deep-mining profile of this world; they hold " +
                     $"{string.Join(", ", known)} (Hydrocarbon is coal).");
             }
 
@@ -171,19 +133,6 @@ internal static class DeepMinerSpotsApi
         }
 
         return new OreQuery(ores);
-    }
-
-    private static double Bounded(Args args, string name, double fallback, double minimum, double maximum)
-    {
-        double value = args.OptionalDouble(name) ?? fallback;
-        if (!(value >= minimum && value <= maximum))
-        {
-            throw ApiErrors.InvalidArgument(
-                $"Argument '{Vocabulary.Arg(name)}' must be from {minimum.ToString(CultureInfo.InvariantCulture)} to " +
-                $"{maximum.ToString(CultureInfo.InvariantCulture)}.");
-        }
-
-        return value;
     }
 
     // The miner's own choice: the first profile whose conditions hold (DeepMiner.OnRegistered).

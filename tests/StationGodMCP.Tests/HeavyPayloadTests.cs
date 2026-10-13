@@ -211,7 +211,6 @@ public sealed class HeavyPayloadTests
     [Theory]
     [InlineData("grid_survey", """{"min":[0,0,0],"max":[6,4,4],"sections":["pieces","devices"],"network_ids":["17"],"cell_detail":"full"}""")]
     [InlineData("get_ic_status", """{"reference_id":"300","include_source":false}""")]
-    [InlineData("item_totals", """{"prefab_contains":"Ingot","holders_limit":0}""")]
     [InlineData("place_structure", """{"job_id":"place-3","verbose":true}""")]
     [InlineData("place_structure", """{"prefab":"StructureFrame","at":[1,1,1],"include_footprint_cells":true}""")]
     [InlineData("remove_structure", """{"job_id":"remove-3","verbose":true}""")]

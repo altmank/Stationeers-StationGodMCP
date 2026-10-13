@@ -3,54 +3,73 @@
 using System;
 using System.Collections.Generic;
 using Assets.Scripts.Objects;
+using Assets.Scripts.Objects.Entities;
+using Assets.Scripts.Objects.Items;
 using StationGodMCP.Api.Shared;
-using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Verbs;
 
-namespace StationGodMCP.Api;
+namespace StationGodMCP.Api.Shared.Game;
 
 /// <summary>
-/// list_containers: every outermost holder with at least one item stored in it, nested items included (lockers,
-/// crates, machines, a tablet on the floor), nearest first. Found from the stored items (WorldItems), so an empty
-/// container is not listed. Nearest first or by reference id (order). Read only.
+/// Containers: every outermost holder with at least one item stored in it, nested items included (lockers, crates,
+/// machines, a tablet on the floor). Found from the stored items (WorldItems), so an empty container is not one.
 /// </summary>
-internal static class ListContainersApi
+internal static class Containers
 {
-    private const int DefaultLimit = ReplyDefaults.Containers;
-    private const int MaximumLimit = 500;
-
-    internal static ListContainersView Handle(Args args)
+    /// <summary>Every container whose prefab and shown name the filters keep, within metres of the player when given.</summary>
+    internal static List<ContainerTally> Collect(PrefabFilter? prefab, string? name, double? aroundPlayerM,
+        PlayerOrigin origin)
     {
-        string? prefabContains = args.OptionalString("prefab_contains");
-        string? nameContains = args.OptionalString("name_contains");
-        double? near = args.OptionalPositiveDouble("near_player_m");
-        PageRequest page = PageRequest.From(args, DefaultLimit, MaximumLimit);
-        ListOrder order = ListOrderArg.From(args);
-        PlayerOrigin origin = PlayerOrigin.Current().RequireIf(near.HasValue);
-
         List<ContainerTally> containers = new List<ContainerTally>();
         foreach (ContainerTally container in ContainerTally.Group(WorldItems.Collect(ItemFilter.StoredOnly(), origin)))
         {
             Thing root = container.Root;
-            if (ItemFilter.Contains(root.PrefabName, prefabContains) &&
-                ItemFilter.Contains(root.DisplayName, nameContains) &&
-                (!near.HasValue || (container.Distance.HasValue && container.Distance.Value <= near.Value)))
+            if ((prefab == null || prefab.Keeps(root.PrefabName, root.PrefabHash)) &&
+                ItemFilter.Contains(root.DisplayName, name) &&
+                (!aroundPlayerM.HasValue || (container.Distance.HasValue && container.Distance.Value <= aroundPlayerM.Value)))
             {
                 containers.Add(container);
             }
         }
 
-        containers.Sort((a, b) => ListKey.Compare(order, a.Key, b.Key));
-        Slice<ContainerTally> slice = Slice<ContainerTally>.Of(containers, page);
-        List<ContainerView> views = new List<ContainerView>(slice.Items.Count);
-        foreach (ContainerTally container in slice.Items)
+        return containers;
+    }
+
+    /// <summary>
+    /// One container as it holds now, its items found from its own slots: null when it is gone, holds nothing, or is
+    /// itself held (no longer outermost).
+    /// </summary>
+    internal static ContainerTally? Live(long id, PlayerOrigin origin)
+    {
+        Thing? root = Thing.Find(id);
+        if (root == null || root.IsBeingDestroyed || (root is DynamicThing { ParentSlot: not null }))
         {
-            views.Add(container.ToView());
+            return null;
         }
 
-        page.Note("containers", views.Count, containers.Count, ListOrders.PagingAdvice(order, origin.IsPresent));
-        return new ListContainersView(Slice<ContainerView>.Page(views, page, containers.Count), origin.View);
+        List<ItemRecord> records = new List<ItemRecord>();
+        AddStored(root, origin, records, 0);
+        return records.Count > 0 ? ContainerTally.Group(records)[0] : null;
+    }
+
+    // The items in a holder's slots and, inside them, theirs: as deep as a holder chain goes.
+    private static void AddStored(Thing holder, PlayerOrigin origin, List<ItemRecord> records, int depth)
+    {
+        if (holder.Slots == null || depth >= HolderChain.MaximumDepth)
+        {
+            return;
+        }
+
+        foreach (Slot slot in holder.Slots)
+        {
+            if (slot?.Get() is Item item && item != null && !(item is Organ) && !item.IsBeingDestroyed)
+            {
+                records.Add(WorldItems.Describe(item, origin));
+                AddStored(item, origin, records, depth + 1);
+            }
+        }
     }
 }
 

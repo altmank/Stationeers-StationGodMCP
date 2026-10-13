@@ -4,38 +4,24 @@ using System;
 using System.Collections.Generic;
 using Assets.Scripts.Objects;
 using StationGodMCP.Api.Shared;
-using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 
-using StationGodMCP.Pure.Profiling;
-using StationGodMCP.Pure.Shaping;
-
-namespace StationGodMCP.Api;
+namespace StationGodMCP.Api.Shared.Game;
 
 /// <summary>
-/// item_totals: the matching items summed per prefab, with where they are and the holders_limit holders with the most
-/// (default ReplyDefaults.ItemTotalHolders; 0 leaves top_holders out). Quantity is
-/// the stack size for IQuantity items and 1 for anything else (WorldItems.QuantityOf). Machine stock (MachineStock)
+/// Item totals: the items a filter keeps summed per prefab, with where they are and the holders with the most. Quantity
+/// is the stack size for IQuantity items and 1 for anything else (WorldItems.QuantityOf). Machine stock (MachineStock)
 /// adds to the same rows: fabricator stock under the ingot it ejects as, a working load under its reagent in a row of
-/// its own (prefab_name null, reagent set). What SDB Silos store (SiloStock) adds to the rows under silo. Read only.
+/// its own (prefab_name null, reagent set). What SDB Silos store (SiloStock) adds to the rows under silo.
 /// </summary>
-internal static class ItemTotalsApi
+internal static class ItemTotals
 {
-    private const int DefaultLimit = ReplyDefaults.ItemTotals;
-    private const int MaximumLimit = 500;
-    private const int DefaultHolders = ReplyDefaults.ItemTotalHolders;
-    private const int MaximumHolders = 100;
-
     // Row key of a working-load reagent, apart from every prefab name.
     private const string ReagentKeyPrefix = "reagent:";
 
-    [Profiled]
-    internal static ItemTotalsView Handle(Args args)
+    /// <summary>Every prefab's row, most first, with the item, stock and silo entries counted.</summary>
+    internal static Totalled Of(ItemFilter filter, PlayerOrigin origin)
     {
-        ItemFilter filter = ItemFilter.ParseWithArea(args);
-        PlayerOrigin origin = PlayerOrigin.Current().RequireIf(filter.NearPlayerM.HasValue);
-        int limit = args.OptionalInt("limit", 1, MaximumLimit) ?? DefaultLimit;
-        int holders = args.OptionalInt("holders_limit", 0, MaximumHolders) ?? DefaultHolders;
         List<ItemRecord> records = WorldItems.Collect(filter, origin);
         List<StockRecord> stock = MachineStock.Collect(filter, origin);
         List<SiloRecord> silos = SiloStock.Collect(filter, origin);
@@ -62,23 +48,7 @@ internal static class ItemTotalsApi
         }
 
         tallies.Sort(static (a, b) => PrefabTally.LargestFirst(a, b));
-        List<PrefabTotalView> totals = new List<PrefabTotalView>(Math.Min(limit, tallies.Count));
-        int holdersListed = 0;
-        int holdersFound = 0;
-        for (int index = 0; index < tallies.Count && index < limit; index++)
-        {
-            totals.Add(tallies[index].ToView(holders));
-            holdersListed += Math.Min(holders, tallies[index].HolderCount);
-            holdersFound += tallies[index].HolderCount;
-        }
-
-        Truncations.Capped("totals", totals.Count, tallies.Count, "limit", MaximumLimit);
-        if (holders > 0)
-        {
-            Truncations.Capped("totals[].top_holders", holdersListed, holdersFound, "holders_limit", MaximumHolders);
-        }
-
-        return new ItemTotalsView(totals, tallies.Count, records.Count, stock.Count, silos.Count);
+        return new Totalled(tallies, records.Count, stock.Count, silos.Count);
     }
 
     private static PrefabTally TallyFor(Dictionary<string, PrefabTally> byKey, List<PrefabTally> tallies, string key,
@@ -94,6 +64,9 @@ internal static class ItemTotalsApi
         return tally;
     }
 }
+
+/// <summary>The rows, most first, and the item, machine stock and silo entries they sum.</summary>
+internal sealed record Totalled(List<PrefabTally> Rows, int Items, int StockEntries, int SiloEntries);
 
 /// <summary>One prefab's items (or one working-load reagent) summed, overall, by place and per holder.</summary>
 internal sealed class PrefabTally

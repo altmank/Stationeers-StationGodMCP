@@ -11,7 +11,7 @@ using Assets.Scripts.Util;
 using Genetics;
 using StationGodMCP.Api.Views;
 
-namespace StationGodMCP.Api;
+namespace StationGodMCP.Api.Shared.Game;
 
 /// <summary>
 /// A plant's states and conditions. The game sets the states each atmospheric tick: dry under half the water it

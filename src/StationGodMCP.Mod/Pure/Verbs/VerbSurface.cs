@@ -232,6 +232,13 @@ internal sealed class OptionSpec
     /// <summary>The schema's types, in order; empty when it names none.</summary>
     internal IReadOnlyList<string> Types => _types.Value;
 
+    /// <summary>The option's default as a number; null when it has none or it is no number.</summary>
+    internal double? DefaultNumber =>
+        double.TryParse(Default, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture,
+            out double number)
+            ? number
+            : null;
+
     internal bool Takes(string type)
     {
         foreach (string listed in Types)

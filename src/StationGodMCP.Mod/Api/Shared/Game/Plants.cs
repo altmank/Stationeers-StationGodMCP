@@ -8,13 +8,12 @@ using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Items;
 using Assets.Scripts.Objects.Pipes;
 using StationGodMCP.Api.Shared;
-using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 
-namespace StationGodMCP.Api;
+namespace StationGodMCP.Api.Shared.Game;
 
 /// <summary>
-/// plants: every plant growing in a tray, planter or hydroponics station, read straight from the Plant objects: a
+/// Plants: every plant growing in a tray, planter or hydroponics station, read straight from the Plant objects: a
 /// plain Hydroponics Tray has no data port, so device logic cannot see its plant. Read only.
 ///
 /// How a plant grows (Plant.OnLifeTick, once per 0.5 s game tick with the tick's real duration): the current stage's
@@ -26,40 +25,28 @@ namespace StationGodMCP.Api;
 ///
 /// Which plants: Plant.AllPlants is what the game ticks, planted plants until they reach their last (dead) stage. A
 /// dead plant is still in its tray, so plants are also found among every dynamic thing (OcclusionManager
-/// .AllDynamicThings), planted ones only unless include_unplanted. Every plant is listed in short (PlantBriefView)
-/// unless verbose; one plant (reference_id) is always given whole.
+/// .AllDynamicThings), planted ones only unless unplanted ones are asked for too.
 /// </summary>
-internal static class PlantsApi
+internal static class Plants
 {
-    internal static PlantsView Handle(Args args)
+    /// <summary>The game's clock as plants read it: game time, the day's length, and whether growth is sped up.</summary>
+    internal static PlantClock Clock() =>
+        new PlantClock(GameManager.GameTime, OrbitalSimulation.GetDayLengthSeconds(), Plant.CustomPlantGrowthSpeed);
+
+    /// <summary>The plant with this id, or refused plant_not_found.</summary>
+    internal static Plant One(string id)
     {
-        bool includeUnplanted = args.OptionalBool("include_unplanted") ?? false;
-        ThingId? only = args.OptionalThingId("reference_id");
-        bool whole = only.HasValue || (args.OptionalBool("verbose") ?? false);
-        List<Plant> plants = only.HasValue ? One(only.Value) : All(includeUnplanted);
-        plants.Sort(static (a, b) => a.ReferenceId.CompareTo(b.ReferenceId));
-        List<object> views = new List<object>(plants.Count);
-        foreach (Plant plant in plants)
+        if (long.TryParse(id, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture,
+                out long referenceId) && Thing.Find(referenceId) is Plant plant && plant != null)
         {
-            PlantView view = PlantReader.Read(plant);
-            views.Add(whole ? view : new PlantBriefView(view));
+            return plant;
         }
 
-        return new PlantsView(GameManager.GameTime, OrbitalSimulation.GetDayLengthSeconds(),
-            Plant.CustomPlantGrowthSpeed, views);
+        throw ApiErrors.Refused("plant_not_found", $"find plant: {id} is no plant.");
     }
 
-    private static List<Plant> One(ThingId id)
-    {
-        if (!(Thing.Find(id.Value) is Plant plant) || plant == null)
-        {
-            throw ApiErrors.Refused("plant_not_found", $"Nothing with reference id {id} is a plant.");
-        }
-
-        return new List<Plant> { plant };
-    }
-
-    private static List<Plant> All(bool includeUnplanted)
+    /// <summary>Every plant, by reference id.</summary>
+    internal static List<Plant> All(bool includeUnplanted)
     {
         HashSet<Plant> growing = new HashSet<Plant>();
         foreach (Plant plant in Plant.AllPlants)
@@ -90,6 +77,10 @@ internal static class PlantsApi
             }
         }
 
+        plants.Sort(static (a, b) => a.ReferenceId.CompareTo(b.ReferenceId));
         return plants;
     }
 }
+
+/// <summary>The game's clock as plants read it.</summary>
+internal sealed record PlantClock(float GameTimeS, int DayLengthS, bool DebugFastGrowth);

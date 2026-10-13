@@ -119,21 +119,4 @@ public sealed class DeepMinerSpotsTests
         Assert.True(new OreQuery(new List<string> { "Gold" }).Matches(gold));
         Assert.False(new OreQuery(new List<string> { "Iron" }).Matches(goldSilver));
     }
-
-    [Theory]
-    [InlineData("""{}""")]
-    [InlineData("""{"at":[700,200,680],"ores":["Cobalt"],"radius_m":1500,"count":3,"min_separation_m":50}""")]
-    [InlineData("""{"ores":["Gold","Silver"],"step_m":8}""")]
-    public void TheSidecarTakesItsArguments(string arguments)
-    {
-        using JsonDocument document = JsonDocument.Parse(arguments);
-        Assert.Empty(ArgumentCheck.Problems(Program.InputSchemas["deep_miner_spots"], document.RootElement));
-    }
-
-    [Fact]
-    public void TheSidecarRefusesTooManyOres()
-    {
-        using JsonDocument document = JsonDocument.Parse("""{"ores":["a","b","c","d","e"]}""");
-        Assert.NotEmpty(ArgumentCheck.Problems(Program.InputSchemas["deep_miner_spots"], document.RootElement));
-    }
 }

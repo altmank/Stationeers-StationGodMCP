@@ -6,33 +6,6 @@ using StationGodMCP.Api.Shared;
 namespace StationGodMCP.Api.Views;
 
 /// <summary>
-/// plants: every plant in a tray, planter or hydroponics station, and the clock its forecasts run on. Each plant is a
-/// PlantView, or a PlantBriefView where the caller asked for every plant without verbose.
-/// </summary>
-internal sealed class PlantsView
-{
-    internal PlantsView(float gameTime, int dayLengthS, bool debugFastGrowth, List<object> plants)
-    {
-        GameTimeS = gameTime;
-        DayLengthS = dayLengthS;
-        DebugFastGrowth = debugFastGrowth;
-        Plants = plants;
-        Count = plants.Count;
-    }
-
-    public float GameTimeS { get; }
-
-    public int DayLengthS { get; }
-
-    /// <summary>A debug switch (SyncCustomGrowSpeed): while on, every plant jumps a stage each tick.</summary>
-    public bool DebugFastGrowth { get; }
-
-    public List<object> Plants { get; }
-
-    public int Count { get; }
-}
-
-/// <summary>
 /// One plant in short, as every plant of a world is listed by default: where it grows, how far along it is, and
 /// whether anything is wrong. plants with its reference_id, or verbose, gives the whole PlantView.
 /// </summary>

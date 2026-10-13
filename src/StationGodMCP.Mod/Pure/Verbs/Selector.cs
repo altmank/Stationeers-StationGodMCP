@@ -86,6 +86,33 @@ internal sealed record Selector(
         return problems;
     }
 
+    /// <summary>
+    /// What is wrong with near and radius as a what that measures only from the player reads them: near "player" goes
+    /// with radius, in metres; any other near is a problem.
+    /// </summary>
+    internal List<OptionProblem> PlayerRadiusProblems()
+    {
+        List<OptionProblem> problems = new List<OptionProblem>();
+        if (Near is not (null or NearPoint.Player))
+        {
+            problems.Add(new OptionProblem("near", "is \"player\" only here"));
+        }
+        else if (Near != null && Radius == null)
+        {
+            problems.Add(new OptionProblem("near", "needs radius, in metres"));
+        }
+
+        if (Radius != null && Near == null)
+        {
+            problems.Add(new OptionProblem("radius", "needs near \"player\""));
+        }
+
+        return problems;
+    }
+
+    /// <summary>The metres around the player near "player" with radius keeps; null for any other selector.</summary>
+    internal double? AroundPlayerM => Near is NearPoint.Player ? Radius : null;
+
     private static string? Trimmed(string? text) => string.IsNullOrWhiteSpace(text) ? null : text!.Trim();
 }
 

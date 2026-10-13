@@ -101,12 +101,6 @@ internal static class ReplyShapes
                 .List("NetworkOverviewView.BrokenNeighbours", D.BrokenNeighbours),
             S<AreaOpenEndsView>().List("AreaOpenEndsView.Members", D.AreaOpenEnds).List("NetworkMemberView.OpenEnds", 2)
         };
-        shapes["consumables"] = new[]
-        {
-            S<ConsumablesView>().List("ConsumablesView.Food", W.Foods).List("ConsumablesView.Drinks", W.Drinks)
-                .List("ConsumablesView.Packages", 20).List("PackageView.Contents", 1)
-                .List("ConsumablesView.NotCounted", 10)
-        };
         shapes["container_contents"] = new[]
         {
             // A player: 2 hands, suit, backpack (12 slots) of stacks, a tool belt (8); depth 3.
@@ -118,14 +112,6 @@ internal static class ReplyShapes
                 .List("SiloContentsView.Entries", D.SiloEntries).List("SiloEntryView.Contents", 3)
         };
         shapes["control_ic_execution"] = new[] { S<IcControlView>().Absent("IcControlView.Lua") };
-        shapes["deep_miner_spots"] = new[]
-        {
-            S<DeepMinerSpotsView>().List("MinerPointView.Regions", 2).List("DeepMinerSpotsView.Profiles", 12)
-                .List("MinerProfileView.Reagents", 3).List("MinerProfileView.Regions", 2)
-                .List("MinerSearchView.Ores", 1).List("MinerSearchView.Profiles", 2)
-                .List("DeepMinerSpotsView.Spots", D.DeepMinerSpots).List("MinerSpotView.Regions", 2)
-                .List("DeepMinerSpotsView.Beacons", D.DeepMinerSpots)
-        };
         // One structure's step: a state or two of one or two items each, and a tool.
         shapes["advance_build_state"] = new[]
         {
@@ -153,10 +139,6 @@ internal static class ReplyShapes
             S<FeedPathsView>().List("FeedPathsView.Devices", W.DataNetworkDevices).List("FeedDeviceView.Rooms", 2)
                 .List("FeedDeviceView.Through", 1).List("FeedPathsView.Rooms", 12).List("FeedRoomView.Entries", 2)
                 .List("FeedRoomView.EntryAt", 2).List("FeedPathsView.Unreached", 2)
-        };
-        shapes["find_items"] = new[]
-        {
-            S<FindItemsView>().List("FindItemsView.Items", D.FindItems).Holds("FindItemsView.Items", typeof(ItemView))
         };
         shapes["find_spot"] = new[]
         {
@@ -190,20 +172,10 @@ internal static class ReplyShapes
             S<InspectSlotsView>().List("InspectSlotsView.Slots", 12).List("SlotDetailView.SpecificPrefabHashes", 0)
                 .List("SlotDetailView.LogicValues", 12)
         };
-        shapes["item_totals"] = new[]
-        {
-            S<ItemTotalsView>().List("ItemTotalsView.Totals", Math.Min(W.ItemTypes, D.ItemTotals))
-                .List("PrefabTotalView.TopHolders", D.ItemTotalHolders)
-        };
         shapes["label"] = new[]
         {
             S<LabelledView>(),
             S<BatchResultView>().List("BatchResultView.Results", W.TypicalBatch).Holds("BatchResultView.Results", typeof(LabelledView))
-        };
-        shapes["landing_pads"] = new[]
-        {
-            S<LandingPadsView>().List("LandingPadsView.Pads", W.LandingPads).List("LandingPadView.FitsByShip", 6)
-                .List("LandingPadView.Contacts", W.TraderContacts)
         };
         shapes["lint_layout"] = new[]
         {
@@ -221,12 +193,6 @@ internal static class ReplyShapes
                 .List("LintRuleSourceView.FromSave", 0).List("LintRuleSourceView.Disabled", 0)
                 .List("LintRuleSourceView.Errors", 0)
         };
-        shapes["list_containers"] = new[]
-        {
-            S<ListContainersView>().List("ListContainersView.Containers", D.Containers).List("ContainerView.Items", 6)
-        };
-        shapes["list_devices"] = new[] { S<DevicesView>().List("DevicesView.Devices", W.Devices) };
-        shapes["list_gateways"] = new[] { S<GatewaysView>().List("GatewaysView.Gateways", W.Gateways + 1) };
         // The target and the brief hit; player, interactable, view, the full hit and the body come with include.
         shapes["looking_at"] = new[]
         {
@@ -252,11 +218,6 @@ internal static class ReplyShapes
         {
             S<NetworkSnapshotView>().List("NetworkSnapshotView.Devices", Math.Min(W.DataNetworkDevices, D.SnapshotDevices))
                 .List("DeviceSnapshotView.LogicValues", 30)
-        };
-        shapes["outer_frames"] = new[]
-        {
-            S<OuterFramesView>().List("OuterFramesView.Frames", Math.Min(W.OuterFrames, D.OuterFrames))
-                .List("FrameView.ExposedFaces", 1)
         };
         shapes["paint"] = new[]
         {
@@ -316,15 +277,6 @@ internal static class ReplyShapes
             S<BatchResultView>().List("BatchResultView.Results", 2).Holds("BatchResultView.Results", typeof(PlantGenesItemView))
                 .List("PlantGenesView.Genes", 19).List("PlantGenesItemView.Genes", 19).Absent("GeneView.Meaning"),
             S<GenesWrittenView>().List("GenesWrittenView.Results", 12).Holds("GenesWrittenView.Results", typeof(GeneWrittenView))
-        };
-        shapes["plants"] = new[]
-        {
-            // Every plant in short; one plant (reference_id) in full.
-            S<PlantsView>().List("PlantsView.Plants", W.Plants).Holds("PlantsView.Plants", typeof(PlantBriefView)),
-            S<PlantsView>().List("PlantsView.Plants", 1).Holds("PlantsView.Plants", typeof(PlantView))
-                .List("PlantView.Stages", 6)
-                .List("PlantView.ActiveStates", 1).List("PlantView.Conditions", 6).List("PlantNeedsView.TakesIn", 1)
-                .List("PlantNeedsView.GivesOut", 1).List("PlantNeedsView.Harmful", 2).List("PlantView.Genes", 8)
         };
         shapes["move_player"] = new[] { S<MovePlayerView>() };
         shapes["player_vitals"] = new[] { S<PlayerVitalsView>() };
@@ -397,10 +349,6 @@ internal static class ReplyShapes
                 // How mining works comes with explain; a note says why collectable_only kept nothing.
                 .List("MachineYieldView.Problems", 1).List("RocketMiningOptionsView.Notes", 1)
         };
-        shapes["rooms"] = new[]
-        {
-            S<RoomsView>().List("RoomsView.Rooms", W.Rooms).Absent("RoomView.Devices", "RoomView.Cells")
-        };
         shapes["run_console_command"] = new[]
         {
             S<ConsoleRunView>().List("ConsoleRunView.Arguments", 10).List("ConsoleRunView.Output", 3)
@@ -439,9 +387,7 @@ internal static class ReplyShapes
             // Only the one-thing form reads build states.
             S<HealthNetworkView>().List("HealthNetworkView.Things", Math.Min(W.CableNetworkMembers, D.HealthThings))
                 .List("HealthView.Networks", 1).List("HealthView.DamageRecord", 3).Absent("HealthView.BuildState")
-                .List("HealthNetworkView.BrokenNeighbours", D.BrokenNeighbours),
-            S<HealthScanView>().List("HealthScanView.Things", D.HealthThings).List("HealthView.Networks", 1)
-                .List("HealthView.DamageRecord", 3).Absent("HealthView.BuildState")
+                .List("HealthNetworkView.BrokenNeighbours", D.BrokenNeighbours)
         };
         foreach (string tool in new[] { "trader_buy", "trader_sell" })
         {
@@ -513,10 +459,6 @@ internal static class ReplyShapes
             // radius 4 m default: a 17 x 17 character map.
             S<WallMapView>().List("WallMapView.Rows", 18).Text("WallMapView.Rows[]", new string('W', 17))
                 .List("WallMapView.Sections", 16).List("WallMapView.Things", 8).List("WallMapView.FreeRects", 0)
-        };
-        shapes["water_sources"] = new[]
-        {
-            S<WaterSourcesView>().List("WaterSourcesView.Sources", W.WaterSources)
         };
         shapes["weather"] = new[] { S<WeatherView>().List("WeatherView.Events", 6) };
         shapes["write_logic"] = new[] { S<LogicWriteView>() };

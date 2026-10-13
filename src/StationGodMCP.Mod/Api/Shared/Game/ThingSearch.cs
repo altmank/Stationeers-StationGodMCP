@@ -180,38 +180,8 @@ internal sealed class ThingFilter
     /// <summary>A box, or a sphere around a point: only things whose outermost holder stands there.</summary>
     internal PointArea Area { get; }
 
-    /// <summary>
-    /// The prefab index's match for the filter's prefabs: whole names, or one part; Any (walk every thing) for hashes,
-    /// several parts or none.
-    /// </summary>
-    internal PrefabMatch IndexMatch
-    {
-        get
-        {
-            if (Prefab == null)
-            {
-                return PrefabMatch.Any;
-            }
-
-            if (Prefab.Patterns is [PrefabPattern.Parts { Pieces: [var piece] }])
-            {
-                return new PrefabMatch(null, piece);
-            }
-
-            List<string> names = new List<string>(Prefab.Patterns.Count);
-            foreach (PrefabPattern pattern in Prefab.Patterns)
-            {
-                if (pattern is not PrefabPattern.Whole whole)
-                {
-                    return PrefabMatch.Any;
-                }
-
-                names.Add(whole.Name);
-            }
-
-            return PrefabMatch.OfNames(names, null);
-        }
-    }
+    /// <summary>The prefab index's match for the filter's prefabs (PrefabMatch.ForIndex).</summary>
+    internal PrefabMatch IndexMatch => PrefabMatch.ForIndex(Prefab);
 
     // Cheapest tests first: the label flag, the prefab name, the category, the class, then the display name, which reads
     // the localisation table, and last the atmosphere, which looks at the thing's networks and slots.

@@ -8,14 +8,13 @@ using Assets.Scripts.Objects;
 using Networks;
 using Objects.Electrical;
 using StationGodMCP.Api.Shared;
-using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 using UnityEngine;
 
-namespace StationGodMCP.Api;
+namespace StationGodMCP.Api.Shared.Game;
 
 /// <summary>
-/// landing_pads: every trader landing pad, its size as the game measures it, which ships fit, and whether each
+/// Landing pads: every trader landing pad, its size as the game measures it, which ships fit, and whether each
 /// contact in the sky could land now. Read only.
 ///
 /// How the game judges a pad (CODE, Objects.Electrical.LandingPadCenter): LandingPadCenter.CanTraderLand refuses, in
@@ -36,9 +35,10 @@ namespace StationGodMCP.Api;
 /// which only sizes the approach path, so neither is that done here. LandingPadCenter.IsObstructed is not reported:
 /// nothing in the game calls it, so it decides nothing.
 /// </summary>
-internal static class LandingPadsApi
+internal static class LandingPads
 {
-    internal static LandingPadsView Handle(Args args)
+    /// <summary>Every landing pad centre in the world, described against the contacts in the sky now.</summary>
+    internal static List<LandingPadView> All()
     {
         List<Structure> structures = GridController.AllStructuresPool.ToList();
         List<TraderContact> contacts = new List<TraderContact>();
@@ -59,7 +59,7 @@ internal static class LandingPadsApi
             }
         }
 
-        return new LandingPadsView(pads);
+        return pads;
     }
 }
 

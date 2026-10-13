@@ -150,7 +150,7 @@ public sealed class ReplyCompactionTests
     [Fact]
     public void APlantInShortKeepsWhatAListNeeds()
     {
-        PlantView plant = (PlantView)PlantsWireTests.NewShape().Plants[0];
+        PlantView plant = Tomato();
 
         JObject brief = JObject.Parse(WireCheck.New(new PlantBriefView(plant)));
 
@@ -208,5 +208,44 @@ public sealed class ReplyCompactionTests
 
         Assert.Equal(ReplyDefaults.RuntimeMethods, ((JArray)runtime["methods"]!).Count);
         Assert.Equal(ReplyDefaults.RuntimeMethods + 5, (int)runtime["method_count"]!);
+    }
+
+    // A planted tomato in full, as find plant reads one.
+    private static PlantView Tomato()
+    {
+        PlantIdentity identity = new PlantIdentity(new ThingView(new ThingId(70), "SeedBag_Tomato", "Tomato_Tray 1"),
+            "Tomato", true,
+            new PlantTrayView(new ThingView(new ThingId(71), "StructureHydroponicsTray", "Tray 1"), true));
+        PlantGrowth growth = new PlantGrowth(
+            new PlantStageView(2, 5, new StageMarks(3, 4, -1, 3, 4), 12.5f, 60f),
+            new List<StageView> { new StageView(0, 1f, false, false, false) }, 0.5, 0.0,
+            new PlantPhase(false, false, false, false, false));
+        PlantCare care = new PlantCare(
+            new PlantEfficiencyView(0.9f, 90, new PlantFactors(1f, 1f, 0.9f, 1f, 1f, 1.01f), 1f),
+            new PlantStates(new List<string> { "dry" }, new List<string> { "dry", "in light" }),
+            new List<PlantConditionView> { new PlantConditionView("Dehydrated", "dry", true, 30f, 120f, false) },
+            false,
+            new PlantHealthView(0.25, 75, 25f, 100f, new DamagePartsView(0f, 0f, 0f, 25f, 0f, 0f, 0f, 0f, 0f)));
+        PlantSupply supply = new PlantSupply(
+            new PlantHarvestView(new HarvestCounts(0, 3, 1, 0f), new HarvestForecastView(2.8, 1.0), 12f),
+            new PlantFertiliserView(false, 1f, 0f,
+                new WaitingFertiliserView(new ThingId(72), "Fertilizer", 1.5f, 1f, 2f)),
+            new PlantLightView(0.8f, true, 0.5f, 0.5f, 0f),
+            new PlantAirView(101f, 22f, 40.0,
+                new Dictionary<string, float?> { ["oxygen"] = 0.2f, ["carbon_dioxide"] = null }),
+            new PlantWaterView(100.0, 100.0, 20f),
+            new PlantNeedsView("Tomato",
+                new PlantBands(new BandView(new[] { 15f, 30f }, new[] { 5f, 40f }),
+                    new BandView(new[] { 50f, 150f }, new[] { 20f, 200f })),
+                new PlantGases(
+                    new List<InhaledGasView> { new InhaledGasView("carbon dioxide", 0.01f, 0.01f, 0.02f) },
+                    new List<ExhaledGasView> { new ExhaledGasView("oxygen", 0.01f) },
+                    new List<HarmfulGasView> { new HarmfulGasView("pollutant", 1f, 0f) }),
+                new PlantDaily(0.002f, 300f, 100f)));
+        PlantHistory history = new PlantHistory(
+            new PlantRecordView(500f, 30f, 0f, 0f, new PressureTimes(0f, 0f, 0f, 0f)),
+            new SortedDictionary<string, float> { ["DarkPerDay"] = 0.1f, ["WaterUsage"] = -0.2f },
+            new PlantForecastView(0.9f, 52.8, 100.0, 200.0, new RegrowTimes(null, null)));
+        return new PlantView(identity, growth, care, supply, history);
     }
 }

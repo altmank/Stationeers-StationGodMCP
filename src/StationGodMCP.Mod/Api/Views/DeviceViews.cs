@@ -76,23 +76,6 @@ internal sealed class LogicTypeView
     public string? Name { get; }
 }
 
-/// <summary>list_gateways: the scopes gateway_id accepts, "world" first.</summary>
-internal sealed class GatewaysView
-{
-    internal GatewaysView(List<GatewayView> gateways)
-    {
-        Gateways = gateways;
-        Count = gateways.Count;
-    }
-
-    public List<GatewayView> Gateways { get; }
-
-    public int Count { get; }
-
-    /// <summary>Always true: "world" reaches every device, so no gateway is needed.</summary>
-    public bool BypassGateway => true;
-}
-
 internal sealed class GatewayView
 {
     internal GatewayView(string gatewayId, string? displayName, string? prefabName, GatewayState state,
@@ -154,23 +137,6 @@ internal sealed class GatewayCounts
     internal int VisibleDevices { get; }
 
     internal int WornItems { get; }
-}
-
-/// <summary>list_devices: every device in the scope that matches, by reference id.</summary>
-internal sealed class DevicesView
-{
-    internal DevicesView(string gatewayId, List<DeviceView> devices)
-    {
-        GatewayId = gatewayId;
-        Devices = devices;
-        Count = devices.Count;
-    }
-
-    public string GatewayId { get; }
-
-    public List<DeviceView> Devices { get; }
-
-    public int Count { get; }
 }
 
 /// <summary>

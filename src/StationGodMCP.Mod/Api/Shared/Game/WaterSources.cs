@@ -9,14 +9,13 @@ using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Entities;
 using Assets.Scripts.Objects.Items;
 using StationGodMCP.Api.Shared;
-using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 
-namespace StationGodMCP.Api;
+namespace StationGodMCP.Api.Shared.Game;
 
 /// <summary>
-/// water_sources: every thing and pipe network in the world whose atmosphere holds water, polluted water or steam.
+/// Water sources: every thing and pipe network in the world whose atmosphere holds water, polluted water or steam.
 /// Read only.
 ///
 /// Found through AtmosphericsManager.AllAtmospheres, the game's own list of every atmosphere: Thing-mode atmospheres
@@ -25,16 +24,13 @@ namespace StationGodMCP.Api;
 /// bodies (a stomach holds water too). Largest liquid water first. A call that holds the main thread over
 /// WaterSourcesWarning.ThresholdMs logs where the time went (rate-limited).
 /// </summary>
-internal static class WaterSourcesApi
+internal static class WaterSources
 {
-    private const double DefaultMinimumMol = 1.0;
-
     private static readonly WaterSourcesWarning SlowCalls = new WaterSourcesWarning();
 
-    internal static WaterSourcesView Handle(Args args)
+    /// <summary>Every source holding at least minimum mol of water, polluted water and steam together, largest first.</summary>
+    internal static WaterFound Collect(double minimum)
     {
-        double minimum = args.OptionalPositiveDouble("min_mol") ?? args.OptionalPositiveDouble("min_moles") ??
-            DefaultMinimumMol;
         long started = Stopwatch.GetTimestamp();
         int collections = GC.CollectionCount(0);
         PlayerOrigin origin = PlayerOrigin.Current();
@@ -74,7 +70,7 @@ internal static class WaterSourcesApi
         WarnWhenSlow(new WaterSourcesTiming(Ms(ended - started), listed.AtmosphereLockMs, listed.AtmosphereListMs,
             listed.NetworkLockMs, listed.NetworkListMs, Ms(rowsStarted - scanStarted), Ms(ended - rowsStarted),
             atmospheres.Count, rows.Count, GC.CollectionCount(0) - collections));
-        return new WaterSourcesView(sources, sum.ToView(), minimum, origin.View);
+        return new WaterFound(sources, sum.ToView(), origin.View);
     }
 
     private static void WarnWhenSlow(in WaterSourcesTiming timing)
@@ -227,3 +223,6 @@ internal sealed class WaterSum
             new WaterAmount(_steam, _steam * litresPerMole));
     }
 }
+
+/// <summary>The water sources found, largest first, their totals, and the player they were measured from.</summary>
+internal sealed record WaterFound(List<WaterSourceView> Sources, WaterView Totals, LocalPlayerView? LocalPlayer);

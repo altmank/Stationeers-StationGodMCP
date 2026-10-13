@@ -1,19 +1,21 @@
 #nullable enable
 
 using System.Collections.Generic;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Verbs;
 using Xunit;
 using Xunit.Abstractions;
 
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// find_items group_by: holder sums one prefab's entries per outermost holder (loose ones together, with no holder),
+/// find item group_by: holder sums one prefab's entries per outermost holder (loose ones together, with no holder),
 /// prefab sums every entry of it; groups keep the list's order. 360 stacks in a 12-locker row: about 130 KB each,
-/// about 25 KB by holder, under 1 KB by prefab. exclude_in_use reports how many parts in use it left out.
+/// about 25 KB by holder, under 1 KB by prefab.
 /// </summary>
 public sealed class FindItemsGroupTests(ITestOutputHelper output)
 {
@@ -87,20 +89,11 @@ public sealed class FindItemsGroupTests(ITestOutputHelper output)
     }
 
     [Fact]
-    public void InUseLeftOutIsWrittenOnlyWhenAsked()
+    public void FindItemTakesGroupByAndExcludeInUse()
     {
-        Slice<IFoundItemView> page = Slice<IFoundItemView>.Page(new List<IFoundItemView>(),
-            PageRequest.From(new Args(new JObject()), 10, 500), 0);
-
-        Assert.Null(Wire(new FindItemsView(page, null))["in_use_left_out"]);
-        Assert.Equal(31, (int)Wire(new FindItemsView(page, null, 31))["in_use_left_out"]!);
-    }
-
-    [Fact]
-    public void TheSidecarTakesGroupByAndExcludeInUse()
-    {
-        Assert.Empty(Problems("""{"prefab_contains":"Ingot","group_by":"holder","exclude_in_use":true}"""));
-        Assert.Single(Problems("""{"group_by":"locker"}"""));
+        Assert.Null(Check("""{"what":"item","prefab":"*Ingot*","group_by":"holder","exclude_in_use":true}"""));
+        Assert.Null(Check("""{"what":"item","group_by":"place","holders":0}"""));
+        Assert.NotNull(Check("""{"what":"item","group_by":"locker"}"""));
     }
 
     /// <summary>
@@ -124,7 +117,7 @@ public sealed class FindItemsGroupTests(ITestOutputHelper output)
             (IFoundItemView)new HolderGroupView(group.First.Facts(), group.Entries, group.Quantity))).Length;
         int byPrefab = Page(Groups(rows, ItemGrouping.Prefab).ConvertAll(static group =>
             (IFoundItemView)new PrefabGroupView(group.First.Facts(), group.Entries, group.Quantity, group.Holders))).Length;
-        output.WriteLine($"find_items, {rows.Count} stacks in {Lockers} lockers: each {each} bytes, group_by holder " +
+        output.WriteLine($"find item, {rows.Count} stacks in {Lockers} lockers: each {each} bytes, group_by holder " +
                          $"{byHolder} bytes, group_by prefab {byPrefab} bytes");
 
         Assert.InRange(each, 110_000, 180_000);
@@ -138,10 +131,15 @@ public sealed class FindItemsGroupTests(ITestOutputHelper output)
     private static (long?, string, int, double) Summary(ItemGroup<Row> group) =>
         (group.First.Holder, group.First.Prefab, group.Entries, group.Quantity);
 
-    private static string Page(List<IFoundItemView> entries) =>
-        WireCheck.New(new FindItemsView(Slice<IFoundItemView>.Page(entries,
-                PageRequest.From(new Args(JObject.Parse("""{"limit":500}""")), 10, 500), entries.Count),
-            new LocalPlayerView(new ThingId(1), "Player", new PositionView(593, 211, 627))));
+    // find item's reply: one page of 500 under items, with the player measured from.
+    private static string Page(List<IFoundItemView> entries)
+    {
+        JsonSerializer serializer = ApiJson.Fresh();
+        return ListReply.Of("items", entries, new Pure.Verbs.Paging(500, 0, ListOrder.Nearest),
+                entry => JToken.FromObject(entry, serializer),
+                ReplyFields.Of(("local_player", new LocalPlayerView(new ThingId(1), "Player", new PositionView(593, 211, 627)))))
+            .ToString(Formatting.None);
+    }
 
     private static FoundGroupFacts Facts(long? holder, string prefab) =>
         new FoundGroupFacts(prefab, null, null, holder.HasValue ? "stored" : "ground",
@@ -150,12 +148,8 @@ public sealed class FindItemsGroupTests(ITestOutputHelper output)
 
     private static JObject Wire(object view) => JObject.Parse(WireCheck.New(view));
 
-    private static IReadOnlyList<string> Problems(string arguments)
-    {
-        using System.Text.Json.JsonDocument document = System.Text.Json.JsonDocument.Parse(arguments);
-        return StationGodMCP.Server.ArgumentCheck.Problems(StationGodMCP.Server.Program.InputSchemas["find_items"],
-            document.RootElement);
-    }
+    private static VerbError? Check(string options) =>
+        OptionCheck.Check(VerbSurface.Verb("find")!, JObject.Parse(options), out _);
 
     private sealed class Row
     {

@@ -240,3 +240,26 @@ internal sealed class WalkBuild<TThing> : IWalkBuild where TThing : class
         _out = lo;
     }
 }
+
+/// <summary>
+/// A walk whose ordered ids are known at once (a list sorted in one go as its call starts): nothing is left to build,
+/// so its page (FramedPage) goes straight to describing its things.
+/// </summary>
+internal sealed class ReadyWalk : IWalkBuild
+{
+    private readonly long[] _ids;
+
+    internal ReadyWalk(long[] ids, int candidates)
+    {
+        _ids = ids;
+        Candidates = candidates;
+    }
+
+    public bool Done => true;
+
+    public int Candidates { get; }
+
+    public bool Run(IMonotonicClock clock, double untilMs) => true;
+
+    public long[] Ids() => _ids;
+}

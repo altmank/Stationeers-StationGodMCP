@@ -549,7 +549,7 @@ internal static class RemovePlanner
             Room? room = rooms?.GetRoom(cell);
             Atmosphere? atmosphere = air.SampleGlobalAtmosphere(cell);
             return new BurstPipe(pipe.ReferenceId, pipe.PrefabName, pipe.MaxPressure.ToDouble(),
-                room != null ? RoomsApi.IdOf(room) : BurstPipe.Outdoors,
+                room != null ? ClosedRooms.IdOf(room) : BurstPipe.Outdoors,
                 atmosphere != null ? atmosphere.PressureGassesAndLiquids.ToDouble() : 0.0);
         }
 

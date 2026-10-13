@@ -2,7 +2,9 @@
 
 using System;
 using System.Collections.Generic;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Verbs;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
@@ -160,7 +162,7 @@ public sealed class CostlySkippingTests
 
     private static ShapeRequest Lenient(JObject shape) => ShapeRequest.Lenient(shape)!;
 
-    // A reply of each list form as thing_health builds it: a structure with networks (unless skipped), an item without.
+    // A reply of each list form as find damaged (scan) and thing_health (network, many) build it: a structure with networks (unless skipped), an item without.
     private static object Reply(string form, bool withNetworks)
     {
         List<HealthView> views = new List<HealthView>
@@ -173,8 +175,11 @@ public sealed class CostlySkippingTests
         switch (form)
         {
             case "scan":
-                return new HealthScanView(Slice<HealthView>.Page(views, page, 3), 2, 0, 40, 0.0,
-                    new LocalPlayerView(new ThingId(1), "Player", new PositionView(0, 0, 0)));
+                JsonSerializer serializer = ApiJson.Fresh();
+                return ListReply.Of("things", views, new Pure.Verbs.Paging(3, 0, ListOrder.Nearest),
+                    view => JToken.FromObject(view, serializer),
+                    ReplyFields.Of(("structures", 2), ("broken", 0), ("scanned", 40), ("min_damage_ratio", 0.0),
+                        ("local_player", new LocalPlayerView(new ThingId(1), "Player", new PositionView(0, 0, 0)))));
             case "network":
                 return new HealthNetworkView(new ThingId(900), "pipe", 12, false, Slice<HealthView>.Page(views, page, 3),
                     BrokenNeighbourReport.None);

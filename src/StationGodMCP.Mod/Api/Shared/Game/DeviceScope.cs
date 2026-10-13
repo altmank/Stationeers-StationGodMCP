@@ -134,6 +134,31 @@ internal sealed class DeviceScope
     }
 
     /// <summary>How many targets DeviceMap would hold for the world scope, without building it.</summary>
+    /// <summary>
+    /// The scopes a gateway option takes: "world" first, every device in the world (its status "bypass"), then each
+    /// StationGod Gateway (GatewayRegistry), whose id narrows a call to its data networks, with its status and counts.
+    /// </summary>
+    internal static List<Views.GatewayView> Listed()
+    {
+        int worn = ScopedTarget.Worn().Count;
+        List<Views.GatewayView> gateways = new List<Views.GatewayView>
+        {
+            new Views.GatewayView(WorldId, "Whole world", null, new Views.GatewayState(true, "bypass"),
+                new Views.GatewayCounts(0, CountWorld(), worn))
+        };
+
+        foreach (StationGodGateway gateway in GatewayRegistry.Snapshot())
+        {
+            List<CableNetwork> networks = gateway.GetDataNetworks();
+            string? unavailable = gateway.GetUnavailableReason();
+            gateways.Add(new Views.GatewayView(new ThingId(gateway.ReferenceId).ToString(), gateway.DisplayName,
+                gateway.PrefabName, new Views.GatewayState(unavailable == null, unavailable ?? "ready"),
+                new Views.GatewayCounts(networks.Count, CountDevices(networks), worn)));
+        }
+
+        return gateways;
+    }
+
     internal static int CountWorld()
     {
         HashSet<long> ids = new HashSet<long>();

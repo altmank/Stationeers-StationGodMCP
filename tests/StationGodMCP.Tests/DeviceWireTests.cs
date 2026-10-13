@@ -8,7 +8,7 @@ using Xunit;
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// list_gateways, list_devices, describe_device, inspect_slots and network_snapshot: the old StationApi shapes against
+/// describe_device, inspect_slots and network_snapshot: the old StationApi shapes against
 /// the new views; no renames. Non-finite logic values stay the strings "NaN", "Infinity" and "-Infinity".
 /// </summary>
 public sealed class DeviceWireTests
@@ -25,41 +25,8 @@ public sealed class DeviceWireTests
         "Assets.Scripts.Objects.Pipes.GasSensor", 0, new DeviceWear(false, null, null));
 
     [Fact]
-    public void ListGatewaysSameWire()
+    public void DescribeDeviceSameWire()
     {
-        var old = new
-        {
-            gateways = new List<object>
-            {
-                new
-                {
-                    gateway_id = "world", display_name = "Whole world", prefab_name = (string?)null, available = true,
-                    status = "bypass", data_network_count = 0, visible_device_count = 40, worn_item_count = 2
-                },
-                new
-                {
-                    gateway_id = "55", display_name = "Gateway", prefab_name = "StructureStationGodGateway",
-                    available = false, status = "no_data_network", data_network_count = 0, visible_device_count = 0,
-                    worn_item_count = 2
-                }
-            },
-            count = 2, bypass_gateway = true
-        };
-        GatewaysView view = new GatewaysView(new List<GatewayView>
-        {
-            new GatewayView("world", "Whole world", null, new GatewayState(true, "bypass"),
-                new GatewayCounts(0, 40, 2)),
-            new GatewayView("55", "Gateway", "StructureStationGodGateway", new GatewayState(false, "no_data_network"),
-                new GatewayCounts(0, 0, 2))
-        });
-        WireCheck.Same(old, view);
-    }
-
-    [Fact]
-    public void ListAndDescribeDevicesSameWire()
-    {
-        WireCheck.Same(new { gateway_id = "world", devices = new List<object> { OldDevice() }, count = 1 },
-            new DevicesView("world", new List<DeviceView> { NewDevice() }));
         List<LogicAccessView> types = new List<LogicAccessView>
         {
             new LogicAccessView(new LogicTypeView(6, "Pressure"), true, false),

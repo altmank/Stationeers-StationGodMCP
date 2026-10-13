@@ -28,6 +28,36 @@ internal sealed class PrefabMatch
         Contains = string.IsNullOrEmpty(contains) ? null : contains;
     }
 
+    /// <summary>
+    /// The prefab index's match for a verb's prefab filter: its whole names, or its one part; Any (walk every thing)
+    /// for hashes, several parts or no filter.
+    /// </summary>
+    internal static PrefabMatch ForIndex(Verbs.PrefabFilter? prefab)
+    {
+        if (prefab == null)
+        {
+            return Any;
+        }
+
+        if (prefab.Patterns is [Verbs.PrefabPattern.Parts { Pieces: [var piece] }])
+        {
+            return new PrefabMatch((string?)null, piece);
+        }
+
+        List<string> names = new List<string>(prefab.Patterns.Count);
+        foreach (Verbs.PrefabPattern pattern in prefab.Patterns)
+        {
+            if (pattern is not Verbs.PrefabPattern.Whole whole)
+            {
+                return Any;
+            }
+
+            names.Add(whole.Name);
+        }
+
+        return OfNames(names, null);
+    }
+
     /// <summary>Several exact names (a name repeated in another case counts once) and a part.</summary>
     internal static PrefabMatch OfNames(IReadOnlyCollection<string> names, string? contains) =>
         new PrefabMatch(NamesOf(names), contains);

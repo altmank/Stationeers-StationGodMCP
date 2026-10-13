@@ -35,7 +35,6 @@ public sealed class DevicesRound3Tests
     public void NoArgumentsAtAllStillNeedTheRequiredOnes()
     {
         Assert.Equal("Argument 'reference_id' is required.", Assert.Single(Problems("get_ic_status", "null")));
-        Assert.Empty(Problems("list_devices", "null"));
     }
 
     [Fact]

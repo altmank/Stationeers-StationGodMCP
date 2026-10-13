@@ -4,13 +4,14 @@ using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure.Verbs;
 using Xunit;
 
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// find_items, item_totals, list_containers and container_contents: the old StationApi.Inventory shapes against the
-/// new views; total_matches renamed total.
+/// find item's rows (machine stock like an item; group_by place's totals with stock and working loads) and
+/// container_contents: the old StationApi.Inventory shapes against the new views.
 /// </summary>
 public sealed class InventoryWireTests
 {
@@ -55,20 +56,7 @@ public sealed class InventoryWireTests
         new LocalPlayerView(new ThingId(1), "Player", new PositionView(1.0, 2.0, 3.0));
 
     [Fact]
-    public void FindItemsSameWireAfterRenames()
-    {
-        var old = new
-        {
-            items = new List<object> { OldItem() }, count = 1, total_matches = 7, offset = 0, limit = 1,
-            has_more = true, local_player = OldPlayer()
-        };
-        FindItemsView view = new FindItemsView(
-            Slice<IFoundItemView>.Page(new List<IFoundItemView> { NewItem() }, FirstPage, 7), NewPlayer());
-        WireCheck.SameAfterRenames(old, view, TotalRename);
-    }
-
-    [Fact]
-    public void FindItemsListsMachineStockLikeAnItem()
+    public void FindItemListsMachineStockLikeAnItem()
     {
         StockItemView stock = new StockItemView("ItemElectrumIngot", "Ingot (Electrum)", 63.0,
             new List<HeldInView>
@@ -99,46 +87,9 @@ public sealed class InventoryWireTests
     }
 
     [Fact]
-    public void ItemTotalsKeepsItsFieldsAndAddsMachineStock()
+    public void GroupByPlaceCountsStockAndWorkingLoads()
     {
-        var old = new
-        {
-            totals = new List<object>
-            {
-                new
-                {
-                    prefab_name = "ItemIronIngot", display_name = "Iron", items = 2, quantity = 80.0,
-                    on_ground = 30.0, carried = 50.0, stored = 0.0,
-                    top_holders = new List<object>
-                    {
-                        new { reference_id = "1", prefab_name = "Character", display_name = "Player", quantity = 50.0 }
-                    }
-                }
-            },
-            prefab_count = 1, item_count = 2
-        };
-        ItemTotalsView view = new ItemTotalsView(
-            new List<PrefabTotalView>
-            {
-                new PrefabTotalView("ItemIronIngot", "Iron", null, 2, new PlaceAmounts(80.0, 30.0, 50.0, 0.0, 0.0, 0.0),
-                    new List<HolderTotalView>
-                    {
-                        new HolderTotalView(new ThingView(new ThingId(1), "Character", "Player"), 50.0, "player",
-                            new PositionView(1.0, 2.0, 3.0))
-                    })
-            },
-            1, 2, 0, 0);
-        JObject oldShape = JObject.FromObject(old);
-        WireCheck.SameAfterRenames(oldShape, view, new Dictionary<string, string>(),
-            "totals[].machine_stock", "totals[].reagent", "totals[].top_holders[].kind",
-            "totals[].top_holders[].position", "machine_stock_entries", "totals[].silo", "silo_entries");
-    }
-
-    [Fact]
-    public void ItemTotalsCountsStockAndWorkingLoads()
-    {
-        ItemTotalsView view = new ItemTotalsView(
-            new List<PrefabTotalView>
+        List<PrefabTotalView> totals = new List<PrefabTotalView>
             {
                 new PrefabTotalView("ItemElectrumIngot", "Ingot (Electrum)", null, 1,
                     new PlaceAmounts(73.0, 10.0, 0.0, 0.0, 63.0, 0.0),
@@ -149,8 +100,9 @@ public sealed class InventoryWireTests
                     }),
                 new PrefabTotalView(null, "Iron", "Iron", 0, new PlaceAmounts(30.0, 0.0, 0.0, 0.0, 30.0, 0.0),
                     new List<HolderTotalView>())
-            },
-            2, 1, 2, 0);
+            };
+        JObject view = ReplyFields.Of(("totals", totals), ("prefab_count", 2), ("item_count", 1),
+            ("machine_stock_entries", 2), ("silo_entries", 0));
         var expected = new
         {
             totals = new List<object>
@@ -180,37 +132,6 @@ public sealed class InventoryWireTests
             prefab_count = 2, item_count = 1, machine_stock_entries = 2, silo_entries = 0
         };
         WireCheck.Same(expected, view);
-    }
-
-    [Fact]
-    public void ListContainersSameWireAfterRenames()
-    {
-        ListContainersView view = new ListContainersView(
-            Slice<ContainerView>.Page(
-                new List<ContainerView>
-                {
-                    new ContainerView(new ThingView(new ThingId(40), "StructureStorageLocker", "Locker"),
-                        new SlotUse(30, 2, 3),
-                        new List<PrefabQuantityView> { new PrefabQuantityView("ItemIronIngot", 100.0) },
-                        new PositionView(4.0, 5.0, 6.0), 12.3)
-                },
-                FirstPage, 4),
-            null);
-        var old = new
-        {
-            containers = new List<object>
-            {
-                new
-                {
-                    reference_id = "40", prefab_name = "StructureStorageLocker", display_name = "Locker",
-                    slot_count = 30, used_slot_count = 2, item_count = 3,
-                    items = new List<object> { new { prefab_name = "ItemIronIngot", quantity = 100.0 } },
-                    position = new { x = 4.0, y = 5.0, z = 6.0 }, distance_m = (double?)12.3
-                }
-            },
-            count = 1, total_matches = 4, offset = 0, limit = 1, has_more = true, local_player = (object?)null
-        };
-        WireCheck.SameAfterRenames(old, view, TotalRename);
     }
 
     [Fact]

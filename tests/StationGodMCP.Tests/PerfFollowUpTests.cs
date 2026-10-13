@@ -89,7 +89,7 @@ public sealed class PerfFollowUpTests
 
         Assert.Null(warning.Check(10, in quick));
         Assert.Equal(
-            "water_sources held the main thread 7328.5 ms: atmosphere list 7301.0 ms (lock wait 7300.3 ms, 900 " +
+            "find water held the main thread 7328.5 ms: atmosphere list 7301.0 ms (lock wait 7300.3 ms, 900 " +
             "atmospheres), pipe network list 2.0 ms (lock wait 0.5 ms), scan 20.0 ms, rows 5.5 ms (12 sources), 1 " +
             "garbage collection(s) during it.", warning.Check(11, in slow));
         Assert.Null(warning.Check(30, in slow));

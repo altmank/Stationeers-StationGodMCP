@@ -22,7 +22,7 @@ namespace StationGodMCP.Api;
 /// for it (DevicePipeMounted.NetworkAtmosphere: SmallCell.Pipe.PipeNetwork.Atmosphere, read by PipeAnalysizer's
 /// logic values), every pipe network a device is connected to (Device.ConnectedPipeNetworks), and the internal atmosphere of each item in its slots (the canister in a tank
 /// storage or an air conditioner); organ slots are left out. A pipe or landing pad network's reference id works too
-/// (Referencable.Find), and so does an atmosphere id owned by a thing or a network, as water_sources reports it.
+/// (Referencable.Find), and so does an atmosphere id owned by a thing or a network, as find water reports it.
 /// Room and world air cannot be looked up this way: no tool reports those ids.
 /// </summary>
 internal static class AtmosphereContentsApi

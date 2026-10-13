@@ -8,6 +8,7 @@ using Assets.Scripts.Objects.Items;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Protocol;
+using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Api.Shared.Game;
 
@@ -46,7 +47,7 @@ internal static class WorldItems
     /// <summary>Every item the filter keeps, described, in the game's list order.</summary>
     internal static List<ItemRecord> Collect(ItemFilter filter, PlayerOrigin origin)
     {
-        List<Item> items = Named(filter.Prefab);
+        List<Item> items = Named(filter.IndexMatch);
         List<ItemRecord> records = new List<ItemRecord>();
         foreach (Item item in items)
         {
@@ -64,7 +65,7 @@ internal static class WorldItems
     }
 
     /// <summary>
-    /// find_items exclude_in_use: takes out the items that are parts a device is using (PartsInUse: a running
+    /// exclude_in_use: takes out the items that are parts a device is using (PartsInUse: a running
     /// filtration machine's filters, a chip in its housing) or sit inside one, and answers how many it took out.
     /// </summary>
     internal static int LeaveOutPartsInUse(List<ItemRecord> records) =>
@@ -107,7 +108,7 @@ internal sealed class HolderChain
     internal const string Player = "player";
     internal const string Stored = "stored";
 
-    private const int MaximumDepth = 16;
+    internal const int MaximumDepth = 16;
 
     private HolderChain(Thing root, List<Slot> path, Human? carrier)
     {
@@ -258,19 +259,19 @@ internal sealed class ItemRecord
 }
 
 /// <summary>
-/// find_items' and item_totals' filter: names, where the item is, what holds it, how near the player and in what area
-/// (min and max, or near with radius_m: where its outermost holder stands; a machine's stock where the machine
-/// stands, a silo's store where the silo stands). vault_deposit reads the names and places without an area or an exact
-/// prefab. Also keeps machine stock (MachineStock) for location any or machine_stock, and silo stock (SiloStock) for
-/// location any or silo; a WorldItems walk never yields those locations, so callers that only collect items
-/// (list_containers) never see them.
+/// The items a list keeps: by prefab (the verbs' prefab filter) and part of the shown name, where the item is, what
+/// holds it, how near the player and in what area (where its outermost holder stands; a machine's stock where the
+/// machine stands, a silo's store where the silo stands). Also keeps machine stock (MachineStock) for location any or
+/// machine_stock, and silo stock (SiloStock) for location any or silo; a WorldItems walk never yields those locations,
+/// so callers that only collect items (find container) never see them.
 /// </summary>
 internal sealed class ItemFilter
 {
-    internal static readonly ItemFilter Everything =
-        new ItemFilter(PrefabMatch.Any, null, "any", null, null, PointArea.Anywhere);
+    internal const string AnyLocation = "any";
 
-    private ItemFilter(PrefabMatch prefab, string? nameContains, string location, ThingId? withinId,
+    internal static readonly ItemFilter Everything = new ItemFilter(null, null, AnyLocation, null, null, PointArea.Anywhere);
+
+    private ItemFilter(PrefabFilter? prefab, string? nameContains, string location, ThingId? withinId,
         double? nearPlayerM, PointArea area)
     {
         Prefab = prefab;
@@ -281,8 +282,8 @@ internal sealed class ItemFilter
         Area = area;
     }
 
-    /// <summary>prefab (find_items and item_totals) and prefab_contains.</summary>
-    internal PrefabMatch Prefab { get; }
+    /// <summary>The prefabs kept; null keeps every prefab.</summary>
+    internal PrefabFilter? Prefab { get; }
 
     internal string? NameContains { get; }
 
@@ -296,54 +297,78 @@ internal sealed class ItemFilter
     /// <summary>Where the item's outermost holder stands; anywhere when no area is given.</summary>
     internal PointArea Area { get; }
 
-    /// <summary>find_items' and item_totals' filter: the names and places, an exact prefab and an area.</summary>
-    internal static ItemFilter ParseWithArea(Args args) =>
-        Parse(args, PrefabMatches.Parse(args), AreaArgs.Parse(args));
+    /// <summary>The prefab index's match for the prefabs kept (PrefabMatch.ForIndex).</summary>
+    internal PrefabMatch IndexMatch => PrefabMatch.ForIndex(Prefab);
 
-    /// <summary>vault_deposit's filter: the names and places, prefab_contains only, anywhere.</summary>
-    internal static ItemFilter Parse(Args args) =>
-        Parse(args, new PrefabMatch(null, args.OptionalString("prefab_contains")), PointArea.Anywhere);
+    /// <summary>
+    /// The filter a list's options give: prefab, part of the shown name, location, the holder items must be inside
+    /// (within: a thing's id, refused thing_not_found when it names none), metres around the player and an area.
+    /// </summary>
+    internal static ItemFilter Of(PrefabFilter? prefab, string? name, string? location, string? within,
+        double? nearPlayerM, PointArea area) =>
+        new ItemFilter(prefab, name, location ?? AnyLocation, Holder(within), nearPlayerM, area);
 
-    private static ItemFilter Parse(Args args, PrefabMatch prefab, PointArea area)
+    /// <summary>A deposit's filter (prefab_contains, name_contains, location, within_id), anywhere.</summary>
+    internal static ItemFilter Parse(Args args)
     {
-        string location = args.OptionalString("location") ?? "any";
-        if (location != "any" && location != "ground" && location != "player" && location != "stored" &&
-            location != MachineStock.Location && location != SiloStock.Location)
+        string location = args.OptionalString("location") ?? AnyLocation;
+        if (location != AnyLocation && location != HolderChain.Ground && location != HolderChain.Player &&
+            location != HolderChain.Stored && location != MachineStock.Location && location != SiloStock.Location)
         {
             throw ApiErrors.InvalidArgument(
                 Vocabulary.Text("Argument '{arg:location}' must be any, ground, player, stored, machine_stock or " +
                     "silo."));
         }
 
-        return new ItemFilter(prefab, args.OptionalString("name_contains"), location,
-            RequireHolder(args.OptionalThingId("within_id")), args.OptionalPositiveDouble("near_player_m"), area);
-    }
-
-    // A within_id that names nothing is refused, as container_contents refuses it, so a mistyped id never reads as an
-    // empty holder.
-    private static ThingId? RequireHolder(ThingId? withinId)
-    {
-        if (withinId.HasValue &&
-            (!GameLookup.TryFindThing(withinId.Value, out Thing holder) || holder.IsBeingDestroyed))
+        string? contains = args.OptionalString("prefab_contains");
+        PrefabFilter? prefab = string.IsNullOrEmpty(contains)
+            ? null
+            : new PrefabFilter(new PrefabPattern[] { new PrefabPattern.Parts(new[] { contains! }) });
+        ThingId? within = args.OptionalThingId("within_id");
+        if (within.HasValue && (!GameLookup.TryFindThing(within.Value, out Thing holder) || holder.IsBeingDestroyed))
         {
-            throw ApiErrors.ThingNotFound(withinId.Value);
+            throw ApiErrors.ThingNotFound(within.Value);
         }
 
-        return withinId;
+        return new ItemFilter(prefab, args.OptionalString("name_contains"), location, within,
+            args.OptionalPositiveDouble("near_player_m"), PointArea.Anywhere);
+    }
+
+    // A within that names nothing is refused, so a mistyped id never reads as an empty holder.
+    private static ThingId? Holder(string? within)
+    {
+        if (within == null)
+        {
+            return null;
+        }
+
+        if (ThingId.TryRead(new Newtonsoft.Json.Linq.JValue(within), out ThingId id) &&
+            GameLookup.TryFindThing(id, out Thing holder) && !holder.IsBeingDestroyed)
+        {
+            return id;
+        }
+
+        throw ApiErrors.Refused(ApiErrors.ThingNotFoundCode, $"within: no thing has id {within}.");
     }
 
     internal static ItemFilter StoredOnly() =>
-        new ItemFilter(PrefabMatch.Any, null, "stored", null, null, PointArea.Anywhere);
+        new ItemFilter(null, null, HolderChain.Stored, null, null, PointArea.Anywhere);
 
-    internal bool Names(Item item) => Prefab.Keeps(item.PrefabName) && Contains(item.DisplayName, NameContains);
+    internal bool Names(Item item) =>
+        (Prefab == null || Prefab.Keeps(item.PrefabName, item.PrefabHash)) && Contains(item.DisplayName, NameContains);
+
+    /// <summary>Whether the prefab filter keeps a prefab known only by its name (its hash the name's).</summary>
+    internal bool KeepsPrefab(string? prefabName) =>
+        Prefab == null ||
+        Prefab.Keeps(prefabName, string.IsNullOrEmpty(prefabName) ? 0 : UnityEngine.Animator.StringToHash(prefabName));
 
     /// <summary>Whether machine stock can match at all: location any or machine_stock.</summary>
-    internal bool WantsStock => Location == "any" || Location == MachineStock.Location;
+    internal bool WantsStock => Location == AnyLocation || Location == MachineStock.Location;
 
     /// <summary>Stock matches the ingot's prefab and name, else the reagent's name; within_id is the machine.</summary>
     internal bool Keeps(StockRecord record)
     {
-        if (!WantsStock || !Prefab.Keeps(record.IngotPrefab) || !Contains(record.DisplayName, NameContains) ||
+        if (!WantsStock || !KeepsPrefab(record.IngotPrefab) || !Contains(record.DisplayName, NameContains) ||
             !Area.Contains(Bodies.V(record.Machine.Position)))
         {
             return false;
@@ -358,12 +383,12 @@ internal sealed class ItemFilter
     }
 
     /// <summary>Whether silo stock can match at all: location any or silo.</summary>
-    internal bool WantsSilo => Location == "any" || Location == SiloStock.Location;
+    internal bool WantsSilo => Location == AnyLocation || Location == SiloStock.Location;
 
     /// <summary>A stored thing matches by its prefab and shown name, where the silo stands; within_id is the silo.</summary>
     internal bool Keeps(SiloRecord record)
     {
-        if (!WantsSilo || !Prefab.Keeps(record.PrefabName) || !Contains(record.DisplayName, NameContains) ||
+        if (!WantsSilo || !KeepsPrefab(record.PrefabName) || !Contains(record.DisplayName, NameContains) ||
             !Area.Contains(Bodies.V(record.Silo.Position)))
         {
             return false;
@@ -379,7 +404,7 @@ internal sealed class ItemFilter
 
     internal bool Keeps(ItemRecord record)
     {
-        if (Location != "any" && record.Location != Location)
+        if (Location != AnyLocation && record.Location != Location)
         {
             return false;
         }

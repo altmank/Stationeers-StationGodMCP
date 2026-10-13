@@ -6,23 +6,6 @@ using StationGodMCP.Api.Shared;
 
 namespace StationGodMCP.Api.Views;
 
-/// <summary>rooms: every closed room in the world, or the one a thing is in.</summary>
-internal sealed class RoomsView
-{
-    internal RoomsView(List<RoomView> rooms, string? localPlayerRoomId)
-    {
-        Rooms = rooms;
-        LocalPlayerRoomId = localPlayerRoomId;
-    }
-
-    public List<RoomView> Rooms { get; }
-
-    public int Count => Rooms.Count;
-
-    /// <summary>The room the player stands in; null outside a room or without a player.</summary>
-    public string? LocalPlayerRoomId { get; }
-}
-
 /// <summary>One room's size and air, summed over its cells.</summary>
 internal sealed class RoomView
 {

@@ -44,7 +44,7 @@ internal static class MachineStock
         }
 
         Dictionary<Reagent, Ingot> ingots = IngotsByReagent();
-        if (!CanKeepAny(filter.Prefab, ingots))
+        if (!CanKeepAny(filter, ingots))
         {
             return records;
         }
@@ -92,16 +92,16 @@ internal static class MachineStock
 
     // A stock entry counts under an ingot's prefab or under none (StockRecord.IngotPrefab), so a prefab filter that
     // keeps none of those names keeps no stock, and the walk over every structure is skipped.
-    private static bool CanKeepAny(PrefabMatch prefab, Dictionary<Reagent, Ingot> ingots)
+    private static bool CanKeepAny(ItemFilter filter, Dictionary<Reagent, Ingot> ingots)
     {
-        if (prefab.Keeps(null))
+        if (filter.Prefab == null)
         {
             return true;
         }
 
         foreach (Ingot ingot in ingots.Values)
         {
-            if (prefab.Keeps(ingot.PrefabName))
+            if (filter.KeepsPrefab(ingot.PrefabName))
             {
                 return true;
             }

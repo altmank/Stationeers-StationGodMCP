@@ -9,7 +9,7 @@ using Xunit;
 
 namespace StationGodMCP.Tests;
 
-/// <summary>thing_health: the old StationApi.ThingHealth shapes against the new views, with the renames.</summary>
+/// <summary>thing_health's id and network forms: the old StationApi.ThingHealth shapes against the new views, with the renames.</summary>
 public sealed class ThingHealthWireTests
 {
     private static readonly Dictionary<string, string> RecordRenames = new Dictionary<string, string>
@@ -129,39 +129,5 @@ public sealed class ThingHealthWireTests
         Dictionary<string, string> renames = new Dictionary<string, string> { ["results[].ratio"] = "damage_ratio" };
         WireCheck.SameAfterRenames(old, batch.Build(), renames, "results[].custom_name", "results[].condition",
             "results[].broken_build_state");
-    }
-
-    [Fact]
-    public void ScanSameWire()
-    {
-        var old = new
-        {
-            things = new[] { OldRecord(true) },
-            count = 1,
-            total_matches = 3,
-            structures = 2,
-            broken = 0,
-            scanned = 5000,
-            min_ratio = 0.25,
-            offset = 2,
-            limit = 1,
-            has_more = false,
-            local_player = new
-            {
-                reference_id = "151", display_name = "Player", position = new { x = 0.0, y = 1.0, z = 2.0 }
-            }
-        };
-        PageRequest page = PageRequest.From(new Args(JObject.Parse("{\"offset\": 2, \"limit\": 1}")), 200, 500);
-        HealthScanView view = new HealthScanView(
-            Slice<HealthView>.Page(new List<HealthView> { NewRecord(true) }, page, 3), 2, 0, 5000, 0.25,
-            new LocalPlayerView(new ThingId(151), "Player", new PositionView(0.0, 1.0, 2.0)));
-        Dictionary<string, string> renames = new Dictionary<string, string>
-        {
-            ["things[].ratio"] = "damage_ratio",
-            ["total_matches"] = "total",
-            ["min_ratio"] = "min_damage_ratio"
-        };
-        WireCheck.SameAfterRenames(old, view, renames, "things[].custom_name", "things[].condition",
-            "things[].broken_build_state");
     }
 }

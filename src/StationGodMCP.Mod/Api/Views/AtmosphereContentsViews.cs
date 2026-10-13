@@ -79,30 +79,6 @@ internal sealed class SlotRef
     internal string? Name { get; }
 }
 
-/// <summary>water_sources: every canister, tank and pipe network holding water, largest first.</summary>
-internal sealed class WaterSourcesView
-{
-    internal WaterSourcesView(List<WaterSourceView> sources, WaterView totals, double minMol,
-        LocalPlayerView? localPlayer)
-    {
-        Sources = sources;
-        Count = sources.Count;
-        Totals = totals;
-        MinMol = minMol;
-        LocalPlayer = localPlayer;
-    }
-
-    public List<WaterSourceView> Sources { get; }
-
-    public int Count { get; }
-
-    public WaterView Totals { get; }
-
-    public double MinMol { get; }
-
-    public LocalPlayerView? LocalPlayer { get; }
-}
-
 internal sealed class WaterSourceView
 {
     internal WaterSourceView(bool isThing, object owner, ThingId atmosphereId, AtmosphereState state, WaterView water)

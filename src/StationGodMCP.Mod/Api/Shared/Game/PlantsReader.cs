@@ -11,11 +11,10 @@ using Assets.Scripts.Objects.Pipes;
 using Assets.Scripts.Util;
 using Genetics;
 using StationGodMCP.Api.Shared;
-using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 using UnityEngine;
 
-namespace StationGodMCP.Api;
+namespace StationGodMCP.Api.Shared.Game;
 
 /// <summary>
 /// Reads one plant. Genes shift a plant's needs; reading them through the game's accessors adds an empty gene set to

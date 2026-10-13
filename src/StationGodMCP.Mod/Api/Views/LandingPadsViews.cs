@@ -5,20 +5,6 @@ using StationGodMCP.Api.Shared;
 
 namespace StationGodMCP.Api.Views;
 
-/// <summary>landing_pads: every trader landing pad centre.</summary>
-internal sealed class LandingPadsView
-{
-    internal LandingPadsView(List<LandingPadView> pads)
-    {
-        Pads = pads;
-        Count = pads.Count;
-    }
-
-    public List<LandingPadView> Pads { get; }
-
-    public int Count { get; }
-}
-
 internal sealed class LandingPadView
 {
     internal LandingPadView(ThingView pad, PositionView position, PadNetworkFacts network, PadMeasure measure,

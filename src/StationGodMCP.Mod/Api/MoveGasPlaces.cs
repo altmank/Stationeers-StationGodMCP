@@ -5,6 +5,7 @@ using Assets.Scripts;
 using Assets.Scripts.Atmospherics;
 using Assets.Scripts.GridSystem;
 using StationGodMCP.Api.Shared;
+using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Protocol;
@@ -43,8 +44,8 @@ internal abstract class GasPlace
     internal static GasPlace Resolve(GasPlaceArg arg, string name) => arg switch
     {
         GasPlaceArg.Atmosphere atmosphere => new One(GasEnd.Resolve(atmosphere.Id, name)),
-        GasPlaceArg.Room room => RoomCells.Of(RoomsApi.RequireRoomById(room.RoomId), name),
-        GasPlaceArg.RoomOf roomOf => RoomCells.Of(RoomsApi.RequireRoom(roomOf.ThingId, Rooms()), name),
+        GasPlaceArg.Room room => RoomCells.Of(ClosedRooms.RequireRoomById(room.RoomId), name),
+        GasPlaceArg.RoomOf roomOf => RoomCells.Of(ClosedRooms.RequireRoom(roomOf.ThingId, Rooms()), name),
         _ => throw ApiErrors.Refused("refused",
             $"'{Vocabulary.Path(name)}': the planet only gives gas up ({Vocabulary.Arg("from")} \"planet\" with " +
             $"{Vocabulary.Arg("delete")}: true); gas is not moved into it."),
@@ -139,7 +140,7 @@ internal abstract class GasPlace
             if (cells.Count == 0)
             {
                 throw ApiErrors.Refused("no_atmosphere",
-                    $"'{Vocabulary.Path(name)}': none of the {grids.Count} cells of room {RoomsApi.IdOf(room)} has " +
+                    $"'{Vocabulary.Path(name)}': none of the {grids.Count} cells of room {ClosedRooms.IdOf(room)} has " +
                     "air of its own yet, so there is nothing to take and nowhere the game would keep it.");
             }
 
@@ -191,7 +192,7 @@ internal abstract class GasPlace
                 volume += cell.VolumeL;
             }
 
-            return new GasRoomView(RoomsApi.IdOf(Room), Room.RoomType.ToString(), CellCount, Cells.Count, volume);
+            return new GasRoomView(ClosedRooms.IdOf(Room), Room.RoomType.ToString(), CellCount, Cells.Count, volume);
         }
     }
 }

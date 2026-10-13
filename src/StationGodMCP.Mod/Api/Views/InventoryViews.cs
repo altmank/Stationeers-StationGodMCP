@@ -10,44 +10,6 @@ using StationGodMCP.Pure.Shaping;
 
 namespace StationGodMCP.Api.Views;
 
-/// <summary>find_items: one page of the items that match, in the order asked.</summary>
-internal sealed class FindItemsView
-{
-    internal FindItemsView(Slice<IFoundItemView> page, LocalPlayerView? localPlayer, int? inUseLeftOut = null)
-    {
-        Items = page.Items;
-        InUseLeftOut = inUseLeftOut;
-        Count = page.Items.Count;
-        Total = page.Total;
-        Offset = page.Offset;
-        Limit = page.Limit;
-        HasMore = page.HasMore;
-        LocalPlayer = localPlayer;
-    }
-
-    /// <summary>
-    /// Items (ItemView), machine stock (StockItemView, location machine_stock), silo stock (SiloItemView); with
-    /// group_by, groups of them (HolderGroupView, PrefabGroupView).
-    /// </summary>
-    public List<IFoundItemView> Items { get; }
-
-    public int Count { get; }
-
-    public int Total { get; }
-
-    public int Offset { get; }
-
-    public int Limit { get; }
-
-    public bool HasMore { get; }
-
-    public LocalPlayerView? LocalPlayer { get; }
-
-    /// <summary>With exclude_in_use: the items left out as parts a device is using, or inside one; else left out.</summary>
-    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-    public int? InUseLeftOut { get; }
-}
-
 /// <summary>
 /// What names a find_items group: its first entry's prefab (or working-load reagent), place and outermost holder (none
 /// for a loose item), and the holder's position and distance from the player.
@@ -153,32 +115,6 @@ internal sealed class PrefabGroupView : IFoundItemView
     public int Holders { get; }
 }
 
-/// <summary>item_totals: the matching items summed per prefab, largest first.</summary>
-internal sealed class ItemTotalsView
-{
-    internal ItemTotalsView(List<PrefabTotalView> totals, int prefabCount, int itemCount, int machineStockEntries,
-        int siloEntries)
-    {
-        Totals = totals;
-        PrefabCount = prefabCount;
-        ItemCount = itemCount;
-        MachineStockEntries = machineStockEntries;
-        SiloEntries = siloEntries;
-    }
-
-    public List<PrefabTotalView> Totals { get; }
-
-    public int PrefabCount { get; }
-
-    public int ItemCount { get; }
-
-    /// <summary>Machine and reagent pairs counted (not in item_count).</summary>
-    public int MachineStockEntries { get; }
-
-    /// <summary>Things stored in silos counted (entries and what they hold; not in item_count).</summary>
-    public int SiloEntries { get; }
-}
-
 internal sealed class PrefabTotalView
 {
     internal PrefabTotalView(string? prefabName, string? displayName, string? reagent, int items,
@@ -280,35 +216,6 @@ internal sealed class HolderTotalView
     public string Kind { get; }
 
     public PositionView Position { get; }
-}
-
-/// <summary>list_containers: one page of the holders with at least one item in them, in the order asked.</summary>
-internal sealed class ListContainersView
-{
-    internal ListContainersView(Slice<ContainerView> page, LocalPlayerView? localPlayer)
-    {
-        Containers = page.Items;
-        Count = page.Items.Count;
-        Total = page.Total;
-        Offset = page.Offset;
-        Limit = page.Limit;
-        HasMore = page.HasMore;
-        LocalPlayer = localPlayer;
-    }
-
-    public List<ContainerView> Containers { get; }
-
-    public int Count { get; }
-
-    public int Total { get; }
-
-    public int Offset { get; }
-
-    public int Limit { get; }
-
-    public bool HasMore { get; }
-
-    public LocalPlayerView? LocalPlayer { get; }
 }
 
 internal sealed class ContainerView

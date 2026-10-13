@@ -64,6 +64,26 @@ internal sealed class Rows
         _succeeded++;
     }
 
+    /// <summary>
+    /// One id's row from its read: the payload read gives, or, when read refuses (an ApiException), that refusal as the
+    /// row's error.
+    /// </summary>
+    internal void Add(string referenceId, System.Func<JObject> read)
+    {
+        JObject payload;
+        try
+        {
+            payload = read();
+        }
+        catch (ApiException refused)
+        {
+            Failed(referenceId, new VerbError(refused.Code, refused.Message));
+            return;
+        }
+
+        Succeeded(referenceId, payload);
+    }
+
     internal void Failed(string? referenceId, VerbError error)
     {
         JObject row = Start(referenceId, false);
@@ -162,6 +182,33 @@ internal static class ListReply
 
         return reply;
     }
+}
+
+/// <summary>
+/// The declared-shape writer (D-A2-4): a reply the catalogue declares key by key that is no ListReply page (a whole
+/// list with its count, or a what's own keys), written in the order given, each value as the reply views serialise.
+/// </summary>
+internal static class ReplyFields
+{
+    internal static JObject Of(params (string Key, object? Value)[] fields)
+    {
+        Newtonsoft.Json.JsonSerializer serializer = ApiJson.Fresh();
+        JObject reply = new JObject();
+        foreach ((string key, object? value) in fields)
+        {
+            reply[key] = Value(value, serializer);
+        }
+
+        return reply;
+    }
+
+    /// <summary>One value as a reply holds it: null as JSON null, a token as given, anything else serialised.</summary>
+    internal static JToken Value(object? value, Newtonsoft.Json.JsonSerializer serializer) => value switch
+    {
+        null => JValue.CreateNull(),
+        JToken token => token.DeepClone(),
+        _ => JToken.FromObject(value, serializer)
+    };
 }
 
 /// <summary>

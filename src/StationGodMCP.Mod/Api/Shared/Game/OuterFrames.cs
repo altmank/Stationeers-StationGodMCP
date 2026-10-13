@@ -8,15 +8,14 @@ using Assets.Scripts.Objects;
 using Assets.Scripts.Util;
 using Objects.Structures;
 using StationGodMCP.Api.Shared;
-using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using UnityEngine;
 
-namespace StationGodMCP.Api;
+namespace StationGodMCP.Api.Shared.Game;
 
 /// <summary>
-/// outer_frames: which frames (iron, steel, corner, side) have a face on a cell whose gas is the world's. Read only.
+/// Outer frames: which frames (iron, steel, corner, side) have a face on a cell whose gas is the world's.
 ///
 /// How the game places air (CODE): there is no Room atmosphere mode (AtmosphereHelper.AtmosphereMode is World,
 /// Network, Thing, Global, None). A 2 m cell's atmosphere is AtmosphericsManager's World-mode instance stored under the
@@ -44,38 +43,23 @@ namespace StationGodMCP.Api;
 /// gravity, not air, so a space closed only by one-sheet frames is a Room though it leaks; each frame is judged from
 /// its one centre cell; crew modules count as not holding world air.
 /// </summary>
-internal static class OuterFramesApi
+internal static class OuterFrames
 {
-    private const int DefaultLimit = ReplyDefaults.OuterFrames;
-    private const int MaximumLimit = 1000;
-
-    internal static OuterFramesView Handle(Args args)
+    /// <summary>The air rules of the loaded world; refused not_ready while its grid or rooms are not loaded.</summary>
+    internal static CellAir Air()
     {
-        double? near = args.OptionalPositiveDouble("near_player_m");
-        PlayerOrigin origin = PlayerOrigin.Current().RequireIf(near.HasValue);
-        PageRequest page = PageRequest.From(args, DefaultLimit, MaximumLimit);
-        ListOrder order = ListOrderArg.From(args);
-        bool includeInner = args.OptionalBool("include_inner") ?? false;
         GridController grid = GridController.World;
         RoomController rooms = RoomController.World;
-        if (grid == null || rooms == null)
-        {
-            throw ApiErrors.Refused("not_ready", "The world grid or the room controller is not loaded.");
-        }
-
-        FrameCensus census = FrameCensus.Take(new CellAir(grid, rooms), origin, near, includeInner);
-        census.Rows.Sort((a, b) => ListKey.Compare(order, a.Key, b.Key));
-        Slice<FrameRow> rows = Slice<FrameRow>.Of(census.Rows, page);
-        List<FrameView> views = new List<FrameView>(rows.Items.Count);
-        foreach (FrameRow row in rows.Items)
-        {
-            views.Add(row.ToView());
-        }
-
-        page.Note("frames", views.Count, rows.Total, ListOrders.PagingAdvice(order, origin.IsPresent));
-        return new OuterFramesView(Slice<FrameView>.Page(views, page, rows.Total), census.TotalFrames,
-            census.TotalOuter, includeInner, origin.View);
+        return grid != null && rooms != null
+            ? new CellAir(grid, rooms)
+            : throw ApiErrors.Refused("not_ready", "find frame: the world grid or the room controller is not loaded.");
     }
+
+    /// <summary>One frame as it is now, its exposed faces measured again; null when it is gone.</summary>
+    internal static FrameRow? Live(long id, CellAir air, PlayerOrigin origin) =>
+        Thing.Find(id) is Frame frame && !frame.IsBeingDestroyed
+            ? new FrameRow(frame, FrameCensus.ExposedFaces(frame, air), origin.ExactDistanceTo(frame.Position))
+            : null;
 }
 
 /// <summary>Every frame in the world with its exposed faces, and the counts.</summary>
@@ -126,7 +110,7 @@ internal sealed class FrameCensus
         }
     }
 
-    private static List<string> ExposedFaces(Frame frame, CellAir air)
+    internal static List<string> ExposedFaces(Frame frame, CellAir air)
     {
         List<string> exposed = new List<string>(FaceNames.Length);
         if (frame.WorldGrid == WorldGrid.INVALID)
