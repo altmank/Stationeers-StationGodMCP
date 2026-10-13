@@ -200,7 +200,7 @@ internal sealed class DishReadiness
     internal bool CanRotate => Finished && Powered && On;
 }
 
-/// <summary>dish_aim: the Horizontal and Vertical that point a dish at a contact.</summary>
+/// <summary>plan aim for a dish: the Horizontal and Vertical that point a dish at a contact.</summary>
 internal sealed class DishAimView
 {
     internal DishAimView(ThingId dishId, ThingId contactId, DishReadiness readiness, DishAimResult aim,

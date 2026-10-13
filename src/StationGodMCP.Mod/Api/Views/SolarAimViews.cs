@@ -5,7 +5,7 @@ using StationGodMCP.Api.Shared;
 
 namespace StationGodMCP.Api.Views;
 
-/// <summary>solar_aim: what every reply carries. A panel that turns adds its angles; one that cannot, a note.</summary>
+/// <summary>plan aim: what every reply carries. A panel that turns adds its angles; one that cannot, a note.</summary>
 internal abstract class SolarAimView
 {
     private protected SolarAimView(ThingId referenceId, string? prefabName, bool canTurn, bool operable, SunView sun,

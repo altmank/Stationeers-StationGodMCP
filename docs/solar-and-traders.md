@@ -30,7 +30,7 @@ says, since the ground shades the panel. The game stops a turning panel
 within its rotation tolerance, up to about 0.4 degrees short of the written Horizontal. A flat panel reports
 `can_turn: false`. `operable: false` means the panel is not finished (or is broken): the game generates
 nothing from it at any angle. `sun.eclipse` is always false on a dedicated server: the game works out eclipses only in
-a game with a screen. A missing id or a thing that is not a solar panel is refused with `not_solar_panel`.
+a game with a screen. A missing id is refused with `thing_not_found`, and a thing that is neither a solar panel nor a satellite dish with `not_aimable`.
 
 `dish_aim` tries angles on the dish's own model and puts it back within one frame, so nothing moves. It works on the
 Medium and the Small Satellite Dish (the Small one turns its pivots without an animator). Under 2 degrees of

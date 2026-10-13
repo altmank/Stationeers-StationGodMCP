@@ -9,7 +9,7 @@ using Xunit;
 
 namespace StationGodMCP.Tests;
 
-/// <summary>solar_aim: the old StationApi.SolarAim shapes against the new views, from the same values.</summary>
+/// <summary>plan aim for a panel: the old StationApi.SolarAim shapes against the views, from the same values.</summary>
 public sealed class SolarAimWireTests
 {
     private static readonly SunView Sun = new SunView(0.25f, -0.5f, 0.75f, eclipse: false);

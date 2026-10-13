@@ -166,6 +166,8 @@
             "keys": {
               "player": "{reference_id: str, display_name: str | None, position: Vec3} | None",
               "cell": "{temperature_k: float, pressure_kpa: float, energy_j: float, inflamed: bool, oxygen_mol: float, in_room: bool} | None",
+              "autoignition_min_energy_j": "float",
+              "minimum_ignition_pressure_kpa": "float",
               "items": "list[{reference_id: str, prefab_name: str | None, display_name: str | None, slot: str | None, in_hand: bool, holder: Thing | None, atmosphere: str, burning: bool, hidden: bool, flashpoint_k: float | None, flashpoint_effective_k: float | None, autoignition_k: float | None, ignites_now: bool, health_ratio: float | None}]",
               "prefabs": "list[{prefab_name: str | None, display_name: str | None, flashpoint_k: float | None, autoignition_k: float | None}] | None"
             }

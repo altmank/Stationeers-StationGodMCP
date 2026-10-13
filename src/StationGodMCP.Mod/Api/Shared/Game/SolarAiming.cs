@@ -7,15 +7,14 @@ using Assets.Scripts.Objects.Electrical;
 using Assets.Scripts.Objects.Motherboards;
 using Objects.Electrical;
 using StationGodMCP.Api.Shared;
-using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using UnityEngine;
 
-namespace StationGodMCP.Api;
+namespace StationGodMCP.Api.Shared.Game;
 
 /// <summary>
-/// solar_aim: the Horizontal and Vertical that point a solar panel's cells at the sun, from the panel's own pivots and
+/// plan aim for a solar panel: the Horizontal and Vertical that point a solar panel's cells at the sun, from the panel's own pivots and
 /// the game's sun vector: no daylight sensor, no calibration. Read only; it does not move the panel.
 ///
 /// How the game aims and scores a panel (CODE): SolarPanelArm.FacingDirection is Cells.forward, and
@@ -31,16 +30,10 @@ namespace StationGodMCP.Api;
 /// sun below the horizon the same search gives the pose closest to the sun now: tilted toward where it set until
 /// midnight, toward where it will rise after.
 /// </summary>
-internal static class SolarAimApi
+internal static class SolarAiming
 {
-    internal static SolarAimView Handle(Args args)
+    internal static SolarAimView Aim(SolarPanel panel, ThingId id)
     {
-        ThingId id = args.ThingId("reference_id");
-        if (!GameLookup.TryFindThing(id, out Thing thing) || !(thing is SolarPanel panel))
-        {
-            throw ApiErrors.Refused("not_solar_panel", $"Reference id {id} is not a solar panel.");
-        }
-
         Vector3 sun = OrbitalSimulation.WorldSunVector.normalized;
         SunView sunView = new SunView(sun.x, sun.y, sun.z, OrbitalSimulation.IsEclipse);
         PanelAimView current = new PanelAimView(

@@ -290,6 +290,10 @@
   },
   "not_a_silo": {"description": "That thing is not an SDB Silo. find thing {prefab: \"Silo\"} lists them."},
   "not_a_vault": {"description": "That thing is not an Ingot Vault or a Remote Vault. find thing lists vaults."},
+  "not_aimable": {
+    "description": "That thing is neither a solar panel nor a satellite dish, so there is nothing to aim. find thing lists them.",
+    "see": {"verb": "plan", "what": "aim"}
+  },
   "not_connectable": {
     "description": "That thing is not a pipe, cable, chute or device, so it has no connection ends.",
     "see": {"verb": "inspect", "what": "connections"}
@@ -336,10 +340,6 @@
   "not_rendered": {
     "description": "This game draws nothing (a dedicated server), so there is no picture of the screen. Read its elements instead.",
     "see": {"verb": "inspect", "what": "screen"}
-  },
-  "not_solar_panel": {
-    "description": "That reference id is not a solar panel. find thing with prefab Solar lists them.",
-    "see": {"topic": "errors"}
   },
   "not_sold": {"description": "The trader does not trade that item. trade inventory lists what it buys and sells."},
   "not_uplink": {"description": "That thing is not a Logic Rocket Uplink."},

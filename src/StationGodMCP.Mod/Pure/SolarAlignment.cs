@@ -4,7 +4,7 @@ using System;
 
 namespace StationGodMCP.Pure;
 
-/// <summary>solar_aim's arithmetic on the best facing the search found.</summary>
+/// <summary>plan aim's arithmetic for a panel on the best facing the search found.</summary>
 internal static class SolarAlignment
 {
     /// <summary>The Vertical setting at which a panel's pitch pivot is level: Euler(V - 90, 0, 0).</summary>

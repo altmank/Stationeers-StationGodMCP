@@ -577,6 +577,11 @@
     "origin": "tool",
     "see": {"topic": "vaults"}
   },
+  "not_aimable": {
+    "description": "That thing is neither a solar panel nor a satellite dish, so there is nothing to aim.",
+    "origin": "tool",
+    "see": {"topic": "errors", "subtopic": "not_found"}
+  },
   "not_connectable": {
     "description": "That thing is not a pipe, cable, chute or device, so it has no connection ends.",
     "origin": "tool",
@@ -668,11 +673,6 @@
     "description": "This game draws nothing (a dedicated server), so there is no picture of the screen. Read its elements instead.",
     "origin": "tool",
     "see": {"tool": "screen_read", "topic": "refusals"}
-  },
-  "not_solar_panel": {
-    "description": "That reference id is not a solar panel. find_things with prefab_contains Solar lists them.",
-    "origin": "tool",
-    "see": {"topic": "errors", "subtopic": "not_found"}
   },
   "not_sold": {
     "description": "The trader does not trade that item. trader_inventory lists what it buys and sells.",

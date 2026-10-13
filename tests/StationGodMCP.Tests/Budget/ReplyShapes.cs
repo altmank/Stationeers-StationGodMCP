@@ -71,7 +71,6 @@ internal static class ReplyShapes
             S<AdvanceBuildStateView>().List("AdvanceBuildStateView.Cost", 3).List("AdvanceBuildStateView.Tools", 1)
                 .Absent("BuildCostView.PaidBy")
         };
-        shapes["dish_aim"] = new[] { S<DishAimView>() };
         shapes["highlight"] = new[]
         {
             S<HighlightView>().List("HighlightView.Targets", 3).List("HighlightTargetView.Missing", 0)
@@ -150,7 +149,6 @@ internal static class ReplyShapes
         {
             PlaceReportInto(S<ShowPreviewView>()).List("ShowPreviewView.Notes", 0)
         };
-        shapes["solar_aim"] = new[] { S<SolarFixedView>(), S<SolarTurnView>() };
         foreach (string tool in new[] { "trader_buy", "trader_sell" })
         {
             shapes[tool] = new[]

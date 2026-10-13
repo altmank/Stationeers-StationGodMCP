@@ -115,4 +115,34 @@ public sealed class PlanVerbTests
         Assert.True(one.Fields.Includes("explain"));
         Assert.NotNull(Check("""{"what": "mining", "to": "Asteroid 7"}"""));
     }
+
+    // ---- aim ----
+
+    private static AimOrder? Aim(string json, List<OptionProblem> problems) =>
+        AimOrder.Of(PlanAimOptions.Bind(new OptionReader(PlanAimOptions.Spec, JObject.Parse(json))), problems);
+
+    [Fact]
+    public void AimTakesThingsAndADishsContact()
+    {
+        List<OptionProblem> problems = new();
+
+        AimOrder panels = Aim("""{"id": ["3300111", "3300112"]}""", problems)!;
+        AimOrder dish = Aim("""{"id": "852", "contact": " 1200345 "}""", problems)!;
+
+        Assert.Empty(problems);
+        Assert.True(panels.Ids.AnswersRows);
+        Assert.Null(panels.Contact);
+        Assert.False(dish.Ids.AnswersRows);
+        Assert.Equal(1200345, dish.Contact);
+    }
+
+    [Fact]
+    public void AimRefusesAContactThatIsNoId()
+    {
+        List<OptionProblem> problems = new();
+
+        Assert.Null(Aim("""{"id": "852", "contact": "the trader"}""", problems));
+        Assert.Equal("contact", Assert.Single(problems).Path);
+        Assert.NotNull(Check("""{"what": "aim"}"""));
+    }
 }

@@ -10,10 +10,10 @@ using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
 using UnityEngine;
 
-namespace StationGodMCP.Api;
+namespace StationGodMCP.Api.Shared.Game;
 
 /// <summary>
-/// dish_aim: the Horizontal and Vertical (logic degrees) that point a satellite dish at a contact, found on the dish's
+/// plan aim for a dish: the Horizontal and Vertical (logic degrees) that point a satellite dish at a contact, found on the dish's
 /// own model. Read only: the dish does not move; write the returned values to its Horizontal and Vertical to turn it.
 ///
 /// The angles reach the model in one of two ways. SatelliteDish's Horizontal and Vertical setters pass the 0..1 ratios
@@ -25,7 +25,7 @@ namespace StationGodMCP.Api;
 /// call and the dish's own pose is restored before returning, so no frame renders a trial pose and nothing is left
 /// changed.
 /// </summary>
-internal static class DishAimApi
+internal static class DishAiming
 {
     // A dish whose model turns less than this between two far-apart poses is not being evaluated.
     private const float MinimumTravelDeg = 1f;
@@ -33,25 +33,19 @@ internal static class DishAimApi
     // DishForward counts as set once it is at least this long (squared).
     private const float SetForwardSqr = 0.25f;
 
-    internal static DishAimView Handle(Args args)
+    internal static DishAimView Aim(SatelliteDish dish, ThingId dishId, ThingId contactId, string label)
     {
-        ThingId dishId = args.ThingId("dish_id");
-        ThingId contactId = args.ThingId("contact_id");
-        if (!(Thing.Find(dishId.Value) is SatelliteDish dish) || dish == null)
-        {
-            throw ApiErrors.Refused(ApiErrors.ThingNotFoundCode, $"No satellite dish has reference id {dishId}.");
-        }
-
         TraderContact? contact = Contacts.Find(contactId.Value);
         if (contact == null)
         {
-            throw ApiErrors.Refused("contact_not_found", $"No trader contact has reference id {contactId}.");
+            throw ApiErrors.Refused("contact_not_found",
+                $"{label}: no trader contact has id {contactId}; trade contacts lists them.");
         }
 
         DishPoser poser = PoserFor(dish, contact.Angle.normalized);
         try
         {
-            return Aim(dish, poser, dishId, contactId);
+            return Pointed(dish, poser, dishId, contactId);
         }
         finally
         {
@@ -68,7 +62,7 @@ internal static class DishAimApi
             Transform? pivot = GameMembers.SmallDishHorizontalPivot.GetValue(small) as Transform;
             if (pointer == null || pivot == null)
             {
-                throw ApiErrors.Refused("dish_not_ready", "The dish has no horizontal pivot or pointing transform.");
+                throw ApiErrors.Refused("dish_not_ready", "plan aim: the dish has no horizontal pivot or pointing transform.");
             }
 
             return new PivotDishPoser(pivot, pointer, target, (float)small.Horizontal, (float)small.Vertical);
@@ -77,19 +71,19 @@ internal static class DishAimApi
         Animator animator = dish.BaseAnimator;
         if (animator == null || pointer == null)
         {
-            throw ApiErrors.Refused("dish_not_ready", "The dish has no animator or pointing transform.");
+            throw ApiErrors.Refused("dish_not_ready", "plan aim: the dish has no animator or pointing transform.");
         }
 
         return new AnimatorDishPoser(animator, pointer, target);
     }
 
-    private static DishAimView Aim(SatelliteDish dish, DishPoser poser, ThingId dishId, ThingId contactId)
+    private static DishAimView Pointed(SatelliteDish dish, DishPoser poser, ThingId dishId, ThingId contactId)
     {
         Vector3 before = poser.Pointer.up;
         float staleDeg = DishPoser.AngleDeg(before, poser.Pose(poser.OriginalHorizontal, poser.OriginalVertical));
         if (DishPoser.AngleDeg(poser.Pose(0f, 0f), poser.Pose(0.5f, 1f)) < MinimumTravelDeg)
         {
-            throw ApiErrors.Refused("dish_not_ready", "The dish's model does not move when posed.");
+            throw ApiErrors.Refused("dish_not_ready", "plan aim: the dish's model does not move when posed.");
         }
 
         Pure.AngleBest found = Pure.AngleSearch.DishMinimum(poser);

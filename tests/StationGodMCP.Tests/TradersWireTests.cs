@@ -8,7 +8,7 @@ using Xunit;
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// trader_contacts, dish_aim and trader_inventory: the old StationApi.Traders shapes against the new views, with the
+/// trader_contacts, plan aim for a dish and trader_inventory: the old StationApi.Traders shapes against the new views, with the
 /// renames each test lists.
 /// </summary>
 public sealed class TradersWireTests

@@ -12,7 +12,7 @@ namespace StationGodMCP.Tests;
 /// Fixes from round 4 of the headless live test (2026-09-29), items, devices and solar: a grower's hand interaction
 /// decides its plant and fertiliser slots even when they are hidden (a planter, a station's fertiliser slots); a
 /// numeric logic_type is judged as a number however large; exact-length arrays say "exactly"; label.labels needs one
-/// entry; dish_aim measures its error in double.
+/// entry; plan aim measures a dish's error in double.
 /// </summary>
 public sealed class Round4ItemsDevicesSolarTests
 {

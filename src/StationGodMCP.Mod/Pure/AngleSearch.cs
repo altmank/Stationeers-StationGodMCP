@@ -34,7 +34,7 @@ internal sealed class AngleBest
 internal static class AngleSearch
 {
     /// <summary>
-    /// solar_aim: the highest score over horizontal 0..358 in 2 degree steps and vertical 15..165 in 2 degree
+    /// plan aim for a panel: the highest score over horizontal 0..358 in 2 degree steps and vertical 15..165 in 2 degree
     /// steps, then two refinements of +-2 in 0.2 steps and +-0.2 in 0.02 steps, the vertical held inside 15..165.
     /// The horizontal comes back in 0..360.
     /// </summary>
@@ -48,7 +48,7 @@ internal static class AngleSearch
     }
 
     /// <summary>
-    /// solar_aim with the panel's current pose: every Horizontal H and Vertical V has a twin, H + 180 and 180 - V, that
+    /// plan aim with the panel's current pose: every Horizontal H and Vertical V has a twin, H + 180 and 180 - V, that
     /// turns the cells the same way, so whenever the sun is high enough for both, the two score the same and
     /// SolarMaximum's pick between them flips with rounding from one call to the next. This refines the twin of
     /// SolarMaximum's answer the same way (+-2 in 0.2 steps, then +-0.2 in 0.02 steps) and, when it comes within
@@ -67,7 +67,7 @@ internal static class AngleSearch
             : best;
     }
 
-    /// <summary>The largest off-sun difference, in degrees, at which solar_aim treats the twin pose as equally good.</summary>
+    /// <summary>The largest off-sun difference, in degrees, at which plan aim treats the twin pose as equally good.</summary>
     internal const float TwinToleranceDeg = 0.1f;
 
     // The two SolarMaximum refinements around a seed, the horizontal brought back into 0..360.
@@ -95,7 +95,7 @@ internal static class AngleSearch
     private const float FullTurn = 360f;
 
     /// <summary>
-    /// dish_aim: the lowest score over both angles as fractions 0..1, first on a 72 x 19 grid (horizontal i/72,
+    /// plan aim for a dish: the lowest score over both angles as fractions 0..1, first on a 72 x 19 grid (horizontal i/72,
     /// vertical j/18), then by a compass search that tries +-step on each angle in turn (horizontal wrapping, vertical
     /// clamped), keeps any gain of more than 1e-5 and halves the steps when none helps, from 5/360 and 5/90 down to
     /// 0.01/360 of the horizontal.
