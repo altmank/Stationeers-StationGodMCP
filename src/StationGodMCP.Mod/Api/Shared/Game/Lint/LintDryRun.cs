@@ -13,7 +13,7 @@ using StationGodMCP.Pure.Protocol;
 namespace StationGodMCP.Api.Shared.Game.Lint;
 
 /// <summary>
-/// The dry_run rules over what a request places, in the world around it (the touched 2 m cells and their neighbours,
+/// The report rules over what a request places, in the world around it (the touched 2 m cells and their neighbours,
 /// with what the request removes or replaces left out). Each finding about a planned thing becomes lint_&lt;rule id&gt;:
 /// a problem (the rule's level, or its level_when, says problem) refuses the plan, naming how the save's file allows
 /// it; a warning or info is a warning. A rule turned off in the files never runs.
@@ -34,14 +34,14 @@ internal static class LintDryRun
         {
             LintRuleSet rules = LintRuleFiles.Current();
             GameLintWorld world = GameLintWorld.DryRun(planned, gone);
-            return LintReport.Ordered(LintEngine.Run(rules, world, "dry_run").Findings);
+            return LintReport.Ordered(LintEngine.Run(rules, world, "report").Findings);
         }
         catch (Exception error)
         {
             return new List<LintFinding>
             {
                 new LintFinding(CodePrefix + "unavailable", ConflictLevel.Warning, 0,
-                    $"The {Vocabulary.Arg("dry_run")} lint rules could not run: {error.GetType().Name}: " +
+                    $"The {Vocabulary.Arg("report")} lint rules could not run: {error.GetType().Name}: " +
                     $"{error.Message}", null, Vec3.Zero,
                     null, null, null)
             };

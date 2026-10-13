@@ -193,7 +193,7 @@ internal sealed class LintTemplate
 /// </summary>
 internal sealed class LintRule
 {
-    internal static readonly string[] Phases = { "audit", "dry_run", "write" };
+    internal static readonly string[] Phases = { "audit", "report", "write" };
 
     internal LintRule(string id, ConflictLevel level, string? description, IReadOnlyList<string> on, string selectText,
         string assertText, SelectNode select, LintUnit unit, LintEval? where, LintUnit? whereUnit, LintEval assert,

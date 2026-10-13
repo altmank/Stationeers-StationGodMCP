@@ -383,7 +383,7 @@ internal sealed class RouteLintRule
     internal static RouteLintRule? From(Lint.LintRuleSet set, string id, IEnumerable<GridCell> ends)
     {
         Lint.LintRule? rule = set.Find(id);
-        if (rule == null || !System.Linq.Enumerable.Contains(rule.On, "dry_run"))
+        if (rule == null || !System.Linq.Enumerable.Contains(rule.On, "report"))
         {
             return null;
         }

@@ -30,7 +30,7 @@ internal static class RunPlanner
 
     /// <summary>
     /// The preflight; with join_trunk, the run with the tap to join_to added when it stops short (RunTaps). lint: the
-    /// dry_run lint rules add their warnings (the held tick's final check, whose warnings nobody reads, skips them).
+    /// report lint rules add their warnings (the held tick's final check, whose warnings nobody reads, skips them).
     /// </summary>
     internal static RunPlan Plan(RunRequest request, bool lint = true)
     {

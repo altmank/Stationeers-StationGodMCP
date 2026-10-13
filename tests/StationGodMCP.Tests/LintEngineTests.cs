@@ -134,9 +134,9 @@ public sealed class LintEngineTests
         TestLintWorld world = new TestLintWorld()
             .Add("pieces", Piece(2, "pipe", "air"))
             .Add("pieces", Piece(100, "pipe", "air"));
-        LintRun run = LintEngine.Run(Only("floating_run"), world, "dry_run");
+        LintRun run = LintEngine.Run(Only("floating_run"), world, "report");
         Assert.Equal(100L, Assert.Single(run.Findings).ThingId);
-        Assert.Empty(LintEngine.Run(Only("not_replaceable"), world, "dry_run").Findings);
+        Assert.Empty(LintEngine.Run(Only("not_replaceable"), world, "report").Findings);
     }
 
     [Fact]

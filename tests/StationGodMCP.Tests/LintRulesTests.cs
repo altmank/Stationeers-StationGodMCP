@@ -268,6 +268,18 @@ public sealed class LintRuleFileTests
         Assert.Contains(LintTestKit.Rules(json).Errors, error => error.Message.Contains(expected));
     }
 
+    // The phase is report, with no alias: an old save file's "dry_run" fails and the error names report.
+    [Fact]
+    public void AnOldSaveFilesDryRunPhaseFailsNamingReport()
+    {
+        LintRuleSet set = LintTestKit.Defaults(save: LintTestKit.File1(
+            "{\"id\": \"not_replaceable\", \"on\": [\"audit\", \"dry_run\"]}"));
+
+        LintRuleError error = Assert.Single(set.Errors);
+        Assert.Contains("report", error.Message);
+        Assert.Null(set.Find("not_replaceable"));
+    }
+
     private static string Quote(string text) => Newtonsoft.Json.JsonConvert.ToString(text);
 }
 

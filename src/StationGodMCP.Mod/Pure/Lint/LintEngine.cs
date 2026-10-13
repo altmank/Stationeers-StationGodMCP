@@ -65,7 +65,7 @@ internal sealed class LintRun
 }
 
 /// <summary>
-/// Runs rules over a world: each rule's select gives its subjects (dry_run: only planned ones), its where filters
+/// Runs rules over a world: each rule's select gives its subjects (report: only planned ones), its where filters
 /// them, and every subject whose assert is false becomes a finding with the rule's id, level and message. A subject
 /// the rule cannot evaluate becomes a rule_error finding naming the rule, the subject and the reason; nothing thrown
 /// leaves the engine.
@@ -91,7 +91,7 @@ internal static class LintEngine
             }
 
             int errors = 0, count = 0;
-            foreach (LintSubjectRef subject in SubjectsOf(rule, world, context, phase == "dry_run", ref errors, findings, order))
+            foreach (LintSubjectRef subject in SubjectsOf(rule, world, context, phase == "report", ref errors, findings, order))
             {
                 count++;
                 LintVerdict verdict = Judge(rule, subject, context, false, true);

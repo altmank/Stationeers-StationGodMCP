@@ -52,7 +52,7 @@ A small save file:
   lists the findings (problems first, then warnings, then information, rules in file order) and `rule_source`: the
   files used, the rules the save adds or turns off, and any rule that did not load.
 - **The place and plan tools** (`place_cables`, `place_pipes`, `place_chutes`, `place_structure`,
-  `plan_cable_route`, `plan_pipe_route`, `plan_chute_route`) run the rules with `"dry_run"` in their `on` on what the
+  `plan_cable_route`, `plan_pipe_route`, `plan_chute_route`) run the rules with `"report"` in their `on` on what the
   request would build, in the world around it: the touched 2 m cells and their neighbours, with what the request
   removes or replaces left out. Each finding about a planned thing is `lint_<rule id>`: at level `problem` (the rule's
   `level`, or its `level_when`) it refuses the request, naming the rule and how to allow it (set its `level` to
@@ -95,7 +95,7 @@ A small save file:
   "id": "floating_run",
   "level": "warning",
   "description": "A cable, pipe or chute piece with a cell in air: on no frame and no wall plane.",
-  "on": ["audit", "dry_run"],
+  "on": ["audit", "report"],
   "select": "pieces where kind in ['cable', 'pipe', 'chute']",
   "let": { "air": "count(cells, c => c.support == 'air')" },
   "assert": "air == 0",
@@ -112,7 +112,7 @@ A small save file:
 | `id` | yes | Lower case letters, digits and `_`. Findings carry it as their `code`. |
 | `level` | yes | `problem`, `warning` or `info`. |
 | `level_when` | no | An expression giving the level of one finding, e.g. `if(c?.fallback ?? false, 'info', 'warning')`. |
-| `on` | no | `["audit"]` (the default), `["dry_run"]`, `["write"]`, or any of them together. |
+| `on` | no | `["audit"]` (the default), `["report"]`, `["write"]`, or any of them together. |
 | `select` | yes | The subjects: a set, optionally `where <expression>`, or `pairs(<set>, within: <metres>)`. |
 | `let` | no | Named expressions, each worked out only when read and able to use the ones before it. |
 | `assert` | yes | An expression every subject must hold. A subject for which it is false is a finding. |

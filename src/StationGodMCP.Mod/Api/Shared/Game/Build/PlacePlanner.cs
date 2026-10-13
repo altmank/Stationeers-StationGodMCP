@@ -165,7 +165,7 @@ internal static class PlacePlanner
     private const int PortTypes = (int)(NetworkType.PowerAndData | NetworkType.Pipe | NetworkType.PipeLiquid |
                                         NetworkType.Chute);
 
-    /// <summary>The preflight. lint: the dry_run lint rules add their warnings (not in the held tick's final check).</summary>
+    /// <summary>The preflight. lint: the report lint rules add their warnings (not in the held tick's final check).</summary>
     internal static PlacePlan Plan(PlaceArguments arguments, bool lint = true)
     {
         if (NetworkManager.IsClient || !GameManager.RunSimulation)
