@@ -282,7 +282,8 @@
             }
           }
         ],
-        "types": ["Error", "Vec3"]
+        "types": ["Error", "Vec3"],
+        "x-wire": {"cursor_id": "str | None"}
       },
       "brief": "damage of things or a network"
     },

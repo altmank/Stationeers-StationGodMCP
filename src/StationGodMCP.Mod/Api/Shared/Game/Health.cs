@@ -252,14 +252,24 @@ internal static class HealthScanner
 }
 
 /// <summary>
-/// Every piece of one pipe, cable or chute network (its StructureList; devices are not pieces), worst first, one page
-/// of them read, damaged_only keeping the damaged and broken ones, with the broken pieces that touch the network at its
-/// ends without being on it (BrokenNeighbours: the member list cannot show those, damaged_only or not).
+/// Every piece of one pipe, cable or chute network (its StructureList; devices are not pieces), worst first,
+/// damaged_only keeping the damaged and broken ones (Ranked), with the network's facts: its id and kind, its pieces,
+/// and the broken pieces that touch it at its ends without being on it (BrokenNeighbours: the member list cannot show
+/// those, damaged_only or not).
 /// </summary>
-internal static class NetworkHealth
+internal sealed class NetworkHealth
 {
-    internal static HealthNetworkView Read(UpgradeFamily family, ThingId id, bool damagedOnly, int offset, int? limit,
-        bool withNetworks)
+    private NetworkHealth(List<Thing> ranked, NetworkHealthFacts facts)
+    {
+        Ranked = ranked;
+        Facts = facts;
+    }
+
+    internal List<Thing> Ranked { get; }
+
+    internal NetworkHealthFacts Facts { get; }
+
+    internal static NetworkHealth Scan(UpgradeFamily family, ThingId id, bool damagedOnly)
     {
         List<SmallGrid> members = family.NetworkMembers(id);
         List<Thing> pieces = new List<Thing>(members.Count);
@@ -271,20 +281,14 @@ internal static class NetworkHealth
             }
         }
 
-        PlayerOrigin origin = PlayerOrigin.Current();
-        List<Thing> ranked = HealthScanner.WorstFirst(pieces, damagedOnly);
-        PageRequest request = PageRequest.Of(offset, limit ?? int.MaxValue, int.MaxValue);
-        Slice<Thing> page = Slice<Thing>.Of(ranked, request);
-        List<HealthView> views = new List<HealthView>(page.Items.Count);
-        foreach (Thing thing in page.Items)
-        {
-            views.Add(HealthReader.Read(thing, origin, withNetworks));
-        }
-
         List<Thing> touching = new List<Thing>(pieces);
         touching.AddRange(family.NetworkDevices(id));
-        return new HealthNetworkView(id, family.NetworkKind, pieces.Count, damagedOnly,
-            Slice<HealthView>.Page(views, request, page.Total),
-            BrokenNeighbours.Around(family.NetworkKind, touching, "things"));
+        return new NetworkHealth(HealthScanner.WorstFirst(pieces, damagedOnly),
+            new NetworkHealthFacts(id, family.NetworkKind, pieces.Count, damagedOnly,
+                BrokenNeighbours.Around(family.NetworkKind, touching, "things")));
     }
 }
+
+/// <summary>A network's health facts, which every page of its walk answers.</summary>
+internal sealed record NetworkHealthFacts(ThingId NetworkId, string Kind, int Pieces, bool DamagedOnly,
+    BrokenNeighbourReport Broken);

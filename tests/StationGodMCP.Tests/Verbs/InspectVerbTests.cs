@@ -88,6 +88,10 @@ public sealed class InspectVerbTests
         Assert.Null(things.Selector.Network);
         Assert.True(things.Selector.Ids!.AnswersRows);
         Assert.NotNull(Check("""{"what": "health", "kind": "steam"}"""));
+        Assert.True(InspectHealthOptions.Bind(Reader(InspectHealthOptions.Spec, """{"network": "7", "cursor": "open"}"""))
+            .Paging.OpensCursor);
+        Assert.Equal("k5", InspectHealthOptions.Bind(Reader(InspectHealthOptions.Spec, """{"network": "7", "cursor": "k5"}"""))
+            .Paging.CursorId);
     }
 
     [Fact]

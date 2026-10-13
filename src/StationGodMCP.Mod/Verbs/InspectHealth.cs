@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Shared.Game.Upgrades;
+using StationGodMCP.Api.Views;
+using StationGodMCP.Pure.Paging;
 using StationGodMCP.Pure.Shaping;
 using StationGodMCP.Pure.Verbs;
 
@@ -12,12 +14,16 @@ namespace StationGodMCP.Verbs;
 /// <summary>
 /// inspect health (catalogue inspect.json): the damage state of any thing (HealthReader). One id answers that thing with
 /// its networks and build state; a list of ids (up to 256) one row each, reading networks only when the call's fields
-/// keep them; network every piece of one pipe, cable or chute network (kind), worst first, damaged_only, paged by
-/// offset (NetworkHealth), with the broken pieces touching it. id or network, one of them. Read only.
+/// keep them; network every piece of one pipe, cable or chute network (kind), worst first, damaged_only, paged
+/// (NetworkHealth), with the broken pieces touching it; with the wire cursor a walk (ThingListPage) whose later pages
+/// read each piece again and answer the network's facts as the first page found them. id or network, one of them.
+/// Read only.
 /// </summary>
 internal static class InspectHealth
 {
     private const string Option = "network";
+
+    private static readonly EntryCost Cost = new EntryCost();
 
     internal static VerbOutcome Run(InspectHealthOptions options)
     {
@@ -33,16 +39,7 @@ internal static class InspectHealth
         ShapeRequest shape = options.Fields.Shape ?? ShapeRequest.None;
         if (network != null)
         {
-            if (options.Paging.OffsetOnly() is { } problem)
-            {
-                return new VerbOutcome.Refused(OptionProblem.Refusal(InspectHealthOptions.Spec.Label, new[] { problem }));
-            }
-
-            UpgradeFamily family = FamilyNamed(options.Kind);
-            ThingId id = NetworkHandles.Resolve(network, Option, family);
-            return new VerbOutcome.Answered(IdAnswers.Payload(NetworkHealth.Read(family, id,
-                options.DamagedOnly == true, options.Paging.Offset, options.Paging.Limit,
-                shape.Wants("things", "networks")), ApiJson.Fresh()));
+            return Network(options, network, shape.Wants("things", "networks"));
         }
 
         PlayerOrigin origin = PlayerOrigin.Current();
@@ -51,6 +48,41 @@ internal static class InspectHealth
         return IdAnswers.Things(ids, InspectHealthOptions.Spec.Label,
             id => HealthReader.Read(GameLookup.RequireThing(id), origin, withNetworks, withBuildState: one));
     }
+
+    private static VerbOutcome Network(InspectHealthOptions options, NetworkTarget network, bool withNetworks)
+    {
+        Paging paging = options.Paging;
+        WalkRequest walk = WalkRequest.Of(paging);
+        PlayerOrigin origin = PlayerOrigin.Current();
+        if (walk.Continues)
+        {
+            return ThingListPage<HealthView, NetworkHealthFacts>.Later(walk, paging,
+                id => Live(id, origin, withNetworks), Cost, (page, cursorId, facts) => Reply(page, cursorId, facts!));
+        }
+
+        UpgradeFamily family = FamilyNamed(options.Kind);
+        NetworkHealth scan = NetworkHealth.Scan(family, NetworkHandles.Resolve(network, Option, family),
+            options.DamagedOnly == true);
+        long[] ids = new long[scan.Ranked.Count];
+        for (int index = 0; index < ids.Length; index++)
+        {
+            ids[index] = scan.Ranked[index].ReferenceId;
+        }
+
+        return ThingListPage<HealthView, NetworkHealthFacts>.First(walk, paging, ids, ids.Length, scan.Facts,
+            id => Live(id, origin, withNetworks), Cost, (page, cursorId, facts) => Reply(page, cursorId, facts!));
+    }
+
+    private static HealthView? Live(long id, PlayerOrigin origin, bool withNetworks) =>
+        Assets.Scripts.Objects.Thing.Find(id) is { IsBeingDestroyed: false } thing
+            ? HealthReader.Read(thing, origin, withNetworks)
+            : null;
+
+    // HealthNetwork's keys: the page of things, the network's facts, then cursor_id while the walk has more.
+    private static Newtonsoft.Json.Linq.JObject Reply(Page<HealthView> page, string? cursorId, NetworkHealthFacts facts) =>
+        ThingListReply.Of("things", page, cursorId, ("network_id", facts.NetworkId), ("kind", facts.Kind),
+            ("pieces", facts.Pieces), ("damaged_only", facts.DamagedOnly), ("warning", facts.Broken.Warning),
+            ("broken_neighbour_count", facts.Broken.Count), ("broken_neighbours", facts.Broken.OrNull));
 
     private static UpgradeFamily FamilyNamed(string? kind) => kind switch
     {
