@@ -149,8 +149,8 @@ internal static class RemoveRuns
                 plan => Described(plan, named, unread, mark, pipes, call.AcknowledgeGasLost));
     }
 
-    // The cells along waypoints, or the cells listed; null with the reason when they make no run.
-    private static List<GridCell>? CellsOf(string option, JToken given, out string? error)
+    /// <summary>The cells along waypoints, or the cells listed; null with the reason when they make no run.</summary>
+    internal static List<GridCell>? CellsOf(string option, JToken given, out string? error)
     {
         List<GridCell> points = new List<GridCell>();
         int index = 0;

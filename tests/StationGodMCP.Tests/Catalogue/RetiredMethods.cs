@@ -52,6 +52,7 @@ internal static class RetiredMethods
         "network_snapshot",
         "outer_frames",
         "paint",
+        "plan_removal",
         "planet",
         "plant_genes",
         "plants",

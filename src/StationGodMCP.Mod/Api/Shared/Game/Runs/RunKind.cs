@@ -20,6 +20,14 @@ namespace StationGodMCP.Api.Shared.Game.Runs;
 /// </summary>
 internal abstract class RunKind
 {
+    /// <summary>The kind a verb's kind option names: cable, pipe or chute.</summary>
+    internal static RunKind Named(string kind) => kind.Trim().ToLowerInvariant() switch
+    {
+        "pipe" => new PipeRunKind(),
+        "chute" => new ChuteRunKind(),
+        _ => new CableRunKind()
+    };
+
     internal abstract UpgradeFamily Family { get; }
 
     /// <summary>cable or pipe.</summary>

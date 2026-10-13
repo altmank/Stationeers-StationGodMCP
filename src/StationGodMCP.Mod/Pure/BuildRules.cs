@@ -162,8 +162,8 @@ internal static class SourceRule
     internal const string PlanRemoval = "plan_removal";
 
     /// <summary>
-    /// How a missing player with no from_id counts: a problem for a tool that takes or gives
-    /// items, only a warning for plan_removal, which prices the refund and moves nothing.
+    /// How a missing player with no holder named in materials counts: a problem for a run that takes or gives items,
+    /// only a warning for plan removal, which prices the refund and moves nothing.
     /// </summary>
     internal static GuardLevel NoLocalPlayer(string tool) =>
         tool == PlanRemoval ? GuardLevel.Warning : GuardLevel.Refusal;

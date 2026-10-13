@@ -166,7 +166,6 @@ public sealed class RefundToSchemaTests
     [InlineData("clean_pipes")]
     [InlineData("replace_walls")]
     [InlineData("replace_frames")]
-    [InlineData("plan_removal")]
     public void EveryRefundingToolTakesEveryForm(string tool)
     {
         string job = tool == "undo_job" ? "\"job_id\":\"remove-1\"," : string.Empty;

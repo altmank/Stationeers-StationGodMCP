@@ -33,7 +33,7 @@ internal static class PlaceChutesApi
     internal static object Handle(Args args) => RunApi.Place(args, new ChuteRunKind());
 }
 
-/// <summary>The request forms the run tools share: a dry run, a confirmed run, or a job's status.</summary>
+/// <summary>The request forms the place tools share: a dry run, a confirmed run, or a job's status.</summary>
 internal static class RunApi
 {
     /// <summary>
@@ -64,63 +64,6 @@ internal static class RunApi
                 ? args.ThingIds("assume_removed", RunPlanner.MaximumRemovals)
                 : new List<ThingId>());
         return Run(args, new RunRequest(kind, kind.PlaceTool, build, removal, RunArgs.Options(args, kind)));
-    }
-
-    /// <summary>
-    /// plan_removal: a remove tool's dry run under a read-only name, so a refund and would_split can be priced where
-    /// the remove tools may not be called. Also takes network_id: every piece of that network.
-    /// </summary>
-    internal static RunReportView PlanRemoval(Args args)
-    {
-        args.Reject("{tool:plan_removal}", "dry_run", "confirm", "job_id", "grade", "join", "extra_ends", "piece",
-            "pieces", "branches", "remove_ids", "assume_removed", "allow_split_long", "join_to", "join_trunk", "wait",
-            VerboseArgument);
-        RunKind kind = (args.OptionalString("kind") ?? "cable").Trim().ToLowerInvariant() switch
-        {
-            "cable" => new CableRunKind(),
-            "pipe" => new PipeRunKind(),
-            "chute" => new ChuteRunKind(),
-            _ => throw ApiErrors.InvalidArgument("kind must be cable, pipe or chute.")
-        };
-        RunPlan plan = RunPlanner.Plan(new RunRequest(kind, SourceRule.PlanRemoval, null, Removal(args, kind),
-            RunArgs.Options(args, kind)));
-        return RunReports.Of(plan, RunReports.DryRun, null);
-    }
-
-    private static RunRemoval Removal(Args args, RunKind kind)
-    {
-        int forms = (args.Has("reference_ids") ? 1 : 0) + (args.Has("waypoints") ? 1 : 0) +
-                    (args.Has("cells") ? 1 : 0) + (args.Has("network_id") ? 1 : 0);
-        if (forms != 1)
-        {
-            throw ApiErrors.InvalidArgument(
-                Vocabulary.Text("Pass one of {arg:reference_ids}, {arg:waypoints} or {arg:cells} " +
-                    "({tool:plan_removal} also takes {arg:network_id})."));
-        }
-
-        if (args.Has("network_id"))
-        {
-            ThingId network = NetworkHandles.Resolve(args, "network_id", kind.Family);
-            List<ThingId> ids = new List<ThingId>();
-            foreach (SmallGrid member in kind.Family.NetworkMembers(network))
-            {
-                if (kind.Family.IsPiece(member))
-                {
-                    ids.Add(new ThingId(member.ReferenceId));
-                }
-            }
-
-            if (ids.Count == 0)
-            {
-                throw ApiErrors.Refused("network_empty", $"Network {network} has no {kind.Noun} piece.");
-            }
-
-            return new RunRemoval(ids, new List<GridCell>());
-        }
-
-        return args.Has("reference_ids")
-            ? new RunRemoval(args.ThingIds("reference_ids", RunPlanner.MaximumRemovals), new List<GridCell>())
-            : new RunRemoval(new List<ThingId>(), RunArgs.Run(args, new List<ExtraEnd>())!);
     }
 
     private static object Status(Args args, params string[] others)

@@ -14,9 +14,6 @@ def plan(what: Literal['removal'], *,
 ) -> dict:  # main list: r['removals']; iterating or indexing it walks every page, in order
     """Price a removal of cable, pipe or chute pieces without doing it, ever: ids, cells or a whole network.
     Reply:
-      tool: str
-      status: str
-      job_id: str | None
       grade: str | None
       ready: bool
       problems: list[{code: str, message: str, reference_id: str | None, at: Vec3 | None}]

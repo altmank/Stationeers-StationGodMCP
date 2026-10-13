@@ -128,7 +128,7 @@ public sealed class BreachedFacesTests
     }
 }
 
-/// <summary>plan_removal on a dedicated server: the refund is only priced.</summary>
+/// <summary>plan removal on a dedicated server: the refund is only priced.</summary>
 public sealed class SourceRuleTests
 {
     [Fact]

@@ -95,7 +95,6 @@ internal static class ReplyShapes
             shapes[tool] = RunTool(tool);
         }
 
-        shapes["plan_removal"] = new[] { RunReport(S<RunReportView>(), "plan_removal") };
         foreach (string tool in new[] { "plan_cable_route", "plan_pipe_route", "plan_chute_route" })
         {
             shapes[tool] = new[]

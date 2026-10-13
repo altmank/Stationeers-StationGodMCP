@@ -18,13 +18,11 @@
   ],
   "Api/PlaceRuns.cs": [
     "A real run needs dry_run: false and confirm: true; nothing was changed.",
-    "Pass one of reference_ids, waypoints or cells (plan_removal also takes network_id).",
     "Pass waypoints, cells, piece or pieces.",
     "a dry run (it is for a confirmed run or a job_id poll)",
     "confirm: true needs dry_run: false; nothing was changed.",
     "job_id",
-    "job_id",
-    "plan_removal"
+    "job_id"
   ],
   "Api/PlanRoute.cs": [
     "The style's air penalty gave up (search_limit) looking for a route over frames or along walls; this route ignores it (as style free). Lower margin_m or bring the ends closer to try again.",
