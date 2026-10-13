@@ -113,36 +113,6 @@ internal static class RocketLocator
         return string.Join(", ", names);
     }
 
-    /// <summary>The rocket named, or the only rocket there is; several without an id is ambiguous_rocket.</summary>
-    internal static Rocket One(Args args)
-    {
-        ThingId? id = args.OptionalThingId("rocket_id");
-        if (id.HasValue)
-        {
-            return Find(id.Value);
-        }
-
-        List<Rocket> rockets = All();
-        if (rockets.Count == 1)
-        {
-            return rockets[0];
-        }
-
-        if (rockets.Count == 0)
-        {
-            throw ApiErrors.Refused("rocket_not_found", "There is no rocket in the world.");
-        }
-
-        List<string> names = new List<string>(rockets.Count);
-        for (int index = 0; index < rockets.Count; index++)
-        {
-            names.Add($"{rockets[index].DisplayName} ({rockets[index].ReferenceId})");
-        }
-
-        throw ApiErrors.Refused("ambiguous_rocket",
-            $"There are {rockets.Count} rockets: give {Vocabulary.Arg("rocket_id")}, one of " +
-            $"{string.Join(", ", names)}.");
-    }
 }
 
 /// <summary>

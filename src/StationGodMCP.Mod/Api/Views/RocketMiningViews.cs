@@ -397,7 +397,7 @@ internal sealed class MiningPlanView
     public List<string> Notes { get; }
 }
 
-/// <summary>rocket_forecast's look at the stop's site: can this loadout collect it, and how much the stop yields.</summary>
+/// <summary>plan flight's look at the stop's site: can this loadout collect it, and how much the stop yields.</summary>
 internal sealed class ForecastMiningView
 {
     internal ForecastMiningView(string site, string kind, bool collectable, double unitsPerHour, double unitsInStop,

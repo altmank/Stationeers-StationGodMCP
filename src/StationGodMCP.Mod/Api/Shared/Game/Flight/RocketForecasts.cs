@@ -5,48 +5,43 @@ using System.Collections.Generic;
 using Objects.Rockets;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
-using StationGodMCP.Api.Shared.Game.Flight;
 using StationGodMCP.Api.Views;
-using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Rockets;
+using StationGodMCP.Pure.Verbs;
 
-namespace StationGodMCP.Api;
+namespace StationGodMCP.Api.Shared.Game.Flight;
 
 /// <summary>
-/// rocket_forecast: flies a copy of the rocket along the route the game's pathfinder lays, tick by tick, with the game's
+/// plan flight: flies a copy of the rocket along the route the game's pathfinder lays, tick by tick, with the game's
 /// flight rules (ported from Rocket.cs with citations in Pure/Rockets), every engine's own feed law (Pure/Rockets/
 /// EngineFeeds) and its thrust measured by the game's own combustion on a copy of what it draws. Nothing in the game
 /// changes.
 /// </summary>
-internal static class RocketForecastApi
+internal static class RocketForecast
 {
     private static readonly ReEntryProfile[] Profiles =
         { ReEntryProfile.Low, ReEntryProfile.Medium, ReEntryProfile.High, ReEntryProfile.Max };
 
-    internal static RocketForecastView Handle(Args args)
+    private const string Label = "plan flight";
+
+    internal static RocketForecastView Fly(Rocket rocket, ForecastRequest request)
     {
-        Rocket rocket = RocketLocator.One(args);
         RocketParts parts = RocketParts.Of(rocket);
         Refuse(parts);
-        RocketWhatIf what = RocketWhatIf.From(args);
-        float floor = (float)(args.OptionalDouble("min_confidence") ?? 0.25);
-        if (floor < 0f || floor > 1f)
-        {
-            throw ApiErrors.InvalidArgument(Vocabulary.Text("Argument '{arg:min_confidence}' must be from 0 to 1."));
-        }
-
-        bool limits = args.OptionalBool("limits") ?? true;
-        ReEntryProfile profile = ProfileOf(args.OptionalString("profile"), rocket.ReEntryProfile);
-        SpaceMapNode target = TargetOf(args, rocket);
-        RefuseManned(args, rocket, target);
+        RocketWhatIf what = RocketWhatIf.From(request.WhatIf);
+        float floor = (float)request.MinConfidence;
+        bool limits = request.Limits;
+        ReEntryProfile profile = ProfileOf(request.Profile, rocket.ReEntryProfile);
+        SpaceMapNode target = TargetOf(request.Node, rocket);
+        RefuseManned(request, rocket, target);
         List<string> assumptions = new List<string>(16);
         RoutePlan plan = RoutePlanner.FromRocket(rocket, target, profile);
         FlightSimulator simulator = RocketModel.Simulator();
         RocketCraft craft = RocketModel.Craft(parts, what);
-        ForecastMiningView? mining = AddStop(args, rocket, parts, craft, target, profile, plan, assumptions);
+        ForecastMiningView? mining = AddStop(request, rocket, parts, craft, target, profile, plan, assumptions);
 
         FlightRun run = FlightForecast.Run(simulator, craft, plan.Legs);
-        Assume(simulator, parts, what, craft, profile, args.OptionalBool("explain") == true, assumptions);
+        Assume(simulator, parts, what, craft, profile, request.Explain, assumptions);
 
         List<ForecastLegView> legs = new List<ForecastLegView>(run.Legs.Count);
         for (int index = 0; index < run.Legs.Count; index++)
@@ -104,7 +99,7 @@ internal static class RocketForecastApi
                             "parent first.");
         }
 
-        ColumnView? column = (args.OptionalBool("column_check") ?? true) && pad != null
+        ColumnView? column = request.ColumnCheck && pad != null
             ? RocketColumn.Scan(rocket, pad)
             : null;
         return new RocketForecastView(new ThingId(rocket.ReferenceId), rocket.DisplayName, rocket.RocketState.ToString(),
@@ -141,20 +136,18 @@ internal static class RocketForecastApi
 
     // A rocket with someone in a Crew Module Chair may only target launch mounts (Rocket.IsValidMannedTarget and
     // EnforceMannedTargetRestriction, Rocket.cs:1871-1885): the game clears any other target.
-    private static void RefuseManned(Args args, Rocket rocket, SpaceMapNode target)
+    private static void RefuseManned(ForecastRequest request, Rocket rocket, SpaceMapNode target)
     {
         if (!rocket.IsManned)
         {
             return;
         }
 
-        bool stops = (args.OptionalDouble("park_s") ?? 0.0) > 0.0 || (args.OptionalBool("then_return") ?? false) ||
-                     (args.OptionalBool("mine") ?? false);
-        if (!Rocket.IsValidMannedTarget(target) || (stops && !SpaceRoutes.IsPad(target)))
+        if (!Rocket.IsValidMannedTarget(target) || (request.Stops && !SpaceRoutes.IsPad(target)))
         {
             throw ApiErrors.Refused("manned_target",
-                "Someone sits in a Crew Module Chair: the rocket may only target a launch mount (ground or orbital); " +
-                $"the game clears {SpaceRoutes.NameOf(target)} as a target. Give a pad as '{Vocabulary.Arg("to")}'.");
+                $"{Label}: someone sits in a Crew Module Chair: the rocket may only target a launch mount (ground or " +
+                $"orbital); the game clears {SpaceRoutes.NameOf(target)} as a target. Give a pad as node.");
         }
     }
 
@@ -173,13 +166,12 @@ internal static class RocketForecastApi
             }
         }
 
-        throw ApiErrors.InvalidArgument(Vocabulary.Text("Argument '{arg:profile}' must be Low, Medium, High or Max."));
+        throw ApiErrors.InvalidArgument($"{Label}: profile is Low, Medium, High or Max.");
     }
 
-    // The destination: 'to', else the rocket's target, else the launch pad (return and land).
-    private static SpaceMapNode TargetOf(Args args, Rocket rocket)
+    // The destination: node, else the rocket's target, else the launch pad (return and land).
+    private static SpaceMapNode TargetOf(string? to, Rocket rocket)
     {
-        string? to = args.OptionalString("to");
         if (to != null)
         {
             return SpaceRoutes.ResolveFor(to, rocket);
@@ -193,36 +185,25 @@ internal static class RocketForecastApi
         if (rocket.RocketState == RocketState.OnLaunchMount)
         {
             throw ApiErrors.Refused("no_target",
-                Vocabulary.Text("The rocket stands on its pad with no target: give '{arg:to}' (a node's name or " +
-                    "code)."));
+                $"{Label}: the rocket stands on its pad with no target: give node (a node's name or code).");
         }
 
         return SpaceRoutes.ResolveFor("pad", rocket);
     }
 
     // A stop at the target (park_s, mining, cargo, payload deploy, transfers) and the way home (then_return).
-    private static ForecastMiningView? AddStop(Args args, Rocket rocket, RocketParts parts, RocketCraft craft,
+    private static ForecastMiningView? AddStop(ForecastRequest request, Rocket rocket, RocketParts parts, RocketCraft craft,
         SpaceMapNode target, ReEntryProfile profile, RoutePlan plan, List<string> assumptions)
     {
-        float park = (float)(args.OptionalDouble("park_s") ?? 0.0);
-        bool mine = args.OptionalBool("mine") ?? false;
-        bool fill = args.OptionalBool("fill_holds") ?? false;
-        int? askedSlots = args.OptionalInt("add_cargo_slots", 0, 100000);
-        bool back = args.OptionalBool("then_return") ?? false;
-        bool deploy = args.OptionalBool("deploy_payload") ?? false;
-        double? transferMol = args.OptionalDouble("transfer_mol");
-        ThingId? partnerId = args.OptionalThingId("transfer_with");
-        double transferJ = args.OptionalDouble("transfer_battery_j") ?? 0.0;
-        if (park < 0f)
-        {
-            throw ApiErrors.InvalidArgument(Vocabulary.Text("Argument '{arg:park_s}' must be 0 or more."));
-        }
-
-        if (transferMol.HasValue && partnerId.HasValue)
-        {
-            throw ApiErrors.InvalidArgument(Vocabulary.Text("Give {arg:transfer_mol} or {arg:transfer_with}, not " +
-                "both."));
-        }
+        float park = (float)request.ParkS;
+        bool mine = request.Mine;
+        bool fill = request.FillHolds;
+        int? askedSlots = request.AddCargoSlots;
+        bool back = request.ThenReturn;
+        bool deploy = request.DeployPayload;
+        double? transferMol = request.TransferMol;
+        string? partnerId = request.TransferWith;
+        double transferJ = request.TransferBatteryJ;
 
         SiteRead? site = MiningReads.SiteOf(target);
         ForecastMiningView? mining = site != null ? MiningAt(site, parts, park, mine, assumptions) : null;
@@ -251,13 +232,11 @@ internal static class RocketForecastApi
         {
             if (SpaceRoutes.IsPad(target) && (mine || addSlots > 0 || back || deploy))
             {
-                throw ApiErrors.InvalidArgument(
-                    Vocabulary.Text("{arg:mine}, {arg:fill_holds}, {arg:add_cargo_slots}, {arg:deploy_payload} and " +
-                        "{arg:then_return} are for a stop in space; '{arg:to}' is a pad."));
+                throw ApiErrors.InvalidArgument($"{Label}: mine, fill_holds, add_cargo_slots, deploy_payload and " +
+                                                "then_return are for a stop in space; node is a pad.");
             }
 
-            double load = args.OptionalDouble("park_load_w") ??
-                          RocketModel.ParkLoad(parts, mine, args.OptionalDouble("extra_load_w") ?? 0.0);
+            double load = request.ParkLoadW ?? RocketModel.ParkLoad(parts, mine, request.WhatIf.ExtraLoadW ?? 0.0);
             plan.Legs.Add(new ParkLeg(SpaceRoutes.NameOf(target), park, load, addSlots, -payloadKg, fuel, transferJ));
             assumptions.Add($"At {SpaceRoutes.NameOf(target)}: {park:0} s parked drawing {load:0.#} W a tick" +
                             (addSlots > 0 ? $", {addSlots} cargo slots filled (1 kg each; the ice or ore itself weighs nothing to the game, RocketNetwork.CargoMass = 0, RocketNetwork.cs:48)" : string.Empty) +
@@ -268,12 +247,12 @@ internal static class RocketForecastApi
 
         if (back && plan.Problem == null)
         {
-            string? home = args.OptionalString("return_to");
+            string? home = request.ReturnTo;
             SpaceMapNode pad = SpaceRoutes.ResolveFor(home ?? "pad", rocket);
             if (rocket.IsManned && !Rocket.IsValidMannedTarget(pad))
             {
                 throw ApiErrors.Refused("manned_target",
-                    $"Someone sits in a Crew Module Chair: {Vocabulary.Arg("return_to")} must be a launch mount, not " +
+                    $"{Label}: someone sits in a Crew Module Chair: return_to must be a launch mount, not " +
                     $"{SpaceRoutes.NameOf(pad)}.");
             }
 
@@ -328,15 +307,15 @@ internal static class RocketForecastApi
         if (!target.HasAction(RocketMode.Deploy))
         {
             throw ApiErrors.InvalidArgument(
-                $"{Vocabulary.Arg("deploy_payload")}: {SpaceRoutes.NameOf(target)} offers no Deploy action (payloads " +
+                $"{Label}: deploy_payload: {SpaceRoutes.NameOf(target)} offers no Deploy action (payloads " +
                 "deploy only at the planet's orbit node).");
         }
 
         double kg = parts.PayloadKg;
         if (kg <= 0.0)
         {
-            assumptions.Add(Vocabulary.Text("{arg:deploy_payload}: no payload is attached to a bay, so nothing " +
-                "leaves (give {arg:payload_kg} to try one)."));
+            assumptions.Add("deploy_payload: no payload is attached to a bay, so nothing leaves (give what_if.payload_kg " +
+                            "to try one).");
         }
 
         return kg;
@@ -346,7 +325,7 @@ internal static class RocketForecastApi
     // Transfer action Mixes each pair of compatible sockets' pipe networks by volume every tick (RocketGasUmbilicalFemale
     // .cs:142-148, AtmosphereHelper.Mix All), so without a pump both sides end at the same moles per litre.
     private static List<LineTransfer> Transfers(Rocket rocket, RocketParts parts, RocketCraft craft, double? moles,
-        ThingId? partnerId, List<string> assumptions)
+        string? partnerId, List<string> assumptions)
     {
         List<LineTransfer> transfers = new List<LineTransfer>(2);
         if (moles.HasValue && Math.Abs(moles.Value) > 0.0)
@@ -363,15 +342,15 @@ internal static class RocketForecastApi
             return transfers;
         }
 
-        if (!partnerId.HasValue)
+        if (partnerId == null)
         {
             return transfers;
         }
 
-        Rocket partner = RocketLocator.Find(partnerId.Value);
+        Rocket partner = RocketLocator.Find(partnerId);
         if (partner == rocket)
         {
-            throw ApiErrors.InvalidArgument(Vocabulary.Text("{arg:transfer_with}: give another rocket."));
+            throw ApiErrors.InvalidArgument($"{Label}: transfer_with: give another rocket.");
         }
 
         RocketParts other = RocketParts.Of(partner);
@@ -409,7 +388,7 @@ internal static class RocketForecastApi
         if (paired == 0)
         {
             throw ApiErrors.InvalidArgument(
-                $"{Vocabulary.Arg("transfer_with")}: no gas or liquid umbilical socket on {partner.DisplayName} " +
+                $"{Label}: transfer_with: no gas or liquid umbilical socket on {partner.DisplayName} " +
                 "matches one on this rocket.");
         }
 
@@ -495,8 +474,8 @@ internal static class RocketForecastApi
 
         if ((what.BatteryJ.HasValue || what.BatteryPercent.HasValue) && !craft.Power.HasBattery)
         {
-            assumptions.Add(Vocabulary.Text("Warning: {arg:battery_j} and {arg:battery_percent} change nothing: the " +
-                "rocket has no battery, so its engines are unpowered off the tower. Add a battery to it."));
+            assumptions.Add("Warning: what_if.battery_j and what_if.battery_percent change nothing: the rocket has no " +
+                            "battery, so its engines are unpowered off the tower. Add a battery to it.");
         }
 
         if (craft.Engines.Count > 0)

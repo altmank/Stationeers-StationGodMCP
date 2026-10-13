@@ -50,9 +50,7 @@ public sealed class FileOutputTests : IDisposable
     [InlineData("remove_pipes")]
     [InlineData("upgrade_cables")]
     [InlineData("rocket_status")]
-    [InlineData("rocket_forecast")]
     [InlineData("rocket_flight_log")]
-    [InlineData("lint_layout")]
     [InlineData("get_ic_source")]
     [InlineData("sample_logic")]
     public void EveryLargeReplyToolTakesBoth(string tool)

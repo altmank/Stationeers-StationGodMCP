@@ -55,21 +55,6 @@
   "Api/RemoveStructures.cs": [
     "Pass job_id, or reference_ids."
   ],
-  "Api/RocketForecast.cs": [
-    "Argument 'min_confidence' must be from 0 to 1.",
-    "Argument 'park_s' must be 0 or more.",
-    "Argument 'profile' must be Low, Medium, High or Max.",
-    "Give transfer_mol or transfer_with, not both.",
-    "Someone sits in a Crew Module Chair: return_to must be a launch mount, not {SpaceRoutes.NameOf(pad)}.",
-    "Someone sits in a Crew Module Chair: the rocket may only target a launch mount (ground or orbital); the game clears {SpaceRoutes.NameOf(target)} as a target. Give a pad as 'to'.",
-    "The rocket stands on its pad with no target: give 'to' (a node's name or code).",
-    "Warning: battery_j and battery_percent change nothing: the rocket has no battery, so its engines are unpowered off the tower. Add a battery to it.",
-    "deploy_payload: no payload is attached to a bay, so nothing leaves (give payload_kg to try one).",
-    "deploy_payload: {SpaceRoutes.NameOf(target)} offers no Deploy action (payloads deploy only at the planet's orbit node).",
-    "mine, fill_holds, add_cargo_slots, deploy_payload and then_return are for a stop in space; 'to' is a pad.",
-    "transfer_with: give another rocket.",
-    "transfer_with: no gas or liquid umbilical socket on {partner.DisplayName} matches one on this rocket."
-  ],
   "Api/RunConsoleCommand.cs": [
     " {capture.ConcurrentLines} further line(s) were printed into the console from a background thread while this command ran; Unity mirrors errors and their stack traces in that way. They are deliberately not mixed into the output above, and are visible through read_console.",
     "'{key}' finishes on a background task, so it returned before its result was printed. Whatever is in 'output' is only what had been printed by the time this call returned, and an EMPTY list is not evidence that the command printed nothing, succeeded or failed. Call read_console a second or two later to see the outcome.",
@@ -142,14 +127,6 @@
   ],
   "Api/Shared/Game/Build/Orienter.cs": [
     "{name} must be an axis (+x .. -z), \"room\", \"player\", a point [x, y, z] or {reference_id}."
-  ],
-  "Api/Shared/Game/Flight/RocketModel.cs": [
-    "Argument '{name}' must be above 0.",
-    "Argument '{name}' must be from {minimum} to {maximum}.",
-    "fuel_mix.{property.Name}: give a gas or liquid name (e.g. Methane, Oxygen, LiquidHydrazine) and a fraction of 0 or more."
-  ],
-  "Api/Shared/Game/Flight/SpaceRoutes.cs": [
-    "There are {rockets.Count} rockets: give rocket_id, one of {string.Join(\", \", names)}."
   ],
   "Api/Shared/Game/JobGas.cs": [
     "Its atmosphere work ran past the {AtmosphericsThread.LimitSeconds} s limit and finished after the job had stopped, so the pipe networks' contents were not checked; look at them (atmosphere_contents) before acknowledging."

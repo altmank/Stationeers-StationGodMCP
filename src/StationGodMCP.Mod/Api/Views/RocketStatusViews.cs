@@ -287,7 +287,7 @@ internal sealed class RocketEngineView
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public ThingId? InputNetworkId { get; }
 
-    /// <summary>Whether rocket_forecast can fly it (any of the game's six engines with its inputs connected).</summary>
+    /// <summary>Whether plan flight can fly it (any of the game's six engines with its inputs connected).</summary>
     public bool Modelled { get; }
 }
 
@@ -561,7 +561,7 @@ internal sealed class RocketStatusView
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public LandingAtPadView? LandingAtPad { get; }
 
-    /// <summary>What its gear can collect or do: ore, ice, gas, chart/discover/survey, surface_scan (rocket_mining_options has the detail).</summary>
+    /// <summary>What its gear can collect or do: ore, ice, gas, chart/discover/survey, surface_scan (plan mining has the detail).</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public List<string>? Collects { get; }
 
@@ -582,7 +582,7 @@ internal sealed class RocketStatusView
     public List<PartPoseView>? Parts { get; }
 }
 
-/// <summary>rocket_forecast's reply.</summary>
+/// <summary>plan flight's reply.</summary>
 internal sealed class RocketForecastView
 {
     internal RocketForecastView(ThingId rocketId, string rocketName, string startState, SpaceNodeView? destination,

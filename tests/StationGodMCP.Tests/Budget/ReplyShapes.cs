@@ -133,14 +133,6 @@ internal static class ReplyShapes
             S<ConsoleReadView>().List("ConsoleReadView.Lines", D.ConsoleLines)
                 .Text("ConsoleLineView.Text", new string('t', 90))
         };
-        shapes["rocket_forecast"] = new[]
-        {
-            S<RocketForecastView>().List("RocketForecastView.Route", 4).List("RocketForecastView.Uncharted", 0)
-                // The model's fixed rules come with explain; a request's what-ifs, stop and warnings stay.
-                .List("RocketForecastView.Assumptions", 3).List("RocketForecastView.Legs", 3)
-                .List("RocketForecastView.Profiles", 4).List("ColumnView.Blockers", 0)
-                .List("ForecastMiningView.Problems", 1)
-        };
         shapes["run_console_command"] = new[]
         {
             S<ConsoleRunView>().List("ConsoleRunView.Arguments", 10).List("ConsoleRunView.Output", 3)

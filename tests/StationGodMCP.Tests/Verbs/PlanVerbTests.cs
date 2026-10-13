@@ -145,4 +145,78 @@ public sealed class PlanVerbTests
         Assert.Equal("contact", Assert.Single(problems).Path);
         Assert.NotNull(Check("""{"what": "aim"}"""));
     }
+
+    // ---- flight ----
+
+    private static ForecastRequest? Flight(string json, List<OptionProblem> problems) =>
+        ForecastRequest.Of(PlanFlightOptions.Bind(new OptionReader(PlanFlightOptions.Spec, JObject.Parse(json))), problems);
+
+    [Fact]
+    public void FlightTakesItsDefaultsAndLeavesParkLoadToTheRocket()
+    {
+        List<OptionProblem> problems = new();
+
+        ForecastRequest request = Flight("{}", problems)!;
+
+        Assert.Empty(problems);
+        Assert.Null(request.Node);
+        Assert.Null(request.Profile);
+        Assert.Null(request.ParkLoadW);
+        Assert.Equal(0.25, request.MinConfidence);
+        Assert.True(request.Limits);
+        Assert.True(request.ColumnCheck);
+        Assert.False(request.Stops);
+        Assert.False(request.Explain);
+        Assert.Same(ForecastWhatIf.None, request.WhatIf);
+    }
+
+    [Fact]
+    public void FlightReadsTheStopAndTheWhatIfs()
+    {
+        List<OptionProblem> problems = new();
+
+        ForecastRequest request = Flight("""
+            {"node": " Asteroid 7 ", "profile": "High", "park_s": 600, "mine": true, "then_return": true,
+             "return_to": "pad", "park_load_w": 120, "transfer_with": "Tanker", "include": ["explain"],
+             "what_if": {"fuel_mol": 4000, "fuel_temperature_k": 120, "fuel_mix": {"Methane": 0.33, "Oxygen": 0.67},
+                         "thrust_scale": 0.9, "throttle": 80, "cargo_slots": 12, "battery_percent": 50,
+                         "extra_load_w": 30}}
+            """, problems)!;
+
+        Assert.Empty(problems);
+        Assert.Equal("Asteroid 7", request.Node);
+        Assert.True(request.Stops);
+        Assert.Equal(120.0, request.ParkLoadW);
+        Assert.Equal("Tanker", request.TransferWith);
+        Assert.True(request.Explain);
+        Assert.Equal(4000.0, request.WhatIf.FuelMol);
+        Assert.Equal(0.67, request.WhatIf.FuelMix!["Oxygen"]);
+        Assert.Equal(12, request.WhatIf.CargoSlots);
+        Assert.Equal(30.0, request.WhatIf.ExtraLoadW);
+    }
+
+    [Theory]
+    [InlineData("""{"transfer_mol": 100, "transfer_with": "Tanker"}""", "transfer_with")]
+    [InlineData("""{"what_if": {"fuel_mols": 4000}}""", "what_if.fuel_mols")]
+    [InlineData("""{"what_if": {"throttle": 120}}""", "what_if.throttle")]
+    [InlineData("""{"what_if": {"fuel_temperature_k": 0}}""", "what_if.fuel_temperature_k")]
+    [InlineData("""{"what_if": {"cargo_slots": 1.5}}""", "what_if.cargo_slots")]
+    [InlineData("""{"what_if": {"fuel_mix": {"Methane": -1}}}""", "what_if.fuel_mix.Methane")]
+    public void FlightRefusesWhatItCannotFly(string json, string path)
+    {
+        List<OptionProblem> problems = new();
+
+        Assert.Null(Flight(json, problems));
+        Assert.Equal(path, Assert.Single(problems).Path);
+    }
+
+    [Fact]
+    public void AMisspeltWhatIfNamesTheNearest()
+    {
+        List<OptionProblem> problems = new();
+
+        Flight("""{"what_if": {"fuel_mols": 4000}}""", problems);
+
+        Assert.Equal(new[] { "fuel_mol" }, Assert.Single(problems).Nearest);
+    }
 }

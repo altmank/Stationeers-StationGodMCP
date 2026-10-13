@@ -9,11 +9,12 @@ using Newtonsoft.Json.Linq;
 using Objects.Rockets;
 using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Rockets;
+using StationGodMCP.Pure.Verbs;
 using UnityEngine;
 
 namespace StationGodMCP.Api.Shared.Game.Flight;
 
-/// <summary>rocket_forecast's what-ifs, each optional: the rocket is read as it stands and these replace parts of it.</summary>
+/// <summary>plan flight's what-ifs, each optional: the rocket is read as it stands and these replace parts of it.</summary>
 internal sealed class RocketWhatIf
 {
     private RocketWhatIf()
@@ -48,37 +49,35 @@ internal sealed class RocketWhatIf
     /// <summary>The what-ifs left empty: the rocket as it is.</summary>
     internal static RocketWhatIf None => new RocketWhatIf();
 
-    internal static RocketWhatIf From(Args args)
+    /// <summary>The rocket with plan flight's what_if over it; a fuel_mix name that is no gas or liquid is refused.</summary>
+    internal static RocketWhatIf From(ForecastWhatIf given)
     {
         RocketWhatIf what = new RocketWhatIf
         {
-            FuelMol = NonNegative(args, "fuel_mol"),
-            FuelTemperatureK = Positive(args, "fuel_temperature_k"),
-            Throttle = (float?)Ranged(args, "throttle", 0.0, 100.0),
-            CargoSlots = args.OptionalInt("cargo_slots", 0, 100000),
-            AddCargoKg = NonNegative(args, "add_cargo_kg") ?? 0.0,
-            PayloadKg = NonNegative(args, "payload_kg"),
-            BatteryJ = NonNegative(args, "battery_j"),
-            BatteryPercent = Ranged(args, "battery_percent", 0.0, 100.0),
-            ExtraLoadW = NonNegative(args, "extra_load_w") ?? 0.0,
-            ThrustScale = (float)(Ranged(args, "thrust_scale", 0.0, 10.0) ?? 1.0)
+            FuelMol = given.FuelMol,
+            FuelTemperatureK = given.FuelTemperatureK,
+            Throttle = (float?)given.Throttle,
+            CargoSlots = given.CargoSlots,
+            AddCargoKg = given.AddCargoKg ?? 0.0,
+            PayloadKg = given.PayloadKg,
+            BatteryJ = given.BatteryJ,
+            BatteryPercent = given.BatteryPercent,
+            ExtraLoadW = given.ExtraLoadW ?? 0.0,
+            ThrustScale = (float)(given.ThrustScale ?? 1.0)
         };
-        JObject? mix = args.OptionalObject("fuel_mix");
-        if (mix != null)
+        if (given.FuelMix != null)
         {
             double[] fractions = new double[GasTypes.All.Length];
-            foreach (JProperty property in mix.Properties())
+            foreach (KeyValuePair<string, double> gas in given.FuelMix)
             {
-                int index = IndexOfGas(property.Name);
-                if (index < 0 || (property.Value.Type != JTokenType.Float && property.Value.Type != JTokenType.Integer) ||
-                    property.Value.Value<double>() < 0.0)
+                int index = IndexOfGas(gas.Key);
+                if (index < 0)
                 {
-                    throw ApiErrors.InvalidArgument(
-                        $"{Vocabulary.Arg("fuel_mix")}.{property.Name}: give a gas or liquid name (e.g. Methane, " +
-                        "Oxygen, LiquidHydrazine) and a fraction of 0 or more.");
+                    throw ApiErrors.InvalidArgument($"plan flight: what_if.fuel_mix.{gas.Key}: give a gas or liquid " +
+                                                    "name (e.g. Methane, Oxygen, LiquidHydrazine).");
                 }
 
-                fractions[index] = property.Value.Value<double>();
+                fractions[index] = gas.Value;
             }
 
             what.FuelMix = fractions;
@@ -98,24 +97,6 @@ internal sealed class RocketWhatIf
         }
 
         return -1;
-    }
-
-    private static double? NonNegative(Args args, string name) => Ranged(args, name, 0.0, double.MaxValue);
-
-    private static double? Positive(Args args, string name)
-    {
-        double? value = args.OptionalDouble(name);
-        return value.HasValue && !(value.Value > 0.0)
-            ? throw ApiErrors.InvalidArgument($"Argument '{Vocabulary.Arg(name)}' must be above 0.")
-            : value;
-    }
-
-    private static double? Ranged(Args args, string name, double minimum, double maximum)
-    {
-        double? value = args.OptionalDouble(name);
-        return value.HasValue && (value.Value < minimum || value.Value > maximum || double.IsNaN(value.Value))
-            ? throw ApiErrors.InvalidArgument($"Argument '{Vocabulary.Arg(name)}' must be from {minimum} to {maximum}.")
-            : value;
     }
 
     /// <summary>What was changed, in words, for the reply's assumptions.</summary>
