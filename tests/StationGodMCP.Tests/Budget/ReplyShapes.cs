@@ -120,7 +120,7 @@ internal static class ReplyShapes
         {
             S<BlueprintPasteStatusView>(), S<BlueprintUndoView>(), S<BlueprintPasteStartedView>()
         };
-        foreach (string tool in new[] { "place_cables", "place_pipes", "place_chutes", "remove_cables", "remove_pipes", "remove_chutes" })
+        foreach (string tool in new[] { "place_cables", "place_pipes", "place_chutes" })
         {
             shapes[tool] = RunTool(tool);
         }

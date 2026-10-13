@@ -19,9 +19,6 @@ def remove(what: Literal['cable'], *,
     (RunJob)
       RunJob
     (RunReport)
-      tool: str
-      status: str
-      job_id: str | None
       grade: str | None
       ready: bool
       problems: list[{code: str, message: str, reference_id: str | None, at: Vec3 | None}]

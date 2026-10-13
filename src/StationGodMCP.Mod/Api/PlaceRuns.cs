@@ -15,8 +15,7 @@ namespace StationGodMCP.Api;
 /// <summary>
 /// place_cables, place_pipes and place_chutes: lay a run (waypoints, cells or one piece) with the piece of the grade whose ends
 /// match each cell's connections, joining what is there; optionally removing pieces in the same job (a reroute), or
-/// checking it as if things were already gone (assume_removed: a real run needs them gone).
-/// remove_cables, remove_pipes and remove_chutes: remove listed pieces or the pieces in listed cells. Dry run by default; a real
+/// checking it as if things were already gone (assume_removed: a real run needs them gone). Dry run by default; a real
 /// run needs dry_run false and confirm true and is a job polled with job_id (RunJobs). Host only.
 /// </summary>
 internal static class PlaceCablesApi
@@ -29,24 +28,9 @@ internal static class PlacePipesApi
     internal static object Handle(Args args) => RunApi.Place(args, new PipeRunKind());
 }
 
-internal static class RemoveCablesApi
-{
-    internal static object Handle(Args args) => RunApi.Remove(args, new CableRunKind());
-}
-
-internal static class RemovePipesApi
-{
-    internal static object Handle(Args args) => RunApi.Remove(args, new PipeRunKind());
-}
-
 internal static class PlaceChutesApi
 {
     internal static object Handle(Args args) => RunApi.Place(args, new ChuteRunKind());
-}
-
-internal static class RemoveChutesApi
-{
-    internal static object Handle(Args args) => RunApi.Remove(args, new ChuteRunKind());
 }
 
 /// <summary>The request forms the run tools share: a dry run, a confirmed run, or a job's status.</summary>
@@ -80,19 +64,6 @@ internal static class RunApi
                 ? args.ThingIds("assume_removed", RunPlanner.MaximumRemovals)
                 : new List<ThingId>());
         return Run(args, new RunRequest(kind, kind.PlaceTool, build, removal, RunArgs.Options(args, kind)));
-    }
-
-    internal static object Remove(Args args, RunKind kind)
-    {
-        if (args.Has("job_id"))
-        {
-            return Status(args, "reference_ids", "waypoints", "cells", "allow_split", "allow_bridge", "root", "wait");
-        }
-
-        args.Reject("{tool:" + kind.RemoveTool + "}", "grade", "join", "extra_ends", "piece", "pieces", "branches",
-            "remove_ids", "assume_removed", "allow_split_long", "network_id", "kind", "join_to", "join_trunk");
-        return Run(args,
-            new RunRequest(kind, kind.RemoveTool, null, Removal(args, kind), RunArgs.Options(args, kind)));
     }
 
     /// <summary>
@@ -205,48 +176,9 @@ internal static class RunApi
 
         RunReportView preflight = RunReports.Of(plan, RunReports.Scheduled, null);
         object started = JobSnapshots.Record(RunJobs.Start(request, preflight, wait, acknowledge), request.Tool,
-            Removed(plan), args, Burnt(plan));
+            RunTakedowns.Removed(plan), args, RunTakedowns.Burnt(plan));
         return (args.OptionalBool(VerboseArgument) ?? false)
             ? started
             : JobStartReplies.Brief(started, JobPreflightSummaryView.Of(preflight));
-    }
-
-    // What the run takes down: its removals (not the assumed ones) and every piece it changes (a change builds a new
-    // piece in the old one's place), for undo_job.
-    private static List<Structure> Removed(RunPlan plan)
-    {
-        List<Structure> removed = new List<Structure>();
-        foreach (PlannedRemoval removal in plan.Removals)
-        {
-            if (!removal.Assumed && !removal.Debris)
-            {
-                removed.Add(removal.Piece);
-            }
-        }
-
-        foreach (PlannedCell cell in plan.Cells)
-        {
-            if (cell.Existing != null)
-            {
-                removed.Add(cell.Existing);
-            }
-        }
-
-        return removed;
-    }
-
-    // The burnt cables the run takes down: undo_job leaves them gone.
-    private static List<Structure> Burnt(RunPlan plan)
-    {
-        List<Structure> burnt = new List<Structure>();
-        foreach (PlannedRemoval removal in plan.Removals)
-        {
-            if (!removal.Assumed && removal.Debris)
-            {
-                burnt.Add(removal.Piece);
-            }
-        }
-
-        return burnt;
     }
 }
