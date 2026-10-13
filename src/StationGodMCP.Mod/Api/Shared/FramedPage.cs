@@ -49,6 +49,9 @@ internal sealed class FramedPage<TView> where TView : class
     /// <summary>The candidates the scan took (0 for a later page: no scan ran).</summary>
     internal int Scanned => _build?.Candidates ?? 0;
 
+    /// <summary>A first page, which scans; a walk's later page does not.</summary>
+    internal bool IsScan => _build != null;
+
     /// <summary>A first page: its list built by build, its page (offset, at most limit) from the built ids.</summary>
     internal static FramedPage<TView> Scan(WalkRequest walk, int offset, int limit, IWalkBuild build,
         Func<long, TView?> live) =>
@@ -87,20 +90,21 @@ internal sealed class FramedPage<TView> where TView : class
     /// <summary>
     /// Once Step returned true: the page as a one-shot page has it, and the cursor its walk goes on with (a first page
     /// that opens one while ids remain, or a later page's while its walk has more). A later page's offset is the
-    /// walk's entries passed before it, its total the walk's length at its first call.
+    /// walk's entries passed before it, its total the walk's length at its first call. kept is what a first page
+    /// counted, kept under its cursor; a later page answers its walk's kept.
     /// </summary>
-    internal FramedResult<TView> Result()
+    internal FramedResult<TView> Result(object? kept = null)
     {
         if (_build == null)
         {
             return new FramedResult<TView>(
-                new Page<TView>(Views, _last.Total, _walkOffset, _limit, _last.HasMore), _last.CursorId);
+                new Page<TView>(Views, _last.Total, _walkOffset, _limit, _last.HasMore), _last.CursorId, _last.Kept);
         }
 
         long[] ids = _ids!;
-        string? cursorId = _walk.KeepRest(ids, _next, _offset + Views.Count, _skipped);
+        string? cursorId = _walk.KeepRest(ids, _next, _offset + Views.Count, _skipped, kept);
         return new FramedResult<TView>(
-            new Page<TView>(Views, ids.Length, _offset, _limit, _next < ids.Length), cursorId);
+            new Page<TView>(Views, ids.Length, _offset, _limit, _next < ids.Length), cursorId, kept);
     }
 
     // This frame's share of the page; true once it holds limit or the list has ended.
@@ -133,5 +137,8 @@ internal sealed class FramedPage<TView> where TView : class
     }
 }
 
-/// <summary>A framed page's answer: the page, and the cursor id its walk goes on with (null when none).</summary>
-internal sealed record FramedResult<TView>(Page<TView> Page, string? CursorId);
+/// <summary>
+/// A framed page's answer: the page, the cursor id its walk goes on with (null when none), and what the walk's first
+/// page counted (kept).
+/// </summary>
+internal sealed record FramedResult<TView>(Page<TView> Page, string? CursorId, object? Kept = null);

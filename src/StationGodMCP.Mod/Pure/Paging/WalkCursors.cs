@@ -83,9 +83,10 @@ internal sealed class WalkCursors : ICursorStore
     /// <summary>
     /// Keeps the rest of a walk whose first page returned returned things (and passed over skipped gone ones): rest is
     /// the ids after that page, in order, and the store takes the array. Evicts the least recently used cursors until
-    /// the new one fits. Null when rest alone is longer than MaximumIds: such a walk is not kept.
+    /// the new one fits. kept is what the first page counted (a scan's counts), which every later page answers again.
+    /// Null when rest alone is longer than MaximumIds: such a walk is not kept.
     /// </summary>
-    internal string? Open(CallContext owner, long[] rest, int returned, int skipped = 0)
+    internal string? Open(CallContext owner, long[] rest, int returned, int skipped = 0, object? kept = null)
     {
         if (owner.IsNone)
         {
@@ -104,7 +105,7 @@ internal sealed class WalkCursors : ICursorStore
 
         long number = ++_lastNumber;
         Cursor cursor = new Cursor(number, IdPrefix + number.ToString(CultureInfo.InvariantCulture), owner, rest,
-            returned, skipped);
+            returned, skipped, kept);
         _open.Add(number, cursor);
         IdsHeld += rest.Length;
         Append(cursor);
@@ -142,7 +143,7 @@ internal sealed class WalkCursors : ICursorStore
         cursor.Next = index;
         cursor.Returned += found;
         bool more = index < ids.Length;
-        step = new WalkStep(more ? cursor.Id : null, offset, skipped, cursor.Total, more, null);
+        step = new WalkStep(more ? cursor.Id : null, offset, skipped, cursor.Total, more, null, cursor.Kept);
         if (more)
         {
             Unlink(cursor);
@@ -303,8 +304,9 @@ internal sealed class WalkCursors : ICursorStore
     /// <summary>One walk: its ids after the first page, how far it has got, and its place in the recency list.</summary>
     private sealed class Cursor
     {
-        internal Cursor(long number, string id, CallContext owner, long[] ids, int returned, int skipped)
+        internal Cursor(long number, string id, CallContext owner, long[] ids, int returned, int skipped, object? kept)
         {
+            Kept = kept;
             Number = number;
             Id = id;
             Owner = owner;
@@ -320,6 +322,9 @@ internal sealed class WalkCursors : ICursorStore
         internal CallContext Owner { get; }
 
         internal long[] Ids { get; }
+
+        /// <summary>What the first page counted, answered again by every later page.</summary>
+        internal object? Kept { get; }
 
         /// <summary>Entries the first page passed (returned or skipped), before Ids.</summary>
         internal int First { get; }
@@ -345,12 +350,14 @@ internal sealed class WalkCursors : ICursorStore
 /// One later page of a walk, or why there is none. Offset: the walk's entries passed before this page (returned or
 /// skipped); Skipped: ids on this page whose thing no longer existed; Total: the walk's length at its first call;
 /// HasMore and CursorId (null once the walk has ended). ExpiredPosition: for cursor_expired, the things the walk had
-/// returned, null when unknown.
+/// returned, null when unknown. Kept: what the walk's first page counted.
 /// </summary>
 internal readonly struct WalkStep
 {
-    internal WalkStep(string? cursorId, int offset, int skipped, int total, bool hasMore, int? expiredPosition)
+    internal WalkStep(string? cursorId, int offset, int skipped, int total, bool hasMore, int? expiredPosition,
+        object? kept = null)
     {
+        Kept = kept;
         CursorId = cursorId;
         Offset = offset;
         Skipped = skipped;
@@ -370,6 +377,8 @@ internal readonly struct WalkStep
     internal bool HasMore { get; }
 
     internal int? ExpiredPosition { get; }
+
+    internal object? Kept { get; }
 
     internal static WalkStep Expired(int? position) => new WalkStep(null, 0, 0, 0, false, position);
 }

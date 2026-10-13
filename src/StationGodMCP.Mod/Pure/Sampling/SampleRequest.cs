@@ -8,8 +8,11 @@ using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Pure.Sampling;
 
-/// <summary>One value read sample watches: a thing's id (or "looking_at") and a logic type (a name or a number).</summary>
-internal sealed record SampleTarget(string Id, JToken Logic);
+/// <summary>
+/// One value read sample watches: a thing's id (or "looking_at") and a logic type (a name or a number), with the option
+/// path that named it (id, id[i] or reads[i]).
+/// </summary>
+internal sealed record SampleTarget(string Id, JToken Logic, string Path = "id");
 
 /// <summary>
 /// read sample's request (catalogue read.json, what sample): the targets (every id with every logic type, or the reads
@@ -60,11 +63,12 @@ internal sealed class SampleRequest
                 problems.Add(new OptionProblem("logic", "is needed with id: the logic types to watch"));
             }
 
-            foreach (string id in ids)
+            bool listed = options.Selector.Ids!.GivenAsList;
+            for (int index = 0; index < ids.Count; index++)
             {
                 foreach (JToken type in logic)
                 {
-                    targets.Add(new SampleTarget(id, type));
+                    targets.Add(new SampleTarget(ids[index], type, listed ? $"id[{index}]" : "id"));
                 }
             }
         }
@@ -76,7 +80,7 @@ internal sealed class SampleRequest
                     ((string)id!).Trim().Length > 0 && (read["logic"] ?? options.Logic) is { } type &&
                     type.Type is JTokenType.String or JTokenType.Integer)
                 {
-                    targets.Add(new SampleTarget(((string)id!).Trim(), type.DeepClone()));
+                    targets.Add(new SampleTarget(((string)id!).Trim(), type.DeepClone(), $"reads[{index}]"));
                 }
                 else
                 {

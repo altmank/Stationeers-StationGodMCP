@@ -16,7 +16,7 @@ namespace StationGodMCP.Verbs;
 /// find damaged (catalogue find.json): every damaged or broken thing in the world (HealthScanner), broken first, then
 /// worst first, kept by min_damage (a ratio below 1), broken_only, structures_only and near "player" with radius, paged,
 /// with the scan's counts (structures, broken, scanned); with the wire cursor a walk (ThingListPage), whose later pages
-/// read each thing's damage again and count nothing (structures, broken and scanned 0: they scan nothing). A thing's
+/// read each thing's damage again and answer the first page's scan counts. A thing's
 /// networks are read only when the call's fields keep things' networks. Read only.
 /// </summary>
 internal static class FindDamaged
@@ -35,9 +35,9 @@ internal static class FindDamaged
         if (walk.Continues)
         {
             PlayerOrigin now = PlayerOrigin.Current();
-            return ThingListPage<HealthView>.Later(walk, paging,
+            return ThingListPage<HealthView, DamageCounts>.Later(walk, paging,
                 id => Thing.Find(id) is { IsBeingDestroyed: false } thing ? HealthReader.Read(thing, now, withNetworks) : null,
-                Cost, (page, cursorId) => Reply(page, cursorId, new HealthScanned(new List<Thing>(), 0, 0, 0), minimum, now));
+                Cost, (page, cursorId, counts) => Reply(page, cursorId, counts ?? DamageCounts.None, minimum, now));
         }
 
         List<OptionProblem> problems = selector.PlayerRadiusProblems();
@@ -62,16 +62,22 @@ internal static class FindDamaged
             byId[ids[index]] = scanned.Things[index];
         }
 
-        return ThingListPage<HealthView>.First(walk, paging, ids, scanned.Scanned,
+        return ThingListPage<HealthView, DamageCounts>.First(walk, paging, ids, scanned.Scanned,
+            new DamageCounts(scanned.Structures, scanned.Broken, scanned.Scanned),
             id => byId.TryGetValue(id, out Thing? thing) && !thing.IsBeingDestroyed
                 ? HealthReader.Read(thing, origin, withNetworks)
                 : null,
-            Cost, (page, cursorId) => Reply(page, cursorId, scanned, minimum, origin));
+            Cost, (page, cursorId, counts) => Reply(page, cursorId, counts!, minimum, origin));
     }
 
-    private static JObject Reply(Page<HealthView> page, string? cursorId, HealthScanned scanned, double minimum,
+    private static JObject Reply(Page<HealthView> page, string? cursorId, DamageCounts counts, double minimum,
         PlayerOrigin origin) =>
-        ThingListPage<HealthView>.Reply(List, page, cursorId, ("structures", scanned.Structures),
-            ("broken", scanned.Broken), ("scanned", scanned.Scanned), ("min_damage_ratio", minimum),
-            ("local_player", origin.View));
+        ThingListReply.Of(List, page, cursorId, ("structures", counts.Structures), ("broken", counts.Broken),
+            ("scanned", counts.Scanned), ("min_damage_ratio", minimum), ("local_player", origin.View));
+
+    /// <summary>The scan's counts a walk's every page answers.</summary>
+    internal sealed record DamageCounts(int Structures, int Broken, int Scanned)
+    {
+        internal static DamageCounts None { get; } = new DamageCounts(0, 0, 0);
+    }
 }

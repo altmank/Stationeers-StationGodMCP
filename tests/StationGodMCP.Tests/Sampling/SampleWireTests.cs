@@ -129,12 +129,13 @@ public sealed class SampleWireTests
 
         Assert.False((bool)reply["ok"]!);
         JObject error = (JObject)reply["error"]!;
-        Assert.Equal("thing_not_found", (string?)error["code"]);
+        Assert.Equal("invalid_argument", (string?)error["code"]);
         Assert.Contains("nothing was sampled", (string?)error["message"]);
-        Assert.Contains("100 On: no thing has id 100", (string?)error["message"]);
-        Assert.Contains("102 On: no thing has id 102", (string?)error["message"]);
-        Assert.Equal(new[] { "100", "102" },
-            ((JArray)error["data"]!["unreadable"]!).Select(miss => (string?)miss["id"]));
+        Assert.Contains("id[0]: 100 On cannot be read", (string?)error["message"]);
+        Assert.Contains("no thing has id 102", (string?)error["message"]);
+        Assert.Equal(new[] { "id[0]", "id[2]" },
+            ((JArray)error["data"]!["problems"]!).Select(problem => (string?)problem["path"]));
+        Assert.Null(error["data"]!["unreadable"]);
         Assert.Equal(1, _logic.Reads);
         Assert.Equal(0, hub.SampleRuns);
     }

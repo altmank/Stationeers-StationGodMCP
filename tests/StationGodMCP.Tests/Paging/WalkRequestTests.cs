@@ -43,7 +43,9 @@ public sealed class WalkRequestTests
         Assert.Equal(cursor, (string?)second["cursor_id"]);
         Assert.Equal(8, (int)second["offset"]!);
         Assert.Equal(20, (int)second["total"]!);
-        Assert.Equal(0, (int)second["scanned"]!);
+        Assert.Equal(20, (int)first["scanned"]!);
+        Assert.Equal(20, (int)second["scanned"]!);
+        Assert.Equal(20, (int)last["scanned"]!);
         Assert.True((bool)second["has_more"]!);
         Assert.Equal(new long[] { 17, 18, 19, 20 }, Ids(last));
         Assert.False((bool)last["has_more"]!);
@@ -234,8 +236,9 @@ public sealed class WalkRequestTests
             {
             }
 
-            FramedResult<Api.Views.FoundThingView> result = page.Result();
-            return Api.Views.FoundThings.Reply(result.Page, page.Scanned, null, result.CursorId);
+            FramedResult<Api.Views.FoundThingView> result = page.Result(page.IsScan ? page.Scanned : null);
+            return Api.Views.FoundThings.Reply(result.Page, result.Kept is int scanned ? scanned : 0, null,
+                result.CursorId);
         }
 
         private Api.Views.FoundThingView? Live(long id) =>

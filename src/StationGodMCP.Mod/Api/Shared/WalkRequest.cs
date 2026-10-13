@@ -15,7 +15,8 @@ namespace StationGodMCP.Api.Shared;
 /// the list's ids stay in WalkCursors under the caller's (connection, stream) and the reply carries cursor_id. A later
 /// call passes that id: its page comes from the kept ids with no scan, skipping things that no longer exist and
 /// checking nothing else, so a thing that stopped matching is still walked, with its current values; the first call's
-/// filters and order hold, and the later call's other options are not read. A cursor that is gone answers
+/// filters and order hold, as do the counts its first page answered (kept), and the later call's other options are not
+/// read. A cursor that is gone answers
 /// cursor_expired, data {cursor_id, position}.
 /// </summary>
 internal sealed class WalkRequest
@@ -55,10 +56,10 @@ internal sealed class WalkRequest
     /// After the first page of a walk whose ordered ids were built ahead (WalkBuild): when the call opens a cursor and
     /// ids remain after next (the walk passed returned things up to the page's end, offset included, and the page passed
     /// over skipped gone ones), keeps them in
-    /// WalkCursors under the caller's (connection, stream) and returns the cursor id; null otherwise. A rest longer
-    /// than the store holds in all is invalid_argument.
+    /// WalkCursors under the caller's (connection, stream), with what the first page counted (kept), and returns the
+    /// cursor id; null otherwise. A rest longer than the store holds in all is invalid_argument.
     /// </summary>
-    internal string? KeepRest(long[] ids, int next, int returned, int skipped)
+    internal string? KeepRest(long[] ids, int next, int returned, int skipped, object? kept = null)
     {
         if (!Opens || next >= ids.Length)
         {
@@ -67,7 +68,7 @@ internal sealed class WalkRequest
 
         long[] rest = new long[ids.Length - next];
         Array.Copy(ids, next, rest, 0, rest.Length);
-        return _cursors.Open(CallContext.Current, rest, returned, skipped) ??
+        return _cursors.Open(CallContext.Current, rest, returned, skipped, kept) ??
                throw ApiErrors.InvalidArgument(
                    $"The walk has {rest.Length.ToString(CultureInfo.InvariantCulture)} more entries than a cursor " +
                    $"holds ({_cursors.MaximumIds.ToString(CultureInfo.InvariantCulture)}); narrow the filters, or " +

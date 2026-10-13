@@ -21,6 +21,9 @@ internal static class FindContainer
 
     private static readonly EntryCost Cost = new EntryCost();
 
+    // find container answers no scan counts.
+    private static readonly object NoCounts = new object();
+
     internal static VerbOutcome Run(FindContainerOptions options)
     {
         Selector selector = options.Selector;
@@ -29,8 +32,8 @@ internal static class FindContainer
         if (walk.Continues)
         {
             PlayerOrigin now = PlayerOrigin.Current();
-            return ThingListPage<ContainerView>.Later(walk, paging, id => Containers.Live(id, now)?.ToView(), Cost,
-                (page, cursorId) => Reply(page, now, cursorId));
+            return ThingListPage<ContainerView, object>.Later(walk, paging, id => Containers.Live(id, now)?.ToView(), Cost,
+                (page, cursorId, _) => Reply(page, now, cursorId));
         }
 
         List<OptionProblem> problems = selector.PlayerRadiusProblems();
@@ -51,11 +54,11 @@ internal static class FindContainer
             byId[ids[index]] = containers[index];
         }
 
-        return ThingListPage<ContainerView>.First(walk, paging, ids, ids.Length,
+        return ThingListPage<ContainerView, object>.First(walk, paging, ids, ids.Length, NoCounts,
             id => byId.TryGetValue(id, out ContainerTally? container) ? container.ToView() : null, Cost,
-            (page, cursorId) => Reply(page, origin, cursorId));
+            (page, cursorId, _) => Reply(page, origin, cursorId));
     }
 
     private static Newtonsoft.Json.Linq.JObject Reply(Page<ContainerView> page, PlayerOrigin origin, string? cursorId) =>
-        ThingListPage<ContainerView>.Reply(List, page, cursorId, ("local_player", origin.View));
+        ThingListReply.Of(List, page, cursorId, ("local_player", origin.View));
 }

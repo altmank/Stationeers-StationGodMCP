@@ -233,6 +233,30 @@ public sealed class FindVerbTests
     }
 
     [Fact]
+    public void EveryLaterPageOfAWalkAnswersTheCountsItsFirstPageKept()
+    {
+        using CallContext.Scope scope = CallContext.Enter(Hub);
+        WalkCursors cursors = new WalkCursors();
+        long[] sorted = { 50, 40, 30, 20, 10 };
+        object counts = new { structures = 3, broken = 1, scanned = 9 };
+
+        FramedResult<string> first = Take(FramedPage<string>.Scan(
+            WalkRequest.Of(PagingOf("""{"cursor": "open", "limit": 2}"""), cursors), 0, 2, new ReadyWalk(sorted, 9),
+            id => "t" + id), counts);
+        FramedResult<string> second = Take(FramedPage<string>.Later(
+            WalkRequest.Of(PagingOf($$"""{"cursor": "{{first.CursorId}}", "limit": 2}"""), cursors), 2,
+            id => "t" + id));
+        FramedResult<string> last = Take(FramedPage<string>.Later(
+            WalkRequest.Of(PagingOf($$"""{"cursor": "{{first.CursorId}}", "limit": 2}"""), cursors), 2,
+            id => "t" + id));
+
+        Assert.Same(counts, first.Kept);
+        Assert.Same(counts, second.Kept);
+        Assert.Same(counts, last.Kept);
+        Assert.False(last.Page.HasMore);
+    }
+
+    [Fact]
     public void AListSortedInOneGoWithoutACursorPagesAtItsOffsetAndKeepsNothing()
     {
         WalkCursors cursors = new WalkCursors();
@@ -248,14 +272,14 @@ public sealed class FindVerbTests
         Assert.Equal(0, cursors.Count);
     }
 
-    private static FramedResult<string> Take(FramedPage<string> page)
+    private static FramedResult<string> Take(FramedPage<string> page, object? kept = null)
     {
         FakeClock clock = new FakeClock();
         while (!page.Step(clock, clock.NowMs + 4.0, 0.0))
         {
         }
 
-        return page.Result();
+        return page.Result(kept);
     }
 
     private static VerbPaging PagingOf(string options) =>

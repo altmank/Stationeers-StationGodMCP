@@ -22,7 +22,8 @@ namespace StationGodMCP.Verbs;
 /// it starts and builds its ordered list in slices (WalkBuild), distances measured from where the player stood then,
 /// then each frame's share of the page is described until the frame's budget is reached. With the wire cursor "open"
 /// the rest of the list stays under a cursor (cursor_id) when more follows; a later page with that cursor id takes the
-/// walk's next things with no scan, skips things that no longer exist and checks no filter again. near names a centre
+/// walk's next things with no scan, skips things that no longer exist, checks no filter again and answers the first
+/// page's scanned count. near names a centre
 /// for radius (a point, "looking_at" or a thing: at most 1000 m; "player": any); box is the other area, not both. Read
 /// only.
 /// </summary>
@@ -119,9 +120,10 @@ internal static class FindThing
 
         public object Result()
         {
-            FramedResult<FoundThingView> found = _page.Result();
+            FramedResult<FoundThingView> found = _page.Result(_page.IsScan ? _page.Scanned : null);
             EntryCost.FindThing.Expect(found.Page.Entries.Count);
-            return FoundThings.Reply(found.Page, _page.Scanned, _origin.View, found.CursorId);
+            return FoundThings.Reply(found.Page, found.Kept is int scanned ? scanned : 0, _origin.View,
+                found.CursorId);
         }
     }
 }
