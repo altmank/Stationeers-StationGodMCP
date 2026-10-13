@@ -48,7 +48,7 @@ internal sealed class UplinkView
     public List<DownlinkView> Choices { get; }
 }
 
-/// <summary>set_uplink: the uplink, the downlink it followed before, and its link now.</summary>
+/// <summary>write uplink: the uplink, the downlink it followed before, and its link now.</summary>
 internal sealed class UplinkSetView
 {
     internal UplinkSetView(ThingView uplink, DownlinkView? previous, UplinkView link)

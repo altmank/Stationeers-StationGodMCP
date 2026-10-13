@@ -154,7 +154,7 @@ internal sealed class IcSourceView
     public LuaStateView? Lua { get; }
 }
 
-/// <summary>set_ic_source: the source as the chip now holds it, and whether it compiled.</summary>
+/// <summary>write chip's code: the source as the chip now holds it, and whether it compiled.</summary>
 internal sealed class IcSourceSetView
 {
     internal IcSourceSetView(IcPlace place, IcChip chip, ChipState state, List<SourceNote> warnings)
@@ -532,7 +532,7 @@ internal sealed class JumpTagView
     public int Value { get; }
 }
 
-/// <summary>control_ic_execution: what was done, and the chip's state afterwards.</summary>
+/// <summary>write chip's run: what was done, and the chip's state afterwards.</summary>
 internal sealed class IcControlView
 {
     internal IcControlView(IcPlace place, IcControlOutcome outcome, ChipState state, IcChip chip)
@@ -593,7 +593,7 @@ internal sealed class IcControlView
     public LuaStateView? Lua { get; }
 }
 
-/// <summary>What control_ic_execution did: the action, the pause state after it, and the line before it.</summary>
+/// <summary>What write chip's run did: the action, the pause state after it, and the line before it.</summary>
 internal readonly struct IcControlOutcome
 {
     internal IcControlOutcome(string action, bool paused, double previousLine)

@@ -5,7 +5,7 @@ using StationGodMCP.Api.Shared;
 
 namespace StationGodMCP.Api.Views;
 
-/// <summary>set_ic_pins: the pins written, and all the housing's pins afterwards.</summary>
+/// <summary>write chip's pins: the pins written, and all the housing's pins afterwards.</summary>
 internal sealed class SetIcPinsView
 {
     internal SetIcPinsView(string gatewayId, ThingId referenceId, bool hasDataNetwork, List<PinChangeView> changes,
@@ -51,7 +51,7 @@ internal sealed class PinChangeView
     public bool Changed { get; }
 }
 
-/// <summary>One pin d0..dN of a circuit holder, as get_ic_status and set_ic_pins list it.</summary>
+/// <summary>One pin d0..dN of a circuit holder, as inspect chip and write chip list it.</summary>
 internal sealed class IcPinView
 {
     internal IcPinView(int index, ThingView? device, string? label, bool reachable)

@@ -184,7 +184,7 @@ internal sealed class CatalogueMethod
     private readonly Dictionary<string, string> _fileArguments = new Dictionary<string, string>(StringComparer.Ordinal);
 
     /// <summary>
-    /// What to tell a direct client that sends an argument only the MCP server reads (set_ic_source's source_file);
+    /// What to tell a direct client that sends an argument only the MCP server reads (write chip's code_file);
     /// null for any other name.
     /// </summary>
     internal string? ServerOnlyArgument(string name) => _fileArguments.TryGetValue(name, out string into)

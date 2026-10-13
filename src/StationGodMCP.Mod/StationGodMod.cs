@@ -74,7 +74,7 @@ public sealed class StationGodMod : ModBehaviour
 
     /// <summary>
     /// The streams' held restores (hold_restore) once the mod has loaded: applied at an owner's abrupt end, cleared at a
-    /// normal one, dropped on a world change (StreamStores.Main); write_logic tells it each stream's last written value.
+    /// normal one, dropped on a world change (StreamStores.Main); write logic tells it each stream's last written value.
     /// </summary>
     internal static HeldRestores? Restores { get; private set; }
 

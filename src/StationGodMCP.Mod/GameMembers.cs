@@ -348,7 +348,7 @@ internal static class GameMembers
     internal static readonly GameField LuaSnapshotErrorMessage = LuaSnapshotField("LastErrorMessage");
     internal static readonly GameField LuaSnapshotErrorTraceback = LuaSnapshotField("LastErrorTraceback");
 
-    // ---- ScriptedScreens (screen_read, screen_press): another mod, optional; its absence is not a game change ----
+    // ---- ScriptedScreens (inspect screen, write screen): another mod, optional; its absence is not a game change ----
     internal static readonly GameType ScreensSystem =
         Optional("ScriptedScreens.ScriptableUi.ScriptedScreensScriptableUiSystem");
     internal static readonly GameField ScreensBoardStates = ScreensField("States");

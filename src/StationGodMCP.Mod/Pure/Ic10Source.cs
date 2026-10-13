@@ -7,7 +7,7 @@ using System.Globalization;
 namespace StationGodMCP.Pure;
 
 /// <summary>
-/// What set_ic_source changes in, or notes about, an IC10 source before the chip gets it. The chip stores its source
+/// What write chip's code changes in, or notes about, an IC10 source before the chip gets it. The chip stores its source
 /// as ASCII (ProgrammableChip.SourceCode is an AsciiString: every other character becomes '?') but compiles the
 /// string it was handed, so a non-ASCII source would run one program and save another; the tool hands the chip the
 /// ASCII text it stores. A CRLF, and a lone CR (old Mac line ends), becomes LF: the chip splits lines on '\n' only,
@@ -131,7 +131,7 @@ internal static class Ic10Source
     private static string Count(int value) => value.ToString(CultureInfo.InvariantCulture);
 }
 
-/// <summary>Something set_ic_source changed in a source, or would be lost to the in-game editor.</summary>
+/// <summary>Something write chip's code changed in a source, or would be lost to the in-game editor.</summary>
 internal sealed class SourceNote
 {
     internal SourceNote(string code, string message)

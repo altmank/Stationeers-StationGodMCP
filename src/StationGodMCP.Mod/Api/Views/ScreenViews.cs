@@ -152,7 +152,7 @@ internal sealed class ScreenImageView
     public int Height { get; }
 }
 
-/// <summary>screen_press: the touch sent, and the element it went to.</summary>
+/// <summary>write screen: the touch sent, and the element it went to.</summary>
 internal sealed class ScreenPressView
 {
     internal ScreenPressView(ThingView holder, string surface, ScreenElementView element, string eventName,

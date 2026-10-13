@@ -16,7 +16,7 @@ namespace StationGodMCP.Api.Shared.Game;
 internal static class LuaChips
 {
     /// <summary>
-    /// The largest Lua source set_ic_source takes, in characters. StationeersLua sets none; the chip's stored form
+    /// The largest Lua source write chip's code takes, in characters. StationeersLua sets none; the chip's stored form
     /// (gzip and base64) goes to clients in one message and a client reads it into a stack buffer
     /// (RocketBinaryReader.ReadAscii), so the tool keeps it well below that.
     /// </summary>

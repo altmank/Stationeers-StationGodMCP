@@ -4,7 +4,7 @@ using StationGodMCP.Pure;
 
 namespace StationGodMCP.Api.Shared;
 
-/// <summary>The memory range refusal of read_memory and write_memory (Pure/MemoryRange), as the call's error.</summary>
+/// <summary>The memory range refusal of read memory and write memory (Pure/MemoryRange), as the call's error.</summary>
 internal static class DeviceMemoryRange
 {
     /// <summary>Refuses count values from start that do not fit a memory of size values (null: size unknown).</summary>

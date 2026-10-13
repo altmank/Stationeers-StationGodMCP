@@ -11,7 +11,7 @@ namespace StationGodMCP.Api.Shared.Game;
 
 /// <summary>
 /// Held restores' devices in the game, on the main thread: devices in the world scope (Devices.Find), logic types as
-/// write_logic reads them (LogicTypes.Parse), the write through write_logic's own game write (LogicOps.SetValue), and
+/// write logic reads them (LogicTypes.Parse), the write through write logic's own game write (LogicOps.SetValue), and
 /// the write rules through the checked write's judge (OpeningWrites.Judge).
 /// </summary>
 internal sealed class RestoreDevices : IRestoreDevices

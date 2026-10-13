@@ -24,7 +24,7 @@ namespace StationGodMCP.Api.Shared.Game;
 internal static class NetworkHandles
 {
     internal static ThingId Resolve(Args args, string name, UpgradeFamily family) =>
-        Resolve(args.Optional(name) ?? throw ApiErrors.InvalidArgument($"Argument '{Vocabulary.Path(name)}' is " +
+        Resolve(args.Optional(name) ?? throw ApiErrors.InvalidArgument($"Argument '{name}' is " +
             "required."), name,
             family);
 
@@ -197,9 +197,9 @@ internal static class NetworkHandles
                 catch (ApiException missing) when (missing.Code == "network_not_found")
                 {
                     throw ApiErrors.Refused(missing.Code,
-                        $"{Vocabulary.Path(entry)}: {handle.Id} names no thing and no {family.NetworkKind} network. " +
+                        $"{entry}: {handle.Id} names no thing and no {family.NetworkKind} network. " +
                         "A piece's id changes when an edit replaces it (a split, a junction); read it again " +
-                        $"({Vocabulary.Tool("connections")}).");
+                        "(survey network).");
                 }
             }
             else if (thing is SmallGrid piece && family.IsMember(piece))
@@ -209,15 +209,15 @@ internal static class NetworkHandles
             else if (!(thing is Device device))
             {
                 throw ApiErrors.InvalidArgument(
-                    $"{Vocabulary.Path(entry)}: {Names.Of(thing)} ({thing.PrefabName}) is neither a " +
+                    $"{entry}: {Names.Of(thing)} ({thing.PrefabName}) is neither a " +
                     $"{family.NetworkKind} piece, a device nor a network.");
             }
             else if (BridgingPorts(device, bridges) < 2)
             {
                 throw ApiErrors.InvalidArgument(
-                    $"{Vocabulary.Path(entry)}: {Names.Of(device)} ({device.PrefabName}) has no two " +
+                    $"{entry}: {Names.Of(device)} ({device.PrefabName}) has no two " +
                     $"{family.NetworkKind} ports that could share a network, so it bridges nothing; name a network, " +
-                    $"a piece of one or {{{Vocabulary.Arg("reference_id")}, {Vocabulary.Arg("port")}}}.");
+                    "a piece of one or {reference_id, port}.");
             }
         }
 

@@ -14,7 +14,7 @@ namespace StationGodMCP.Protocol;
 /// <summary>
 /// The game side of held restores, on the main thread: a logic type by name or number, whether a device takes a held
 /// restore of it (it must write and read the type: the overwrite check reads it), the device's value read and written
-/// as write_logic reads and writes it, and the write rules on a restore as a checked write runs them.
+/// as write logic reads and writes it, and the write rules on a restore as a checked write runs them.
 /// </summary>
 internal interface IRestoreDevices
 {
@@ -27,7 +27,7 @@ internal interface IRestoreDevices
     /// <summary>The device's value now; false with the refusal's code when it is gone or the read fails.</summary>
     bool TryRead(long referenceId, ushort type, out double value, out string problem);
 
-    /// <summary>Writes the value as write_logic does; false with the refusal's code when it cannot.</summary>
+    /// <summary>Writes the value as write logic does; false with the refusal's code when it cannot.</summary>
     bool TryWrite(long referenceId, ushort type, double value, out string problem);
 
     /// <summary>
@@ -44,7 +44,7 @@ internal interface IRestoreDevices
 /// token's state ending after a bye clears them unapplied; a world change drops them, counted.
 /// <para>
 /// Each restore applies only in the world it was registered in, and only while the device still holds the value the
-/// stream last wrote to that logic type: what write_logic and write_logic_many read back after the stream's write
+/// stream last wrote to that logic type: what write logic reads back after the stream's write
 /// (Wrote), or, when the stream has not written it since first registering it, the value the device held then (setting
 /// the same device and logic type again changes the value to write, not the check). A device that holds another value
 /// has been changed by someone else, and its restore is skipped and reported.
@@ -209,7 +209,7 @@ internal sealed class HeldRestores : ISessionEndStore
     }
 
     /// <summary>
-    /// write_logic or write_logic_many wrote value (what the device reads back after it) to a device for the call of
+    /// write logic wrote value (what the device reads back after it) to a device for the call of
     /// context: the stream's last written value for a restore it holds of that device and logic type.
     /// </summary>
     internal void Wrote(CallContext context, long referenceId, ushort logicType, double value)
