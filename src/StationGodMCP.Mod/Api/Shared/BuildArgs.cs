@@ -5,6 +5,7 @@ using System.Globalization;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Protocol;
+using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Api.Shared;
 
@@ -249,6 +250,28 @@ internal sealed class GasTarget
 
     /// <summary>A pipe network id or a pipe piece on it; null for the connected networks.</summary>
     internal ThingId? Network { get; }
+
+    /// <summary>A verb's gas_to: connected, or a pipe network's id or a pipe on it; null when left out.</summary>
+    internal static GasTarget? Of(string? gasTo, List<OptionProblem> problems)
+    {
+        if (gasTo == null)
+        {
+            return null;
+        }
+
+        if (string.Equals(gasTo.Trim(), "connected", System.StringComparison.OrdinalIgnoreCase))
+        {
+            return AnyConnected;
+        }
+
+        if (ThingId.TryRead(new JValue(gasTo), out ThingId network))
+        {
+            return new GasTarget(network);
+        }
+
+        problems.Add(new OptionProblem("gas_to", "is connected, or a pipe network's id or a pipe on it"));
+        return null;
+    }
 
     internal static GasTarget? Parse(Args args)
     {

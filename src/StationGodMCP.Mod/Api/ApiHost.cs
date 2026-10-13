@@ -55,8 +55,6 @@ internal static class ApiHost
             ["show_preview"] = static args => ShowPreviewApi.Handle(args),
             ["highlight"] = static args => HighlightApi.Handle(args),
             ["undo_job"] = static args => UndoJobApi.Handle(args),
-
-            ["remove_structure"] = static args => RemoveStructureApi.Handle(args),
             ["plan_cable_route"] = static args => PlanRouteApi.Handle(args, new CableRunKind()),
             ["plan_pipe_route"] = static args => PlanRouteApi.Handle(args, new PipeRunKind()),
             ["plan_chute_route"] = static args => PlanRouteApi.Handle(args, new ChuteRunKind()),

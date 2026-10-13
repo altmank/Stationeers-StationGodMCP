@@ -150,13 +150,6 @@ internal static class ReplyShapes
         {
             PlaceReport(), S<JobQueuedView>().Absent("JobQueuedView.Preflight"), BuildPoll()
         };
-        shapes["remove_structure"] = new[]
-        {
-            S<RemoveReportView>().List("RemoveReportView.Removals", 4).List("RemoveReportView.WillBurst", 0)
-                .List("RefundPlanView.Skipped", 0).List("RefundPlanView.Destinations", 2)
-                .Absent("RemoveReportView.Notes"),
-            BuildPoll()
-        };
         // Bounded by what exists: the scopes and timed methods, the methods called, the last 16 tick holds; scopes and
         // calls are cut by default (x-default-limits), the worst frame's pieces and calls by the view (Shown).
         shapes["profiling"] = new[]

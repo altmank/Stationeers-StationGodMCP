@@ -58,6 +58,7 @@ internal static class RetiredMethods
         "remove_cables",
         "remove_chutes",
         "remove_pipes",
+        "remove_structure",
         "replace_frames",
         "replace_walls",
         "resolve_ic_selectors",

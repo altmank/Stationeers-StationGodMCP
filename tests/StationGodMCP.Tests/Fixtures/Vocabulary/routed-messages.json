@@ -4,8 +4,7 @@
     "{player.Absence} Nothing to take materials from; pass from_id."
   ],
   "Api/BuildStructures.cs": [
-    "Pass job_id, or placements.",
-    "Pass job_id, or reference_ids."
+    "Pass job_id, or placements."
   ],
   "Api/FindSpot.cs": [
     "a port's joining cell is blocked (ports_reachable)",
@@ -73,6 +72,9 @@
     "{name} must be {reference_id, port}.",
     "{name}.at: no {kind.Noun} piece can stand in cell {cell}: {blocked}. Name a port with {reference_id, port}, or a free cell.",
     "{name}.port is required (connections lists the ends)."
+  ],
+  "Api/RemoveStructures.cs": [
+    "Pass job_id, or reference_ids."
   ],
   "Api/RocketForecast.cs": [
     "Argument 'min_confidence' must be from 0 to 1.",

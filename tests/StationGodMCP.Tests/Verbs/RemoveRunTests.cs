@@ -10,8 +10,8 @@ using Xunit;
 namespace StationGodMCP.Tests.Verbs;
 
 /// <summary>
-/// remove cable, pipe and chute without the game: a call names its pieces one way, by id, waypoints or cells; two ways
-/// is a problem, none is missing_target; a blank acknowledge_gas_lost is a problem.
+/// remove without the game: a cable, pipe or chute call names its pieces one way, by id, waypoints or cells; two ways
+/// is a problem, none is missing_target; a blank acknowledge_gas_lost is a problem; structure's gas_to.
 /// </summary>
 public sealed class RemoveRunTests
 {
@@ -61,5 +61,19 @@ public sealed class RemoveRunTests
         GasHoldArgs.Check(null, problems);
 
         Assert.Equal("acknowledge_gas_lost", Assert.Single(problems).Path);
+    }
+
+    [Fact]
+    public void RemoveStructuresGasToIsConnectedOrANetwork()
+    {
+        List<OptionProblem> problems = new();
+
+        Assert.Null(GasTarget.Of(null, problems));
+        Assert.Same(GasTarget.AnyConnected, GasTarget.Of(" Connected ", problems));
+        Assert.Equal(5012345L, GasTarget.Of("5012345", problems)!.Network!.Value.Value);
+        Assert.Empty(problems);
+
+        Assert.Null(GasTarget.Of("tank", problems));
+        Assert.Equal("gas_to", Assert.Single(problems).Path);
     }
 }
