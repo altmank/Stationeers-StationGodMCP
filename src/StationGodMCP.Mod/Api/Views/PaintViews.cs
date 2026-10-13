@@ -61,39 +61,3 @@ internal sealed class ThingColorView
     internal static ThingColorView Of(int index, string? name, bool isPrefabColor) =>
         index >= 0 ? new ThingColorView(index, name, isPrefabColor) : new ThingColorView(null, null, isPrefabColor);
 }
-
-/// <summary>A thing that was painted, with its colour before and after.</summary>
-internal sealed class PaintedView : BatchItemView
-{
-    internal PaintedView(int index, ThingId referenceId, ThingColorView previousColor, ThingColorView color)
-        : base(index, ok: true)
-    {
-        ReferenceId = referenceId;
-        PreviousColor = previousColor;
-        Color = color;
-    }
-
-    public ThingId ReferenceId { get; }
-
-    public ThingColorView PreviousColor { get; }
-
-    public ThingColorView Color { get; }
-}
-
-/// <summary>A thing that was not painted: why, and its colour when it could be read.</summary>
-internal sealed class NotPaintedView : BatchItemView
-{
-    internal NotPaintedView(int index, ThingId? referenceId, ThingColorView? previousColor, ApiException error)
-        : base(index, ok: false)
-    {
-        ReferenceId = referenceId;
-        PreviousColor = previousColor;
-        Error = new ErrorView(error.Code, error.Message);
-    }
-
-    public ThingId? ReferenceId { get; }
-
-    public ThingColorView? PreviousColor { get; }
-
-    public ErrorView Error { get; }
-}

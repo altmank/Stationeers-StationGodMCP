@@ -988,14 +988,14 @@ internal static class PlacePlanner
             return;
         }
 
-        ApiException? refusal = PaintColor.Resolve(color, prefab, swatches, out int colorIndex);
-        if (refusal != null)
+        try
+        {
+            placement.ColorIndex = PaintColor.Resolve(color, prefab, swatches);
+        }
+        catch (ApiException refusal)
         {
             plan.Problem(refusal.Code, refusal.Message, index);
-            return;
         }
-
-        placement.ColorIndex = colorIndex;
     }
 
     // Two placements at one spot in one slot: the cursor check sees only what stands now, so the job's own check

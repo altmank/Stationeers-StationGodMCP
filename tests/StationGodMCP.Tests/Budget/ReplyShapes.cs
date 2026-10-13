@@ -122,11 +122,6 @@ internal static class ReplyShapes
             S<ItemMovedView>(),
             S<BatchResultView>().List("BatchResultView.Results", W.TypicalBatch).Holds("BatchResultView.Results", typeof(ItemMovedView))
         };
-        shapes["paint"] = new[]
-        {
-            S<PaintColorsView>().List("PaintColorsView.Colors", 20),
-            S<BatchResultView>().List("BatchResultView.Results", W.TypicalBatch).Holds("BatchResultView.Results", typeof(PaintedView))
-        };
         shapes["paste_blueprint"] = new[]
         {
             S<BlueprintPasteStatusView>(), S<BlueprintUndoView>(), S<BlueprintPasteStartedView>()

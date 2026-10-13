@@ -38,6 +38,13 @@ internal static class NetworkReader
         return Page(kind, id, network.Members, network.Summary, paging, filter);
     }
 
+    /// <summary>The network's pieces, then its devices when devices asks, each once.</summary>
+    internal static List<Thing> Things(string kind, ThingId id, bool devices)
+    {
+        NetworkMembers members = Find(kind, id).Members;
+        return members.All.GetRange(0, devices ? members.All.Count : members.StructureCount);
+    }
+
     /// <summary>
     /// Every piece of the kinds named (all three when kind is null) standing in the box with an end of its kind that
     /// nothing is attached at, across every network: cells by y, then z, then x, kinds cable, pipe, chute.

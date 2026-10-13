@@ -39,6 +39,7 @@ internal static class RetiredMethods
         "looking_at",
         "network_snapshot",
         "outer_frames",
+        "paint",
         "planet",
         "plants",
         "player_vitals",

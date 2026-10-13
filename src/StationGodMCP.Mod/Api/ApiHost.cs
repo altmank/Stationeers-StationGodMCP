@@ -40,7 +40,6 @@ internal static class ApiHost
             ["dish_aim"] = static args => DishAimApi.Handle(args),
             ["trader_inventory"] = static args => TraderInventoryApi.Handle(args),
             ["solar_aim"] = static args => SolarAimApi.Handle(args),
-            ["paint"] = static args => PaintApi.Handle(args),
             ["advance_build_state"] = static args => AdvanceBuildStateApi.Handle(args),
             ["set_battery_charge"] = static args => SetBatteryChargeApi.Handle(args),
             ["move_player"] = static args => MovePlayerApi.Handle(args),

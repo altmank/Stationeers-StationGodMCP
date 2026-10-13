@@ -48,6 +48,14 @@ internal static class NetworkHandles
     internal static ThingId Resolve(NetworkTarget target, string option, UpgradeFamily family) =>
         Resolve(HandleOf(target, option), option, family);
 
+    /// <summary>The family a kind option names: cable, chute, or pipe.</summary>
+    internal static UpgradeFamily FamilyNamed(string kind) => kind switch
+    {
+        "cable" => new CableFamily(),
+        "chute" => new ChuteFamily(),
+        _ => new PipeFamily()
+    };
+
     /// <summary>
     /// The family of the network a verb's network option names, when the call names no kind: a piece's own, the kind
     /// of a device's port when one is named, a device's only kind of network, or a network id's kind; refused when the
