@@ -43,7 +43,6 @@ internal static class ApiHost
             ["undo_job"] = static args => UndoJobApi.Handle(args),
             ["trader_buy"] = static args => TraderBuyApi.Handle(args),
             ["trader_sell"] = static args => TraderSellApi.Handle(args),
-            ["paste_blueprint"] = static args => PasteBlueprintApi.Handle(args),
             ["mod_info"] = static args => ModInfoApi.Handle(args),
             ["profiling"] = static args => ProfilingApi.Handle(args)
         };

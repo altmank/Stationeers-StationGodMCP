@@ -53,6 +53,7 @@ internal static class RetiredMethods
         "network_snapshot",
         "outer_frames",
         "paint",
+        "paste_blueprint",
         "plan_cable_route",
         "plan_chute_route",
         "plan_pipe_route",
@@ -108,18 +109,4 @@ internal static class RetiredMethods
     };
 
     internal static bool Has(string? name) => name != null && ((HashSet<string>)Names).Contains(name);
-
-    /// <summary>
-    /// The arguments of a method catalogue entry whose form the game answers as a verb while the entry's other form
-    /// keeps its per-tool handler: paste_blueprint's status (inspect job). The checks that hold an entry's arguments to its
-    /// handler pass over them.
-    /// </summary>
-    internal static IReadOnlyDictionary<string, HashSet<string>> Forms { get; } =
-        new Dictionary<string, HashSet<string>>(StringComparer.Ordinal)
-        {
-            ["paste_blueprint"] = new HashSet<string>(StringComparer.Ordinal) { "status" }
-        };
-
-    internal static bool HasArgument(string method, string argument) =>
-        Forms.TryGetValue(method, out HashSet<string>? arguments) && arguments.Contains(argument);
 }

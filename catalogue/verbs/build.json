@@ -678,9 +678,24 @@
           },
           {"label": "BlueprintUndo", "view": "BlueprintUndo", "keys": {"message": "str"}},
           {
+            "label": "BlueprintPasteReport",
+            "view": "BlueprintPasteReport",
+            "keys": {
+              "file": "str",
+              "entries": "int",
+              "at": "list[float]",
+              "turn": "int",
+              "copy_y_angle": "float",
+              "expected_duration_s": "float",
+              "notes": "list[str]",
+              "problems": "list[{code: str, message: str, index: int | None, reference_id: str | None}]"
+            }
+          },
+          {
             "label": "BlueprintPasteStarted",
             "view": "BlueprintPasteStarted",
             "keys": {
+              "job_id": "str",
               "file": "str",
               "entries": "int",
               "anchor": "list[float]",

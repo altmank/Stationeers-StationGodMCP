@@ -7,21 +7,46 @@ using Xunit;
 
 namespace StationGodMCP.Tests;
 
-/// <summary>paste_blueprint: its replies, the turns it takes, the file it looks for and the time it expects.</summary>
+/// <summary>build blueprint: its replies, the turns it takes, the file it looks for and the time it expects.</summary>
 public sealed class BlueprintWireTests
 {
     private const string File = @"C:\Blueprints\frame-floor-3x3.blueprint";
 
     [Fact]
-    public void StartedReportsTheCallMade()
+    public void StartedReportsTheCallMadeAndItsJobId()
     {
         var expected = new
         {
-            started = true, file = File, entries = 9, anchor = new[] { 10.0, 2.5, -4.0 }, rotation = 90,
-            copy_y_angle = 180f, expected_duration_s = 2.0
+            started = true, job_id = "paste", file = File, entries = 9, anchor = new[] { 10.0, 2.5, -4.0 },
+            rotation = 90, copy_y_angle = 180f, expected_duration_s = 2.0
         };
         WireCheck.Same(expected,
             new BlueprintPasteStartedView(new BlueprintFileView(File, 9), new[] { 10.0, 2.5, -4.0 }, 90, 180f, 2.0));
+    }
+
+    [Fact]
+    public void TheReportBodyCarriesTheCallAndWhatAReportCannotShow()
+    {
+        var expected = new
+        {
+            file = File, entries = 40, at = new[] { 1.0, 2.0, 3.0 }, turn = 90, copy_y_angle = 180f,
+            expected_duration_s = 6.0,
+            notes = new[] { BlueprintPasteReportView.StartChecksNote, BlueprintPasteReportView.LoosePiecesNote }
+        };
+        WireCheck.Same(expected,
+            new BlueprintPasteReportView(new BlueprintFileView(File, 40), new[] { 1.0, 2.0, 3.0 }, 90, 180f, 6.0));
+    }
+
+    [Fact]
+    public void APasteStillPlacingRefusesTheNextOneInVerbWords()
+    {
+        Assert.Null(PasteGate.Busy(false, false, false, 0));
+        Assert.Null(PasteGate.Busy(true, true, false, 12));
+        Assert.Null(PasteGate.Busy(true, false, true, 12));
+        Assert.Equal(
+            "Another paste is still placing (12 pieces created so far); nothing was started. Wait until " +
+            "inspect {what: \"job\", id: \"paste\"} says it is no longer active, then build the blueprint again.",
+            PasteGate.Busy(true, false, false, 12));
     }
 
     [Fact]

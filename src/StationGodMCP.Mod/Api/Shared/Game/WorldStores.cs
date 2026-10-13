@@ -56,7 +56,7 @@ internal static class WorldStores
         scope.Register("flight_logs", RocketFlightRecorder.ClearAll);
         scope.Register("gas_moves", GasMoves.Clear);
         scope.Register("planet_gas_removals", PlanetGasRemoval.Clear);
-        scope.Register("blueprint_paste", PasteBlueprintApi.ForgetWorld);
+        scope.Register("blueprint_paste", BlueprintPastes.ForgetWorld);
         scope.Register("highlights", static () => Highlights.Clear());
         scope.Register("previews", static () => Previews.Clear());
         scope.Register("remote_views", Net.RemoteViews.Clear);

@@ -2316,7 +2316,17 @@ def build(what: Literal['blueprint'], *,
       other_active: bool
     (BlueprintUndo)
       message: str
+    (BlueprintPasteReport)
+      file: str
+      entries: int
+      at: list[float]
+      turn: int
+      copy_y_angle: float
+      expected_duration_s: float
+      notes: list[str]
+      problems: list[{code: str, message: str, index: int | None, reference_id: str | None}]
     (BlueprintPasteStarted)
+      job_id: str
       file: str
       entries: int
       anchor: list[float]

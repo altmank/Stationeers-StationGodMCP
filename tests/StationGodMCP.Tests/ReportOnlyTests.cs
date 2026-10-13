@@ -13,9 +13,9 @@ using Xunit;
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// The report path of the act-at-once writes (move_item, write_memory, run_console_command, plant_genes edits,
-/// paste_blueprint): dry_run true runs the acting call's checks through the same WriteCheck and never acts. A check
-/// that refuses the acting call answers the report ok, with that refusal as a problem.
+/// The report path of the act-at-once writes (move_item, write_memory, run_console_command, plant_genes edits):
+/// dry_run true runs the acting call's checks through the same WriteCheck and never acts. A check that refuses the
+/// acting call answers the report ok, with that refusal as a problem.
 /// </summary>
 public sealed class ReportOnlyTests
 {
@@ -284,35 +284,6 @@ public sealed class ReportOnlyTests
         Assert.Equal("genes", Assert.Single(none).Path);
         Assert.NotNull(GeneOrders.Of(JObject.Parse("""{"DarkPerDay": -0.5}"""), new List<OptionProblem>()));
     }
-
-    // ---- paste_blueprint ----
-
-    [Fact]
-    public void APasteReportGivesTheFileAnchorAndTurnAndStartsNothing()
-    {
-        BlueprintPasteReportView report = new BlueprintPasteReportView(new BlueprintFileView("C:/bp/base.blueprint", 40),
-            new[] { 1.0, 2.0, 3.0 }, 90, 180f, 6.0);
-
-        Assert.Equal(
-            "{\"report_only\":true,\"problems\":[],\"file\":\"C:/bp/base.blueprint\",\"entries\":40," +
-            "\"anchor\":[1.0,2.0,3.0],\"rotation\":90,\"copy_y_angle\":180.0,\"expected_duration_s\":6.0}",
-            WireCheck.New(report));
-    }
-
-    [Fact]
-    public void APasteStillPlacingIsAProblemInTheReport()
-    {
-        Func<Plan> checks = () =>
-        {
-            PasteGate.Require(true, false, false, 12);
-            return new Plan();
-        };
-
-        Assert.Null(Record.Exception(() => PasteGate.Require(true, true, false, 12)));
-        Assert.Equal("paste_refused", ProblemCode(checks));
-        Assert.Equal("paste_refused", ActingCode(checks));
-    }
-
 
     private static string? ProblemCode(Func<Plan> checks)
     {

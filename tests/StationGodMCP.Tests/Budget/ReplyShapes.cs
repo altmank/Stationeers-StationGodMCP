@@ -80,10 +80,6 @@ internal static class ReplyShapes
                 .List("RuntimeView.Methods", D.RuntimeMethods).List("RuntimeView.CatalogueDrift", 0).List("RuntimeView.Connections", 2).List("ConnectionView.Methods", ConnectionView.MethodsShown)
                 .List("ProfilingSummaryView.Top", ProfilingSummaryView.TopShown)
         };
-        shapes["paste_blueprint"] = new[]
-        {
-            S<BlueprintPasteStatusView>(), S<BlueprintUndoView>(), S<BlueprintPasteStartedView>()
-        };
         // Bounded by what exists: the scopes and timed methods, the methods called, the last 16 tick holds; scopes and
         // calls are cut by default (x-default-limits), the worst frame's pieces and calls by the view (Shown).
         shapes["profiling"] = new[]

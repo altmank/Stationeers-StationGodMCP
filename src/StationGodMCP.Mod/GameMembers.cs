@@ -381,7 +381,7 @@ internal static class GameMembers
     internal static readonly GameMethod RemoteVaultConnectionError = VaultMethod(RemoteVaultType,
         "GetConnectionError", BindingFlags.Instance | BindingFlags.Public);
 
-    // ---- BlueprintMod (paste_blueprint): another mod, optional; its absence is not a game change ----
+    // ---- BlueprintMod (build blueprint's paste): another mod, optional; its absence is not a game change ----
     internal static readonly GameType BlueprintCommands = Optional("BlueprintMod.BlueprintCommands");
     internal static readonly GameType BlueprintSerializer = Optional("BlueprintMod.BlueprintSerializer");
     internal static readonly GameType BlueprintModPlugin = Optional("BlueprintMod.BlueprintMod");
@@ -416,6 +416,22 @@ internal static class GameMembers
     internal static readonly GameField BlueprintCopyYAngle =
         BlueprintField(BlueprintData, "BlueprintData", "CopyYAngle");
     internal static readonly GameField BlueprintEntries = BlueprintField(BlueprintData, "BlueprintData", "Entries");
+    // A report lists the loaded file's own pieces: one BlueprintEntry each, and PlayerLocalOffset is the paste
+    // geometry's origin (ComputePastePositions).
+    internal static readonly GameType BlueprintEntry = Optional("BlueprintMod.BlueprintEntry");
+    internal static readonly GameType BlueprintVector = Optional("BlueprintMod.SerializableVector3");
+    internal static readonly GameField BlueprintPlayerLocalOffset =
+        BlueprintField(BlueprintData, "BlueprintData", "PlayerLocalOffset");
+    internal static readonly GameField BlueprintEntryPrefabName =
+        BlueprintField(BlueprintEntry, "BlueprintEntry", "PrefabName");
+    internal static readonly GameField BlueprintEntryRelativePosition =
+        BlueprintField(BlueprintEntry, "BlueprintEntry", "RelativePosition");
+    internal static readonly GameField BlueprintVectorX =
+        BlueprintField(BlueprintVector, "SerializableVector3", "X");
+    internal static readonly GameField BlueprintVectorY =
+        BlueprintField(BlueprintVector, "SerializableVector3", "Y");
+    internal static readonly GameField BlueprintVectorZ =
+        BlueprintField(BlueprintVector, "SerializableVector3", "Z");
     internal static readonly GameField PasteThings = PasteField("PastedThings");
     internal static readonly GameField PasteCreated = PasteField("Created");
     internal static readonly GameField PasteFailed = PasteField("Failed");

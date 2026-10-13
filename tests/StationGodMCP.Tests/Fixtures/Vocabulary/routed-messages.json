@@ -5,10 +5,6 @@
     "{name}: {id} names no thing and no cable, pipe or chute network. A network's id changes after almost every edit; name a piece on it instead.",
     "{name}: {thing.PrefabName} {id} is on no network."
   ],
-  "Api/PasteBlueprint.cs": [
-    "Argument 'anchor' is required.",
-    "Argument 'rotation' must be 0, 90, 180 or 270."
-  ],
   "Api/RemoveStructures.cs": [
     "Pass job_id, or reference_ids."
   ],
@@ -19,9 +15,6 @@
   ],
   "Api/Shared/Args.cs": [
     "{_path}.{name}"
-  ],
-  "Api/Shared/BlueprintArgs.cs": [
-    "Another paste is still placing ({created} pieces created so far); nothing was started. Wait until paste_blueprint status says it is no longer active, then paste again."
   ],
   "Api/Shared/BuildArgs.cs": [
     "A real run needs dry_run: false and confirm: true; nothing was changed.",

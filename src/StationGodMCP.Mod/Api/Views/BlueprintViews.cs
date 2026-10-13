@@ -1,13 +1,15 @@
 #nullable enable
 
 using System.Collections.Generic;
-using StationGodMCP.Api.Shared;
 
 namespace StationGodMCP.Api.Views;
 
-/// <summary>paste_blueprint: a paste BlueprintMod accepted and is now running as its coroutine.</summary>
+/// <summary>build blueprint: a paste BlueprintMod accepted and is now running as its own paced coroutine.</summary>
 internal sealed class BlueprintPasteStartedView
 {
+    /// <summary>inspect job's id for a paste: the newest paste, whoever started it.</summary>
+    internal const string PasteJobId = "paste";
+
     internal BlueprintPasteStartedView(BlueprintFileView file, double[] anchor, int rotation, float copyYAngle,
         double expectedDurationS)
     {
@@ -20,6 +22,9 @@ internal sealed class BlueprintPasteStartedView
     }
 
     public bool Started => true;
+
+    /// <summary>inspect job's id for this paste: "paste".</summary>
+    public string JobId => PasteJobId;
 
     /// <summary>The blueprint file's full path.</summary>
     public string File { get; }
@@ -39,37 +44,50 @@ internal sealed class BlueprintPasteStartedView
 }
 
 /// <summary>
-/// paste_blueprint's report (dry_run): the paste its checks passed, read from the blueprint file; nothing started.
+/// build blueprint's report body (Report.Of): the paste its checks passed, read from the blueprint file, with every
+/// piece a target and nothing started. The body holds the file, and what the call gave: where the anchor lands, the
+/// turn added to the copied angle, that angle and how long BlueprintMod's paced placement takes, plus the two things
+/// a report cannot show (the mod's own start-time checks, and the pieces it skips).
 /// </summary>
 internal sealed class BlueprintPasteReportView
 {
-    internal BlueprintPasteReportView(BlueprintFileView file, double[] anchor, int rotation, float copyYAngle,
+    /// <summary>What a report cannot show, said in the body: BlueprintMod checks the paste itself only while it starts.</summary>
+    internal const string StartChecksNote =
+        "BlueprintMod's own checks (the same blueprint already there, DeanamicMatter in survival) run only while the " +
+        "paste starts; a report cannot show them.";
+
+    /// <summary>A piece a paste leaves out: BlueprintMod skips any entry with no build state.</summary>
+    internal const string LoosePiecesNote =
+        "A piece with no build state is a loose item BlueprintMod skips; the paste places every other piece.";
+
+    internal BlueprintPasteReportView(BlueprintFileView file, double[] at, int turn, float copyYAngle,
         double expectedDurationS)
     {
         File = file.Path;
         Entries = file.Entries;
-        Anchor = anchor;
-        Rotation = rotation;
+        At = at;
+        Turn = turn;
         CopyYAngle = copyYAngle;
         ExpectedDurationS = expectedDurationS;
     }
 
-    public bool ReportOnly => true;
-
-    /// <summary>Always empty: a refused check answers ReportRefusedView instead.</summary>
-    public List<ProblemView> Problems { get; } = new List<ProblemView>();
-
+    /// <summary>The blueprint file's full path.</summary>
     public string File { get; }
 
     public int Entries { get; }
 
-    public double[] Anchor { get; }
+    /// <summary>[x, y, z] in metres where the blueprint's anchor lands, as given.</summary>
+    public double[] At { get; }
 
-    public int Rotation { get; }
+    /// <summary>Degrees added to the angle the blueprint was copied at: 0, 90, 180 or 270.</summary>
+    public int Turn { get; }
 
+    /// <summary>BlueprintData.CopyYAngle, the paste's base angle, so the pieces land on the grid.</summary>
     public float CopyYAngle { get; }
 
     public double ExpectedDurationS { get; }
+
+    public List<string> Notes { get; } = new List<string> { StartChecksNote, LoosePiecesNote };
 }
 
 /// <summary>A blueprint file and how many entries it holds.</summary>
@@ -122,8 +140,8 @@ internal sealed class BlueprintPasteCountsView
 }
 
 /// <summary>
-/// paste_blueprint status: the last paste this tool started. Counts are null when none was started since the mod
-/// loaded, or when the paste finished inside the call that started it (no operation was left to read).
+/// inspect job id "paste": the last blueprint paste this mod started. Counts are null when none was started since the
+/// mod loaded, or when the paste finished inside the call that started it (no operation was left to read).
 /// </summary>
 internal sealed class BlueprintPasteStatusView
 {
@@ -187,7 +205,7 @@ internal sealed class BlueprintPasteStatusView
         new BlueprintPasteStatusView(true, active, counts, file, otherActive);
 }
 
-/// <summary>paste_blueprint undo: what BlueprintMod's bpundo answered.</summary>
+/// <summary>undo id "paste": what BlueprintMod's own bpundo answered.</summary>
 internal sealed class BlueprintUndoView
 {
     internal BlueprintUndoView(string message)

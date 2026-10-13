@@ -7,7 +7,7 @@ namespace StationGodMCP.Api.Shared.Game;
 
 /// <summary>
 /// One job's status as inspect job reads it, picked by the kind its id names: "paste" the last blueprint paste
-/// (PasteBlueprintApi.Status), a number a gas move (GasMoves.Outcome: queued until applied), anything else a held-tick
+/// (BlueprintPastes.Status), a number a gas move (GasMoves.Outcome: queued until applied), anything else a held-tick
 /// job (HeldTickJobs.Status: build, removal, run, swap, upgrade, undo), in brief (no preflight, and no final check
 /// unless refused) unless verbose. Read only.
 /// </summary>
@@ -20,7 +20,7 @@ internal static class JobStatus
         string trimmed = id.Trim();
         if (string.Equals(trimmed, Paste, System.StringComparison.OrdinalIgnoreCase))
         {
-            return PasteBlueprintApi.Status();
+            return BlueprintPastes.Status();
         }
 
         if (long.TryParse(trimmed, NumberStyles.Integer, CultureInfo.InvariantCulture, out long transfer))

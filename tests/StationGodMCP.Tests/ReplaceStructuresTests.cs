@@ -452,7 +452,6 @@ public sealed class ToolRegistrationTests
     {
         "highlight",
         "mod_info",
-        "paste_blueprint",
         "profiling",
         "read_console",
         "run_console_command",

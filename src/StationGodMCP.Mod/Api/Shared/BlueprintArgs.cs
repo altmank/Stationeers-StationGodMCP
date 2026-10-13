@@ -2,7 +2,6 @@
 
 using System;
 using System.IO;
-using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api.Shared;
 
@@ -26,7 +25,7 @@ internal sealed class PasteRotation
         degrees == 0 || degrees == 90 || degrees == 180 || degrees == 270 ? new PasteRotation(degrees) : null;
 }
 
-/// <summary>Where paste_blueprint looks for a blueprint file, and how long BlueprintMod takes to paste it.</summary>
+/// <summary>Where build blueprint looks for a blueprint file, and how long BlueprintMod takes to paste it.</summary>
 internal static class BlueprintFiles
 {
     internal const string Extension = ".blueprint";
@@ -74,8 +73,7 @@ internal static class PasteGate
     internal static string? Busy(bool placing, bool complete, bool cancelled, int created) =>
         placing && !complete && !cancelled
             ? $"Another paste is still placing ({created} pieces created so far); nothing was started. Wait until " +
-                $"{Vocabulary.Tool("paste_blueprint")} {Vocabulary.Arg("status")} says it is no longer active, then " +
-                "paste again."
+                "inspect {what: \"job\", id: \"paste\"} says it is no longer active, then build the blueprint again."
             : null;
 
     /// <summary>BlueprintMod's refusal of a paste, and this gate's.</summary>
