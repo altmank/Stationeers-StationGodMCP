@@ -111,7 +111,7 @@ internal static class VaultWithdrawApi
             : throw ApiErrors.Refused("no_slots", $"{Names.Of(holder)} has no slots.");
     }
 
-    private static SlotChoice Choice(Args args) => args.Has("to_slot") ? SlotChoice.Parse(args) : new SlotChoice.Auto();
+    private static SlotChoice Choice(Args args) => args.Has("to_slot") ? MoveItemRequest.SlotOf(args) : new SlotChoice.Auto();
 }
 
 /// <summary>Which stored thing a withdrawal names: prefab_name, prefab_hash, or reagent (ingots only).</summary>

@@ -36,15 +36,8 @@
   ],
   "Api/MoveItem.cs": [
     "Argument 'to_slot' is required: a slot index, or \"auto\".",
-    "Slot {index} of {Names.Of(target)} only shows the vault's store; use vault_deposit to store items.",
-    "Slot {slot.SlotIndex} of {Names.Of(target)} is a plant slot: planting takes one {Names.Of(item)} off the stack, as a player plants, so pass quantity 1.",
-    "The game threw during the move ({thrown.GetType().Name}: {thrown.Message}), but the slot holds the result, so the move is done; check it with container_contents.",
     "Unknown move_item form.",
-    "Unknown to_slot.",
-    "force needs to_slot as a slot index, not \"auto\".",
-    "{Names.Of(item)} is growing in {SlotAccess.Label(from)}: a player never takes a plant out whole, only harvests its fruit or seeds once it is mature or seeding (see plants) or clears it.",
-    "{SlotAccess.Label(slot)} holds {Names.Of(slot.Get())}, and merge is false, so {Names.Of(item)} does not join it.",
-    "{SlotAccess.Label(slot)} is a fertiliser slot: a player adds one {Names.Of(item)} off the stack, so pass quantity 1."
+    "force needs to_slot as a slot index, not \"auto\"."
   ],
   "Api/PasteBlueprint.cs": [
     "Argument 'anchor' is required.",
@@ -207,6 +200,15 @@
   "Api/Shared/Game/Lint/LintDryRun.cs": [
     "The dry_run lint rules could not run: {error.GetType().Name}: {error.Message}",
     "{finding.Message} Refused by lint rule {finding.Code} (level problem). To allow it, set its \"level\" to \"warning\" or \"enabled\": false in the save's lint-rules.json (lint_rules lists the files)."
+  ],
+  "Api/Shared/Game/MovePlanner.cs": [
+    "Slot {index} of {Names.Of(target)} only shows the vault's store; use vault_deposit to store items.",
+    "Slot {slot.SlotIndex} of {Names.Of(target)} is a plant slot: planting takes one {Names.Of(item)} off the stack, as a player plants, so pass quantity 1.",
+    "The game threw during the move ({thrown.GetType().Name}: {thrown.Message}), but the slot holds the result, so the move is done; check it with container_contents.",
+    "Unknown to_slot.",
+    "{Names.Of(item)} is growing in {SlotAccess.Label(from)}: a player never takes a plant out whole, only harvests its fruit or seeds once it is mature or seeding (see plants) or clears it.",
+    "{SlotAccess.Label(slot)} holds {Names.Of(slot.Get())}, and merge is false, so {Names.Of(item)} does not join it.",
+    "{SlotAccess.Label(slot)} is a fertiliser slot: a player adds one {Names.Of(item)} off the stack, so pass quantity 1."
   ],
   "Api/Shared/Game/Refunds.cs": [
     "refund_to names {Names.Of(thing)} {id}, which has no slot a refund could go into.",
