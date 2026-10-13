@@ -6,6 +6,7 @@ using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Verbs;
 using Xunit;
 
 namespace StationGodMCP.Tests;
@@ -106,6 +107,57 @@ public sealed class ReportOnlyTests
         Assert.Equal(0, counter.Acts);
         Assert.Equal(refused.Code, (string?)report["problems"]![0]!["code"]);
         Assert.Equal(refused.Message, (string?)report["problems"]![0]!["message"]);
+    }
+
+    // ---- a verb write: report until confirm ----
+
+    private static readonly ReportConfirm Reporting = new ReportConfirm(true, false, null);
+
+    private static readonly ReportConfirm Confirmed = new ReportConfirm(true, true, null);
+
+    [Fact]
+    public void AVerbReportDescribesThePlanAndNeverActs()
+    {
+        Counter counter = new Counter();
+        VerbOutcome outcome = WriteCheck<Plan>.Run(() => new Plan()).Outcome(Reporting,
+            plan => new VerbOutcome.Answered(new JObject { ["acted"] = (string)counter.Act(plan) }),
+            plan => Report.Of(new[] { new ReportTarget("5", null, (string)counter.Describe(plan), 0, 1, "[undo]") }));
+
+        Assert.Equal(0, counter.Acts);
+        JObject report = ((VerbOutcome.Answered)outcome).Reply;
+        Assert.True((bool)report["report_only"]!);
+        Assert.Equal("[5, described, 0 -> 1] [undo]", (string?)report["targets"]![0]!["text"]);
+    }
+
+    [Fact]
+    public void AConfirmedVerbWriteActsOnce()
+    {
+        Counter counter = new Counter();
+        VerbOutcome outcome = WriteCheck<Plan>.Run(() => new Plan()).Outcome(Confirmed,
+            plan => new VerbOutcome.Answered(new JObject { ["acted"] = (string)counter.Act(plan) }),
+            plan => throw new InvalidOperationException("an acting call does not report"));
+
+        Assert.Equal((1, 0), (counter.Acts, counter.Descriptions));
+        Assert.Equal("acted", (string?)((VerbOutcome.Answered)outcome).Reply["acted"]);
+    }
+
+    [Fact]
+    public void AVerbReportListsTheRefusalTheActingCallAnswers()
+    {
+        Func<Plan> checks = () => throw ApiErrors.Refused("memory_not_writable", "Device 5 has no writable memory.");
+        Counter counter = new Counter();
+
+        VerbError refused = ((VerbOutcome.Refused)WriteCheck<Plan>.Run(checks)
+            .Outcome(Confirmed, _ => throw new InvalidOperationException(), _ => new JObject())).Error;
+        JObject report = ((VerbOutcome.Answered)WriteCheck<Plan>.Run(checks)
+            .Outcome(Reporting, _ => throw new InvalidOperationException(), _ => new JObject())).Reply;
+
+        Assert.Equal(0, counter.Acts);
+        Assert.Equal("memory_not_writable", refused.Code);
+        Assert.Equal(
+            "{\"problems\":[{\"code\":\"memory_not_writable\",\"message\":\"Device 5 has no writable memory.\"}]," +
+            "\"report_only\":true,\"targets\":[]}",
+            report.ToString(Newtonsoft.Json.Formatting.None));
     }
 
     [Fact]

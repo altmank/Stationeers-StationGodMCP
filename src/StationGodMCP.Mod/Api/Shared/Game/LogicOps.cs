@@ -8,6 +8,7 @@ using StationGodMCP.Api.Shared.Game.Lint;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure.Lint;
 using StationGodMCP.Pure.Protocol;
+using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Api.Shared.Game;
 
@@ -39,16 +40,16 @@ internal static class LogicOps
     /// controllers that write the same logic type on it (DrivenBy). They act on nothing; index names the entry of a
     /// list in the warnings.
     /// </summary>
-    internal static LogicWritePlan Check(DeviceScope scope, LogicWriteArgs write, bool allowLint, int? index)
+    internal static LogicWritePlan Check(DeviceScope scope, ThingId id, LogicType type, double value, bool allowLint,
+        int? index)
     {
-        ScopedTarget device = Devices.Require(scope, write.Id);
-        LogicTypes.RequireWritable(device, write.Type);
-        double? previous = LogicTypes.CanRead(device, write.Type) ? ValueOf(device, write.Type) : null;
-        OpeningVerdict verdict = OpeningWrites.Judge(device, write.Type, previous, write.Value);
-        LogicRead requested = new LogicRead(new ThingId(device.ReferenceId), LogicTypes.ViewOf(write.Type),
-            write.Value);
-        return new LogicWritePlan(scope.Id, device, write.Type,
-            WriteLint.Checked(requested, previous, verdict, allowLint, index, DrivenBy.For(device, write.Type)));
+        ScopedTarget device = Devices.Require(scope, id);
+        LogicTypes.RequireWritable(device, type);
+        double? previous = LogicTypes.CanRead(device, type) ? ValueOf(device, type) : null;
+        OpeningVerdict verdict = OpeningWrites.Judge(device, type, previous, value);
+        LogicRead requested = new LogicRead(new ThingId(device.ReferenceId), LogicTypes.ViewOf(type), value);
+        return new LogicWritePlan(scope.Id, device, type,
+            WriteLint.Checked(requested, previous, verdict, allowLint, index, DrivenBy.For(device, type)));
     }
 
     /// <summary>
@@ -66,7 +67,7 @@ internal static class LogicOps
     }
 
     /// <summary>
-    /// The game write of write_logic and of a held restore: the device's own setter, as a chip's s instruction writes;
+    /// The game write of write logic and of a held restore: the device's own setter, as a chip's s instruction writes;
     /// refused when the device does not expose the type as writable, write_failed when its setter throws. It runs no
     /// write rules and reports to no held restore: its callers judge first, a checked write in Check and a held
     /// restore in HeldRestores (both through OpeningWrites.Judge), and a restore is the mod's own write.
@@ -86,82 +87,34 @@ internal static class LogicOps
     }
 
     /// <summary>
-    /// write_logic_many's writes in order, each failing alone: an entry's refusal (lint_refused included) fails that
-    /// entry, and the rest still run. Acting, each entry is checked right before its own write, after the writes
-    /// before it; report checks each against the world as it is, without the writes before it, and writes nothing.
-    /// The entries' warnings, each with its index, go to warnings.
+    /// write logic's writes in order, each failing alone: an entry's refusal (lint_refused included) fails that entry,
+    /// and the rest still run. Acting, each entry is checked right before its own write, after the writes before it;
+    /// report checks each against the world as it is, without the writes before it, and writes nothing. An id may be
+    /// "looking_at". indexed gives each write's warnings its entry's index.
     /// </summary>
-    internal static BatchResultView WriteMany(DeviceScope scope, List<Args?> items, bool allowLint, bool report,
-        List<BuildIssueView> warnings)
+    internal static List<LogicWriteResult> WriteMany(DeviceScope scope, IReadOnlyList<LogicOrder> orders,
+        bool allowLint, bool report, bool indexed, string label)
     {
         using Controllers.Scope controllers = Controllers.Open();
-        BatchBuilder batch = new BatchBuilder(items.Count);
-        for (int index = 0; index < items.Count; index++)
+        List<LogicWriteResult> results = new List<LogicWriteResult>(orders.Count);
+        foreach (LogicOrder order in orders)
         {
-            if (TryWrite(scope, items[index], index, allowLint, report, warnings, out BatchItemView? done,
-                    out ApiException? error))
+            try
             {
-                batch.Succeeded(done!);
+                LogicWritePlan plan = Check(scope, TargetIds.Of(order.Id, label), LogicTypes.Parse(order.Logic),
+                    order.Value, allowLint, indexed ? order.Index : null);
+                results.Add(report
+                    ? new LogicWriteResult.Planned(order.Index, plan.Device.DisplayName, plan.Checked)
+                    : new LogicWriteResult.Written(order.Index, plan.Device.DisplayName, Apply(plan)));
             }
-            else
+            catch (ApiException refused)
             {
-                batch.Failed(Failure(items[index], index, error!));
+                results.Add(new LogicWriteResult.Failed(order.Index, order.Id, VerbError.Of(refused)));
             }
         }
 
-        return batch.Build();
+        return results;
     }
-
-    private static bool TryWrite(DeviceScope scope, Args? item, int index, bool allowLint, bool report,
-        List<BuildIssueView> warnings, out BatchItemView? done, out ApiException? error)
-    {
-        done = null;
-        error = item == null ? NotAnObject("writes", index) : null;
-        if (item == null)
-        {
-            return false;
-        }
-
-        try
-        {
-            LogicWritePlan plan = Check(scope, LogicWriteArgs.Read(item), allowLint, index);
-            done = report
-                ? new LogicWritePlannedItemView(index, plan.Checked)
-                : (BatchItemView)new LogicWriteItemView(index, Apply(plan));
-            warnings.AddRange(plan.Checked.Warnings);
-            return true;
-        }
-        catch (ApiException refused)
-        {
-            error = refused;
-            return false;
-        }
-    }
-
-    // A failed entry names the device and logic type it asked for, where they can be read from it.
-    private static LogicFailedItemView Failure(Args? item, int index, ApiException error)
-    {
-        ThingId? id = item != null && ThingId.TryRead(item.Optional("reference_id"), out ThingId read)
-            ? read
-            : (ThingId?)null;
-        return new LogicFailedItemView(index, id, item != null ? NamedType(item) : null, error);
-    }
-
-    private static LogicTypeView? NamedType(Args item)
-    {
-        try
-        {
-            return LogicTypes.ViewOf(LogicTypes.Parse(item.Optional("logic_type")));
-        }
-        catch (ApiException)
-        {
-            // The entry's logic_type is missing or not a logic type: its error already says so.
-            return null;
-        }
-    }
-
-    private static ApiException NotAnObject(string name, int index) =>
-        ApiErrors.InvalidArgument($"Argument '{Vocabulary.Path(name)}[{index}]' must be an object.");
 
     private static double ValueOf(ScopedTarget device, LogicType type)
     {
@@ -175,27 +128,6 @@ internal static class LogicOps
             throw ApiErrors.Refused("read_failed", exception.Message);
         }
     }
-}
-
-/// <summary>One write's arguments, read before its checks: the device, the logic type and the value.</summary>
-internal sealed class LogicWriteArgs
-{
-    private LogicWriteArgs(ThingId id, LogicType type, double value)
-    {
-        Id = id;
-        Type = type;
-        Value = value;
-    }
-
-    internal ThingId Id { get; }
-
-    internal LogicType Type { get; }
-
-    internal double Value { get; }
-
-    internal static LogicWriteArgs Read(Args args) =>
-        new LogicWriteArgs(args.ThingId("reference_id"), LogicTypes.Parse(args.Optional("logic_type")),
-            args.Double("value"));
 }
 
 /// <summary>

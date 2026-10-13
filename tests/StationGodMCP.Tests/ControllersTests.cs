@@ -11,6 +11,7 @@ using StationGodMCP.Pure.Catalogue;
 using StationGodMCP.Pure.Controllers;
 using StationGodMCP.Pure.Lint;
 using StationGodMCP.Pure.Scheduling;
+using StationGodMCP.Pure.Verbs;
 using Xunit;
 
 namespace StationGodMCP.Tests;
@@ -184,11 +185,11 @@ public sealed class ControllersTests
         LogicRead requested = new LogicRead(new ThingId(Door), new LogicTypeView(28, "On"), 1);
         Controller chip = new Controller(ControllerKinds.Chip, Housing, "StructureCircuitHousing", "On", "d0", 4, false);
 
-        JObject plain = JObject.Parse(ApiJson.WriteShared(new LogicWriteView("world", new LogicWrite(requested, 0, 1))));
-        JObject driven = JObject.Parse(ApiJson.WriteShared(new LogicWriteView("world", new LogicWrite(requested, 0, 1,
-            ControllerView.ListOrNull(new List<Controller> { chip })))));
-        JObject item = JObject.Parse(ApiJson.WriteShared(new LogicWriteItemView(0, new LogicWrite(requested, 0, 1,
-            ControllerView.ListOrNull(new List<Controller> { chip })))));
+        JObject plain = Acted(new LogicWrite(requested, 0, 1), false);
+        JObject driven = Acted(new LogicWrite(requested, 0, 1, ControllerView.ListOrNull(new List<Controller> { chip })),
+            false);
+        JObject item = (JObject)Acted(new LogicWrite(requested, 0, 1,
+            ControllerView.ListOrNull(new List<Controller> { chip })), true)["results"]![0]!;
 
         Assert.Null(plain["driven_by"]);
         JObject listed = (JObject)driven["driven_by"]![0]!;
@@ -210,18 +211,15 @@ public sealed class ControllersTests
             ControllerView.ListOrNull(new List<Controller> { chip }));
         LogicWriteChecked plain = WriteLint.Checked(requested, 0, OpeningVerdict.Closed, false, null, null);
 
-        JObject report = JObject.Parse(ApiJson.WriteShared(new LogicWriteReportView("world", driven)));
-        JObject planned = JObject.Parse(ApiJson.WriteShared(new LogicWritePlannedItemView(0, driven)));
-        JObject written = JObject.Parse(ApiJson.WriteShared(new LogicWriteView("world", new LogicWrite(driven, 1))));
+        JObject report = Reported(driven);
+        JObject written = Acted(new LogicWrite(driven, 1), false);
 
         Assert.True((bool)report["report_only"]!);
-        JObject listed = (JObject)report["driven_by"]![0]!;
+        JObject listed = (JObject)report["targets"]![0]!["driven_by"]![0]!;
         Assert.Equal("chip", (string?)listed["kind"]);
         Assert.Equal("100", (string?)listed["reference_id"]);
-        Assert.Equal(listed, planned["driven_by"]![0]);
         Assert.Equal(listed, written["driven_by"]![0]);
-        Assert.Null(JObject.Parse(ApiJson.WriteShared(new LogicWriteReportView("world", plain)))["driven_by"]);
-        Assert.Null(JObject.Parse(ApiJson.WriteShared(new LogicWritePlannedItemView(0, plain)))["driven_by"]);
+        Assert.Null(Reported(plain)["targets"]![0]!["driven_by"]);
     }
 
     // ---- the parse cache ----
@@ -382,6 +380,13 @@ public sealed class ControllersTests
             return direct;
         }
     }
+
+    private static JObject Acted(LogicWrite write, bool rows) =>
+        ((VerbOutcome.Answered)LogicWriteReplies.Acted("world",
+            new LogicWriteResult[] { new LogicWriteResult.Written(0, "Door", write) }, rows)).Reply;
+
+    private static JObject Reported(LogicWriteChecked write) =>
+        LogicWriteReplies.Reported("world", new LogicWriteResult[] { new LogicWriteResult.Planned(0, "Door", write) });
 
     private static ProgramSource Chip(string source, params long[] pins) =>
         new ProgramSource(Housing, "StructureCircuitHousing", pins, LintChipPrograms.Ic10(source));

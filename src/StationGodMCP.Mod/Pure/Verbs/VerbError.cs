@@ -3,6 +3,7 @@
 using System.Collections.Generic;
 using System.Text;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Api.Shared;
 
 namespace StationGodMCP.Pure.Verbs;
 
@@ -23,6 +24,11 @@ internal sealed record VerbError(string Code, string Message, JToken? Data = nul
             $"Unknown method {called}: nothing ran. A call is a verb, {{\"method\": \"<verb>\", \"params\": " +
             $"{{\"what\": ..., options}}}}, with verb one of {string.Join(", ", VerbSurface.VerbNames)}.");
     }
+
+    /// <summary>A game check's refusal as a verb error: its code, its message, and its data as the replies write it.</summary>
+    internal static VerbError Of(ApiException refused) =>
+        new VerbError(refused.Code, refused.Message,
+            refused.Details == null ? null : JToken.FromObject(refused.Details, ApiJson.Fresh()));
 
     /// <summary>{code, message, data?}: a row's error.</summary>
     internal JObject ToJson()

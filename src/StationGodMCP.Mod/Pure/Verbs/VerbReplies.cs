@@ -276,8 +276,38 @@ internal sealed record ReportTarget(
         null => "?",
         { Type: JTokenType.Null } => "?",
         { Type: JTokenType.String } => (string)value!,
+        { Type: JTokenType.Float } => ((double)value).ToString("R", System.Globalization.CultureInfo.InvariantCulture),
         _ => value.ToString(Newtonsoft.Json.Formatting.None)
     };
+}
+
+/// <summary>
+/// One refusal a report lists (PLAN 2.0, direct write rule): the acting call would be refused so, for the entry at
+/// index (left out for the whole call) on the thing reference_id names (left out when none is known). A report that
+/// lists a problem still answers.
+/// </summary>
+internal sealed record ReportProblem(int? Index, string? ReferenceId, VerbError Error)
+{
+    internal JObject ToJson()
+    {
+        JObject problem = new JObject();
+        if (Index is { } index)
+        {
+            problem["index"] = index;
+        }
+
+        if (ReferenceId != null)
+        {
+            problem["reference_id"] = ReferenceId;
+        }
+
+        foreach (JProperty key in Error.ToJson().Properties())
+        {
+            problem[key.Name] = key.Value.DeepClone();
+        }
+
+        return problem;
+    }
 }
 
 /// <summary>
@@ -287,9 +317,25 @@ internal sealed record ReportTarget(
 /// </summary>
 internal static class Report
 {
-    internal static JObject Of(IReadOnlyList<ReportTarget> targets, JObject? body = null)
+    /// <summary>
+    /// The report: body's keys, then problems (what the acting call would refuse, each with its entry; left out when
+    /// null), report_only: true and every target.
+    /// </summary>
+    internal static JObject Of(IReadOnlyList<ReportTarget> targets, JObject? body = null,
+        IReadOnlyList<ReportProblem>? problems = null)
     {
         JObject report = body != null ? (JObject)body.DeepClone() : new JObject();
+        if (problems != null)
+        {
+            JArray listed = new JArray();
+            foreach (ReportProblem problem in problems)
+            {
+                listed.Add(problem.ToJson());
+            }
+
+            report["problems"] = listed;
+        }
+
         report["report_only"] = true;
         JArray rows = new JArray();
         foreach (ReportTarget target in targets)

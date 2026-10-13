@@ -54,7 +54,9 @@ internal static class RetiredMethods
         "vault_contents",
         "wall_map",
         "water_sources",
-        "weather"
+        "weather",
+        "write_logic",
+        "write_logic_many"
     };
 
     internal static bool Has(string? name) => name != null && ((HashSet<string>)Names).Contains(name);

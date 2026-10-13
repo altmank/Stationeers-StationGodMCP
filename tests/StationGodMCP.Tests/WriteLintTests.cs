@@ -7,20 +7,26 @@ using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Lint;
+using StationGodMCP.Pure.Verbs;
 using Xunit;
 
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// The write rules on write_logic and write_logic_many: a write that opens a vent, valve, pump or regulator runs the
-/// rules with "write" in their on (no_oxidiser_vented_outdoors, fuel_oxidiser_mix_temperature) over the networks it
-/// opens to, every time; a problem refuses (lint_refused) unless allow_lint, and the report shows the refusal. The
+/// The write rules on write logic: a write that opens a vent, valve, pump or regulator runs the rules with "write" in
+/// their on (no_oxidiser_vented_outdoors, fuel_oxidiser_mix_temperature) over the networks it opens to, every time; a
+/// problem refuses (lint_refused) unless allow: ["lint"], and the report shows the refusal. The
 /// game side (OpeningWrites, LogicOps.Check) only finds the device and its value and builds these same pieces from
 /// the game's objects.
 /// </summary>
 public sealed class WriteLintTests
 {
-    private static JObject Wire(object view) => JObject.Parse(WireCheck.New(view));
+    private static readonly ReportConfirm Reporting = new ReportConfirm(true, false, null);
+
+    private static JObject Acted(LogicWriteChecked written, double current) =>
+        ((VerbOutcome.Answered)LogicWriteReplies.Acted("world",
+            new LogicWriteResult[] { new LogicWriteResult.Written(0, "Vent", new LogicWrite(written, current)) },
+            false)).Reply;
 
     // ---- the opening transition ----
 
@@ -77,15 +83,16 @@ public sealed class WriteLintTests
 
         Assert.Equal(WriteLint.RefusedCode, refused.Code);
         Assert.Contains("vents outdoors", refused.Message);
-        Assert.DoesNotContain(WriteLint.AllowArgument, refused.Message);
+        Assert.DoesNotContain("allow", refused.Message);
         LintRefusedView data = Assert.IsType<LintRefusedView>(refused.Details);
         Assert.Equal("no_oxidiser_vented_outdoors", Assert.Single(data.Rules).Rule);
         Assert.Equal(new ThingId(60), data.Rules[0].ReferenceId);
 
-        object report = WriteCheck<LogicWriteChecked>.Run(() => site.CheckVentOn(0.0, allow: false))
-            .Answer(true, _ => throw new InvalidOperationException("a report never acts"),
-                written => new LogicWriteReportView("world", written));
-        JObject wire = Wire(report);
+        VerbOutcome report = WriteCheck<LogicWriteChecked>.Run(() => site.CheckVentOn(0.0, allow: false))
+            .Outcome(Reporting, _ => throw new InvalidOperationException("a report never acts"),
+                written => LogicWriteReplies.Reported("world",
+                    new LogicWriteResult[] { new LogicWriteResult.Planned(0, "Vent", written) }));
+        JObject wire = ((VerbOutcome.Answered)report).Reply;
         Assert.True((bool)wire["report_only"]!);
         Assert.Equal("lint_refused", (string?)wire["problems"]![0]!["code"]);
         Assert.Equal("no_oxidiser_vented_outdoors", (string?)wire["problems"]![0]!["data"]!["rules"]![0]!["rule"]);
@@ -101,9 +108,11 @@ public sealed class WriteLintTests
         Assert.True(written.Opens);
         BuildIssueView warning = Assert.Single(written.Warnings);
         Assert.Equal("lint_no_oxidiser_vented_outdoors", warning.Code);
-        Assert.Contains("let through by allow_lint", warning.Message);
-        JObject wire = Wire(new LogicWriteView("world", new LogicWrite(written, 1.0)));
+        Assert.Contains("let through by allow: [\"lint\"]", warning.Message);
+        Assert.True(written.LintPassed);
+        JObject wire = Acted(written, 1.0);
         Assert.Equal("lint_no_oxidiser_vented_outdoors", (string?)wire["warnings"]![0]!["code"]);
+        Assert.Equal(new JArray("lint"), wire["passed"]);
     }
 
     [Fact]
@@ -115,7 +124,9 @@ public sealed class WriteLintTests
 
         Assert.True(written.Opens);
         Assert.Empty(written.Warnings);
-        Assert.Null(Wire(new LogicWriteView("world", new LogicWrite(written, 1.0)))["warnings"]);
+        Assert.False(written.LintPassed);
+        Assert.Null(Acted(written, 1.0)["warnings"]);
+        Assert.Null(Acted(written, 1.0)["passed"]);
         Assert.Equal(1, site.Lints);
     }
 
@@ -174,27 +185,28 @@ public sealed class WriteLintTests
         Assert.Equal("lint_fuel_oxidiser_mix_temperature", Assert.Single(written.Warnings).Code);
     }
 
-    // ---- write_logic_many: refusal per entry ----
+    // ---- several writes: refusal per entry ----
 
     [Fact]
     public void AListsLintRefusalFailsItsEntryAndTheReportListsItWithItsIndexAndRules()
     {
         Site site = Site.OutdoorVent(new Dictionary<string, double> { ["Oxygen"] = 12.5 });
-        BatchBuilder batch = new BatchBuilder(2);
-        List<BuildIssueView> warnings = new List<BuildIssueView>();
-        batch.Succeeded(new LogicWritePlannedItemView(0, site.CheckVentOn(1.0, allow: false, requested: 0.0)));
+        LogicWriteChecked closing = site.CheckVentOn(1.0, allow: false, requested: 0.0);
         ApiException refused = Assert.Throws<ApiException>(() => site.CheckVentOn(0.0, allow: false));
-        batch.Failed(new LogicFailedItemView(1, new ThingId(60), new LogicTypeView(28, "On"), refused));
 
-        JObject wire = Wire(new LogicBatchReportView("world", batch.Build(), warnings));
+        JObject wire = LogicWriteReplies.Reported("world", new LogicWriteResult[]
+        {
+            new LogicWriteResult.Planned(0, "Vent", closing),
+            new LogicWriteResult.Failed(1, "60", VerbError.Of(refused))
+        });
 
         Assert.True((bool)wire["report_only"]!);
         JToken problem = Assert.Single(wire["problems"]!);
         Assert.Equal(1, (int)problem["index"]!);
+        Assert.Equal("60", (string?)problem["reference_id"]);
         Assert.Equal("lint_refused", (string?)problem["code"]);
         Assert.Equal("no_oxidiser_vented_outdoors", (string?)problem["data"]!["rules"]![0]!["rule"]);
-        Assert.Equal("lint_refused", (string?)wire["results"]![1]!["error"]!["code"]);
-        Assert.Equal(1, (int)wire["error_count"]!);
+        Assert.Equal("[60, Vent (On), 1 -> 0] [undo]", (string?)Assert.Single(wire["targets"]!)["text"]);
     }
 
     [Fact]

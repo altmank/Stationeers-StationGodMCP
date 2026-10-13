@@ -34,8 +34,6 @@ internal static class ApiHost
     internal static readonly Dictionary<string, Func<Args, object>> Methods =
         new Dictionary<string, Func<Args, object>>(StringComparer.Ordinal)
         {
-            ["write_logic"] = static args => WriteLogicApi.Handle(args),
-            ["write_logic_many"] = static args => WriteLogicManyApi.Handle(args),
             ["write_memory"] = static args => WriteMemoryApi.Handle(args),
             ["set_ic_source"] = static args => SetIcSourceApi.Handle(args),
             ["control_ic_execution"] = static args => ControlIcExecutionApi.Handle(args),

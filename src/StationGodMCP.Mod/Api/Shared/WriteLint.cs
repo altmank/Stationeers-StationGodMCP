@@ -5,21 +5,21 @@ using System.Text;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Lint;
-using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api.Shared;
 
 /// <summary>
 /// What the write rules' verdict (OpeningLint) does to a logic write. A problem refuses it with lint_refused, whose
-/// data lists every rule that found one; allow_lint lets it through, each problem then a warning. A warning is a
-/// warning, its code lint_&lt;rule id&gt;. The refusal names the rules and the save's rule file; it does not offer
-/// allow_lint, which lowers the guard.
+/// data lists every rule that found one; allow: ["lint"] lets it through, each problem then a warning and the write
+/// marked as passing the lint guard. A warning is a warning, its code lint_&lt;rule id&gt;. The refusal names the
+/// rules and the save's rule file; it does not offer allow, which lowers the guard.
 /// </summary>
 internal static class WriteLint
 {
     internal const string RefusedCode = "lint_refused";
 
-    internal const string AllowArgument = "allow_lint";
+    /// <summary>The allow word that lets a lint problem through, and the guard a write that used it passed.</summary>
+    internal const string Guard = "lint";
 
     internal const string CodePrefix = "lint_";
 
@@ -30,7 +30,7 @@ internal static class WriteLint
     internal static LogicWriteChecked Checked(LogicRead requested, double? previous, OpeningVerdict verdict, bool allow,
         int? index, List<ControllerView>? drivenBy) =>
         new LogicWriteChecked(requested, previous, verdict.Opens,
-            Warnings(verdict, allow, requested.ReferenceId, index), drivenBy);
+            Warnings(verdict, allow, requested.ReferenceId, index), drivenBy, verdict.Problems.Count > 0);
 
     /// <summary>The write's warnings from the verdict; throws lint_refused for a problem not allowed.</summary>
     internal static List<BuildIssueView> Warnings(OpeningVerdict verdict, bool allow, ThingId device, int? index)
@@ -44,8 +44,8 @@ internal static class WriteLint
         foreach (LintFinding problem in verdict.Problems)
         {
             warnings.Add(new BuildIssueView(CodePrefix + problem.Code,
-                $"{problem.Message} Lint rule {problem.Code} (level problem) let through by " +
-                $"{Vocabulary.Arg("allow_lint")}.", index, Thing(problem)));
+                $"{problem.Message} Lint rule {problem.Code} (level problem) let through by allow: [\"lint\"].",
+                index, Thing(problem)));
         }
 
         foreach (LintFinding warning in verdict.Warnings)
@@ -92,7 +92,7 @@ internal static class WriteLint
         return new ApiException(RefusedCode,
             $"The write opens device {device}, and the write lint rules find {Count(rules.Count)} on the networks " +
             $"it opens to:{said} Nothing is written. A rule's level is set in the save's lint-rules.json " +
-            $"({Vocabulary.Tool("lint_rules")} lists the files).",
+            "(check {what: \"rules\"} lists the files).",
             new LintRefusedView(rules));
     }
 

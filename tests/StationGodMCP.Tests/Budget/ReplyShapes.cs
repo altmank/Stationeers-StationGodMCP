@@ -307,12 +307,6 @@ internal static class ReplyShapes
             // Two stacks topped up and a new one, from three entries.
             S<SiloWithdrawView>().List("SiloWithdrawView.Taken", 3).List("SiloWithdrawView.Placed", 3)
         };
-        shapes["write_logic"] = new[] { S<LogicWriteView>() };
-        shapes["write_logic_many"] = new[]
-        {
-            S<LogicWriteBatchView>().List("LogicWriteBatchView.Results", W.TypicalBatch)
-                .Holds("LogicWriteBatchView.Results", typeof(LogicWriteItemView))
-        };
         shapes["write_memory"] = new[]
         {
             S<MemoryWriteView>().List("MemoryWriteView.RequestedValues", 8).List("MemoryWriteView.PreviousValues", 8)

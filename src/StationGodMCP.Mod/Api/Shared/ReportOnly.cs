@@ -3,13 +3,15 @@
 using System;
 using System.Collections.Generic;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Api.Shared;
 
 /// <summary>
-/// The report path of the writes that act at once (move_item, write_memory, run_console_command, plant_genes edits,
-/// paste_blueprint). dry_run true, the argument every other write tool previews with, runs the acting call's checks
-/// (WriteCheck: the same code, in the same order) and acts on nothing. The reply starts report_only: true.
+/// The report path of the per-tool writes that take dry_run: dry_run true runs the acting call's checks (WriteCheck:
+/// the same code, in the same order) and acts on nothing. The reply starts report_only: true. A verb write reports
+/// through its options' ReportConfirm instead (WriteCheck.Outcome).
 /// <para>
 /// A check that would refuse the acting call does not refuse the report: the report answers ok and lists that refusal
 /// in problems, code and message as the acting call would answer them, so a report pass over many writes shows every
@@ -79,6 +81,25 @@ internal sealed class WriteCheck<TPlan> where TPlan : class
         }
 
         return report ? describe(Plan) : act(Plan);
+    }
+
+    /// <summary>
+    /// A verb write's answer (PLAN 2.0, report and confirm): acting, act on the plan, or the refusal as the call's;
+    /// reporting, describe the plan (a Report.Of reply), or a report that lists the refusal as its one problem. act is
+    /// only reached with a plan, and never on a report.
+    /// </summary>
+    internal VerbOutcome Outcome(ReportConfirm report, Func<TPlan, VerbOutcome> act, Func<TPlan, JObject> describe)
+    {
+        if (Plan == null)
+        {
+            VerbError refused = VerbError.Of(Refusal!);
+            return report.Acts
+                ? new VerbOutcome.Refused(refused)
+                : new VerbOutcome.Answered(Report.Of(Array.Empty<ReportTarget>(), null,
+                    new[] { new ReportProblem(null, null, refused) }));
+        }
+
+        return report.Acts ? act(Plan) : new VerbOutcome.Answered(describe(Plan));
     }
 }
 
