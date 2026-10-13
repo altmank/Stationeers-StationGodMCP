@@ -35,30 +35,36 @@ public sealed class FindFiltersAndSlimRepliesTests
     }
 
     [Fact]
-    public void ASummaryReplyCarriesNoDryRunAndNoCells()
+    public void ASummarizedRouteCarriesTheReportInShortWithoutCellsOrJobKeys()
     {
+        RunReportView report = Report();
         PlanRouteView view = new PlanRouteView("plan_cable_route", null, null, new JObject(), null,
-            new List<string>(), RunSummaryView.Of(Report()));
+            JobReports.Body(RunSummaryView.Of(report), report.Ready), new List<string>());
         JObject json = JObject.Parse(WireCheck.New(view));
 
-        Assert.Null(json["dry_run"]);
-        Assert.NotNull(json["dry_run_summary"]);
-        Assert.Null(json["dry_run_summary"]!["cells"]);
+        Assert.Null(json["build_report"]);
+        JObject summary = Assert.IsType<JObject>(json["build_report_summary"]);
+        Assert.Null(summary["cells"]);
+        Assert.Null(summary["status"]);
+        Assert.False((bool)summary["ready"]!);
+        Assert.Equal(12, (int)summary["cells_total"]!);
     }
 
-    [Theory]
-    [InlineData("plan_cable_route")]
-    [InlineData("plan_pipe_route")]
-    [InlineData("plan_chute_route")]
-    public void TheSummaryIsAFractionOfTheWholeDryRun(string tool)
+    [Fact]
+    public void AWholeRouteReportHasNoJobKeys()
     {
-        ReplyShape[] shapes = ReplyShapes.ByMethod[tool];
-        IReadOnlyDictionary<string, int> limits = ReplyBudgetTests.DefaultLimitsOf(tool);
-        int whole = ReplyBudgetTests.Measure(shapes[0].WithTopLimits(limits)).Bytes;
-        int summary = ReplyBudgetTests.Measure(shapes[1].WithTopLimits(limits)).Bytes;
+        RunReportView report = Report();
+        PlanRouteView view = new PlanRouteView("plan_cable_route", null, null, new JObject(),
+            JobReports.Body(report, report.Ready), null, new List<string>());
+        JObject json = JObject.Parse(WireCheck.New(view));
 
-        Assert.True(summary * 2 < whole, $"{tool}: summary {summary} bytes, whole {whole} bytes");
-        Assert.Empty(Problems(tool, """{"summary": true}""").Where(problem => problem.Contains("summary")));
+        Assert.Null(json["build_report_summary"]);
+        JObject whole = Assert.IsType<JObject>(json["build_report"]);
+        Assert.Null(whole["tool"]);
+        Assert.Null(whole["status"]);
+        Assert.Null(whole["job_id"]);
+        Assert.Equal("heavy", (string?)whole["grade"]);
+        Assert.NotNull(whole["cells"]);
     }
 
     private static RunReportView Report() => new RunReportView(

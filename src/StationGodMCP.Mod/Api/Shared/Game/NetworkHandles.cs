@@ -28,9 +28,12 @@ internal static class NetworkHandles
             "required."), name,
             family);
 
-    internal static ThingId Resolve(JToken token, string name, UpgradeFamily family)
+    internal static ThingId Resolve(JToken token, string name, UpgradeFamily family) =>
+        Recorded(NetworkHandle.Read(token, name), name, family);
+
+    // The handle's network, recorded for resolved_networks when the handle named a thing.
+    private static ThingId Recorded(NetworkHandle handle, string name, UpgradeFamily family)
     {
-        NetworkHandle handle = NetworkHandle.Read(token, name);
         ThingId network = Resolve(handle, name, family);
         if (GameLookup.TryFindThing(handle.Id, out _))
         {
@@ -168,21 +171,44 @@ internal static class NetworkHandles
     internal static HashSet<long> ResolveAllowances(Args args, string name, int maximum, UpgradeFamily family,
         System.Func<Connection, bool> bridges)
     {
-        HashSet<long> ids = new HashSet<long>();
-        if (!args.Has(name))
+        List<NetworkHandle> handles = new List<NetworkHandle>();
+        if (args.Has(name))
         {
-            return ids;
+            JArray array = args.Array(name, maximum);
+            for (int index = 0; index < array.Count; index++)
+            {
+                handles.Add(NetworkHandle.Read(array[index], $"{name}[{index}]"));
+            }
         }
 
-        JArray array = args.Array(name, maximum);
-        for (int index = 0; index < array.Count; index++)
+        return Allowances(handles, name, family, bridges);
+    }
+
+    /// <summary>As the Args form, for a verb's allow_bridge: each entry a network's id, a piece or device, or {id, port}.</summary>
+    internal static HashSet<long> ResolveAllowances(IReadOnlyList<NetworkTarget> targets, string option,
+        UpgradeFamily family, System.Func<Connection, bool> bridges)
+    {
+        List<NetworkHandle> handles = new List<NetworkHandle>(targets.Count);
+        for (int index = 0; index < targets.Count; index++)
+        {
+            handles.Add(HandleOf(targets[index], $"{option}[{index}]"));
+        }
+
+        return Allowances(handles, option, family, bridges);
+    }
+
+    private static HashSet<long> Allowances(List<NetworkHandle> handles, string name, UpgradeFamily family,
+        System.Func<Connection, bool> bridges)
+    {
+        HashSet<long> ids = new HashSet<long>();
+        for (int index = 0; index < handles.Count; index++)
         {
             string entry = $"{name}[{index}]";
-            NetworkHandle handle = NetworkHandle.Read(array[index], entry);
+            NetworkHandle handle = handles[index];
             // A bare id may name a device on purpose (allow_bridge names devices whose ports may share a network).
             if (!(handle is NetworkHandle.ById))
             {
-                ids.Add(Resolve(array[index], entry, family).Value);
+                ids.Add(Recorded(handle, entry, family).Value);
                 continue;
             }
 
@@ -204,7 +230,7 @@ internal static class NetworkHandles
             }
             else if (thing is SmallGrid piece && family.IsMember(piece))
             {
-                ids.Add(Resolve(array[index], entry, family).Value);
+                ids.Add(Recorded(handle, entry, family).Value);
             }
             else if (!(thing is Device device))
             {
@@ -217,7 +243,7 @@ internal static class NetworkHandles
                 throw ApiErrors.InvalidArgument(
                     $"{entry}: {Names.Of(device)} ({device.PrefabName}) has no two " +
                     $"{family.NetworkKind} ports that could share a network, so it bridges nothing; name a network, " +
-                    "a piece of one or {reference_id, port}.");
+                    "a piece of one or {id, port}.");
             }
         }
 

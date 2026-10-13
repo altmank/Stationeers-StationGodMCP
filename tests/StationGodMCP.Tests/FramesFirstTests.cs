@@ -93,7 +93,7 @@ public sealed class FramesFirstTests
         internal long Milliseconds { get; }
     }
 
-    // As PlanRouteApi does it: the box is the ends plus margin_m, the air bound only under frames_first.
+    // As RoutePlanning does it: the box is the ends plus margin, the air bound only under frames_first.
     private static Plan Route(World world, GridCell from, GridCell to, bool framesFirst,
         RoutePreference prefer = RoutePreference.None, double marginM = 6.0, double bend = 2.0,
         int fieldLimit = AirBound.MaximumSmallCells, bool insideFrames = false)

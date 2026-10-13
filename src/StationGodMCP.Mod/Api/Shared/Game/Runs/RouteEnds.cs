@@ -9,18 +9,19 @@ using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Protocol;
+using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Api.Shared.Game.Runs;
 
 /// <summary>
-/// The ends of a route from the caller's form: {at: position} (that small cell), {reference_id} of one of the kind's
-/// pieces (its cell; leaving through one of its open ends is free, through another makes it a junction; a long
-/// straight as a target offers every cell of it, and the place tool splits it), {reference_id, port} of a device (the
-/// cell a piece joining that port stands in; port may be left out when the device has one port of the kind), and as a
-/// target {network_id}: every cell of every piece of that network. {reference_id, port} of a thing of the kind with its
-/// own ends that is neither a piece nor a device (an in-line tank, a passive vent; 1.3.5): the cell beyond its free end
-/// (port names the end when it has several free). Starts may be several (up to MaximumStarts): an array of ends, or
-/// {reference_id, ports: [...]} for several ports of one device. Pieces being removed (a reroute, assume_removed) count as gone.
+/// The ends of a route as plan route's start and end give them: {at: position} (that small cell), {id} of one of the
+/// kind's pieces (its cell; leaving through one of its open ends is free, through another makes it a junction; a long
+/// straight as a target offers every cell of it, and build splits it), {id, port} of a device (the cell a piece
+/// joining that port stands in; port may be left out when the device has one port of the kind), and as a target
+/// {network}: every cell of every piece of that network. {id, port} of a thing of the kind with its own ends that is
+/// neither a piece nor a device (an in-line tank, a passive vent; 1.3.5): the cell beyond its free end (port names the
+/// end when it has several free). Starts may be several (up to MaximumStarts): a list of ends, or {id, ports: [...]}
+/// for several ports of one device. Pieces being removed (a reroute, assume_removed) count as gone.
 /// </summary>
 internal static class RouteEnds
 {
@@ -60,7 +61,7 @@ internal static class RouteEnds
             {
                 JObject one = new JObject
                 {
-                    ["reference_id"] = item["reference_id"]?.DeepClone(),
+                    ["id"] = item["id"]?.DeepClone(),
                     ["port"] = ports[index].DeepClone()
                 };
                 starts.Add(Resolve(one, $"{name}.ports[{index}]", kind, type, ignore, false));
@@ -73,13 +74,14 @@ internal static class RouteEnds
         return starts;
     }
 
-    /// <summary>A target: any end form, {network_id}, or a long straight (every cell of it).</summary>
+    /// <summary>A target: any end form, {network}, or a long straight (every cell of it).</summary>
     internal static RouteEndpoint Target(JToken? token, string name, RunKind kind, int type, HashSet<long> ignore)
     {
-        if (token is JObject item && item["network_id"] != null)
+        if (token is JObject item && item["network"] is { } given)
         {
-            return OfNetwork(kind, NetworkHandles.Resolve(item["network_id"]!, $"{name}.network_id", kind.Family),
-                name, ignore);
+            NetworkTarget network = NetworkTarget.Of(given) ?? throw ApiErrors.InvalidArgument(
+                $"{name}.network must be a network's id, a piece or device on it, or {{id, port}}.");
+            return OfNetwork(kind, NetworkHandles.Resolve(network, $"{name}.network", kind.Family), name, ignore);
         }
 
         return Resolve(token, name, kind, type, ignore, true);
@@ -90,12 +92,10 @@ internal static class RouteEnds
     {
         if (!(token is JObject item))
         {
-            throw ApiErrors.InvalidArgument($"{name} must be {{at: [x, y, z]}} or " +
-                $"{{id, port}}.");
+            throw ApiErrors.InvalidArgument($"{name} must be {{at: [x, y, z]}}, {{id}} or {{id, port}}.");
         }
 
-        Args fields = new Args(item);
-        if (fields.Has("at"))
+        if (item["at"] != null && item["at"]!.Type != JTokenType.Null)
         {
             GridCell cell = RunArgs.CellOf(RunArgs.PositionOf(item["at"]!, $"{name}.at"));
             SmallCell? small = GridController.World.GetSmallCell(PieceShapes.Grid(cell));
@@ -105,7 +105,14 @@ internal static class RouteEnds
                 : new RouteEndpoint(RouteEnd.Open(cell), new List<long>());
         }
 
-        Thing thing = GameLookup.RequireThing(fields.ThingId("reference_id"));
+        if (!ThingId.TryRead(item["id"], out ThingId id))
+        {
+            throw ApiErrors.InvalidArgument($"{name} must be {{at: [x, y, z]}}, {{id}} or {{id, port}}: id is a " +
+                "reference id as a decimal string.");
+        }
+
+        int? port = PortOf(item, name);
+        Thing thing = GameLookup.RequireThing(id);
         if (thing is SmallGrid own && kind.Family.IsPiece(own))
         {
             if (ignore.Contains(own.ReferenceId))
@@ -128,7 +135,7 @@ internal static class RouteEnds
 
         if (thing is Device device)
         {
-            return OfDevice(kind, device, fields.OptionalInt("port", 0, 64), type, name, ignore, target);
+            return OfDevice(kind, device, port, type, name, ignore, target);
         }
 
         if (thing is SmallGrid member && kind.Family.IsMember(member))
@@ -139,12 +146,26 @@ internal static class RouteEnds
                     $"(assume_removed).");
             }
 
-            return OfFreeEnd(kind, member, fields.OptionalInt("port", 0, 64), type, name, ignore);
+            return OfFreeEnd(kind, member, port, type, name, ignore);
         }
 
         throw ApiErrors.InvalidArgument(
             $"{name}: {Names.Of(thing)} ({thing.PrefabName}) is neither a {kind.Noun} piece, a " +
             $"device, nor a {kind.Noun} thing with ends (an in-line tank, a passive vent).");
+    }
+
+    // An end's port, an index 0 to 64; null when left out.
+    private static int? PortOf(JObject item, string name)
+    {
+        JToken? port = item["port"];
+        if (port == null || port.Type == JTokenType.Null)
+        {
+            return null;
+        }
+
+        return port.Type == JTokenType.Integer && port.Value<long>() is >= 0 and <= 64
+            ? port.Value<int>()
+            : throw ApiErrors.InvalidArgument($"{name}.port must be a port index, 0 to 64.");
     }
 
     /// <summary>
@@ -233,7 +254,7 @@ internal static class RouteEnds
     // Each cell of the piece: leaving through an open end there is free, any other way makes a junction (for a chute
     // start: leaving only through an open end items can leave by).
     private static RouteEndpoint OfCells(RunKind kind, SmallGrid piece, IReadOnlyList<GridCell> cells,
-        bool leavingOnly = false, string name = "from")
+        bool leavingOnly = false, string name = "start")
     {
         PieceModel model = PieceShapes.Live(piece);
         List<PieceModel> around = new List<PieceModel>();

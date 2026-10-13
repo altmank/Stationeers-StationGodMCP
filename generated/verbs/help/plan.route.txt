@@ -25,7 +25,7 @@ Options:
 - assume_removed (list): Things planned as if gone; the kind's pieces are removed in the same job.
 - materials (string or array): Holder(s) that pay materials and take source refunds, tried in order; ids or "player". Default the player.
 - include (list of links | notes | network_devices): links: every added and lost link; notes: fixed text; network_devices: each network's devices.
-- summarize (boolean, default false): The dry run in short instead of whole.
-- rows (integer, default 5): Cells the dry run lists; 0 for none.
-Reply: tool, found, route {waypoints, length, bends, cost, expanded, removes, air_cells, air, branches, extra_ends, visibility, assumed_removed, removal_refund}, failure, place_arguments, dry_run {tool, status, job_id, grade, ready, problems, warnings, cells_total, placed, changed, kept, removed_count, air_cells, cells, removals, materials, networks_before, networks_after, would_bridge, would_split, links, notes}, dry_run_summary {status, ready, problems, warnings, cells_total, placed, changed, kept, removed_count, air_cells, would_bridge, would_split, needed}, notes
+- summarize (boolean, default false): The report in short instead of whole.
+- rows (integer, default 5): Cells the report lists; 0 for none.
+Reply: tool, found, route {waypoints, length, bends, cost, expanded, removes, air_cells, air, branches, extra_ends, visibility, assumed_removed, removal_refund}, failure, build_arguments, build_report {grade, ready, problems, warnings, cells_total, placed, changed, kept, removed_count, air_cells, cells, removals, materials, networks_before, networks_after, would_bridge, would_split, links, notes}, build_report_summary {ready, problems, warnings, cells_total, placed, changed, kept, removed_count, air_cells, would_bridge, would_split, needed}, notes
 Example: plan {what: "route", kind: "pipe", grade: "gas", start: {id: "720259", port: 1}, end: {network: "5012345"}}

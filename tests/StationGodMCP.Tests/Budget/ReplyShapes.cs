@@ -95,26 +95,6 @@ internal static class ReplyShapes
             shapes[tool] = RunTool(tool);
         }
 
-        foreach (string tool in new[] { "plan_cable_route", "plan_pipe_route", "plan_chute_route" })
-        {
-            shapes[tool] = new[]
-            {
-                RunReport(S<PlanRouteView>(), tool).List("RouteView.Waypoints", 6).List("RouteView.Removes", 0)
-                    .List("RouteView.Air", 0).List("RouteView.Branches", 0).List("RouteAssumedView.Pieces", 0)
-                    .List("RouteAssumedView.Others", 0).List("RouteAssumedView.Missing", 0)
-                    .List("RouteAssumedView.InTheWay", 0).List("RouteView.RemovalRefund", 0)
-                    .List("PlanRouteView.Notes", 2).Absent("PlanRouteView.DryRunSummary"),
-                // summary: the dry run in short in place of the whole one.
-                S<PlanRouteView>().Absent("PlanRouteView.DryRun").List("RouteView.Waypoints", 6)
-                    .List("RouteView.Removes", 0).List("RouteView.Air", 0).List("RouteView.Branches", 0)
-                    .List("RouteAssumedView.Pieces", 0).List("RouteAssumedView.Others", 0)
-                    .List("RouteAssumedView.Missing", 0).List("RouteAssumedView.InTheWay", 0)
-                    .List("RouteView.RemovalRefund", 0).List("PlanRouteView.Notes", 2)
-                    .List("RunSummaryView.Problems", 2).List("RunSummaryView.Warnings", 4)
-                    .List("RunSummaryView.Needed", 2)
-            };
-        }
-
         shapes["place_structure"] = new[]
         {
             PlaceReport(), S<JobQueuedView>().Absent("JobQueuedView.Preflight"), BuildPoll()
@@ -190,7 +170,7 @@ internal static class ReplyShapes
         .List("RunReportView.Cells", Math.Min(W.RunCells, D.RunListed)).List("RunReportView.Removals", 2)
         .List("RefundPlanView.Skipped", 0).List("RefundPlanView.Destinations", 2)
         .List("RunReportView.NetworksBefore", 2)
-        .Holds("RunReportView.NetworksBefore", tool.EndsWith("chutes", StringComparison.Ordinal) || tool == "plan_chute_route"
+        .Holds("RunReportView.NetworksBefore", tool.EndsWith("chutes", StringComparison.Ordinal)
             ? typeof(RunChuteNetworkView)
             : tool.Contains("pipe") ? typeof(RunPipeNetworkView) : typeof(RunCableNetworkView))
         .Absent("RunCableNetworkView.Devices", "RunPipeNetworkView.Devices", "RunChuteNetworkView.Devices",

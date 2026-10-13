@@ -215,7 +215,6 @@ public sealed class HeavyPayloadTests
     [InlineData("remove_structure", """{"job_id":"remove-3","verbose":true}""")]
     [InlineData("place_pipes", """{"waypoints":[[1,1,1],[1,1,3]],"grade":"gas","include_links":true,"include_notes":true,"limit":0}""")]
     [InlineData("place_pipes", """{"job_id":"run-3","verbose":true}""")]
-    [InlineData("plan_pipe_route", """{"from":{"at":[1,1,1]},"to":{"at":[1,1,3]},"grade":"gas","include_links":false,"limit":0}""")]
     public void TheSidecarTakesTheNewArguments(string tool, string arguments)
     {
         Assert.Empty(Problems(tool, arguments));

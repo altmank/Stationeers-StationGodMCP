@@ -3,7 +3,6 @@
 using System.Collections.Generic;
 using Assets.Scripts.Objects;
 using StationGodMCP.Api.Shared.Game.Upgrades;
-using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api.Shared.Game.Runs;
 
@@ -41,18 +40,14 @@ internal sealed class AssumedRemovals
         }
     }
 
-    internal static AssumedRemovals Read(Args args, RunKind kind)
+    /// <summary>The ids plan route's assume_removed names, read against the world.</summary>
+    internal static AssumedRemovals Read(IReadOnlyList<ThingId> ids, RunKind kind)
     {
         List<SmallGrid> pieces = new List<SmallGrid>();
         List<SmallGrid> others = new List<SmallGrid>();
         List<ThingId> missing = new List<ThingId>();
-        if (!args.Has("assume_removed"))
-        {
-            return new AssumedRemovals(pieces, others, missing);
-        }
-
         HashSet<long> seen = new HashSet<long>();
-        foreach (ThingId id in args.ThingIds("assume_removed", RunPlanner.MaximumRemovals))
+        foreach (ThingId id in ids)
         {
             if (!seen.Add(id.Value))
             {
@@ -66,8 +61,7 @@ internal sealed class AssumedRemovals
             else if (!(thing is SmallGrid small))
             {
                 throw ApiErrors.InvalidArgument(
-                    $"{Vocabulary.Arg("assume_removed")}: {Names.Of(thing)} ({thing.PrefabName} {id}) does not stand " +
-                    "on the small grid.");
+                    $"assume_removed: {Names.Of(thing)} ({thing.PrefabName} {id}) does not stand on the small grid.");
             }
             else if (kind.Family.IsPiece(small))
             {

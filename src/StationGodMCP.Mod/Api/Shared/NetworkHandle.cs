@@ -54,34 +54,6 @@ internal abstract class NetworkHandle
 
     internal const int MaximumPort = 64;
 
-    /// <summary>
-    /// The handle a planner's to names, as join_to's default, and the argument it is recorded under in
-    /// resolved_networks (the name to's own resolution uses, so a reply lists it once): to.network_id, or to's
-    /// {reference_id, port} as "to"; null when to names neither.
-    /// </summary>
-    internal static JToken? TargetOf(JObject to, out string argument)
-    {
-        if (to["network_id"] is JToken network)
-        {
-            argument = "to.network_id";
-            return network;
-        }
-
-        argument = "to";
-        if (to["reference_id"] == null)
-        {
-            return null;
-        }
-
-        JObject handle = new JObject { ["reference_id"] = to["reference_id"]!.DeepClone() };
-        if (to["port"] is JToken port && port.Type != JTokenType.Null)
-        {
-            handle["port"] = port.DeepClone();
-        }
-
-        return handle;
-    }
-
     /// <summary>The handle in a token: a reference id or {reference_id, port}; else invalid_argument.</summary>
     internal static NetworkHandle Read(JToken? token, string name)
     {

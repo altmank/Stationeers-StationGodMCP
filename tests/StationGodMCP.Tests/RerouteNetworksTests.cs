@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Verbs;
 using Xunit;
 
 namespace StationGodMCP.Tests;
@@ -105,36 +106,33 @@ public sealed class RerouteNetworksTests
     [Fact]
     public void BetweenTakesIdsAndDevicePorts()
     {
+        List<OptionProblem> problems = new List<OptionProblem>();
         List<RerouteEndArg> ends = RerouteArgs.Between(JArray.Parse(
-            "[\"123456789012345678\", {\"reference_id\": \"42\", \"port\": 1}]"));
+            "[\"123456789012345678\", {\"id\": \"42\", \"port\": 1}]"), problems)!;
         Assert.Equal(123456789012345678L, ends[0].Id.Value);
         Assert.Null(ends[0].Port);
         Assert.Equal(42L, ends[1].Id.Value);
         Assert.Equal(1, ends[1].Port);
-        ends = RerouteArgs.Between(JArray.Parse("[{\"reference_id\": \"7\"}, 8]"));
+        ends = RerouteArgs.Between(JArray.Parse("[{\"id\": \"7\"}, 8]"), problems)!;
         Assert.Null(ends[0].Port);
         Assert.Equal(8L, ends[1].Id.Value);
+        Assert.Empty(problems);
     }
 
     [Theory]
-    [InlineData("[\"1\"]")]
-    [InlineData("[\"1\", \"2\", \"3\"]")]
-    [InlineData("{\"reference_id\": \"1\"}")]
-    [InlineData("[\"1\", true]")]
-    [InlineData("[\"1\", {\"port\": 1}]")]
-    [InlineData("[\"1\", {\"reference_id\": \"2\", \"port\": -1}]")]
-    [InlineData("[\"1\", {\"reference_id\": \"2\", \"port\": \"one\"}]")]
-    public void BetweenRefusesAnythingElse(string json)
+    [InlineData("[\"1\"]", "reroute.between")]
+    [InlineData("[\"1\", \"2\", \"3\"]", "reroute.between")]
+    [InlineData("{\"id\": \"1\"}", "reroute.between")]
+    [InlineData("[\"1\", true]", "reroute.between[1]")]
+    [InlineData("[\"1\", {\"port\": 1}]", "reroute.between[1]")]
+    [InlineData("[\"1\", {\"reference_id\": \"2\"}]", "reroute.between[1]")]
+    [InlineData("[\"1\", {\"id\": \"2\", \"port\": -1}]", "reroute.between[1].port")]
+    [InlineData("[\"1\", {\"id\": \"2\", \"port\": \"one\"}]", "reroute.between[1].port")]
+    [InlineData("[\"1\", {\"id\": \"2\", \"port\": 99}]", "reroute.between[1].port")]
+    public void BetweenRefusesAnythingElseNamingTheEnd(string json, string path)
     {
-        ApiException problem = Assert.Throws<ApiException>(() => RerouteArgs.Between(JToken.Parse(json)));
-        Assert.Equal(ApiErrors.InvalidArgumentCode, problem.Code);
-    }
-
-    [Fact]
-    public void ABadPortNamesTheEnd()
-    {
-        ApiException problem = Assert.Throws<ApiException>(() =>
-            RerouteArgs.Between(JArray.Parse("[\"1\", {\"reference_id\": \"2\", \"port\": 99}]")));
-        Assert.StartsWith("reroute.between[1]: ", problem.Message);
+        List<OptionProblem> problems = new List<OptionProblem>();
+        Assert.Null(RerouteArgs.Between(JToken.Parse(json), problems));
+        Assert.Equal(path, Assert.Single(problems).Path);
     }
 }

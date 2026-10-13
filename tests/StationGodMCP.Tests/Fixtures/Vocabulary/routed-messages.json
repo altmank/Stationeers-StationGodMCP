@@ -24,32 +24,6 @@
     "job_id",
     "job_id"
   ],
-  "Api/PlanRoute.cs": [
-    "The style's air penalty gave up (search_limit) looking for a route over frames or along walls; this route ignores it (as style free). Lower margin_m or bring the ends closer to try again.",
-    "Waypoints are cell centres in metres; pass place_arguments to the place tool (add dry_run false and confirm true to build). The dry run is that tool's own, with the same guards.",
-    "allow_door_keepout: the route may pass through doorways (their face and the band either side).",
-    "assume_removed: the route takes none of the assumed pieces' cells, so it can also be built while they still stand (leave remove_ids out of place_arguments and remove them in a later job).",
-    "assume_removed: the route takes the cells of {inTheWay.Count} assumed piece(s) (in_the_way): they go in the same job (place_arguments.remove_ids) or before it.",
-    "assume_removed: {assumed.Missing.Count} id(s) name nothing standing (already gone?): {string.Join(\", \", assumed.Missing)}.",
-    "avoid_networks: no cell beside a piece of another network than the ends' own.",
-    "axis_order must be any, vertical_first or horizontal_first.",
-    "margin_m is at most {MaximumMarginM}.",
-    "no_route: no way between the ends under the rules inside the search box (margin_m around the ends); loosen a rule, raise margin_m, plan as if old pieces in the way were gone (assume_removed), or check the ends with grid_survey.",
-    "reroute needs reference_ids (the old run's pieces) or between: [a, b] (ids, or {reference_id, port}).",
-    "reroute takes its ends from the old run; leave out from and to.",
-    "search_limit: gave up after {tree.Expanded} cells; bring the ends closer or lower margin_m.",
-    "through_air: {visibility.Air} new cells float in air (on no frame and no wall plane); no route over frames or along walls of at most max_length ({maxLength}) cells exists inside the search box. Raise margin_m to look wider, raise max_length when the way round is longer, or build a frame under the gap.",
-    "through_air: {visibility.Air} new cells float in air; this route was found with style free.",
-    "too_long: every way under the rules is longer than max_length.",
-    "trunk needs from: the drops (ports or cells) that branch from it.",
-    "trunk needs waypoints or cells (one of them).",
-    "trunk replaces to and does not go with reroute: every start branches from the trunk, whose own ends join what they meet.",
-    "would_loop: the start and the target are already on one network, so any route between them closes a loop. To reach another port of a device already on the network, give both ports in from (from: {reference_id, ports: [...]}) so they share one run.",
-    "{entry}: {network} names no {kind.Noun} network.",
-    "{name} must be {reference_id, port}.",
-    "{name}.at: no {kind.Noun} piece can stand in cell {cell}: {blocked}. Name a port with {reference_id, port}, or a free cell.",
-    "{name}.port is required (connections lists the ends)."
-  ],
   "Api/RemoveStructures.cs": [
     "Pass job_id, or reference_ids."
   ],
@@ -137,9 +111,6 @@
     "refund_to names {Names.Of(thing)} {id}, which has no slot a refund could go into.",
     "refund_to names {id}, and there is no thing with that reference id."
   ],
-  "Api/Shared/Game/Runs/AssumedRemovals.cs": [
-    "assume_removed: {Names.Of(thing)} ({thing.PrefabName} {id}) does not stand on the small grid."
-  ],
   "Api/Shared/Game/Runs/ChuteFlowCheck.cs": [
     "The chute networks here have more than {ChuteSurroundings.MaximumPieces} pieces; each junction takes its first turn unchecked. Check its flow in grid_survey after building."
   ],
@@ -222,11 +193,6 @@
     "refund_to must be a string or a list of targets.",
     "refund_to must be source, ground, none, inventory, storage, a container's reference id, or a list of inventory, source, storage, ground and container ids.",
     "refund_to[{index}] must be a target word or a container's reference id."
-  ],
-  "Api/Shared/RerouteArgs.cs": [
-    "reroute.between names exactly two ends: a reference id, or {reference_id, port} for a device port.",
-    "{name} must be a reference id or {reference_id, port}.",
-    "{name}: {problem.Message}"
   ],
   "Api/Shared/SourceArgs.cs": [
     "Argument '{Argument}' must name 1 to {MaximumSources} things."

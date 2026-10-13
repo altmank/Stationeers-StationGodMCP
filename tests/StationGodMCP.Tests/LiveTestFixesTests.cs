@@ -181,32 +181,9 @@ public sealed class BuiltPartTests
     }
 }
 
-/// <summary>The planners' resolved_networks for to's handle.</summary>
+/// <summary>resolved_networks: one entry per handle, per thread.</summary>
 public sealed class JoinTargetTests
 {
-    [Fact]
-    public void ANetworkIdTargetIsRecordedUnderToNetworkId()
-    {
-        JToken? handle = NetworkHandle.TargetOf(JObject.Parse("{\"network_id\": \"140001\"}"), out string argument);
-        Assert.Equal("to.network_id", argument);
-        Assert.Equal("140001", (string?)handle);
-    }
-
-    [Fact]
-    public void ADevicePortTargetIsRecordedUnderTo()
-    {
-        JObject handle = Assert.IsType<JObject>(NetworkHandle.TargetOf(
-            JObject.Parse("{\"reference_id\": \"1378\", \"port\": 1, \"at\": [1, 2, 3]}"), out string argument));
-        Assert.Equal("to", argument);
-        Assert.Equal("1378", (string?)handle["reference_id"]);
-        Assert.Equal(1, (int)handle["port"]!);
-
-        JObject piece = Assert.IsType<JObject>(NetworkHandle.TargetOf(
-            JObject.Parse("{\"reference_id\": \"7\", \"port\": null}"), out _));
-        Assert.Null(piece["port"]);
-        Assert.Null(NetworkHandle.TargetOf(JObject.Parse("{\"at\": [1, 2, 3]}"), out _));
-    }
-
     // Live 1.3.0: a plan listed both "to" and "to.network_id" for one handle.
     [Fact]
     public void OneHandleIsListedOnce()

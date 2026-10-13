@@ -306,7 +306,10 @@ internal sealed class NetworkTarget
         return targets;
     }
 
-    private static NetworkTarget? Of(JToken given)
+    /// <summary>
+    /// One network as given: a network's id, a piece or device on it, or {id, port}; null for anything else.
+    /// </summary>
+    internal static NetworkTarget? Of(JToken given)
     {
         switch (given)
         {
@@ -319,6 +322,24 @@ internal sealed class NetworkTarget
             default:
                 return null;
         }
+    }
+
+    /// <summary>The target as a call gives it: the id, or {id, port} with the port as a number when it reads as one.</summary>
+    internal JToken ToJson()
+    {
+        if (Port == null)
+        {
+            return new JValue(Id);
+        }
+
+        return new JObject
+        {
+            ["id"] = Id,
+            ["port"] = int.TryParse(Port, System.Globalization.NumberStyles.Integer,
+                System.Globalization.CultureInfo.InvariantCulture, out int port)
+                ? new JValue(port)
+                : new JValue(Port)
+        };
     }
 }
 

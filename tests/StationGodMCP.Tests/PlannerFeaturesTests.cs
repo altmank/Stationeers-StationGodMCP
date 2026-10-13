@@ -98,7 +98,7 @@ public sealed class PlannerFeaturesTests
         }
     }
 
-    // As PlanRouteApi grows a tree: a box of margin_m around each leg's ends, the air bound under frames_first.
+    // As RoutePlanning grows a tree: a box of margin around each leg's ends, the air bound under frames_first.
     private static RouteTree Grow(World world, IReadOnlyList<GridCell> starts, RouteMain main, bool framesFirst = true,
         RoutePreference prefer = RoutePreference.None, bool insideFrames = false, double marginM = 6.0)
     {

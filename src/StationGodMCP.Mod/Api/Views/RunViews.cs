@@ -2,6 +2,7 @@
 
 using System.Collections.Generic;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Pure;
 
@@ -1106,21 +1107,21 @@ internal sealed class RunVerificationView
 }
 
 /// <summary>
-/// plan_cable_route and plan_pipe_route: the route found (or why none was), the arguments that build it with
-/// place_cables or place_pipes, and that tool's dry run of it.
+/// plan route: the route found (or why none was), the build options that lay it (build_arguments), and build's report
+/// of it, whole (build_report) or in short (build_report_summary, with summarize).
 /// </summary>
-internal sealed class PlanRouteView : ITruncatingView
+internal sealed class PlanRouteView
 {
-    internal PlanRouteView(string tool, RouteView? route, string? failure, object? placeArguments,
-        RunReportView? dryRun, List<string> notes, RunSummaryView? dryRunSummary = null)
+    internal PlanRouteView(string tool, RouteView? route, string? failure, JObject? buildArguments,
+        JObject? buildReport, JObject? buildReportSummary, List<string> notes)
     {
-        DryRunSummary = dryRunSummary;
         Tool = tool;
         Found = route != null;
         Route = route;
         Failure = failure;
-        PlaceArguments = placeArguments;
-        DryRun = dryRun;
+        BuildArguments = buildArguments;
+        BuildReport = buildReport;
+        BuildReportSummary = buildReportSummary;
         Notes = notes;
     }
 
@@ -1131,30 +1132,28 @@ internal sealed class PlanRouteView : ITruncatingView
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public RouteView? Route { get; }
 
-    /// <summary>no_route, too_long or search_limit, with why.</summary>
+    /// <summary>no_route, too_long, search_limit or cell_blocked, with why.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public string? Failure { get; }
 
-    /// <summary>The arguments for the place tool (add dry_run false and confirm true to build).</summary>
+    /// <summary>build's options for the route: {what, ...options}, ready to pass to build.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-    public object? PlaceArguments { get; }
+    public JObject? BuildArguments { get; }
 
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-    public RunReportView? DryRun { get; }
+    public JObject? BuildReport { get; }
 
-    /// <summary>The dry run in short, in place of dry_run, with summary.</summary>
+    /// <summary>build's report in short, in place of build_report, with summarize.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-    public RunSummaryView? DryRunSummary { get; }
+    public JObject? BuildReportSummary { get; }
 
     public List<string> Notes { get; }
-
-    public void NoteTruncations(string path) => DryRun?.NoteTruncations(path + "dry_run.");
 }
 
 /// <summary>
-/// A plan tool's dry run in short (summary): whether it is ready, every problem in full (they say what to change),
-/// the warnings' codes, the counts, and the coils or kits it needs, without the per-cell list, the networks and the
-/// refund plan.
+/// A run's planned view in short (plan route's summarize): whether it is ready, every problem in full (they say what
+/// to change), the warnings' codes, the counts, and the coils or kits it needs, without the per-cell list, the
+/// networks and the refund plan.
 /// </summary>
 internal sealed class RunSummaryView
 {
