@@ -65,47 +65,6 @@
         "order": {"use": "order"}
       },
       "example": {"prefab": "*Battery*", "near": "player", "radius": 30},
-      "handlers": [
-        {
-          "name": "find_things",
-          "args": [
-            {"arg": "name_contains", "option": "name", "change": "renamed"},
-            {"arg": "prefab", "option": "prefab", "change": "kept"},
-            {"arg": "prefabs", "option": "prefab", "change": "merged", "note": "prefab takes a list"},
-            {
-              "arg": "prefab_contains",
-              "option": "prefab",
-              "change": "merged",
-              "note": "a part is written with *: '*Battery*' (see MAP-30)"
-            },
-            {"arg": "kind", "option": "category", "change": "renamed"},
-            {"arg": "labelled_only", "option": "labelled", "change": "renamed"},
-            {"arg": "runtime_type", "option": "runtime_type", "change": "kept"},
-            {"arg": "broken", "option": "broken", "change": "kept"},
-            {"arg": "has_atmosphere", "option": "has_atmosphere", "change": "kept"},
-            {"arg": "made_by", "option": "made_by", "change": "kept"},
-            {"arg": "made_since", "option": "made_since", "change": "kept"},
-            {"arg": "min", "option": "box", "change": "merged", "note": "min and max become box [[x,y,z],[x,y,z]]"},
-            {"arg": "max", "option": "box", "change": "merged", "note": "min and max become box"},
-            {"arg": "near", "option": "near", "change": "kept"},
-            {"arg": "radius_m", "option": "radius", "change": "renamed"},
-            {
-              "arg": "near_player_m",
-              "option": "near+radius",
-              "change": "merged",
-              "note": "near: \"player\" with radius (see MAP-30)"
-            },
-            {"arg": "location", "option": "location", "change": "kept"},
-            {"arg": "limit", "option": "limit", "change": "kept"},
-            {"arg": "offset", "option": "offset", "change": "kept"},
-            {"arg": "order", "option": "order", "change": "renamed"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "things",
         "variants": [
@@ -138,7 +97,7 @@
           "x-script": "same"
         },
         "within": {
-          "schema": {"type": "string"},
+          "use": "within",
           "description": "Only items inside this holder at any depth (and its machine stock or silo store).",
           "x-script": "same"
         },
@@ -179,78 +138,6 @@
       "text": ["group_by place takes no offset, order or exclude_in_use (the totals are not paged)."],
       "x-script-text": ["group_by place takes no order or exclude_in_use (the totals are not paged)."],
       "example": {"prefab": "ItemIronIngot", "group_by": "place"},
-      "handlers": [
-        {
-          "name": "find_items",
-          "when": "list or group_by holder/prefab",
-          "args": [
-            {"arg": "prefab", "option": "prefab", "change": "kept"},
-            {"arg": "prefabs", "option": "prefab", "change": "merged", "note": "prefab takes a list"},
-            {
-              "arg": "prefab_contains",
-              "option": "prefab",
-              "change": "merged",
-              "note": "a part is written with *: '*Battery*' (see MAP-30)"
-            },
-            {"arg": "name_contains", "option": "name", "change": "renamed"},
-            {"arg": "location", "option": "location", "change": "kept"},
-            {"arg": "within_id", "option": "within", "change": "renamed"},
-            {"arg": "min", "option": "box", "change": "merged", "note": "min and max become box [[x,y,z],[x,y,z]]"},
-            {"arg": "max", "option": "box", "change": "merged", "note": "min and max become box"},
-            {"arg": "near", "option": "near", "change": "kept"},
-            {"arg": "radius_m", "option": "radius", "change": "renamed"},
-            {
-              "arg": "near_player_m",
-              "option": "near+radius",
-              "change": "merged",
-              "note": "near: \"player\" with radius (see MAP-30)"
-            },
-            {"arg": "limit", "option": "limit", "change": "kept"},
-            {"arg": "offset", "option": "offset", "change": "kept"},
-            {"arg": "order", "option": "order", "change": "renamed"},
-            {"arg": "group_by", "option": "group_by", "change": "kept"},
-            {"arg": "exclude_in_use", "option": "exclude_in_use", "change": "kept"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        },
-        {
-          "name": "item_totals",
-          "when": "group_by place",
-          "note": "item_totals is find what: item, group_by: \"place\"",
-          "args": [
-            {"arg": "prefab", "option": "prefab", "change": "kept"},
-            {"arg": "prefabs", "option": "prefab", "change": "merged", "note": "prefab takes a list"},
-            {
-              "arg": "prefab_contains",
-              "option": "prefab",
-              "change": "merged",
-              "note": "a part is written with *: '*Battery*' (see MAP-30)"
-            },
-            {"arg": "name_contains", "option": "name", "change": "renamed"},
-            {"arg": "location", "option": "location", "change": "kept"},
-            {"arg": "within_id", "option": "within", "change": "renamed"},
-            {"arg": "min", "option": "box", "change": "merged", "note": "min and max become box [[x,y,z],[x,y,z]]"},
-            {"arg": "max", "option": "box", "change": "merged", "note": "min and max become box"},
-            {"arg": "near", "option": "near", "change": "kept"},
-            {"arg": "radius_m", "option": "radius", "change": "renamed"},
-            {
-              "arg": "near_player_m",
-              "option": "near+radius",
-              "change": "merged",
-              "note": "near: \"player\" with radius (see MAP-30)"
-            },
-            {"arg": "limit", "option": "limit", "change": "kept"},
-            {"arg": "holders_limit", "option": "holders", "change": "renamed"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "items",
         "variants": [
@@ -297,25 +184,6 @@
         "Paging and prefab parts are applied by the verb layer to the handler's whole list (it walks every device either way)."
       ],
       "example": {"prefab": "*GasSensor*"},
-      "handlers": [
-        {
-          "name": "list_devices",
-          "args": [
-            {"arg": "gateway_id", "option": "gateway", "change": "renamed"},
-            {
-              "arg": "prefab_hash",
-              "option": "prefab",
-              "change": "merged",
-              "note": "prefab takes a name, a hash or a part"
-            },
-            {"arg": "name_contains", "option": "name", "change": "renamed"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "devices",
         "variants": [
@@ -342,33 +210,6 @@
         "order": {"use": "order"}
       },
       "example": {"prefab": "*Locker*", "near": "player", "radius": 15},
-      "handlers": [
-        {
-          "name": "list_containers",
-          "args": [
-            {
-              "arg": "prefab_contains",
-              "option": "prefab",
-              "change": "merged",
-              "note": "a part is written with *: '*Battery*'"
-            },
-            {"arg": "name_contains", "option": "name", "change": "renamed"},
-            {
-              "arg": "near_player_m",
-              "option": "near+radius",
-              "change": "merged",
-              "note": "near: \"player\" with radius"
-            },
-            {"arg": "limit", "option": "limit", "change": "kept"},
-            {"arg": "offset", "option": "offset", "change": "kept"},
-            {"arg": "order", "option": "order", "change": "renamed"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "containers",
         "variants": [
@@ -403,27 +244,6 @@
         "order": {"use": "order"}
       },
       "example": {"near": "player", "radius": 20},
-      "handlers": [
-        {
-          "name": "outer_frames",
-          "args": [
-            {
-              "arg": "near_player_m",
-              "option": "near+radius",
-              "change": "merged",
-              "note": "near: \"player\" with radius"
-            },
-            {"arg": "include_inner", "option": "include", "change": "merged", "note": "include: [\"inner\"]"},
-            {"arg": "limit", "option": "limit", "change": "kept"},
-            {"arg": "offset", "option": "offset", "change": "kept"},
-            {"arg": "order", "option": "order", "change": "renamed"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "frames",
         "variants": [
@@ -451,17 +271,6 @@
       "options": {},
       "text": ["No options."],
       "example": {},
-      "handlers": [
-        {
-          "name": "landing_pads",
-          "args": [
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "pads",
         "variants": [
@@ -487,24 +296,6 @@
         }
       },
       "example": {"min_mol": 50},
-      "handlers": [
-        {
-          "name": "water_sources",
-          "args": [
-            {"arg": "min_mol", "option": "min_mol", "change": "kept"},
-            {
-              "arg": "min_moles",
-              "option": "",
-              "change": "dropped",
-              "note": "old name of min_mol, still read today; min_mol stays"
-            },
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "sources",
         "variants": [
@@ -561,23 +352,6 @@
         }
       },
       "example": {"ores": ["Cobalt"]},
-      "handlers": [
-        {
-          "name": "deep_miner_spots",
-          "args": [
-            {"arg": "at", "option": "near", "change": "renamed"},
-            {"arg": "ores", "option": "ores", "change": "kept"},
-            {"arg": "radius_m", "option": "radius", "change": "renamed"},
-            {"arg": "count", "option": "limit", "change": "renamed"},
-            {"arg": "min_separation_m", "option": "separation", "change": "renamed"},
-            {"arg": "step_m", "option": "step", "change": "renamed"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "spots",
         "variants": [
@@ -600,17 +374,6 @@
       "options": {},
       "text": ["No options."],
       "example": {},
-      "handlers": [
-        {
-          "name": "consumables",
-          "args": [
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "food",
         "variants": [
@@ -641,20 +404,6 @@
         "verbose": {"use": "verbose"}
       },
       "example": {},
-      "handlers": [
-        {
-          "name": "plants",
-          "args": [
-            {"arg": "reference_id", "option": "id", "change": "renamed"},
-            {"arg": "include_unplanted", "option": "include", "change": "merged", "note": "include: [\"unplanted\"]"},
-            {"arg": "verbose", "option": "verbose", "change": "kept"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "plants",
         "variants": [
@@ -669,7 +418,6 @@
           }
         ]
       },
-      "x-list": "split",
       "brief": "plants: stage, health, harvest"
     },
     "room": {
@@ -683,20 +431,6 @@
         }
       },
       "example": {"id": "4820585"},
-      "handlers": [
-        {
-          "name": "rooms",
-          "args": [
-            {"arg": "reference_id", "option": "id", "change": "renamed"},
-            {"arg": "include_cells", "option": "include", "change": "merged", "note": "include: [\"cells\"]"},
-            {"arg": "include_devices", "option": "include", "change": "merged", "note": "include: [\"devices\"]"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "rooms",
         "variants": [
@@ -709,7 +443,6 @@
         ],
         "types": ["Thing", "Vec3"]
       },
-      "x-list": "split",
       "brief": "closed rooms: pressure, gases"
     },
     "gateway": {
@@ -717,7 +450,6 @@
       "options": {},
       "text": ["No options."],
       "example": {},
-      "handlers": [{"name": "list_gateways", "args": []}],
       "reply": {
         "list": "gateways",
         "variants": [
@@ -753,28 +485,6 @@
         "offset": {"use": "offset"}
       },
       "example": {"min_damage": 0.25, "structures_only": true},
-      "handlers": [
-        {
-          "name": "thing_health",
-          "note": "id/ids/network forms are inspect health; the world scan (no id, no network) is find what: damaged",
-          "args": [
-            {
-              "arg": "min_damage_ratio",
-              "option": "min_damage",
-              "change": "moved",
-              "note": "the world scan is find what: damaged"
-            },
-            {"arg": "structures_only", "option": "structures_only", "change": "moved", "note": "scan form"},
-            {
-              "arg": "broken_only",
-              "option": "broken_only",
-              "change": "moved",
-              "note": "scan form; name kept: find thing's broken is three-way, this is a switch (see MAP-05)"
-            },
-            {"arg": "near_player_m", "option": "near+radius", "change": "moved", "note": "scan form"}
-          ]
-        }
-      ],
       "reply": {
         "list": "things",
         "variants": [

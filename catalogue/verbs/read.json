@@ -31,65 +31,6 @@
         "The two list forms: id: [a, b], logic: [\"On\", \"Power\"] answers 4 rows, one per (id, logic) pair: {index, ok, reference_id, logic_type {id, name}, value}. reads: [{id: a, logic: [\"On\", \"Power\"]}, {id: b, logic: [\"On\", \"Power\"]}] answers 2 rows, one per id: {index, ok, reference_id, logic {On: 1, Power: 40.2}}."
       ],
       "example": {"id": ["1199811", "1199812"], "logic": ["Pressure", "Temperature"]},
-      "handlers": [
-        {
-          "name": "read_logic",
-          "when": "one id, one logic type",
-          "args": [
-            {"arg": "gateway_id", "option": "gateway", "change": "renamed"},
-            {
-              "arg": "reference_id",
-              "option": "id",
-              "change": "default-changed",
-              "note": "renamed to the shared name id; required before, optional now: the what takes another form for it",
-              "default": ["required", "absent"]
-            },
-            {
-              "arg": "logic_type",
-              "option": "logic",
-              "change": "default-changed",
-              "note": "renamed to the shared name logic; required before, optional now: the what takes another form for it",
-              "default": ["required", "absent"]
-            }
-          ]
-        },
-        {
-          "name": "read_logic_many",
-          "args": [
-            {"arg": "gateway_id", "option": "gateway", "change": "renamed"},
-            {
-              "arg": "reads",
-              "option": "reads",
-              "change": "default-changed",
-              "note": "items are {id, logic}; id x logic lists cover most uses; required by its tool; read logic also takes id x logic (see MAP-14)",
-              "default": ["required", "absent"]
-            },
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        },
-        {
-          "name": "read_devices",
-          "when": "anything else",
-          "args": [
-            {"arg": "gateway_id", "option": "gateway", "change": "renamed"},
-            {"arg": "include", "option": "include", "change": "kept"},
-            {
-              "arg": "items",
-              "option": "reads",
-              "change": "default-changed",
-              "note": "items {reference_id,...} become reads {id,...} (see MAP-14); required before, optional now: the what takes another form for it",
-              "default": ["required", "absent"]
-            },
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "results",
         "variants": [
@@ -124,7 +65,6 @@
         ],
         "types": ["Error", "LogicType"]
       },
-      "x-list": "native",
       "brief": "logic values; slots, atmosphere, reagents in one frame"
     },
     "snapshot": {
@@ -153,34 +93,6 @@
         }
       },
       "example": {"prefab": "StructureBatteryLarge", "limit": 10},
-      "handlers": [
-        {
-          "name": "network_snapshot",
-          "args": [
-            {"arg": "gateway_id", "option": "gateway", "change": "renamed"},
-            {"arg": "reference_ids", "option": "id", "change": "renamed"},
-            {
-              "arg": "prefab_hash",
-              "option": "prefab",
-              "change": "merged",
-              "note": "a name is resolved to its hash (see MAP-29)"
-            },
-            {"arg": "name_contains", "option": "name", "change": "renamed"},
-            {"arg": "logic_types", "option": "logic", "change": "renamed"},
-            {
-              "arg": "include_zero_ratios",
-              "option": "include",
-              "change": "merged",
-              "note": "include: [\"zero_ratios\"]"
-            },
-            {"arg": "max_devices", "option": "limit", "change": "renamed"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "devices",
         "variants": [
@@ -195,7 +107,6 @@
           }
         ]
       },
-      "x-list": "native",
       "brief": "every logic value of matching devices"
     },
     "memory": {
@@ -217,21 +128,6 @@
         }
       },
       "example": {"id": "4820585", "start": 0, "count": 32},
-      "handlers": [
-        {
-          "name": "read_memory",
-          "args": [
-            {"arg": "gateway_id", "option": "gateway", "change": "renamed"},
-            {"arg": "reference_id", "option": "id", "change": "renamed"},
-            {"arg": "start_address", "option": "start", "change": "renamed"},
-            {"arg": "count", "option": "count", "change": "kept"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "variants": [
           {
@@ -246,7 +142,6 @@
           }
         ]
       },
-      "x-list": "split",
       "brief": "a device's memory"
     },
     "sample": {
@@ -281,29 +176,9 @@
           "x-script": "same"
         }
       },
-      "x-script-text": ["A list of ids keeps this reply: one series of changes over all of them (x-list native-shape)."],
+      "id_list": "reads",
+      "x-script-text": ["A list of ids keeps this reply: one series of changes over all of them."],
       "example": {"id": "1199811", "logic": "Pressure", "seconds": 10},
-      "handlers": [
-        {
-          "name": "sample_logic",
-          "args": [
-            {"arg": "gateway_id", "option": "gateway", "change": "renamed"},
-            {
-              "arg": "targets",
-              "option": "reads",
-              "change": "default-changed",
-              "note": "or id x logic; required before, optional now: the what takes another form for it",
-              "default": ["required", "absent"]
-            },
-            {"arg": "duration_seconds", "option": "seconds", "change": "renamed"},
-            {"arg": "interval_seconds", "option": "interval", "change": "renamed"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "variants": [
           {
@@ -319,7 +194,6 @@
           }
         ]
       },
-      "x-list": "native-shape",
       "brief": "values over up to 30 s"
     },
     "clock": {
@@ -327,7 +201,6 @@
       "options": {},
       "text": ["No options."],
       "example": {},
-      "handlers": [{"name": "game_clock", "args": []}],
       "reply": {
         "variants": [{"keys": {"game_time_s": "float", "paused": "bool", "time_of_day_ratio": "float", "days_past": "int"}}]
       },
@@ -359,23 +232,6 @@
         "offset": {"use": "offset"}
       },
       "example": {"limit": 20},
-      "handlers": [
-        {
-          "name": "rocket_flight_log",
-          "note": "action read and list are read flight_log; start, stop and clear are write flight_log",
-          "args": [
-            {"arg": "action", "option": "action", "change": "kept"},
-            {"arg": "rocket_id", "option": "id", "change": "renamed"},
-            {"arg": "offset", "option": "offset", "change": "kept"},
-            {"arg": "limit", "option": "limit", "change": "kept"},
-            {"arg": "every", "option": "every", "change": "kept"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "rows",
         "variants": [
@@ -419,7 +275,6 @@
           }
         ]
       },
-      "x-list": "split",
       "brief": "flight recorder rows"
     }
   }

@@ -30,16 +30,6 @@
         }
       },
       "example": {"verb": "find"},
-      "handlers": [
-        {
-          "name": "tool_info",
-          "args": [
-            {"arg": "tool", "option": "verb", "change": "renamed"},
-            {"arg": "topic", "option": "topic", "change": "kept"},
-            {"arg": "subtopic", "option": "subtopic", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "variants": [
           {

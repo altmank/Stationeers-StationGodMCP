@@ -49,47 +49,6 @@
         "max_wait": {"use": "max_wait"}
       },
       "example": {"room": "17", "into": "StructureCompositeWall"},
-      "handlers": [
-        {
-          "name": "replace_walls",
-          "args": [
-            {"arg": "include_notes", "option": "include", "change": "merged", "note": "include: [\"notes\"]"},
-            {"arg": "reference_ids", "option": "id", "change": "renamed"},
-            {"arg": "room_id", "option": "room", "change": "renamed"},
-            {"arg": "to", "option": "into", "change": "renamed"},
-            {"arg": "from_prefabs", "option": "prefab", "change": "renamed"},
-            {
-              "arg": "wait",
-              "option": "queue",
-              "change": "default-changed",
-              "note": "wait false (answer busy) becomes queue true (wait in line) (DESIGN 9.10)",
-              "default": ["false", "true"]
-            },
-            {
-              "arg": "dry_run",
-              "option": "confirm",
-              "change": "merged",
-              "note": "dry_run and confirm become one confirm (false or left out: report only)"
-            },
-            {"arg": "confirm", "option": "confirm", "change": "kept"},
-            {"arg": "from_id", "option": "materials", "change": "renamed"},
-            {"arg": "skip_unmatched", "option": "skip_unmatched", "change": "kept"},
-            {
-              "arg": "refund",
-              "option": "refund_to",
-              "change": "merged",
-              "note": "refund: false is refund_to: \"none\" (same meaning today)"
-            },
-            {"arg": "refund_to", "option": "refund_to", "change": "kept"},
-            {"arg": "limit", "option": "rows", "change": "renamed"},
-            {"arg": "verbose", "option": "verbose", "change": "kept"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "pieces",
         "variants": [
@@ -128,11 +87,9 @@
         "types": ["Thing", "Vec3"]
       },
       "write": {
-        "report": "dry_run",
         "route": "confirm",
         "x-undo": "cannot",
         "x-undo-mark": "[cannot undo: change job]",
-        "x-list": "native",
         "x-target": [
           {"path": "id", "role": "acts-on"},
           {"path": "materials", "role": "pays-from"},
@@ -182,47 +139,6 @@
         "max_wait": {"use": "max_wait"}
       },
       "example": {"room": "17"},
-      "handlers": [
-        {
-          "name": "replace_frames",
-          "args": [
-            {"arg": "include_notes", "option": "include", "change": "merged", "note": "include: [\"notes\"]"},
-            {"arg": "reference_ids", "option": "id", "change": "renamed"},
-            {"arg": "room_id", "option": "room", "change": "renamed"},
-            {"arg": "to", "option": "into", "change": "renamed"},
-            {"arg": "from_prefabs", "option": "prefab", "change": "renamed"},
-            {
-              "arg": "wait",
-              "option": "queue",
-              "change": "default-changed",
-              "note": "wait false (answer busy) becomes queue true (wait in line) (DESIGN 9.10)",
-              "default": ["false", "true"]
-            },
-            {
-              "arg": "dry_run",
-              "option": "confirm",
-              "change": "merged",
-              "note": "dry_run and confirm become one confirm (false or left out: report only)"
-            },
-            {"arg": "confirm", "option": "confirm", "change": "kept"},
-            {"arg": "from_id", "option": "materials", "change": "renamed"},
-            {"arg": "skip_unmatched", "option": "skip_unmatched", "change": "kept"},
-            {
-              "arg": "refund",
-              "option": "refund_to",
-              "change": "merged",
-              "note": "refund: false is refund_to: \"none\" (same meaning today)"
-            },
-            {"arg": "refund_to", "option": "refund_to", "change": "kept"},
-            {"arg": "limit", "option": "rows", "change": "renamed"},
-            {"arg": "verbose", "option": "verbose", "change": "kept"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "pieces",
         "variants": [
@@ -261,11 +177,9 @@
         "types": ["Thing", "Vec3"]
       },
       "write": {
-        "report": "dry_run",
         "route": "confirm",
         "x-undo": "cannot",
         "x-undo-mark": "[cannot undo: change job]",
-        "x-list": "native",
         "x-target": [
           {"path": "id", "role": "acts-on"},
           {"path": "materials", "role": "pays-from"},
@@ -351,102 +265,6 @@
       },
       "text": ["Give into (upgrade) or tidy, not both."],
       "example": {"network": "3768865", "into": "super_heavy"},
-      "handlers": [
-        {
-          "name": "upgrade_cables",
-          "when": "into",
-          "args": [
-            {"arg": "include_notes", "option": "include", "change": "merged", "note": "include: [\"notes\"]"},
-            {"arg": "network_id", "option": "network", "change": "renamed"},
-            {
-              "arg": "wait",
-              "option": "queue",
-              "change": "default-changed",
-              "note": "wait false (answer busy) becomes queue true (wait in line) (DESIGN 9.10)",
-              "default": ["false", "true"]
-            },
-            {"arg": "reference_ids", "option": "id", "change": "renamed"},
-            {
-              "arg": "to",
-              "option": "into",
-              "change": "default-changed",
-              "note": "default heavy gone: into or tidy is required; the option name stays, a value is renamed; default heavy is not in spec: with neither into nor tidy the handler is not chosen (see MAP-18)",
-              "default": ["heavy", "absent (no default; into or tidy picks the handler)"]
-            },
-            {
-              "arg": "dry_run",
-              "option": "confirm",
-              "change": "merged",
-              "note": "dry_run and confirm become one confirm (false or left out: report only)"
-            },
-            {"arg": "confirm", "option": "confirm", "change": "kept"},
-            {"arg": "from_id", "option": "materials", "change": "renamed"},
-            {"arg": "skip_unmatched", "option": "skip_unmatched", "change": "kept"},
-            {
-              "arg": "refund",
-              "option": "refund_to",
-              "change": "merged",
-              "note": "refund: false is refund_to: \"none\" (same meaning today)"
-            },
-            {"arg": "refund_to", "option": "refund_to", "change": "kept"},
-            {"arg": "limit", "option": "rows", "change": "renamed"},
-            {"arg": "verbose", "option": "verbose", "change": "kept"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        },
-        {
-          "name": "clean_cables",
-          "when": "tidy",
-          "args": [
-            {"arg": "include_notes", "option": "include", "change": "merged", "note": "include: [\"notes\"]"},
-            {"arg": "network_id", "option": "network", "change": "renamed"},
-            {"arg": "reference_ids", "option": "id", "change": "renamed"},
-            {"arg": "keep_ids", "option": "spare", "change": "renamed"},
-            {"arg": "only_ids", "option": "only", "change": "renamed"},
-            {"arg": "older_than_id", "option": "older_than", "change": "renamed"},
-            {"arg": "root", "option": "root", "change": "kept"},
-            {
-              "arg": "wait",
-              "option": "queue",
-              "change": "default-changed",
-              "note": "wait false (answer busy) becomes queue true (wait in line) (DESIGN 9.10)",
-              "default": ["false", "true"]
-            },
-            {
-              "arg": "operations",
-              "option": "tidy",
-              "change": "default-changed",
-              "note": "tidy: true is today's default [simplify_junctions]; into or tidy is required; the option name stays, a value is renamed; default [simplify_junctions] is not in spec, though the MAP reason says it is kept (see MAP-18)",
-              "default": ["[\"simplify_junctions\"]", "absent (no default; into or tidy picks the handler)"]
-            },
-            {
-              "arg": "dry_run",
-              "option": "confirm",
-              "change": "merged",
-              "note": "dry_run and confirm become one confirm (false or left out: report only)"
-            },
-            {"arg": "confirm", "option": "confirm", "change": "kept"},
-            {"arg": "from_id", "option": "materials", "change": "renamed"},
-            {"arg": "skip_unmatched", "option": "skip_unmatched", "change": "kept"},
-            {
-              "arg": "refund",
-              "option": "refund_to",
-              "change": "merged",
-              "note": "refund: false is refund_to: \"none\" (same meaning today)"
-            },
-            {"arg": "refund_to", "option": "refund_to", "change": "kept"},
-            {"arg": "limit", "option": "rows", "change": "renamed"},
-            {"arg": "verbose", "option": "verbose", "change": "kept"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "pieces",
         "variants": [
@@ -494,11 +312,9 @@
         "types": ["Thing", "Vec3"]
       },
       "write": {
-        "report": "dry_run",
         "route": "confirm",
         "x-undo": "cannot",
         "x-undo-mark": "[cannot undo: change job]",
-        "x-list": "native",
         "x-target": [
           {"path": "id", "role": "acts-on"},
           {"path": "materials", "role": "pays-from"},
@@ -593,104 +409,6 @@
       },
       "text": ["Give into (upgrade) or tidy, not both."],
       "example": {"network": "5012345", "into": "insulated"},
-      "handlers": [
-        {
-          "name": "upgrade_pipes",
-          "when": "into",
-          "args": [
-            {"arg": "include_notes", "option": "include", "change": "merged", "note": "include: [\"notes\"]"},
-            {"arg": "network_id", "option": "network", "change": "renamed"},
-            {
-              "arg": "wait",
-              "option": "queue",
-              "change": "default-changed",
-              "note": "wait false (answer busy) becomes queue true (wait in line) (DESIGN 9.10)",
-              "default": ["false", "true"]
-            },
-            {"arg": "reference_ids", "option": "id", "change": "renamed"},
-            {
-              "arg": "to",
-              "option": "into",
-              "change": "default-changed",
-              "note": "default insulated gone: into or tidy is required; the option name stays, a value is renamed; default insulated is not in spec: with neither into nor tidy the handler is not chosen (see MAP-18)",
-              "default": ["insulated", "absent (no default; into or tidy picks the handler)"]
-            },
-            {
-              "arg": "dry_run",
-              "option": "confirm",
-              "change": "merged",
-              "note": "dry_run and confirm become one confirm (false or left out: report only)"
-            },
-            {"arg": "confirm", "option": "confirm", "change": "kept"},
-            {"arg": "from_id", "option": "materials", "change": "renamed"},
-            {"arg": "skip_unmatched", "option": "skip_unmatched", "change": "kept"},
-            {
-              "arg": "refund",
-              "option": "refund_to",
-              "change": "merged",
-              "note": "refund: false is refund_to: \"none\" (same meaning today)"
-            },
-            {"arg": "refund_to", "option": "refund_to", "change": "kept"},
-            {"arg": "limit", "option": "rows", "change": "renamed"},
-            {"arg": "verbose", "option": "verbose", "change": "kept"},
-            {"arg": "acknowledge_gas_lost", "option": "acknowledge_gas_lost", "change": "kept"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        },
-        {
-          "name": "clean_pipes",
-          "when": "tidy",
-          "args": [
-            {"arg": "include_notes", "option": "include", "change": "merged", "note": "include: [\"notes\"]"},
-            {"arg": "network_id", "option": "network", "change": "renamed"},
-            {"arg": "reference_ids", "option": "id", "change": "renamed"},
-            {"arg": "keep_ids", "option": "spare", "change": "renamed"},
-            {"arg": "only_ids", "option": "only", "change": "renamed"},
-            {"arg": "older_than_id", "option": "older_than", "change": "renamed"},
-            {"arg": "root", "option": "root", "change": "kept"},
-            {
-              "arg": "wait",
-              "option": "queue",
-              "change": "default-changed",
-              "note": "wait false (answer busy) becomes queue true (wait in line) (DESIGN 9.10)",
-              "default": ["false", "true"]
-            },
-            {
-              "arg": "operations",
-              "option": "tidy",
-              "change": "default-changed",
-              "note": "tidy: true is today's default [simplify_junctions]; into or tidy is required; the option name stays, a value is renamed; default [simplify_junctions] is not in spec, though the MAP reason says it is kept (see MAP-18)",
-              "default": ["[\"simplify_junctions\"]", "absent (no default; into or tidy picks the handler)"]
-            },
-            {
-              "arg": "dry_run",
-              "option": "confirm",
-              "change": "merged",
-              "note": "dry_run and confirm become one confirm (false or left out: report only)"
-            },
-            {"arg": "confirm", "option": "confirm", "change": "kept"},
-            {"arg": "from_id", "option": "materials", "change": "renamed"},
-            {"arg": "skip_unmatched", "option": "skip_unmatched", "change": "kept"},
-            {
-              "arg": "refund",
-              "option": "refund_to",
-              "change": "merged",
-              "note": "refund: false is refund_to: \"none\" (same meaning today)"
-            },
-            {"arg": "refund_to", "option": "refund_to", "change": "kept"},
-            {"arg": "limit", "option": "rows", "change": "renamed"},
-            {"arg": "verbose", "option": "verbose", "change": "kept"},
-            {"arg": "acknowledge_gas_lost", "option": "acknowledge_gas_lost", "change": "kept"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "pieces",
         "variants": [
@@ -738,11 +456,9 @@
         "types": ["Thing", "Vec3"]
       },
       "write": {
-        "report": "dry_run",
         "route": "confirm",
         "x-undo": "cannot",
         "x-undo-mark": "[cannot undo: change job]",
-        "x-list": "native",
         "x-target": [
           {"path": "id", "role": "acts-on"},
           {"path": "materials", "role": "pays-from"},
@@ -802,49 +518,6 @@
         "max_wait": {"use": "max_wait"}
       },
       "example": {"network": "6100100"},
-      "handlers": [
-        {
-          "name": "clean_chutes",
-          "args": [
-            {"arg": "include_notes", "option": "include", "change": "merged", "note": "include: [\"notes\"]"},
-            {"arg": "network_id", "option": "network", "change": "renamed"},
-            {"arg": "reference_ids", "option": "id", "change": "renamed"},
-            {"arg": "min", "option": "box", "change": "merged", "note": "min and max become box [[x,y,z],[x,y,z]]"},
-            {"arg": "max", "option": "box", "change": "merged", "note": "min and max become box"},
-            {"arg": "keep_ids", "option": "spare", "change": "renamed"},
-            {"arg": "riding", "option": "riding", "change": "kept"},
-            {
-              "arg": "wait",
-              "option": "queue",
-              "change": "default-changed",
-              "note": "wait false (answer busy) becomes queue true (wait in line) (DESIGN 9.10)",
-              "default": ["false", "true"]
-            },
-            {
-              "arg": "dry_run",
-              "option": "confirm",
-              "change": "merged",
-              "note": "dry_run and confirm become one confirm (false or left out: report only)"
-            },
-            {"arg": "confirm", "option": "confirm", "change": "kept"},
-            {"arg": "from_id", "option": "materials", "change": "renamed"},
-            {"arg": "skip_unmatched", "option": "skip_unmatched", "change": "kept"},
-            {
-              "arg": "refund",
-              "option": "refund_to",
-              "change": "merged",
-              "note": "refund: false is refund_to: \"none\" (same meaning today)"
-            },
-            {"arg": "refund_to", "option": "refund_to", "change": "kept"},
-            {"arg": "limit", "option": "rows", "change": "renamed"},
-            {"arg": "verbose", "option": "verbose", "change": "kept"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "pieces",
         "variants": [
@@ -892,11 +565,9 @@
         "types": ["Thing", "Vec3"]
       },
       "write": {
-        "report": "dry_run",
         "route": "confirm",
         "x-undo": "cannot",
         "x-undo-mark": "[cannot undo: change job]",
-        "x-list": "native",
         "x-target": [
           {"path": "id", "role": "acts-on"},
           {"path": "materials", "role": "pays-from"},

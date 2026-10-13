@@ -7,7 +7,7 @@ def write(what: Literal['flight_log'], *,
     csv: bool = False,  # start: also write a CSV next to the save.
 ) -> dict:  # main list: r['events']; iterating or indexing it walks every page, in order
     """Start, stop or clear a rocket flight recorder (server state; never the world); read it with read flight_log.
-    One id only: a list is refused (x-list one: this write cannot be undone).
+    One id only: a list is refused (this write cannot be undone).
     Reply, one of:
     (FlightLog)
       rocket_id: str

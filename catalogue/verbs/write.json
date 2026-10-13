@@ -37,54 +37,6 @@
         "id or writes is required (missing_target names them); gateway only narrows where ids are looked up. To write every device of a kind, find them and pass their ids as a list (in a confirmed run an id you have not seen stops the run: run it as a report first, then again with confirm: true)."
       ],
       "example": {"id": "4820585", "logic": "On", "value": 1},
-      "handlers": [
-        {
-          "name": "write_logic",
-          "when": "one write",
-          "args": [
-            {"arg": "gateway_id", "option": "gateway", "change": "renamed"},
-            {
-              "arg": "reference_id",
-              "option": "id",
-              "change": "default-changed",
-              "note": "renamed to the shared name id; required before, optional now: the what takes another form for it",
-              "default": ["required", "absent"]
-            },
-            {
-              "arg": "logic_type",
-              "option": "logic",
-              "change": "default-changed",
-              "note": "renamed to the shared name logic; required before, optional now: the what takes another form for it",
-              "default": ["required", "absent"]
-            },
-            {
-              "arg": "value",
-              "option": "value",
-              "change": "default-changed",
-              "note": "required by its tool; write logic takes value or writes",
-              "default": ["required", "absent"]
-            }
-          ]
-        },
-        {
-          "name": "write_logic_many",
-          "when": "several",
-          "args": [
-            {"arg": "gateway_id", "option": "gateway", "change": "renamed"},
-            {
-              "arg": "writes",
-              "option": "writes",
-              "change": "default-changed",
-              "note": "items are {id, logic, value}; required by its tool; write logic takes writes or id x value",
-              "default": ["required", "absent"]
-            },
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "results",
         "variants": [
@@ -115,11 +67,9 @@
         "types": ["Error", "LogicType"]
       },
       "write": {
-        "report": "hub",
         "route": "acts",
         "x-undo": "mixed",
         "x-undo-mark": "[undo] held settings; [cannot undo: action] pulse and action types",
-        "x-list": "native",
         "x-target": [{"path": "id", "role": "acts-on"}, {"path": "writes[].id", "role": "acts-on"}]
       },
       "brief": "logic values on devices"
@@ -149,17 +99,6 @@
         "confirm": {"use": "confirm"}
       },
       "example": {"id": "4820585", "start": 10, "values": [1, 0, 2], "confirm": true},
-      "handlers": [
-        {
-          "name": "write_memory",
-          "args": [
-            {"arg": "gateway_id", "option": "gateway", "change": "renamed"},
-            {"arg": "reference_id", "option": "id", "change": "renamed"},
-            {"arg": "start_address", "option": "start", "change": "renamed"},
-            {"arg": "values", "option": "values", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "variants": [
           {
@@ -177,12 +116,10 @@
         ]
       },
       "write": {
-        "report": "mod",
         "route": "confirm",
         "cheat": "always",
         "x-undo": "undo",
         "x-undo-mark": "[undo]",
-        "x-list": "one",
         "x-target": [{"path": "id", "role": "acts-on"}]
       },
       "brief": "device memory"
@@ -234,59 +171,9 @@
       ],
       "x-script-text": [
         "Given together, they apply in this order: code, pins, run. The reply is {code, pins, run} with the parts given; the first failure stops the rest, named in not_run.",
-        "One id only: a list is refused (x-list one: this write cannot be undone)."
+        "One id only: a list is refused (this write cannot be undone)."
       ],
       "example": {"id": "4820585", "code_file": "C:/work/ctl.ic10"},
-      "handlers": [
-        {
-          "name": "set_ic_source",
-          "when": "source",
-          "args": [
-            {"arg": "gateway_id", "option": "gateway", "change": "renamed"},
-            {"arg": "reference_id", "option": "id", "change": "renamed"},
-            {
-              "arg": "source",
-              "option": "code",
-              "change": "default-changed",
-              "note": "source means an origin elsewhere (move, route) (see MAP-08); required before, optional now: the what takes another form for it",
-              "default": ["required", "absent"]
-            },
-            {"arg": "include_source", "option": "include", "change": "merged", "note": "include: [\"code\"]"},
-            {"arg": "source_file", "option": "code_file", "change": "renamed"}
-          ]
-        },
-        {
-          "name": "set_ic_pins",
-          "when": "pins",
-          "args": [
-            {"arg": "gateway_id", "option": "gateway", "change": "renamed"},
-            {"arg": "reference_id", "option": "id", "change": "renamed"},
-            {
-              "arg": "pins",
-              "option": "pins",
-              "change": "default-changed",
-              "note": "required by its tool; write chip takes code, pins or run",
-              "default": ["required", "absent"]
-            },
-            {"arg": "allow_off_network", "option": "allow", "change": "merged", "note": "allow: [\"off_network\"]"}
-          ]
-        },
-        {
-          "name": "control_ic_execution",
-          "when": "run",
-          "args": [
-            {"arg": "gateway_id", "option": "gateway", "change": "renamed"},
-            {"arg": "reference_id", "option": "id", "change": "renamed"},
-            {
-              "arg": "action",
-              "option": "run",
-              "change": "default-changed",
-              "note": "renamed to the shared name run; required before, optional now: the what takes another form for it",
-              "default": ["required", "absent"]
-            }
-          ]
-        }
-      ],
       "reply": {
         "variants": [
           {
@@ -348,11 +235,9 @@
         "types": ["Thing"]
       },
       "write": {
-        "report": "hub",
         "route": "acts",
         "x-undo": "mixed",
         "x-undo-mark": "source [cannot undo: chip source]; pins [undo]; run [cannot undo: run control]",
-        "x-list": "one",
         "x-target": [
           {"path": "id", "role": "acts-on"},
           {"path": "pins.d0", "role": "acts-on"},
@@ -400,27 +285,8 @@
         }
       },
       "text": ["One id only: a list is refused, naming run_script (this write cannot be undone)."],
-      "x-script-text": ["One id only: a list is refused (x-list one: this write cannot be undone)."],
+      "x-script-text": ["One id only: a list is refused (this write cannot be undone)."],
       "example": {"id": "4860097", "element": "start"},
-      "handlers": [
-        {
-          "name": "screen_press",
-          "args": [
-            {"arg": "gateway_id", "option": "gateway", "change": "renamed"},
-            {"arg": "reference_id", "option": "id", "change": "renamed"},
-            {"arg": "surface", "option": "surface", "change": "kept"},
-            {"arg": "element_id", "option": "element", "change": "renamed"},
-            {"arg": "at", "option": "pixel", "change": "renamed"},
-            {"arg": "event", "option": "event", "change": "kept"},
-            {"arg": "value", "option": "text", "change": "renamed"},
-            {"arg": "player", "option": "as_player", "change": "renamed"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "variants": [
           {
@@ -438,11 +304,9 @@
         "types": ["Thing"]
       },
       "write": {
-        "report": "hub",
         "route": "acts",
         "x-undo": "cannot",
         "x-undo-mark": "[cannot undo: screen press]",
-        "x-list": "one",
         "x-target": [{"path": "id", "role": "acts-on"}]
       },
       "brief": "press a screen control"
@@ -469,16 +333,6 @@
       },
       "text": ["Pipe, cable and chute pieces cannot be renamed (not_labelable, per entry)."],
       "example": {"id": "1199811", "label": "O2 Tank 1"},
-      "handlers": [
-        {
-          "name": "label",
-          "args": [
-            {"arg": "reference_id", "option": "id", "change": "renamed"},
-            {"arg": "name", "option": "label", "change": "renamed"},
-            {"arg": "labels", "option": "labels", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "results",
         "variants": [
@@ -510,11 +364,9 @@
         "types": ["Error"]
       },
       "write": {
-        "report": "hub",
         "route": "acts",
         "x-undo": "undo",
         "x-undo-mark": "[undo]",
-        "x-list": "native",
         "x-target": [{"path": "id", "role": "acts-on"}, {"path": "labels[].id", "role": "acts-on"}]
       },
       "brief": "rename things"
@@ -550,20 +402,6 @@
         "confirm": {"use": "confirm"}
       },
       "example": {"network": "4639870", "kind": "pipe", "color": "Red"},
-      "handlers": [
-        {
-          "name": "paint",
-          "args": [
-            {"arg": "reference_ids", "option": "id", "change": "renamed"},
-            {"arg": "color", "option": "color", "change": "kept"},
-            {"arg": "items", "option": "items", "change": "kept"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "colors",
         "variants": [
@@ -586,11 +424,9 @@
         "types": ["Error"]
       },
       "write": {
-        "report": "hub",
         "route": "acts",
         "x-undo": "undo",
         "x-undo-mark": "[undo]",
-        "x-list": "native",
         "x-target": [
           {"path": "id", "role": "acts-on"},
           {"path": "items[].id", "role": "acts-on"},
@@ -634,34 +470,8 @@
         }
       },
       "text": ["One id only: a list is refused, naming run_script (this write cannot be undone)."],
-      "x-script-text": ["One id only: a list is refused (x-list one: this write cannot be undone)."],
+      "x-script-text": ["One id only: a list is refused (this write cannot be undone)."],
       "example": {"action": "start", "id": "Tanker"},
-      "handlers": [
-        {
-          "name": "rocket_flight_log",
-          "note": "action read and list are read flight_log; start, stop and clear are write flight_log",
-          "args": [
-            {
-              "arg": "interval_s",
-              "option": "interval_s",
-              "change": "moved",
-              "note": "start, stop and clear are write flight_log (COMPLETE-1-03)"
-            },
-            {
-              "arg": "capacity",
-              "option": "capacity",
-              "change": "moved",
-              "note": "start, stop and clear are write flight_log (COMPLETE-1-03)"
-            },
-            {
-              "arg": "csv",
-              "option": "csv",
-              "change": "moved",
-              "note": "start, stop and clear are write flight_log (COMPLETE-1-03)"
-            }
-          ]
-        }
-      ],
       "reply": {
         "list": "events",
         "variants": [
@@ -706,11 +516,9 @@
         ]
       },
       "write": {
-        "report": "hub",
         "route": "acts",
         "x-undo": "cannot",
         "x-undo-mark": "[cannot undo: flight log]",
-        "x-list": "one",
         "x-target": [{"path": "id", "role": "acts-on"}]
       },
       "brief": "start, stop, clear a recorder"
@@ -723,18 +531,8 @@
         "gateway": {"use": "gateway"}
       },
       "text": ["One id only: a list is refused, naming run_script (this write cannot be undone)."],
-      "x-script-text": ["One id only: a list is refused (x-list one: this write cannot be undone)."],
+      "x-script-text": ["One id only: a list is refused (this write cannot be undone)."],
       "example": {"id": "5100200", "downlink": "5100377"},
-      "handlers": [
-        {
-          "name": "set_uplink",
-          "args": [
-            {"arg": "gateway_id", "option": "gateway", "change": "renamed"},
-            {"arg": "reference_id", "option": "id", "change": "renamed"},
-            {"arg": "downlink_id", "option": "downlink", "change": "renamed"}
-          ]
-        }
-      ],
       "reply": {
         "variants": [
           {
@@ -748,11 +546,9 @@
         "types": ["Thing"]
       },
       "write": {
-        "report": "hub",
         "route": "acts",
         "x-undo": "cannot",
         "x-undo-mark": "[cannot undo: uplink]",
-        "x-list": "one",
         "x-target": [{"path": "id", "role": "acts-on"}, {"path": "downlink", "role": "acts-on"}]
       },
       "brief": "point an uplink"
@@ -763,7 +559,7 @@
         "id": {"use": "id", "description": "Batteries or cells (up to 256)."},
         "rocket": {"schema": {"type": "string"}, "description": "Every battery of this rocket.", "x-script": "same"},
         "within": {
-          "schema": {"type": "string"},
+          "use": "within",
           "description": "Every cell in this holder's slots, nested; \"player\" for the player.",
           "x-script": "same"
         },
@@ -782,29 +578,6 @@
         "confirm": {"use": "confirm"}
       },
       "example": {"within": "player", "confirm": true},
-      "handlers": [
-        {
-          "name": "set_battery_charge",
-          "args": [
-            {"arg": "reference_ids", "option": "id", "change": "renamed"},
-            {"arg": "rocket_id", "option": "rocket", "change": "renamed"},
-            {"arg": "in_id", "option": "within", "change": "renamed"},
-            {"arg": "ratio", "option": "ratio", "change": "kept"},
-            {"arg": "joules", "option": "joules", "change": "kept"},
-            {
-              "arg": "dry_run",
-              "option": "confirm",
-              "change": "merged",
-              "note": "dry_run and confirm become one confirm (false or left out: report only)"
-            },
-            {"arg": "confirm", "option": "confirm", "change": "kept"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "results",
         "variants": [
@@ -824,12 +597,10 @@
         "types": ["Error", "Thing"]
       },
       "write": {
-        "report": "dry_run",
         "route": "confirm",
         "cheat": "always",
         "x-undo": "undo",
         "x-undo-mark": "[undo: restores the value, not what happened since]",
-        "x-list": "native",
         "x-target": [{"path": "id", "role": "acts-on"}, {"path": "rocket", "role": "spread"}, {"path": "within", "role": "spread"}]
       },
       "brief": "set charge"
@@ -863,26 +634,6 @@
         "confirm": {"use": "confirm"}
       },
       "example": {"id": "3311223", "genes": {"GrowthSpeedMultiplier": 1}, "confirm": true},
-      "handlers": [
-        {
-          "name": "plant_genes",
-          "note": "reading is inspect genes; editing is write genes",
-          "args": [
-            {
-              "arg": "genes",
-              "option": "genes",
-              "change": "moved",
-              "note": "editing is write what: genes (cheat, confirm)"
-            },
-            {
-              "arg": "force",
-              "option": "allow",
-              "change": "moved",
-              "note": "allow: [\"out_of_range\"]; force means other things elsewhere (see MAP-12)"
-            }
-          ]
-        }
-      ],
       "reply": {
         "list": "results",
         "variants": [
@@ -926,12 +677,10 @@
         "types": ["Error", "Thing"]
       },
       "write": {
-        "report": "mod",
         "route": "confirm",
         "cheat": "always",
         "x-undo": "undo",
         "x-undo-mark": "[undo]",
-        "x-list": "one",
         "x-target": [{"path": "id", "role": "acts-on"}]
       },
       "brief": "edit plant genes"

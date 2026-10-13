@@ -12,8 +12,7 @@ namespace StationGodMCP.Tests.Verbs;
 
 /// <summary>
 /// Every file generated from catalogue/verbs, under generated/verbs: tools.json (the MCP tools array plus
-/// instructions), help/ (the direct pages and topics), stubs/ (the Python stub per what), legacy-verb-map.json and
-/// sizes.json. Set STATIONGOD_WRITE_CATALOGUE=1 and run VerbCatalogueTests.GeneratedFilesAreCurrent to rewrite them.
+/// instructions), help/ (the direct pages and topics), stubs/ (the Python stub per what) and sizes.json. Set STATIONGOD_WRITE_CATALOGUE=1 and run VerbCatalogueTests.GeneratedFilesAreCurrent to rewrite them.
 /// </summary>
 internal static class VerbOutputs
 {
@@ -25,7 +24,6 @@ internal static class VerbOutputs
         SortedDictionary<string, string> files = new(StringComparer.Ordinal);
         JsonObject tools = VerbToolList.Build();
         files["tools.json"] = CatalogueFiles.Serialize(VerbText.Parsed(tools));
-        files["legacy-verb-map.json"] = CatalogueFiles.Serialize(VerbText.Parsed(LegacyVerbMapTable.Build()));
         files["sizes.json"] = CatalogueFiles.Serialize(VerbText.Parsed(VerbSizes.Table(tools)));
         files["help/_index.txt"] = VerbHelp.Index();
         foreach (string topic in VerbHelp.TopicKeys())

@@ -1280,7 +1280,7 @@ def read(what: Literal['sample'], *,
     interval: float = 0.5,  # Least time between samples (s).
 ) -> dict:
     """Watch up to 32 logic values for up to 30 s: first readings and every change with its time.
-    A list of ids keeps this reply: one series of changes over all of them (x-list native-shape).
+    A list of ids keeps this reply: one series of changes over all of them.
     Reply:
       gateway_id: str
       started_at_utc: str
@@ -1432,7 +1432,7 @@ def write(what: Literal['chip'], *,
 ) -> dict:
     """A circuit holder's chip: write source (IC10 or Lua), set pins d0-d5, or pause, step, resume, restart.
     Given together, they apply in this order: code, pins, run. The reply is {code, pins, run} with the parts given; the first failure stops the rest, named in not_run.
-    One id only: a list is refused (x-list one: this write cannot be undone).
+    One id only: a list is refused (this write cannot be undone).
     Reply, one of:
     (IcSourceSet)
       gateway_id: str
@@ -1493,7 +1493,7 @@ def write(what: Literal['screen'], *,
     as_player: str = None,  # The name the handler receives; default the player's.
 ) -> dict:
     """Touch a control on a ScriptedScreens screen, as a player's touch does.
-    One id only: a list is refused (x-list one: this write cannot be undone).
+    One id only: a list is refused (this write cannot be undone).
     Reply:
       holder: Thing
       surface: str
@@ -1570,7 +1570,7 @@ def write(what: Literal['flight_log'], *,
     csv: bool = False,  # start: also write a CSV next to the save.
 ) -> dict:  # main list: r['events']; iterating or indexing it walks every page, in order
     """Start, stop or clear a rocket flight recorder (server state; never the world); read it with read flight_log.
-    One id only: a list is refused (x-list one: this write cannot be undone).
+    One id only: a list is refused (this write cannot be undone).
     Reply, one of:
     (FlightLog)
       rocket_id: str
@@ -1624,7 +1624,7 @@ def write(what: Literal['uplink'], *,
     gateway: str = 'world',  # "world" (default) or a gateway id: only devices on its data networks.
 ) -> dict:
     """Point a Logic Rocket Uplink at a Logic Rocket Downlink.
-    One id only: a list is refused (x-list one: this write cannot be undone).
+    One id only: a list is refused (this write cannot be undone).
     Reply:
       uplink: Thing
       previous_downlink: {reference_id: str, prefab_name: str | None, display_name: str | None, rocket: {network_id: str, name: str, state: str,

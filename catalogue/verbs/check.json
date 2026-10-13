@@ -43,25 +43,6 @@
         }
       },
       "example": {"room": "17"},
-      "handlers": [
-        {
-          "name": "lint_layout",
-          "args": [
-            {"arg": "room_id", "option": "room", "change": "renamed"},
-            {"arg": "min", "option": "box", "change": "merged", "note": "min and max become box [[x,y,z],[x,y,z]]"},
-            {"arg": "max", "option": "box", "change": "merged", "note": "min and max become box"},
-            {"arg": "codes", "option": "codes", "change": "kept"},
-            {"arg": "exclude_codes", "option": "exclude_codes", "change": "kept"},
-            {"arg": "reference_ids", "option": "id", "change": "renamed"},
-            {"arg": "since_id", "option": "since", "change": "renamed"},
-            {"arg": "limit", "option": "limit", "change": "kept"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "findings",
         "variants": [
@@ -83,8 +64,7 @@
             }
           }
         ]
-      },
-      "x-list": "native"
+      }
     },
     "rules": {
       "summary": "the lint rule set: list, validate a file, fields, functions, run examples, explain a finding",
@@ -113,25 +93,6 @@
         "at": {"schema": {"type": "array"}, "description": "explain: a cell.", "x-script": "same"}
       },
       "example": {"action": "explain", "rule": "door_keepout", "id": "1199811"},
-      "handlers": [
-        {
-          "name": "lint_rules",
-          "args": [
-            {"arg": "action", "option": "action", "change": "kept"},
-            {"arg": "rule_id", "option": "rule", "change": "renamed"},
-            {"arg": "full", "option": "full", "change": "kept"},
-            {"arg": "text", "option": "rules_text", "change": "renamed"},
-            {"arg": "reference_id", "option": "id", "change": "renamed"},
-            {"arg": "port", "option": "port", "change": "kept"},
-            {"arg": "other_id", "option": "other", "change": "renamed"},
-            {"arg": "at", "option": "at", "change": "kept"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "rules",
         "variants": [
@@ -150,25 +111,12 @@
             }
           }
         ]
-      },
-      "x-list": "split"
+      }
     },
     "replaceable": {
       "summary": "could a player place each thing again exactly where it stands, every neighbour present",
       "options": {"id": {"use": "id", "description": "Things to check (1 to 1024).", "required": true}},
       "example": {"id": "r12.things"},
-      "handlers": [
-        {
-          "name": "check_replaceable",
-          "args": [
-            {"arg": "reference_ids", "option": "id", "change": "renamed"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "results",
         "variants": [
@@ -178,8 +126,7 @@
             }
           }
         ]
-      },
-      "x-list": "native"
+      }
     },
     "ignition": {
       "summary": "whether carried items, or a tank or network by id, would catch fire in the air around them",
@@ -195,18 +142,6 @@
         }
       },
       "example": {"id": "2005300"},
-      "handlers": [
-        {
-          "name": "ignition_risk",
-          "args": [
-            {"arg": "include_prefabs", "option": "include", "change": "merged", "note": "include: [\"prefabs\"]"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "items",
         "variants": [
@@ -220,8 +155,7 @@
           }
         ],
         "types": ["Thing", "Vec3"]
-      },
-      "x-list": "split"
+      }
     }
   }
 }

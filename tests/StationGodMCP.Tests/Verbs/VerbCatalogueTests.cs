@@ -13,10 +13,10 @@ using Xunit.Abstractions;
 namespace StationGodMCP.Tests.Verbs;
 
 /// <summary>
-/// The verb catalogue (catalogue/verbs) holds what PLAN 2.0 asks of it: every write what declares its report class,
-/// x-undo, x-list and x-target; every option has x-script; no old tool or option name reaches verb help or errors;
-/// script-run ids and mod job ids cannot be confused; generated reply lines match the declared shapes; the handlers
-/// are today's methods with their real arguments; the generated files are current; the size targets hold.
+/// The verb catalogue (catalogue/verbs) holds what PLAN 2.0 asks of it: every write what declares its route, x-undo
+/// and x-target; every option has x-script; no old tool or option name reaches verb help or errors;
+/// script-run ids and mod job ids cannot be confused; generated reply lines match the declared shapes; the generated
+/// files are current; the size targets hold.
 /// </summary>
 public sealed class VerbCatalogueTests
 {
@@ -83,10 +83,8 @@ public sealed class VerbCatalogueTests
                 continue;
             }
 
-            Check(problems, at, "report", write, VerbCatalogue.ReportClasses);
             Check(problems, at, "route", write, VerbCatalogue.Routes);
             Check(problems, at, "x-undo", write, VerbCatalogue.UndoClasses);
-            Check(problems, at, "x-list", write, VerbCatalogue.ListForms);
             if (string.IsNullOrWhiteSpace((string?)write["x-undo-mark"]))
             {
                 problems.Add(at + ": no x-undo-mark (the footer's text)");
@@ -112,18 +110,9 @@ public sealed class VerbCatalogueTests
                 {
                     problems.Add(at + ": x-target " + path + " role " + target["role"]);
                 }
-
-                // when: the handlers (by their when) the target counts for, such as a filter only into a store
-                foreach (string when in VerbText.Lines(target["when"]))
-                {
-                    if (!source["handlers"]!.AsArray().Any(handler => (string?)handler!["when"] == when))
-                    {
-                        problems.Add(at + ": x-target " + path + " when '" + when + "' names no handler");
-                    }
-                }
             }
 
-            if (options.Contains("id") && (string)write["x-list"]! != "one" && !targets.Any(target => (string)target!["path"]! == "id"))
+            if (VerbCatalogue.IdTakesList(source) && !targets.Any(target => (string)target!["path"]! == "id"))
             {
                 problems.Add(at + ": takes an id list but id is not an x-target path");
             }
@@ -139,7 +128,6 @@ public sealed class VerbCatalogueTests
         foreach (string what in new[] { "chip", "screen", "uplink", "flight_log", "memory", "genes" })
         {
             JsonObject source = VerbCatalogue.Verb("write")["whats"]![what]!.AsObject();
-            Assert.Equal("one", (string?)VerbCatalogue.WriteOf(source)!["x-list"]);
             Assert.Equal("string", (string?)VerbCatalogue.Resolve(source["options"]!["id"]!.AsObject())["schema"]!["type"]);
         }
     }
@@ -147,22 +135,30 @@ public sealed class VerbCatalogueTests
     [Fact]
     public void EveryOtherIdTakesAList()
     {
+        string[] oneId = { "write chip", "write screen", "write uplink", "write flight_log", "write memory", "write genes", "server stop" };
         List<string> single = new();
         foreach ((string verb, string what, JsonObject source) in VerbCatalogue.Whats())
         {
-            if (source["options"]?["id"] is not JsonObject id || VerbCatalogue.ListFormOf(source) == "one")
-            {
-                continue;
-            }
-
-            JsonObject schema = VerbCatalogue.Resolve(id)["schema"]!.AsObject();
-            if (!VerbText.TypesOf(schema).Contains("array"))
+            if (source["options"]?["id"] is JsonObject && !VerbCatalogue.IdTakesList(source) && !oneId.Contains(verb + " " + what))
             {
                 single.Add(verb + " " + what);
             }
         }
 
-        Assert.True(single.Count == 0, "an id that takes no list outside x-list one: " + string.Join(", ", single));
+        Assert.True(single.Count == 0, "an id that takes no list outside the one-id whats: " + string.Join(", ", single));
+    }
+
+    [Fact]
+    public void AnIdListNamesAListOptionOfItsWhat()
+    {
+        foreach ((string verb, string what, JsonObject source) in VerbCatalogue.Whats())
+        {
+            if ((string?)source["id_list"] is { } list)
+            {
+                Assert.True(VerbCatalogue.IdTakesList(source), $"{verb} {what}: id_list on an id that takes no list");
+                Assert.Contains("array", VerbText.TypesOf(VerbCatalogue.Resolve(source["options"]![list]!.AsObject())["schema"]!.AsObject()));
+            }
+        }
     }
 
     [Fact]
@@ -172,10 +168,7 @@ public sealed class VerbCatalogueTests
         JsonObject item = VerbCatalogue.Verb("move")["whats"]!["item"]!.AsObject();
         JsonObject write = VerbCatalogue.WriteOf(item)!;
         Assert.Equal("acts", (string?)write["route"]);
-        Assert.Equal("native-shape", (string?)write["x-list"]);
-        Assert.Equal("moves", (string?)write["x-list-shape"]!["arg"]);
-        Assert.Equal("slot", (string?)write["x-list-shape"]!["each"]!["to_slot"]);
-        Assert.Equal("auto", (string?)write["x-list-shape"]!["fill"]!["to_slot"]);
+        Assert.Equal("moves", (string?)item["id_list"]);
         Assert.Null(item["example"]!["confirm"]);
 
         // decision M6: a write what's filter options are spreads the run gate sees
@@ -469,24 +462,6 @@ public sealed class VerbCatalogueTests
             }
         }
 
-        foreach ((string _, string _, JsonObject source) in VerbCatalogue.Whats())
-        {
-            foreach (JsonNode? handler in source["handlers"]?.AsArray() ?? new JsonArray())
-            {
-                foreach (JsonNode? arg in handler!["args"]?.AsArray() ?? new JsonArray())
-                {
-                    string name = (string)arg!["arg"]!;
-                    // an argument merged into an object option as a key of the same name ({what_if: {fuel_mix}}) is current
-                    bool nestedKey = (string?)arg["change"] == "merged" && ((string?)arg["note"] ?? "").Contains("{" + name);
-                    if (name.Contains('_') && (string?)arg["change"] != "kept" && !nestedKey && !current.Contains(name) &&
-                        !replyKeys.Contains(name))
-                    {
-                        old.Add(name);
-                    }
-                }
-            }
-        }
-
         return old;
     }
 
@@ -727,57 +702,6 @@ public sealed class VerbCatalogueTests
         }
 
         return variants;
-    }
-
-    // ---- handlers ----
-
-    [Fact]
-    public void HandlersAreTodaysMethodsWithTheirRealArguments()
-    {
-        Dictionary<string, JsonObject> methods = Methods.Value;
-        HashSet<string> carried = new(StringComparer.Ordinal);
-        List<string> problems = new();
-        foreach ((string verb, string what, JsonObject source) in VerbCatalogue.Whats())
-        {
-            foreach (JsonNode? node in source["handlers"]!.AsArray())
-            {
-                JsonObject handler = node!.AsObject();
-                string name = (string)handler["name"]!;
-                if (name.StartsWith("hub:", StringComparison.Ordinal) || handler["pending"] != null)
-                {
-                    continue;
-                }
-
-                if (!methods.TryGetValue(name, out JsonObject? method))
-                {
-                    problems.Add($"{verb} {what}: handler {name} is no method");
-                    continue;
-                }
-
-                carried.Add(name);
-                HashSet<string> args = new(method["params"]?["properties"]?.AsObject().Select(pair => pair.Key) ?? Array.Empty<string>());
-                args.UnionWith(VerbCatalogue.Shaping);
-                args.UnionWith(method["x-file-arguments"]?.AsObject().Select(pair => pair.Key) ?? Array.Empty<string>());
-                foreach (JsonNode? arg in handler["args"]!.AsArray())
-                {
-                    string argument = (string)arg!["arg"]!;
-                    if (!args.Contains(argument) && !argument.StartsWith('('))
-                    {
-                        problems.Add($"{verb} {what}: {name} has no argument {argument}");
-                    }
-                }
-            }
-        }
-
-        foreach ((string name, JsonObject method) in methods)
-        {
-            if (!carried.Contains(name) && (string?)method["x-mcp"] != "hidden")
-            {
-                problems.Add($"method {name} is no verb's handler");
-            }
-        }
-
-        Assert.True(problems.Count == 0, string.Join("\n", problems));
     }
 
     // ---- sizes ----

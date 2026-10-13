@@ -104,61 +104,6 @@
         "A build that pays from the player's inventory (materials left out, or \"player\") carries the warning materials_from_player. With from_plan, what may be left out: it comes from the plan."
       ],
       "example": {"prefab": "StructureWallLight", "at": [716, 203, 668], "facing": "-x", "confirm": true},
-      "handlers": [
-        {
-          "name": "place_structure",
-          "args": [
-            {"arg": "include_notes", "option": "include", "change": "merged", "note": "include: [\"notes\"]"},
-            {"arg": "placements", "option": "placements", "change": "kept"},
-            {"arg": "prefab", "option": "prefab", "change": "kept"},
-            {"arg": "at", "option": "at", "change": "kept"},
-            {"arg": "rotation", "option": "rotation", "change": "kept"},
-            {"arg": "facing", "option": "facing", "change": "kept"},
-            {
-              "arg": "up",
-              "option": "up",
-              "change": "default-changed",
-              "note": "spec states +y only; today +z when facing is vertical (see MAP-22)",
-              "default": ["+y, or +z when facing is vertical (left to the orientation)", "+y (+z when facing is vertical)"]
-            },
-            {"arg": "face", "option": "face", "change": "kept"},
-            {"arg": "orient", "option": "orient", "change": "kept"},
-            {"arg": "above_floor_m", "option": "above_floor", "change": "renamed"},
-            {"arg": "build_state", "option": "build_state", "change": "kept"},
-            {"arg": "label", "option": "label", "change": "kept"},
-            {"arg": "color", "option": "color", "change": "kept"},
-            {"arg": "from_id", "option": "materials", "change": "renamed"},
-            {
-              "arg": "include_footprint_cells",
-              "option": "include",
-              "change": "merged",
-              "note": "include: [\"footprint_cells\"]"
-            },
-            {"arg": "free", "option": "free", "change": "kept"},
-            {"arg": "allow_door_keepout", "option": "allow", "change": "merged", "note": "allow: [\"door_keepout\"]"},
-            {
-              "arg": "wait",
-              "option": "queue",
-              "change": "default-changed",
-              "note": "wait false (answer busy) becomes queue true (wait in line) (DESIGN 9.10)",
-              "default": ["false", "true"]
-            },
-            {
-              "arg": "dry_run",
-              "option": "confirm",
-              "change": "merged",
-              "note": "dry_run and confirm become one confirm (false or left out: report only)"
-            },
-            {"arg": "confirm", "option": "confirm", "change": "kept"},
-            {"arg": "verbose", "option": "verbose", "change": "kept"},
-            {"arg": "acknowledge_gas_lost", "option": "acknowledge_gas_lost", "change": "kept"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "placements",
         "variants": [
@@ -207,12 +152,10 @@
         "types": ["Thing", "Vec3"]
       },
       "write": {
-        "report": "dry_run",
         "route": "confirm",
         "cheat": "free: true",
         "x-undo": "undo",
         "x-undo-mark": "[undo]",
-        "x-list": "one",
         "x-target": [{"path": "materials", "role": "pays-from"}]
       },
       "brief": "any structure a kit builds, by prefab, at a point"
@@ -325,66 +268,6 @@
         "A build that pays from the player's inventory (materials left out, or \"player\") carries the warning materials_from_player. With from_plan, what may be left out: it comes from the plan."
       ],
       "example": {"waypoints": [[700, 202, 660], [700, 202, 668]], "confirm": true},
-      "handlers": [
-        {
-          "name": "place_cables",
-          "args": [
-            {"arg": "waypoints", "option": "waypoints", "change": "kept"},
-            {"arg": "cells", "option": "cells", "change": "kept"},
-            {"arg": "piece", "option": "piece", "change": "kept"},
-            {"arg": "pieces", "option": "pieces", "change": "kept"},
-            {"arg": "grade", "option": "grade", "change": "kept"},
-            {"arg": "join", "option": "join", "change": "kept"},
-            {"arg": "branches", "option": "branches", "change": "kept"},
-            {"arg": "allow_door_keepout", "option": "allow", "change": "merged", "note": "allow: [\"door_keepout\"]"},
-            {"arg": "allow_split_long", "option": "split_long", "change": "renamed"},
-            {"arg": "extra_ends", "option": "extra_ends", "change": "kept"},
-            {"arg": "remove_ids", "option": "remove_ids", "change": "kept"},
-            {"arg": "assume_removed", "option": "assume_removed", "change": "kept"},
-            {"arg": "allow_bridge", "option": "allow_bridge", "change": "kept"},
-            {"arg": "root", "option": "root", "change": "kept"},
-            {"arg": "join_to", "option": "join_to", "change": "kept"},
-            {"arg": "join_trunk", "option": "join_trunk", "change": "kept"},
-            {
-              "arg": "wait",
-              "option": "queue",
-              "change": "default-changed",
-              "note": "wait false (answer busy) becomes queue true (wait in line) (DESIGN 9.10)",
-              "default": ["false", "true"]
-            },
-            {"arg": "allow_split", "option": "allow", "change": "merged", "note": "allow: [\"split\"]"},
-            {
-              "arg": "dry_run",
-              "option": "confirm",
-              "change": "merged",
-              "note": "dry_run and confirm become one confirm (false or left out: report only)"
-            },
-            {"arg": "confirm", "option": "confirm", "change": "kept"},
-            {"arg": "from_id", "option": "materials", "change": "renamed"},
-            {
-              "arg": "refund",
-              "option": "refund_to",
-              "change": "merged",
-              "note": "refund: false is refund_to: \"none\" (same meaning today)"
-            },
-            {"arg": "refund_to", "option": "refund_to", "change": "kept"},
-            {"arg": "include_links", "option": "include", "change": "merged", "note": "include: [\"links\"]"},
-            {"arg": "include_notes", "option": "include", "change": "merged", "note": "include: [\"notes\"]"},
-            {
-              "arg": "include_network_devices",
-              "option": "include",
-              "change": "merged",
-              "note": "include: [\"network_devices\"]"
-            },
-            {"arg": "limit", "option": "rows", "change": "renamed"},
-            {"arg": "verbose", "option": "verbose", "change": "kept"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "cells",
         "variants": [
@@ -425,11 +308,9 @@
         "types": ["Thing", "Vec3"]
       },
       "write": {
-        "report": "dry_run",
         "route": "confirm",
         "x-undo": "undo",
         "x-undo-mark": "[undo]",
-        "x-list": "one",
         "x-target": [
           {"path": "remove_ids", "role": "acts-on"},
           {"path": "join_to", "role": "acts-on"},
@@ -549,67 +430,6 @@
         "A build that pays from the player's inventory (materials left out, or \"player\") carries the warning materials_from_player. With from_plan, what may be left out: it comes from the plan."
       ],
       "example": {"grade": "insulated_gas", "cells": [[1, 2, 3], [1.5, 2, 3]]},
-      "handlers": [
-        {
-          "name": "place_pipes",
-          "args": [
-            {"arg": "waypoints", "option": "waypoints", "change": "kept"},
-            {"arg": "cells", "option": "cells", "change": "kept"},
-            {"arg": "piece", "option": "piece", "change": "kept"},
-            {"arg": "pieces", "option": "pieces", "change": "kept"},
-            {"arg": "grade", "option": "grade", "change": "kept"},
-            {"arg": "join", "option": "join", "change": "kept"},
-            {"arg": "branches", "option": "branches", "change": "kept"},
-            {"arg": "allow_door_keepout", "option": "allow", "change": "merged", "note": "allow: [\"door_keepout\"]"},
-            {"arg": "allow_split_long", "option": "split_long", "change": "renamed"},
-            {"arg": "extra_ends", "option": "extra_ends", "change": "kept"},
-            {"arg": "remove_ids", "option": "remove_ids", "change": "kept"},
-            {"arg": "assume_removed", "option": "assume_removed", "change": "kept"},
-            {"arg": "allow_bridge", "option": "allow_bridge", "change": "kept"},
-            {"arg": "root", "option": "root", "change": "kept"},
-            {"arg": "join_to", "option": "join_to", "change": "kept"},
-            {"arg": "join_trunk", "option": "join_trunk", "change": "kept"},
-            {
-              "arg": "wait",
-              "option": "queue",
-              "change": "default-changed",
-              "note": "wait false (answer busy) becomes queue true (wait in line) (DESIGN 9.10)",
-              "default": ["false", "true"]
-            },
-            {"arg": "allow_split", "option": "allow", "change": "merged", "note": "allow: [\"split\"]"},
-            {
-              "arg": "dry_run",
-              "option": "confirm",
-              "change": "merged",
-              "note": "dry_run and confirm become one confirm (false or left out: report only)"
-            },
-            {"arg": "confirm", "option": "confirm", "change": "kept"},
-            {"arg": "from_id", "option": "materials", "change": "renamed"},
-            {
-              "arg": "refund",
-              "option": "refund_to",
-              "change": "merged",
-              "note": "refund: false is refund_to: \"none\" (same meaning today)"
-            },
-            {"arg": "refund_to", "option": "refund_to", "change": "kept"},
-            {"arg": "include_links", "option": "include", "change": "merged", "note": "include: [\"links\"]"},
-            {"arg": "include_notes", "option": "include", "change": "merged", "note": "include: [\"notes\"]"},
-            {
-              "arg": "include_network_devices",
-              "option": "include",
-              "change": "merged",
-              "note": "include: [\"network_devices\"]"
-            },
-            {"arg": "limit", "option": "rows", "change": "renamed"},
-            {"arg": "verbose", "option": "verbose", "change": "kept"},
-            {"arg": "acknowledge_gas_lost", "option": "acknowledge_gas_lost", "change": "kept"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "cells",
         "variants": [
@@ -650,11 +470,9 @@
         "types": ["Thing", "Vec3"]
       },
       "write": {
-        "report": "dry_run",
         "route": "confirm",
         "x-undo": "undo",
         "x-undo-mark": "[undo]",
-        "x-list": "one",
         "x-target": [
           {"path": "remove_ids", "role": "acts-on"},
           {"path": "join_to", "role": "acts-on"},
@@ -773,66 +591,6 @@
         "A build that pays from the player's inventory (materials left out, or \"player\") carries the warning materials_from_player. With from_plan, what may be left out: it comes from the plan."
       ],
       "example": {"waypoints": [[10, 2, 4], [10, 2, 9]], "confirm": true},
-      "handlers": [
-        {
-          "name": "place_chutes",
-          "args": [
-            {"arg": "waypoints", "option": "waypoints", "change": "kept"},
-            {"arg": "cells", "option": "cells", "change": "kept"},
-            {"arg": "piece", "option": "piece", "change": "kept"},
-            {"arg": "pieces", "option": "pieces", "change": "kept"},
-            {"arg": "grade", "option": "grade", "change": "kept"},
-            {"arg": "join", "option": "join", "change": "kept"},
-            {"arg": "branches", "option": "branches", "change": "kept"},
-            {"arg": "allow_door_keepout", "option": "allow", "change": "merged", "note": "allow: [\"door_keepout\"]"},
-            {"arg": "allow_split_long", "option": "split_long", "change": "renamed"},
-            {"arg": "extra_ends", "option": "extra_ends", "change": "kept"},
-            {"arg": "remove_ids", "option": "remove_ids", "change": "kept"},
-            {"arg": "assume_removed", "option": "assume_removed", "change": "kept"},
-            {"arg": "allow_bridge", "option": "allow_bridge", "change": "kept"},
-            {"arg": "root", "option": "root", "change": "kept"},
-            {"arg": "join_to", "option": "join_to", "change": "kept"},
-            {"arg": "join_trunk", "option": "join_trunk", "change": "kept"},
-            {
-              "arg": "wait",
-              "option": "queue",
-              "change": "default-changed",
-              "note": "wait false (answer busy) becomes queue true (wait in line) (DESIGN 9.10)",
-              "default": ["false", "true"]
-            },
-            {"arg": "allow_split", "option": "allow", "change": "merged", "note": "allow: [\"split\"]"},
-            {
-              "arg": "dry_run",
-              "option": "confirm",
-              "change": "merged",
-              "note": "dry_run and confirm become one confirm (false or left out: report only)"
-            },
-            {"arg": "confirm", "option": "confirm", "change": "kept"},
-            {"arg": "from_id", "option": "materials", "change": "renamed"},
-            {
-              "arg": "refund",
-              "option": "refund_to",
-              "change": "merged",
-              "note": "refund: false is refund_to: \"none\" (same meaning today)"
-            },
-            {"arg": "refund_to", "option": "refund_to", "change": "kept"},
-            {"arg": "include_links", "option": "include", "change": "merged", "note": "include: [\"links\"]"},
-            {"arg": "include_notes", "option": "include", "change": "merged", "note": "include: [\"notes\"]"},
-            {
-              "arg": "include_network_devices",
-              "option": "include",
-              "change": "merged",
-              "note": "include: [\"network_devices\"]"
-            },
-            {"arg": "limit", "option": "rows", "change": "renamed"},
-            {"arg": "verbose", "option": "verbose", "change": "kept"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "cells",
         "variants": [
@@ -873,11 +631,9 @@
         "types": ["Thing", "Vec3"]
       },
       "write": {
-        "report": "dry_run",
         "route": "confirm",
         "x-undo": "undo",
         "x-undo-mark": "[undo]",
-        "x-list": "one",
         "x-target": [
           {"path": "remove_ids", "role": "acts-on"},
           {"path": "join_to", "role": "acts-on"},
@@ -914,32 +670,6 @@
       "text": ["Progress: inspect {what: \"job\", id: \"paste\"}; take it back: undo {id: \"paste\"}."],
       "x-script-text": ["Progress: sg.inspect('job', id='paste'); take it back: sg.undo(id='paste')."],
       "example": {"blueprint": "airlock", "at": [700, 202, 660], "confirm": true},
-      "handlers": [
-        {
-          "name": "paste_blueprint",
-          "args": [
-            {
-              "arg": "name",
-              "option": "blueprint",
-              "change": "default-changed",
-              "note": "name is a filter elsewhere (see MAP-09); optional before, required now in this what",
-              "default": ["absent", "required"]
-            },
-            {
-              "arg": "anchor",
-              "option": "at",
-              "change": "default-changed",
-              "note": "renamed to the shared name at; optional before, required now in this what",
-              "default": ["absent", "required"]
-            },
-            {"arg": "rotation", "option": "turn", "change": "renamed"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "variants": [
           {
@@ -977,12 +707,10 @@
         ]
       },
       "write": {
-        "report": "mod",
         "route": "confirm",
         "cheat": "always",
         "x-undo": "mixed",
         "x-undo-mark": "[undo] the newest paste only",
-        "x-list": "one",
         "x-target": []
       },
       "brief": "paste a blueprint"
@@ -1011,24 +739,6 @@
         "confirm": {"use": "confirm"}
       },
       "example": {"id": "1199811", "state": 2, "confirm": true},
-      "handlers": [
-        {
-          "name": "advance_build_state",
-          "args": [
-            {"arg": "reference_id", "option": "id", "change": "renamed"},
-            {"arg": "to_state", "option": "state", "change": "renamed"},
-            {"arg": "from_id", "option": "materials", "change": "renamed"},
-            {"arg": "free", "option": "free", "change": "kept"},
-            {
-              "arg": "dry_run",
-              "option": "confirm",
-              "change": "merged",
-              "note": "dry_run and confirm become one confirm (false or left out: report only)"
-            },
-            {"arg": "confirm", "option": "confirm", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "variants": [
           {
@@ -1049,12 +759,10 @@
         "types": ["Thing"]
       },
       "write": {
-        "report": "dry_run",
         "route": "confirm",
         "cheat": "free: true",
         "x-undo": "cannot",
         "x-undo-mark": "[cannot undo: change job]",
-        "x-list": "split",
         "x-target": [{"path": "id", "role": "acts-on"}, {"path": "materials", "role": "pays-from"}]
       },
       "brief": "a placed structure on to a later build state"

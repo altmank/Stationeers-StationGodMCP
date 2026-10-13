@@ -18,17 +18,6 @@
       "options": {},
       "text": ["No options."],
       "example": {},
-      "handlers": [
-        {
-          "name": "trader_contacts",
-          "args": [
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "contacts",
         "variants": [
@@ -53,19 +42,6 @@
         }
       },
       "example": {"id": "7"},
-      "handlers": [
-        {
-          "name": "trader_inventory",
-          "args": [
-            {"arg": "contact_id", "option": "id", "change": "renamed"},
-            {"arg": "credit_card_id", "option": "card", "change": "renamed"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "contacts",
         "variants": [
@@ -75,8 +51,7 @@
             }
           }
         ]
-      },
-      "x-list": "split"
+      }
     },
     "buy": {
       "summary": "buy from the landed trader as the trade window's Buy does",
@@ -96,27 +71,6 @@
         "confirm": {"use": "confirm"}
       },
       "example": {"id": "7", "items": [{"prefab": "ItemIronIngot", "quantity": 50}], "confirm": true},
-      "handlers": [
-        {
-          "name": "trader_buy",
-          "args": [
-            {"arg": "reference_id", "option": "id", "change": "renamed"},
-            {"arg": "credit_card_id", "option": "card", "change": "renamed"},
-            {"arg": "items", "option": "items", "change": "kept"},
-            {
-              "arg": "dry_run",
-              "option": "confirm",
-              "change": "default-changed",
-              "note": "acted by default (dry_run false); now reports until confirm: true (DESIGN 9.1-9.3)",
-              "default": ["false (acts)", "false (report only)"]
-            },
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "delivered",
         "variants": [
@@ -140,11 +94,9 @@
         "types": ["Error", "Thing"]
       },
       "write": {
-        "report": "dry_run",
         "route": "confirm",
         "x-undo": "cannot",
         "x-undo-mark": "[cannot undo: trade]",
-        "x-list": "split",
         "x-target": [{"path": "id", "role": "acts-on"}, {"path": "card", "role": "pays-from"}]
       }
     },
@@ -166,27 +118,6 @@
         "confirm": {"use": "confirm"}
       },
       "example": {"id": "7", "items": [{"prefab": "ItemGoldIngot", "quantity": 20}]},
-      "handlers": [
-        {
-          "name": "trader_sell",
-          "args": [
-            {"arg": "reference_id", "option": "id", "change": "renamed"},
-            {"arg": "credit_card_id", "option": "card", "change": "renamed"},
-            {"arg": "items", "option": "items", "change": "kept"},
-            {
-              "arg": "dry_run",
-              "option": "confirm",
-              "change": "default-changed",
-              "note": "acted by default (dry_run false); now reports until confirm: true (DESIGN 9.1-9.3)",
-              "default": ["false (acts)", "false (report only)"]
-            },
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "delivered",
         "variants": [
@@ -210,11 +141,9 @@
         "types": ["Error", "Thing"]
       },
       "write": {
-        "report": "dry_run",
         "route": "confirm",
         "x-undo": "cannot",
         "x-undo-mark": "[cannot undo: trade]",
-        "x-list": "split",
         "x-target": [{"path": "id", "role": "acts-on"}, {"path": "card", "role": "pays-from"}]
       }
     }

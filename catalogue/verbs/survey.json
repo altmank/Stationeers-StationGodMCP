@@ -81,43 +81,6 @@
       ],
       "x-script-text": ["A big area is many pages (125 cells each); iterating r['cells'] walks them all."],
       "example": {"room": "17", "sections": ["pieces", "devices"]},
-      "handlers": [
-        {
-          "name": "grid_survey",
-          "args": [
-            {"arg": "min", "option": "box", "change": "merged", "note": "min and max become box [[x,y,z],[x,y,z]]"},
-            {"arg": "max", "option": "box", "change": "merged", "note": "min and max become box"},
-            {"arg": "room_id", "option": "room", "change": "renamed"},
-            {"arg": "include_networks", "option": "networks", "change": "renamed"},
-            {"arg": "include_refund", "option": "include", "change": "merged", "note": "include: [\"refund\"]"},
-            {"arg": "sections", "option": "sections", "change": "kept"},
-            {"arg": "network_ids", "option": "network", "change": "renamed"},
-            {"arg": "kinds", "option": "kind", "change": "renamed"},
-            {"arg": "prefab", "option": "prefab", "change": "kept"},
-            {"arg": "prefabs", "option": "prefab", "change": "merged", "note": "prefab takes a list"},
-            {
-              "arg": "prefab_contains",
-              "option": "prefab",
-              "change": "merged",
-              "note": "a part is written with *: '*Battery*' (see MAP-30)"
-            },
-            {"arg": "cell_detail", "option": "cell_detail", "change": "kept"},
-            {"arg": "occupied_only", "option": "occupied_only", "change": "kept"},
-            {
-              "arg": "include_piece_cells",
-              "option": "include",
-              "change": "merged",
-              "note": "include: [\"piece_cells\"]"
-            },
-            {"arg": "limit", "option": "limit", "change": "kept"},
-            {"arg": "offset", "option": "offset", "change": "kept"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "cells",
         "variants": [
@@ -173,23 +136,6 @@
         }
       },
       "example": {"plane": "x=716", "side": "-x", "at": [716, 202, 668]},
-      "handlers": [
-        {
-          "name": "wall_map",
-          "args": [
-            {"arg": "plane", "option": "plane", "change": "kept"},
-            {"arg": "side", "option": "side", "change": "kept"},
-            {"arg": "looking", "option": "looking", "change": "kept"},
-            {"arg": "around", "option": "at", "change": "renamed"},
-            {"arg": "radius_m", "option": "half_width", "change": "renamed"},
-            {"arg": "free_rects", "option": "free_rects", "change": "kept"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "things",
         "variants": [
@@ -247,30 +193,6 @@
         "offset": {"use": "offset"}
       },
       "example": {"network": "3768865", "kind": "cable", "summarize": true},
-      "handlers": [
-        {
-          "name": "connections",
-          "note": "reference_id form is inspect connections (now takes a list); network and box forms are survey network",
-          "args": [
-            {
-              "arg": "network_id",
-              "option": "network",
-              "change": "moved",
-              "note": "network form is survey what: network"
-            },
-            {"arg": "kind", "option": "kind", "change": "moved", "note": " (see MAP-03)"},
-            {"arg": "prefab_contains", "option": "prefab", "change": "moved", "note": "a part with *"},
-            {"arg": "summarize", "option": "summarize", "change": "moved", "note": " (see MAP-27)"},
-            {"arg": "open_ends_only", "option": "open_ends", "change": "moved", "note": "renamed"},
-            {"arg": "min", "option": "box", "change": "moved", "note": "box form"},
-            {"arg": "max", "option": "box", "change": "moved", "note": "box form"},
-            {"arg": "near", "option": "near", "change": "moved"},
-            {"arg": "radius_m", "option": "radius", "change": "moved"},
-            {"arg": "limit", "option": "limit", "change": "moved"},
-            {"arg": "offset", "option": "offset", "change": "moved"}
-          ]
-        }
-      ],
       "reply": {
         "list": "members",
         "variants": [
@@ -355,21 +277,6 @@
         }
       },
       "example": {"id": "720259"},
-      "handlers": [
-        {
-          "name": "feed_paths",
-          "args": [
-            {"arg": "root", "option": "id", "change": "renamed"},
-            {"arg": "network_id", "option": "network", "change": "renamed"},
-            {"arg": "port", "option": "port", "change": "kept"},
-            {"arg": "kind", "option": "kind", "change": "kept"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "devices",
         "variants": [
@@ -388,8 +295,7 @@
           }
         ],
         "types": ["Thing", "Vec3"]
-      },
-      "x-list": "split"
+      }
     }
   }
 }

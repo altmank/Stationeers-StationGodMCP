@@ -27,25 +27,6 @@
         "A list of ids answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply below; fields name its keys."
       ],
       "example": {"id": "4820585"},
-      "handlers": [
-        {
-          "name": "describe_device",
-          "args": [
-            {"arg": "gateway_id", "option": "gateway", "change": "renamed"},
-            {"arg": "reference_id", "option": "id", "change": "renamed"},
-            {
-              "arg": "include_logic_types",
-              "option": "include",
-              "change": "merged",
-              "note": "include: [\"logic_types\"]"
-            },
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "logic_types",
         "variants": [
@@ -64,7 +45,6 @@
         ],
         "types": ["Thing"]
       },
-      "x-list": "split",
       "brief": "a device's logic types"
     },
     "prefab": {
@@ -83,24 +63,6 @@
         }
       },
       "example": {"prefab": "StructureWallLight"},
-      "handlers": [
-        {
-          "name": "describe_prefab",
-          "args": [
-            {
-              "arg": "include_small_cells",
-              "option": "include",
-              "change": "merged",
-              "note": "include: [\"small_cells\"]"
-            },
-            {"arg": "prefab", "option": "prefab", "change": "kept"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "ports",
         "variants": [
@@ -156,20 +118,6 @@
         "A list of ids answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply below; fields name its keys."
       ],
       "example": {"id": "1199811"},
-      "handlers": [
-        {
-          "name": "inspect_slots",
-          "args": [
-            {"arg": "gateway_id", "option": "gateway", "change": "renamed"},
-            {"arg": "reference_id", "option": "id", "change": "renamed"},
-            {"arg": "slot_index", "option": "slot", "change": "renamed"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "slots",
         "variants": [
@@ -186,7 +134,6 @@
         ],
         "types": ["LogicType"]
       },
-      "x-list": "split",
       "brief": "a device's slots"
     },
     "contents": {
@@ -224,29 +171,6 @@
         "Iteration goes over slots; a silo's stored entries are not iterated."
       ],
       "example": {"id": "player"},
-      "handlers": [
-        {
-          "name": "container_contents",
-          "args": [
-            {"arg": "reference_id", "option": "id", "change": "renamed"},
-            {"arg": "depth", "option": "depth", "change": "kept"},
-            {"arg": "include_empty", "option": "include", "change": "merged", "note": "include: [\"empty\"]"},
-            {
-              "arg": "prefab_contains",
-              "option": "prefab",
-              "change": "merged",
-              "note": "a part is written with *: '*Battery*'"
-            },
-            {"arg": "name_contains", "option": "name", "change": "renamed"},
-            {"arg": "entries_limit", "option": "limit", "change": "renamed"},
-            {"arg": "entries_offset", "option": "offset", "change": "renamed"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "slots",
         "variants": [
@@ -265,7 +189,6 @@
         ],
         "types": ["Vec3"]
       },
-      "x-list": "split",
       "brief": "a holder's contents, nested"
     },
     "health": {
@@ -289,31 +212,6 @@
         "offset": {"use": "offset"}
       },
       "example": {"network": "5012345", "kind": "pipe", "damaged_only": true},
-      "handlers": [
-        {
-          "name": "thing_health",
-          "note": "id/ids/network forms are inspect health; the world scan (no id, no network) is find what: damaged",
-          "args": [
-            {"arg": "reference_id", "option": "id", "change": "renamed"},
-            {"arg": "reference_ids", "option": "id", "change": "renamed"},
-            {"arg": "network_id", "option": "network", "change": "renamed"},
-            {"arg": "kind", "option": "kind", "change": "kept"},
-            {"arg": "damaged_only", "option": "damaged_only", "change": "kept"},
-            {
-              "arg": "min_ratio",
-              "option": "",
-              "change": "dropped",
-              "note": "old name of min_damage_ratio, still read today"
-            },
-            {"arg": "limit", "option": "limit", "change": "kept"},
-            {"arg": "offset", "option": "offset", "change": "kept"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "things",
         "variants": [
@@ -396,7 +294,6 @@
         ],
         "types": ["Error", "Vec3"]
       },
-      "x-list": "native",
       "brief": "damage of things or a network"
     },
     "connections": {
@@ -416,25 +313,6 @@
         "A list of ids answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply below; fields name its keys."
       ],
       "example": {"id": ["2514519", "3575779"]},
-      "handlers": [
-        {
-          "name": "connections",
-          "note": "reference_id form is inspect connections (now takes a list); network and box forms are survey network",
-          "args": [
-            {
-              "arg": "reference_id",
-              "option": "id",
-              "change": "default-changed",
-              "note": "renamed to the shared name id; optional before, required now in this what",
-              "default": ["absent", "required"]
-            },
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "ends",
         "variants": [
@@ -500,7 +378,6 @@
         ],
         "types": ["Color", "Thing", "Vec3"]
       },
-      "x-list": "split",
       "brief": "a piece's ends and joins"
     },
     "atmosphere": {
@@ -515,18 +392,6 @@
         "A list of ids answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply below; fields name its keys."
       ],
       "example": {"id": "2005300"},
-      "handlers": [
-        {
-          "name": "atmosphere_contents",
-          "args": [
-            {"arg": "reference_id", "option": "id", "change": "renamed"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "atmospheres",
         "variants": [
@@ -540,7 +405,6 @@
           }
         ]
       },
-      "x-list": "split",
       "brief": "the gas one thing holds"
     },
     "reagents": {
@@ -560,18 +424,6 @@
         "A list of ids answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply below; fields name its keys."
       ],
       "example": {"id": "4191359"},
-      "handlers": [
-        {
-          "name": "reagents",
-          "args": [
-            {"arg": "reference_id", "option": "id", "change": "renamed"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "reagents",
         "variants": [
@@ -586,7 +438,6 @@
           }
         ]
       },
-      "x-list": "split",
       "brief": "a machine's reagents"
     },
     "genes": {
@@ -605,39 +456,6 @@
         }
       },
       "example": {"id": "3311223"},
-      "handlers": [
-        {
-          "name": "plant_genes",
-          "note": "reading is inspect genes; editing is write genes",
-          "args": [
-            {
-              "arg": "reference_id",
-              "option": "id",
-              "change": "default-changed",
-              "note": "renamed to id; one plant also takes write genes.id when editing (genes given); optional before, required now in this what",
-              "default": ["absent", "required"]
-            },
-            {
-              "arg": "reference_ids",
-              "option": "id",
-              "change": "default-changed",
-              "note": "renamed to the shared name id; optional before, required now in this what",
-              "default": ["absent", "required"]
-            },
-            {"arg": "unit", "option": "unit", "change": "kept"},
-            {
-              "arg": "include_notes",
-              "option": "include",
-              "change": "merged",
-              "note": "include: [\"notes\"]; also on write genes when editing"
-            },
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "genes",
         "variants": [
@@ -680,7 +498,6 @@
         ],
         "types": ["Error", "Thing"]
       },
-      "x-list": "native",
       "brief": "plant genes"
     },
     "chip": {
@@ -727,56 +544,6 @@
         "A source is often longer than the reply cap: add whole: True to read it all."
       ],
       "example": {"id": "4820585", "parts": ["status", "source"]},
-      "handlers": [
-        {
-          "name": "get_ic_status",
-          "when": "status",
-          "args": [
-            {"arg": "gateway_id", "option": "gateway", "change": "renamed"},
-            {"arg": "reference_id", "option": "id", "change": "renamed"},
-            {"arg": "stack_start", "option": "start", "change": "renamed"},
-            {"arg": "stack_count", "option": "count", "change": "renamed"},
-            {"arg": "log_lines", "option": "log", "change": "renamed"},
-            {
-              "arg": "include_source",
-              "option": "parts",
-              "change": "merged",
-              "note": "parts: [\"status\", \"source\"] (see MAP-14, MAP-26)"
-            },
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        },
-        {
-          "name": "get_ic_source",
-          "when": "source",
-          "note": "parts: [\"source\"]",
-          "args": [
-            {"arg": "gateway_id", "option": "gateway", "change": "renamed"},
-            {"arg": "reference_id", "option": "id", "change": "renamed"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        },
-        {
-          "name": "resolve_ic_selectors",
-          "when": "selectors",
-          "note": "parts: [\"selectors\"]",
-          "args": [
-            {"arg": "gateway_id", "option": "gateway", "change": "renamed"},
-            {"arg": "reference_id", "option": "id", "change": "renamed"},
-            {"arg": "target_reference_ids", "option": "targets", "change": "renamed"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "pins",
         "variants": [
@@ -846,7 +613,6 @@
         ],
         "types": ["Thing"]
       },
-      "x-list": "split",
       "brief": "a chip's status, source, selectors"
     },
     "screen": {
@@ -880,27 +646,6 @@
         "offset": {"use": "offset"}
       },
       "example": {"id": "4860097", "text": "error"},
-      "handlers": [
-        {
-          "name": "screen_read",
-          "args": [
-            {"arg": "gateway_id", "option": "gateway", "change": "renamed"},
-            {"arg": "reference_id", "option": "id", "change": "renamed"},
-            {"arg": "surface", "option": "surface", "change": "kept"},
-            {"arg": "type", "option": "type", "change": "kept"},
-            {"arg": "text_contains", "option": "text", "change": "renamed"},
-            {"arg": "shown_only", "option": "shown_only", "change": "kept"},
-            {"arg": "include_style", "option": "include", "change": "merged", "note": "include: [\"style\"]"},
-            {"arg": "image", "option": "include", "change": "merged", "note": "include: [\"image\"]"},
-            {"arg": "limit", "option": "limit", "change": "kept"},
-            {"arg": "offset", "option": "offset", "change": "kept"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "elements",
         "variants": [
@@ -924,7 +669,6 @@
         ],
         "types": ["Thing"]
       },
-      "x-list": "split",
       "brief": "a screen's surfaces and elements"
     },
     "rocket": {
@@ -950,28 +694,6 @@
         }
       },
       "example": {"compact": true},
-      "handlers": [
-        {
-          "name": "rocket_status",
-          "args": [
-            {"arg": "rocket_id", "option": "id", "change": "renamed"},
-            {"arg": "self_test", "option": "self_test", "change": "kept"},
-            {
-              "arg": "compact",
-              "option": "compact",
-              "change": "default-changed",
-              "note": "false becomes true: inspect rocket answers the compact form unless compact: false (COLD-3-05)",
-              "default": ["false", "true"]
-            },
-            {"arg": "parts", "option": "include", "change": "merged", "note": "include: [\"parts\"]"},
-            {"arg": "explain", "option": "include", "change": "merged", "note": "include: [\"explain\"]"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "rockets",
         "variants": [
@@ -985,25 +707,12 @@
         ],
         "types": ["Vec3"]
       },
-      "x-list": "split",
       "brief": "rockets now"
     },
     "vault": {
       "summary": "what each Ingot Vault stores, and every Remote Vault's link",
       "options": {"id": {"use": "id", "description": "One Ingot or Remote Vault; default every vault."}},
       "example": {},
-      "handlers": [
-        {
-          "name": "vault_contents",
-          "args": [
-            {"arg": "vault_id", "option": "id", "change": "renamed"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "vaults",
         "variants": [
@@ -1016,7 +725,6 @@
         ],
         "types": ["Thing", "Vec3"]
       },
-      "x-list": "split",
       "brief": "Ingot Vault stock"
     },
     "looking_at": {
@@ -1038,19 +746,6 @@
         }
       },
       "example": {},
-      "handlers": [
-        {
-          "name": "looking_at",
-          "args": [
-            {"arg": "max_distance_m", "option": "distance", "change": "renamed"},
-            {"arg": "include", "option": "include", "change": "kept"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "variants": [
           {
@@ -1072,7 +767,6 @@
       "options": {},
       "text": ["No options."],
       "example": {},
-      "handlers": [{"name": "player_vitals", "args": []}],
       "reply": {
         "variants": [
           {
@@ -1103,17 +797,6 @@
       "options": {},
       "text": ["No options."],
       "example": {},
-      "handlers": [
-        {
-          "name": "planet",
-          "args": [
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "gases",
         "variants": [
@@ -1143,7 +826,6 @@
       "options": {},
       "text": ["No options."],
       "example": {},
-      "handlers": [{"name": "weather", "args": []}],
       "reply": {
         "variants": [
           {
@@ -1184,26 +866,6 @@
         "On a live confirmed run it answers within 30 s, whatever max_wait says."
       ],
       "example": {"id": "place-41"},
-      "handlers": [
-        {"name": "hub:job_poll", "when": "a job id (place-12, remove-3, run-4, write-N, script-N)", "args": []},
-        {
-          "name": "move_gas",
-          "when": "a gas move's transfer id",
-          "args": [
-            {
-              "arg": "transfer_id",
-              "option": "id",
-              "change": "moved",
-              "note": "the outcome of a move is inspect what: job"
-            }
-          ]
-        },
-        {
-          "name": "paste_blueprint",
-          "when": "a blueprint paste (status: true)",
-          "args": [{"arg": "status", "option": "id", "change": "moved", "note": "inspect {what: job, id: \"paste\"}"}]
-        }
-      ],
       "reply": {
         "variants": [
           {"label": "a build or removal job", "job_view": "BuildJob"},
@@ -1215,7 +877,6 @@
           {"label": "a script run", "keys": {"text": "str"}}
         ]
       },
-      "x-list": "split",
       "brief": "a job or script run, by id"
     },
     "controllers": {
@@ -1223,7 +884,6 @@
       "options": {"id": {"use": "id", "description": "The device(s).", "required": true}},
       "x-script-summary": "What can write or override a device: IC chips (pins, batch writers on its data network), logic writers, Lua screen scripts, other runs.",
       "example": {"id": "4936423"},
-      "handlers": [{"name": "controllers", "pending": "1a: the controllers index (queued)", "args": []}],
       "reply": {
         "variants": [
           {
@@ -1236,7 +896,6 @@
           }
         ]
       },
-      "x-list": "split",
       "brief": "what writes or overrides a device"
     }
   }

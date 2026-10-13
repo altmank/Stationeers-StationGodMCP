@@ -21,18 +21,6 @@
         }
       },
       "example": {},
-      "handlers": [
-        {
-          "name": "mod_info",
-          "args": [
-            {"arg": "include_counters", "option": "include", "change": "merged", "note": "include: [\"counters\"]"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "methods",
         "variants": [
@@ -75,20 +63,6 @@
         }
       },
       "example": {"action": "report"},
-      "handlers": [
-        {
-          "name": "profiling",
-          "args": [
-            {"arg": "action", "option": "action", "change": "kept"},
-            {"arg": "slow_frame_ms", "option": "slow_frame_ms", "change": "kept"},
-            {"arg": "csv", "option": "csv", "change": "kept"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "scopes",
         "variants": [
@@ -111,14 +85,7 @@
           }
         ]
       },
-      "write": {
-        "report": "none",
-        "route": "acts",
-        "x-undo": "undo",
-        "x-undo-mark": "[undo: the other action]",
-        "x-list": "one",
-        "x-target": []
-      }
+      "write": {"route": "acts", "x-undo": "undo", "x-undo-mark": "[undo: the other action]", "x-target": []}
     },
     "console": {
       "summary": "the latest in-game console lines, oldest first",
@@ -131,18 +98,6 @@
         }
       },
       "example": {"lines": 80},
-      "handlers": [
-        {
-          "name": "read_console",
-          "args": [
-            {"arg": "lines", "option": "lines", "change": "kept"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "lines",
         "variants": [
@@ -176,19 +131,6 @@
         "Read-only commands (help, rocket print) also only report in a report run; the game does not mark which commands change nothing."
       ],
       "example": {"command": "help", "confirm": true},
-      "handlers": [
-        {
-          "name": "run_console_command",
-          "args": [
-            {"arg": "command", "option": "command", "change": "kept"},
-            {"arg": "max_output_lines", "option": "lines", "change": "renamed"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "output",
         "variants": [
@@ -213,12 +155,10 @@
         ]
       },
       "write": {
-        "report": "mod",
         "route": "confirm",
         "cheat": "always",
         "x-undo": "cannot",
         "x-undo-mark": "[cannot undo: console]",
-        "x-list": "one",
         "x-target": []
       }
     },
@@ -232,7 +172,6 @@
         }
       },
       "example": {"id": "script-14"},
-      "handlers": [{"name": "hub:stop", "args": []}],
       "reply": {
         "variants": [
           {
@@ -247,14 +186,7 @@
           }
         ]
       },
-      "write": {
-        "report": "none",
-        "route": "acts",
-        "x-undo": "cannot",
-        "x-undo-mark": "[cannot undo: stop]",
-        "x-list": "one",
-        "x-target": []
-      },
+      "write": {"route": "acts", "x-undo": "cannot", "x-undo-mark": "[cannot undo: stop]", "x-target": []},
       "brief": "stop a script run or job; no id: every run"
     }
   }

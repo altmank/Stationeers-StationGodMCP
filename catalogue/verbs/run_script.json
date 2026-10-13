@@ -24,7 +24,6 @@
           "x-script": "drop"
         }
       },
-      "handlers": [{"name": "hub:run_script", "args": []}],
       "reply": {"variants": [{"keys": {"text": "str"}}]}
     }
   }

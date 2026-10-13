@@ -90,30 +90,6 @@
         }
       },
       "example": {"prefab": "StructureWallLight", "at": [716, 203, 668], "facing": "-x"},
-      "handlers": [
-        {
-          "name": "show_preview",
-          "args": [
-            {"arg": "placements", "option": "placements", "change": "kept"},
-            {"arg": "prefab", "option": "prefab", "change": "kept"},
-            {"arg": "at", "option": "at", "change": "kept"},
-            {"arg": "rotation", "option": "rotation", "change": "kept"},
-            {"arg": "facing", "option": "facing", "change": "kept"},
-            {"arg": "up", "option": "up", "change": "kept"},
-            {"arg": "face", "option": "face", "change": "kept"},
-            {"arg": "orient", "option": "orient", "change": "kept"},
-            {"arg": "above_floor_m", "option": "above_floor", "change": "renamed"},
-            {"arg": "build_state", "option": "build_state", "change": "kept"},
-            {"arg": "allow_door_keepout", "option": "allow", "change": "merged", "note": "allow: [\"door_keepout\"]"},
-            {"arg": "cells", "option": "cells", "change": "kept"},
-            {"arg": "boxes", "option": "boxes", "change": "kept"},
-            {"arg": "seconds", "option": "seconds", "change": "kept"},
-            {"arg": "keep", "option": "keep", "change": "kept"},
-            {"arg": "clear", "option": "clear", "change": "kept"},
-            {"arg": "xray", "option": "xray", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "variants": [
           {
@@ -154,17 +130,6 @@
         "clear": {"schema": {"type": "boolean"}, "description": "Only remove what is drawn.", "x-script": "same"}
       },
       "example": {"targets": [{"id": "1199811", "label": "this one"}]},
-      "handlers": [
-        {
-          "name": "highlight",
-          "args": [
-            {"arg": "targets", "option": "targets", "change": "kept"},
-            {"arg": "seconds", "option": "seconds", "change": "kept"},
-            {"arg": "keep", "option": "keep", "change": "kept"},
-            {"arg": "clear", "option": "clear", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "variants": [
           {

@@ -37,6 +37,7 @@
       "x-script": "same"
     },
     "radius": {"schema": {"type": "number"}, "description": "Metres around near.", "x-script": "same"},
+    "within": {"schema": {"type": "string"}, "description": "Only things inside this holder, at any depth.", "x-script": "same"},
     "box": {
       "schema": {"type": "array", "minItems": 2, "maxItems": 2},
       "description": "Two corners [[x, y, z], [x, y, z]].",

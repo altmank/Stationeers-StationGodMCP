@@ -11,7 +11,7 @@ def write(what: Literal['chip'], *,
 ) -> dict:
     """A circuit holder's chip: write source (IC10 or Lua), set pins d0-d5, or pause, step, resume, restart.
     Given together, they apply in this order: code, pins, run. The reply is {code, pins, run} with the parts given; the first failure stops the rest, named in not_run.
-    One id only: a list is refused (x-list one: this write cannot be undone).
+    One id only: a list is refused (this write cannot be undone).
     Reply, one of:
     (IcSourceSet)
       gateway_id: str

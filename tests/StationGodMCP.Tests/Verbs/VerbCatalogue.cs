@@ -14,7 +14,7 @@ namespace StationGodMCP.Tests.Verbs;
 /// texts, and per what its summary, options, help text, handlers, reply shape and, for a write, the write rules) and
 /// _shared.json (the verb order, shared options, instructions, small types and help topics). An option that names a
 /// shared definition with "use" takes that definition, with its own keys replacing the shared ones. Everything the
-/// verbs publish (the MCP tools array, help pages, Python stubs, LegacyVerbMap) is generated from these files.
+/// verbs publish (the MCP tools array, help pages, Python stubs) is generated from these files.
 /// </summary>
 internal static class VerbCatalogue
 {
@@ -22,13 +22,9 @@ internal static class VerbCatalogue
 
     internal static readonly string[] Shaping = { "fields", "omit", "list_limits", "output_file", "whole", "repeat" };
 
-    internal static readonly string[] ReportClasses = { "dry_run", "mod", "hub", "none" };
-
     internal static readonly string[] Routes = { "acts", "confirm" };
 
     internal static readonly string[] UndoClasses = { "undo", "cannot", "mixed" };
-
-    internal static readonly string[] ListForms = { "native", "split", "native-shape", "one" };
 
     internal static readonly string[] TargetRoles = { "acts-on", "pays-from", "spread" };
 
@@ -104,15 +100,15 @@ internal static class VerbCatalogue
     /// <summary>The what's write rules, or null for a what that writes nothing.</summary>
     internal static JsonObject? WriteOf(JsonObject what) => what["write"] as JsonObject;
 
-    /// <summary>How a list of ids is taken, from the write rules or the what itself; null when it takes no id.</summary>
-    internal static string? ListFormOf(JsonObject what) =>
-        (string?)(WriteOf(what)?["x-list"] ?? what["x-list"]);
+    /// <summary>The what's id option takes a list of ids.</summary>
+    internal static bool IdTakesList(JsonObject what) =>
+        what["options"]?["id"] is JsonObject id && VerbText.TypesOf(Resolve(id)["schema"]!.AsObject()).Contains("array");
 
-    internal static bool TakesIdList(JsonObject what)
-    {
-        string? form = ListFormOf(what);
-        return what["options"]?.AsObject().ContainsKey("id") == true && (form == "native" || form == "split");
-    }
+    /// <summary>
+    /// An id list answers one row per id; false where the what takes no id list, or takes it as the entries of another
+    /// list option (id_list: move item's moves, read sample's reads).
+    /// </summary>
+    internal static bool TakesIdList(JsonObject what) => IdTakesList(what) && what["id_list"] == null;
 
     private static JsonObject Read(string name) => CatalogueFiles.ReadJson(Path.Combine(SourceRoot, name + ".json")).AsObject();
 }

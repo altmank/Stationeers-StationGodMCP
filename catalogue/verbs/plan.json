@@ -147,146 +147,6 @@
         }
       },
       "example": {"kind": "pipe", "grade": "gas", "start": {"id": "720259", "port": 1}, "end": {"network": "5012345"}},
-      "handlers": [
-        {
-          "name": "plan_cable_route",
-          "when": "cable",
-          "note": "kind: \"cable\"",
-          "args": [
-            {"arg": "from", "option": "start", "change": "renamed"},
-            {"arg": "to", "option": "end", "change": "renamed"},
-            {"arg": "reroute", "option": "reroute", "change": "kept"},
-            {"arg": "allow_door_keepout", "option": "allow", "change": "merged", "note": "allow: [\"door_keepout\"]"},
-            {"arg": "reserve_cells", "option": "reserve_cells", "change": "kept"},
-            {"arg": "reserve_ports", "option": "reserve_ports", "change": "kept"},
-            {"arg": "grade", "option": "grade", "change": "kept"},
-            {"arg": "style", "option": "style", "change": "kept"},
-            {"arg": "assume_removed", "option": "assume_removed", "change": "kept"},
-            {"arg": "trunk", "option": "trunk", "change": "kept"},
-            {"arg": "avoid_room_interior", "option": "avoid", "change": "merged", "note": "avoid: [\"room_interior\"]"},
-            {"arg": "avoid_walkways", "option": "avoid", "change": "merged", "note": "avoid: [\"walkways\"]"},
-            {"arg": "avoid_networks", "option": "avoid_networks", "change": "kept"},
-            {"arg": "min_bends", "option": "min_bends", "change": "kept"},
-            {"arg": "axis_order", "option": "axis_order", "change": "kept"},
-            {"arg": "max_length", "option": "max_length", "change": "kept"},
-            {"arg": "margin_m", "option": "margin", "change": "renamed"},
-            {"arg": "join", "option": "join", "change": "kept"},
-            {"arg": "allow_bridge", "option": "allow_bridge", "change": "kept"},
-            {"arg": "root", "option": "root", "change": "kept"},
-            {"arg": "join_to", "option": "join_to", "change": "kept"},
-            {"arg": "join_trunk", "option": "join_trunk", "change": "kept"},
-            {"arg": "allow_split", "option": "allow", "change": "merged", "note": "allow: [\"split\"]"},
-            {"arg": "allow_split_long", "option": "split_long", "change": "renamed"},
-            {"arg": "from_id", "option": "materials", "change": "renamed"},
-            {"arg": "include_links", "option": "include", "change": "merged", "note": "include: [\"links\"]"},
-            {"arg": "include_notes", "option": "include", "change": "merged", "note": "include: [\"notes\"]"},
-            {
-              "arg": "include_network_devices",
-              "option": "include",
-              "change": "merged",
-              "note": "include: [\"network_devices\"]"
-            },
-            {"arg": "summary", "option": "summarize", "change": "renamed"},
-            {"arg": "limit", "option": "rows", "change": "renamed"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        },
-        {
-          "name": "plan_pipe_route",
-          "when": "pipe",
-          "note": "kind: \"pipe\"",
-          "args": [
-            {"arg": "from", "option": "start", "change": "renamed"},
-            {"arg": "to", "option": "end", "change": "renamed"},
-            {"arg": "reroute", "option": "reroute", "change": "kept"},
-            {"arg": "allow_door_keepout", "option": "allow", "change": "merged", "note": "allow: [\"door_keepout\"]"},
-            {"arg": "reserve_cells", "option": "reserve_cells", "change": "kept"},
-            {"arg": "reserve_ports", "option": "reserve_ports", "change": "kept"},
-            {"arg": "grade", "option": "grade", "change": "kept"},
-            {"arg": "style", "option": "style", "change": "kept"},
-            {"arg": "assume_removed", "option": "assume_removed", "change": "kept"},
-            {"arg": "trunk", "option": "trunk", "change": "kept"},
-            {"arg": "avoid_room_interior", "option": "avoid", "change": "merged", "note": "avoid: [\"room_interior\"]"},
-            {"arg": "avoid_walkways", "option": "avoid", "change": "merged", "note": "avoid: [\"walkways\"]"},
-            {"arg": "avoid_networks", "option": "avoid_networks", "change": "kept"},
-            {"arg": "min_bends", "option": "min_bends", "change": "kept"},
-            {"arg": "axis_order", "option": "axis_order", "change": "kept"},
-            {"arg": "max_length", "option": "max_length", "change": "kept"},
-            {"arg": "margin_m", "option": "margin", "change": "renamed"},
-            {"arg": "join", "option": "join", "change": "kept"},
-            {"arg": "allow_bridge", "option": "allow_bridge", "change": "kept"},
-            {"arg": "root", "option": "root", "change": "kept"},
-            {"arg": "join_to", "option": "join_to", "change": "kept"},
-            {"arg": "join_trunk", "option": "join_trunk", "change": "kept"},
-            {"arg": "allow_split", "option": "allow", "change": "merged", "note": "allow: [\"split\"]"},
-            {"arg": "allow_split_long", "option": "split_long", "change": "renamed"},
-            {"arg": "from_id", "option": "materials", "change": "renamed"},
-            {"arg": "include_links", "option": "include", "change": "merged", "note": "include: [\"links\"]"},
-            {"arg": "include_notes", "option": "include", "change": "merged", "note": "include: [\"notes\"]"},
-            {
-              "arg": "include_network_devices",
-              "option": "include",
-              "change": "merged",
-              "note": "include: [\"network_devices\"]"
-            },
-            {"arg": "summary", "option": "summarize", "change": "renamed"},
-            {"arg": "limit", "option": "rows", "change": "renamed"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        },
-        {
-          "name": "plan_chute_route",
-          "when": "chute",
-          "note": "kind: \"chute\"",
-          "args": [
-            {"arg": "from", "option": "start", "change": "renamed"},
-            {"arg": "to", "option": "end", "change": "renamed"},
-            {"arg": "reroute", "option": "reroute", "change": "kept"},
-            {"arg": "allow_door_keepout", "option": "allow", "change": "merged", "note": "allow: [\"door_keepout\"]"},
-            {"arg": "reserve_cells", "option": "reserve_cells", "change": "kept"},
-            {"arg": "reserve_ports", "option": "reserve_ports", "change": "kept"},
-            {"arg": "grade", "option": "grade", "change": "kept"},
-            {"arg": "style", "option": "style", "change": "kept"},
-            {"arg": "assume_removed", "option": "assume_removed", "change": "kept"},
-            {"arg": "trunk", "option": "trunk", "change": "kept"},
-            {"arg": "avoid_room_interior", "option": "avoid", "change": "merged", "note": "avoid: [\"room_interior\"]"},
-            {"arg": "avoid_walkways", "option": "avoid", "change": "merged", "note": "avoid: [\"walkways\"]"},
-            {"arg": "avoid_networks", "option": "avoid_networks", "change": "kept"},
-            {"arg": "min_bends", "option": "min_bends", "change": "kept"},
-            {"arg": "axis_order", "option": "axis_order", "change": "kept"},
-            {"arg": "max_length", "option": "max_length", "change": "kept"},
-            {"arg": "margin_m", "option": "margin", "change": "renamed"},
-            {"arg": "join", "option": "join", "change": "kept"},
-            {"arg": "allow_bridge", "option": "allow_bridge", "change": "kept"},
-            {"arg": "root", "option": "root", "change": "kept"},
-            {"arg": "join_to", "option": "join_to", "change": "kept"},
-            {"arg": "join_trunk", "option": "join_trunk", "change": "kept"},
-            {"arg": "allow_split", "option": "allow", "change": "merged", "note": "allow: [\"split\"]"},
-            {"arg": "allow_split_long", "option": "split_long", "change": "renamed"},
-            {"arg": "from_id", "option": "materials", "change": "renamed"},
-            {"arg": "include_links", "option": "include", "change": "merged", "note": "include: [\"links\"]"},
-            {"arg": "include_notes", "option": "include", "change": "merged", "note": "include: [\"notes\"]"},
-            {
-              "arg": "include_network_devices",
-              "option": "include",
-              "change": "merged",
-              "note": "include: [\"network_devices\"]"
-            },
-            {"arg": "summary", "option": "summarize", "change": "renamed"},
-            {"arg": "limit", "option": "rows", "change": "renamed"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "variants": [
           {
@@ -354,41 +214,6 @@
         }
       },
       "example": {"kind": "cable", "network": "3768865"},
-      "handlers": [
-        {
-          "name": "plan_removal",
-          "args": [
-            {"arg": "kind", "option": "kind", "change": "kept"},
-            {"arg": "reference_ids", "option": "id", "change": "renamed"},
-            {"arg": "waypoints", "option": "waypoints", "change": "kept"},
-            {"arg": "cells", "option": "cells", "change": "kept"},
-            {"arg": "network_id", "option": "network", "change": "renamed"},
-            {"arg": "root", "option": "root", "change": "kept"},
-            {"arg": "allow_split", "option": "allow", "change": "merged", "note": "allow: [\"split\"]"},
-            {"arg": "from_id", "option": "materials", "change": "renamed"},
-            {
-              "arg": "refund",
-              "option": "refund_to",
-              "change": "merged",
-              "note": "refund: false is refund_to: \"none\" (same meaning today)"
-            },
-            {"arg": "refund_to", "option": "refund_to", "change": "kept"},
-            {"arg": "include_links", "option": "include", "change": "merged", "note": "include: [\"links\"]"},
-            {"arg": "include_notes", "option": "include", "change": "merged", "note": "include: [\"notes\"]"},
-            {
-              "arg": "include_network_devices",
-              "option": "include",
-              "change": "merged",
-              "note": "include: [\"network_devices\"]"
-            },
-            {"arg": "limit", "option": "rows", "change": "renamed"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "removals",
         "variants": [
@@ -421,7 +246,6 @@
         ],
         "types": ["Thing", "Vec3"]
       },
-      "x-list": "native",
       "brief": "removal price"
     },
     "spot": {
@@ -482,29 +306,6 @@
         }
       },
       "example": {"prefab": "StructureWallLight", "looking": true},
-      "handlers": [
-        {
-          "name": "find_spot",
-          "args": [
-            {"arg": "prefab", "option": "prefab", "change": "kept"},
-            {"arg": "near", "option": "near", "change": "kept"},
-            {"arg": "plane", "option": "plane", "change": "kept"},
-            {"arg": "side", "option": "side", "change": "kept"},
-            {"arg": "looking", "option": "looking", "change": "kept"},
-            {"arg": "around", "option": "around", "change": "kept"},
-            {"arg": "room_id", "option": "room", "change": "renamed"},
-            {"arg": "facing", "option": "facing", "change": "kept"},
-            {"arg": "radius_m", "option": "radius", "change": "renamed"},
-            {"arg": "require", "option": "require", "change": "kept"},
-            {"arg": "limit", "option": "limit", "change": "kept"},
-            {"arg": "max_checks", "option": "max_checks", "change": "kept"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "spots",
         "variants": [
@@ -620,51 +421,6 @@
         }
       },
       "example": {"id": "4067059", "node": "pad"},
-      "handlers": [
-        {
-          "name": "rocket_forecast",
-          "args": [
-            {"arg": "rocket_id", "option": "id", "change": "renamed"},
-            {"arg": "to", "option": "node", "change": "renamed"},
-            {"arg": "profile", "option": "profile", "change": "kept"},
-            {"arg": "park_s", "option": "park_s", "change": "kept"},
-            {"arg": "mine", "option": "mine", "change": "kept"},
-            {"arg": "fill_holds", "option": "fill_holds", "change": "kept"},
-            {"arg": "add_cargo_slots", "option": "add_cargo_slots", "change": "kept"},
-            {"arg": "park_load_w", "option": "park_load_w", "change": "kept"},
-            {"arg": "then_return", "option": "then_return", "change": "kept"},
-            {"arg": "return_to", "option": "return_to", "change": "kept"},
-            {"arg": "deploy_payload", "option": "deploy_payload", "change": "kept"},
-            {"arg": "transfer_mol", "option": "transfer_mol", "change": "kept"},
-            {"arg": "transfer_with", "option": "transfer_with", "change": "kept"},
-            {"arg": "transfer_battery_j", "option": "transfer_battery_j", "change": "kept"},
-            {"arg": "fuel_mol", "option": "what_if", "change": "merged", "note": "what_if: {fuel_mol}"},
-            {
-              "arg": "fuel_temperature_k",
-              "option": "what_if",
-              "change": "merged",
-              "note": "what_if: {fuel_temperature_k}"
-            },
-            {"arg": "fuel_mix", "option": "what_if", "change": "merged", "note": "what_if: {fuel_mix}"},
-            {"arg": "thrust_scale", "option": "what_if", "change": "merged", "note": "what_if: {thrust_scale}"},
-            {"arg": "throttle", "option": "what_if", "change": "merged", "note": "what_if: {throttle}"},
-            {"arg": "cargo_slots", "option": "what_if", "change": "merged", "note": "what_if: {cargo_slots}"},
-            {"arg": "add_cargo_kg", "option": "what_if", "change": "merged", "note": "what_if: {add_cargo_kg}"},
-            {"arg": "payload_kg", "option": "what_if", "change": "merged", "note": "what_if: {payload_kg}"},
-            {"arg": "battery_j", "option": "what_if", "change": "merged", "note": "what_if: {battery_j}"},
-            {"arg": "battery_percent", "option": "what_if", "change": "merged", "note": "what_if: {battery_percent}"},
-            {"arg": "extra_load_w", "option": "what_if", "change": "merged", "note": "what_if: {extra_load_w}"},
-            {"arg": "min_confidence", "option": "min_confidence", "change": "kept"},
-            {"arg": "limits", "option": "limits", "change": "kept"},
-            {"arg": "explain", "option": "include", "change": "merged", "note": "include: [\"explain\"]"},
-            {"arg": "column_check", "option": "column_check", "change": "kept"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "legs",
         "variants": [
@@ -691,7 +447,6 @@
           }
         ]
       },
-      "x-list": "split",
       "brief": "rocket flight and landing check"
     },
     "mining": {
@@ -716,21 +471,6 @@
         }
       },
       "example": {"collectable_only": true},
-      "handlers": [
-        {
-          "name": "rocket_mining_options",
-          "args": [
-            {"arg": "rocket_id", "option": "id", "change": "renamed"},
-            {"arg": "to", "option": "node", "change": "renamed"},
-            {"arg": "collectable_only", "option": "collectable_only", "change": "kept"},
-            {"arg": "explain", "option": "include", "change": "merged", "note": "include: [\"explain\"]"},
-            {"arg": "fields", "option": "fields", "change": "kept"},
-            {"arg": "omit", "option": "omit", "change": "kept"},
-            {"arg": "list_limits", "option": "list_limits", "change": "kept"},
-            {"arg": "output_file", "option": "output_file", "change": "kept"}
-          ]
-        }
-      ],
       "reply": {
         "list": "sites",
         "variants": [
@@ -748,7 +488,6 @@
           }
         ]
       },
-      "x-list": "split",
       "brief": "rocket mining yield"
     },
     "aim": {
@@ -770,27 +509,6 @@
         "Write the answer with write logic (Horizontal, Vertical)."
       ],
       "example": {"id": "3300111"},
-      "handlers": [
-        {
-          "name": "solar_aim",
-          "when": "solar panel",
-          "args": [{"arg": "reference_id", "option": "id", "change": "renamed"}]
-        },
-        {
-          "name": "dish_aim",
-          "when": "dish",
-          "args": [
-            {"arg": "dish_id", "option": "id", "change": "renamed"},
-            {
-              "arg": "contact_id",
-              "option": "contact",
-              "change": "default-changed",
-              "note": "renamed to the shared name contact; required before, optional now: the what takes another form for it",
-              "default": ["required", "absent"]
-            }
-          ]
-        }
-      ],
       "reply": {
         "variants": [
           {
@@ -843,7 +561,6 @@
           }
         ]
       },
-      "x-list": "split",
       "brief": "solar panel or dish angles"
     }
   }

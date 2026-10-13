@@ -8,7 +8,7 @@ def read(what: Literal['sample'], *,
     interval: float = 0.5,  # Least time between samples (s).
 ) -> dict:
     """Watch up to 32 logic values for up to 30 s: first readings and every change with its time.
-    A list of ids keeps this reply: one series of changes over all of them (x-list native-shape).
+    A list of ids keeps this reply: one series of changes over all of them.
     Reply:
       gateway_id: str
       started_at_utc: str

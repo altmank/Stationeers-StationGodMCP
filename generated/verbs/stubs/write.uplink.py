@@ -5,7 +5,7 @@ def write(what: Literal['uplink'], *,
     gateway: str = 'world',  # "world" (default) or a gateway id: only devices on its data networks.
 ) -> dict:
     """Point a Logic Rocket Uplink at a Logic Rocket Downlink.
-    One id only: a list is refused (x-list one: this write cannot be undone).
+    One id only: a list is refused (this write cannot be undone).
     Reply:
       uplink: Thing
       previous_downlink: {reference_id: str, prefab_name: str | None, display_name: str | None, rocket: {network_id: str, name: str, state: str,

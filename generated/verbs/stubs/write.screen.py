@@ -10,7 +10,7 @@ def write(what: Literal['screen'], *,
     as_player: str = None,  # The name the handler receives; default the player's.
 ) -> dict:
     """Touch a control on a ScriptedScreens screen, as a player's touch does.
-    One id only: a list is refused (x-list one: this write cannot be undone).
+    One id only: a list is refused (this write cannot be undone).
     Reply:
       holder: Thing
       surface: str
