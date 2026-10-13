@@ -61,13 +61,14 @@ internal static class RetiredMethods
 
     /// <summary>
     /// The arguments of a method catalogue entry whose form the game answers as a verb while the entry's other form
-    /// keeps its per-tool handler: plant_genes' reads (inspect genes). The checks that hold an entry's arguments to its
+    /// keeps its per-tool handler: plant_genes' reads (inspect genes), paste_blueprint's status (inspect job). The checks that hold an entry's arguments to its
     /// handler pass over them.
     /// </summary>
     internal static IReadOnlyDictionary<string, HashSet<string>> Forms { get; } =
         new Dictionary<string, HashSet<string>>(StringComparer.Ordinal)
         {
-            ["plant_genes"] = new HashSet<string>(StringComparer.Ordinal) { "reference_ids", "include_notes" }
+            ["plant_genes"] = new HashSet<string>(StringComparer.Ordinal) { "reference_ids", "include_notes" },
+            ["paste_blueprint"] = new HashSet<string>(StringComparer.Ordinal) { "status" }
         };
 
     internal static bool HasArgument(string method, string argument) =>

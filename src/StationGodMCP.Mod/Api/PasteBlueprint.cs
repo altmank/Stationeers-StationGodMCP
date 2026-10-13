@@ -39,7 +39,7 @@ internal static class PasteBlueprintApi
     internal static object Handle(Args args)
     {
         bool report = ReportOnly.Asked(args);
-        if (args.OptionalBool("status") != true && args.OptionalBool("undo") != true)
+        if (args.OptionalBool("undo") != true)
         {
             PasteRequest request = PasteRequest.Parse(args);
             return WriteCheck<PastePlan>.Run(() => Check(request)).Answer(report, Start, Describe);
@@ -47,13 +47,7 @@ internal static class PasteBlueprintApi
 
         RequireHost();
         RequireBlueprintMod();
-        if (args.OptionalBool("status") == true)
-        {
-            args.Reject("status", "name", "anchor", "rotation", "undo", ReportOnly.Argument);
-            return Status();
-        }
-
-        args.Reject("undo", "name", "anchor", "rotation", "status", ReportOnly.Argument);
+        args.Reject("undo", "name", "anchor", "rotation", ReportOnly.Argument);
         return new BlueprintUndoView(
             Call(GameMembers.BlueprintUndo, new object?[] { Array.Empty<string>() }) as string ?? string.Empty);
     }
@@ -122,8 +116,11 @@ internal static class PasteBlueprintApi
         }
     }
 
-        private static BlueprintPasteStatusView Status()
+    /// <summary>The last paste's status, as inspect job reads it (id "paste"); host only, with BlueprintMod.</summary>
+    internal static BlueprintPasteStatusView Status()
     {
+        RequireHost();
+        RequireBlueprintMod();
         object? active = ActivePaste();
         TrackedPaste? last = _last;
         if (last == null)

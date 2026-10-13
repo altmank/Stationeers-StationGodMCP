@@ -145,4 +145,23 @@ public sealed class InspectVerbTests
     }
 
     private static JObject Answered(VerbOutcome outcome) => Assert.IsType<VerbOutcome.Answered>(outcome).Reply;
+
+    // ---- inspect job ----
+
+    [Fact]
+    public void TheHubsJobsAreRefusedInTheHubOnlyFormAndTheRestGoToTheGame()
+    {
+        VerbError none = HubJobs.Refusal(InspectJobOptions.Spec, null)!;
+        VerbError runs = HubJobs.Refusal(InspectJobOptions.Spec, InspectJobOptions.Bind(Reader(InspectJobOptions.Spec,
+            """{"id": ["place-4", "script-14", "write-2"]}""")).Selector.Ids)!;
+
+        Assert.Equal("invalid_argument", none.Code);
+        Assert.Contains("taken by the MCP server (or sg), not by the game", none.Message);
+        Assert.Equal(new[] { "id[1]", "id[2]" }, ((JArray)runs.Data!["problems"]!).Select(problem => (string?)problem["path"]));
+        Assert.Null(HubJobs.Refusal(InspectJobOptions.Spec, InspectJobOptions.Bind(Reader(InspectJobOptions.Spec,
+            """{"id": "place-4"}""")).Selector.Ids));
+        Assert.Null(HubJobs.Refusal(InspectJobOptions.Spec, InspectJobOptions.Bind(Reader(InspectJobOptions.Spec,
+            """{"id": "paste", "verbose": true}""")).Selector.Ids));
+        Assert.True(InspectJobOptions.Bind(Reader(InspectJobOptions.Spec, """{"id": "7", "verbose": true}""")).Fields.Verbose);
+    }
 }
