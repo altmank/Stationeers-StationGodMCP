@@ -1520,7 +1520,6 @@ def write(what: Literal['battery'], *,
     Reports in a report run; acts in a confirmed run.
     Cheat: ask the user first.
     Reply:
-      dry_run: bool
       goal: {kind: str, value: float | None}
       found_in: Thing | None
       results: list[{index: int, ok: bool, reference_id: str, prefab_name: str | None, display_name: str | None, kind: str, held_by: Thing | None,
@@ -1543,19 +1542,11 @@ def write(what: Literal['genes'], *,
     unit: int = None,  # Which gene set; default the top.
     genes: dict,  # Gene name to new value, -1 to 1 ({"GrowthSpeedMultiplier": 1}).
     allow: list[Literal['out_of_range']] = None,  # out_of_range: write values outside -1..1 too.
-    include: list[Literal['notes']] = None,  # Parts to add to the reply.
 ) -> dict:  # main list: r['results']; iterating or indexing it walks every page, in order
     """Edit plant genes as the Gene Splicer does.
     Reports in a report run; acts in a confirmed run.
     Cheat: ask the user first.
     Reply, one of:
-    (PlantGenes)
-      thing: Thing
-      holder: str
-      gene_set_count: int
-      unit: int
-      is_top: bool
-      genes: list[{gene: str, value: float | None, stability: float | None, meaning: str | None, effect: Any | None}]
     (BatchResult)
       results: list[{index: int, ok: bool, error: Error}]
       count: int
@@ -2387,12 +2378,10 @@ def swap(what: Literal['wall'], *,
     (JobQueued)
       JobQueued
     (StructureSwapReport)
-      tool: str
       target: str
-      status: str
-      job_id: str | None
       ready: bool
       problems: list[{code: str, message: str, reference_id: str | None}]
+      warnings: list[{code: str, message: str, reference_id: str | None}] | None
       pieces_total: int
       to_swap: int
       kept: int
@@ -2446,12 +2435,10 @@ def swap(what: Literal['frame'], *,
     (JobQueued)
       JobQueued
     (StructureSwapReport)
-      tool: str
       target: str
-      status: str
-      job_id: str | None
       ready: bool
       problems: list[{code: str, message: str, reference_id: str | None}]
+      warnings: list[{code: str, message: str, reference_id: str | None}] | None
       pieces_total: int
       to_swap: int
       kept: int
@@ -2490,8 +2477,8 @@ def swap(what: Literal['cable'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
     network: str | dict = None,  # A network: its id, a piece or device on it, or {id, port}.
     id: str | list[str] = None,  # Pieces (up to 4096).
-    into: Literal['heavy', 'super_heavy'] = None,  # Upgrade to this grade (heavy was today's default). One of into or tidy is required.
-    tidy: list[Literal['remove_dead_ends', 'remove_loops', 'remove_redundant', 'split_long_straights', 'merge_straights', 'simplify_junctions']] | bool = None,  # Tidy operations, alone or together; True is [simplify_junctions], today's default.
+    into: Literal['heavy', 'super_heavy'] = None,  # Upgrade to this grade; heavy when tidy is left out.
+    tidy: list[Literal['remove_dead_ends', 'remove_loops', 'remove_redundant', 'split_long_straights', 'merge_straights', 'simplify_junctions']] | bool = None,  # Tidy operations, alone or together; True is [simplify_junctions].
     spare: list[str] = None,  # tidy: pieces never removed, loops spared.
     only: list[str] = None,  # remove_redundant: the only pieces that may go.
     older_than: str = None,  # remove_redundant: only pieces with a lower id may go.
@@ -2510,12 +2497,10 @@ def swap(what: Literal['cable'], *,
     (JobQueued)
       JobQueued
     (UpgradeReport)
-      tool: str
       target: str
-      status: str
-      job_id: str | None
       ready: bool
       problems: list[{code: str, message: str, reference_id: str | None}]
+      warnings: list[{code: str, message: str, reference_id: str | None}] | None
       pieces_total: int
       to_swap: int
       kept: int
@@ -2567,8 +2552,8 @@ def swap(what: Literal['pipe'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
     network: str | dict = None,  # A network: its id, a piece or device on it, or {id, port}.
     id: str | list[str] = None,  # Target: an id, a list of ids, or "looking_at" (the thing the crosshair is on); "player" where the what says.
-    into: Literal['insulated', 'repair'] = None,  # insulated (today's default), or repair: burst pieces become new. One of into or tidy is required.
-    tidy: list[Literal['remove_dead_ends', 'remove_loops', 'remove_redundant', 'split_long_straights', 'merge_straights', 'simplify_junctions']] | bool = None,  # Tidy operations; True is [simplify_junctions], today's default.
+    into: Literal['insulated', 'repair'] = None,  # insulated, or repair: burst pieces become new; insulated when tidy is left out.
+    tidy: list[Literal['remove_dead_ends', 'remove_loops', 'remove_redundant', 'split_long_straights', 'merge_straights', 'simplify_junctions']] | bool = None,  # Tidy operations; True is [simplify_junctions].
     spare: list[str] = None,  # tidy: pieces never removed, loops spared.
     only: list[str] = None,  # remove_redundant: the only pieces that may go.
     older_than: str = None,  # remove_redundant: only pieces with a lower id may go.
@@ -2588,12 +2573,10 @@ def swap(what: Literal['pipe'], *,
     (JobQueued)
       JobQueued
     (UpgradeReport)
-      tool: str
       target: str
-      status: str
-      job_id: str | None
       ready: bool
       problems: list[{code: str, message: str, reference_id: str | None}]
+      warnings: list[{code: str, message: str, reference_id: str | None}] | None
       pieces_total: int
       to_swap: int
       kept: int
@@ -2661,12 +2644,10 @@ def swap(what: Literal['chute'], *,
     (JobQueued)
       JobQueued
     (UpgradeReport)
-      tool: str
       target: str
-      status: str
-      job_id: str | None
       ready: bool
       problems: list[{code: str, message: str, reference_id: str | None}]
+      warnings: list[{code: str, message: str, reference_id: str | None}] | None
       pieces_total: int
       to_swap: int
       kept: int
@@ -2724,7 +2705,7 @@ def remove(what: Literal['structure'], *,
     include: list[Literal['notes']] = None,  # Parts to add to the reply.
     verbose: bool = False,  # Dry run: each port a split cuts; real run: the whole job.
     acknowledge_gas_lost: str = None,  # The job id whose gas loss you accept (with the user's agreement); lifts the gas hold.
-) -> dict:  # main list: r['placements']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['removals']; iterating or indexing it walks every page, in order
     """Built structures by id (up to 256, one job), taken apart; every build state is refunded down to the kit.
     Reports in a report run; acts in a confirmed run.
     Reply, one of:
@@ -2732,38 +2713,7 @@ def remove(what: Literal['structure'], *,
       JobQueued
     (BuildJob)
       BuildJob
-    (PlaceReport)
-      tool: str
-      status: str
-      job_id: str | None
-      ready: bool
-      problems: list[{code: str, message: str, index: int | None, reference_id: str | None}]
-      warnings: list[{code: str, message: str, index: int | None, reference_id: str | None}]
-      placements: list[{index: int, prefab_name: str | None, prefab_hash: int | None, display_name: str | None, placement: str | None, position: Vec3
-          | None, orientation: {facing: str | None, up: str | None, euler: Vec3} | None, face: str | None, ports: list[{index: int, at: Vec3, toward:
-          str, type: str, role: str, network_id: str | None}] | None, build_state: int | None, build_states: int | None, label: str | None, color:
-          {index: int | None, name: str | None} | None, cost: list[{prefab_name: str | None, quantity: int}], layout: {footprint: {small_cells:
-          {count: int, cells: list[{x: float, y: float, z: float}] | None}, large_cells: list[Vec3] | None, body: {origin: {x: float, y: float, z:
-          float}, render_box: {min: {x: float, y: float, z: float}, max: {x: float, y: float, z: float}, size: {x: float, y: float, z: float}},
-          centre_offset: {x: float, y: float, z: float}, grid_box: {min: {x: float, y: float, z: float}, max: {x: float, y: float, z: float}, size:
-          {x: float, y: float, z: float}} | None, grid_cells: int}, mount: {plane: str, outward: str, axes: list[str], min: list[float], max:
-          list[float]} | None}, sections: {walls: list[{face: {x: float, y: float, z: float}, reference_id: str | None, prefab_name: str | None, kind:
-          str}], count: int, crosses_seam: bool} | None, conflicts: list[{code: str, level: str, message: str, reference_id: str | None}],
-          port_checks: list[{index: int, at: Vec3, toward: str, type: str, role: str, flow: str | None, occupant: Thing | None, joins: bool,
-          would_join_network: str | None, blocked: str | None, in_door_keep_out: bool}] | None} | None, orient: {chosen: {facing: str | None, up: str
-          | None, euler: Vec3, score: float | None, reasons: list[str], reversed_flow: bool} | None, alternatives: list[{facing: str | None, up: str |
-          None, euler: Vec3, score: float | None, reasons: list[str], reversed_flow: bool}], tried: int, mode_flip: {logic_type: str, value: int,
-          reason: str} | None} | None, resolved: {at: {x: float, y: float, z: float}, at_how: str, facing: str | None, facing_how: str | None, view:
-          {source: str, age_s: float} | None} | None}]
-      materials: list[{prefab_name: str | None, needed: int, available: int, paid_by: list[{reference_id: str, name: str | None, quantity: int,
-          available: int}] | None}]
-      from: Thing | None
-      free: bool
-      notes: list[str] | None
     (RemoveReport)
-      tool: str
-      status: str
-      job_id: str | None
       ready: bool
       problems: list[{code: str, message: str, index: int | None, reference_id: str | None}]
       warnings: list[{code: str, message: str, index: int | None, reference_id: str | None}]
@@ -2812,9 +2762,6 @@ def remove(what: Literal['cable'], *,
     (RunJob)
       RunJob
     (RunReport)
-      tool: str
-      status: str
-      job_id: str | None
       grade: str | None
       ready: bool
       problems: list[{code: str, message: str, reference_id: str | None, at: Vec3 | None}]
@@ -2882,9 +2829,6 @@ def remove(what: Literal['pipe'], *,
     (RunJob)
       RunJob
     (RunReport)
-      tool: str
-      status: str
-      job_id: str | None
       grade: str | None
       ready: bool
       problems: list[{code: str, message: str, reference_id: str | None, at: Vec3 | None}]
@@ -2951,9 +2895,6 @@ def remove(what: Literal['chute'], *,
     (RunJob)
       RunJob
     (RunReport)
-      tool: str
-      status: str
-      job_id: str | None
       grade: str | None
       ready: bool
       problems: list[{code: str, message: str, reference_id: str | None, at: Vec3 | None}]
@@ -3029,9 +2970,11 @@ def move(what: Literal['item'], *,
     Cheat when force: true: ask the user first.
     Reply, one of:
     (ItemMoved)
+      route: str
       index: int
       ok: bool
       reference_id: str
+      display_name: str
       from: {id: str, slot: int} | None
       to: {id: str, slot: int}
       quantity_moved: int
@@ -3039,12 +2982,13 @@ def move(what: Literal['item'], *,
       destination_reference_id: str
       warning: str | None
     (BatchResult)
+      route: str
       results: list[{index: int, ok: bool, error: Error}]
       count: int
       success_count: int
       error_count: int
     (VaultDeposit)
-      dry_run: bool
+      route: str
       vault: Thing
       via: Thing | None
       matched: int | None
@@ -3057,7 +3001,7 @@ def move(what: Literal['item'], *,
           float, after: float}} | {index: int, ok: bool, error: Error}], count: int, success_count: int, error_count: int}
       stock: list[{kind: str, prefab_name: str | None, display_name: str | None, reagent: str | None, before: float, change: float, after: float}]
     (VaultWithdraw)
-      dry_run: bool
+      route: str
       vault: Thing
       via: Thing | None
       to: Thing
@@ -3065,7 +3009,7 @@ def move(what: Literal['item'], *,
       placed: list[{where: str, slot: {id: str, slot: int} | None, quantity: float, reference_id: str | None}]
       stock: list[{kind: str, prefab_name: str | None, display_name: str | None, reagent: str | None, before: float, change: float, after: float}]
     (VaultTransfer)
-      dry_run: bool
+      route: str
       from_vault: Thing
       from_via: Thing | None
       to_vault: Thing
@@ -3077,7 +3021,7 @@ def move(what: Literal['item'], *,
           float, after: float}} | {index: int, ok: bool, error: Error}], count: int, success_count: int, error_count: int}
       partial_count: int
     (SiloDeposit)
-      dry_run: bool
+      route: str
       silo: Thing
       on_off: bool
       powered: bool
@@ -3089,7 +3033,7 @@ def move(what: Literal['item'], *,
           int, error_count: int}
       count: {before: int, after: int}
     (SiloWithdraw)
-      dry_run: bool
+      route: str
       silo: Thing
       on_off: bool
       powered: bool
@@ -3160,7 +3104,6 @@ def move(what: Literal['player'], *,
     Reports in a report run; acts in a confirmed run.
     Cheat: ask the user first.
     Reply:
-      dry_run: bool
       player: Thing
       moved_by: str
       before: {position: Vec3, room_id: str | None, room_type: str | None, outside: bool | None}
