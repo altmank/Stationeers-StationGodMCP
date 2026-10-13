@@ -174,10 +174,6 @@
   "Api/Shared/Game/Flight/SpaceRoutes.cs": [
     "There are {rockets.Count} rockets: give rocket_id, one of {string.Join(\", \", names)}."
   ],
-  "Api/Shared/Game/HeldTickJobs.cs": [
-    "The game tick is held by something else (a save or a world settings change); try again, or pass wait: true to queue the run.",
-    "{(_active != null ? $\"Job {_active.Id} is still running\" : \"Jobs are waiting for the slot\")}; nothing was changed. Poll it with job_id, or pass wait: true to queue this run behind it."
-  ],
   "Api/Shared/Game/JobGas.cs": [
     "Its atmosphere work ran past the {AtmosphericsThread.LimitSeconds} s limit and finished after the job had stopped, so the pipe networks' contents were not checked; look at them (atmosphere_contents) before acknowledging."
   ],
