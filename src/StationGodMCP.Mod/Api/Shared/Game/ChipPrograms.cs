@@ -61,8 +61,7 @@ internal abstract class ChipProgram
 
         internal override void Restart(IcTarget ic, ProgrammableChip chip) =>
             throw ApiErrors.Refused("not_a_lua_chip",
-                Vocabulary.Text("restart is for Lua chips; an IC10 chip restarts at line 0 when {tool:set_ic_source} " +
-                    "writes it."));
+                "run: restart is for Lua chips; an IC10 chip restarts at line 0 when write chip's code writes it.");
 
         internal override void RequireSteppable(string action)
         {
@@ -102,7 +101,7 @@ internal abstract class ChipProgram
         internal override void RequireSteppable(string action) =>
             throw ApiErrors.Refused("lua_chip_unsupported",
                 $"A Lua chip cannot {action}: it runs a whole tick(dt) per game tick, with no line to stop at. Use " +
-                $"restart to run it again from the start, or {Vocabulary.Tool("set_ic_source")} to change it.");
+                "restart to run it again from the start, or write chip's code to change it.");
 
         protected override LuaStateView? LuaState(ProgrammableChip chip, int logLines) =>
             LuaChips.State(chip, logLines);

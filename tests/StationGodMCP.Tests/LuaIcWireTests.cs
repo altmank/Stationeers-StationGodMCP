@@ -9,7 +9,7 @@ using Xunit;
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// The IC tools' Lua additions on the wire: a Console (reference_id) holding a ScriptedScreens board (holder) with a
+/// inspect chip's Lua additions on the wire: a Console (reference_id) holding a ScriptedScreens board (holder) with a
 /// Lua chip (chip), and the lua runtime block.
 /// </summary>
 public sealed class LuaIcWireTests
@@ -40,29 +40,6 @@ public sealed class LuaIcWireTests
         Assert.Equal(Script, (string?)json["source"]);
         Assert.Equal(Script.Length, (int)json["source_length"]!);
         Assert.True((bool)json["lua"]!["running"]!);
-    }
-
-    [Fact]
-    public void Ic10ChipHasNoLuaBlock()
-    {
-        IcChip chip = new IcChip(IcChip.Ic10, LuaChip, "yield", null);
-        JObject json = Json(new IcSourceSetView(Console, chip, Clean, new List<StationGodMCP.Pure.SourceNote>()));
-
-        Assert.Equal("ic10", (string?)json["language"]);
-        Assert.Equal(JTokenType.Null, json["lua"]!.Type);
-    }
-
-    [Fact]
-    public void LuaBlockAfterAWriteIsCompiling()
-    {
-        LuaStateView compiling = new LuaStateView(new LuaRuntimeFlags(true, false, false, false), 3, null, null, null);
-        JObject lua = (JObject)Json(new IcSourceSetView(Console, new IcChip(IcChip.Lua, LuaChip, Script, compiling),
-            Clean, new List<StationGodMCP.Pure.SourceNote>()))["lua"]!;
-
-        Assert.Equal(
-            "{\"compiling\":true,\"has_runtime\":false,\"init_complete\":false,\"running\":false,\"library\":false," +
-            "\"source_version\":3,\"last_error\":null,\"log\":null,\"unavailable\":null}",
-            lua.ToString(Newtonsoft.Json.Formatting.None));
     }
 
     [Fact]
@@ -102,19 +79,6 @@ public sealed class LuaIcWireTests
         Assert.Equal(new[] { "tick 9", "tick 10" }, json["lua"]!["log"]!["lines"]!.ToObject<string[]>());
         Assert.Equal(10, (int)json["lua"]!["log"]!["line_count"]!);
         Assert.True((bool)json["lua"]!["log"]!["truncated"]!);
-    }
-
-    [Fact]
-    public void RestartReportsTheLuaBlock()
-    {
-        IcControlView view = new IcControlView(Console, new IcControlOutcome("restart", false, 0.0), Clean,
-            new IcChip(IcChip.Lua, LuaChip, Script, Running(null)));
-        JObject json = Json(view);
-
-        Assert.Equal("restart", (string?)json["action"]);
-        Assert.Equal("lua", (string?)json["language"]);
-        Assert.Null(json["source"]);
-        Assert.True((bool)json["lua"]!["has_runtime"]!);
     }
 
     private static JObject Json(object view) => JObject.Parse(WireCheck.New(view));

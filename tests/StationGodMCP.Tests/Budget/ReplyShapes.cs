@@ -70,7 +70,6 @@ internal static class ReplyShapes
         {
             S<CheckReplaceableView>().List("CheckReplaceableView.Results", W.TypicalBatch)
         };
-        shapes["control_ic_execution"] = new[] { S<IcControlView>().Absent("IcControlView.Lua") };
         // One structure's step: a state or two of one or two items each, and a tool.
         shapes["advance_build_state"] = new[]
         {
@@ -227,12 +226,6 @@ internal static class ReplyShapes
         shapes["run_console_command"] = new[]
         {
             S<ConsoleRunView>().List("ConsoleRunView.Arguments", 10).List("ConsoleRunView.Output", 3)
-        };
-        shapes["set_ic_pins"] = new[] { S<SetIcPinsView>().List("SetIcPinsView.Changes", 2).List("SetIcPinsView.Pins", 6) };
-        shapes["set_ic_source"] = new[]
-        {
-            S<IcSourceSetView>().Absent("IcSourceSetView.Source").List("IcSourceSetView.Warnings", 1)
-                .List("LuaLogView.Lines", 0)
         };
         shapes["show_preview"] = new[]
         {

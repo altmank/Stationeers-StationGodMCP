@@ -34,15 +34,12 @@ internal static class ApiHost
     internal static readonly Dictionary<string, Func<Args, object>> Methods =
         new Dictionary<string, Func<Args, object>>(StringComparer.Ordinal)
         {
-            ["set_ic_source"] = static args => SetIcSourceApi.Handle(args),
-            ["control_ic_execution"] = static args => ControlIcExecutionApi.Handle(args),
             ["run_console_command"] = static args => RunConsoleCommandApi.Handle(args),
             ["read_console"] = static args => ReadConsoleApi.Handle(args),
             ["label"] = static args => LabelApi.Handle(args),
             ["trader_contacts"] = static args => TraderContactsApi.Handle(args),
             ["dish_aim"] = static args => DishAimApi.Handle(args),
             ["trader_inventory"] = static args => TraderInventoryApi.Handle(args),
-            ["set_ic_pins"] = static args => SetIcPinsApi.Handle(args),
             ["solar_aim"] = static args => SolarAimApi.Handle(args),
             ["paint"] = static args => PaintApi.Handle(args),
             ["advance_build_state"] = static args => AdvanceBuildStateApi.Handle(args),
