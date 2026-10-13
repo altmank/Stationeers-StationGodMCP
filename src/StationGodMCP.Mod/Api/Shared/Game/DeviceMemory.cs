@@ -47,26 +47,35 @@ internal static class DeviceMemory
         return values;
     }
 
-    internal static List<double> Values(Args args)
+    /// <summary>
+    /// A memory write's checks, which write nothing: the device in scope with writable memory, a chip where the memory
+    /// is the chip's, the range inside the memory, and the memory there now when it also reads.
+    /// </summary>
+    internal static MemoryWritePlan Check(DeviceScope scope, ThingId id, int start, IReadOnlyList<double> values)
     {
-        JArray array = args.Array("values", MaximumValues);
-        List<double> values = new List<double>(array.Count);
-        for (int index = 0; index < array.Count; index++)
+        ScopedTarget device = Devices.Require(scope, id);
+        if (!(device.Thing is IMemoryWritable memory))
         {
-            JToken token = array[index];
-            double value = token.Type == JTokenType.Integer || token.Type == JTokenType.Float
-                ? token.Value<double>()
-                : double.NaN;
-            if (double.IsNaN(value) || double.IsInfinity(value))
-            {
-                throw ApiErrors.InvalidArgument($"Argument '{Vocabulary.Arg("values")}[{index}]' must be a finite " +
-                    "number.");
-            }
-
-            values.Add(value);
+            throw ApiErrors.Refused("memory_not_writable",
+                $"Device {device.ReferenceId} ({device.DisplayName}) has no memory a chip's put writes.");
         }
 
-        return values;
+        RequireRange(device, start, values.Count);
+        IMemoryReadable? readable = device.Thing as IMemoryReadable;
+        List<double>? previous = readable != null ? Read(readable, start, values.Count) : null;
+        return new MemoryWritePlan(Place(scope, device, start), device.DisplayName, memory, readable, values, previous);
+    }
+
+    /// <summary>A checked write, as a chip's put writes each value (IMemoryWritable.WriteMemory); the memory after.</summary>
+    internal static List<double>? Write(MemoryWritePlan plan)
+    {
+        int start = plan.Place.StartAddress;
+        for (int offset = 0; offset < plan.Values.Count; offset++)
+        {
+            plan.Memory.WriteMemory(start + offset, plan.Values[offset]);
+        }
+
+        return plan.Readable != null ? Read(plan.Readable, start, plan.Values.Count) : null;
     }
 
     internal static MemoryPlace Place(DeviceScope scope, ScopedTarget device, int startAddress) =>
@@ -85,3 +94,7 @@ internal static class DeviceMemory
         }
     }
 }
+
+/// <summary>A checked memory write: where, the device's name, the values, and the memory there before.</summary>
+internal sealed record MemoryWritePlan(MemoryPlace Place, string? Name, IMemoryWritable Memory,
+    IMemoryReadable? Readable, IReadOnlyList<double> Values, List<double>? Previous);

@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
@@ -169,19 +170,41 @@ public sealed class ReportOnlyTests
         Assert.Equal(0, counter.Acts);
     }
 
-    // ---- write_memory ----
+    // ---- write memory ----
 
     [Fact]
     public void AMemoryReportGivesTheTargetTheValuesAndWhatIsThereNowAndNoCurrentValues()
     {
-        MemoryWriteReportView report = new MemoryWriteReportView(
-            new MemoryPlace("local", new ThingId(5), 2, 512), new List<double> { 1, 2 }, new List<double> { 0, 7 });
+        JObject report = MemoryWrites.Reported(new MemoryPlace("local", new ThingId(5), 2, 512), "IC Housing",
+            new List<double> { 1, 2 }, new List<double> { 0, 7 });
 
         Assert.Equal(
-            "{\"report_only\":true,\"problems\":[],\"gateway_id\":\"local\",\"reference_id\":\"5\"," +
-            "\"start_address\":2,\"requested_values\":[1.0,2.0],\"previous_values\":[0.0,7.0],\"count\":2," +
-            "\"stack_size\":512}",
-            WireCheck.New(report));
+            "{\"gateway_id\":\"local\",\"reference_id\":\"5\",\"start_address\":2,\"requested_values\":[1.0,2.0]," +
+            "\"previous_values\":[0.0,7.0],\"count\":2,\"stack_size\":512,\"problems\":[],\"report_only\":true," +
+            "\"targets\":[{\"id\":\"5\",\"name\":\"IC Housing\",\"current\":[0.0,7.0],\"new\":[1.0,2.0]," +
+            "\"undo\":\"[undo]\",\"text\":\"[5, IC Housing, [0.0,7.0] -> [1.0,2.0]] [undo]\"}]}",
+            report.ToString(Newtonsoft.Json.Formatting.None));
+    }
+
+    [Fact]
+    public void AMemoryWriteGivesTheMemoryBeforeAndAfter()
+    {
+        JObject written = MemoryWrites.Written(new MemoryPlace("world", new ThingId(5), 0, null),
+            new List<double> { 3 }, new List<double> { 0 }, new List<double> { 3 });
+
+        Assert.Equal(new[] { "gateway_id", "reference_id", "start_address", "requested_values", "previous_values",
+            "current_values", "count", "stack_size" }, written.Properties().Select(key => key.Name));
+        Assert.Equal(3.0, (double)written["current_values"]![0]!);
+    }
+
+    [Fact]
+    public void MemoryValuesAreFiniteNumbersAndStartAnAddress()
+    {
+        List<OptionProblem> problems = new List<OptionProblem>();
+
+        Assert.Null(MemoryWrites.Values(JArray.Parse("[1, \"x\", 2]"), problems));
+        Assert.Null(MemoryWrites.Start(1L + int.MaxValue, problems));
+        Assert.Equal(new[] { "values[1]", "start" }, problems.Select(problem => problem.Path));
     }
 
     [Fact]

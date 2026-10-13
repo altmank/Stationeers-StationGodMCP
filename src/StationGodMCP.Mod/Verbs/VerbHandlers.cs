@@ -56,5 +56,6 @@ internal static class VerbHandlers
         VerbHandler.For(ReadFlightLogOptions.Spec, ReadFlightLogOptions.Bind, ReadFlightLog.Run),
         ReadSample.Handler(static () => StationGodMod.Hub),
         VerbHandler.For(WriteLogicOptions.Spec, WriteLogicOptions.Bind, WriteLogic.Run),
+        VerbHandler.For(WriteMemoryOptions.Spec, WriteMemoryOptions.Bind, WriteMemory.Run),
     });
 }
