@@ -80,7 +80,7 @@
         "allow": {
           "use": "allow",
           "schema": {"type": "array", "items": {"type": "string", "enum": ["door_keepout", "lint", "pad"]}},
-          "description": "door_keepout: a keep-out cell is a warning; lint: lint problems are warnings the report marks PASSED; pad: building in a landing pad's approach."
+          "description": "door_keepout: a keep-out cell is a warning; lint: lint problems are warnings the report marks PASSED; pad: a placement in a landing pad's approach is a problem; allowed, a PASSED warning."
         },
         "include": {
           "use": "include",

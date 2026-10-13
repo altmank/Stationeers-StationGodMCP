@@ -17,7 +17,7 @@ Options:
 - color (string or integer): A colour name or index.
 - materials (string or array): Holder(s) that pay materials and take source refunds, tried in order; ids or "player". Default the player.
 - free (boolean, default false): Creative worlds: no materials. Cheat.
-- allow (list of door_keepout | lint | pad): door_keepout: a keep-out cell is a warning; lint: lint problems are warnings the report marks PASSED; pad: building in a landing pad's approach.
+- allow (list of door_keepout | lint | pad): door_keepout: a keep-out cell is a warning; lint: lint problems are warnings the report marks PASSED; pad: a placement in a landing pad's approach is a problem; allowed, a PASSED warning.
 - include (list of notes | footprint_cells): footprint_cells: each footprint's cells.
 - verbose (boolean, default false): Report: layouts a refused report leaves out; real run: the whole preflight.
 - acknowledge_gas_lost (string): The job id whose gas loss you accept (with the user's agreement); lifts the gas hold.

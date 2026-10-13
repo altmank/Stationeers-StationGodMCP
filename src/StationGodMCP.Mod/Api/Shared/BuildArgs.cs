@@ -175,9 +175,10 @@ internal sealed class PlaceArguments
 {
     internal PlaceArguments(List<PlacementArgs> placements, ThingId? from, bool free, bool allowDoorKeepOut = false,
         bool footprintCells = false, ReportDetail? detail = null, List<ThingId>? moreFrom = null,
-        bool allowLint = false)
+        bool allowLint = false, bool allowPad = false)
     {
         AllowLint = allowLint;
+        AllowPad = allowPad;
         MoreFrom = moreFrom ?? new List<ThingId>();
         Detail = detail ?? ReportDetail.Brief;
         FootprintCells = footprintCells;
@@ -203,6 +204,9 @@ internal sealed class PlaceArguments
 
     /// <summary>allow lint: a lint problem is a warning, and the report marks what it is about PASSED.</summary>
     internal bool AllowLint { get; }
+
+    /// <summary>allow pad: a placement in a landing pad's approach is a warning, and the report marks it PASSED.</summary>
+    internal bool AllowPad { get; }
 
     /// <summary>include_footprint_cells: each layout preview lists its footprint's cells, not only a count.</summary>
     internal bool FootprintCells { get; }

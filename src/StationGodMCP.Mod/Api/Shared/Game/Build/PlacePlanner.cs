@@ -222,6 +222,7 @@ internal static class PlacePlanner
 
         Overlaps(plan);
         Clashes(plan);
+        PadApproachGuard.Check(plan, arguments.AllowPad);
         CountMaterials(plan);
         if (lint)
         {

@@ -1131,6 +1131,11 @@
       "origin": "tool",
       "see": {"tool": "move_player", "topic": "refusals"}
     },
+    "pad_approach": {
+      "description": "The placement stands in a landing pad's approach, the corridor its traders come down through. A shuttle that touches a structure is damaged and explodes. Build it elsewhere, or pass allow: [\"pad\"].",
+      "origin": "tool",
+      "see": {"topic": "placing", "subtopic": "refusals"}
+    },
     "pad_unavailable": {
       "description": "The trader's landing pad is off (unpowered) or has an error. Power it and clear the error.",
       "origin": "tool",

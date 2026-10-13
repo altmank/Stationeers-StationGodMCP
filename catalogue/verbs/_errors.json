@@ -357,6 +357,10 @@
     "description": "The point is beyond the world's terrain, where nothing holds a as_player up. Pick a point inside the map.",
     "see": {"verb": "move", "what": "player"}
   },
+  "pad_approach": {
+    "description": "The placement stands in a landing pad's approach, the corridor its traders come down through. A shuttle that touches a structure is damaged and explodes. Build it elsewhere, or pass allow: [\"pad\"].",
+    "see": {"verb": "build", "what": "structure"}
+  },
   "pad_unavailable": {"description": "The trader's landing pad is off (unpowered) or has an error. Power it and clear the error."},
   "paint_failed": {
     "description": "The thing still shows its old colour after painting. It does not keep this colour.",

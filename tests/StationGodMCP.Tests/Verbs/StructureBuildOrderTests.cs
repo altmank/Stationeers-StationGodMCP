@@ -48,7 +48,7 @@ public sealed class StructureBuildOrderTests
         Assert.False(order.Report.Acts);
         Assert.True(order.Queue);
         Assert.Same(MaterialsSource.Player.Payers, order.Materials.Payers);
-        Assert.False(order.AllowDoorKeepOut || order.AllowLint);
+        Assert.False(order.AllowDoorKeepOut || order.AllowLint || order.AllowPad);
         Assert.False(order.FootprintCells);
     }
 
@@ -168,6 +168,28 @@ public sealed class StructureBuildOrderTests
         Assert.True(order.FootprintCells);
         Assert.True(order.Fields.Includes("notes"));
         Assert.True(order.Fields.Verbose);
+    }
+
+    [Fact]
+    public void AllowPadIsReadAndAReplayNeverLiftsTheGuard()
+    {
+        List<OptionProblem> problems = new();
+
+        StructureBuildOrder order = Order("""{"prefab": "A", "at": [0, 0, 0], "allow": ["pad"]}""", problems,
+            out _)!;
+
+        Assert.Empty(problems);
+        Assert.True(order.AllowPad);
+        Assert.False(order.AllowLint || order.AllowDoorKeepOut);
+        Assert.True(order.Arguments(null, new List<ThingId>()).AllowPad);
+
+        // undo_job's replay gives no allow, so the pad approach guard stands on the placements it puts back.
+        StructureBuildOrder replay = StructureBuildOrder.Replay(
+            JArray.Parse("""[{"prefab": "A", "at": [0, 0, 0]}]"""), null, acts: true, queue: true,
+            acknowledgeGasLost: null, problems: problems)!;
+
+        Assert.False(replay.AllowPad);
+        Assert.False(replay.Arguments(null, new List<ThingId>()).AllowPad);
     }
 
     [Fact]

@@ -10,7 +10,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>
 /// build structure's call, checked without the game: the placements (at most 64) or one top-level placement (prefab,
 /// at, rotation, facing, up, face, orient, above_floor, build_state, label, color); spread ({from, to, step} or a list
-/// of them) standing in for at; who pays (materials) and whether the build is free; allow door_keepout and lint;
+/// of them) standing in for at; who pays (materials) and whether the build is free; allow door_keepout, lint and pad;
 /// include notes and footprint_cells; verbose, acknowledge_gas_lost (checked), confirm and queue. Every placement's
 /// fields are read by the shared place readers (BuildArgs), so the checks are the ones the old place surface made; the
 /// what's label prefixes every refusal ("build structure: ...").
@@ -58,6 +58,9 @@ internal sealed class StructureBuildOrder
     /// <summary>allow lint: a lint problem is a warning and the rows about it say PASSED.</summary>
     public bool AllowLint { get; private set; }
 
+    /// <summary>allow pad: a placement in a landing pad's approach is a warning and its row says PASSED.</summary>
+    public bool AllowPad { get; private set; }
+
     /// <summary>include footprint_cells: each layout preview lists its footprint's cells, not only a count.</summary>
     public bool FootprintCells { get; private set; }
 
@@ -90,6 +93,7 @@ internal sealed class StructureBuildOrder
         order.AcknowledgeGasLost = options.AcknowledgeGasLost;
         order.AllowDoorKeepOut = Allow.Lifts(options.Allow, "door_keepout");
         order.AllowLint = Allow.Lifts(options.Allow, WriteLint.Guard);
+        order.AllowPad = Allow.Lifts(options.Allow, PadApproachRule.Guard);
         int before = problems.Count;
         GasHoldArgs.Check(order.AcknowledgeGasLost, problems);
         missing = order.Read(options, problems);
@@ -120,7 +124,7 @@ internal sealed class StructureBuildOrder
     /// <summary>The request the game plans: the placements, who pays, and what the call includes.</summary>
     internal PlaceArguments Arguments(ThingId? from, List<ThingId> moreFrom) =>
         new PlaceArguments(Placements, from, Free, AllowDoorKeepOut, FootprintCells,
-            new ReportDetail(Fields.Includes("notes"), Fields.Verbose), moreFrom, AllowLint);
+            new ReportDetail(Fields.Includes("notes"), Fields.Verbose), moreFrom, AllowLint, AllowPad);
 
     // The placements the call names: the list, or the one placement's own fields at the top level (spread standing in
     // for at). Null with missing set when it names none.
