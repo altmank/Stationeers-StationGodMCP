@@ -43,7 +43,7 @@ public sealed class DeferredCostsTests : IDisposable
         Assert.Equal("ready", call.Answer);
         Assert.Equal(1, cost.Calls);
         Assert.Equal(1.0 + 2.0 + 2.0 + 2.5, cost.MainThreadMs, 6);
-        Assert.Equal("find_things", method.Method);
+        Assert.Equal("find.thing", method.Method);
         Assert.Equal(1, method.Calls);
         Assert.Equal(1.0 + 2.0 + 2.0 + 2.5, method.TotalMs, 6);
     }
@@ -108,7 +108,7 @@ public sealed class DeferredCostsTests : IDisposable
         private readonly double _runMs;
 
         internal SlicedCall(object source, CallContext context, FakeClock clock, IDeferredWork work, double runMs = 1.0)
-            : base(DeadlineAfterMs(60000), new CallProfile("find_things", MethodClass.Read,
+            : base(DeadlineAfterMs(60000), new CallProfile("find.thing", MethodClass.Read,
                 new CallCost(CostClass.Instant, 1)))
         {
             _source = source;
@@ -127,8 +127,8 @@ public sealed class DeferredCostsTests : IDisposable
         internal override CallOutcome Run(ICallRunner runner, double queueWaitMs)
         {
             _clock.Advance(_runMs);
-            CountOnConnection("find_things", true, _runMs);
-            return CallOutcome.Continued(_work, "find_things");
+            CountOnConnection("find.thing", true, _runMs);
+            return CallOutcome.Continued(_work, "find.thing");
         }
 
         internal override string TimeoutReply() => "timeout";

@@ -30,9 +30,11 @@ public sealed class ReplyBudgetTests
         HashSet<string> methods = new HashSet<string>(StringComparer.Ordinal);
         foreach (JsonElement method in StationGodMCP.Client.GameCatalogue.BuiltIn.Document.GetProperty("methods").EnumerateArray())
         {
-            if (!method.TryGetProperty("x-mcp", out JsonElement mcp) || mcp.GetString() != "hidden")
+            string name = method.GetProperty("name").GetString()!;
+            if ((!method.TryGetProperty("x-mcp", out JsonElement mcp) || mcp.GetString() != "hidden") &&
+                !CatalogueChecks.RetiredMethods.Has(name))
             {
-                methods.Add(method.GetProperty("name").GetString()!);
+                methods.Add(name);
             }
         }
 

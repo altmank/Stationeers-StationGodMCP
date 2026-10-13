@@ -63,7 +63,7 @@
     "offset": {"schema": {"type": "integer", "minimum": 0}, "description": "Entries to skip.", "default": "0", "x-script": "drop"},
     "cursor": {
       "schema": {"type": "string"},
-      "description": "The cursor a page answered: the walk's next page.",
+      "description": "open on a first page: keep the rest under a cursor when more follows (cursor_id); a cursor_id a page answered: the walk's next page.",
       "x-script": "drop",
       "x-wire": true
     },

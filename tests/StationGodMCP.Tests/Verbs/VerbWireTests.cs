@@ -44,9 +44,9 @@ public sealed class VerbWireTests
     {
         VerbDispatcher table = verbs ?? Table;
         PipeRig rig = new(settings: new ProtocolSettings(32, strictArguments: strict), verbs: table);
+        VerbRunner runner = new(table, ProtocolSettings.DefaultMaxReplyBytes, static () => 1);
         rig.Mod.CallHook = (call, queueMs) => VerbCalls.Handles(call.Request.Method)
-            ? new CallOutcome(VerbCalls.Run(table, call, queueMs, 1, ProtocolSettings.DefaultMaxReplyBytes),
-                call.Request.Method)
+            ? VerbCalls.Run(runner, call, queueMs)
             : null;
         return rig;
     }

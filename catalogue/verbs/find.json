@@ -83,7 +83,8 @@
             }
           }
         ],
-        "types": ["Color", "Vec3"]
+        "types": ["Color", "Vec3"],
+        "x-wire": {"cursor_id": "str | None"}
       },
       "brief": "any object: structures, devices, items, players"
     },

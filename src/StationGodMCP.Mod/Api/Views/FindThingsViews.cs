@@ -2,14 +2,16 @@
 
 using System.Collections.Generic;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Pure.Protocol;
+using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Api.Views;
 
 /// <summary>
-/// find_things' location filter: any (default), or one of the locations a thing reports: ground, player and stored as
-/// find_items has them (a dynamic thing in no slot, carried by a player at any depth, in any other slot), built (a
+/// find thing's location filter: any (default), or one of the locations a thing reports: ground, player and stored as
+/// find item has them (a dynamic thing in no slot, carried by a player at any depth, in any other slot), built (a
 /// structure) and world (neither a structure nor a dynamic thing: players, animals).
 /// </summary>
 internal static class ThingLocations
@@ -17,71 +19,35 @@ internal static class ThingLocations
     internal const string Any = "any";
 
     internal static readonly string[] All = { "ground", "player", "stored", FoundThingView.Built, FoundThingView.World };
-
-    /// <summary>The location named, trimmed and lower-cased; any when absent. Another word is invalid_argument.</summary>
-    internal static string Parse(string? given)
-    {
-        string word = (given ?? Any).Trim().ToLowerInvariant();
-        if (word != Any && System.Array.IndexOf(All, word) < 0)
-        {
-            throw ApiErrors.InvalidArgument(
-                $"Argument '{Vocabulary.Arg("location")}' must be {Any}, {string.Join(", ", All)}; '{given}' is none " +
-                "of them.");
-        }
-
-        return word;
-    }
 }
 
 /// <summary>
-/// find_things: one page of the things whose names match, in the order asked. A walk (WalkRequest) adds cursor_id while
-/// more pages follow, and its later pages add skipped; on those, offset is the walk's entries passed before the page,
-/// total the walk's length at its first call and scanned 0 (no scan ran).
+/// find thing's reply (catalogue find.json): one page of the things found (ListReply: things, count, total, offset,
+/// limit, has_more), scanned (every thing the call looked at; 0 on a walk's later page, which scans nothing) and
+/// local_player, then cursor_id while a walk has more pages (a wire key the hub and sg read, never shown to an agent).
 /// </summary>
-internal sealed class FindThingsView
+internal static class FoundThings
 {
-    internal FindThingsView(Slice<FoundThingView> page, int scanned, LocalPlayerView? localPlayer,
-        string? cursorId = null, int? skipped = null)
+    internal const string List = "things";
+
+    internal static JObject Reply(Page<FoundThingView> page, int scanned, LocalPlayerView? localPlayer, string? cursorId)
     {
-        CursorId = cursorId;
-        Skipped = skipped;
-        Things = page.Items;
-        Count = page.Items.Count;
-        Total = page.Total;
-        Offset = page.Offset;
-        Limit = page.Limit;
-        HasMore = page.HasMore;
-        Scanned = scanned;
-        LocalPlayer = localPlayer;
+        JsonSerializer serializer = ApiJson.Fresh();
+        JObject rest = new JObject
+        {
+            ["scanned"] = scanned,
+            ["local_player"] = localPlayer != null ? JToken.FromObject(localPlayer, serializer) : JValue.CreateNull()
+        };
+        if (cursorId != null)
+        {
+            rest["cursor_id"] = cursorId;
+        }
+
+        return ListReply.OfPage(List, page, thing => JToken.FromObject(thing, serializer), rest);
     }
-
-    public List<FoundThingView> Things { get; }
-
-    public int Count { get; }
-
-    public int Total { get; }
-
-    public int Offset { get; }
-
-    public int Limit { get; }
-
-    public bool HasMore { get; }
-
-    /// <summary>Every thing registered in the world when the call ran, matching or not.</summary>
-    public int Scanned { get; }
-
-    public LocalPlayerView? LocalPlayer { get; }
-
-    /// <summary>The walk's cursor while more pages follow; absent otherwise.</summary>
-    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-    public string? CursorId { get; }
-
-    /// <summary>A walk's later page: the walk's things passed over on this page because they no longer exist.</summary>
-    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-    public int? Skipped { get; }
 }
 
-/// <summary>A thing find_things found: what it is, its names, where it is, what other tools can do with it.</summary>
+/// <summary>A thing find thing found: what it is, its names, where it is, what other verbs can do with it.</summary>
 internal sealed class FoundThingView
 {
     /// <summary>Location of a structure: built in place, in no slot.</summary>
@@ -145,7 +111,7 @@ internal sealed class FoundThingView
     /// <summary>The Labeller can rename this class of thing (Labels).</summary>
     public bool Labelable { get; }
 
-    /// <summary>ground, player or stored for a dynamic thing (as find_items), built (structure), else world.</summary>
+    /// <summary>ground, player or stored for a dynamic thing (as find item), built (structure), else world.</summary>
     public string Location { get; }
 
     public string? CarriedBy { get; }
@@ -158,25 +124,24 @@ internal sealed class FoundThingView
 
     public double? DistanceM { get; }
 
-    /// <summary>A logic device the device tools take (describe_device, read_logic).</summary>
+    /// <summary>A logic device the device verbs take (inspect device, read logic).</summary>
     public bool IsDevice { get; }
 
-    /// <summary>atmosphere_contents has something to report for it.</summary>
+    /// <summary>inspect atmosphere has something to report for it.</summary>
     public bool HasAtmosphere { get; }
 
     /// <summary>
     /// The game's broken state (Thing.IsBroken; a structure also below build state 0), a burst pipe (Pipe.IsBurst) or
     /// a burnt cable (CableRuptured).
-    /// Neither shows in the damage numbers, so this, not thing_health's numbers, says it is wrecked; remove_structure
-    /// takes a broken structure with allow_broken.
+    /// Neither shows in the damage numbers, so this, not inspect health's numbers, says it is wrecked.
     /// </summary>
     public bool IsBroken { get; }
 
-    /// <summary>broken, damaged, intact, indestructible or none (no damage state); thing_health has the numbers.</summary>
+    /// <summary>broken, damaged, intact, indestructible or none (no damage state); inspect health has the numbers.</summary>
     public string Condition { get; }
 
     /// <summary>
-    /// How it stands turned: facing (its front), up and Euler degrees, the forms place_structure takes, so it can be
+    /// How it stands turned: facing (its front), up and Euler degrees, the forms build structure takes, so it can be
     /// placed again as it stands or turned (facing reversed: 180 degrees). Structures only; left out otherwise.
     /// </summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]

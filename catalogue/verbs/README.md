@@ -24,7 +24,7 @@ Per what:
 | `x-wire` | `true`: a wire option the hub and sg send to the game (`cursor`), never an agent's; the tool list, help and stubs leave it out, the game's options and option check take it |
 | `text`, `x-script-text` | the what's notes on the direct page, and on the stub when they differ |
 | `example` | arguments; rendered as `verb {what, ...}` and as `sg.verb('what', ...)` |
-| `reply` | `list` (the main list) and `variants` (typed `keys`, or a `job_view`), plus the small `types` used |
+| `reply` | `list` (the main list) and `variants` (typed `keys`, or a `job_view`), plus the small `types` used, and `x-wire`: reply keys only the hub and sg read (`cursor_id`, a walk's cursor while more pages follow), which the tool list, help and stubs leave out |
 | `x-cost` | how the game schedules a call (never shown to an agent): `class` (`instant`, `bounded`, `world`, `plan`, `job` or `stream`; world, plan and job are heavy by nature), `per` (an option, or a list of options, whose list lengths count the call's items for the cost predictor), `duration` (`{option, max_s}`: the seconds the call runs, at most max_s and max_s when left out, which its deadline adds). Every what the game answers states it; help and run_script do not |
 | `id_list` | where an id list is taken as the entries of another list option (move item's `moves`, read sample's `reads`) rather than one row per id |
 | `write` | on every write what (below) |

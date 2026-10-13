@@ -10,5 +10,8 @@ namespace StationGodMCP.Verbs;
 /// </summary>
 internal static class VerbHandlers
 {
-    internal static VerbDispatcher Dispatcher { get; } = new VerbDispatcher(new VerbHandler[0]);
+    internal static VerbDispatcher Dispatcher { get; } = new VerbDispatcher(new[]
+    {
+        VerbHandler.For(FindThingOptions.Spec, FindThingOptions.Bind, FindThing.Run),
+    });
 }

@@ -199,7 +199,7 @@ internal sealed class SchedulerRig
         CallProfile? profile = null, double costMs = 0.1)
     {
         FakeCall call = new FakeCall(name, costMs) { Stream = stream, Defers = true };
-        Scheduler.Enqueue(connection, stream, call, profile ?? Read("find_things"), double.PositiveInfinity);
+        Scheduler.Enqueue(connection, stream, call, profile ?? Read("find.thing"), double.PositiveInfinity);
         return call;
     }
 

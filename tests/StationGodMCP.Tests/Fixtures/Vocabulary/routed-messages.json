@@ -41,9 +41,6 @@
     "room_id must be a room id as rooms reports it.",
     "{name} must be one of +x, -x, +y, -y, +z, -z."
   ],
-  "Api/FindThings.cs": [
-    "Argument 'kind' must be any, item, dynamic, structure, entity or other."
-  ],
   "Api/GridSurvey.cs": [
     "Argument 'room_id' must be a room id as rooms reports it.",
     "Pass max too.",
@@ -574,15 +571,6 @@
     "from_vault_id and to_vault_id name the same vault; nothing to move.",
     "items[{index}]: name what to move with exactly one of prefab_name, prefab_hash or reagent."
   ],
-  "Api/Shared/WalkRequest.cs": [
-    "Argument 'cursor' needs a call on a protocol 2 connection, whose stream owns the cursor.",
-    "Cursor {cursorId} is gone: its walk ended, it was closed, its stream ended, the world changed, it was evicted to bound memory, or another stream owns it. Start the walk again with cursor true.",
-    "Next is for a call with cursor_id.",
-    "The walk has {rest.Length.ToString(CultureInfo.InvariantCulture)} more entries than a cursor holds ({_cursors.MaximumIds.ToString(CultureInfo.InvariantCulture)}); narrow the filter, or page with offset.",
-    "cursor",
-    "cursor_id",
-    "pass cursor_id {cursorId} for the next page (limit up to {page.Maximum.ToString(CultureInfo.InvariantCulture)})"
-  ],
   "Api/Shared/WriteLint.cs": [
     "The write opens device {device}, and the write lint rules find {Count(rules.Count)} on the networks it opens to:{said} Nothing is written. A rule's level is set in the save's lint-rules.json (lint_rules lists the files).",
     "{problem.Message} Lint rule {problem.Code} (level problem) let through by allow_lint."
@@ -651,9 +639,6 @@
     "Argument 'quantity' is required.",
     "Name what to take with exactly one of prefab_name, prefab_hash or reagent.",
     "{Names.Of(holder)} takes {VaultAmount.Of(plan.Placed)} of {quantity} {Names.Of(prefab)}; free a slot, name another holder, or pass allow_ground: true for the rest. Nothing was changed."
-  ],
-  "Api/Views/FindThingsViews.cs": [
-    "Argument 'location' must be {Any}, {string.Join(\", \", All)}; '{given}' is none of them."
   ],
   "Api/Views/GasCheckViews.cs": [
     " Further pipe jobs are refused until the world is loaded again, or until a run acknowledges this loss (acknowledge_gas_lost with this job's id, only after the user has agreed).",

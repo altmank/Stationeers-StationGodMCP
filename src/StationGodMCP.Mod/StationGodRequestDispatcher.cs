@@ -111,12 +111,21 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
 
     private static readonly ControllerCalls ControllerInspections = new ControllerCalls(Controllers.Inspect);
 
-    // A method name the frame's call list, the slow-frame log and a connection's counts may show: one the mod answers,
-    // else "unknown".
-    private static string KnownMethod(string? method) =>
-        ProtocolMethods.RunsOnMainThread(method) || VerbCalls.Handles(method)
-            ? method!
-            : MethodStats.Counted(method) ?? UnknownMethod;
+    private static readonly VerbRunner Verbs = new VerbRunner(VerbHandlers.Dispatcher, ApiHost.MaxReplyBytes,
+        static () => UnityEngine.Time.frameCount, MethodStats.Record);
+
+    // A method name the frame's call list, the slow-frame log and a connection's counts may show: one the mod answers
+    // (a verb call by its what, find.thing), else "unknown".
+    private static string KnownMethod(ProtocolCall call)
+    {
+        string method = call.Request.Method;
+        if (VerbCalls.Handles(method))
+        {
+            return VerbHandlers.Dispatcher.AnswersKey(call.Profile.Method) ? call.Profile.Method : method;
+        }
+
+        return ProtocolMethods.RunsOnMainThread(method) ? method : MethodStats.Counted(method) ?? UnknownMethod;
+    }
 
     /// <summary>
     /// Runs one call on the main thread, and counts it for its connection (mod_info connections: calls, tool errors
@@ -165,15 +174,12 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
 
             if (VerbCalls.Handles(call.Request.Method))
             {
-                return new CallOutcome(VerbCalls.Run(VerbHandlers.Dispatcher, call, queueWaitMs,
-                    UnityEngine.Time.frameCount, ApiHost.MaxReplyBytes), call.Request.Method);
+                return VerbCalls.Run(Verbs, call, queueWaitMs);
             }
 
             HandledRequest handled = ApiHost.HandleCall(call.Request, queueWaitMs, UnityEngine.Time.frameCount);
             ok = handled.Ok;
-            return handled.Work != null
-                ? CallOutcome.Continued(handled.Work, handled.Method)
-                : new CallOutcome(handled.Json, handled.Method);
+            return new CallOutcome(handled.Json, handled.Method);
         }
         catch (Exception exception)
         {
@@ -185,7 +191,7 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
         }
         finally
         {
-            string method = KnownMethod(call.Request.Method);
+            string method = KnownMethod(call);
             if (method != UnknownMethod)
             {
                 call.CountOnConnection(method, ok, (Stopwatch.GetTimestamp() - began) * 1000.0 / Stopwatch.Frequency);

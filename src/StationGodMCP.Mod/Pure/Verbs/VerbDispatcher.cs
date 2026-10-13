@@ -63,6 +63,38 @@ internal sealed class VerbDispatcher
         }
     }
 
+    /// <summary>The whats with a handler, by key (find.thing; undo for a whatless verb), in key order.</summary>
+    internal IReadOnlyList<string> Keys
+    {
+        get
+        {
+            List<string> keys = new List<string>();
+            foreach (Dictionary<string, VerbHandler> whats in _handlers.Values)
+            {
+                foreach (VerbHandler handler in whats.Values)
+                {
+                    keys.Add(handler.What.Key);
+                }
+            }
+
+            keys.Sort(StringComparer.Ordinal);
+            return keys;
+        }
+    }
+
+    /// <summary>True when a what with a handler has this key (find.thing): what stats, counts and profiling count.</summary>
+    internal bool AnswersKey(string? key)
+    {
+        if (key == null)
+        {
+            return false;
+        }
+
+        int dot = key.IndexOf('.');
+        return _handlers.TryGetValue(dot < 0 ? key : key.Substring(0, dot), out Dictionary<string, VerbHandler>? whats) &&
+               whats.ContainsKey(dot < 0 ? VerbSurface.WhatlessKey : key.Substring(dot + 1));
+    }
+
     /// <summary>A table with no handlers: every verb is an unknown method.</summary>
     internal static VerbDispatcher None { get; } = new VerbDispatcher(Array.Empty<VerbHandler>());
 

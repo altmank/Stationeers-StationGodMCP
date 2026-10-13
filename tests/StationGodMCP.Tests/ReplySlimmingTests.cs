@@ -75,25 +75,6 @@ public sealed class ReplySlimmingTests
         Assert.Null(NearestName.Of("name", new[] { "name_contains", "prefab_name" }));
     }
 
-    [Theory]
-    [InlineData(null, "any")]
-    [InlineData(" Ground ", "ground")]
-    [InlineData("built", "built")]
-    [InlineData("world", "world")]
-    public void ALocationIsReadAsFindThingsReportsIt(string? given, string expected)
-    {
-        Assert.Equal(expected, ThingLocations.Parse(given));
-    }
-
-    [Fact]
-    public void AnUnknownLocationIsRefusedWithTheWordsItTakes()
-    {
-        ApiException refused = Assert.Throws<ApiException>(() => ThingLocations.Parse("floor"));
-
-        Assert.Equal("invalid_argument", refused.Code);
-        Assert.Contains("any, ground, player, stored, built, world", refused.Message);
-    }
-
     [Fact]
     public void MemberFiltersAreOffUnlessAsked()
     {

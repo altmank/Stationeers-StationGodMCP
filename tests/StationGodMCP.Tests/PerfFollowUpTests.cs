@@ -50,15 +50,15 @@ public sealed class PerfFollowUpTests
             calls.Record("game_clock", true, 0.5);
         }
 
-        calls.Record("find_things", false, 40.0);
-        calls.Record("find_things", true, 10.0);
+        calls.Record("find.thing", false, 40.0);
+        calls.Record("find.thing", true, 10.0);
         calls.Record("dish_aim", true, 2.0);
         calls.Record("atmosphere_contents", true, 1.0);
 
         MethodCallCount[] top = calls.Top(3).ToArray();
 
         Assert.Equal(4, calls.MethodCount);
-        Assert.Equal(new[] { "game_clock", "find_things", "atmosphere_contents" }, top.Select(count => count.Method));
+        Assert.Equal(new[] { "game_clock", "find.thing", "atmosphere_contents" }, top.Select(count => count.Method));
         Assert.Equal(3, top[0].Calls);
         Assert.Equal(1.5, top[0].TotalMs);
         Assert.Equal(1, top[1].Errors);

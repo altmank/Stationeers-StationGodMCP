@@ -150,7 +150,7 @@ public sealed class CatalogueConsistencyTests
         HashSet<string> catalogued = Methods()
             .Where(method => (string?)method["x-runs-in"] != "sidecar")
             .Select(method => (string)method["name"]!)
-            .Where(name => name != StationGodMCP.Protocol.SubscriptionHub.SampleLogicMethod)
+            .Where(name => name != StationGodMCP.Protocol.SubscriptionHub.SampleLogicMethod && !RetiredMethods.Has(name))
             .ToHashSet(StringComparer.Ordinal);
         Assert.Equal(new[] { "tool_info" }, Methods().Where(method => (string?)method["x-runs-in"] == "sidecar")
             .Select(method => (string)method["name"]!));
@@ -371,7 +371,8 @@ public sealed class CatalogueConsistencyTests
     {
         JsonArray shared = Assembled.Value["shared_reply_keys"]!.AsArray();
         List<string> wrong = new List<string>();
-        foreach (JsonObject method in Methods().Where(method => method["x-views"] != null))
+        foreach (JsonObject method in Methods().Where(method =>
+                     method["x-views"] != null && !RetiredMethods.Has((string?)method["name"])))
         {
             string name = (string)method["name"]!;
             List<Type> views = ViewTypes(name, method["x-views"]!.AsArray(), wrong);

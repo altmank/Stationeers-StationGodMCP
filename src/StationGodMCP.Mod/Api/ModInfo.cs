@@ -11,6 +11,7 @@ using StationGodMCP.Pure;
 using StationGodMCP.Pure.Jobs;
 using StationGodMCP.Pure.Lint;
 using StationGodMCP.Pure.Profiling;
+using StationGodMCP.Verbs;
 using UnityEngine.Profiling;
 
 namespace StationGodMCP.Api;
@@ -34,6 +35,7 @@ internal static class ModInfoApi
             assembly.GetName().Version?.ToString(), informational?.InformationalVersion, StationGodMod.Pipe.Value);
 
         List<string> names = new List<string>(ApiHost.Methods.Keys);
+        names.AddRange(VerbHandlers.Dispatcher.Keys);
         names.Sort(StringComparer.Ordinal);
         List<MethodStatsView> methods = new List<MethodStatsView>(names.Count);
         foreach (string name in names)

@@ -3,10 +3,14 @@
 using System.Collections.Generic;
 using System.Text;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Api.Shared;
 
 namespace StationGodMCP.Pure.Verbs;
 
-/// <summary>What a verb handler answers: a reply object, or a refusal in verb words.</summary>
+/// <summary>
+/// What a verb handler answers: a reply object, a refusal in verb words, or work that goes on over frames and answers
+/// once it is ready (Pending: its Result is the call's Answered or Refused outcome).
+/// </summary>
 internal abstract record VerbOutcome
 {
     private VerbOutcome()
@@ -16,6 +20,21 @@ internal abstract record VerbOutcome
     internal sealed record Answered(JObject Reply) : VerbOutcome;
 
     internal sealed record Refused(VerbError Error) : VerbOutcome;
+
+    /// <summary>
+    /// The call goes on over later frames: Work is stepped in the scheduler's slice lane, and its Result is the call's
+    /// answer (an Answered or Refused outcome, or the reply object itself).
+    /// </summary>
+    internal sealed record Pending(IPendingResult Work) : VerbOutcome;
+
+    /// <summary>A pending result's outcome: Answered or Refused as given, a reply object as Answered.</summary>
+    internal static VerbOutcome Of(object? result) => result switch
+    {
+        Answered answered => answered,
+        Refused refused => refused,
+        JObject reply => new Answered(reply),
+        _ => throw new System.InvalidOperationException("A pending verb result is an answer, a refusal or a reply object.")
+    };
 }
 
 /// <summary>
@@ -108,9 +127,12 @@ internal sealed class Rows
 internal static class ListReply
 {
     internal static JObject Of<T>(string list, IReadOnlyList<T> entries, Paging paging, System.Func<T, JToken> entry,
-        JObject? rest = null)
+        JObject? rest = null) =>
+        OfPage(list, paging.Of(entries), entry, rest);
+
+    /// <summary>A page already cut (taken over frames, or from a walk's cursor), in the same shape.</summary>
+    internal static JObject OfPage<T>(string list, Page<T> page, System.Func<T, JToken> entry, JObject? rest = null)
     {
-        Page<T> page = paging.Of(entries);
         JArray shown = new JArray();
         foreach (T item in page.Entries)
         {

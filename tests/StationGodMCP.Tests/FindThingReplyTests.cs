@@ -3,12 +3,14 @@
 using System.Collections.Generic;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
+using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Verbs;
 using Xunit;
 
 namespace StationGodMCP.Tests;
 
-/// <summary>find_things: the wire shape of FindThingsView.</summary>
-public sealed class FindThingsWireTests
+/// <summary>find thing: the reply's wire shape as the catalogue declares it (FoundThings.Reply over FoundThingView).</summary>
+public sealed class FindThingReplyTests
 {
     [Fact]
     public void LabelledTankOnTheGroundAndStructure()
@@ -51,9 +53,9 @@ public sealed class FindThingsWireTests
                 "Pipe (Straight)", "structure", "Pipe", false, FoundThingView.Built, null, new List<HeldInView>(),
                 new PositionView(703.0, 202.0, 681.0), 2.3, false, false, null, true, "broken")
         };
-        FindThingsView view = new FindThingsView(Slice<FoundThingView>.Page(things, PageFor(0, 2), 7), 48210,
-            new LocalPlayerView(new ThingId(151), "xceled", new PositionView(700.9, 202.0, 679.5)));
-        WireCheck.Same(expected, view);
+        JObject reply = FoundThings.Reply(new Page<FoundThingView>(things, 7, 0, 2, true), 48210,
+            new LocalPlayerView(new ThingId(151), "xceled", new PositionView(700.9, 202.0, 679.5)), null);
+        WireCheck.Same(expected, reply);
     }
 
     [Fact]
@@ -107,10 +109,6 @@ public sealed class FindThingsWireTests
                 },
                 new PositionView(1.0, 2.0, 3.0), null, false, true, null, false, "damaged")
         };
-        WireCheck.Same(expected,
-            new FindThingsView(Slice<FoundThingView>.Page(things, PageFor(0, 100), 1), 10, null));
+        WireCheck.Same(expected, FoundThings.Reply(new Page<FoundThingView>(things, 1, 0, 100, false), 10, null, null));
     }
-
-    private static PageRequest PageFor(int offset, int limit) =>
-        PageRequest.From(new Args(Newtonsoft.Json.Linq.JObject.FromObject(new { offset, limit })), 100, 500);
 }

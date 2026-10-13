@@ -142,7 +142,7 @@ public sealed class WalkBuildTests
     {
         WalkCursors cursors = new WalkCursors();
         using CallContext.Scope scope = CallContext.Enter(Hub);
-        WalkRequest walk = WalkRequest.From(new Args(new JObject { ["cursor"] = true }), cursors);
+        WalkRequest walk = WalkRequest.Of(FramedPageTests.PagingOf("""{"cursor": "open"}"""), cursors);
         List<object> page = new List<object>();
         HashSet<long> gone = new HashSet<long> { 2 };
         long[] ids = { 1, 2, 3, 4, 5 };
@@ -158,7 +158,7 @@ public sealed class WalkBuildTests
         Assert.NotNull(cursorId);
         Assert.Null(none);
         List<object> second = new List<object>();
-        WalkStep step = WalkRequest.From(new Args(new JObject { ["cursor_id"] = cursorId }), cursors)
+        WalkStep step = WalkRequest.Of(FramedPageTests.PagingOf(new JObject { ["cursor"] = cursorId }.ToString()), cursors)
             .Next(8, Boxed, second);
         Assert.Equal(new object[] { 4L, 5L }, second);
         Assert.Equal(3, step.Offset);
@@ -186,14 +186,14 @@ public sealed class WalkBuildTests
         Func<long, object?> live = id => byId.TryGetValue(id, out FakeThing? thing) && thing.Alive ? Boxed(id) : null;
         List<object> page = new List<object>();
         int next = WalkCursors.Take(ids, 0, 37, live, page, PageBudget.None, out int skipped);
-        string? cursorId = WalkRequest.From(new Args(new JObject { ["cursor"] = true }), cursors)
+        string? cursorId = WalkRequest.Of(FramedPageTests.PagingOf("""{"cursor": "open"}"""), cursors)
             .KeepRest(ids, next, page.Count, skipped);
         List<long> served = page.ConvertAll(thing => (long)thing);
         while (cursorId != null)
         {
             Churn(world, byId, random);
             page.Clear();
-            WalkStep step = WalkRequest.From(new Args(new JObject { ["cursor_id"] = cursorId }), cursors)
+            WalkStep step = WalkRequest.Of(FramedPageTests.PagingOf(new JObject { ["cursor"] = cursorId }.ToString()), cursors)
                 .Next(37, live, page);
             cursorId = step.CursorId;
             served.AddRange(page.ConvertAll(thing => (long)thing));

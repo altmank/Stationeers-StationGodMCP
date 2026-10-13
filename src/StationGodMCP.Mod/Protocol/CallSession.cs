@@ -354,7 +354,9 @@ internal sealed class CallSession : Session
 
     // A verb call (protocol.md, Verb calls): admitted only when a handler answers its verb; with StrictArguments its
     // what (a handler answers it too), options and shape are checked in full here, every problem at once, and without
-    // it the main thread checks them before the handler runs. A write verb or what is ordered on its stream.
+    // it the main thread checks them before the handler runs. A write verb or what is ordered on its stream. It is
+    // scheduled by its what's cost (x-cost: its class and per-list items, keyed find.thing for the cost predictor),
+    // and waits in the queue for its deadline plus the seconds the what runs for (x-cost duration).
     private void AcceptVerb(ClientMessage.Call call)
     {
         VerbSpec verb = VerbSurface.Verb(call.Method)!;
@@ -389,8 +391,10 @@ internal sealed class CallSession : Session
             ? (string)call.Params[OptionCheck.WhatKey]!
             : null);
         MethodClass callClass = what?.Write != null || !verb.ReadOnly ? MethodClass.Write : MethodClass.Read;
+        WhatCost cost = what?.Cost ?? WhatCost.Unstated;
         Queue(call, new CallRequest(call.Id, call.Method, call.Params, shape, strict, call.World),
-            new CallProfile(call.Method, callClass, new CallCost(CostClass.Bounded, 1)), call.DeadlineMs);
+            new CallProfile(what?.Key ?? call.Method, callClass, cost.At(call.Params)),
+            call.DeadlineMs + cost.DurationMs(call.Params));
     }
 
     private void Queue(ClientMessage.Call call, CallRequest request, CallProfile profile, int deadlineMs)

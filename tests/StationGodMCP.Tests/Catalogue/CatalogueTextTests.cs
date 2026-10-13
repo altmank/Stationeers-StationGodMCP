@@ -240,7 +240,8 @@ public sealed class CatalogueTextTests
     {
         JsonArray shared = Catalogue.Value["shared_reply_keys"]!.AsArray();
         List<string> wrong = [];
-        foreach (JsonObject method in Tools().Where(method => (string?)method["x-shaping"] == "lists"))
+        foreach (JsonObject method in Tools().Where(method =>
+                     (string?)method["x-shaping"] == "lists" && !RetiredMethods.Has(Name(method))))
         {
             string name = Name(method);
             if (method["help"]?["keys"] is not JsonValue keys)

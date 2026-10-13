@@ -14,7 +14,7 @@ using Xunit;
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// From live use on a big base: find_things and find_items narrowed to one deck (an exact prefab and an area, near
+/// From live use on a big base: find_items narrowed to one deck (an exact prefab and an area, near
 /// with radius_m), describe_prefab without its cell list by default, and the plan route tools' dry run in short.
 /// </summary>
 public sealed class FindFiltersAndSlimRepliesTests
@@ -81,7 +81,6 @@ public sealed class FindFiltersAndSlimRepliesTests
     }
 
     [Theory]
-    [InlineData("find_things")]
     [InlineData("find_items")]
     [InlineData("item_totals")]
     public void TheListToolsTakeAPrefabAndAnArea(string tool)

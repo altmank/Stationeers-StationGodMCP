@@ -4,19 +4,22 @@ using System;
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
-using StationGodMCP.Api.Views;
+using StationGodMCP.Pure;
 using StationGodMCP.Pure.Paging;
 using StationGodMCP.Pure.Protocol;
-using StationGodMCP.Pure.Shaping;
+using StationGodMCP.Pure.Verbs;
+using StationGodMCP.Tests.Scheduling;
 using Xunit;
+using static StationGodMCP.Tests.Paging.WalkBuildTests;
 
 namespace StationGodMCP.Tests.Paging;
 
 /// <summary>
-/// The walk form of a paged find (Api/Shared/WalkRequest), through a find shaped as find_things is (scan, sort, page,
-/// keep the rest; or a later page from the cursor), since find_things itself needs the game: which arguments go with
-/// cursor and cursor_id, the first page keeping a cursor only when more follows, later pages coming from the kept ids
-/// without a scan, cursor_expired's data, the truncation note, and FindThingsView's two walk keys.
+/// find thing's walk (SPEC-NOTES 11; Api/Shared/WalkRequest), through its paging options and a page built as find thing
+/// builds it (FramedPage over a WalkBuild), since find thing itself needs the game: the wire cursor "open" keeps a
+/// cursor only when the first page has has_more, later pages come from the kept ids without a scan and re-check
+/// existence only, a page without the cursor keeps nothing, and a cursor that is gone answers cursor_expired with its
+/// id and position.
 /// </summary>
 public sealed class WalkRequestTests
 {
@@ -28,21 +31,23 @@ public sealed class WalkRequestTests
         Find find = new Find(20);
         using CallContext.Scope scope = CallContext.Enter(Hub);
 
-        Found first = find.Call(new JObject { ["cursor"] = true, ["limit"] = 8 });
-        Found second = find.Call(new JObject { ["cursor_id"] = first.CursorId, ["limit"] = 8 });
-        Found last = find.Call(new JObject { ["cursor_id"] = first.CursorId, ["limit"] = 8 });
+        JObject first = find.Call("""{"cursor": "open", "limit": 8}""");
+        string cursor = (string)first["cursor_id"]!;
+        JObject second = find.Call($$"""{"cursor": "{{cursor}}", "limit": 8}""");
+        JObject last = find.Call($$"""{"cursor": "{{cursor}}", "limit": 8}""");
 
         Assert.Equal(1, find.Scans);
-        Assert.Equal(new long[] { 1, 2, 3, 4, 5, 6, 7, 8 }, first.Page.Items);
-        Assert.NotNull(first.CursorId);
-        Assert.Equal(new long[] { 9, 10, 11, 12, 13, 14, 15, 16 }, second.Page.Items);
-        Assert.Equal(first.CursorId, second.CursorId);
-        Assert.Equal(8, second.Page.Offset);
-        Assert.Equal(20, second.Page.Total);
-        Assert.True(second.Page.HasMore);
-        Assert.Equal(new long[] { 17, 18, 19, 20 }, last.Page.Items);
-        Assert.False(last.Page.HasMore);
-        Assert.Null(last.CursorId);
+        Assert.Equal(new long[] { 1, 2, 3, 4, 5, 6, 7, 8 }, Ids(first));
+        Assert.True((bool)first["has_more"]!);
+        Assert.Equal(new long[] { 9, 10, 11, 12, 13, 14, 15, 16 }, Ids(second));
+        Assert.Equal(cursor, (string?)second["cursor_id"]);
+        Assert.Equal(8, (int)second["offset"]!);
+        Assert.Equal(20, (int)second["total"]!);
+        Assert.Equal(0, (int)second["scanned"]!);
+        Assert.True((bool)second["has_more"]!);
+        Assert.Equal(new long[] { 17, 18, 19, 20 }, Ids(last));
+        Assert.False((bool)last["has_more"]!);
+        Assert.Null(last["cursor_id"]);
         Assert.Equal(0, find.Cursors.Count);
     }
 
@@ -52,82 +57,65 @@ public sealed class WalkRequestTests
         Find find = new Find(5);
         using CallContext.Scope scope = CallContext.Enter(Hub);
 
-        Found only = find.Call(new JObject { ["cursor"] = true, ["limit"] = 8 });
+        JObject only = find.Call("""{"cursor": "open", "limit": 8}""");
 
-        Assert.False(only.Page.HasMore);
-        Assert.Null(only.CursorId);
+        Assert.False((bool)only["has_more"]!);
+        Assert.Null(only["cursor_id"]);
         Assert.Equal(0, find.Cursors.Count);
     }
 
     [Fact]
-    public void WithoutCursorTheFindPagesAsBeforeAndKeepsNothing()
+    public void WithoutTheCursorAPageIsCutAtItsOffsetAndKeepsNothing()
     {
         Find find = new Find(20);
         using CallContext.Scope scope = CallContext.Enter(Hub);
 
-        Found page = find.Call(new JObject { ["limit"] = 8, ["offset"] = 8 });
+        JObject page = find.Call("""{"limit": 8, "offset": 8}""");
 
-        Assert.Equal(9, page.Page.Items[0]);
-        Assert.Null(page.CursorId);
+        Assert.Equal(9, Ids(page)[0]);
+        Assert.Equal(8, (int)page["offset"]!);
+        Assert.Null(page["cursor_id"]);
         Assert.Equal(0, find.Cursors.Count);
     }
 
     [Fact]
-    public void ALaterPageSkipsRemovedThingsCountsThemAndChecksNothingElse()
+    public void AnOpenedWalkStartsAtItsOffsetAndKeepsWhatFollows()
+    {
+        Find find = new Find(20);
+        using CallContext.Scope scope = CallContext.Enter(Hub);
+
+        JObject first = find.Call("""{"cursor": "open", "limit": 4, "offset": 10}""");
+        JObject second = find.Call($$"""{"cursor": "{{(string)first["cursor_id"]!}}", "limit": 4}""");
+
+        Assert.Equal(new long[] { 11, 12, 13, 14 }, Ids(first));
+        Assert.Equal(new long[] { 15, 16, 17, 18 }, Ids(second));
+        Assert.Equal(14, (int)second["offset"]!);
+        Assert.Equal(20, (int)second["total"]!);
+    }
+
+    [Fact]
+    public void ALaterPageSkipsRemovedThingsAndChecksNothingElse()
     {
         Find find = new Find(12);
         using CallContext.Scope scope = CallContext.Enter(Hub);
-        Found first = find.Call(new JObject { ["cursor"] = true, ["limit"] = 4 });
-        find.World.Remove(5);
-        find.World.Remove(7);
-        find.World[6] = "renamed";
+        JObject first = find.Call("""{"cursor": "open", "limit": 4}""");
+        find.Remove(5);
+        find.Remove(7);
+        find.Unmatch(6);
 
-        Found second = find.Call(new JObject { ["cursor_id"] = first.CursorId, ["limit"] = 4 });
+        JObject second = find.Call($$"""{"cursor": "{{(string)first["cursor_id"]!}}", "limit": 4, "order": "nearest"}""");
 
-        Assert.Equal(new long[] { 6, 8, 9, 10 }, second.Page.Items);
-        Assert.Equal(2, second.Skipped);
-        Assert.Equal(4, second.Page.Offset);
-        Assert.True(second.Page.HasMore);
+        Assert.Equal(new long[] { 6, 8, 9, 10 }, Ids(second));
+        Assert.Equal(4, (int)second["offset"]!);
+        Assert.True((bool)second["has_more"]!);
     }
 
     [Fact]
-    public void OffsetWithCursorIsRefused()
-    {
-        Find find = new Find(20);
-        using CallContext.Scope scope = CallContext.Enter(Hub);
-
-        ApiException refused = Assert.Throws<ApiException>(() => find.Call(new JObject { ["cursor"] = true, ["offset"] = 8 }));
-
-        Assert.Equal("invalid_argument", refused.Code);
-        Assert.Contains("offset", refused.Message);
-        Assert.Equal(0, find.Scans);
-    }
-
-    [Theory]
-    [InlineData("name_contains", "x")]
-    [InlineData("order", "reference_id")]
-    [InlineData("offset", 8)]
-    [InlineData("cursor", true)]
-    public void ALaterPageTakesOnlyCursorIdAndLimit(string name, object value)
-    {
-        Find find = new Find(20);
-        using CallContext.Scope scope = CallContext.Enter(Hub);
-        Found first = find.Call(new JObject { ["cursor"] = true });
-
-        ApiException refused = Assert.Throws<ApiException>(() =>
-            find.Call(new JObject { ["cursor_id"] = first.CursorId, [name] = JToken.FromObject(value) }));
-
-        Assert.Equal("invalid_argument", refused.Code);
-        Assert.Contains($"'{name}'", refused.Message);
-        Assert.Contains("cursor_id", refused.Message);
-    }
-
-    [Fact]
-    public void ACursorOutsideACallsContextIsRefused()
+    public void ACursorOutsideACallsStreamIsRefused()
     {
         Find find = new Find(20);
 
-        ApiException refused = Assert.Throws<ApiException>(() => find.Call(new JObject { ["cursor"] = true }));
+        ApiException refused = Assert.Throws<ApiException>(() => find.Call("""{"cursor": "open"}"""));
 
         Assert.Equal("invalid_argument", refused.Code);
         Assert.Equal(0, find.Scans);
@@ -140,16 +128,17 @@ public sealed class WalkRequestTests
         string id;
         using (CallContext.Enter(Hub))
         {
-            id = find.Call(new JObject { ["cursor"] = true, ["limit"] = 6 }).CursorId!;
+            id = (string)find.Call("""{"cursor": "open", "limit": 6}""")["cursor_id"]!;
         }
 
         find.Cursors.Ended(StreamEnd.Of("c1", 2));
         using CallContext.Scope scope = CallContext.Enter(Hub);
-        ApiException expired = Assert.Throws<ApiException>(() => find.Call(new JObject { ["cursor_id"] = id }));
+        ApiException expired = Assert.Throws<ApiException>(() => find.Call($$"""{"cursor": "{{id}}"}"""));
 
         Assert.Equal(WalkCursors.CursorExpiredCode, expired.Code);
         Assert.Equal("{\"cursor_id\":\"" + id + "\",\"position\":6}", WireCheck.New(expired.Details!));
-        ApiException unknown = Assert.Throws<ApiException>(() => find.Call(new JObject { ["cursor_id"] = "k999999" }));
+        Assert.DoesNotContain("cursor true", expired.Message);
+        ApiException unknown = Assert.Throws<ApiException>(() => find.Call("""{"cursor": "k999999"}"""));
         Assert.Equal("{\"cursor_id\":\"k999999\",\"position\":null}", WireCheck.New(unknown.Details!));
     }
 
@@ -160,127 +149,100 @@ public sealed class WalkRequestTests
         string id;
         using (CallContext.Enter(Hub))
         {
-            id = find.Call(new JObject { ["cursor"] = true }).CursorId!;
+            id = (string)find.Call("""{"cursor": "open"}""")["cursor_id"]!;
         }
 
         using CallContext.Scope scope = CallContext.Enter(new CallContext("c1", 9));
-        ApiException expired = Assert.Throws<ApiException>(() => find.Call(new JObject { ["cursor_id"] = id }));
+        ApiException expired = Assert.Throws<ApiException>(() => find.Call($$"""{"cursor": "{{id}}"}"""));
 
         Assert.Equal(WalkCursors.CursorExpiredCode, expired.Code);
     }
 
     [Fact]
-    public void TheTruncationNoteNamesTheCursorInsteadOfAnOffset()
+    public void TheCursorIdIsAWireReplyKeyTheCatalogueDeclares()
     {
+        System.Text.Json.Nodes.JsonObject reply =
+            StationGodMCP.Tests.Verbs.VerbCatalogue.Verb("find")["whats"]!["thing"]!["reply"]!.AsObject();
         Find find = new Find(20);
         using CallContext.Scope scope = CallContext.Enter(Hub);
-        Truncations.Begin();
-        Found first = find.Call(new JObject { ["cursor"] = true, ["limit"] = 8 });
-        Truncation note = Assert.Single(Truncations.Take());
 
-        Assert.Equal("things", note.List);
-        Assert.Equal(8, note.Returned);
-        Assert.Equal(20, note.Total);
-        Assert.Contains("cursor_id " + first.CursorId, note.More);
-        Assert.DoesNotContain("offset", note.More);
+        JObject first = find.Call("""{"cursor": "open"}""");
 
-        Truncations.Begin();
-        find.Call(new JObject { ["cursor_id"] = first.CursorId, ["limit"] = 8 });
-        Assert.Contains("cursor_id " + first.CursorId, Assert.Single(Truncations.Take()).More);
-        Truncations.Begin();
-        find.Call(new JObject { ["cursor_id"] = first.CursorId, ["limit"] = 8 });
-        Assert.Empty(Truncations.Take());
-    }
-
-    [Fact]
-    public void FindThingsViewWritesCursorIdAndSkippedOnlyWhenAWalkHasThem()
-    {
-        Slice<FoundThingView> page = Slice<FoundThingView>.Walked(new List<FoundThingView>(), 8, 8, 20, true);
-
-        string walked = WireCheck.New(new FindThingsView(page, 0, null, "k3", 2));
-        string plain = WireCheck.New(new FindThingsView(page, 0, null));
-
-        Assert.Contains("\"cursor_id\":\"k3\"", walked);
-        Assert.Contains("\"skipped\":2", walked);
-        Assert.Contains("\"has_more\":true", walked);
-        Assert.DoesNotContain("cursor_id", plain);
-        Assert.DoesNotContain("skipped", plain);
-    }
-
-    [Fact]
-    public void TheCatalogueTakesTheWalkArgumentsAndALaterPageCostsLessThanAScan()
-    {
-        StationGodMCP.Pure.Catalogue.Catalogue catalogue = StationGodMCP.Pure.Catalogue.Catalogue.Load(
-            System.IO.File.ReadAllText(StationGodMCP.Tests.CatalogueChecks.CatalogueFiles.AssembledPath));
-        Assert.True(catalogue.TryGet("find_things", out StationGodMCP.Pure.Catalogue.CatalogueMethod? found));
-        StationGodMCP.Pure.Catalogue.CatalogueMethod method = found!;
-
-        Assert.Empty(method.Check(JObject.Parse("""{"cursor":true,"limit":500}""")));
-        Assert.Empty(method.Check(JObject.Parse("""{"cursor_id":"k12","limit":500}""")));
-        Assert.NotEmpty(method.Check(JObject.Parse("""{"cursor_id":12}""")));
-        Assert.Equal(StationGodMCP.Pure.Catalogue.CostClass.World, method.CostAt(JObject.Parse("""{"cursor":true}""")).Cost);
-        Assert.Equal(StationGodMCP.Pure.Catalogue.CostClass.Bounded,
-            method.CostAt(JObject.Parse("""{"cursor_id":"k12"}""")).Cost);
-    }
-
-    private sealed class Found
-    {
-        internal Found(Slice<long> page, string? cursorId, int? skipped)
+        Assert.Equal("str | None", (string?)reply["x-wire"]!["cursor_id"]);
+        List<string> declared = new List<string>();
+        foreach (KeyValuePair<string, System.Text.Json.Nodes.JsonNode?> key in reply["variants"]![0]!["keys"]!.AsObject())
         {
-            Page = page;
-            CursorId = cursorId;
-            Skipped = skipped;
+            declared.Add(key.Key);
         }
 
-        internal Slice<long> Page { get; }
+        declared.Add("cursor_id");
+        List<string> answered = new List<string>();
+        foreach (JProperty key in first.Properties())
+        {
+            answered.Add(key.Name);
+        }
 
-        internal string? CursorId { get; }
-
-        internal int? Skipped { get; }
+        Assert.Equal(declared, answered);
     }
 
-    /// <summary>A find shaped as find_things is: ids 1..n, each a named thing, in id order.</summary>
+    private static long[] Ids(JObject reply) =>
+        ((JArray)reply["things"]!).ToObject<List<JObject>>()!.ConvertAll(thing => long.Parse((string)thing["reference_id"]!))
+            .ToArray();
+
+    /// <summary>find thing over a fake world: ids 1..n, each matching, in id order; a call is one page as find thing takes it.</summary>
     private sealed class Find
     {
+        private readonly Dictionary<long, FakeThing> _byId = new Dictionary<long, FakeThing>();
+        private readonly List<FakeThing> _world = new List<FakeThing>();
+
         internal Find(int things)
         {
             for (long id = 1; id <= things; id++)
             {
-                World[id] = "thing " + id;
+                FakeThing thing = new FakeThing { Id = id, Prefab = "Thing", Matches = true };
+                _world.Add(thing);
+                _byId.Add(id, thing);
             }
         }
-
-        internal Dictionary<long, string> World { get; } = new Dictionary<long, string>();
 
         internal WalkCursors Cursors { get; } = new WalkCursors();
 
         internal int Scans { get; private set; }
 
-        internal Found Call(JObject parameters)
+        internal void Remove(long id) => _byId[id].Alive = false;
+
+        internal void Unmatch(long id) => _byId[id].Matches = false;
+
+        internal JObject Call(string options)
         {
-            Args args = new Args(parameters);
-            WalkRequest walk = WalkRequest.From(args, Cursors);
-            PageRequest page = PageRequest.From(args, 8, 500);
+            Pure.Verbs.Paging paging = FramedPageTests.PagingOf(options);
+            WalkRequest walk = WalkRequest.Of(paging, Cursors);
+            FakeClock clock = new FakeClock();
+            FramedPage<Api.Views.FoundThingView> page;
             if (walk.Continues)
             {
-                List<object> found = new List<object>(page.Limit);
-                WalkStep step = walk.Next(page.Limit, id => World.ContainsKey(id) ? Boxed(id) : null, found);
-                walk.Note("things", page, found.Count, step.Total, step.CursorId);
-                List<long> ids = found.ConvertAll(thing => (long)thing);
-                return new Found(Slice<long>.Walked(ids, step.Offset, page.Limit, step.Total, step.HasMore),
-                    step.CursorId, step.Skipped);
+                page = FramedPage<Api.Views.FoundThingView>.Later(walk, paging.Limit!.Value, Live);
+            }
+            else
+            {
+                Scans++;
+                page = FramedPage<Api.Views.FoundThingView>.Scan(walk, paging.Offset, paging.Limit!.Value,
+                    new WalkBuild<FakeThing>(_world, new FakeFilter(clock, 0.0), ListOrder.ReferenceId), Live);
             }
 
-            Scans++;
-            List<long> hits = new List<long>(World.Keys);
-            hits.Sort();
-            Slice<long> slice = Slice<long>.Of(hits, page);
-            string? cursorId = walk.Keep(hits, slice.Items.Count, static id => id);
-            walk.Note("things", page, slice.Items.Count, hits.Count, cursorId);
-            return new Found(slice, cursorId, null);
+            while (!page.Step(clock, clock.NowMs + 1000.0, 0.0))
+            {
+            }
+
+            FramedResult<Api.Views.FoundThingView> result = page.Result();
+            return Api.Views.FoundThings.Reply(result.Page, page.Scanned, null, result.CursorId);
         }
 
-        // The walk takes things by reference; a test's "thing" is its id, boxed.
-        private static object Boxed(long id) => id;
+        private Api.Views.FoundThingView? Live(long id) =>
+            _byId.TryGetValue(id, out FakeThing? thing) && thing.Alive
+                ? new Api.Views.FoundThingView(new ThingView(new ThingId(id), thing.Prefab, "Thing"), null,
+                    "Thing", "item", "Item", false, "ground", null, new List<Api.Views.HeldInView>(),
+                    new PositionView(0, 0, 0), null, false, false)
+                : null;
     }
 }

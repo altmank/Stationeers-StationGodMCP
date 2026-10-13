@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
-using System.Runtime.ExceptionServices;
 using System.Text;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
@@ -19,6 +18,7 @@ using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Scheduling;
 using StationGodMCP.Protocol;
 using StationGodMCP.Pure.Shaping;
+using StationGodMCP.Verbs;
 
 namespace StationGodMCP.Api;
 
@@ -55,7 +55,6 @@ internal static class ApiHost
             ["read_console"] = static args => ReadConsoleApi.Handle(args),
             ["game_clock"] = static args => GameClockApi.Handle(args),
             ["find_items"] = static args => FindItemsApi.Handle(args),
-            ["find_things"] = static args => FindThingsApi.Handle(args),
             ["label"] = static args => LabelApi.Handle(args),
             ["item_totals"] = static args => ItemTotalsApi.Handle(args),
             ["list_containers"] = static args => ListContainersApi.Handle(args),
@@ -143,34 +142,13 @@ internal static class ApiHost
     /// One call: its reply message as JSON text (type reply, shaped, elapsed_ms, queue_ms, frame, budget_hit when the
     /// frame's request budget was reached as the handler finished). Top-level argument names are checked here unless the connection's reader
     /// thread already refused unknown ones (StrictArguments: the full check); the result is shaped by the call's shape, and a reply larger than max_reply_bytes (or the shape's
-    /// max_bytes) is answered reply_too_large. A handler whose result is not ready (IPendingResult) leaves the call
-    /// deferred: the reply carries Work (PendingCall), which the scheduler steps over later frames and which answers
-    /// through FinishCall.
+    /// max_bytes) is answered reply_too_large.
     /// </summary>
     internal static HandledRequest HandleCall(CallRequest call, double queueWaitMs, long frame)
     {
         Stopwatch watch = Stopwatch.StartNew();
         EntryCost.Begin();
-        Answer answer = Run(call, watch);
-        if (answer.Pending != null)
-        {
-            return HandledRequest.Deferred(new PendingCall(call, answer.Pending, answer.HandlerMs, queueWaitMs),
-                MethodStats.Counted(answer.Method));
-        }
-
-        return Reply(answer, queueWaitMs, frame);
-    }
-
-    /// <summary>
-    /// A deferred call's answer once its result is ready (or its work failed): as HandleCall answers, its handler time
-    /// that of every slice before (spentMs) and of building the result.
-    /// </summary>
-    internal static HandledRequest FinishCall(CallRequest call, IPendingResult pending, double spentMs,
-        double queueWaitMs, long frame)
-    {
-        Stopwatch watch = Stopwatch.StartNew();
-        EntryCost.Begin();
-        return Reply(Run(call, watch, pending, spentMs), queueWaitMs, frame);
+        return Reply(Run(call, watch), queueWaitMs, frame);
     }
 
     private static HandledRequest Reply(Answer answer, double queueWaitMs, long frame)
@@ -227,8 +205,8 @@ internal static class ApiHost
     /// <summary>The largest reply sent (limits.max_reply_bytes).</summary>
     internal const int MaxReplyBytes = 16777216;
 
-    // The handler, or a deferred call's pending result (resumed, after spentMs of slices), to its answer.
-    private static Answer Run(CallRequest call, Stopwatch watch, IPendingResult? resumed = null, double spentMs = 0)
+    // The handler to its answer.
+    private static Answer Run(CallRequest call, Stopwatch watch)
     {
         using ProfScope executing = Prof.Scope(ProfId.CallExecute);
         string? requestId = call.Id;
@@ -237,55 +215,42 @@ internal static class ApiHost
         ShapeRequest? shape = call.Shape;
         try
         {
-            object handled;
-            if (resumed == null)
+            DeclaredArguments declared = Declared.Value.Arguments ??
+                                         throw ApiErrors.Refused("internal_error", Declared.Value.Problem!);
+            if (method == null || !Methods.TryGetValue(method, out Func<Args, object> handler))
             {
-                DeclaredArguments declared = Declared.Value.Arguments ??
-                                             throw ApiErrors.Refused("internal_error", Declared.Value.Problem!);
-                if (method == null || !Methods.TryGetValue(method, out Func<Args, object> handler))
-                {
-                    throw ApiErrors.Refused("method_not_found", method != null && declared.RunsInSidecar(method)
-                        ? $"{Vocabulary.Tool(method)} is answered by the MCP server (the sidecar) from the catalogue, " +
-                            "not by the game; call it through MCP, or read the catalogue's help."
-                        : $"Unknown StationGodMCP method '{method}'.");
-                }
+                throw ApiErrors.Refused("method_not_found", method != null && declared.RunsInSidecar(method)
+                    ? $"{Vocabulary.Tool(method)} is answered by the MCP server (the sidecar) from the catalogue, " +
+                        "not by the game; call it through MCP, or read the catalogue's help."
+                    : $"Unknown StationGodMCP method '{method}'.");
+            }
 
-                declared.Check(call);
-                ArgumentNames? names = declared.NamesOf(method);
-                BeginReply();
-                ShapeRequest replyShape = shape ?? ShapeRequest.None;
-                handled =
-                    handler(names != null ? new Args(parameters, names, replyShape) : new Args(parameters, replyShape));
-                if (handled is IPendingResult pending)
-                {
-                    return Answer.Deferred(requestId, method, pending, Elapsed(watch));
-                }
-            }
-            else
-            {
-                BeginReply();
-                handled = resumed.Result();
-            }
+            declared.Check(call);
+            ArgumentNames? names = declared.NamesOf(method);
+            BeginReply();
+            ShapeRequest replyShape = shape ?? ShapeRequest.None;
+            object handled =
+                handler(names != null ? new Args(parameters, names, replyShape) : new Args(parameters, replyShape));
 
             TruncatingViews.Note(handled);
             object result = ResolvedNetworks.Attach(handled, ResolvedNetworks.Take());
             result = GasHoldReply.Attach(result, GasHoldReply.Take());
-            return Answer.Success(requestId, method, result, Elapsed(watch, spentMs), shape,
+            return Answer.Success(requestId, method, result, Elapsed(watch), shape,
                 Pure.Shaping.Truncations.Take());
         }
         catch (ApiException exception)
         {
-            return Answer.Failure(requestId, method, new ErrorView(exception.Code, exception.Message, exception.Details), Elapsed(watch, spentMs));
+            return Answer.Failure(requestId, method, new ErrorView(exception.Code, exception.Message, exception.Details), Elapsed(watch));
         }
         catch (GameChangedException exception)
         {
-            return Answer.Failure(requestId, method, new ErrorView(ApiErrors.GameChangedCode, exception.Message), Elapsed(watch, spentMs));
+            return Answer.Failure(requestId, method, new ErrorView(ApiErrors.GameChangedCode, exception.Message), Elapsed(watch));
         }
         catch (Exception exception)
         {
             // The request boundary: a bug in any tool's game calls must answer the client, not break the pipe.
             StationGodMod.LogWarning($"API request failed: {exception}");
-            return Answer.Failure(requestId, method, new ErrorView("internal_error", exception.Message), Elapsed(watch, spentMs));
+            return Answer.Failure(requestId, method, new ErrorView("internal_error", exception.Message), Elapsed(watch));
         }
     }
 
@@ -372,75 +337,14 @@ internal static class ApiHost
     /// <summary>The main-thread time spent on a request so far, rounded to 0.01 ms.</summary>
     internal static double Elapsed(Stopwatch watch) => Math.Round(watch.Elapsed.TotalMilliseconds, ElapsedDecimals);
 
-    private static double Elapsed(Stopwatch watch, double spentMs) =>
-        Math.Round(watch.Elapsed.TotalMilliseconds + spentMs, ElapsedDecimals);
-}
-
-/// <summary>
-/// A deferred call's work (HandledRequest.Work): its pending result stepped over frames, the main-thread time of every
-/// slice summed for its reply's elapsed_ms, and its reply through ApiHost.FinishCall once ready. A step that throws ends
-/// the work: the reply answers the failure as a handler's would be.
-/// </summary>
-internal sealed class PendingCall : IDeferredWork
-{
-    private readonly CallRequest _call;
-    private readonly double _queueWaitMs;
-    private IPendingResult _pending;
-    private double _spentMs;
-
-    internal PendingCall(CallRequest call, IPendingResult pending, double spentMs, double queueWaitMs)
-    {
-        _call = call;
-        _pending = pending;
-        _spentMs = spentMs;
-        _queueWaitMs = queueWaitMs;
-    }
-
-    public bool Step(double untilMs)
-    {
-        long started = Stopwatch.GetTimestamp();
-        try
-        {
-            return _pending.Step(untilMs);
-        }
-        catch (Exception exception)
-        {
-            _pending = new Thrown(ExceptionDispatchInfo.Capture(exception));
-            return true;
-        }
-        finally
-        {
-            _spentMs += (Stopwatch.GetTimestamp() - started) * 1000.0 / Stopwatch.Frequency;
-        }
-    }
-
-    public string Finish() =>
-        ApiHost.FinishCall(_call, _pending, _spentMs, _queueWaitMs, UnityEngine.Time.frameCount).Json;
-
-    // A step's failure, raised again where the reply is built.
-    private sealed class Thrown : IPendingResult
-    {
-        private readonly ExceptionDispatchInfo _failure;
-
-        internal Thrown(ExceptionDispatchInfo failure) => _failure = failure;
-
-        public bool Step(double untilMs) => true;
-
-        public object Result()
-        {
-            _failure.Throw();
-            return null!;
-        }
-    }
 }
 
 /// <summary>A request's outcome before serialisation: its result or error, and what MethodStats records of it.</summary>
 internal sealed class Answer
 {
     private Answer(string? requestId, string? method, bool ok, object? result, ErrorView? error, double handlerMs,
-        ShapeRequest? shape, List<Truncation>? truncations = null, IPendingResult? pending = null)
+        ShapeRequest? shape, List<Truncation>? truncations = null)
     {
-        Pending = pending;
         Truncations = truncations ?? new List<Truncation>();
         RequestId = requestId;
         Method = method;
@@ -471,12 +375,6 @@ internal sealed class Answer
     /// <summary>The lists the handler held back entries of (Pure.Shaping.Truncations).</summary>
     internal List<Truncation> Truncations { get; }
 
-    /// <summary>A handler's result that is not ready yet: the call is deferred.</summary>
-    internal IPendingResult? Pending { get; }
-
-    internal static Answer Deferred(string? requestId, string? method, IPendingResult pending, double handlerMs) =>
-        new Answer(requestId, method, true, null, null, handlerMs, null, null, pending);
-
     internal static Answer Success(string? requestId, string? method, object result, double handlerMs, ShapeRequest? shape,
         List<Truncation>? truncations = null) =>
         new Answer(requestId, method, true, result, null, handlerMs, shape, truncations);
@@ -493,19 +391,12 @@ internal sealed class Answer
 /// </summary>
 internal sealed class HandledRequest
 {
-    internal HandledRequest(string json, string? method, bool ok, IDeferredWork? work = null)
+    internal HandledRequest(string json, string? method, bool ok)
     {
         Json = json;
         Method = method;
         Ok = ok;
-        Work = work;
     }
-
-    /// <summary>A deferred call: no reply yet (Json empty); Work goes on over later frames and answers it.</summary>
-    internal static HandledRequest Deferred(IDeferredWork work, string? method) =>
-        new HandledRequest(string.Empty, method, true, work);
-
-    internal IDeferredWork? Work { get; }
 
     internal string Json { get; }
 
@@ -523,9 +414,11 @@ internal static class MethodStats
 {
     private static readonly MethodTimings Timings = new MethodTimings();
 
-    /// <summary>The method when it is one ApiHost knows, else null.</summary>
+    /// <summary>The method when it is one ApiHost knows or a what with a verb handler (find.thing), else null.</summary>
     internal static string? Counted(string? method) =>
-        method != null && ApiHost.Methods.ContainsKey(method) ? method : null;
+        method != null && (ApiHost.Methods.ContainsKey(method) || VerbHandlers.Dispatcher.AnswersKey(method))
+            ? method
+            : null;
 
     internal static void Record(string? method, bool ok, double handlerMs, double serializeMs, double queueWaitMs)
     {

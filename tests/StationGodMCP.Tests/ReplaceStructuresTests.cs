@@ -548,7 +548,7 @@ public sealed class ToolRegistrationTests
             .OfType<LiteralExpressionSyntax>()
             .Select(literal => literal.Token.ValueText));
 
-        Assert.Empty(names.Except(handled).Except(SidecarOnly));
+        Assert.Empty(names.Except(handled).Except(SidecarOnly).Except(CatalogueChecks.RetiredMethods.Names));
         Assert.Empty(handled.Except(names));
         Assert.Subset(names, new HashSet<string> { "replace_walls", "replace_frames" });
         Assert.Subset(handled, new HashSet<string> { "replace_walls", "replace_frames" });

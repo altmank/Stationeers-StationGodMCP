@@ -52,7 +52,7 @@ public sealed class DeferredCallsTests
         }
 
         Assert.Equal("ready", call.Answer);
-        Assert.Equal("find_things", call.AnsweredMethod);
+        Assert.Equal("find.thing", call.AnsweredMethod);
         Assert.Equal(Hub, work.SteppedIn);
         Assert.Equal(0, scheduler.Deferred.Count);
         Assert.Equal(4, frames);
@@ -271,7 +271,7 @@ public sealed class DeferredCallsTests
         private readonly IDeferredWork _work;
 
         internal DeferredCall(object source, CallContext context, IDeferredWork work, int deadlineMs = 60000)
-            : base(DeadlineAfterMs(deadlineMs), new CallProfile("find_things", MethodClass.Read,
+            : base(DeadlineAfterMs(deadlineMs), new CallProfile("find.thing", MethodClass.Read,
                 new CallCost(CostClass.World, 1)))
         {
             _source = source;
@@ -289,8 +289,8 @@ public sealed class DeferredCallsTests
 
         internal override CallOutcome Run(ICallRunner runner, double queueWaitMs)
         {
-            CallOutcome first = CallOutcome.Continued(_work, "find_things");
-            return _work.Step(CurrentFrame.EndMs) ? new CallOutcome(_work.Finish(), "find_things") : first;
+            CallOutcome first = CallOutcome.Continued(_work, "find.thing");
+            return _work.Step(CurrentFrame.EndMs) ? new CallOutcome(_work.Finish(), "find.thing") : first;
         }
 
         internal override string TimeoutReply() => "timeout";

@@ -215,7 +215,7 @@ public sealed class DeferredStreamHoldTests
             () => new WorldFacts(_worldId, null, 0));
 
     private LoggedCall Find(int steps, int deadlineMs = 60000, CallContext? context = null) =>
-        new LoggedCall(_connection, context ?? Hub, "find", Read("find_things"), deadlineMs,
+        new LoggedCall(_connection, context ?? Hub, "find", Read("find.thing"), deadlineMs,
             run: call =>
             {
                 _log.Add("find started");
@@ -225,8 +225,8 @@ public sealed class DeferredStreamHoldTests
                     return "saw " + _world[0];
                 });
                 return call.Work.Step(CurrentFrame.EndMs)
-                    ? new CallOutcome(call.Work.Finish(), "find_things")
-                    : CallOutcome.Continued(call.Work, "find_things");
+                    ? new CallOutcome(call.Work.Finish(), "find.thing")
+                    : CallOutcome.Continued(call.Work, "find.thing");
             });
 
     private LoggedCall SampleLogic(object? source = null) =>

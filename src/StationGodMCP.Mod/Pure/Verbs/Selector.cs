@@ -55,6 +55,37 @@ internal sealed record Selector(
         return point is { } found && Radius is { } radius ? PointArea.Near(found, radius) : PointArea.Anywhere;
     }
 
+    /// <summary>
+    /// What is wrong with the area options as a what that takes near with radius, or box, reads them: near and radius
+    /// go together, at most maximumRadius metres around anything but the player, and box is the other area, not both.
+    /// </summary>
+    internal List<OptionProblem> AreaProblems(double maximumRadius)
+    {
+        List<OptionProblem> problems = new List<OptionProblem>();
+        if (Near != null && Radius == null)
+        {
+            problems.Add(new OptionProblem("near", "needs radius, in metres"));
+        }
+
+        if (Radius != null && Near == null)
+        {
+            problems.Add(new OptionProblem("radius", "needs near"));
+        }
+
+        if (Near != null && Box != null)
+        {
+            problems.Add(new OptionProblem("box", "goes without near and radius"));
+        }
+
+        if (Near is not (null or NearPoint.Player) && Radius > maximumRadius)
+        {
+            problems.Add(new OptionProblem("radius",
+                "is at most " + maximumRadius.ToString(CultureInfo.InvariantCulture) + " around a point"));
+        }
+
+        return problems;
+    }
+
     private static string? Trimmed(string? text) => string.IsNullOrWhiteSpace(text) ? null : text!.Trim();
 }
 
