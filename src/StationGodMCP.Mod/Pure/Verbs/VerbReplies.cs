@@ -1,7 +1,9 @@
 #nullable enable
 
+using System;
 using System.Collections.Generic;
 using System.Text;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 
@@ -371,16 +373,83 @@ internal sealed class ReportProblem
 /// <summary>
 /// The one report shape (PLAN 2.0, direct write rule; SPEC-NOTES 18): what a write would do, nothing changed. The
 /// what's own report keys, then report_only: true and targets, every target listed whole. rows (ReportConfirm.Rows)
-/// cuts the what's own lists only, through Shown.
+/// cuts the what's own lists only, through Shown. A report over SummaryBytes answers its summary form (DESIGN 3.3):
+/// the what's own keys that are no list, every protected key in full, and each target as an [id, name] pair but those
+/// with a lifted guard or a driver, which stay whole. A summary form still over MostCharacters is too large for the
+/// client: report_too_large, with the target count and how to narrow it.
 /// </summary>
 internal static class Report
 {
+    /// <summary>The direct face's reply cap: a report larger than this answers its summary form.</summary>
+    internal const int SummaryBytes = 12 * 1024;
+
+    /// <summary>The client's limit: Claude Code's default 25,000 tokens, as 100,000 characters of JSON.</summary>
+    internal const int MostCharacters = 100000;
+
+    internal const int ClientTokens = 25000;
+
+    internal const string TooLarge = "report_too_large";
+
+    // The keys a report keeps whole, whatever its size (DESIGN 3.3, 3.4 rule 2).
+    private static readonly string[] Protected = { "problems", "warnings", "will_burst", "gas_check", "passed" };
+
     /// <summary>
     /// The report: body's keys, then problems (what the acting call would refuse, each with its entry; left out when
-    /// null), report_only: true and every target.
+    /// null), report_only: true and every target; its summary form when it is very large. Throws report_too_large
+    /// when even the summary form is too large for the client.
     /// </summary>
     internal static JObject Of(IReadOnlyList<ReportTarget> targets, JObject? body = null,
         IReadOnlyList<ReportProblem>? problems = null)
+    {
+        JObject whole = Whole(targets, body, problems);
+        if (Encoding.UTF8.GetByteCount(whole.ToString(Formatting.None)) <= SummaryBytes)
+        {
+            return whole;
+        }
+
+        JObject summary = Summary(whole, targets);
+        return summary.ToString(Formatting.None).Length <= MostCharacters
+            ? summary
+            : throw new ApiException(TooLarge,
+                $"The report lists {targets.Count} targets, more than the client takes even in its summary form; " +
+                "nothing changed. Narrow the target: a filter on the find, a smaller ref, fewer spread lines.",
+                new JObject
+                {
+                    ["targets"] = targets.Count,
+                    ["limit_tokens"] = ClientTokens,
+                    ["fix"] = "narrow the target: a filter on the find, a smaller ref, fewer spread lines"
+                });
+    }
+
+    // The summary form: the body's keys that hold no list, the protected keys whole, report_only, and the targets as
+    // [id, name] pairs, a target with a lifted guard or a driver kept whole.
+    private static JObject Summary(JObject whole, IReadOnlyList<ReportTarget> targets)
+    {
+        JObject summary = new JObject();
+        foreach (JProperty key in whole.Properties())
+        {
+            if (key.Name == "targets" || (key.Value is JArray && Array.IndexOf(Protected, key.Name) < 0))
+            {
+                continue;
+            }
+
+            summary[key.Name] = key.Value.DeepClone();
+        }
+
+        JArray pairs = new JArray();
+        foreach (ReportTarget target in targets)
+        {
+            pairs.Add(target.Passed is { Count: > 0 } || target.DrivenBy != null
+                ? target.ToJson()
+                : new JArray(target.Id != null ? new JValue(target.Id) : target.Cell?.DeepClone(), target.Name));
+        }
+
+        summary["targets"] = pairs;
+        return summary;
+    }
+
+    private static JObject Whole(IReadOnlyList<ReportTarget> targets, JObject? body,
+        IReadOnlyList<ReportProblem>? problems)
     {
         JObject report = body != null ? (JObject)body.DeepClone() : new JObject();
         if (problems != null)

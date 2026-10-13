@@ -197,6 +197,7 @@
     "description": "No such method on this game's StationGod. The game may run an older version; server info names it.",
     "see": {"topic": "errors"}
   },
+  "missing_target": {"description": "The call names nothing to act on; data.options lists what would."},
   "mod_missing": {
     "description": "BlueprintMod has not set up its Blueprints folder yet. Pass an absolute path.",
     "see": {"verb": "build", "what": "blueprint"}
@@ -404,6 +405,7 @@
     "description": "The reply is larger than allowed; the method ran. Narrow it with fields, limit or filters, or use output_file.",
     "see": {"topic": "shaping"}
   },
+  "report_too_large": {"description": "Too large for the client; narrow the target."},
   "request_too_large": {
     "description": "The message is longer than the protocol allows. The connection is closed; send a smaller request.",
     "see": {"topic": "errors"}

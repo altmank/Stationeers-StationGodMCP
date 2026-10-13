@@ -27,9 +27,9 @@ internal sealed class ErrorSite
     internal string Where { get; }
 
     /// <summary>
-    /// Every code passed as a literal or const string to ApiErrors.Refused, new ApiException or new ErrorView (both
-    /// branches of a conditional), every const string whose name ends in Code, and every Code property returning a
-    /// literal (GasHoldRule's verdicts, RunKind.ShortageCode).
+    /// Every code passed as a literal or const string to ApiErrors.Refused, new ApiException, new ErrorView or new
+    /// VerbError (both branches of a conditional), every const string whose name ends in Code, and every Code property
+    /// returning a literal (GasHoldRule's verdicts, RunKind.ShortageCode).
     /// </summary>
     internal static List<ErrorSite> All()
     {
@@ -43,7 +43,7 @@ internal sealed class ErrorSite
                 {
                     InvocationExpressionSyntax { Expression: MemberAccessExpressionSyntax { Name.Identifier.Text: "Refused" } } call =>
                         call.ArgumentList,
-                    ObjectCreationExpressionSyntax { Type: IdentifierNameSyntax { Identifier.Text: "ApiException" or "ErrorView" } } creation =>
+                    ObjectCreationExpressionSyntax { Type: IdentifierNameSyntax { Identifier.Text: "ApiException" or "ErrorView" or "VerbError" } } creation =>
                         creation.ArgumentList,
                     _ => null
                 };

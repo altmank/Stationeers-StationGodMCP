@@ -803,6 +803,11 @@
       "origin": "protocol",
       "see": {"topic": "errors", "subtopic": "protocol"}
     },
+    "missing_target": {
+      "description": "The call names nothing to act on; data.options lists what would.",
+      "origin": "tool",
+      "see": {"topic": "errors"}
+    },
     "mod_missing": {
       "description": "BlueprintMod has not set up its Blueprints folder yet. Pass an absolute path.",
       "origin": "tool",
@@ -1207,6 +1212,7 @@
       "caller_may_resend": "if_read",
       "see": {"topic": "shaping"}
     },
+    "report_too_large": {"description": "Too large for the client; narrow the target.", "origin": "tool", "see": {"topic": "errors"}},
     "request_too_large": {
       "description": "The message is longer than the protocol allows. The connection is closed; send a smaller request.",
       "origin": "protocol",

@@ -2,6 +2,7 @@
 
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Pure.Verbs;
@@ -114,6 +115,63 @@ public sealed class ReplyWriterTests
             """{"cell":[1,2,3],"name":"Cable","current":null,"new":"StructureCableStraight","undo":"[cannot undo]","text":"[[1,2,3], Cable, ? -> StructureCableStraight] [cannot undo]"},""" +
             """{"id":"88","name":"Active Vent","current":0,"new":1,"undo":"[undo]","passed":["lint"],"driven_by":[{"reference_id":"5","kind":"chip"}],"text":"[88, Active Vent, 0 -> 1] [undo] PASSED: lint"}]}""",
             Text(report));
+    }
+
+    [Fact]
+    public void AVeryLargeReportAnswersItsSummaryForm()
+    {
+        List<ReportTarget> targets = new();
+        JArray pieces = new();
+        for (int index = 0; index < 200; index++)
+        {
+            string id = (5000 + index).ToString(System.Globalization.CultureInfo.InvariantCulture);
+            targets.Add(new ReportTarget(id, null, "Cable", new JValue("StructureCableStraight"),
+                new JValue("StructureCableStraightH"), "[cannot undo: change job]"));
+            pieces.Add(new JObject { ["reference_id"] = id, ["prefab_name"] = "StructureCableStraight" });
+        }
+
+        targets.Add(new ReportTarget("88", null, "Active Vent", new JValue(0), new JValue(1), "[undo]",
+            new[] { "lint" }));
+        JObject body = new()
+        {
+            ["pieces_total"] = 201,
+            ["warnings"] = JArray.Parse("""[{"code":"materials_from_player","message":"m"}]"""),
+            ["pieces"] = pieces
+        };
+
+        JObject report = Report.Of(targets, body,
+            new[] { new ReportProblem(null, "5000", new VerbError("not_replaceable", "no")) });
+
+        Assert.Equal(new[] { "pieces_total", "warnings", "problems", "report_only", "targets" },
+            report.Properties().Select(key => key.Name).ToArray());
+        JArray listed = (JArray)report["targets"]!;
+        Assert.Equal(201, listed.Count);
+        Assert.Equal("""["5000","Cable"]""", Text(listed[0]));
+        Assert.Equal(new JArray("lint"), listed[200]["passed"]);
+
+        JObject small = Report.Of(targets.GetRange(0, 3), new JObject { ["pieces"] = new JArray(pieces[0]) });
+        Assert.True(Encoding.UTF8.GetByteCount(Text(small)) <= Report.SummaryBytes);
+        Assert.Equal(new[] { "pieces", "report_only", "targets" }, small.Properties().Select(key => key.Name).ToArray());
+        Assert.Equal("[5000, Cable, StructureCableStraight -> StructureCableStraightH] [cannot undo: change job]",
+            (string)small["targets"]![0]!["text"]!);
+    }
+
+    [Fact]
+    public void AReportTooLargeEvenAsASummaryIsReportTooLarge()
+    {
+        List<ReportTarget> targets = new();
+        for (int index = 0; index < 5000; index++)
+        {
+            targets.Add(new ReportTarget((100000 + index).ToString(System.Globalization.CultureInfo.InvariantCulture),
+                null, "Insulated Pipe (Straight)", null, null, "[undo]"));
+        }
+
+        StationGodMCP.Api.Shared.ApiException refused =
+            Assert.Throws<StationGodMCP.Api.Shared.ApiException>(() => Report.Of(targets));
+
+        Assert.Equal("report_too_large", refused.Code);
+        Assert.Equal("""{"targets":5000,"limit_tokens":25000,"fix":"narrow the target: a filter on the find, a smaller ref, fewer spread lines"}""",
+            Text((JObject)refused.Details!));
     }
 
     [Fact]
