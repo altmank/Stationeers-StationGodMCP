@@ -92,7 +92,7 @@ internal sealed class RemoveRunCall
 internal static class RemoveRuns
 {
     private const string Removed = "removed";
-    private const string BurntMark = "[cannot undo: burnt]";
+    internal const string BurntMark = "[cannot undo: burnt]";
 
     internal static VerbOutcome Run(RunKind kind, WhatSpec spec, RemoveRunCall call)
     {

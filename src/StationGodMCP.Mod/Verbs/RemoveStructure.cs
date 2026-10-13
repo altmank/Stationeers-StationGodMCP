@@ -1,6 +1,7 @@
 #nullable enable
 
 using System.Collections.Generic;
+using Assets.Scripts.Objects.Electrical;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
@@ -15,7 +16,8 @@ namespace StationGodMCP.Verbs;
 /// remove structure (catalogue remove.json): built structures by id taken apart as deconstructing them by hand would
 /// (RemovePlanner, BuildJobs), every build state refunded down to the kit; a list is one job. allow lifts the guards
 /// (contents, breach, broken, burst, unsupported); gas_to keeps a removed device's gas. Without confirm, a Report.Of
-/// report: every structure the job takes down a target [id, name, prefab -> "removed"] [undo], the planned view the
+/// report: every structure the job takes down a target [id, name, prefab -> "removed"] [undo] ([cannot undo: burnt] for
+/// a burnt cable: undo hands its snapshot to place structure, and no kit builds a CableRuptured), the planned view the
 /// body, every problem with the index of its id, a gas hold the confirmed call would be refused on among them; verbose
 /// lists every port a split cuts. Confirmed with a problem, the report answers and nothing starts; confirmed and
 /// ready, one job starts and its undo is recorded (JobSnapshots).
@@ -98,7 +100,8 @@ internal static class RemoveStructure
         foreach (PlannedTakedown takedown in plan.Takedowns)
         {
             targets.Add(new ReportTarget(new ThingId(takedown.Piece.ReferenceId).ToString(), null,
-                Names.Of(takedown.Piece), new JValue(takedown.Piece.PrefabName), new JValue(Removed), mark));
+                Names.Of(takedown.Piece), new JValue(takedown.Piece.PrefabName), new JValue(Removed),
+                takedown.Piece is CableRuptured ? RemoveRuns.BurntMark : mark));
         }
 
         RemoveReportView view = BuildReports.Of(plan, BuildReports.DryRun, null);

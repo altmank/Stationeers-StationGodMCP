@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
+using StationGodMCP.Pure;
 using StationGodMCP.Pure.Verbs;
 using Xunit;
 
@@ -75,5 +76,21 @@ public sealed class RemoveRunTests
 
         Assert.Null(GasTarget.Of("tank", problems));
         Assert.Equal("gas_to", Assert.Single(problems).Path);
+    }
+    // remove structure records every takedown as it stood (JobSnapshots.Record, no burnt list): a burnt cable's snapshot
+    // is not marked burnt and is no network piece, so undo hands it to place structure, which no kit builds it for.
+    [Fact]
+    public void UndoOfRemoveStructureHandsABurntCableToPlaceStructure()
+    {
+        ThingSnapshot burnt = new ThingSnapshot(621, "StructureCableStraightBurnt", new Vec3(-1126.5, 232, -701),
+            CubeRotation.Identity, 0, null);
+        JobFacts job = new JobFacts("remove-1", "remove_structure", "applied", new List<(long, string?)>(),
+            new List<long> { 621 }, new Dictionary<long, ThingSnapshot> { [621] = burnt });
+
+        UndoPlan plan = UndoPlanner.Plan(job, _ => null);
+
+        Assert.Equal(new List<long> { 621 }, plan.RestoreStructures.ConvertAll(snapshot => snapshot.Id));
+        Assert.Empty(plan.RestorePieces);
+        Assert.DoesNotContain(plan.Notes, note => note.Contains("burnt"));
     }
 }
