@@ -5,11 +5,12 @@ using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Verbs;
 using Xunit;
 
 namespace StationGodMCP.Tests;
 
-/// <summary>set_battery_charge's goal rule and its reply.</summary>
+/// <summary>write battery's goal rule, its reply and its report.</summary>
 public sealed class BatteryChargeTests
 {
     private const double CellCapacity = 36000.0;
@@ -17,10 +18,11 @@ public sealed class BatteryChargeTests
     [Fact]
     public void NoRatioOrJoulesFillsToTheWholeCapacity()
     {
-        ChargeGoal goal = ChargeGoal.Of(null, null, out string? problem)!;
+        List<OptionProblem> problems = new List<OptionProblem>();
+        ChargeGoal goal = ChargeGoal.Of(null, null, problems)!;
         ChargeChange change = goal.Apply(1200.0, CellCapacity);
 
-        Assert.Null(problem);
+        Assert.Empty(problems);
         Assert.Equal("full", goal.Kind);
         Assert.Null(goal.Amount);
         Assert.Equal(CellCapacity, change.After);
@@ -31,18 +33,18 @@ public sealed class BatteryChargeTests
     [Fact]
     public void ARatioIsAShareOfEachCapacityAndCanDrain()
     {
-        ChargeGoal goal = ChargeGoal.Of(0.25, null, out _)!;
+        ChargeGoal goal = ChargeGoal.Of(0.25, null, new List<OptionProblem>())!;
 
         Assert.Equal(9000.0, goal.Apply(CellCapacity, CellCapacity).After);
         Assert.Equal(900000.0, goal.Apply(0.0, 3600000.0).After);
         Assert.Equal(-27000.0, goal.Apply(CellCapacity, CellCapacity).AddedJoules);
-        Assert.Equal(0.0, ChargeGoal.Of(0.0, null, out _)!.Apply(500.0, CellCapacity).After);
+        Assert.Equal(0.0, ChargeGoal.Of(0.0, null, new List<OptionProblem>())!.Apply(500.0, CellCapacity).After);
     }
 
     [Fact]
     public void JoulesOverACapacityFillItAndSayClamped()
     {
-        ChargeGoal goal = ChargeGoal.Of(null, 50000.0, out _)!;
+        ChargeGoal goal = ChargeGoal.Of(null, 50000.0, new List<OptionProblem>())!;
 
         ChargeChange cell = goal.Apply(0.0, CellCapacity);
         Assert.Equal(CellCapacity, cell.After);
@@ -54,14 +56,15 @@ public sealed class BatteryChargeTests
     }
 
     [Theory]
-    [InlineData(0.5, 10.0, "not both")]
+    [InlineData(0.5, 10.0, "goes without ratio")]
     [InlineData(1.5, null, "from 0 to 1")]
     [InlineData(-0.1, null, "from 0 to 1")]
     [InlineData(null, -1.0, "0 or more")]
     public void ImpossibleGoalsAreRefusedWithTheReason(double? ratio, double? joules, string reason)
     {
-        Assert.Null(ChargeGoal.Of(ratio, joules, out string? problem));
-        Assert.Contains(reason, problem);
+        List<OptionProblem> problems = new List<OptionProblem>();
+        Assert.Null(ChargeGoal.Of(ratio, joules, problems));
+        Assert.Contains(reason, Assert.Single(problems).Problem);
     }
 
     [Fact]
@@ -74,7 +77,7 @@ public sealed class BatteryChargeTests
     [Fact]
     public void TheReplyNamesEachBatteryItsHolderAndItsChargeBeforeAndAfter()
     {
-        ChargeGoal goal = ChargeGoal.Of(null, 50000.0, out _)!;
+        ChargeGoal goal = ChargeGoal.Of(null, 50000.0, new List<OptionProblem>())!;
         BatchBuilder batch = new BatchBuilder(2);
         ThingView cell = new ThingView(new ThingId(101), "ItemBatteryCell", "Battery Cell (Small)");
         ThingView suit = new ThingView(new ThingId(100), "ItemHardSuit", "Hardsuit");
@@ -83,7 +86,7 @@ public sealed class BatteryChargeTests
         batch.Failed(new BatteryRefusedView(1, new ThingId(102),
             ApiErrors.Refused("not_a_battery", "Wall 102 stores no power.")));
 
-        JObject reply = JObject.Parse(WireCheck.New(new SetBatteryChargeView(false, goal, null, batch.Build(),
+        JObject reply = JObject.Parse(WireCheck.New(new SetBatteryChargeView(goal, null, batch.Build(),
             CellCapacity - 12345.67)));
 
         Assert.Equal("joules", (string?)reply["goal"]!["kind"]);
@@ -119,7 +122,7 @@ public sealed class BatteryChargeTests
             PowerStoreKind.StationBattery, null, ChargeGoal.Full.Apply(0.0, 3600000.0)));
         ThingView rocket = new ThingView(new ThingId(9), null, "Rocket");
 
-        JObject reply = JObject.Parse(WireCheck.New(new SetBatteryChargeView(true, ChargeGoal.Full, rocket,
+        JObject reply = JObject.Parse(WireCheck.New(new SetBatteryChargeView(ChargeGoal.Full, rocket,
             batch.Build(), 3600000.0)));
 
         JObject result = (JObject)reply["results"]![0]!;
@@ -128,6 +131,43 @@ public sealed class BatteryChargeTests
         Assert.Equal("station_battery", (string?)result["kind"]);
         Assert.Null(reply["goal"]!["value"]);
         Assert.Equal("9", (string?)reply["found_in"]!["reference_id"]);
+    }
+
+    [Fact]
+    public void TheReportListsEachBatteryAsATargetAndEachRefusalAsAProblem()
+    {
+        ThingView cell = new ThingView(new ThingId(101), "ItemBatteryCell", "Battery Cell (Small)");
+        List<BatteryResult> results = new List<BatteryResult>
+        {
+            new BatteryResult.Charged(0, cell, PowerStoreKind.BatteryCell, null,
+                ChargeGoal.Full.Apply(12345.67, CellCapacity)),
+            new BatteryResult.Refused(1, new ThingId(102), ApiErrors.Refused("not_a_battery", "Wall 102 stores no power."))
+        };
+
+        JObject report = BatteryReplies.Reported(ChargeGoal.Full, null, results, "[undo]");
+
+        Assert.Equal(new List<string>
+        {
+            "goal", "count", "success_count", "error_count", "added_j", "problems", "report_only", "targets"
+        }, Names(report));
+        Assert.Equal("[101, Battery Cell (Small), 12345.7 -> 36000] [undo]", (string?)report["targets"]![0]!["text"]);
+        Assert.Equal(1, (int)report["problems"]![0]!["index"]!);
+        Assert.Equal("102", (string?)report["problems"]![0]!["reference_id"]);
+        Assert.Equal("not_a_battery", (string?)report["problems"]![0]!["code"]);
+    }
+
+    [Fact]
+    public void TheActedReplyHasNoReportKeys()
+    {
+        ThingView cell = new ThingView(new ThingId(101), "ItemBatteryCell", "Battery Cell (Small)");
+        JObject reply = BatteryReplies.Acted(ChargeGoal.Full, null, new List<BatteryResult>
+        {
+            new BatteryResult.Charged(0, cell, PowerStoreKind.BatteryCell, null, ChargeGoal.Full.Apply(0.0, CellCapacity))
+        });
+
+        Assert.Equal(new List<string> { "goal", "results", "count", "success_count", "error_count", "added_j" },
+            Names(reply));
+        Assert.Equal(36000.0, (double)reply["added_j"]!);
     }
 
     private static List<string> Names(JObject entry)

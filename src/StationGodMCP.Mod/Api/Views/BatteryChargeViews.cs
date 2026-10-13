@@ -9,15 +9,14 @@ using StationGodMCP.Pure;
 namespace StationGodMCP.Api.Views;
 
 /// <summary>
-/// set_battery_charge's reply: the goal, where the batteries were found (rocket and in_id forms), one result per
-/// battery, and the joules the run adds (negative when it drains).
+/// write battery's reply: the goal, where the batteries were found (the rocket and within forms), one result per
+/// battery, and the joules the call adds (negative when it drains).
 /// </summary>
 internal sealed class SetBatteryChargeView
 {
-    internal SetBatteryChargeView(bool dryRun, ChargeGoal goal, ThingView? foundIn, BatchResultView batch,
+    internal SetBatteryChargeView(ChargeGoal goal, ThingView? foundIn, BatchResultView batch,
         double addedJ)
     {
-        DryRun = dryRun;
         Goal = new ChargeGoalView(goal);
         FoundIn = foundIn;
         Results = batch.Results;
@@ -27,11 +26,9 @@ internal sealed class SetBatteryChargeView
         AddedJ = Math.Round(addedJ, 1);
     }
 
-    public bool DryRun { get; }
-
     public ChargeGoalView Goal { get; }
 
-    /// <summary>The rocket or the holder searched; absent in the reference_ids form.</summary>
+    /// <summary>The rocket or the holder searched; absent in the id form.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public ThingView? FoundIn { get; }
 
@@ -61,7 +58,7 @@ internal sealed class ChargeGoalView
     public double? Value { get; }
 }
 
-/// <summary>One battery's charge before and after (predicted on a dry run, read back on a real run).</summary>
+/// <summary>One battery's charge before and after (predicted for a report, read back once set).</summary>
 internal sealed class BatteryChargedView : BatchItemView
 {
     private const int JouleDecimals = 1;

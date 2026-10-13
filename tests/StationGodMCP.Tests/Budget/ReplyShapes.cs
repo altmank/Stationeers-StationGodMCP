@@ -221,12 +221,6 @@ internal static class ReplyShapes
         {
             PlaceReportInto(S<ShowPreviewView>()).List("ShowPreviewView.Notes", 0)
         };
-        // A suit, its tools and a few lockers' cells; a whole battery room is a larger, deliberate call.
-        shapes["set_battery_charge"] = new[]
-        {
-            S<SetBatteryChargeView>().List("SetBatteryChargeView.Results", W.TypicalBatch)
-                .Holds("SetBatteryChargeView.Results", typeof(BatteryChargedView))
-        };
         shapes["solar_aim"] = new[] { S<SolarFixedView>(), S<SolarTurnView>() };
         foreach (string tool in new[] { "trader_buy", "trader_sell" })
         {

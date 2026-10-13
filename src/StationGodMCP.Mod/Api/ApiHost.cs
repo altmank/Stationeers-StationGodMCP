@@ -41,7 +41,6 @@ internal static class ApiHost
             ["trader_inventory"] = static args => TraderInventoryApi.Handle(args),
             ["solar_aim"] = static args => SolarAimApi.Handle(args),
             ["advance_build_state"] = static args => AdvanceBuildStateApi.Handle(args),
-            ["set_battery_charge"] = static args => SetBatteryChargeApi.Handle(args),
             ["move_player"] = static args => MovePlayerApi.Handle(args),
             ["ignition_risk"] = static args => IgnitionRiskApi.Handle(args),
             ["plant_genes"] = static args => PlantGenesApi.Handle(args),

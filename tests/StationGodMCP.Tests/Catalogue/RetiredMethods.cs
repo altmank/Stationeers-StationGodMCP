@@ -54,6 +54,7 @@ internal static class RetiredMethods
         "sample_logic",
         "screen_press",
         "screen_read",
+        "set_battery_charge",
         "set_ic_pins",
         "set_ic_source",
         "set_uplink",

@@ -1,11 +1,12 @@
 #nullable enable
 
-using StationGodMCP.Pure.Protocol;
+using System.Collections.Generic;
+using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Pure;
 
 /// <summary>
-/// The charge set_battery_charge gives a battery: full (the default), a share of its capacity, or a number of joules.
+/// The charge write battery gives a battery: full (the default), a share of its capacity, or a number of joules.
 /// Full is the whole capacity, as the console's 'power chargeall' sets it (PowerCommand), not the 99.9 % the
 /// 'setbatteries Full' state gives (IChargable.SetPower); the game shows both as Full.
 /// </summary>
@@ -17,13 +18,15 @@ internal abstract class ChargeGoal
 
     internal static readonly ChargeGoal Full = new FullCharge();
 
-    /// <summary>The goal ratio or joules name; both at once, a ratio outside 0 to 1, or negative joules is null.</summary>
-    internal static ChargeGoal? Of(double? ratio, double? joules, out string? problem)
+    /// <summary>
+    /// The goal ratio or joules name, full when neither is given; null with the problem added for both at once, a
+    /// ratio outside 0 to 1, or negative joules.
+    /// </summary>
+    internal static ChargeGoal? Of(double? ratio, double? joules, List<OptionProblem> problems)
     {
-        problem = null;
         if (ratio.HasValue && joules.HasValue)
         {
-            problem = "Pass ratio or joules, not both.";
+            problems.Add(new OptionProblem("joules", "goes without ratio: give one of them, or neither for full"));
             return null;
         }
 
@@ -31,7 +34,7 @@ internal abstract class ChargeGoal
         {
             if (ratio.Value < 0.0 || ratio.Value > 1.0)
             {
-                problem = Vocabulary.Text("Argument '{arg:ratio}' must be from 0 to 1.");
+                problems.Add(new OptionProblem("ratio", "must be from 0 to 1"));
                 return null;
             }
 
@@ -42,7 +45,7 @@ internal abstract class ChargeGoal
         {
             if (joules.Value < 0.0)
             {
-                problem = Vocabulary.Text("Argument '{arg:joules}' must be 0 or more.");
+                problems.Add(new OptionProblem("joules", "must be 0 or more"));
                 return null;
             }
 

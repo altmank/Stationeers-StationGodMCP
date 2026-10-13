@@ -592,7 +592,6 @@
         "variants": [
           {
             "keys": {
-              "dry_run": "bool",
               "goal": "{kind: str, value: float | None}",
               "found_in": "Thing | None",
               "results": "list[{index: int, ok: bool, reference_id: str, prefab_name: str | None, display_name: str | None, kind: str, held_by: Thing | None, capacity_j: float, before_j: float, after_j: float, before_ratio: float | None, after_ratio: float | None, clamped: bool | None} | {index: int, ok: bool, reference_id: str | None, error: Error} | {index: int, ok: bool, error: Error}]",

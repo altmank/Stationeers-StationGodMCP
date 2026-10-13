@@ -10,7 +10,6 @@ def write(what: Literal['battery'], *,
     Reports in a report run; acts in a confirmed run.
     Cheat: ask the user first.
     Reply:
-      dry_run: bool
       goal: {kind: str, value: float | None}
       found_in: Thing | None
       results: list[{index: int, ok: bool, reference_id: str, prefab_name: str | None, display_name: str | None, kind: str, held_by: Thing | None,
