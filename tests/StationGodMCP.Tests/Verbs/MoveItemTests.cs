@@ -66,22 +66,47 @@ public sealed class MoveItemTests
     // ---- act or report ----
 
     [Theory]
-    [InlineData("""{"id": "1", "to": "2"}""", true)]
-    [InlineData("""{"id": ["1", "3"], "to": "2", "slot": 4}""", true)]
-    [InlineData("""{"id": "1", "to": "2", "slot": 4, "force": true}""", false)]
-    [InlineData("""{"id": "1", "to": "2", "slot": 4, "force": true, "confirm": true}""", true)]
-    [InlineData("""{"to": "9", "prefab": "*Ore*"}""", false)]
-    [InlineData("""{"to": "9", "location": "player"}""", false)]
-    [InlineData("""{"to": "9", "id": ["5", "6"], "location": "any"}""", true)]
-    [InlineData("""{"source": "9", "prefab": "ItemIronIngot", "quantity": 5, "to": "player"}""", false)]
-    [InlineData("""{"source": "9", "reagent": "Iron", "quantity": 5, "to": "player"}""", true)]
-    [InlineData("""{"source": "9", "to": "8", "items": "all"}""", true)]
-    [InlineData("""{"to": "9", "items": [{"id": "5", "quantity": 2}]}""", true)]
-    public void TypedIdsActAndForceOrAFilterReportsUntilConfirm(string json, bool acts)
+    [InlineData("slot", """{"id": "1", "to": "2"}""", true)]
+    [InlineData("slot", """{"id": ["1", "3"], "to": "2", "slot": 4}""", true)]
+    [InlineData("slot", """{"id": "1", "to": "2", "slot": 4, "force": true}""", false)]
+    [InlineData("slot", """{"id": "1", "to": "2", "slot": 4, "force": true, "confirm": true}""", true)]
+    [InlineData("into_vault", """{"to": "9", "prefab": "*Ore*"}""", false)]
+    [InlineData("into_vault", """{"to": "9", "location": "player"}""", false)]
+    [InlineData("into_vault", """{"to": "9", "id": ["5", "6"], "location": "any"}""", true)]
+    [InlineData("out_of_vault", """{"source": "9", "prefab": "ItemIronIngot", "quantity": 5, "to": "player"}""", false)]
+    [InlineData("out_of_vault", """{"source": "9", "reagent": "Iron", "quantity": 5, "to": "player"}""", true)]
+    [InlineData("vault_to_vault", """{"source": "9", "to": "8", "items": "all"}""", true)]
+    [InlineData("into_vault", """{"to": "9", "items": [{"id": "5", "quantity": 2}]}""", true)]
+    public void TypedIdsActAndForceOrAFilterReportsUntilConfirm(string route, string json, bool acts)
     {
         MoveItemOptions options = Options(json);
 
-        Assert.Equal(acts, ItemMoveGiven.Acts(options, ItemMoveGiven.Of(options)));
+        Assert.Equal(acts, ItemMoveGiven.Acts(route, options, ItemMoveGiven.Of(options)));
+    }
+
+    [Theory]
+    [InlineData("into_vault", """{"to": "9"}""")]
+    [InlineData("into_silo", """{"to": "9"}""")]
+    [InlineData("into_vault", """{"to": "9", "location": "any", "category": "any"}""")]
+    [InlineData("into_silo", """{"to": "9", "location": "any"}""")]
+    public void ADepositWithNoIdsAndDefaultFiltersReportsUntilConfirm(string route, string json)
+    {
+        MoveItemOptions options = Options(json);
+
+        Assert.False(ItemMoveGiven.Acts(route, options, ItemMoveGiven.Of(options)));
+        MoveItemOptions confirmed = Options(json.Replace("{", """{"confirm": true, """));
+        Assert.True(ItemMoveGiven.Acts(route, confirmed, ItemMoveGiven.Of(confirmed)));
+    }
+
+    [Theory]
+    [InlineData("into_vault", """{"to": "9", "id": "5"}""")]
+    [InlineData("into_silo", """{"to": "9", "id": ["5", "6"]}""")]
+    [InlineData("into_silo", """{"to": "9", "items": [{"id": "5"}]}""")]
+    public void ADepositByTypedIdsOrItemLinesActs(string route, string json)
+    {
+        MoveItemOptions options = Options(json);
+
+        Assert.True(ItemMoveGiven.Acts(route, options, ItemMoveGiven.Of(options)));
     }
 
     // ---- slot moves ----
@@ -209,6 +234,16 @@ public sealed class MoveItemTests
     }
 
     // ---- out of a store ----
+
+    [Fact]
+    public void AMoveFromAVaultToItselfIsRefusedSameVault()
+    {
+        VerbError same = VaultTransferOrder.SameVault(Options("""{"source": "5", "to": " 5", "items": "all"}"""))!;
+
+        Assert.Equal("same_vault", same.Code);
+        Assert.Equal("source and to name the same vault; nothing to move.", same.Message);
+        Assert.Null(VaultTransferOrder.SameVault(Options("""{"source": "5", "to": "6", "items": "all"}""")));
+    }
 
     [Fact]
     public void AMoveOutOfAStoreNamesOneThingAQuantityAndAHolder()

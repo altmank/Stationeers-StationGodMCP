@@ -16,8 +16,8 @@ namespace StationGodMCP.Verbs;
 /// move item (catalogue move.json): items into a slot or the player's hands with the game's own moves (MovePlanner),
 /// or into or out of a vault or silo store (VaultDeposits, VaultWithdrawals, VaultTransfers, SiloDeposits,
 /// SiloWithdrawals). The route (ItemMoveRoutes) is settled first: slot or moves make a slot move; a vault or silo as
-/// source or to makes a store move. Typed ids act at once; force (a cheat) and every filter (a spread, prefab
-/// included) report until confirm (ItemMoveGiven.Acts).
+/// source or to makes a store move. Typed ids act at once; force (a cheat), every filter (a spread, prefab
+/// included) and a move into a store that names no things report until confirm (ItemMoveGiven.Acts).
 /// </summary>
 internal static class MoveItem
 {
@@ -60,7 +60,8 @@ internal static class MoveItem
             return new VerbOutcome.Refused(OptionProblem.Refusal(label, problems));
         }
 
-        ReportConfirm report = new ReportConfirm(true, ItemMoveGiven.Acts(options, given), options.Report.Rows);
+        ReportConfirm report = new ReportConfirm(true, ItemMoveGiven.Acts(route, options, given),
+            options.Report.Rows);
         return route switch
         {
             ItemMoveRoutes.Slot => Slot(options, report, label),
@@ -185,6 +186,11 @@ internal static class MoveItem
 
     private static VerbOutcome Transfer(MoveItemOptions options, ReportConfirm report, string label)
     {
+        if (VaultTransferOrder.SameVault(options) is { } same)
+        {
+            return new VerbOutcome.Refused(same);
+        }
+
         List<OptionProblem> problems = new List<OptionProblem>();
         VaultTransferOrder? order = VaultTransferOrder.Of(options, problems, out VerbError? missing);
         if (order == null)

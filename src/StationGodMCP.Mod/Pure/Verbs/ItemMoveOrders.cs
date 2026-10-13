@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Api.Shared;
 
 namespace StationGodMCP.Pure.Verbs;
 
@@ -131,13 +132,20 @@ internal static class ItemMoveGiven
 
     /// <summary>
     /// Whether the call acts without confirm (PLAN 2.0; B2-2 c, d): force is a cheat and every filter a spread
-    /// (prefab whenever given, D-A1-9), so either reports until confirm; typed ids act at once.
+    /// (prefab whenever given, D-A1-9), so either reports until confirm; typed ids act at once. A move into a store
+    /// that names its things by neither typed ids nor item lines is a spread too, whatever location and category
+    /// say: it would take the nearest things of any kind.
     /// </summary>
-    internal static bool Acts(MoveItemOptions options, List<string> given)
+    internal static bool Acts(string route, MoveItemOptions options, List<string> given)
     {
         if (options.Report.Confirm)
         {
             return true;
+        }
+
+        if (route is ItemMoveRoutes.IntoVault or ItemMoveRoutes.IntoSilo && !NamesThings(options))
+        {
+            return false;
         }
 
         foreach (string option in given)
@@ -150,6 +158,10 @@ internal static class ItemMoveGiven
 
         return true;
     }
+
+    // Typed ids, or item lines (items as a list of lines).
+    private static bool NamesThings(MoveItemOptions options) =>
+        options.Selector.Ids != null || options.Items is { Type: JTokenType.Array };
 
     /// <summary>Every option given that the route does not take, and an allow word it does not take, as problems.</summary>
     internal static void RouteProblems(string route, MoveItemOptions options, List<string> given,
@@ -711,6 +723,14 @@ internal sealed class VaultTransferOrder
 
     /// <summary>The lines asked for; null moves every line.</summary>
     public List<TransferAsk>? Asks { get; }
+
+    /// <summary>same_vault when source and to are one vault's id: nothing to move.</summary>
+    internal static VerbError? SameVault(MoveItemOptions options) =>
+        options.Source is { } source && options.To is { } to
+        && ThingId.TryRead(new JValue(source), out ThingId from) && ThingId.TryRead(new JValue(to), out ThingId into)
+        && from.Equals(into)
+            ? new VerbError("same_vault", "source and to name the same vault; nothing to move.")
+            : null;
 
     /// <summary>The order; null with the problems added, or with nothing named (missing is then set).</summary>
     internal static VaultTransferOrder? Of(MoveItemOptions options, List<OptionProblem> problems,

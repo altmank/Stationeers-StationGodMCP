@@ -53,16 +53,18 @@ internal sealed class DepositAsk
 
 /// <summary>
 /// How many things a deposit takes when at_most is left out (D-A3-10): a vault 256, a silo 64. A filter that keeps
-/// more is cut there and the cut is noted (Truncations), as the most at_most allows.
+/// more is cut there and the cut is noted (Truncations) with the most the store can take in one move: at_most's
+/// 1000 for a vault, the silo's 600 entries (SiloRules.Capacity) for a silo.
 /// </summary>
 internal static class DepositLimits
 {
     internal const int Vault = ReplyDefaults.VaultDepositItems;
     internal const int Silo = ReplyDefaults.SiloDepositItems;
-    internal const int Most = 1000;
+    internal const int VaultMost = 1000;
+    internal const int SiloMost = SiloRules.Capacity;
 
-    internal static void NoteCut(int taken, int matched) =>
-        Truncations.Capped("items.results", taken, matched, "at_most", Most);
+    internal static void NoteCut(int taken, int matched, int most) =>
+        Truncations.Capped("items.results", taken, matched, "at_most", most);
 }
 
 /// <summary>The holder a move out of a store makes the items into: anything with slots but a vault or silo.</summary>
@@ -152,7 +154,7 @@ internal static class VaultDeposits
         }
 
         DepositPicks picks = DepositPicks.Nearest(ask.Filter!, kind, ask.AtMost);
-        DepositLimits.NoteCut(picks.Entries.Count, picks.Taken);
+        DepositLimits.NoteCut(picks.Entries.Count, picks.Taken, DepositLimits.VaultMost);
         return picks;
     }
 }
@@ -245,11 +247,6 @@ internal static class VaultTransfers
     {
         HostOnly.Require();
         IngotVaults.RequireLoaded();
-        if (from.Equals(to))
-        {
-            throw ApiErrors.Refused("same_vault", "source and to name the same vault; nothing to move.");
-        }
-
         VaultTarget source = VaultTarget.Resolve(from);
         VaultTarget target = VaultTarget.Resolve(to);
         if (source.Vault == target.Vault)
@@ -406,7 +403,7 @@ internal static class SiloDeposits
         }
 
         SiloDepositList list = SiloDepositList.Nearest(ask.Filter!, ask.AtMost, silo, allowInUse);
-        DepositLimits.NoteCut(list.Picks.Count, list.Taken);
+        DepositLimits.NoteCut(list.Picks.Count, list.Taken, DepositLimits.SiloMost);
         return list;
     }
 
