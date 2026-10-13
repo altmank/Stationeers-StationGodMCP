@@ -10,10 +10,10 @@ using StationGodMCP.Pure;
 using UnityEngine;
 using Weather;
 
-namespace StationGodMCP.Api;
+namespace StationGodMCP.Api.Shared.Game;
 
 /// <summary>
-/// planet: the planet's own atmosphere, the one GlobalGasMix per world (PlanetaryAtmosphereSimulation.GetGlobalGasMix)
+/// The planet's own atmosphere, the one GlobalGasMix per world (PlanetaryAtmosphereSimulation.GetGlobalGasMix)
 /// that every outdoor cell relaxes toward, its three reservoirs (PlanetaryAtmosphereSimulation._liquidClouds,
 /// _iceClouds and _iceCaps, read through GameMembers) and its temperature. In the unmodded game the tank never changes
 /// (PlanetaryAtmosphereSimulation.IsGlobalInteraction is false, so gas vented outdoors is discarded); with a
@@ -28,7 +28,7 @@ namespace StationGodMCP.Api;
 /// GlobalGasMix.Create multiplies by the planet's cells) at the planet's present size. Terraforming Reloaded measures
 /// "this world's starting air" the same way (per cell, so a resized planet starts with the same air per cell).
 /// </summary>
-internal static class PlanetApi
+internal static class PlanetReport
 {
     private const int LastSunAngle = 180;
     private const float FarthestSolarEnergyPercent = 0f;
@@ -56,7 +56,8 @@ internal static class PlanetApi
 
     private static Chemistry.GasType[]? _gasTypes;
 
-    internal static object Handle(Args args)
+    /// <summary>The planet's air, or what is known while no world is loaded (PlanetNotLoadedView).</summary>
+    internal static object Read()
     {
         GlobalGasMix tank = PlanetaryAtmosphereSimulation.GetGlobalGasMix();
         GlobalAtmosphereData? data = WorldSetting.Current?.Data?.GlobalAtmosphereData;

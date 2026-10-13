@@ -5,10 +5,10 @@ using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using Xunit;
 
-namespace StationGodMCP.Tests;
+namespace StationGodMCP.Tests.Verbs;
 
-/// <summary>weather: the wire shape of WeatherView, and WeatherMath's schedule and season arithmetic.</summary>
-public sealed class WeatherWireTests
+/// <summary>inspect weather: the wire shape of WeatherView, and WeatherMath's schedule and season arithmetic.</summary>
+public sealed class InspectWeatherTests
 {
     [Fact]
     public void WireShape()

@@ -31,7 +31,7 @@ internal static class MachineStock
 {
     internal const string Location = MachineStockView.Location;
 
-    /// <summary>Amounts at or below this are rounding left in the mixture (ReagentsApi's rule).</summary>
+    /// <summary>Amounts at or below this are rounding left in the mixture (ThingReagents' rule).</summary>
     private const double TraceAmount = 1e-6;
 
     /// <summary>Every stock entry the filter keeps, one per machine and reagent, in structure order.</summary>

@@ -6,18 +6,17 @@ using System.Collections.Generic;
 using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Motherboards;
 using StationGodMCP.Api.Shared;
-using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 
-namespace StationGodMCP.Api;
+namespace StationGodMCP.Api.Shared.Game;
 
 /// <summary>
-/// inspect_slots: a device's logical slots (ILogicable.TotalSlots, GetSlot: the indexes slot logic uses), what is in
-/// each, and every LogicSlotType it reads there (ILogicable.CanLogicRead, GetLogicValue). One slot with slot_index.
-/// Read only.
+/// A device's logical slots as inspect slots reads them (ILogicable.TotalSlots, GetSlot: the indexes slot logic uses),
+/// what is in each, and every LogicSlotType it reads there (ILogicable.CanLogicRead, GetLogicValue); one slot when
+/// asked. Read only.
 /// </summary>
-internal static class InspectSlotsApi
+internal static class DeviceSlots
 {
     // LogicTypeView is immutable: one per slot logic type, made on first use.
     private static readonly ConcurrentDictionary<LogicSlotType, LogicTypeView> SlotTypeViews =
@@ -26,11 +25,9 @@ internal static class InspectSlotsApi
     private static readonly Func<LogicSlotType, LogicTypeView> MakeSlotTypeView =
         static type => new LogicTypeView((ushort)type, EnumNames<LogicSlotType>.Of(type));
 
-    internal static InspectSlotsView Handle(Args args)
+    /// <summary>Every slot of the device, or the one requested (refused when the device has no such slot).</summary>
+    internal static InspectSlotsView Read(DeviceScope scope, ScopedTarget device, int? requested)
     {
-        DeviceScope scope = Devices.Scope(args);
-        ScopedTarget device = Devices.Require(scope, args.ThingId("reference_id"));
-        int? requested = args.OptionalInt("slot_index", 0, int.MaxValue);
         int total = Devices.TotalSlots(device);
         if (requested.HasValue)
         {

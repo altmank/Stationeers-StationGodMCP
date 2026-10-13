@@ -4,10 +4,10 @@ using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
 using Xunit;
 
-namespace StationGodMCP.Tests;
+namespace StationGodMCP.Tests.Verbs;
 
-/// <summary>looking_at: the wire shape of LookingAtView.</summary>
-public sealed class LookingAtWireTests
+/// <summary>inspect looking_at: the wire shape of LookingAtView.</summary>
+public sealed class InspectLookingAtViewTests
 {
     [Fact]
     public void TargetAndInteractable()

@@ -7,7 +7,6 @@ using Assets.Scripts.Objects.Entities;
 using Assets.Scripts.Objects.Pipes;
 using Assets.Scripts.Util;
 using StationGodMCP.Api.Shared;
-using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
@@ -17,10 +16,10 @@ using StationGodMCP.Pure.RemoteView;
 using Newtonsoft.Json.Linq;
 using UnityEngine;
 
-namespace StationGodMCP.Api;
+namespace StationGodMCP.Api.Shared.Game;
 
 /// <summary>
-/// looking_at: what the local player's crosshair is on, and where the look ray lands in brief; include adds the player,
+/// What the local player's crosshair is on, as inspect looking_at reads it, and where the look ray lands in brief; include adds the player,
 /// the interactable, the camera view, the full hit and a structure's body. Read only.
 ///
 /// The game keeps it in CursorManager.CursorThing (CursorManager.Instance.FoundThing): every frame
@@ -35,11 +34,10 @@ namespace StationGodMCP.Api;
 /// reads the grid where it lands. The camera is the player's (PlayerView): this game's own, or on a dedicated server
 /// the view the player's StationGod sent, read there the same way.
 /// </summary>
-internal static class LookingAtApi
+internal static class LookingAt
 {
-    private const string IncludeArgument = "include";
-
-    private static readonly Dictionary<string, LookParts> PartWords =
+    /// <summary>The include words and the parts each adds.</summary>
+    internal static readonly Dictionary<string, LookParts> PartWords =
         new Dictionary<string, LookParts>(System.StringComparer.OrdinalIgnoreCase)
         {
             ["player"] = LookParts.Player,
@@ -50,23 +48,14 @@ internal static class LookingAtApi
             ["all"] = LookParts.All
         };
 
-    private const double DefaultReachM = 10.0;
-    private const double MaximumReachM = 50.0;
-
     // Within this of an axis, a surface normal names a face.
     private const double FaceDegrees = 10.0;
 
-    internal static LookingAtView Handle(Args args)
+    /// <summary>What the crosshair is on, the look ray cast reach metres, with the parts asked for.</summary>
+    internal static LookingAtView Read(LookParts parts, double reach, string label)
     {
-        LookParts parts = LookPartsOf(args);
         PlayerOrigin origin = PlayerOrigin.Current();
-        double reach = args.OptionalPositiveDouble("max_distance_m") ?? DefaultReachM;
-        if (reach > MaximumReachM)
-        {
-            throw ApiErrors.InvalidArgument($"{Vocabulary.Arg("max_distance_m")} is at most {MaximumReachM}.");
-        }
-
-        CameraView camera = PlayerView.Current().Require(Vocabulary.Tool("looking_at"));
+        CameraView camera = PlayerView.Current().Require(label);
         Thing? thing = camera.Target;
         LookView view = new LookView(camera.Eye, camera.Basis, camera.ThirdPerson, camera.Seated, camera.Source);
         CameraHit? found = camera.HitWithin(reach);
@@ -80,27 +69,6 @@ internal static class LookingAtApi
             parts.HasFlag(LookParts.Interactable) && interactable != null ? InteractableOf(interactable) : null,
             parts.HasFlag(LookParts.View) ? view : null,
             hit);
-    }
-
-    private static LookParts LookPartsOf(Args args)
-    {
-        if (!args.Has(IncludeArgument))
-        {
-            return LookParts.None;
-        }
-
-        LookParts parts = LookParts.None;
-        foreach (JToken entry in args.Array(IncludeArgument, PartWords.Count))
-        {
-            string? word = entry.Type == JTokenType.String ? entry.Value<string>()?.Trim() : null;
-            parts |= word != null && PartWords.TryGetValue(word, out LookParts part)
-                ? part
-                : throw ApiErrors.InvalidArgument(
-                    $"Argument '{Vocabulary.Arg(IncludeArgument)}' takes {string.Join(", ", PartWords.Keys)}; " +
-                    $"'{entry}' is not one of them.");
-        }
-
-        return parts;
     }
 
     private static LookHitView BriefHitOf(CameraHit hit) =>

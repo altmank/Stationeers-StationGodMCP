@@ -60,10 +60,6 @@ internal static class ReplyShapes
         ["get_ic_source"] =
             "Its reply is the chip's source, as long as the chip's program (a 60 KB Lua hub): reading it is the call's " +
             "purpose. output_file writes it to a file and answers a pointer; get_ic_status reads everything else.",
-        ["rocket_status"] =
-            "Every rocket in full is about 7 KB (fuel lines, engines, power devices); four rockets pass the budget. " +
-            "Left to the rocket tools: compact shortens each rocket, rocket_id asks for one, and the explanations come " +
-            "only with explain.",
         ["move_gas"] = "Its replies are built from JSON trees, not views; members of from/to are the request's atmospheres.",
     };
 
@@ -73,38 +69,9 @@ internal static class ReplyShapes
     {
         Dictionary<string, ReplyShape[]> shapes = new Dictionary<string, ReplyShape[]>(StringComparer.Ordinal);
 
-        shapes["atmosphere_contents"] = new[]
-        {
-            // A device's atmospheres: its own, its pipe networks (a filtration unit has three), slot canisters.
-            S<AtmosphereContentsView>().List("AtmosphereContentsView.Atmospheres", 4)
-        };
         shapes["check_replaceable"] = new[]
         {
             S<CheckReplaceableView>().List("CheckReplaceableView.Results", W.TypicalBatch)
-        };
-        shapes["connections"] = new[]
-        {
-            S<ConnectionsView>().List("ConnectionsView.Ends", 4).List("ConnectionEndView.Connected", 2),
-            S<NetworkMembersView>().List("NetworkMembersView.Members", Math.Min(W.CableNetworkMembers, D.ConnectionMembers))
-                .Absent("NetworkMemberView.OpenEnds").Absent("NetworkMemberView.NetworkId")
-                .Holds("NetworkMembersView.Summary", typeof(CableSummaryView)),
-            // summarize: a network holds few prefabs; a pipe network's colours are one or two.
-            S<NetworkOverviewView>().List("NetworkOverviewView.ByPrefab", 12).List("PrefabCountView.Colors", 2)
-                .List("NetworkOverviewView.Devices", D.NetworkOverviewLists)
-                .List("NetworkOverviewView.OpenEnds", D.NetworkOverviewLists).List("NetworkMemberView.OpenEnds", 1)
-                .Absent("NetworkMemberView.NetworkId").Holds("NetworkOverviewView.Summary", typeof(CableSummaryView))
-                .List("NetworkOverviewView.BrokenNeighbours", D.BrokenNeighbours),
-            S<AreaOpenEndsView>().List("AreaOpenEndsView.Members", D.AreaOpenEnds).List("NetworkMemberView.OpenEnds", 2)
-        };
-        shapes["container_contents"] = new[]
-        {
-            // A player: 2 hands, suit, backpack (12 slots) of stacks, a tool belt (8); depth 3.
-            // Only containers (suit, backpack, belt) have slots of their own: one level-two list per three occupants.
-            S<ContainerContentsView>().List("ContainerContentsView.Slots", 10).List("OccupantView.Slots", 1)
-                .Absent("ContainerContentsView.Silo"),
-            // An SDB Silo: its import and export slots, then a page of its store, a backpack with three kinds in it.
-            S<ContainerContentsView>().List("ContainerContentsView.Slots", 2).List("OccupantView.Slots", 0)
-                .List("SiloContentsView.Entries", D.SiloEntries).List("SiloEntryView.Contents", 3)
         };
         shapes["control_ic_execution"] = new[] { S<IcControlView>().Absent("IcControlView.Lua") };
         // One structure's step: a state or two of one or two items each, and a tool.
@@ -113,28 +80,12 @@ internal static class ReplyShapes
             S<AdvanceBuildStateView>().List("AdvanceBuildStateView.Cost", 3).List("AdvanceBuildStateView.Tools", 1)
                 .Absent("BuildCostView.PaidBy")
         };
-        shapes["describe_device"] = new[]
-        {
-            // The full logic type list comes with include_logic_types; a big machine writes about 12 of its 45 to 75.
-            // An uplink's choices are the world's downlinks.
-            S<DescribeDeviceView>().Absent("DescribeDeviceView.LogicTypes").List("DescribeDeviceView.Writable", 12)
-                .List("UmbilicalSearchView.Stops", 3).List("UplinkView.Choices", W.Rockets)
-        };
-        shapes["describe_prefab"] = new[]
-        {
-            S<DescribePrefabView>().List("DescribePrefabView.AllowedRotations", 24).Absent("DescribePrefabView.SmallCells")
-                .List("DescribePrefabView.Ports", 4).List("PrefabEngineView.Inputs", 2),
-            // include_small_cells
-            S<DescribePrefabView>().List("DescribePrefabView.AllowedRotations", 24).List("DescribePrefabView.SmallCells", 16)
-                .List("DescribePrefabView.Ports", 4).List("PrefabEngineView.Inputs", 2)
-        };
         shapes["dish_aim"] = new[] { S<DishAimView>() };
         shapes["find_spot"] = new[]
         {
             S<FindSpotView>().List("FindSpotView.Planes", 2).List("FindSpotView.Spots", D.FindSpots)
                 .List("SpotView.Conflicts", 1).List("FindSpotView.Reasons", 8)
         };
-        shapes["game_clock"] = new[] { S<GameClockView>() };
         shapes["get_ic_status"] = new[]
         {
             S<IcNoChipView>().List("IcNoChipView.Pins", 6),
@@ -154,12 +105,6 @@ internal static class ReplyShapes
         shapes["ignition_risk"] = new[]
         {
             S<IgnitionRiskView>().List("IgnitionRiskView.Items", 20).Absent("IgnitionRiskView.Prefabs")
-        };
-        shapes["inspect_slots"] = new[]
-        {
-            // A machine: up to 12 slots, each with every readable slot logic value.
-            S<InspectSlotsView>().List("InspectSlotsView.Slots", 12).List("SlotDetailView.SpecificPrefabHashes", 0)
-                .List("SlotDetailView.LogicValues", 12)
         };
         shapes["label"] = new[]
         {
@@ -181,12 +126,6 @@ internal static class ReplyShapes
                     "LintRuleView.Message", "LintRuleView.Other", "LintRuleView.LevelWhen")
                 .List("LintRuleSourceView.FromSave", 0).List("LintRuleSourceView.Disabled", 0)
                 .List("LintRuleSourceView.Errors", 0)
-        };
-        // The target and the brief hit; player, interactable, view, the full hit and the body come with include.
-        shapes["looking_at"] = new[]
-        {
-            S<LookingAtView>().Absent("LookingAtView.Player", "LookingAtView.Interactable", "LookingAtView.View",
-                "LookingAtTargetView.Body")
         };
         shapes["mod_info"] = new[]
         {
@@ -254,10 +193,6 @@ internal static class ReplyShapes
                 .Absent("RemoveReportView.Notes"),
             BuildPoll()
         };
-        shapes["planet"] = new[]
-        {
-            S<PlanetNotLoadedView>(), S<PlanetView>()
-        };
         shapes["plant_genes"] = new[]
         {
             // Every gene (19); meanings only with include_notes.
@@ -268,7 +203,6 @@ internal static class ReplyShapes
             S<GenesWrittenView>().List("GenesWrittenView.Results", 12).Holds("GenesWrittenView.Results", typeof(GeneWrittenView))
         };
         shapes["move_player"] = new[] { S<MovePlayerView>() };
-        shapes["player_vitals"] = new[] { S<PlayerVitalsView>() };
         // Bounded by what exists: the scopes and timed methods, the methods called, the last 16 tick holds; scopes and
         // calls are cut by default (x-default-limits), the worst frame's pieces and calls by the view (Shown).
         shapes["profiling"] = new[]
@@ -302,7 +236,6 @@ internal static class ReplyShapes
             S<LogicBatchView>().List("LogicBatchView.Results", W.TypicalBatch).Holds("LogicBatchView.Results", typeof(LogicReadItemView))
         };
         shapes["read_memory"] = new[] { S<MemoryReadView>().List("MemoryReadView.Values", D.IcStackWindow) };
-        shapes["reagents"] = new[] { S<ReagentsView>().List("ReagentsView.Reagents", 12) };
         foreach (string tool in new[] { "replace_frames", "replace_walls" })
         {
             shapes[tool] = new[] { StructureSwapReport() };
@@ -353,12 +286,6 @@ internal static class ReplyShapes
         {
             PlaceReportInto(S<ShowPreviewView>()).List("ShowPreviewView.Notes", 0)
         };
-        // A console page holds a few dozen elements; each prop set is a handful of short texts.
-        shapes["screen_read"] = new[]
-        {
-            S<ScreenReadView>().List("ScreenReadView.Elements", D.ScreenElements).List("ScreenReadView.Surfaces", 3)
-                .List("ScreenSurfaceView.ShownOn", 1).Absent("ScreenElementView.Style", "ScreenReadView.Image")
-        };
         shapes["screen_press"] = new[] { S<ScreenPressView>().Absent("ScreenElementView.Style") };
         // A suit, its tools and a few lockers' cells; a whole battery room is a larger, deliberate call.
         shapes["set_battery_charge"] = new[]
@@ -367,17 +294,6 @@ internal static class ReplyShapes
                 .Holds("SetBatteryChargeView.Results", typeof(BatteryChargedView))
         };
         shapes["solar_aim"] = new[] { S<SolarFixedView>(), S<SolarTurnView>() };
-        shapes["thing_health"] = new[]
-        {
-            S<HealthView>().List("HealthView.Networks", 1).List("HealthView.DamageRecord", 3),
-            S<BatchResultView>().List("BatchResultView.Results", W.TypicalBatch).Holds("BatchResultView.Results", typeof(HealthItemView))
-                .List("HealthView.Networks", 1).List("HealthItemView.Networks", 1)
-                .List("HealthView.DamageRecord", 3).List("HealthItemView.DamageRecord", 3).Absent("HealthView.BuildState"),
-            // Only the one-thing form reads build states.
-            S<HealthNetworkView>().List("HealthNetworkView.Things", Math.Min(W.CableNetworkMembers, D.HealthThings))
-                .List("HealthView.Networks", 1).List("HealthView.DamageRecord", 3).Absent("HealthView.BuildState")
-                .List("HealthNetworkView.BrokenNeighbours", D.BrokenNeighbours)
-        };
         foreach (string tool in new[] { "trader_buy", "trader_sell" })
         {
             shapes[tool] = new[]
@@ -413,11 +329,6 @@ internal static class ReplyShapes
 
         shapes["clean_chutes"] = new[] { ChuteCleanReport() };
 
-        shapes["vault_contents"] = new[]
-        {
-            S<VaultContentsView>().List("VaultContentsView.Vaults", W.Vaults).List("VaultContentsEntryView.Stock", 20)
-                .List("VaultContentsView.RemoteVaults", 2)
-        };
         shapes["vault_deposit"] = new[]
         {
             S<VaultDepositView>().List("BatchResultView.Results", W.TypicalBatch)
@@ -443,7 +354,6 @@ internal static class ReplyShapes
             // Two stacks topped up and a new one, from three entries.
             S<SiloWithdrawView>().List("SiloWithdrawView.Taken", 3).List("SiloWithdrawView.Placed", 3)
         };
-        shapes["weather"] = new[] { S<WeatherView>().List("WeatherView.Events", 6) };
         shapes["write_logic"] = new[] { S<LogicWriteView>() };
         shapes["write_logic_many"] = new[]
         {

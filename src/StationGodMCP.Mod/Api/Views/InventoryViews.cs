@@ -467,18 +467,18 @@ internal sealed class ShownSlots
 }
 
 /// <summary>
-/// container_contents' prefab_contains and name_contains: the slots whose occupant matches (any case, part of the
-/// prefab name or the shown name), or holds a match at any depth, with only those inner slots. A matching occupant
-/// keeps all it holds; empty slots and slots holding no match are left out.
+/// inspect contents' prefab and name: the slots whose occupant matches (prefab keeps its prefab name; name is part of
+/// the shown name, any case), or holds a match at any depth, with only those inner slots. A matching occupant keeps
+/// all it holds; empty slots and slots holding no match are left out.
 /// </summary>
 internal sealed class SlotFilter
 {
-    private readonly string? _prefab;
+    private readonly System.Func<string?, bool>? _prefab;
     private readonly string? _name;
 
-    internal SlotFilter(string? prefabContains, string? nameContains)
+    internal SlotFilter(System.Func<string?, bool>? prefab, string? nameContains)
     {
-        _prefab = string.IsNullOrWhiteSpace(prefabContains) ? null : prefabContains!.Trim();
+        _prefab = prefab;
         _name = string.IsNullOrWhiteSpace(nameContains) ? null : nameContains!.Trim();
     }
 
@@ -519,7 +519,7 @@ internal sealed class SlotFilter
     /// <summary>A silo entry matches by its own prefab or shown name, or by a prefab stored inside it.</summary>
     internal bool Keeps(SiloEntryView entry)
     {
-        if (!IsActive || ((_prefab == null || Contains(entry.PrefabName, _prefab)) &&
+        if (!IsActive || ((_prefab == null || _prefab(entry.PrefabName)) &&
                           (_name == null || Contains(entry.DisplayName, _name))))
         {
             return true;
@@ -532,7 +532,7 @@ internal sealed class SlotFilter
 
         foreach (SiloContentView content in entry.Contents)
         {
-            if (Contains(content.PrefabName, _prefab))
+            if (_prefab(content.PrefabName))
             {
                 return true;
             }
@@ -542,7 +542,7 @@ internal sealed class SlotFilter
     }
 
     private bool Matches(OccupantView occupant) =>
-        (_prefab == null || Contains(occupant.PrefabName, _prefab)) &&
+        (_prefab == null || _prefab(occupant.PrefabName)) &&
         (_name == null || Contains(occupant.DisplayName, _name));
 
     private static bool Contains(string? text, string part) =>

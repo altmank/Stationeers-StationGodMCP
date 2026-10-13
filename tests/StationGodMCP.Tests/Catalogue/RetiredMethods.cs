@@ -14,40 +14,52 @@ internal static class RetiredMethods
 {
     internal static IReadOnlyCollection<string> Names { get; } = new HashSet<string>(StringComparer.Ordinal)
     {
+        "atmosphere_contents",
+        "connections",
         "consumables",
+        "container_contents",
         "deep_miner_spots",
-        "find_items",
+        "describe_device",
+        "describe_prefab",
         "feed_paths",
+        "find_items",
         "find_things",
-        "item_totals",
+        "game_clock",
         "grid_survey",
+        "inspect_slots",
+        "item_totals",
         "landing_pads",
         "list_containers",
         "list_devices",
         "list_gateways",
+        "looking_at",
         "outer_frames",
+        "planet",
         "plants",
+        "player_vitals",
+        "reagents",
+        "rocket_status",
         "rooms",
         "sample_logic",
+        "screen_read",
+        "thing_health",
+        "vault_contents",
         "wall_map",
-        "water_sources"
+        "water_sources",
+        "weather"
     };
 
     internal static bool Has(string? name) => name != null && ((HashSet<string>)Names).Contains(name);
 
     /// <summary>
     /// The arguments of a method catalogue entry whose form the game answers as a verb while the entry's other form
-    /// keeps its per-tool handler: connections' network and box forms (survey network). The checks that hold an
-    /// entry's arguments to its handler pass over them.
+    /// keeps its per-tool handler: plant_genes' reads (inspect genes). The checks that hold an entry's arguments to its
+    /// handler pass over them.
     /// </summary>
     internal static IReadOnlyDictionary<string, HashSet<string>> Forms { get; } =
         new Dictionary<string, HashSet<string>>(StringComparer.Ordinal)
         {
-            ["connections"] = new HashSet<string>(StringComparer.Ordinal)
-            {
-                "network_id", "kind", "limit", "offset", "prefab_contains", "open_ends_only", "min", "max", "near",
-                "radius_m", "summarize"
-            }
+            ["plant_genes"] = new HashSet<string>(StringComparer.Ordinal) { "reference_ids", "include_notes" }
         };
 
     internal static bool HasArgument(string method, string argument) =>

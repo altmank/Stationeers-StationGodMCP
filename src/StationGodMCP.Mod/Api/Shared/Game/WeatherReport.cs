@@ -8,10 +8,10 @@ using StationGodMCP.Pure;
 using Trading;
 using Weather;
 
-namespace StationGodMCP.Api;
+namespace StationGodMCP.Api.Shared.Game;
 
 /// <summary>
-/// weather: the storm schedule (Weather.WeatherManager), the world's weather events and the season. Read only.
+/// The storm schedule (Weather.WeatherManager), the world's weather events and the season. Read only.
 ///
 /// How the game schedules (CODE WeatherManager.ManagerUpdate): with no event current, it picks one at random
 /// (WorldSetting.WeatherEvents.Pick) as soon as CanScheduleWeatherEvent holds, i.e. DaysSinceLastWeatherEvent &gt;
@@ -26,11 +26,11 @@ namespace StationGodMCP.Api;
 /// solar days from it with SolDegreesPerDay (TidallyLockedMoonSolarDegreesPerDay for a moon, against its planet's
 /// angle), which gives the year length and the day since perihelion (WeatherMath).
 /// </summary>
-internal static class WeatherApi
+internal static class WeatherReport
 {
     private const float StartDelayDaysPerMultiplier = 7f;
 
-    internal static WeatherView Handle(Args args)
+    internal static WeatherView Read()
     {
         WorldSetting? world = WorldSetting.Current;
         DifficultySetting? difficulty = DifficultySetting.Current;

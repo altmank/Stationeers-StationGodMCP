@@ -3,12 +3,18 @@
 using System.Collections.Generic;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure.Verbs;
+using Newtonsoft.Json.Linq;
 using Xunit;
 
-namespace StationGodMCP.Tests;
+namespace StationGodMCP.Tests.Verbs;
 
-/// <summary>container_contents: the filters keep slots holding a match at any depth; fields paths reach nested slots.</summary>
-public sealed class ContainerContentsShapeTests
+/// <summary>
+/// inspect contents as its handler reads it (the slots themselves need the game): prefab and name keep slots holding a
+/// match at any depth, empty slots are left out and counted, fields paths reach nested slots, and a silo's entries page
+/// by the catalogue's limit (10, at most 600) and by offset only.
+/// </summary>
+public sealed class InspectContentsTests
 {
     private static OccupantView Item(long id, string prefab, string name, List<SlotView>? slots = null) =>
         new OccupantView(new ThingView(new ThingId(id), prefab, name), 1, null, slots, null);
@@ -27,7 +33,9 @@ public sealed class ContainerContentsShapeTests
     [Fact]
     public void AFilterKeepsMatchesAtAnyDepthAndOnlyTheirSlots()
     {
-        List<SlotView> kept = new SlotFilter("steel", null).Apply(Locker());
+        PrefabFilter steel = PrefabFilter.Bind(new OptionReader(InspectContentsOptions.Spec,
+            JObject.Parse("""{"prefab": "*steel*"}""")))!;
+        List<SlotView> kept = new SlotFilter(name => steel.Keeps(name, 0), null).Apply(Locker());
 
         SlotView backpack = Assert.Single(kept);
         Assert.Equal(2, backpack.Index);
@@ -112,4 +120,23 @@ public sealed class ContainerContentsShapeTests
         Assert.Equal("""{"reference_id":"9","slots":[{"index":0,"name":"Slot","occupant":{"prefab_name":"ItemHardBackpack","quantity":1}},{"index":1,"name":"Slot","occupant":null}]}""",
             ShapingChecks.ModOmit(reply, new[] { "slots.occupant.slots" }));
     }
+
+    [Fact]
+    public void ASilosEntriesPageTenAtATimeUpTo600AndByOffsetOnly()
+    {
+        Pure.Verbs.Paging paging = InspectContentsOptions.Bind(new OptionReader(InspectContentsOptions.Spec,
+            JObject.Parse("""{"id": "5"}"""))).Paging;
+        Pure.Verbs.Paging later = InspectContentsOptions.Bind(new OptionReader(InspectContentsOptions.Spec,
+            JObject.Parse("""{"id": "5", "cursor": "k4"}"""))).Paging;
+
+        Assert.Equal(10, paging.Limit);
+        Assert.Equal(0, paging.Offset);
+        Assert.Null(Check("""{"what": "contents", "id": "5", "limit": 600, "offset": 20}"""));
+        Assert.NotNull(Check("""{"what": "contents", "id": "5", "limit": 601}"""));
+        Assert.Null(paging.OffsetOnly());
+        Assert.Equal("cursor", later.OffsetOnly()!.Path);
+    }
+
+    private static VerbError? Check(string options) =>
+        OptionCheck.Check(VerbSurface.Verb("inspect")!, JObject.Parse(options), out _);
 }

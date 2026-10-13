@@ -61,7 +61,7 @@ internal static class ReadDevicesApi
             batch.Succeeded(new DeviceReadItemView(index, id, Read(scope, item, subject)));
         }
 
-        return new ReadDevicesView(scope.Id, request.Clock ? GameClockApi.Now() : null, batch.Build());
+        return new ReadDevicesView(scope.Id, request.Clock ? WorldClock.Now() : null, batch.Build());
     }
 
     private static DeviceReadParts Read(DeviceScope scope, DeviceReadItem item, Subject subject)
@@ -96,7 +96,7 @@ internal static class ReadDevicesApi
             ? Part("atmosphere", errors, () => Atmosphere(subject, item.Atmosphere))
             : null;
         ReagentsReadView? reagents = item.Reagents
-            ? Part("reagents", errors, () => ReagentsApi.ReadingOf(subject.RequireThing()))
+            ? Part("reagents", errors, () => ThingReagents.ReadingOf(subject.RequireThing()))
             : null;
         return new DeviceReadParts(logic, slots, atmosphere, reagents, errors);
     }

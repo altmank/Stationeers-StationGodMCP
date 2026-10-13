@@ -8,14 +8,13 @@ using Assets.Scripts.Objects.Electrical;
 using Assets.Scripts.Objects.Entities;
 using Assets.Scripts.Objects.Items;
 using StationGodMCP.Api.Shared;
-using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 using UnityEngine;
 
-namespace StationGodMCP.Api;
+namespace StationGodMCP.Api.Shared.Game;
 
 /// <summary>
-/// player_vitals: the player's hunger and thirst. Read only.
+/// The player's hunger and thirst, as inspect player reads them. Read only.
 ///
 /// The rates copy Human.LifeNutrition and Human.LifeDehydrate, which run once per game tick
 /// (GameManager.GameTickSpeedSeconds) from AtmosphericsManager.LifeTicksTick through Entity.OnLifeTick.
@@ -29,14 +28,14 @@ namespace StationGodMCP.Api;
 /// metabolism, where loss and scaleRate are Human's private statics (read, so an update that changes them is
 /// followed) and T is the suit's inside while a suit is worn with its helmet closed, otherwise the air at the player.
 /// </summary>
-internal static class PlayerVitalsApi
+internal static class PlayerVitals
 {
     private const float LowMood = 0.25f;
     private const float LowMoodHunger = 1.1f;
     private const float SleepingFactor = 0.5f;
     private const float MinimumTemperatureTerm = 0.1f;
 
-    internal static PlayerVitalsView Handle(Args args)
+    internal static PlayerVitalsView Read()
     {
         Human human = PlayerOrigin.RequireHuman();
         DifficultySetting difficulty = DifficultySetting.Current;

@@ -223,25 +223,3 @@ internal abstract class SiloDepositForm
         internal int Limit { get; }
     }
 }
-
-/// <summary>container_contents on a silo: which page of its stored entries (entries_offset, entries_limit).</summary>
-internal static class SiloEntriesPage
-{
-    internal const int Maximum = Pure.SiloRules.Capacity;
-
-    internal static PageRequest Of(Args args) =>
-        PageRequest.Of(args.OptionalInt("entries_offset", 0, Maximum) ?? 0,
-            args.OptionalInt("entries_limit", 1, Maximum) ?? ReplyDefaults.SiloEntries, Maximum);
-
-    /// <summary>The page held back entries: how many of the total, and how to get the rest.</summary>
-    internal static void Note(PageRequest page, int returned, int total)
-    {
-        int next = page.Offset + returned;
-        string more = Vocabulary.Text("pass {arg:entries_limit} (max ") +
-                      Maximum.ToString(CultureInfo.InvariantCulture) + ")" +
-                      (next < total
-                          ? Vocabulary.Text(" or {arg:entries_offset} ") + next.ToString(CultureInfo.InvariantCulture)
-                          : string.Empty);
-        Pure.Shaping.Truncations.Note("silo.entries", returned, total, more);
-    }
-}

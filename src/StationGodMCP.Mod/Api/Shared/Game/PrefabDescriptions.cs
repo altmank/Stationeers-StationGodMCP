@@ -5,7 +5,6 @@ using Assets.Scripts;
 using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Pipes;
 using StationGodMCP.Api.Shared;
-using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Shared.Game.Build;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
@@ -13,15 +12,15 @@ using StationGodMCP.Pure;
 using StationGodMCP.Pure.Rockets;
 using UnityEngine;
 
-namespace StationGodMCP.Api;
+namespace StationGodMCP.Api.Shared.Game;
 
 /// <summary>
-/// describe_prefab: what a buildable prefab is before it stands anywhere, in its own frame (unturned, origin at a
+/// What a buildable prefab is before it stands anywhere, in its own frame (unturned, origin at a
 /// snapped reference point): how the cursor places and turns it, the small cells it takes and the box its meshes fill
 /// relative to its origin, its ports (joining cell offset, the way a run leaves, type, role, flow), which of its axes
 /// reads as its top (VisualUp, with the source of that fact), and a flow its logic Mode reverses. Read only.
 /// </summary>
-internal static class DescribePrefabApi
+internal static class PrefabDescriptions
 {
     // Any point works; the cursor snaps it, and every offset is taken from the snapped origin.
     private static readonly Vector3 Reference = new Vector3(1001f, 101f, 1001f);
@@ -29,10 +28,9 @@ internal static class DescribePrefabApi
     private const int PortTypes = (int)(NetworkType.PowerAndData | NetworkType.Pipe | NetworkType.PipeLiquid |
                                         NetworkType.Chute);
 
-    internal static DescribePrefabView Handle(Args args)
+    /// <summary>The prefab named, every small cell's offset with withCells; invalid_prefab when none is loaded.</summary>
+    internal static DescribePrefabView Describe(PrefabRef reference, bool withCells)
     {
-        PrefabRef reference = BuildArgs.PrefabOf(args.Optional("prefab"), "prefab");
-        bool withCells = args.OptionalBool("include_small_cells") ?? false;
         BuildCatalogue catalogue = BuildCatalogue.Load();
         Structure? found = catalogue.Find(reference, out string? issue);
         if (found == null)

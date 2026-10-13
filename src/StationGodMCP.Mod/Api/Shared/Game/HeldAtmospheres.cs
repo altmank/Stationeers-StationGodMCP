@@ -7,13 +7,12 @@ using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Pipes;
 using Networks;
 using StationGodMCP.Api.Shared;
-using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 
-namespace StationGodMCP.Api;
+namespace StationGodMCP.Api.Shared.Game;
 
 /// <summary>
-/// atmosphere_contents: what gas or liquid one thing holds. Read only.
+/// What gas or liquid one thing holds, as inspect atmosphere reads it. Read only.
 ///
 /// A thing reports its own internal atmosphere (Thing.InternalAtmosphere: canister, portable tank, tank, suit), the
 /// pipe network a pipe belongs to (INetworkedPipe.PipeNetwork), the landing pad network a pad piece belongs to
@@ -23,13 +22,12 @@ namespace StationGodMCP.Api;
 /// logic values), every pipe network a device is connected to (Device.ConnectedPipeNetworks), and the internal atmosphere of each item in its slots (the canister in a tank
 /// storage or an air conditioner); organ slots are left out. A pipe or landing pad network's reference id works too
 /// (Referencable.Find), and so does an atmosphere id owned by a thing or a network, as find water reports it.
-/// Room and world air cannot be looked up this way: no tool reports those ids.
+/// Room and world air cannot be looked up this way: no verb reports those ids.
 /// </summary>
-internal static class AtmosphereContentsApi
+internal static class HeldAtmospheres
 {
-    internal static AtmosphereContentsView Handle(Args args)
+    internal static AtmosphereContentsView Read(ThingId id)
     {
-        ThingId id = args.ThingId("reference_id");
         PlayerOrigin origin = PlayerOrigin.Current();
         List<HeldAtmosphereEntryView> atmospheres = new List<HeldAtmosphereEntryView>();
         object subject;

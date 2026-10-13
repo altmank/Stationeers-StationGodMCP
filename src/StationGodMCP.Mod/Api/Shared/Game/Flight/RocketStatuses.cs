@@ -10,21 +10,20 @@ using Assets.Scripts.Objects.Pipes;
 using Objects.Rockets;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
-using StationGodMCP.Api.Shared.Game.Flight;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Rockets;
 using UnityEngine;
 
-namespace StationGodMCP.Api;
+namespace StationGodMCP.Api.Shared.Game.Flight;
 
 /// <summary>
-/// rocket_status: where each rocket is and goes, what it weighs, its fuel lines, engines and their feed laws, thrust, the
+/// Where each rocket is and goes, what it weighs, its fuel lines, engines and their feed laws, thrust, the
 /// auto-land confidence the avionics shows and the one the game will really check at its pad, cargo, power, burn time
 /// and gear, all read from the game; plus checks of the forecast's port against the game's own numbers, and (parts)
 /// every part's pose relative to the engine mount. Read only: every game method called here only computes.
 /// </summary>
-internal static class RocketStatusApi
+internal static class RocketStatuses
 {
     private const string HowRecorded =
         "thrust.max_recorded = the highest Rocket.GetThrust (all engines' Force) seen on any physics step since the " +
@@ -43,20 +42,20 @@ internal static class RocketStatusApi
         "power: the game takes each device's watts off the batteries once per 0.5 s tick (PowerTick.cs:88-150), so " +
         "seconds_left = charge / load x 0.5.";
 
-    internal static RocketStatusListView Handle(Args args)
+    /// <summary>
+    /// The rockets' statuses: compact the short form, selfTest the forecast's checks, withParts every part's pose,
+    /// explain what the numbers mean.
+    /// </summary>
+    internal static RocketStatusListView Read(List<Rocket> rockets, bool compact, bool selfTest, bool withParts,
+        bool explain)
     {
-        ThingId? id = args.OptionalThingId("rocket_id");
-        bool compact = args.OptionalBool("compact") ?? false;
-        bool selfTest = args.OptionalBool("self_test") ?? !compact;
-        bool withParts = args.OptionalBool("parts") ?? false;
-        List<Rocket> rockets = id.HasValue ? new List<Rocket> { RocketLocator.Find(id.Value) } : RocketLocator.All();
         List<RocketStatusView> views = new List<RocketStatusView>(rockets.Count);
         for (int index = 0; index < rockets.Count; index++)
         {
             views.Add(Describe(rockets[index], selfTest, compact, withParts));
         }
 
-        return new RocketStatusListView(views, args.OptionalBool("explain") == true ? Explanations(compact) : null);
+        return new RocketStatusListView(views, explain ? Explanations(compact) : null);
     }
 
     private static List<string> Explanations(bool compact) =>
@@ -67,7 +66,7 @@ internal static class RocketStatusApi
         RocketParts parts = RocketParts.Of(rocket);
         List<string> notes = new List<string>(4);
         float profileAltitude = RoutePlanner.AltitudeOf(rocket.ReEntryProfile);
-        RocketCraft craft = RocketModel.Craft(parts, RocketWhatIfNone.Value);
+        RocketCraft craft = RocketModel.Craft(parts, RocketWhatIf.None);
         RocketStatusView view = new RocketStatusView(new ThingId(rocket.ReferenceId),
             new ThingId(rocket.RocketNetwork.ReferenceId), rocket.DisplayName, rocket.AutomatedLanding,
             rocket.AutomatedShutOff, rocket.ReEntryProfile.ToString(), profileAltitude, Where(rocket, notes),
@@ -269,8 +268,7 @@ internal static class RocketStatusApi
         if (view.RecordedExceedsAchievable)
         {
             notes.Add($"The landing check assumes {view.MaxExpectedN:0} N but the fuel now gives " +
-                $"{view.AchievableFullN:0} N at full throttle: a landing it passes can still crash. See " +
-                $"{Vocabulary.Tool("rocket_forecast")}.");
+                $"{view.AchievableFullN:0} N at full throttle: a landing it passes can still crash. See plan flight.");
         }
 
         return view;
@@ -541,7 +539,7 @@ internal static class RocketStatusApi
         for (int index = 0; index < parts.Unmodelled.Count; index++)
         {
             notes.Add($"{Names.Of(parts.Unmodelled[index])} is a {parts.Unmodelled[index].GetType().Name}, none of " +
-                $"the game's six engine classes: {Vocabulary.Tool("rocket_forecast")} refuses it.");
+                "the game's six engine classes: plan flight refuses it.");
         }
 
         for (int index = 0; index < parts.EngineReads.Count; index++)
@@ -579,10 +577,4 @@ internal static class RocketStatusApi
             notes.Add("Manned: only launch mounts (ground or orbital) can be targeted (Rocket.cs:1871-1885).");
         }
     }
-}
-
-/// <summary>The forecast's what-ifs left empty: the rocket as it is.</summary>
-internal static class RocketWhatIfNone
-{
-    internal static RocketWhatIf Value => RocketWhatIf.From(new Args(null));
 }

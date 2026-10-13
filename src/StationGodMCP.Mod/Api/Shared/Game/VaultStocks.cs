@@ -3,22 +3,21 @@
 using System.Collections.Generic;
 using Assets.Scripts.Objects.Pipes;
 using StationGodMCP.Api.Shared;
-using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 
-namespace StationGodMCP.Api;
+namespace StationGodMCP.Api.Shared.Game;
 
 /// <summary>
-/// vault_contents: what each Ingot Vault stores, read from the vault's own store (IngotVaults): ingots as reagent
+/// What each Ingot Vault stores, read from the vault's own store (IngotVaults): ingots as reagent
 /// grams, ores and ices as counts, exact rather than the vault screen's one decimal. Needs the IngotVault mod. Read
-/// only. find_items and item_totals see the ingots as machine stock of kind processing and do not see ores at all.
+/// only. find item sees the ingots as machine stock of kind processing and does not see ores at all.
 /// </summary>
-internal static class VaultContentsApi
+internal static class VaultStocks
 {
-    internal static VaultContentsView Handle(Args args)
+    /// <summary>One vault (an Ingot or a Remote Vault's id), or every vault when id is null, and every remote.</summary>
+    internal static VaultContentsView Read(ThingId? id)
     {
         IngotVaults.RequireLoaded();
-        ThingId? id = args.OptionalThingId("vault_id");
         List<VaultContentsEntryView> vaults = new List<VaultContentsEntryView>();
         if (id.HasValue)
         {

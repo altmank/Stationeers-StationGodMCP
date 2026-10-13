@@ -14,27 +14,10 @@ using Xunit;
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// From live use on a big base: describe_prefab without its cell list by default, and the plan route tools' dry run in
-/// short.
+/// From live use on a big base: the plan route tools' dry run in short.
 /// </summary>
 public sealed class FindFiltersAndSlimRepliesTests
 {
-    // ---- describe_prefab ----
-
-    [Fact]
-    public void DescribePrefabCountsItsCellsAndListsThemOnlyWhenAsked()
-    {
-        ReplyShape[] shapes = ReplyShapes.ByMethod["describe_prefab"];
-        JObject plain = JObject.Parse(ReplyBudgetTests.Measure(shapes[0]).Json);
-        JObject withCells = JObject.Parse(ReplyBudgetTests.Measure(shapes[1]).Json);
-
-        Assert.Null(plain["small_cells"]);
-        Assert.NotNull(plain["small_cell_count"]);
-        Assert.NotNull(plain["grid_box"]);
-        Assert.Equal(16, ((JArray)withCells["small_cells"]!).Count);
-        Assert.Empty(Problems("describe_prefab", """{"prefab": "StructureFrame", "include_small_cells": true}"""));
-    }
-
     // ---- plan route summary ----
 
     [Fact]

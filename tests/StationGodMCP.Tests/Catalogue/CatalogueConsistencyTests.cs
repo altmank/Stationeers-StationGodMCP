@@ -403,6 +403,11 @@ public sealed class CatalogueConsistencyTests
         foreach (JsonObject method in Methods())
         {
             string name = (string)method["name"]!;
+            if (RetiredMethods.Has(name))
+            {
+                continue;
+            }
+
             HashSet<(string List, string Key)> declared = new HashSet<(string List, string Key)>();
             foreach (JsonNode? part in method["x-costly"] as JsonArray ?? new JsonArray())
             {

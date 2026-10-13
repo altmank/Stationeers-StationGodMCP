@@ -10,10 +10,6 @@
     "Pass job_id, or placements.",
     "Pass job_id, or reference_ids."
   ],
-  "Api/Connections.cs": [
-    "Pass reference_id, network_id with kind, or min and max (open ends in a box).",
-    "reference_id"
-  ],
   "Api/ControlIcExecution.cs": [
     "Argument 'action' must be pause, step, resume, or restart."
   ],
@@ -43,11 +39,6 @@
     "explain needs reference_id (a thing, network or room id) or at (a cell, [x, y, z]).",
     "explain needs rule_id.",
     "name one subject: other_id for a pair, port for one port of a device"
-  ],
-  "Api/LookingAt.cs": [
-    "Argument '{IncludeArgument}' takes {string.Join(\", \", PartWords.Keys)}; '{entry}' is not one of them.",
-    "looking_at",
-    "max_distance_m is at most {MaximumReachM}."
   ],
   "Api/MoveGas.cs": [
     "'from' and 'to' are the same atmosphere or room.",
@@ -149,11 +140,7 @@
   ],
   "Api/PlantGenes.cs": [
     "Argument 'genes' must be an object of gene name to value, with at least one gene.",
-    "Argument 'reference_id' must be an Int64 encoded as a string.",
-    "Gene {gene}: {value} is outside the game's range {GeneView.Minimum} to {GeneView.Maximum}; pass force to write it anyway.",
-    "Pass reference_id or reference_ids.",
-    "Unknown plant_genes form.",
-    "reference_ids, which only reads"
+    "Gene {gene}: {value} is outside the game's range {GeneView.Minimum} to {GeneView.Maximum}; pass force to write it anyway."
   ],
   "Api/ReadDevices.cs": [
     "Network {network.ReferenceId} has no atmosphere yet (atmosphere_contents reports it as null).",
@@ -183,10 +170,6 @@
     "mine, fill_holds, add_cargo_slots, deploy_payload and then_return are for a stop in space; 'to' is a pad.",
     "transfer_with: give another rocket.",
     "transfer_with: no gas or liquid umbilical socket on {partner.DisplayName} matches one on this rocket."
-  ],
-  "Api/RocketStatus.cs": [
-    "The landing check assumes {view.MaxExpectedN:0} N but the fuel now gives {view.AchievableFullN:0} N at full throttle: a landing it passes can still crash. See rocket_forecast.",
-    "{Names.Of(parts.Unmodelled[index])} is a {parts.Unmodelled[index].GetType().Name}, none of the game's six engine classes: rocket_forecast refuses it."
   ],
   "Api/RunConsoleCommand.cs": [
     " {capture.ConcurrentLines} further line(s) were printed into the console from a background thread while this command ran; Unity mirrors errors and their stack traces in that way. They are deliberately not mixed into the output above, and are visible through read_console.",
@@ -458,13 +441,11 @@
     "{name}: {problem.Message}"
   ],
   "Api/Shared/SiloArgs.cs": [
-    " or entries_offset {next.ToString(CultureInfo.InvariantCulture)}",
     "Argument 'prefab_name' must name a prefab, not be empty.",
     "Argument 'quantity' is required: how many items to take.",
     "Argument 'to_slot' must be a slot index, or \"auto\".",
     "Name the things: items, reference_ids, or a filter (prefab_contains, name_contains, location, within_id, near_player_m).",
     "Name what to take with exactly one of prefab_name and prefab_hash.",
-    "pass entries_limit (max {Maximum.ToString(CultureInfo.InvariantCulture)}){(next < total ? \" or entries_offset \" + next.ToString(CultureInfo.InvariantCulture) : string.Empty)}",
     "reference_ids"
   ],
   "Api/Shared/SourceArgs.cs": [
@@ -502,17 +483,6 @@
     " and {more} more kinds (container_contents lists them)",
     "The game could not load entry {entry.Index} ({entry.PrefabName}) from its save data; it stays in the silo. Entries before it were taken (container_contents shows the silo).",
     "{Names.Of(holder)} has no room for all {request.Quantity} {Names.Of(template)} ({placement.Pooled.Unplaced + placement.Whole.Unplaced} left over; a thing stored with contents or a stored food takes an empty slot of its own). Free a slot, name another holder, or pass allow_ground: true for the rest. Nothing was changed."
-  ],
-  "Api/ThingHealth.cs": [
-    "Argument 'kind' must be pipe, cable or chute.",
-    "Argument 'reference_id' must be an Int64 encoded as a string.",
-    "Pass one of reference_id, reference_ids or network_id.",
-    "Unknown thing_health form.",
-    "network_id",
-    "reference_id",
-    "reference_id",
-    "reference_ids",
-    "reference_ids"
   ],
   "Api/TraderTrade.cs": [
     "The player ({human.DisplayName}) carries no credit card; pass credit_card_id.",

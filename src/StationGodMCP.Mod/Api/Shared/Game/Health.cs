@@ -9,6 +9,7 @@ using Assets.Scripts.Objects.Electrical;
 using Assets.Scripts.Objects.Entities;
 using Assets.Scripts.Objects.Items;
 using Assets.Scripts.Objects.Pipes;
+using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using UnityEngine;
@@ -247,5 +248,43 @@ internal static class HealthScanner
             int byTotal = b.Total.CompareTo(a.Total);
             return byTotal != 0 ? byTotal : a.Thing.ReferenceId.CompareTo(b.Thing.ReferenceId);
         }
+    }
+}
+
+/// <summary>
+/// Every piece of one pipe, cable or chute network (its StructureList; devices are not pieces), worst first, one page
+/// of them read, damaged_only keeping the damaged and broken ones, with the broken pieces that touch the network at its
+/// ends without being on it (BrokenNeighbours: the member list cannot show those, damaged_only or not).
+/// </summary>
+internal static class NetworkHealth
+{
+    internal static HealthNetworkView Read(UpgradeFamily family, ThingId id, bool damagedOnly, int offset, int? limit,
+        bool withNetworks)
+    {
+        List<SmallGrid> members = family.NetworkMembers(id);
+        List<Thing> pieces = new List<Thing>(members.Count);
+        foreach (SmallGrid member in members)
+        {
+            if (member != null && !member.IsBeingDestroyed)
+            {
+                pieces.Add(member);
+            }
+        }
+
+        PlayerOrigin origin = PlayerOrigin.Current();
+        List<Thing> ranked = HealthScanner.WorstFirst(pieces, damagedOnly);
+        PageRequest request = PageRequest.Of(offset, limit ?? int.MaxValue, int.MaxValue);
+        Slice<Thing> page = Slice<Thing>.Of(ranked, request);
+        List<HealthView> views = new List<HealthView>(page.Items.Count);
+        foreach (Thing thing in page.Items)
+        {
+            views.Add(HealthReader.Read(thing, origin, withNetworks));
+        }
+
+        List<Thing> touching = new List<Thing>(pieces);
+        touching.AddRange(family.NetworkDevices(id));
+        return new HealthNetworkView(id, family.NetworkKind, pieces.Count, damagedOnly,
+            Slice<HealthView>.Page(views, request, page.Total),
+            BrokenNeighbours.Around(family.NetworkKind, touching, "things"));
     }
 }

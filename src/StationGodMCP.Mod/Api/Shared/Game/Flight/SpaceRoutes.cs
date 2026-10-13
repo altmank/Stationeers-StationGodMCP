@@ -60,6 +60,59 @@ internal static class RocketLocator
             $"No rocket has the id {id.Value}: give a rocket's, its rocket network's or any of its parts' reference id.");
     }
 
+    /// <summary>
+    /// The rocket an id option names: a rocket's, its rocket network's or any part's reference id, or its name (any
+    /// case); several rockets of that name is ambiguous_rocket.
+    /// </summary>
+    internal static Rocket Find(string id)
+    {
+        if (ThingId.TryRead(new Newtonsoft.Json.Linq.JValue(id), out ThingId referenceId))
+        {
+            return Find(referenceId);
+        }
+
+        List<Rocket> named = All().FindAll(rocket =>
+            string.Equals(rocket.DisplayName, id.Trim(), System.StringComparison.OrdinalIgnoreCase));
+        return named.Count switch
+        {
+            1 => named[0],
+            0 => throw ApiErrors.Refused("rocket_not_found",
+                $"No rocket is named '{id}': give a rocket's name, or its, its rocket network's or any of its parts' " +
+                "reference id."),
+            _ => throw ApiErrors.Refused("ambiguous_rocket",
+                $"{named.Count} rockets are named '{id}': give one's reference id, one of {Listed(named)}.")
+        };
+    }
+
+    /// <summary>The rocket an id names, or the only rocket there is when id is left out.</summary>
+    internal static Rocket One(string? id)
+    {
+        if (id != null)
+        {
+            return Find(id);
+        }
+
+        List<Rocket> rockets = All();
+        return rockets.Count switch
+        {
+            1 => rockets[0],
+            0 => throw ApiErrors.Refused("rocket_not_found", "There is no rocket in the world."),
+            _ => throw ApiErrors.Refused("ambiguous_rocket",
+                $"There are {rockets.Count} rockets: give id, one of {Listed(rockets)}.")
+        };
+    }
+
+    private static string Listed(List<Rocket> rockets)
+    {
+        List<string> names = new List<string>(rockets.Count);
+        foreach (Rocket rocket in rockets)
+        {
+            names.Add($"{rocket.DisplayName} ({rocket.ReferenceId})");
+        }
+
+        return string.Join(", ", names);
+    }
+
     /// <summary>The rocket named, or the only rocket there is; several without an id is ambiguous_rocket.</summary>
     internal static Rocket One(Args args)
     {

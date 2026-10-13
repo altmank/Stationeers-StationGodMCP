@@ -45,6 +45,9 @@ internal sealed class RocketWhatIf
 
     internal double ExtraLoadW { get; private set; }
 
+    /// <summary>The what-ifs left empty: the rocket as it is.</summary>
+    internal static RocketWhatIf None => new RocketWhatIf();
+
     internal static RocketWhatIf From(Args args)
     {
         RocketWhatIf what = new RocketWhatIf

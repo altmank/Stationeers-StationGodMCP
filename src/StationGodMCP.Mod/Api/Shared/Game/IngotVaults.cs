@@ -225,7 +225,7 @@ internal sealed class VaultTarget
 /// <summary>One vault's store: its ingot reagents and its ore and ice counts, read and written as the vault does.</summary>
 internal sealed class VaultStore
 {
-    /// <summary>Amounts at or below this are rounding left in the store (ReagentsApi's rule).</summary>
+    /// <summary>Amounts at or below this are rounding left in the store (ThingReagents' rule).</summary>
     internal const double Trace = 1e-6;
 
     /// <summary>A vend removes an ore entry when this much or less is left (TryVendSelected).</summary>

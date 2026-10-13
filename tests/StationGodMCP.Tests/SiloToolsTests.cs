@@ -269,30 +269,6 @@ public sealed class SiloToolsTests
             Of("{\"reference_ids\": [" + string.Join(",", ids) + "]}"))).Code);
     }
 
-    // ---- container_contents' page of entries ----
-
-    [Fact]
-    public void ASilosEntriesArePagedTenAtATimeUpTo600()
-    {
-        PageRequest page = SiloEntriesPage.Of(Of("{}"));
-        Assert.Equal(ReplyDefaults.SiloEntries, page.Limit);
-        Assert.Equal(0, page.Offset);
-        Assert.Equal(600, SiloEntriesPage.Of(Of("""{"entries_limit": 600, "entries_offset": 20}""")).Limit);
-        Assert.Equal(ApiErrors.InvalidArgumentCode, Refused(() => SiloEntriesPage.Of(Of("""{"entries_limit": 0}"""))).Code);
-        Assert.Equal(ApiErrors.InvalidArgumentCode, Refused(() => SiloEntriesPage.Of(Of("""{"entries_limit": 601}"""))).Code);
-    }
-
-    [Fact]
-    public void AHeldBackPageSaysHowToGetTheRest()
-    {
-        Truncations.Begin();
-        SiloEntriesPage.Note(SiloEntriesPage.Of(Of("{}")), 10, 25);
-        Truncation note = Assert.Single(Truncations.Take());
-        Assert.Equal("silo.entries", note.List);
-        Assert.Equal(25, note.Total);
-        Assert.Contains("entries_offset 10", note.More);
-    }
-
     // ---- replies ----
 
     [Fact]
@@ -307,7 +283,7 @@ public sealed class SiloToolsTests
         ContainerContentsView view = new ContainerContentsView(new ThingView(new ThingId(5001), "StructureSDBSilo", "SDB Silo"),
             new PositionView(1, 2, 3), 4.5, ShownSlots.All(new List<SlotView>()),
             new SiloContentsView(2, true, new SiloBusyView(false, true, -1),
-                Slice<SiloEntryView>.Page(entries, SiloEntriesPage.Of(Of("{}")), 2)));
+                Slice<SiloEntryView>.Page(entries, PageRequest.Of(0, 10, 600), 2)));
         Assert.Equal(
             "{\"reference_id\":\"5001\",\"prefab_name\":\"StructureSDBSilo\",\"display_name\":\"SDB Silo\"," +
             "\"position\":{\"x\":1.0,\"y\":2.0,\"z\":3.0},\"distance_m\":4.5,\"slots\":[],\"silo\":{\"count\":2," +
@@ -332,7 +308,7 @@ public sealed class SiloToolsTests
     public void OnAClientTheStoreIsUnknownAndOnlyTheCountShows()
     {
         SiloContentsView view = new SiloContentsView(12, false, null,
-            Slice<SiloEntryView>.Page(new List<SiloEntryView>(), SiloEntriesPage.Of(Of("{}")), 0));
+            Slice<SiloEntryView>.Page(new List<SiloEntryView>(), PageRequest.Of(0, 10, 600), 0));
         Assert.Equal(
             "{\"count\":12,\"capacity\":600,\"entries_known\":false,\"importing\":null,\"exporting\":null," +
             "\"dispense_slot\":null,\"total\":0,\"offset\":0,\"entries\":[]}",

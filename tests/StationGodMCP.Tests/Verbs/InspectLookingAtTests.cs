@@ -8,10 +8,10 @@ using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using Xunit;
 
-namespace StationGodMCP.Tests;
+namespace StationGodMCP.Tests.Verbs;
 
-/// <summary>looking_at v2 (1.4.3): the view basis, snapped axes, the hit and the body box.</summary>
-public sealed class LookingAtV2Tests
+/// <summary>inspect looking_at: the view basis, snapped axes, the hit and the body box.</summary>
+public sealed class InspectLookingAtTests
 {
     private static readonly Vec3 Up = new Vec3(0, 1, 0);
 

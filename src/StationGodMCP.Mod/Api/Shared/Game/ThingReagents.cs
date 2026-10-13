@@ -4,31 +4,29 @@ using System.Collections.Generic;
 using Assets.Scripts.Objects;
 using Reagents;
 using StationGodMCP.Api.Shared;
-using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 
-namespace StationGodMCP.Api;
+namespace StationGodMCP.Api.Shared.Game;
 
 /// <summary>
-/// reagents: the reagents a thing holds, a furnace's melted load, a centrifuge's or mixer's contents, a microwave's
+/// The reagents a thing holds, a furnace's melted load, a centrifuge's or mixer's contents, a microwave's
 /// food. Logic gives only the total (LogicType.Reagents); this reads each one from Thing.ReagentMixture with
 /// ReagentMixture.Get, in the game's order (Reagent.AllReagents), with its unit (Reagent.Unit: g, or ml for alcohol,
 /// milk and oil), and ReagentMixture.TotalReagents, which adds them regardless of unit. Read only.
 /// </summary>
-internal static class ReagentsApi
+internal static class ThingReagents
 {
     /// <summary>Amounts at or below this are rounding left in the mixture, not a reagent.</summary>
     private const double TraceAmount = 1e-6;
 
-    internal static ReagentsView Handle(Args args)
+    /// <summary>The thing with its total and reagents, as inspect reagents answers.</summary>
+    internal static ReagentsView Read(Thing thing)
     {
-        ThingId id = args.ThingId("reference_id");
-        Thing thing = GameLookup.RequireThing(id);
         ReagentMixture? mixture = thing.ReagentMixture;
         return new ReagentsView(GameLookup.ViewOf(thing), Total(mixture), ReadReagents(mixture));
     }
 
-    /// <summary>The thing's total and reagents, as Handle reports them.</summary>
+    /// <summary>The thing's total and reagents, as Read reports them.</summary>
     internal static ReagentsReadView ReadingOf(Thing thing)
     {
         ReagentMixture? mixture = thing.ReagentMixture;
