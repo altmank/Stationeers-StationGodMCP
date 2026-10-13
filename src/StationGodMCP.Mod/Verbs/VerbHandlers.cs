@@ -99,5 +99,9 @@ internal static class VerbHandlers
         VerbHandler.For(TradeSellOptions.Spec, TradeSellOptions.Bind, TradeSell.Run),
         VerbHandler.For(ShowPreviewOptions.Spec, ShowPreviewOptions.Bind, ShowPreview.Run),
         VerbHandler.For(ShowHighlightOptions.Spec, ShowHighlight.Call.Bind, ShowHighlight.Run),
+        VerbHandler.For(ServerCommandOptions.Spec, ServerCommandOptions.Bind, ServerCommand.Run),
+        VerbHandler.For(ServerConsoleOptions.Spec, ServerConsoleOptions.Bind, ServerConsole.Run),
+        VerbHandler.For(ServerInfoOptions.Spec, ServerInfoOptions.Bind, ServerInfo.Run),
+        VerbHandler.For(ServerProfilingOptions.Spec, ServerProfiling.Call.Bind, ServerProfiling.Run),
     });
 }

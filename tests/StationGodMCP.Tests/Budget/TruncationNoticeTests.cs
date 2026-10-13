@@ -191,12 +191,12 @@ public sealed class TruncationNoticeTests
     private static readonly Dictionary<string, Type> NotedByView = new Dictionary<string, Type>(StringComparer.Ordinal)
     {
         ["Api/GetIcStatus.cs"] = typeof(StackWindowView),
-        ["Api/RunConsoleCommand.cs"] = typeof(ConsoleRunView),
         ["Api/Shared/Game/ConsoleBridge.cs"] = typeof(ConsoleRunView),
         ["Api/Shared/Game/LuaChips.cs"] = typeof(LuaLogView),
         ["Api/Shared/Game/Runs/RunArgs.cs"] = typeof(RunReportView),
         ["Api/Shared/Game/Upgrades/UpgradePlan.cs"] = typeof(UpgradeReportView),
         ["Api/Shared/StructureSwapOrders.cs"] = typeof(StructureSwapReportView),
+        ["Verbs/ServerCommand.cs"] = typeof(ConsoleRunView),
         ["Verbs/SwapNetworks.cs"] = typeof(UpgradeReportView),
     };
 

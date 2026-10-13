@@ -450,10 +450,6 @@ public sealed class ToolRegistrationTests
     /// <summary>The methods the mod still handles per tool: every one A5 retires with the verbs.</summary>
     private static readonly HashSet<string> LaterMethods = new HashSet<string>(System.StringComparer.Ordinal)
     {
-        "mod_info",
-        "profiling",
-        "read_console",
-        "run_console_command",
         "undo_job"
     };
 

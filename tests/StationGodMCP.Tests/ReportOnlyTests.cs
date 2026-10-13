@@ -13,9 +13,9 @@ using Xunit;
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// The report path of the act-at-once writes (move_item, write_memory, run_console_command, plant_genes edits):
-/// dry_run true runs the acting call's checks through the same WriteCheck and never acts. A check that refuses the
-/// acting call answers the report ok, with that refusal as a problem.
+/// The write path's WriteCheck: a verb write's report describes the plan and never acts, its confirm acts once, and a
+/// check that refuses the acting call is the call's refusal or the report's one problem. Its checks read the world
+/// (write memory's range, the genes' values).
 /// </summary>
 public sealed class ReportOnlyTests
 {
@@ -40,74 +40,6 @@ public sealed class ReportOnlyTests
             Descriptions++;
             return "described";
         }
-    }
-
-    private static Args Of(string json) => new Args(JObject.Parse(json));
-
-    // ---- the argument ----
-
-    [Fact]
-    public void DryRunIsTheArgumentAndActingIsTheDefault()
-    {
-        Assert.Equal("dry_run", ReportOnly.Argument);
-        Assert.False(ReportOnly.Asked(Of("{}")));
-        Assert.False(ReportOnly.Asked(Of("""{"dry_run": false}""")));
-        Assert.True(ReportOnly.Asked(Of("""{"dry_run": true}""")));
-        Assert.Equal("invalid_argument",
-            Assert.Throws<ApiException>(() => ReportOnly.Asked(Of("""{"dry_run": "yes"}"""))).Code);
-    }
-
-    // ---- one code path: the act is reached only through checks that passed, and never on a report ----
-
-    [Fact]
-    public void AReportOfAPassedCheckDescribesThePlanAndNeverActs()
-    {
-        Counter counter = new Counter();
-        object reply = WriteCheck<Plan>.Run(() => new Plan()).Answer(true, counter.Act, counter.Describe);
-
-        Assert.Equal("described", reply);
-        Assert.Equal(0, counter.Acts);
-        Assert.Equal(1, counter.Descriptions);
-    }
-
-    [Fact]
-    public void AnActingCallOfAPassedCheckActsOnceAndDescribesNothing()
-    {
-        Counter counter = new Counter();
-        object reply = WriteCheck<Plan>.Run(() => new Plan()).Answer(false, counter.Act, counter.Describe);
-
-        Assert.Equal("acted", reply);
-        Assert.Equal(1, counter.Acts);
-        Assert.Equal(0, counter.Descriptions);
-    }
-
-    [Fact]
-    public void ARefusedCheckAnswersTheReportOkWithTheRefusalAsItsProblemAndNeverActs()
-    {
-        Counter counter = new Counter();
-        object reply = WriteCheck<Plan>.Run(() => throw ApiErrors.Refused("not_host", "Only the host moves items."))
-            .Answer(true, counter.Act, counter.Describe);
-
-        Assert.Equal(0, counter.Acts);
-        Assert.Equal(0, counter.Descriptions);
-        Assert.Equal(
-            "{\"report_only\":true,\"problems\":[{\"code\":\"not_host\",\"message\":\"Only the host moves items.\"}]}",
-            WireCheck.New(reply));
-    }
-
-    [Fact]
-    public void TheActingCallIsRefusedWithTheSameCodeAndMessageItsReportLists()
-    {
-        Func<Plan> checks = () => throw ApiErrors.Refused("memory_not_writable", "Device 5 has no writable memory.");
-        Counter counter = new Counter();
-        ApiException refused = Assert.Throws<ApiException>(() =>
-            WriteCheck<Plan>.Run(checks).Answer(false, counter.Act, counter.Describe));
-        JObject report = JObject.Parse(WireCheck.New(WriteCheck<Plan>.Run(checks)
-            .Answer(true, counter.Act, counter.Describe)));
-
-        Assert.Equal(0, counter.Acts);
-        Assert.Equal(refused.Code, (string?)report["problems"]![0]!["code"]);
-        Assert.Equal(refused.Message, (string?)report["problems"]![0]!["message"]);
     }
 
     // ---- a verb write: report until confirm ----
@@ -221,22 +153,6 @@ public sealed class ReportOnlyTests
         Assert.Equal("invalid_argument", ActingCode(checks));
     }
 
-    // ---- run_console_command ----
-
-    [Fact]
-    public void AConsoleReportNamesTheCommandItWouldRunAndPrintsNothing()
-    {
-        ConsoleReportView report = new ConsoleReportView(
-            new ConsoleCommandInfo("storm start", "storm", "SinglePlayer", "Starts a storm.", new[] { "start" }),
-            true, true, false);
-
-        Assert.Equal(
-            "{\"report_only\":true,\"problems\":[],\"command\":\"storm start\",\"command_key\":\"storm\"," +
-            "\"scope\":\"SinglePlayer\",\"help_text\":\"Starts a storm.\",\"arguments\":[\"start\"]," +
-            "\"run_simulation\":true,\"console_available\":true,\"completes_asynchronously\":false}",
-            WireCheck.New(report));
-    }
-
     // ---- write genes ----
 
     [Fact]
@@ -287,20 +203,20 @@ public sealed class ReportOnlyTests
 
     private static string? ProblemCode(Func<Plan> checks)
     {
-        Counter counter = new Counter();
-        JObject report = JObject.Parse(WireCheck.New(WriteCheck<Plan>.Run(checks)
-            .Answer(true, counter.Act, counter.Describe)));
-        Assert.Equal(0, counter.Acts);
+        JObject report = ((VerbOutcome.Answered)WriteCheck<Plan>.Run(checks)
+            .Outcome(Reporting, _ => throw new InvalidOperationException("a report does not act"),
+                _ => new JObject())).Reply;
+
         Assert.True((bool)report["report_only"]!);
         return (string?)report["problems"]![0]!["code"];
     }
 
     private static string ActingCode(Func<Plan> checks)
     {
-        Counter counter = new Counter();
-        ApiException refused = Assert.Throws<ApiException>(() =>
-            WriteCheck<Plan>.Run(checks).Answer(false, counter.Act, counter.Describe));
-        Assert.Equal(0, counter.Acts);
+        VerbError refused = ((VerbOutcome.Refused)WriteCheck<Plan>.Run(checks)
+            .Outcome(Confirmed, _ => throw new InvalidOperationException("a refusal does not act"),
+                _ => new JObject())).Error;
+
         return refused.Code;
     }
 }

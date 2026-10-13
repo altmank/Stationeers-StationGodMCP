@@ -3,10 +3,7 @@
 using System;
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
-using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
-using W = StationGodMCP.Tests.Budget.LargeWorld;
-using D = StationGodMCP.Api.Shared.ReplyDefaults;
 
 namespace StationGodMCP.Tests.Budget;
 
@@ -65,33 +62,6 @@ internal static class ReplyShapes
     {
         Dictionary<string, ReplyShape[]> shapes = new Dictionary<string, ReplyShape[]>(StringComparer.Ordinal);
 
-        shapes["mod_info"] = new[]
-        {
-            // The game counters come with include_counters (about 515 bytes more).
-            S<ModInfoView>().Absent("RuntimeView.JobHolds", "RuntimeView.PrintLog", "RuntimeView.LintChipPrograms",
-                    "RuntimeView.BatchConsole", "RuntimeView.FrameMs", "RuntimeView.JobStores", "PrefabIndexView.Arrived",
-                    "PrefabIndexView.Left")
-                .List("ModInfoView.Methods", W.Methods).List("ModInfoView.Reflection", W.ReflectedMembers)
-                .List("RuntimeView.Methods", D.RuntimeMethods).List("RuntimeView.CatalogueDrift", 0).List("RuntimeView.Connections", 2).List("ConnectionView.Methods", ConnectionView.MethodsShown)
-                .List("ProfilingSummaryView.Top", ProfilingSummaryView.TopShown)
-        };
-        // Bounded by what exists: the scopes and timed methods, the methods called, the last 16 tick holds; scopes and
-        // calls are cut by default (x-default-limits), the worst frame's pieces and calls by the view (Shown).
-        shapes["profiling"] = new[]
-        {
-            S<ProfilingView>().List("ProfilingView.UntimedMethods", 0).List("ProfilingView.Scopes", 30)
-                .List("ProfilingView.Calls", 20).List("WorstFrameView.Scopes", WorstFrameView.Shown).List("WorstFrameView.Calls", WorstFrameView.Shown)
-                .List("TickHoldsView.Recent", StationGodMCP.Pure.Profiling.TickHolds.Kept)
-        };
-        shapes["read_console"] = new[]
-        {
-            S<ConsoleReadView>().List("ConsoleReadView.Lines", D.ConsoleLines)
-                .Text("ConsoleLineView.Text", new string('t', 90))
-        };
-        shapes["run_console_command"] = new[]
-        {
-            S<ConsoleRunView>().List("ConsoleRunView.Arguments", 10).List("ConsoleRunView.Output", 3)
-        };
         shapes["undo_job"] = new[]
         {
             // The plan with the removal's and the placement's dry runs (no piece runs: a structure was removed).

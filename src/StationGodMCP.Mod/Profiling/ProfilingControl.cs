@@ -7,9 +7,9 @@ using System.IO;
 using System.Reflection;
 using BepInEx;
 using HarmonyLib;
-using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure.Profiling;
+using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP;
 
@@ -93,13 +93,13 @@ internal static class ProfilingControl
         }
     }
 
-    /// <summary>The profiling method.</summary>
-    internal static ProfilingView Run(ProfilingRequest request)
+    /// <summary>The profiling call: on, off, reset or report.</summary>
+    internal static ProfilingView Run(ProfilingOrder order)
     {
-        switch (request.Action)
+        switch (order.Action)
         {
             case ProfilingAction.On:
-                TurnOn(request.SlowFrameMs, request.Csv);
+                TurnOn(order.SlowFrameMs, order.Csv);
                 break;
             case ProfilingAction.Off:
                 TurnOff();

@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using StationGodMCP.Api;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
@@ -11,32 +12,31 @@ using StationGodMCP.Pure;
 using StationGodMCP.Pure.Jobs;
 using StationGodMCP.Pure.Lint;
 using StationGodMCP.Pure.Profiling;
-using StationGodMCP.Verbs;
+using StationGodMCP.Pure.Verbs;
 using UnityEngine.Profiling;
 
-namespace StationGodMCP.Api;
+namespace StationGodMCP.Verbs;
 
 /// <summary>
-/// mod_info: the running mod's identity and the pipe it listens on, every method with its counters since the mod
-/// loaded (MethodStats), and every game member it reaches by reflection or patches, with whether this build of the
-/// game has it (GameMembers.Report), and the runtime section: what the mod costs the game (per-method handler,
-/// serialisation, queue wait and reply size; per-frame load; the collector and the Mono heap; with include_counters, the
-/// counters of the mod's game-side work). Read only.
+/// server info (catalogue server.json): the running mod's identity and the pipe it listens on, every verb what with its
+/// counters since the mod loaded (MethodStats), and every game member it reaches by reflection or patches, with whether
+/// this build of the game has it (GameMembers.Report), and the runtime section: what the mod costs the game (per-method
+/// handler, serialisation, queue wait and reply size; per-frame load; the collector and the Mono heap; and, with
+/// include: ["counters"], the counters of the mod's game-side work). The methods list is the whats with a handler
+/// (VerbHandlers.Dispatcher.Keys): a retired per-tool method is not listed. Read only.
 /// </summary>
-internal static class ModInfoApi
+internal static class ServerInfo
 {
-    internal static ModInfoView Handle(Args args)
+    internal static VerbOutcome Run(ServerInfoOptions options)
     {
-        Assembly assembly = typeof(ModInfoApi).Assembly;
+        Assembly assembly = typeof(ServerInfo).Assembly;
         AssemblyInformationalVersionAttribute? informational =
             Attribute.GetCustomAttribute(assembly, typeof(AssemblyInformationalVersionAttribute))
                 as AssemblyInformationalVersionAttribute;
         ModIdentity identity = new ModIdentity(StationGodMod.ModId, StationGodMod.Version,
             assembly.GetName().Version?.ToString(), informational?.InformationalVersion, StationGodMod.Pipe.Value);
 
-        List<string> names = new List<string>(ApiHost.Methods.Keys);
-        names.AddRange(VerbHandlers.Dispatcher.Keys);
-        names.Sort(StringComparer.Ordinal);
+        List<string> names = new List<string>(VerbHandlers.Dispatcher.Keys);
         List<MethodStatsView> methods = new List<MethodStatsView>(names.Count);
         foreach (string name in names)
         {
@@ -44,15 +44,17 @@ internal static class ModInfoApi
         }
 
         ReflectionReport reflection = GameMembers.Report();
-        bool counters = args.OptionalBool("include_counters") ?? false;
-        return new ModInfoView(identity, methods, reflection.Members, reflection.Missing, Runtime(counters));
+        RuntimeView runtime = Runtime(options.Fields.Includes("counters"));
+        runtime.NoteTruncations("runtime.");
+        return Answer.Of(new ModInfoView(identity, methods, reflection.Members, reflection.Missing, runtime));
     }
 
     private static RuntimeView Runtime(bool counters) =>
         new RuntimeView(StationGodMod.SinceLoad.Elapsed.TotalSeconds, WorldStores.Epoch,
             FrameBudget.For(PerformanceSettings.RequestBudgetMs, false), StationGodRequestDispatcher.Stats.Snapshot(),
             Memory(), MethodStats.Called(), ArgumentDrift.Counts.Snapshot(), Connections(), ProfilingControl.Summary(),
-            new JobSettlesView(SettleGate.Run, SettleGate.Skipped, SettleGate.Unchecked), ThingIndex.View(counters), counters ? Counters() : null);
+            new JobSettlesView(SettleGate.Run, SettleGate.Skipped, SettleGate.Unchecked), ThingIndex.View(counters),
+            counters ? Counters() : null);
 
     private static GameCountersView Counters() =>
         new GameCountersView(new JobHoldsView(HeldTickJobs.HoldCounts()),

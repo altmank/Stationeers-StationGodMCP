@@ -15,7 +15,7 @@ namespace StationGodMCP.Tests;
 /// <summary>
 /// The runtime profiler without the game: the frame ring's percentiles and wrap-around, the worst frame and its
 /// breakdown, heap deltas, timed methods, tick holds, the slow-frame warning's rate limit, the CSV writer, the
-/// profiling method's arguments, and the cost of a scope with profiling off.
+/// profiling reply, and the cost of a scope with profiling off.
 /// </summary>
 public sealed class ProfilingTests
 {
@@ -495,40 +495,6 @@ public sealed class ProfilingTests
                 }
             }
         }
-    }
-
-    [Theory]
-    [InlineData("{\"action\": \"on\"}", "On", null, null)]
-    [InlineData("{\"action\": \"ON\", \"slow_frame_ms\": 12.5, \"csv\": true}", "On", 12.5, true)]
-    [InlineData("{\"action\": \"off\"}", "Off", null, null)]
-    [InlineData("{\"action\": \" reset \"}", "Reset", null, null)]
-    [InlineData("{\"action\": \"report\"}", "Report", null, null)]
-    [InlineData("{\"action\": \"on\", \"slow_frame_ms\": 1}", "On", 1.0, null)]
-    [InlineData("{\"action\": \"on\", \"slow_frame_ms\": 1000}", "On", 1000.0, null)]
-    public void ProfilingTakesItsActions(string json, string action, double? slowFrameMs, bool? csv)
-    {
-        ProfilingRequest request = ProfilingRequest.Of(new Args(JObject.Parse(json)));
-
-        Assert.Equal(action, request.Action.ToString());
-        Assert.Equal(slowFrameMs, request.SlowFrameMs);
-        Assert.Equal(csv, request.Csv);
-    }
-
-    [Theory]
-    [InlineData("{}", "action")]
-    [InlineData("{\"action\": \"start\"}", "action")]
-    [InlineData("{\"action\": 1}", "action")]
-    [InlineData("{\"action\": \"on\", \"slow_frame_ms\": 0.5}", "slow_frame_ms")]
-    [InlineData("{\"action\": \"on\", \"slow_frame_ms\": 1000.5}", "slow_frame_ms")]
-    [InlineData("{\"action\": \"on\", \"slow_frame_ms\": \"8\"}", "slow_frame_ms")]
-    [InlineData("{\"action\": \"report\", \"csv\": true}", "csv")]
-    [InlineData("{\"action\": \"off\", \"slow_frame_ms\": 8}", "slow_frame_ms")]
-    public void ProfilingRefusesABadArgument(string json, string named)
-    {
-        ApiException refusal = Assert.Throws<ApiException>(() => ProfilingRequest.Of(new Args(JObject.Parse(json))));
-
-        Assert.Equal(ApiErrors.InvalidArgumentCode, refusal.Code);
-        Assert.Contains(named, refusal.Message);
     }
 
     [Fact]

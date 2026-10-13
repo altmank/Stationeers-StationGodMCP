@@ -74,7 +74,7 @@ internal sealed class ConsoleCapture
     internal long ConcurrentLines { get; }
 }
 
-/// <summary>run_console_command: the command, what it printed, and how far that output can be trusted.</summary>
+/// <summary>server command: the command, what it printed, and how far that output can be trusted.</summary>
 internal sealed class ConsoleRunView : ITruncatingView
 {
     internal ConsoleRunView(ConsoleCommandInfo info, bool runSimulation, ConsoleCapture capture,
@@ -126,48 +126,11 @@ internal sealed class ConsoleRunView : ITruncatingView
     public string Note { get; }
 
     public void NoteTruncations(string path) =>
-        Truncations.Capped(path + "output", Output.Count, OutputLineCount, "max_output_lines",
+        Truncations.Capped(path + "output", Output.Count, OutputLineCount, "lines",
             ReplyDefaults.ConsoleLinesMaximum);
 }
 
-/// <summary>run_console_command's report (dry_run): the command the console would run; nothing run or printed.</summary>
-internal sealed class ConsoleReportView
-{
-    internal ConsoleReportView(ConsoleCommandInfo info, bool runSimulation, bool consoleAvailable, bool asynchronous)
-    {
-        Command = info.Command;
-        CommandKey = info.CommandKey;
-        Scope = info.Scope;
-        HelpText = info.HelpText;
-        Arguments = info.Arguments;
-        RunSimulation = runSimulation;
-        ConsoleAvailable = consoleAvailable;
-        CompletesAsynchronously = asynchronous;
-    }
-
-    public bool ReportOnly => true;
-
-    /// <summary>Always empty: a refused check answers ReportRefusedView instead.</summary>
-    public List<ProblemView> Problems { get; } = new List<ProblemView>();
-
-    public string Command { get; }
-
-    public string? CommandKey { get; }
-
-    public string Scope { get; }
-
-    public string? HelpText { get; }
-
-    public string[]? Arguments { get; }
-
-    public bool RunSimulation { get; }
-
-    public bool ConsoleAvailable { get; }
-
-    public bool CompletesAsynchronously { get; }
-}
-
-/// <summary>read_console: the most recent console lines, oldest first.</summary>
+/// <summary>server console: the most recent console lines, oldest first.</summary>
 internal sealed class ConsoleReadView
 {
     internal ConsoleReadView(int requestedLines, bool consoleAvailable, List<ConsoleLineView> lines)

@@ -34,11 +34,7 @@ internal static class ApiHost
     internal static readonly Dictionary<string, Func<Args, object>> Methods =
         new Dictionary<string, Func<Args, object>>(StringComparer.Ordinal)
         {
-            ["run_console_command"] = static args => RunConsoleCommandApi.Handle(args),
-            ["read_console"] = static args => ReadConsoleApi.Handle(args),
-            ["undo_job"] = static args => UndoJobApi.Handle(args),
-            ["mod_info"] = static args => ModInfoApi.Handle(args),
-            ["profiling"] = static args => ProfilingApi.Handle(args)
+            ["undo_job"] = static args => UndoJobApi.Handle(args)
         };
 
     /// <summary>

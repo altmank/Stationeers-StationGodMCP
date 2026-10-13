@@ -2,11 +2,6 @@
   "Api/RemoveStructures.cs": [
     "Pass job_id, or reference_ids."
   ],
-  "Api/RunConsoleCommand.cs": [
-    " {capture.ConcurrentLines} further line(s) were printed into the console from a background thread while this command ran; Unity mirrors errors and their stack traces in that way. They are deliberately not mixed into the output above, and are visible through read_console.",
-    "'{key}' finishes on a background task, so it returned before its result was printed. Whatever is in 'output' is only what had been printed by the time this call returned, and an EMPTY list is not evidence that the command printed nothing, succeeded or failed. Call read_console a second or two later to see the outcome.",
-    "Argument 'command' must not be empty."
-  ],
   "Api/Shared/Args.cs": [
     "{_path}.{name}"
   ],
@@ -93,11 +88,6 @@
   "Api/Shared/JobDrops.cs": [
     "Job {id} has ended; there is nothing to drop. Poll it with job_id for its result.",
     "Job {id} has started; it cannot be dropped. Poll it with job_id to follow it to its end."
-  ],
-  "Api/Shared/ProfilingArgs.cs": [
-    "Argument 'action' must be on, off, reset or report.",
-    "Argument 'slow_frame_ms' must be from {Number(SlowFrameLimits.MinimumMs)} to {Number(SlowFrameLimits.MaximumMs)}.",
-    "Arguments 'slow_frame_ms' and 'csv' go with action on only."
   ],
   "Api/Shared/RefundArgs.cs": [
     "refund false gives nothing back; leave out refund_to, or leave out refund to choose where it goes.",
