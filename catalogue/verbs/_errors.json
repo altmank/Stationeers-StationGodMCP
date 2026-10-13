@@ -65,7 +65,7 @@
     "description": "The game has not finished loading, so the console would not run the command yet. Try again once the world is loaded.",
     "see": {"verb": "server", "what": "command"}
   },
-  "confirm_required": {"description": "A real run needs confirm: false and confirm: true together. Nothing ran."},
+  "confirm_required": {"description": "this is a report; send confirm: true to act"},
   "contact_not_found": {"description": "No trader contact has that reference id. trade contacts lists them."},
   "cursor_expired": {
     "description": "The walk is gone: its last page was taken, its run or stream ended, the world is another, or the memory bound freed it. data.position: the entries it had returned. Start the walk again."

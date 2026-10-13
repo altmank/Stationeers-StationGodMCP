@@ -168,7 +168,6 @@
   ],
   "Api/Shared/Game/Build/RemovePlanner.cs": [
     "gas_to {target.Network.Value} names no pipe network and no pipe on one",
-    "{Names.Of(thing)} ({thing.PrefabName}) is {what} ({where}), not a structure; move_item moves items and movable things.",
     "{count} {kind.Noun} piece(s) are removed as {kind.RemoveTool} removes them (a network kept whole keeps its id and contents); {kind.RemoveTool} also takes cells and waypoints.",
     "{kind.RemoveTool}'s check: {RemovalRule.AllowedContents(issue.Message)}",
     "{kind.RemoveTool}'s check: {RemovalRule.SplitWarning(issue.Message)}",
@@ -256,7 +255,7 @@
     "Coils or kits are charged as the coil's or kit's own merge placement charges pieces placed over others (MultiMergeConstructor.Construct: the new pieces' entry quantity less the old ones'). A split costs more than it gives back; the shortfall is taken from the source's inventory (from_id, default the player) and the run is refused with not_enough_coils when it holds too few. Nothing is ever made for free. A merge or a removal gives back: with refund, as deconstruction gives it, made at the source."
   ],
   "Api/Shared/Game/Upgrades/Clean/RemoveDeadChutes.cs": [
-    "{riding.Count} chute piece(s) this run would remove or replace carry an item (see riding); let the items pass or take them out with move_item, or pass riding: skip to leave those pieces."
+    "{riding.Count} chute piece(s) this run would remove or replace carry an item (see riding); let the items pass or take them out with move item, or pass riding: skip to leave those pieces."
   ],
   "Api/Shared/Game/Upgrades/NetworkRecords.cs": [
     "Pipe network {Id} has a gas change waiting for the next atmospherics tick (a game event or a queued move_gas); try again."

@@ -209,7 +209,7 @@ internal static class RemovePlanner
         string what = thing is Item ? "an item" : thing is DynamicThing ? "a movable thing" : "a thing";
         plan.Problems.Add(new BuildIssueView("not_a_structure",
             $"{Names.Of(thing)} ({thing.PrefabName}) is {what} ({where}), not a structure; " +
-            $"{Vocabulary.Tool("move_item")} moves items and movable things.", index, id));
+            "move item moves items and movable things.", index, id));
         return null;
     }
 
