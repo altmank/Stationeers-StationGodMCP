@@ -1,6 +1,7 @@
 #nullable enable
 
 using System.Collections.Generic;
+using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Electrical;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
@@ -17,7 +18,7 @@ namespace StationGodMCP.Verbs;
 /// (RemovePlanner, BuildJobs), every build state refunded down to the kit; a list is one job. allow lifts the guards
 /// (contents, breach, broken, burst, unsupported); gas_to keeps a removed device's gas. Without confirm, a Report.Of
 /// report: every structure the job takes down a target [id, name, prefab -> "removed"] [undo] ([cannot undo: burnt] for
-/// a burnt cable: undo hands its snapshot to place structure, and no kit builds a CableRuptured), the planned view the
+/// a burnt cable: its undo record keeps it as burnt, so undo leaves it gone and undoes the rest), the planned view the
 /// body, every problem with the index of its id, a gas hold the confirmed call would be refused on among them; verbose
 /// lists every port a split cuts. Confirmed with a problem, the report answers and nothing starts; confirmed and
 /// ready, one job starts and its undo is recorded (JobSnapshots).
@@ -74,8 +75,15 @@ internal static class RemoveStructure
 
         RemoveReportView preflight = BuildReports.Of(plan, BuildReports.Scheduled, null);
         RemoveWork removing = new RemoveWork(arguments, preflight, plan.TouchesPipes);
+        List<Structure> burnt = new List<Structure>();
+        List<Structure> removed = new List<Structure>();
+        foreach (PlannedTakedown takedown in plan.Takedowns)
+        {
+            (takedown.Piece is CableRuptured ? burnt : removed).Add(takedown.Piece);
+        }
+
         object started = JobSnapshots.Record(BuildJobs.Start("remove", removing, queue, acknowledge), JobTool,
-            plan.Takedowns.ConvertAll(takedown => takedown.Piece), source);
+            removed, source, burnt);
         object reply = verbose ? started : JobStartReplies.Brief(started, JobPreflightSummaryView.Of(preflight));
         return new VerbOutcome.Answered(JObject.FromObject(reply, ApiJson.Fresh()));
     }

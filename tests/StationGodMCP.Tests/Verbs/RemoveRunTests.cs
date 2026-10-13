@@ -77,20 +77,22 @@ public sealed class RemoveRunTests
         Assert.Null(GasTarget.Of("tank", problems));
         Assert.Equal("gas_to", Assert.Single(problems).Path);
     }
-    // remove structure records every takedown as it stood (JobSnapshots.Record, no burnt list): a burnt cable's snapshot
-    // is not marked burnt and is no network piece, so undo hands it to place structure, which no kit builds it for.
+    // remove structure records a burnt cable it takes down as burnt (JobSnapshots.Record's burnt list): undo leaves it
+    // gone and puts back the rest.
     [Fact]
-    public void UndoOfRemoveStructureHandsABurntCableToPlaceStructure()
+    public void UndoOfRemoveStructureLeavesABurntCableGoneAndRestoresTheRest()
     {
         ThingSnapshot burnt = new ThingSnapshot(621, "StructureCableStraightBurnt", new Vec3(-1126.5, 232, -701),
+            null, 0, null, null, burnt: true);
+        ThingSnapshot locker = new ThingSnapshot(622, "StructureStorageLocker", new Vec3(-1124, 232, -701),
             CubeRotation.Identity, 0, null);
         JobFacts job = new JobFacts("remove-1", "remove_structure", "applied", new List<(long, string?)>(),
-            new List<long> { 621 }, new Dictionary<long, ThingSnapshot> { [621] = burnt });
+            new List<long> { 621, 622 }, new Dictionary<long, ThingSnapshot> { [621] = burnt, [622] = locker });
 
         UndoPlan plan = UndoPlanner.Plan(job, _ => null);
 
-        Assert.Equal(new List<long> { 621 }, plan.RestoreStructures.ConvertAll(snapshot => snapshot.Id));
-        Assert.Empty(plan.RestorePieces);
-        Assert.DoesNotContain(plan.Notes, note => note.Contains("burnt"));
+        Assert.True(plan.Ready);
+        Assert.Equal(new List<long> { 622 }, plan.RestoreStructures.ConvertAll(snapshot => snapshot.Id));
+        Assert.Contains(plan.Notes, note => note.Contains("621") && note.Contains("burnt"));
     }
 }
