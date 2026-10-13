@@ -10,7 +10,6 @@ def move(what: Literal['player'], *,
     Reports in a report run; acts in a confirmed run.
     Cheat: ask the user first.
     Reply:
-      dry_run: bool
       player: Thing
       moved_by: str
       before: {position: Vec3, room_id: str | None, room_type: str | None, outside: bool | None}

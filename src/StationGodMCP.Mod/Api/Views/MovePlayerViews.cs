@@ -7,17 +7,16 @@ using StationGodMCP.Api.Shared;
 namespace StationGodMCP.Api.Views;
 
 /// <summary>
-/// move_player's reply: the player, how the move is made, where they stood and where they go (each with its room),
+/// move player's reply: the player, how the move is made, where they stood and where they go (each with its room),
 /// the destination as asked, and how far apart the two are.
 /// </summary>
 internal sealed class MovePlayerView
 {
     private const int DistanceDecimals = 1;
 
-    internal MovePlayerView(bool dryRun, ThingView player, string movedBy, PlaceView before, PlaceView after,
+    internal MovePlayerView(ThingView player, string movedBy, PlaceView before, PlaceView after,
         MoveDestinationView destination, double distanceM, string? note)
     {
-        DryRun = dryRun;
         Player = player;
         MovedBy = movedBy;
         Before = before;
@@ -26,8 +25,6 @@ internal sealed class MovePlayerView
         DistanceM = Math.Round(distanceM, DistanceDecimals);
         Note = note;
     }
-
-    public bool DryRun { get; }
 
     public ThingView Player { get; }
 

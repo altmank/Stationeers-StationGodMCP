@@ -8,5 +8,5 @@ Options:
 - to_player (string): Destination: beside this player (a name).
 - safe_ground (boolean, default false): Drop the point onto the highest safe surface, 4 m above it.
 - confirm (boolean, default false): true does it; left out, the call only reports what it would do.
-Reply: dry_run, player {reference_id, prefab_name, display_name}, moved_by, before {position, room_id, room_type, outside}, after {position, room_id, room_type, outside}, destination {form, next_to, safe_ground}, distance_m, note
+Reply: player {reference_id, prefab_name, display_name}, moved_by, before {position, room_id, room_type, outside}, after {position, room_id, room_type, outside}, destination {form, next_to, safe_ground}, distance_m, note
 Example: move {what: "player", to_player: "xceled", confirm: true}

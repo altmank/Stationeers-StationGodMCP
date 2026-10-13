@@ -1,8 +1,10 @@
 #nullable enable
 
+using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Verbs;
 using Xunit;
 
 namespace StationGodMCP.Tests;
@@ -45,12 +47,13 @@ public sealed class MovePlayerOrbitTests
     [Fact]
     public void APointInLowOrbitIsAValidDestination()
     {
-        MoveRequest request =
-            MoveRequest.Of(new Args(JObject.Parse("""{"at": [425, 2213, 1641], "safe_ground": true}""")));
+        List<OptionProblem> problems = new List<OptionProblem>();
+        PlayerMoveOrder? order = PlayerMoveOrder.Of(null, JArray.Parse("[425, 2213, 1641]"), null, null, true, problems);
 
-        MoveDestination.Point point = Assert.IsType<MoveDestination.Point>(request.Destination);
+        Assert.Empty(problems);
+        MoveDestination.Point point = Assert.IsType<MoveDestination.Point>(order!.Destination);
         Assert.Equal(new Vec3(425, 2213, 1641), point.At);
-        Assert.True(request.SafeGround);
+        Assert.True(order.SafeGround);
     }
 
     [Fact]

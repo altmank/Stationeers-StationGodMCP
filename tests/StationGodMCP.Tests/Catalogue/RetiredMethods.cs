@@ -37,6 +37,7 @@ internal static class RetiredMethods
         "list_devices",
         "list_gateways",
         "looking_at",
+        "move_player",
         "network_snapshot",
         "outer_frames",
         "paint",

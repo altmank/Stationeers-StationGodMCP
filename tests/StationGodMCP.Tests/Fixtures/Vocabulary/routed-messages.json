@@ -73,10 +73,6 @@
     "{SlotAccess.Label(slot)} holds {Names.Of(slot.Get())}, and merge is false, so {Names.Of(item)} does not join it.",
     "{SlotAccess.Label(slot)} is a fertiliser slot: a player adds one {Names.Of(item)} off the stack, so pass quantity 1."
   ],
-  "Api/MovePlayer.cs": [
-    "near_player is {player.DisplayName}, the player being moved.",
-    "to_id {id} is {player.DisplayName} or something they carry, so it moves with them."
-  ],
   "Api/PasteBlueprint.cs": [
     "Argument 'anchor' is required.",
     "Argument 'rotation' must be 0, 90, 180 or 270."
@@ -335,12 +331,6 @@
   "Api/Shared/JobDrops.cs": [
     "Job {id} has ended; there is nothing to drop. Poll it with job_id for its result.",
     "Job {id} has started; it cannot be dropped. Poll it with job_id to follow it to its end."
-  ],
-  "Api/Shared/MoveArgs.cs": [
-    "Argument '{name}' must be a player's name or reference id, not empty.",
-    "Pass exactly one destination: at [x, y, z], to_id or near_player.",
-    "{name} is beyond {MaximumCoordinate:0} m of the world origin.",
-    "{name} must be a position: [x, y, z] or {x, y, z} in metres."
   ],
   "Api/Shared/NetworkHandle.cs": [
     "{name} must be a network id, a piece or device reference id, or {reference_id, port}.",

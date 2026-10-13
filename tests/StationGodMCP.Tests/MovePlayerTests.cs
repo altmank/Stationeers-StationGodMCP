@@ -1,89 +1,99 @@
 #nullable enable
 
 using System.Collections.Generic;
+using System.Linq;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.RemoteView;
+using StationGodMCP.Pure.Verbs;
 using Xunit;
 
 namespace StationGodMCP.Tests;
 
-/// <summary>move_player's arguments, where it lands a player, whom a name means, the move order's bytes, its reply.</summary>
+/// <summary>move player's options, where it lands a player, whom a name means, the move order's bytes, its reply and report.</summary>
 public sealed class MovePlayerTests
 {
-    private static Args Of(string json) => new Args(JObject.Parse(json));
+    private static PlayerMoveOrder? Order(JToken? at, string? to = null, string? toPlayer = null,
+        string? player = null, bool safeGround = false, List<OptionProblem>? problems = null) =>
+        PlayerMoveOrder.Of(player, at, to, toPlayer, safeGround, problems ?? new List<OptionProblem>());
 
-    private static void AssertInvalid(string json, string reason)
+    private static JArray At(string json) => JArray.Parse(json);
+
+    private static void AssertProblem(PlayerMoveOrder? order, List<OptionProblem> problems, string path, string reason)
     {
-        ApiException error = Assert.Throws<ApiException>(() => MoveRequest.Of(Of(json)));
-        Assert.Equal(ApiErrors.InvalidArgumentCode, error.Code);
-        Assert.Contains(reason, error.Message);
+        Assert.Null(order);
+        OptionProblem problem = Assert.Single(problems);
+        Assert.Equal(path, problem.Path);
+        Assert.Contains(reason, problem.Problem);
     }
 
-    // ---- arguments ----
+    // ---- options ----
 
     [Fact]
-    public void APointMovesThePlayerAtOnceWithNothingElseAsked()
+    public void APointMovesThePlayerWithNothingElseAsked()
     {
-        MoveRequest request = MoveRequest.Of(Of("""{"at": [10, 2.5, -40]}"""));
+        PlayerMoveOrder order = Order(At("[10, 2.5, -40]"))!;
 
-        MoveDestination.Point point = Assert.IsType<MoveDestination.Point>(request.Destination);
+        MoveDestination.Point point = Assert.IsType<MoveDestination.Point>(order.Destination);
         Assert.Equal(new Vec3(10, 2.5, -40), point.At);
-        Assert.Equal("at", request.Destination.Form);
-        Assert.Null(request.Player);
-        Assert.False(request.SafeGround);
-        Assert.False(request.DryRun);
+        Assert.Equal("at", order.Destination.Form);
+        Assert.Null(order.Player);
+        Assert.False(order.SafeGround);
     }
 
     [Fact]
-    public void APointMayBeAnObject()
+    public void ToAndToPlayerNameWhatToLandBeside()
     {
-        MoveRequest request = MoveRequest.Of(Of("""{"at": {"x": 1, "y": 2, "z": 3}, "safe_ground": true, "dry_run": true}"""));
-
-        Assert.Equal(new Vec3(1, 2, 3), Assert.IsType<MoveDestination.Point>(request.Destination).At);
-        Assert.True(request.SafeGround);
-        Assert.True(request.DryRun);
-    }
-
-    [Fact]
-    public void ToIdAndNearPlayerNameWhatToLandBeside()
-    {
-        MoveRequest thing = MoveRequest.Of(Of("""{"to_id": "123456", "player": "Ada"}"""));
-        Assert.Equal(new ThingId(123456), Assert.IsType<MoveDestination.NextToThing>(thing.Destination).Thing);
-        Assert.Equal("to_id", thing.Destination.Form);
+        PlayerMoveOrder thing = Order(null, to: "123456", player: "Ada", safeGround: true)!;
+        Assert.Equal("123456", Assert.IsType<MoveDestination.NextToThing>(thing.Destination).Id);
+        Assert.Equal("to", thing.Destination.Form);
         Assert.Equal("Ada", thing.Player);
+        Assert.True(thing.SafeGround);
 
-        MoveRequest player = MoveRequest.Of(Of("""{"near_player": "Bob"}"""));
+        PlayerMoveOrder player = Order(null, toPlayer: "Bob")!;
         Assert.Equal("Bob", Assert.IsType<MoveDestination.NextToPlayer>(player.Destination).Player);
-        Assert.Equal("near_player", player.Destination.Form);
+        Assert.Equal("to_player", player.Destination.Form);
+    }
+
+    [Fact]
+    public void ExactlyOneDestinationIsNeeded()
+    {
+        List<OptionProblem> none = new List<OptionProblem>();
+        AssertProblem(Order(null, problems: none), none, "at", "is needed");
+        List<OptionProblem> two = new List<OptionProblem>();
+        AssertProblem(Order(At("[0, 0, 0]"), to: "5", problems: two), two, "at", "give one destination");
+        List<OptionProblem> others = new List<OptionProblem>();
+        AssertProblem(Order(null, to: "5", toPlayer: "Bob", problems: others), others, "at", "give one destination");
     }
 
     [Theory]
-    [InlineData("""{}""")]
-    [InlineData("""{"at": [0, 0, 0], "to_id": "5"}""")]
-    [InlineData("""{"to_id": "5", "near_player": "Bob"}""")]
-    [InlineData("""{"at": null}""")]
-    public void ExactlyOneDestinationIsNeeded(string json) => AssertInvalid(json, "exactly one destination");
-
-    [Theory]
-    [InlineData("""{"at": [1, 2]}""")]
-    [InlineData("""{"at": [1, 2, "3"]}""")]
-    [InlineData("""{"at": {"x": 1, "y": 2}}""")]
-    [InlineData("""{"at": "1 2 3"}""")]
-    public void APointThatIsNotThreeNumbersIsRefused(string json) => AssertInvalid(json, "must be a position");
+    [InlineData("[1, 2]")]
+    [InlineData("[1, 2, \"3\"]")]
+    public void APointThatIsNotThreeNumbersIsAProblem(string at)
+    {
+        List<OptionProblem> problems = new List<OptionProblem>();
+        AssertProblem(Order(At(at), problems: problems), problems, "at", "is a position");
+    }
 
     [Fact]
-    public void APointFarBeyondAnyWorldIsRefused() => AssertInvalid("""{"at": [0, 0, 250000]}""", "beyond");
+    public void APointFarBeyondAnyWorldIsAProblem()
+    {
+        List<OptionProblem> problems = new List<OptionProblem>();
+        AssertProblem(Order(At("[0, 0, 250000]"), problems: problems), problems, "at", "beyond");
+    }
 
-    [Theory]
-    [InlineData("""{"to_id": "abc"}""", "to_id")]
-    [InlineData("""{"near_player": "  "}""", "near_player")]
-    [InlineData("""{"at": [0, 0, 0], "player": ""}""", "player")]
-    [InlineData("""{"at": [0, 0, 0], "player": 5}""", "player")]
-    [InlineData("""{"at": [0, 0, 0], "safe_ground": "yes"}""", "safe_ground")]
-    public void ABadArgumentIsNamed(string json, string name) => AssertInvalid(json, name);
+    [Fact]
+    public void ABlankNameIsAProblemUnderItsOption()
+    {
+        List<OptionProblem> toPlayer = new List<OptionProblem>();
+        AssertProblem(Order(null, toPlayer: "  ", problems: toPlayer), toPlayer, "to_player", "not empty");
+        List<OptionProblem> to = new List<OptionProblem>();
+        AssertProblem(Order(null, to: " ", problems: to), to, "to", "not empty");
+        List<OptionProblem> player = new List<OptionProblem>();
+        AssertProblem(Order(At("[0, 0, 0]"), player: "", problems: player), player, "player", "not empty");
+    }
 
     // ---- landing beside a body ----
 
@@ -230,13 +240,15 @@ public sealed class MovePlayerTests
     [Fact]
     public void TheReplyGivesBothPlacesWithTheirRooms()
     {
-        MovePlayerView view = new MovePlayerView(false, new ThingView(new ThingId(1001), "Character", "Ada"), "client",
+        MovePlayerView view = new MovePlayerView(new ThingView(new ThingId(1001), "Character", "Ada"), "client",
             new PlaceView(new PositionView(1.04, 2, 3), "77", "Room"), new PlaceView(new PositionView(40, 2, 3), null, null),
-            new MoveDestinationView("to_id", new ThingView(new ThingId(5), "StructureLocker", "Locker"), true), 39.04,
+            new MoveDestinationView("to", new ThingView(new ThingId(5), "StructureLocker", "Locker"), true), 39.04,
             "Sent.");
 
-        JObject reply = JObject.Parse(WireCheck.New(view));
+        JObject reply = PlayerMoveReplies.Acted(view);
 
+        Assert.Equal(new[] { "player", "moved_by", "before", "after", "destination", "distance_m", "note" },
+            reply.Properties().Select(key => key.Name));
         Assert.Equal("client", (string?)reply["moved_by"]);
         Assert.Equal("1001", (string?)reply["player"]!["reference_id"]);
         Assert.Equal(1.0, (double)reply["before"]!["position"]!["x"]!);
@@ -244,6 +256,7 @@ public sealed class MovePlayerTests
         Assert.Null(reply["before"]!["outside"]);
         Assert.True((bool)reply["after"]!["outside"]!);
         Assert.Null(reply["after"]!["room_id"]);
+        Assert.Equal("to", (string?)reply["destination"]!["form"]);
         Assert.Equal("5", (string?)reply["destination"]!["next_to"]!["reference_id"]);
         Assert.True((bool)reply["destination"]!["safe_ground"]!);
         Assert.Equal(39.0, (double)reply["distance_m"]!);
@@ -251,17 +264,23 @@ public sealed class MovePlayerTests
     }
 
     [Fact]
-    public void APlainPointLeavesOutWhatItDoesNotHave()
+    public void AReportGivesTheMoveAndThePlayerAsItsTarget()
     {
-        MovePlayerView view = new MovePlayerView(true, new ThingView(new ThingId(1), null, "Ada"), "server",
+        MovePlayerView view = new MovePlayerView(new ThingView(new ThingId(1), null, "Ada"), "server",
             new PlaceView(new PositionView(0, 0, 0), null, null), new PlaceView(new PositionView(1, 0, 0), null, null),
             new MoveDestinationView("at", null, false), 1.0, null);
 
-        JObject reply = JObject.Parse(WireCheck.New(view));
+        JObject report = PlayerMoveReplies.Reported(view, "[cannot undo: player move]");
 
-        Assert.Null(reply["note"]);
-        Assert.Null(reply["destination"]!["next_to"]);
-        Assert.Null(reply["destination"]!["safe_ground"]);
-        Assert.True((bool)reply["dry_run"]!);
+        Assert.Null(report["note"]);
+        Assert.Null(report["dry_run"]);
+        Assert.Null(report["destination"]!["next_to"]);
+        Assert.Null(report["destination"]!["safe_ground"]);
+        Assert.True((bool)report["report_only"]!);
+        Assert.Empty((JArray)report["problems"]!);
+        JToken target = Assert.Single((JArray)report["targets"]!);
+        Assert.Equal("1", (string?)target["id"]);
+        Assert.Equal("[cannot undo: player move]", (string?)target["undo"]);
+        Assert.Equal(1.0, (double)target["new"]!["x"]!);
     }
 }

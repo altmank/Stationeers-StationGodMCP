@@ -14,39 +14,62 @@ using StationGodMCP.Net;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.RemoteView;
+using StationGodMCP.Pure.Verbs;
 using TerrainSystem;
 using UnityEngine;
 
 namespace StationGodMCP.Api;
 
 /// <summary>
-/// move_player: put a player anywhere, a cheat. The console's teleport is creative only and moves the local player by
-/// writing its transform (TeleportCommand), which on a dedicated server has no player to move and could not hold a
-/// client's: a client's character is its own to move (see PlayerMoves). So the move is made by whichever game owns the
-/// character (PlayerMover): this server for its own player or a body nobody controls, the player's own StationGod for a
-/// remote player, and the game's seat exit for a player in a seat, bed or capsule, which reaches every client.
+/// A player put anywhere, a cheat. The console's teleport is creative only and moves the local player by writing its
+/// transform (TeleportCommand), which on a dedicated server has no player to move and could not hold a client's: a
+/// client's character is its own to move (see PlayerMoves). So the move is made by whichever game owns the character
+/// (PlayerMover): this server for its own player or a body nobody controls, the player's own StationGod for a remote
+/// player, and the game's seat exit for a player in a seat, bed or capsule, which reaches every client. Check makes
+/// every check and finds the point; Move moves the player there.
 /// </summary>
-internal static class MovePlayerApi
+internal sealed class PlayerMovePlan
 {
-    internal static MovePlayerView Handle(Args args)
+    private readonly Human _player;
+    private readonly Vector3 _from;
+    private readonly Vector3 _to;
+    private readonly PlayerMover _mover;
+    private readonly MoveDestinationView _destination;
+
+    private PlayerMovePlan(Human player, Vector3 from, Vector3 to, PlayerMover mover, MoveDestinationView destination)
+    {
+        _player = player;
+        _from = from;
+        _to = to;
+        _mover = mover;
+        _destination = destination;
+    }
+
+    internal static PlayerMovePlan Check(PlayerMoveOrder order, string label)
     {
         if (NetworkManager.IsClient || !GameManager.RunSimulation)
         {
             throw ApiErrors.Refused("not_host", "This game is a multiplayer client; only the host moves players.");
         }
 
-        MoveRequest request = MoveRequest.Of(args);
-        Human player = MovablePlayers.Require(request.Player);
+        Human player = MovablePlayers.Require(order.Player);
         Vector3 from = player.ThingTransformPosition;
-        Target target = Target.Resolve(request.Destination, player, from);
-        Vector3 to = request.SafeGround ? SafeGround.Of(target.Point) : target.Point;
+        Target target = Target.Resolve(order.Destination, player, from, label);
+        Vector3 to = order.SafeGround ? SafeGround.Of(target.Point) : target.Point;
         WorldBounds.Require(to);
-        PlayerMover mover = PlayerMover.For(player);
-        Vector3 after = request.DryRun ? to : mover.Move(player, to);
-        return new MovePlayerView(request.DryRun, GameLookup.ViewOf(player), mover.Name, Places.Of(from),
-            Places.Of(after), new MoveDestinationView(request.Destination.Form, target.NextTo, request.SafeGround),
-            Vector3.Distance(from, to), mover.Note(request.DryRun));
+        return new PlayerMovePlan(player, from, to, PlayerMover.For(player), new MoveDestinationView(
+            order.Destination.Form, target.NextTo, order.SafeGround));
     }
+
+    /// <summary>Where the move would put the player; nothing moves.</summary>
+    internal MovePlayerView Planned() => View(_to, _mover.Note(report: true));
+
+    /// <summary>The move, and where the player stands after it.</summary>
+    internal MovePlayerView Move() => View(_mover.Move(_player, _to), _mover.Note(report: false));
+
+    private MovePlayerView View(Vector3 after, string? note) =>
+        new MovePlayerView(GameLookup.ViewOf(_player), _mover.Name, Places.Of(_from), Places.Of(after), _destination,
+            Vector3.Distance(_from, _to), note);
 
     /// <summary>The destination's point, and the thing or player it is next to.</summary>
     private sealed class Target
@@ -61,11 +84,11 @@ internal static class MovePlayerApi
 
         internal ThingView? NextTo { get; }
 
-        internal static Target Resolve(MoveDestination destination, Human player, Vector3 from) =>
+        internal static Target Resolve(MoveDestination destination, Human player, Vector3 from, string label) =>
             destination switch
             {
                 MoveDestination.Point point => new Target(Bodies.U(point.At), null),
-                MoveDestination.NextToThing thing => BesideThing(thing.Thing, player, from),
+                MoveDestination.NextToThing thing => BesideThing(TargetIds.Of(thing.Id, label), player, from),
                 MoveDestination.NextToPlayer other => BesidePlayer(MovablePlayers.Find(other.Player), player, from),
                 _ => throw new System.InvalidOperationException("Unknown destination.")
             };
@@ -77,7 +100,7 @@ internal static class MovePlayerApi
             if (place == player)
             {
                 throw ApiErrors.InvalidArgument(
-                    $"{Vocabulary.Arg("to_id")} {id} is {player.DisplayName} or something they carry, so it moves " +
+                    $"to: {id} is {player.DisplayName} or something they carry, so it moves " +
                     "with them.");
             }
 
@@ -91,7 +114,7 @@ internal static class MovePlayerApi
         {
             if (other == player)
             {
-                throw ApiErrors.InvalidArgument($"{Vocabulary.Arg("near_player")} is {player.DisplayName}, the " +
+                throw ApiErrors.InvalidArgument($"to_player: {player.DisplayName} is the " +
                     "player being moved.");
             }
 
@@ -113,7 +136,7 @@ internal static class MovePlayerApi
     }
 }
 
-/// <summary>The players move_player finds by name or id, and the one it moves.</summary>
+/// <summary>The players move player finds by name or id, and the one it moves.</summary>
 internal static class MovablePlayers
 {
     /// <summary>The player named, else the player (PlayerOrigin); refused when they cannot be moved.</summary>
@@ -221,7 +244,7 @@ internal abstract class PlayerMover
 
     internal abstract Vector3 Move(Human player, Vector3 to);
 
-    internal virtual string? Note(bool dryRun) => null;
+    internal virtual string? Note(bool report) => null;
 
     internal static PlayerMover For(Human player)
     {
@@ -279,7 +302,7 @@ internal abstract class PlayerMover
             return player.ThingTransformPosition;
         }
 
-        internal override string? Note(bool dryRun) =>
+        internal override string? Note(bool report) =>
             "The player is in a seat, bed or capsule: the move takes them out of it.";
     }
 
@@ -311,10 +334,10 @@ internal abstract class PlayerMover
             return to;
         }
 
-        internal override string? Note(bool dryRun) =>
-            dryRun
-                ? "A real move goes to the player's own game, which moves them on receipt."
-                : "Sent to the player's own game, which moves them on receipt; a dry run with the same player reads " +
+        internal override string? Note(bool report) =>
+            report
+                ? "A confirmed move goes to the player's own game, which moves them on receipt."
+                : "Sent to the player's own game, which moves them on receipt; a report with the same player reads " +
                   "back where they stand.";
     }
 }
