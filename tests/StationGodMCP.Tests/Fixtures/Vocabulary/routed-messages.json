@@ -1,10 +1,4 @@
 {
-  "Api/Highlight.cs": [
-    "highlight",
-    "{name}: {Names.Of(thing)} ({thing.PrefabName}) is no cable, pipe or chute piece; give a device in reference_ids, or name a network or a piece on it.",
-    "{name}: {id} names no thing and no cable, pipe or chute network. A network's id changes after almost every edit; name a piece on it instead.",
-    "{name}: {thing.PrefabName} {id} is on no network."
-  ],
   "Api/RemoveStructures.cs": [
     "Pass job_id, or reference_ids."
   ],
@@ -96,12 +90,6 @@
     "{plan.Unmatched.Count} piece(s) have no replacement (see unmatched_pieces); pass skip_unmatched to leave them as they are.",
     "{player.Absence} Nothing to take coils from (or, with refund_to source, to give the refund to); pass from_id."
   ],
-  "Api/Shared/HighlightArgs.cs": [
-    "{path} must be an object.",
-    "{path} takes exactly one of {string.Join(\", \", TargetForms)}.",
-    "{path}.color must be one of {string.Join(\", \", ColorNames)}, or [r, g, b] with each 0 to 1.",
-    "{path}.label is at most {MaximumLabel} characters."
-  ],
   "Api/Shared/JobDrops.cs": [
     "Job {id} has ended; there is nothing to drop. Poll it with job_id for its result.",
     "Job {id} has started; it cannot be dropped. Poll it with job_id to follow it to its end."
@@ -121,11 +109,6 @@
   ],
   "Api/Shared/SourceArgs.cs": [
     "Argument '{Argument}' must name 1 to {MaximumSources} things."
-  ],
-  "Api/ShowPreview.cs": [
-    "Nothing to draw: pass placements (or prefab and at), cells or boxes.",
-    "show_preview",
-    "show_preview takes placements, not a job_id."
   ],
   "Api/Views/GasCheckViews.cs": [
     " Further pipe jobs are refused until the world is loaded again, or until a run acknowledges this loss (acknowledge_gas_lost with this job's id, only after the user has agreed).",

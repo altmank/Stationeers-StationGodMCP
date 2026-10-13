@@ -6,54 +6,57 @@ using Assets.Scripts.Networks;
 using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Electrical;
 using Assets.Scripts.Objects.Pipes;
-using StationGodMCP.Api.Shared;
-using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
-using StationGodMCP.Pure.Protocol;
 using UnityEngine;
 
-namespace StationGodMCP.Api;
+namespace StationGodMCP.Api.Shared.Game.Show;
 
 /// <summary>
-/// highlight: show the player where things are, through walls, frames and terrain (Highlights). Things by id
-/// and a network's pieces are drawn with their own meshes, tinted, as the T-Ray SPU draws pipes and cables (XRay); a
-/// world point gets a beam and, out of view, an arrow at the screen's edge with its distance and bearing. Timed; a new
-/// call replaces the last unless keep is true; clear: true only removes them. Drawn on the player's screen
-/// (PlayerView): this game's, or a remote player's through their StationGod. Changes nothing in the world.
+/// show highlight (catalogue show.json), the two branches the old highlight handler ran: clear removes every mark the
+/// player's screen has of the mod's, and a draw finds what each target names and hands the screen the marks to draw
+/// through walls, frames and terrain with (Highlights, the T-Ray SPU's material). Things by id and a network's pieces
+/// are drawn with their own meshes, tinted; a world point gets a beam and, out of view, an arrow at the screen's edge
+/// with its distance and bearing. Each target's reply row says what it drew and where it is from the camera. Drawn on
+/// the player's screen (PlayerView): this game's, or a remote player's through their StationGod. Nothing in the world
+/// changes.
 /// </summary>
-internal static class HighlightApi
+internal static class HighlightScreen
 {
+    /// <summary>A network's pieces are drawn up to this many; the reply's row says when more were found.</summary>
     private const int MaximumPieces = 4096;
 
-    internal static HighlightView Handle(Args args)
+    /// <summary>clear: every mark drawn for the player so far goes; nothing is found and nothing drawn.</summary>
+    internal static HighlightView Clear()
     {
-        if (args.OptionalBool("clear") ?? false)
-        {
-            args.Reject("clear", "targets", "seconds", "keep");
-            PlayerView player = PlayerView.Current();
-            PlayerScreen shown = player.ScreenOrLocal();
-            return new HighlightView(new List<HighlightTargetView>(), shown.ClearHighlights(), 0, shown.Renderer,
-                new List<string> { "Cleared." }, shown.DrawnOn, player.Source);
-        }
+        PlayerView player = PlayerView.Current();
+        PlayerScreen shown = player.ScreenOrLocal();
+        return new HighlightView(new List<HighlightTargetView>(), shown.ClearHighlights(), 0.0, shown.Renderer,
+            new List<string> { "Cleared." }, shown.DrawnOn, player.Source);
+    }
 
-        HighlightRequest request = HighlightRequest.Parse(args);
-        CameraView camera = PlayerView.Current().Require(Vocabulary.Tool("highlight"));
+    /// <summary>Each target found and drawn: the player's screen shows them for the call's seconds, or keeps what it
+    /// already showed with keep.</summary>
+    internal static HighlightView Show(HighlightRequest request)
+    {
+        CameraView camera = PlayerView.Current().Require("show highlight");
         Vec3 eye = camera.Eye;
         List<HighlightTargetView> views = new List<HighlightTargetView>(request.Targets.Count);
         List<ScreenMark> marks = new List<ScreenMark>(request.Targets.Count);
         for (int index = 0; index < request.Targets.Count; index++)
         {
-            views.Add(Show(request.Targets[index], index, eye, marks));
+            views.Add(Found(request.Targets[index], index, eye, marks));
         }
 
         PlayerScreen screen = camera.Screen;
         List<string> notes = new List<string>();
         int cleared = screen.Highlight(!request.Keep, marks, request.Seconds, notes);
-        return new HighlightView(views, cleared, request.Seconds, screen.Renderer, notes, screen.DrawnOn, camera.Source);
+        return new HighlightView(views, cleared, request.Seconds, screen.Renderer, notes, screen.DrawnOn,
+            camera.Source);
     }
 
-    private static HighlightTargetView Show(HighlightTarget target, int index, Vec3 eye, List<ScreenMark> marks)
+    // One target found: what it names, the mark the screen draws and the row the reply lists.
+    private static HighlightTargetView Found(HighlightTarget target, int index, Vec3 eye, List<ScreenMark> marks)
     {
         switch (target)
         {
@@ -61,7 +64,7 @@ internal static class HighlightApi
                 marks.Add(new ScreenMark(point, new List<Thing>()));
                 return HighlightTargetView.OfPoint(index, point, Heading.From(eye, point.At));
             case HighlightTarget.Network network:
-                List<Thing> pieces = NetworkPieces(network.Id, $"targets[{index}].network_id", out ThingId resolved,
+                List<Thing> pieces = NetworkPieces(network.Id, $"targets[{index}].network", out ThingId resolved,
                     out bool truncated);
                 marks.Add(new ScreenMark(target, pieces));
                 return HighlightTargetView.OfThings(index, target, "network", resolved, pieces.Count,
@@ -85,7 +88,7 @@ internal static class HighlightApi
                 return HighlightTargetView.OfThings(index, target, "things", null, found.Count, missing,
                     Nearest(eye, found), false);
             default:
-                throw ApiErrors.InvalidArgument($"targets[{index}] names nothing to highlight.");
+                throw new System.InvalidOperationException("Unknown highlight target.");
         }
     }
 
@@ -117,13 +120,12 @@ internal static class HighlightApi
                 Pipe pipe => pipe.PipeNetwork,
                 Chute chute => chute.ChuteNetwork,
                 _ => throw ApiErrors.InvalidArgument(
-                    $"{Vocabulary.Path(name)}: {Names.Of(thing)} ({thing.PrefabName}) is no cable, pipe or chute " +
-                    $"piece; give a device in {Vocabulary.Arg("reference_ids")}, or name a network or a piece on it.")
+                    $"{name}: {Names.Of(thing)} ({thing.PrefabName}) is no cable, pipe or chute piece; give a device " +
+                    "in id, or name a network or a piece on it.")
             };
             if (network == null)
             {
-                throw ApiErrors.Refused("no_network", $"{Vocabulary.Path(name)}: {thing.PrefabName} {id} is on no " +
-                    "network.");
+                throw ApiErrors.Refused("no_network", $"{name}: {thing.PrefabName} {id} is on no network.");
             }
         }
         else
@@ -132,8 +134,8 @@ internal static class HighlightApi
                       Referencable.Find<PipeNetwork>(id.Value) as IReferencable ??
                       Referencable.Find<ChuteNetwork>(id.Value) ??
                       throw ApiErrors.Refused("network_not_found",
-                          $"{Vocabulary.Path(name)}: {id} names no thing and no cable, pipe or chute network. A " +
-                          "network's id changes after almost every edit; name a piece on it instead.");
+                          $"{name}: {id} names no thing and no cable, pipe or chute network. A network's id changes " +
+                          "after almost every edit; name a piece on it instead.");
         }
 
         resolved = new ThingId(network.ReferenceId);

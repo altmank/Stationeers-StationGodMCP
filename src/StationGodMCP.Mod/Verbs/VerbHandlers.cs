@@ -97,5 +97,7 @@ internal static class VerbHandlers
         VerbHandler.For(TradeInventoryOptions.Spec, TradeInventoryOptions.Bind, TradeInventory.Run),
         VerbHandler.For(TradeBuyOptions.Spec, TradeBuyOptions.Bind, TradeBuy.Run),
         VerbHandler.For(TradeSellOptions.Spec, TradeSellOptions.Bind, TradeSell.Run),
+        VerbHandler.For(ShowPreviewOptions.Spec, ShowPreviewOptions.Bind, ShowPreview.Run),
+        VerbHandler.For(ShowHighlightOptions.Spec, ShowHighlight.Call.Bind, ShowHighlight.Run),
     });
 }

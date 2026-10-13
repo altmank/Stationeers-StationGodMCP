@@ -201,7 +201,8 @@ internal sealed class StructureBuildOrder
                     $"goes with the one top-level placement, not with {ByPlacements}"));
             }
 
-            Add(path + ".", index, Shared(item, path, problems), problems);
+            PlacementOrders.Add(Placements, PlacementOrders.Shared(item, path, problems), index, path + ".",
+                BuildStructureOptions.Spec, problems);
         }
     }
 
@@ -210,7 +211,7 @@ internal sealed class StructureBuildOrder
     private VerbError? One(BuildStructureOptions options, List<OptionProblem> problems)
     {
         JObject item = new JObject();
-        if (!AddPrefab(options.Selector.Prefab, item, problems))
+        if (!PlacementOrders.Prefab(options.Selector.Prefab, ByPrefab, item, problems))
         {
             return null;
         }
@@ -247,7 +248,7 @@ internal sealed class StructureBuildOrder
 
         if (options.AboveFloor.HasValue)
         {
-            AddAboveFloor(new JValue(options.AboveFloor.Value), "above_floor", item, problems);
+            PlacementOrders.AboveFloor(new JValue(options.AboveFloor.Value), "above_floor", item, problems);
         }
 
         if (options.BuildState != null)
@@ -274,7 +275,7 @@ internal sealed class StructureBuildOrder
 
         if (options.Spread == null)
         {
-            Add(string.Empty, 0, item, problems);
+            PlacementOrders.Add(Placements, item, 0, string.Empty, BuildStructureOptions.Spec, problems);
             return null;
         }
 
@@ -287,88 +288,10 @@ internal sealed class StructureBuildOrder
         for (int index = 0; points != null && index < points.Count; index++)
         {
             item["at"] = points[index];
-            Add(string.Empty, index, item, problems);
+            PlacementOrders.Add(Placements, item, index, string.Empty, BuildStructureOptions.Spec, problems);
         }
 
         return null;
-    }
-
-    // One placement read by the shared reader (BuildArgs.Placement), so it is checked exactly as the old surface
-    // checked a placement; a refusal it throws names the option it is about.
-    private void Add(string prefix, int index, JObject item, List<OptionProblem> problems)
-    {
-        try
-        {
-            Placements.Add(BuildArgs.Placement(new Args(item), index, prefix));
-        }
-        catch (ApiException refused)
-        {
-            problems.Add(ProblemFor(prefix.Length == 0 ? ByPrefab : prefix.TrimEnd('.'), prefix, refused.Message));
-        }
-    }
-
-    // A placement's fields as the shared reader reads them: an item that gives above_floor is this what's name for the shared
-    // above_floor_m, so a placement that gives it is read from a copy with that one key set. A placement that does not
-    // is read as given, so nothing is copied.
-    private static JObject Shared(JObject item, string path, List<OptionProblem> problems)
-    {
-        JToken? above = item["above_floor"];
-        if (above == null)
-        {
-            return item;
-        }
-
-        JObject fields = new JObject();
-        foreach (JProperty key in item.Properties())
-        {
-            fields[key.Name] = key.Value.DeepClone();
-        }
-
-        AddAboveFloor(above, $"{path}.above_floor", fields, problems);
-        return fields;
-    }
-
-    // above_floor: a placement's bottom this many metres above the floor below at, 0 to 20.
-    private static void AddAboveFloor(JToken? given, string path, JObject item, List<OptionProblem> problems)
-    {
-        if (given == null)
-        {
-            return;
-        }
-
-        double metres = given.Type is JTokenType.Integer or JTokenType.Float ? given.Value<double>() : double.NaN;
-        if (double.IsNaN(metres) || double.IsInfinity(metres) || metres < 0.0 || metres > 20.0)
-        {
-            problems.Add(new OptionProblem(path, "is 0 to 20, in metres"));
-            return;
-        }
-
-        item["above_floor_m"] = metres;
-    }
-
-    // The one prefab, from the what's prefab binding: its name or its hash. A * pattern is a filter, not a placement,
-    // so false with the problem (the placement is not read then: it would only repeat that its prefab is missing).
-    private static bool AddPrefab(PrefabFilter? filter, JObject item, List<OptionProblem> problems)
-    {
-        if (filter == null)
-        {
-            return true;
-        }
-
-        if (filter.Patterns.Count == 1 && filter.Patterns[0] is PrefabPattern.Hash hash)
-        {
-            item["prefab"] = hash.Value;
-            return true;
-        }
-
-        if (filter.Patterns.Count == 1 && filter.Patterns[0] is PrefabPattern.Whole whole)
-        {
-            item["prefab"] = whole.Name;
-            return true;
-        }
-
-        problems.Add(new OptionProblem(ByPrefab, "is one prefab's name or its hash, not a * pattern"));
-        return false;
     }
 
     // spread: {from, to, step} or a list of them. Each line's points are from + k*step along it: from included, to
@@ -423,8 +346,8 @@ internal sealed class StructureBuildOrder
             return;
         }
 
-        if (!Point(from, $"{path}.from", problems, out Metres start) ||
-            !Point(to, $"{path}.to", problems, out Metres end))
+        if (!PlacementOrders.Position(from, $"{path}.from", problems, out Metres start) ||
+            !PlacementOrders.Position(to, $"{path}.to", problems, out Metres end))
         {
             return;
         }
@@ -459,41 +382,4 @@ internal sealed class StructureBuildOrder
         return Math.Sqrt(x * x + y * y + z * z);
     }
 
-    // A position in metres, through the shared reader (BuildArgs.PositionOf); a refusal it throws names the option.
-    private static bool Point(JToken token, string path, List<OptionProblem> problems, out Metres point)
-    {
-        try
-        {
-            point = BuildArgs.PositionOf(token, path);
-            return true;
-        }
-        catch (ApiException refused)
-        {
-            point = default;
-            problems.Add(ProblemFor(path, path, refused.Message));
-            return false;
-        }
-    }
-
-    // A shared reader's refusal as a problem: a message that names the option it is about (placements[2].at is
-    // required, or at is required) gives the path and the rest is the text; a message that names none (Give at most
-    // one of rotation, facing and face) is about the placement, known by its form.
-    private static OptionProblem ProblemFor(string form, string path, string message)
-    {
-        string text = message.Length > 0 && message[message.Length - 1] == '.'
-            ? message.Substring(0, message.Length - 1)
-            : message;
-        int space = text.IndexOf(' ');
-        string named = space < 0 ? text : text.Substring(0, space);
-        return space > 0 && Named(named, path)
-            ? new OptionProblem(named, text.Substring(space + 1))
-            : new OptionProblem(form, text);
-    }
-
-    // Whether the message's first word names the option it is about: a placement item's path (placements[2].at), or
-    // one of the what's own options (at) for the placement given at the top level.
-    private static bool Named(string word, string path) =>
-        path.Length > 0
-            ? word.StartsWith(path, StringComparison.Ordinal) && word.Length >= path.Length
-            : BuildStructureOptions.Spec.Option(word) != null;
 }

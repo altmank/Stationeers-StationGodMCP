@@ -2,6 +2,7 @@
 
 using System.Collections.Generic;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Rockets;
@@ -922,10 +923,10 @@ internal sealed class PrintView
     public ThingId? SplitFrom { get; }
 }
 
-/// <summary>show_preview: how many boxes it drew, how many earlier ones it cleared, for how long, and the dry run.</summary>
+/// <summary>show preview: how many boxes it drew, how many earlier ones it cleared, for how long, and the plan.</summary>
 internal sealed class ShowPreviewView
 {
-    internal ShowPreviewView(int shown, int cleared, double seconds, PlaceReportView? dryRun, List<string> notes,
+    internal ShowPreviewView(int shown, int cleared, double seconds, JObject? plan, List<string> notes,
         string? drawnOn = null, ViewSourceView? view = null)
     {
         DrawnOn = drawnOn;
@@ -933,7 +934,7 @@ internal sealed class ShowPreviewView
         Shown = shown;
         Cleared = cleared;
         Seconds = seconds;
-        DryRun = dryRun;
+        Plan = plan;
         Notes = notes;
     }
 
@@ -943,9 +944,12 @@ internal sealed class ShowPreviewView
 
     public double Seconds { get; }
 
-    /// <summary>place_structure's own dry run of the placements drawn; left out without placements.</summary>
+    /// <summary>
+    /// build structure's own report of the placements drawn: its keys but tool, status and job_id; left out without
+    /// placements.
+    /// </summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-    public PlaceReportView? DryRun { get; }
+    public JObject? Plan { get; }
 
     public List<string> Notes { get; }
 

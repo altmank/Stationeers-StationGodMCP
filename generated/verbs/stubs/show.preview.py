@@ -23,24 +23,24 @@ def show(what: Literal['preview'], *,
       shown: int
       cleared: int
       seconds: float
-      dry_run: {tool: str, status: str, job_id: str | None, ready: bool, problems: list[{code: str, message: str, index: int | None, reference_id: str
-          | None}], warnings: list[{code: str, message: str, index: int | None, reference_id: str | None}], placements: list[{index: int, prefab_name:
-          str | None, prefab_hash: int | None, display_name: str | None, placement: str | None, position: Vec3 | None, orientation: {facing: str |
-          None, up: str | None, euler: Vec3} | None, face: str | None, ports: list[{index: int, at: Vec3, toward: str, type: str, role: str,
-          network_id: str | None}] | None, build_state: int | None, build_states: int | None, label: str | None, color: {index: int | None, name: str
-          | None} | None, cost: list[{prefab_name: str | None, quantity: int}], layout: {footprint: {small_cells: {count: int, cells: list[{x: float,
-          y: float, z: float}] | None}, large_cells: list[Vec3] | None, body: {origin: {x: float, y: float, z: float}, render_box: {min: PointView,
-          max: PointView, size: PointView}, centre_offset: {x: float, y: float, z: float}, grid_box: {min: PointView, max: PointView, size: PointView}
-          | None, grid_cells: int}, mount: {plane: str, outward: str, axes: list[str], min: list[float], max: list[float]} | None}, sections: {walls:
-          list[{face: {x: float, y: float, z: float}, reference_id: str | None, prefab_name: str | None, kind: str}], count: int, crosses_seam: bool}
-          | None, conflicts: list[{code: str, level: str, message: str, reference_id: str | None}], port_checks: list[{index: int, at: Vec3, toward:
-          str, type: str, role: str, flow: str | None, occupant: Thing | None, joins: bool, would_join_network: str | None, blocked: str | None,
-          in_door_keep_out: bool}] | None} | None, orient: {chosen: {facing: str | None, up: str | None, euler: Vec3, score: float | None, reasons:
-          list[str], reversed_flow: bool} | None, alternatives: list[{facing: str | None, up: str | None, euler: Vec3, score: float | None, reasons:
-          list[str], reversed_flow: bool}], tried: int, mode_flip: {logic_type: str, value: int, reason: str} | None} | None, resolved: {at: {x:
-          float, y: float, z: float}, at_how: str, facing: str | None, facing_how: str | None, view: {source: str, age_s: float} | None} | None}],
-          materials: list[{prefab_name: str | None, needed: int, available: int, paid_by: list[{reference_id: str, name: str | None, quantity: int,
-          available: int}] | None}], from: Thing | None, free: bool, notes: list[str] | None} | None
+      plan: {ready: bool, problems: list[{code: str, message: str, index: int | None, reference_id: str | None}], warnings: list[{code: str, message:
+          str, index: int | None, reference_id: str | None}], placements: list[{index: int, prefab_name: str | None, prefab_hash: int | None,
+          display_name: str | None, placement: str | None, position: Vec3 | None, orientation: {facing: str | None, up: str | None, euler: Vec3} |
+          None, face: str | None, ports: list[{index: int, at: Vec3, toward: str, type: str, role: str, network_id: str | None}] | None, build_state:
+          int | None, build_states: int | None, label: str | None, color: {index: int | None, name: str | None} | None, cost: list[{prefab_name: str |
+          None, quantity: int}], layout: {footprint: {small_cells: {count: int, cells: list[{x: float, y: float, z: float}] | None}, large_cells:
+          list[Vec3] | None, body: {origin: {x: float, y: float, z: float}, render_box: {min: PointView, max: PointView, size: PointView},
+          centre_offset: {x: float, y: float, z: float}, grid_box: {min: PointView, max: PointView, size: PointView} | None, grid_cells: int}, mount:
+          {plane: str, outward: str, axes: list[str], min: list[float], max: list[float]} | None}, sections: {walls: list[{face: {x: float, y: float,
+          z: float}, reference_id: str | None, prefab_name: str | None, kind: str}], count: int, crosses_seam: bool} | None, conflicts: list[{code:
+          str, level: str, message: str, reference_id: str | None}], port_checks: list[{index: int, at: Vec3, toward: str, type: str, role: str, flow:
+          str | None, occupant: Thing | None, joins: bool, would_join_network: str | None, blocked: str | None, in_door_keep_out: bool}] | None} |
+          None, orient: {chosen: {facing: str | None, up: str | None, euler: Vec3, score: float | None, reasons: list[str], reversed_flow: bool} |
+          None, alternatives: list[{facing: str | None, up: str | None, euler: Vec3, score: float | None, reasons: list[str], reversed_flow: bool}],
+          tried: int, mode_flip: {logic_type: str, value: int, reason: str} | None} | None, resolved: {at: {x: float, y: float, z: float}, at_how:
+          str, facing: str | None, facing_how: str | None, view: {source: str, age_s: float} | None} | None}], materials: list[{prefab_name: str |
+          None, needed: int, available: int, paid_by: list[{reference_id: str, name: str | None, quantity: int, available: int}] | None}], from: Thing
+          | None, free: bool, notes: list[str] | None} | None
       notes: list[str]
       drawn_on: str | None
       view: {source: str, age_s: float} | None

@@ -12,8 +12,9 @@ using Xunit;
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// highlight (1.7.0): targets parsed as given, the bearing and distance a far point's label shows, where its marker
-/// sits when the point is out of view, and the reply's shape.
+/// highlight (1.7.0): the bearing and distance a far point's label shows, where its marker sits when the point is out
+/// of view, and the reply's shape. The targets themselves (which the call gives, and how a colour is read) are
+/// HighlightOrderTests'.
 /// </summary>
 public sealed class HighlightTests
 {
@@ -90,51 +91,10 @@ public sealed class HighlightTests
     }
 
     [Fact]
-    public void TargetsParseEachFormWithPaletteColoursInTurn()
-    {
-        HighlightRequest request = HighlightRequest.Parse(Args("""
-            {"targets":[{"reference_ids":["5","6"]},{"network_id":"77","label":" Fuel "},
-             {"at":[700,200,650],"color":"red","pulse":true},{"reference_id":"9","color":[0.5,0,1]}],
-             "seconds":120,"keep":true}
-            """));
-
-        Assert.Equal(120, request.Seconds);
-        Assert.True(request.Keep);
-        HighlightTarget.Things things = Assert.IsType<HighlightTarget.Things>(request.Targets[0]);
-        Assert.Equal(2, things.Ids.Count);
-        Assert.Equal("cyan", things.ColorName);
-        HighlightTarget.Network network = Assert.IsType<HighlightTarget.Network>(request.Targets[1]);
-        Assert.Equal(77, network.Id.Value);
-        Assert.Equal("magenta", network.ColorName);
-        Assert.Equal("Fuel", network.Label);
-        HighlightTarget.Point point = Assert.IsType<HighlightTarget.Point>(request.Targets[2]);
-        Assert.Equal(new Vec3(700, 200, 650), point.At);
-        Assert.Equal("red", point.ColorName);
-        Assert.True(point.Pulse);
-        Assert.Equal("custom", request.Targets[3].ColorName);
-        Assert.Equal(0.5, request.Targets[3].Tint.Red);
-    }
-
-    [Theory]
-    [InlineData("""{"targets":[{"reference_id":"5","at":[1,2,3]}]}""", "exactly one of")]
-    [InlineData("""{"targets":[{"label":"x"}]}""", "exactly one of")]
-    [InlineData("""{"targets":[{"reference_id":"5","color":"purple"}]}""", "color must be one of")]
-    [InlineData("""{"targets":[{"reference_id":"5","color":[2,0,0]}]}""", "color must be one of")]
-    [InlineData("""{"targets":[{"reference_id":"5"}],"seconds":601}""", "seconds is at most")]
-    public void BadTargetsAreRefused(string json, string message)
-    {
-        ApiException refused = Assert.Throws<ApiException>(() => HighlightRequest.Parse(Args(json)));
-
-        Assert.Equal("invalid_argument", refused.Code);
-        Assert.Contains(message, refused.Message);
-    }
-
-    [Fact]
     public void APointTargetReportsWhereItIs()
     {
-        HighlightRequest request =
-            HighlightRequest.Parse(Args("""{"targets":[{"at":[300,40,400],"label":"Cobalt"}]}"""));
-        HighlightTarget.Point point = (HighlightTarget.Point)request.Targets[0];
+        HighlightTarget.Point point = new HighlightTarget.Point(new Vec3(300, 40, 400), new Tint(0.2, 0.9, 1.0), "cyan",
+            "Cobalt", false);
         JObject json = JObject.Parse(WireCheck.New(new HighlightView(
             new List<HighlightTargetView>
             {
@@ -154,9 +114,10 @@ public sealed class HighlightTests
     [Fact]
     public void AThingsTargetListsWhatWasMissing()
     {
-        HighlightRequest request = HighlightRequest.Parse(Args("""{"targets":[{"reference_ids":["5","6"]}]}"""));
-        JObject json = JObject.Parse(WireCheck.New(HighlightTargetView.OfThings(0, request.Targets[0], "things", null,
-            1, new List<ThingId> { new ThingId(6) }, null, false)));
+        HighlightTarget.Things things = new HighlightTarget.Things(new List<ThingId> { new ThingId(5), new ThingId(6) },
+            new Tint(0.2, 0.9, 1.0), "cyan", null, false);
+        JObject json = JObject.Parse(WireCheck.New(HighlightTargetView.OfThings(0, things, "things", null, 1,
+            new List<ThingId> { new ThingId(6) }, null, false)));
 
         Assert.Equal(1, (int)json["things"]!);
         Assert.Equal("6", (string?)json["missing"]![0]);
@@ -178,8 +139,6 @@ public sealed class HighlightTests
     {
         Assert.Empty(Problems("show_preview", """{"cells":[[1,1,1]],"xray":true}"""));
     }
-
-    private static Args Args(string json) => new Args(JObject.Parse(json));
 
     private static IReadOnlyList<string> Problems(string tool, string arguments)
     {

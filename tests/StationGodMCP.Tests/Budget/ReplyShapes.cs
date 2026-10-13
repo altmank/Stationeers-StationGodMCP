@@ -65,11 +65,6 @@ internal static class ReplyShapes
     {
         Dictionary<string, ReplyShape[]> shapes = new Dictionary<string, ReplyShape[]>(StringComparer.Ordinal);
 
-        shapes["highlight"] = new[]
-        {
-            S<HighlightView>().List("HighlightView.Targets", 3).List("HighlightTargetView.Missing", 0)
-                .List("HighlightView.Notes", 0)
-        };
         shapes["mod_info"] = new[]
         {
             // The game counters come with include_counters (about 515 bytes more).
@@ -96,10 +91,6 @@ internal static class ReplyShapes
         shapes["run_console_command"] = new[]
         {
             S<ConsoleRunView>().List("ConsoleRunView.Arguments", 10).List("ConsoleRunView.Output", 3)
-        };
-        shapes["show_preview"] = new[]
-        {
-            PlaceReportInto(S<ShowPreviewView>()).List("ShowPreviewView.Notes", 0)
         };
         shapes["undo_job"] = new[]
         {
