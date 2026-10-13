@@ -258,8 +258,9 @@ internal static class PlanRouteApi
         }
 
         bool allow = args.OptionalBool("allow_door_keepout") ?? false;
-        OpeningGuard guard = new OpeningGuard(facts.Opening, ends, allow,
-            RouteLintRule.WindowsUnder(StationGodMCP.Api.Shared.Game.Lint.LintRuleFiles.Current()));
+        RouteLintRule? windows = RouteLintRule.From(StationGodMCP.Api.Shared.Game.Lint.LintRuleFiles.Current(),
+            Pure.Lint.LintRoute.OffWindows, new GridCell[0]);
+        OpeningGuard guard = new OpeningGuard(facts.Opening, ends, allow, RouteLintRule.WindowsUnder(windows));
         notes.Add(allow
             ? Vocabulary.Text("{arg:allow_door_keepout}: the route may pass through doorways (their face and the " +
                 "band either side).")
@@ -267,12 +268,12 @@ internal static class PlanRouteApi
               "the door's rectangle (jambs, top edge and threshold; not inside the floor slab).");
         notes.Add(guard.Windows switch
         {
-            WindowRule.Refuse => "Windows: lint rule run_crosses_window (level problem) keeps the route off every " +
+            WindowRule.Refuse => $"Windows: lint rule {windows!.Id} (level problem) keeps the route off every " +
                                  "window's plane, seams, edges and base included. Lower its level or turn it off in " +
                                  "the save's lint-rules.json to allow it.",
             WindowRule.Penalty => System.FormattableString.Invariant(
-                $"Windows: a cell on a window's plane costs {OpeningGuard.WindowPenalty} more (run_crosses_window warns)."),
-            _ => "Windows: run_crosses_window is off; a window's plane is like any other."
+                $"Windows: a cell on a window's plane costs {OpeningGuard.WindowPenalty} more ({windows!.Id} warns)."),
+            _ => "Windows: no lint rule with route off_windows is in effect; a window's plane is like any other."
         });
         return guard;
     }
@@ -526,7 +527,7 @@ internal static class PlanRouteApi
         }
     }
 
-    // The lint rules in effect a route of the kind honours: chute_outside_frame for chutes.
+    // The lint rule in effect a route of the kind honours: route inside_frames, for chutes.
     private static RouteLintRule? LintRuleOf(RunKind kind, List<RouteEndpoint> starts, RouteEndpoint? to)
     {
         if (!(kind is ChuteRunKind))
@@ -543,7 +544,8 @@ internal static class PlanRouteApi
             }
         }
 
-        return RouteLintRule.From(StationGodMCP.Api.Shared.Game.Lint.LintRuleFiles.Current(), RouteLintRule.ChuteOutsideFrame, ends);
+        return RouteLintRule.From(StationGodMCP.Api.Shared.Game.Lint.LintRuleFiles.Current(),
+            Pure.Lint.LintRoute.InsideFrames, ends);
     }
 
     private static RouteRuleSet Rules(Args args, RunKind kind, List<RouteEndpoint> starts, List<long> target,

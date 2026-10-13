@@ -176,7 +176,7 @@ internal sealed class RouteRuleSet
     internal bool AvoidOwn { get; }
 
     /// <summary>
-    /// A lint rule the route honours whatever its style (chute_outside_frame for chutes): cells not inside a frame's
+    /// A lint rule the route honours whatever its style (route inside_frames, for chutes): cells not inside a frame's
     /// body are refused (the rule's level problem) or cost LintPenalty more (warning or info), except Exempt (the ends'
     /// cells and their neighbours: a device's port stub).
     /// </summary>
@@ -373,33 +373,38 @@ internal sealed class RouteLintRule
 
     internal HashSet<GridCell> Exempt { get; }
 
-    /// <summary>The chute rule the chute planner honours: every cell inside a frame's body.</summary>
-    internal const string ChuteOutsideFrame = "chute_outside_frame";
-
     /// <summary>
-    /// The rule as a route honours it: null when the set does not hold it in effect (turned off, or not run on dry
-    /// runs); else it refuses at level problem and costs at any other level, exempting the ends and their neighbours.
+    /// The rule a route honours for what it keeps to: of the rules in effect on report whose route field says so, the
+    /// first at level problem, else the first; null when there is none. It refuses at level problem and costs at any
+    /// other level, exempting the ends and their neighbours.
     /// </summary>
-    internal static RouteLintRule? From(Lint.LintRuleSet set, string id, IEnumerable<GridCell> ends)
+    internal static RouteLintRule? From(Lint.LintRuleSet set, Lint.LintRoute keep, IEnumerable<GridCell> ends)
     {
-        Lint.LintRule? rule = set.Find(id);
-        if (rule == null || !System.Linq.Enumerable.Contains(rule.On, "report"))
+        Lint.LintRule? chosen = null;
+        foreach (Lint.LintRule rule in set.Rules)
         {
-            return null;
+            if (rule.Route != keep || !rule.RunsOn("report"))
+            {
+                continue;
+            }
+
+            if (rule.Level == ConflictLevel.Problem)
+            {
+                chosen = rule;
+                break;
+            }
+
+            chosen ??= rule;
         }
 
-        return new RouteLintRule(id, rule.Level == ConflictLevel.Problem, AroundEnds(ends));
+        return chosen == null
+            ? null
+            : new RouteLintRule(chosen.Id, chosen.Level == ConflictLevel.Problem, AroundEnds(ends));
     }
 
-    /// <summary>The window rule every route honours: no piece on a window's plane.</summary>
-    internal const string RunCrossesWindow = "run_crosses_window";
-
-    /// <summary>How a route treats a window's plane under the rule set (WindowRule).</summary>
-    internal static WindowRule WindowsUnder(Lint.LintRuleSet set)
-    {
-        RouteLintRule? rule = From(set, RunCrossesWindow, new GridCell[0]);
-        return rule == null ? WindowRule.None : rule.Refuses ? WindowRule.Refuse : WindowRule.Penalty;
-    }
+    /// <summary>How a route treats a window's plane under the rule keeping routes off windows (WindowRule).</summary>
+    internal static WindowRule WindowsUnder(RouteLintRule? rule) =>
+        rule == null ? WindowRule.None : rule.Refuses ? WindowRule.Refuse : WindowRule.Penalty;
 
     /// <summary>The ends' cells and their six neighbours.</summary>
     internal static HashSet<GridCell> AroundEnds(IEnumerable<GridCell> ends)

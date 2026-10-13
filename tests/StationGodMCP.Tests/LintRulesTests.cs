@@ -262,6 +262,7 @@ public sealed class LintRuleFileTests
     [InlineData("{\"schema_version\": 1, \"rules\": [ {\"id\": \"r\", \"level\": \"info\", \"select\": \"devices\", \"assert\": \"true\", \"message\": \"{nope}\"} ]}", "no name or thing field 'nope'")]
     [InlineData("{\"schema_version\": 1, \"rules\": [ {\"id\": \"r\", \"level\": \"info\", \"select\": \"devices\", \"assert\": \"1\", \"message\": \"m\"} ]}", "is a number, not a bool")]
     [InlineData("{\"schema_version\": 1, \"rules\": [ {\"id\": \"r\", \"level\": \"info\", \"on\": [\"later\"], \"select\": \"devices\", \"assert\": \"true\", \"message\": \"m\"} ]}", "on lists audit")]
+    [InlineData("{\"schema_version\": 1, \"rules\": [ {\"id\": \"r\", \"level\": \"info\", \"route\": \"avoid\", \"select\": \"devices\", \"assert\": \"true\", \"message\": \"m\"} ]}", "route is off_windows or inside_frames")]
     [InlineData("{\"schema_version\": 1, \"rules\": [", "not valid JSON")]
     public void BadFilesAreReported(string json, string expected)
     {

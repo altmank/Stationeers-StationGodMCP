@@ -90,7 +90,7 @@ internal static class LintRuleLoader
     private static readonly HashSet<string> Known = new HashSet<string>(StringComparer.Ordinal)
     {
         "id", "level", "level_when", "message", "on", "select", "assert", "let", "other", "examples", "description",
-        "enabled"
+        "enabled", "route"
     };
 
     private static readonly string[] PatchFields = { "enabled", "level", "level_when", "on", "message", "description" };
@@ -290,6 +290,19 @@ internal static class LintRuleLoader
             errors.Add(ErrorAt(file, id, "on", source["on"]!, "on is a list: [\"audit\", \"report\", \"write\"]"));
         }
 
+        LintRoute? route = null;
+        if (source["route"] is JToken routeToken)
+        {
+            if (routeToken.Type == JTokenType.String && LintRule.TryRoute((string)routeToken!, out LintRoute named))
+            {
+                route = named;
+            }
+            else
+            {
+                errors.Add(ErrorAt(file, id, "route", routeToken, "route is off_windows or inside_frames"));
+            }
+        }
+
         string? selectText = Text(source, "select", file, id, errors, true);
         string? assertText = Text(source, "assert", file, id, errors, true);
         string? messageText = Text(source, "message", file, id, errors, true);
@@ -416,7 +429,7 @@ internal static class LintRuleLoader
         }
 
         return new LintRule(id, level, description, on, selectText, assertText, select, unit, where, whereUnit, assert,
-            message, messageText, other, levelWhen, source, origin, file, lets);
+            message, messageText, other, levelWhen, source, origin, file, lets, route);
     }
 
     private static T? Expression<T>(Func<T> compile, string file, string id, string field, JToken token,

@@ -188,6 +188,17 @@ internal sealed class LintTemplate
 }
 
 /// <summary>
+/// What a rule's route field has the route planners keep to while the rule runs on report: OffWindows, every route
+/// off a window's plane; InsideFrames, a chute route inside frames' bodies, its ends and their neighbours excepted. Level
+/// problem refuses such a cell; another level makes it cost more.
+/// </summary>
+internal enum LintRoute
+{
+    OffWindows,
+    InsideFrames
+}
+
+/// <summary>
 /// One compiled rule: what it selects, the assertion each subject must hold, the message for one that does not, and
 /// where it came from. Built once per rule file change.
 /// </summary>
@@ -198,7 +209,7 @@ internal sealed class LintRule
     internal LintRule(string id, ConflictLevel level, string? description, IReadOnlyList<string> on, string selectText,
         string assertText, SelectNode select, LintUnit unit, LintEval? where, LintUnit? whereUnit, LintEval assert,
         LintTemplate message, string messageText, LintEval? other, LintEval? levelWhen, JObject source,
-        LintRuleOrigin origin, string file, IReadOnlyList<(string Name, string Source)> lets)
+        LintRuleOrigin origin, string file, IReadOnlyList<(string Name, string Source)> lets, LintRoute? route = null)
     {
         Id = id;
         Level = level;
@@ -219,6 +230,7 @@ internal sealed class LintRule
         Origin = origin;
         File = file;
         Lets = lets;
+        Route = route;
     }
 
     internal string Id { get; }
@@ -261,6 +273,33 @@ internal sealed class LintRule
     internal string File { get; }
 
     internal IReadOnlyList<(string Name, string Source)> Lets { get; }
+
+    /// <summary>The route field: what the route planners keep to while the rule runs on report; null for none.</summary>
+    internal LintRoute? Route { get; }
+
+    /// <summary>The route field's values as a rule file writes them.</summary>
+    internal static string? RouteName(LintRoute? route) => route switch
+    {
+        LintRoute.OffWindows => "off_windows",
+        LintRoute.InsideFrames => "inside_frames",
+        _ => null
+    };
+
+    internal static bool TryRoute(string? text, out LintRoute route)
+    {
+        switch (text)
+        {
+            case "off_windows":
+                route = LintRoute.OffWindows;
+                return true;
+            case "inside_frames":
+                route = LintRoute.InsideFrames;
+                return true;
+            default:
+                route = LintRoute.OffWindows;
+                return false;
+        }
+    }
 
     internal bool RunsOn(string phase)
     {

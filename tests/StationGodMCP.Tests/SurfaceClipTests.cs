@@ -338,7 +338,7 @@ public sealed class RouteLintRuleTests
     [Fact]
     public void TheShippedChuteRuleRefusesCellsOutsideFramesExceptBesideTheEnds()
     {
-        RouteLintRule? rule = RouteLintRule.From(LintTestKit.Defaults(), RouteLintRule.ChuteOutsideFrame,
+        RouteLintRule? rule = RouteLintRule.From(LintTestKit.Defaults(), LintRoute.InsideFrames,
             new[] { Port });
 
         Assert.NotNull(rule);
@@ -352,7 +352,7 @@ public sealed class RouteLintRuleTests
     [Fact]
     public void AWarningLevelRuleOnlyAddsCost()
     {
-        RouteLintRule rule = new RouteLintRule(RouteLintRule.ChuteOutsideFrame, false, new HashSet<GridCell>());
+        RouteLintRule rule = new RouteLintRule("chute_outside_frame", false, new HashSet<GridCell>());
         RouteRuleSet rules = Style("supported").WithInsideRule(rule);
 
         CellCost outside = rules.Cost(OnFloor, new GridCell(0, 0, 0));
@@ -366,7 +366,7 @@ public sealed class RouteLintRuleTests
     {
         LintRuleSet set = LintTestKit.Defaults(save: LintTestKit.File1("{\"id\": \"chute_outside_frame\", \"enabled\": false}"));
 
-        Assert.Null(RouteLintRule.From(set, RouteLintRule.ChuteOutsideFrame, new[] { Port }));
+        Assert.Null(RouteLintRule.From(set, LintRoute.InsideFrames, new[] { Port }));
     }
 
     [Theory]
@@ -376,7 +376,7 @@ public sealed class RouteLintRuleTests
     public void RoutesTreatAWindowsPlaneAsTheWindowRuleSays(string? save, string expected)
     {
         LintRuleSet set = LintTestKit.Defaults(save: save != null ? LintTestKit.File1(save) : null);
-        WindowRule rule = RouteLintRule.WindowsUnder(set);
+        WindowRule rule = RouteLintRule.WindowsUnder(RouteLintRule.From(set, LintRoute.OffWindows, new GridCell[0]));
         GridCell seam = new GridCell(7040, 2030, 6780);
         OpeningGuard guard = new OpeningGuard(cell => cell.Equals(seam) ? OpeningZone.OnWindow(500) : OpeningZone.Clear,
             new GridCell[0], false, rule);
@@ -396,6 +396,33 @@ public sealed class RouteLintRuleTests
     {
         LintRuleSet set = LintTestKit.Defaults(save: LintTestKit.File1("{\"id\": \"chute_outside_frame\", \"level\": \"warning\"}"));
 
-        Assert.False(RouteLintRule.From(set, RouteLintRule.ChuteOutsideFrame, new[] { Port })!.Refuses);
+        Assert.False(RouteLintRule.From(set, LintRoute.InsideFrames, new[] { Port })!.Refuses);
+    }
+
+    [Fact]
+    public void AnyRuleWithARouteFieldIsHonouredTheStrictestFirst()
+    {
+        string rule = "{\"id\": \"%ID%\", \"level\": \"%LEVEL%\", \"on\": [\"report\"], \"route\": \"inside_frames\", " +
+            "\"select\": \"pieces\", \"assert\": \"true\", \"message\": \"m\"}";
+        LintRuleSet set = LintTestKit.Rules(LintTestKit.File1(
+            rule.Replace("%ID%", "pipes_in_frames").Replace("%LEVEL%", "warning") + ", " +
+            rule.Replace("%ID%", "all_in_frames").Replace("%LEVEL%", "problem")));
+
+        RouteLintRule? honoured = RouteLintRule.From(set, LintRoute.InsideFrames, new[] { Port });
+
+        Assert.Empty(set.Errors);
+        Assert.Equal("all_in_frames", honoured!.Id);
+        Assert.True(honoured.Refuses);
+        Assert.Null(RouteLintRule.From(set, LintRoute.OffWindows, new[] { Port }));
+    }
+
+    [Fact]
+    public void ARouteFieldOutsideReportIsNotHonoured()
+    {
+        LintRuleSet set = LintTestKit.Rules(LintTestKit.File1("{\"id\": \"r\", \"level\": \"problem\", " +
+            "\"on\": [\"audit\"], \"route\": \"off_windows\", \"select\": \"pieces\", \"assert\": \"true\", " +
+            "\"message\": \"m\"}"));
+
+        Assert.Null(RouteLintRule.From(set, LintRoute.OffWindows, new GridCell[0]));
     }
 }

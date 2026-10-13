@@ -276,8 +276,8 @@ internal static class FacePoints
 
 /// <summary>
 /// The door keep-out and window rules as the route search applies them: a cell in a door's keep-out is blocked unless
-/// allowed or one of the route's own ends; a cell on a window's plane follows the lint rule run_crosses_window as the
-/// rule set has it (WindowRule): blocked at level problem, WindowPenalty more at another level, free when it is off.
+/// allowed or one of the route's own ends; a cell on a window's plane follows the lint rule whose route is off_windows
+/// as the rule set has it (WindowRule): blocked at level problem, WindowPenalty more at another level, free with none.
 /// </summary>
 internal sealed class OpeningGuard
 {
@@ -362,7 +362,7 @@ internal sealed class OpeningGuard
         };
 }
 
-/// <summary>How a route treats cells on a window's plane: as the lint rule run_crosses_window is in effect.</summary>
+/// <summary>How a route treats cells on a window's plane: as the lint rule whose route is off_windows is in effect.</summary>
 internal enum WindowRule
 {
     /// <summary>The rule is off: a window's plane is like any other.</summary>

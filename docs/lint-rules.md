@@ -113,6 +113,7 @@ A small save file:
 | `level` | yes | `problem`, `warning` or `info`. |
 | `level_when` | no | An expression giving the level of one finding, e.g. `if(c?.fallback ?? false, 'info', 'warning')`. |
 | `on` | no | `["audit"]` (the default), `["report"]`, `["write"]`, or any of them together. |
+| `route` | no | What the route planners keep to while the rule runs on `report`: `off_windows` (every route keeps off a window's plane) or `inside_frames` (a chute route keeps inside frames' bodies, its ends and their neighbours excepted). At level `problem` such a cell is refused; at another level it costs more. Of several rules with one value, the first at `problem` decides. A whole rule sets it; a patch cannot. |
 | `select` | yes | The subjects: a set, optionally `where <expression>`, or `pairs(<set>, within: <metres>)`. |
 | `let` | no | Named expressions, each worked out only when read and able to use the ones before it. |
 | `assert` | yes | An expression every subject must hold. A subject for which it is false is a finding. |
