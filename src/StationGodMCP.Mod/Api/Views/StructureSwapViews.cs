@@ -96,16 +96,16 @@ internal sealed class StructureSwapReportView : ITruncatingView
     /// <summary>Every room next to a piece to swap, as it is now.</summary>
     public List<StructureRoomView> Rooms { get; }
 
-    /// <summary>The tool's fixed explanations; left out unless include_notes.</summary>
+    /// <summary>The swap's fixed explanations; left out unless include: notes.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public List<string>? Notes { get; }
 
     public void NoteTruncations(string path)
     {
-        Truncations.Capped(path + "pieces", Pieces.Count, ToSwap, "limit", StructureSwapArgs.MaximumPieces);
-        Truncations.Capped(path + "kept_pieces", KeptPieces.Count, Kept, "limit", StructureSwapArgs.MaximumPieces);
-        Truncations.Capped(path + "unmatched_pieces", UnmatchedPieces.Count, Unmatched, "limit",
-            StructureSwapArgs.MaximumPieces);
+        Truncations.Capped(path + "pieces", Pieces.Count, ToSwap, "rows", StructureSwapArguments.MaximumPieces);
+        Truncations.Capped(path + "kept_pieces", KeptPieces.Count, Kept, "rows", StructureSwapArguments.MaximumPieces);
+        Truncations.Capped(path + "unmatched_pieces", UnmatchedPieces.Count, Unmatched, "rows",
+            StructureSwapArguments.MaximumPieces);
     }
 }
 

@@ -38,15 +38,16 @@ internal static class StructureReports
         return items;
     }
 
-    internal static StructureSwapReportView Of(StructureSwapPlan plan, string status, string? jobId)
+    /// <summary>The plan's report; limit, when given, is how many pieces each list shows instead of the request's.</summary>
+    internal static StructureSwapReportView Of(StructureSwapPlan plan, string status, string? jobId, int? limit = null)
     {
         StructureSwapRequest request = plan.Request;
-        int limit = request.Arguments.Limit;
+        int shown = limit ?? request.Arguments.Limit;
         UpgradeHeader header = new UpgradeHeader(request.Family.Tool, request.TargetLabel, status, jobId,
             request.Arguments.IncludeNotes ? new List<string>(Notes) : null);
         UpgradeCounts counts = new UpgradeCounts(plan.Total, plan.Swaps.Count, plan.Kept.Count, plan.Unmatched.Count);
-        StructureSwapLists lists = new StructureSwapLists(plan.Problems, Pieces(plan, limit), ByPrefab(plan),
-            Skipped(plan.Kept, limit), Skipped(plan.Unmatched, limit), plan.Warnings);
+        StructureSwapLists lists = new StructureSwapLists(plan.Problems, Pieces(plan, shown), ByPrefab(plan),
+            Skipped(plan.Kept, shown), Skipped(plan.Unmatched, shown), plan.Warnings);
         StructureSwapResources resources = new StructureSwapResources(
             plan.From != null ? GameLookup.ViewOf(plan.From) : null, Materials(plan), request.Arguments.Refund,
             plan.Air?.RoomViews() ?? new List<StructureRoomView>(), Refunds.Forecast(plan.Refunds, GivenBack(plan)));

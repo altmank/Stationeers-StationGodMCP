@@ -10,7 +10,7 @@ using StationGodMCP.Api.Shared.Game.Build;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
-using StationGodMCP.Pure.Protocol;
+using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Api.Shared.Game.Structures;
 
@@ -53,8 +53,8 @@ internal static class StructureSwapPlanner
         if (plan.Unmatched.Count > 0 && !request.Arguments.SkipUnmatched)
         {
             plan.Problem("unmatched_pieces",
-                $"{plan.Unmatched.Count} piece(s) cannot be swapped (see unmatched_pieces); pass " +
-                $"{Vocabulary.Arg("skip_unmatched")} to leave them as they are.");
+                $"{plan.Unmatched.Count} piece(s) cannot be swapped (see unmatched_pieces); pass skip_unmatched to " +
+                "leave them as they are.");
         }
 
         CountMaterials(plan);
@@ -100,16 +100,15 @@ internal static class StructureSwapPlanner
             case StructureScope.Room room:
                 Room found = StructureAirRecord.FindRoom(room.Id) ??
                              throw ApiErrors.Refused("room_not_found",
-                                 $"No room {room.Id}; take a {Vocabulary.Arg("room_id")} from " +
-                                 $"{Vocabulary.Tool("rooms")}.");
+                                 $"No room {room.Id}; take a room's id from find room.");
                 request.Family.CollectInRoom(found, members, seen);
                 break;
         }
 
-        return members.Count <= StructureSwapArgs.MaximumPieces
+        return members.Count <= StructureSwapArguments.MaximumPieces
             ? members
             : throw ApiErrors.Refused("too_many_pieces",
-                $"{members.Count} pieces; at most {StructureSwapArgs.MaximumPieces} per run.");
+                $"{members.Count} pieces; at most {StructureSwapArguments.MaximumPieces} per run.");
     }
 
     private static void Listed(StructureFamily family, List<ThingId> ids, StructureSwapPlan plan,
@@ -214,10 +213,10 @@ internal static class StructureSwapPlanner
 
     private static string? KeptReason(StructureSwapRequest request, Structure member, out string message)
     {
-        List<string>? only = request.Arguments.FromPrefabs;
-        if (only != null && !only.Contains(member.PrefabName))
+        PrefabFilter? only = request.Arguments.Prefab;
+        if (only != null && !only.Keeps(member.PrefabName, member.PrefabHash))
         {
-            message = $"{member.PrefabName} is not among {Vocabulary.Arg("from_prefabs")}.";
+            message = $"{member.PrefabName} does not match prefab.";
             return "not_selected";
         }
 
@@ -242,8 +241,8 @@ internal static class StructureSwapPlanner
 
         if (member.CurrentBuildStateIndex < 0 || member.BuildStates == null || member.BuildStates.Count == 0)
         {
-            message = Vocabulary.Text("It is broken (the game's broken state; the game cannot repair it, only " +
-                "deconstruct it); remove it with {tool:remove_structure} {arg:allow_broken} and build a new one.");
+            message = "It is broken (the game's broken state; the game cannot repair it, only deconstruct it); " +
+                "remove it with remove structure and allow: broken, and build a new one.";
             return "broken";
         }
 
@@ -350,8 +349,8 @@ internal static class StructureSwapPlanner
         if (player.Player == null && needsPlayer)
         {
             plan.Problem("no_local_player",
-                $"{player.Absence} Nothing to take materials from (or, with {Vocabulary.Arg("refund_to")} source, to " +
-                $"give the refund to); pass {Vocabulary.Arg("from_id")}.");
+                $"{player.Absence} Nothing to take materials from (or, with refund_to source, to give the refund " +
+                "to); pass materials.");
         }
 
         return player.Player;

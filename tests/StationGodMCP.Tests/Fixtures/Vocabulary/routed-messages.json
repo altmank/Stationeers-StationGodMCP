@@ -74,10 +74,6 @@
     "{name}.at: no {kind.Noun} piece can stand in cell {cell}: {blocked}. Name a port with {reference_id, port}, or a free cell.",
     "{name}.port is required (connections lists the ends)."
   ],
-  "Api/ReplaceStructures.cs": [
-    "Pass job_id, or reference_ids or room_id.",
-    "a dry run (it is for a confirmed run or a job_id poll)"
-  ],
   "Api/RocketForecast.cs": [
     "Argument 'min_confidence' must be from 0 to 1.",
     "Argument 'park_s' must be 0 or more.",
@@ -230,13 +226,6 @@
     "join_trunk: none of the {Math.Min(candidates.Count, MaximumTries)} taps tried towards network {target} plans ready; the run is left as given.",
     "join_trunk: the run stopped {Gap(miss)} {Describe(plan, miss.Piece)}; the tap ({TapText(miss)}) is added, so the run joins network {target}."
   ],
-  "Api/Shared/Game/Structures/StructureSwapPlanner.cs": [
-    "It is broken (the game's broken state; the game cannot repair it, only deconstruct it); remove it with remove_structure allow_broken and build a new one.",
-    "No room {room.Id}; take a room_id from rooms.",
-    "{member.PrefabName} is not among from_prefabs.",
-    "{plan.Unmatched.Count} piece(s) cannot be swapped (see unmatched_pieces); pass skip_unmatched to leave them as they are.",
-    "{player.Absence} Nothing to take materials from (or, with refund_to source, to give the refund to); pass from_id."
-  ],
   "Api/Shared/Game/Upgrades/Clean/RemoveDeadChutes.cs": [
     "{riding.Count} chute piece(s) this run would remove or replace carry an item (see riding); let the items pass or take them out with move item, or pass riding: skip to leave those pieces."
   ],
@@ -285,16 +274,6 @@
   ],
   "Api/Shared/SourceArgs.cs": [
     "Argument '{Argument}' must name 1 to {MaximumSources} things."
-  ],
-  "Api/Shared/StructureSwapArgs.cs": [
-    "A real run needs dry_run: false and confirm: true; nothing was changed.",
-    "Argument 'room_id' must be a room id as rooms reports it.",
-    "Argument 'to' is required: the prefab name of the new piece.",
-    "Argument 'to' must be a prefab name.",
-    "Pass reference_ids or room_id (from rooms), exactly one of them.",
-    "confirm: true needs dry_run: false; nothing was changed.",
-    "from_prefabs[{index}] must be a prefab name.",
-    "job_id"
   ],
   "Api/Shared/WriteMode.cs": [
     "A real run needs dry_run: false and confirm: true; nothing was changed.",

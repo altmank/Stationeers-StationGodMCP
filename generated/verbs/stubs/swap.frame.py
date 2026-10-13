@@ -17,12 +17,10 @@ def swap(what: Literal['frame'], *,
     (JobQueued)
       JobQueued
     (StructureSwapReport)
-      tool: str
       target: str
-      status: str
-      job_id: str | None
       ready: bool
       problems: list[{code: str, message: str, reference_id: str | None}]
+      warnings: list[{code: str, message: str, reference_id: str | None}] | None
       pieces_total: int
       to_swap: int
       kept: int

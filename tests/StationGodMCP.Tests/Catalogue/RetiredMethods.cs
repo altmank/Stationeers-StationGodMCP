@@ -52,6 +52,8 @@ internal static class RetiredMethods
         "read_logic_many",
         "read_memory",
         "reagents",
+        "replace_frames",
+        "replace_walls",
         "resolve_ic_selectors",
         "rocket_flight_log",
         "rocket_status",

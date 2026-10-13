@@ -197,7 +197,7 @@ public sealed class TruncationNoticeTests
         ["Api/Shared/Game/Runs/RunArgs.cs"] = typeof(RunReportView),
         ["Api/Shared/Game/Upgrades/UpgradePlan.cs"] = typeof(UpgradeReportView),
         ["Api/UpgradeNetwork.cs"] = typeof(UpgradeReportView),
-        ["Api/Shared/StructureSwapArgs.cs"] = typeof(StructureSwapReportView),
+        ["Api/Shared/StructureSwapOrders.cs"] = typeof(StructureSwapReportView),
     };
 
     [Fact]

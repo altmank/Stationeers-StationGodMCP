@@ -170,11 +170,6 @@ internal static class ReplyShapes
             S<ConsoleReadView>().List("ConsoleReadView.Lines", D.ConsoleLines)
                 .Text("ConsoleLineView.Text", new string('t', 90))
         };
-        foreach (string tool in new[] { "replace_frames", "replace_walls" })
-        {
-            shapes[tool] = new[] { StructureSwapReport() };
-        }
-
         shapes["rocket_forecast"] = new[]
         {
             S<RocketForecastView>().List("RocketForecastView.Route", 4).List("RocketForecastView.Uncharted", 0)
@@ -289,15 +284,6 @@ internal static class ReplyShapes
             "BuildJobResult.RefundError", "BuildJobResult.StoppedAt", "BuildJobResult.Error", "BuildJobResult.GasCheck")
         .List("BuildJobResult.Placed", 4).List("BuildJobResult.Removed", 0).List("BuildJobResult.Refunded", 0)
         .List("BuildJobResult.Verification", 4).List("BuildCheckView.Issues", 0);
-
-    private static ReplyShape StructureSwapReport() => S<StructureSwapReportView>()
-        .List("StructureSwapReportView.Pieces", D.SwapListed).List("StructurePieceView.Faces", 1)
-        .List("StructureFaceView.Cells", 2).List("StructurePieceView.RoomIds", 1)
-        .List("StructurePieceView.Materials", 2).List("StructureSwapReportView.ByPrefab", 2)
-        .List("StructureSwapReportView.KeptPieces", 0).List("StructureSwapReportView.UnmatchedPieces", 0)
-        .List("StructureSwapReportView.Materials", 2).List("RefundPlanView.Skipped", 0)
-        .List("RefundPlanView.Destinations", 2).List("StructureSwapReportView.Rooms", 4)
-        .Absent("StructureSwapReportView.Notes");
 
     private static ReplyShape UpgradeReport() => S<UpgradeReportView>()
         .List("UpgradeReportView.Pieces", Math.Min(W.CableNetworkMembers, D.UpgradeListed))

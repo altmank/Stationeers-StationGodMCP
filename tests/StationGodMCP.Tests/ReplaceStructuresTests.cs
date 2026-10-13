@@ -15,7 +15,7 @@ using Xunit;
 
 namespace StationGodMCP.Tests;
 
-/// <summary>replace_walls and replace_frames: face and slot arithmetic in Grid3 decimetres.</summary>
+/// <summary>swap wall and swap frame: face and slot arithmetic in Grid3 decimetres.</summary>
 public sealed class FaceMathTests
 {
     [Fact]
@@ -99,7 +99,7 @@ public sealed class FaceMathTests
     }
 }
 
-/// <summary>replace_walls and replace_frames: the game's material rule and the per-swap netting.</summary>
+/// <summary>swap wall and swap frame: the game's material rule and the per-swap netting.</summary>
 public sealed class MaterialRuleTests
 {
     private const int Kit = 1;
@@ -170,7 +170,7 @@ public sealed class MaterialRuleTests
     }
 }
 
-/// <summary>replace_walls and replace_frames: never open, and the game's wall stress rule.</summary>
+/// <summary>swap wall and swap frame: never open, and the game's wall stress rule.</summary>
 public sealed class AirRuleTests
 {
     private static PieceBlocking Blocks(bool air, bool gravity) => new PieceBlocking(air, gravity);
@@ -219,7 +219,7 @@ public sealed class AirRuleTests
     }
 }
 
-/// <summary>replace_walls and replace_frames: the room check after the game re-evaluated its rooms.</summary>
+/// <summary>swap wall and swap frame: the room check after the game re-evaluated its rooms.</summary>
 public sealed class RoomDiffTests
 {
     private static HashSet<GridPoint> Row(params int[] xs) =>
@@ -297,101 +297,10 @@ public sealed class RoomDiffTests
     }
 }
 
-/// <summary>replace_walls and replace_frames: the request forms.</summary>
-public sealed class StructureSwapArgsTests
-{
-    private static StructureSwapForm Parse(string json, bool targetRequired = true) =>
-        StructureSwapArgs.Parse(new Args(JObject.Parse(json)), targetRequired);
-
-    private static ApiException Refusal(string json, bool targetRequired = true) =>
-        Assert.Throws<ApiException>(() => Parse(json, targetRequired));
-
-    [Fact]
-    public void ADryRunIsTheDefaultWithTheToolsDefaults()
-    {
-        StructureSwapForm.Run run = Assert.IsType<StructureSwapForm.Run>(
-            Parse("{\"to\": \" StructureCompositeWall \", \"reference_ids\": [\"11\", 12]}"));
-
-        Assert.False(run.Confirmed);
-        StructureSwapArguments arguments = run.Arguments;
-        Assert.Equal("StructureCompositeWall", arguments.To);
-        StructureScope.Pieces pieces = Assert.IsType<StructureScope.Pieces>(arguments.Scope);
-        Assert.Equal(new[] { 11L, 12L }, pieces.Ids.Select(id => id.Value));
-        Assert.Null(arguments.FromPrefabs);
-        Assert.Null(arguments.From);
-        Assert.Equal((true, false, StructureSwapArgs.DefaultLimit),
-            (arguments.Refund, arguments.SkipUnmatched, arguments.Limit));
-    }
-
-    [Fact]
-    public void ARoomIdIsTakenAsAStringOrANumber()
-    {
-        Assert.Equal(4711L, Assert.IsType<StructureScope.Room>(
-            ((StructureSwapForm.Run)Parse("{\"to\": \"W\", \"room_id\": \"4711\"}")).Arguments.Scope).Id);
-        Assert.Equal(4711L, Assert.IsType<StructureScope.Room>(
-            ((StructureSwapForm.Run)Parse("{\"to\": \"W\", \"room_id\": 4711}")).Arguments.Scope).Id);
-        Assert.Equal("invalid_argument", Refusal("{\"to\": \"W\", \"room_id\": \"kitchen\"}").Code);
-    }
-
-    [Fact]
-    public void ExactlyOneScopeIsNeeded()
-    {
-        Assert.Equal("invalid_argument",
-            Refusal("{\"to\": \"W\", \"room_id\": \"1\", \"reference_ids\": [\"2\"]}").Code);
-        Assert.Equal("invalid_argument", Refusal("{\"to\": \"W\"}").Code);
-    }
-
-    [Fact]
-    public void WallsNeedATargetAndFramesDoNot()
-    {
-        ApiException missing = Refusal("{\"room_id\": \"1\"}");
-        Assert.Equal("invalid_argument", missing.Code);
-        Assert.Contains("'to'", missing.Message);
-
-        StructureSwapForm.Run frames = Assert.IsType<StructureSwapForm.Run>(Parse("{\"room_id\": \"1\"}", false));
-        Assert.Null(frames.Arguments.To);
-        Assert.Equal("invalid_argument", Refusal("{\"to\": \"  \", \"room_id\": \"1\"}", false).Code);
-    }
-
-    [Fact]
-    public void ARealRunNeedsDryRunFalseAndConfirm()
-    {
-        Assert.Equal("confirm_required", Refusal("{\"to\": \"W\", \"room_id\": \"1\", \"dry_run\": false}").Code);
-        Assert.Equal("invalid_argument", Refusal("{\"to\": \"W\", \"room_id\": \"1\", \"confirm\": true}").Code);
-        Assert.True(Assert.IsType<StructureSwapForm.Run>(
-            Parse("{\"to\": \"W\", \"room_id\": \"1\", \"dry_run\": false, \"confirm\": true}")).Confirmed);
-    }
-
-    [Fact]
-    public void AJobIdStandsAlone()
-    {
-        Assert.Equal("replace-3", Assert.IsType<StructureSwapForm.Poll>(Parse("{\"job_id\": \" replace-3 \"}")).JobId);
-        ApiException mixed = Refusal("{\"job_id\": \"replace-3\", \"room_id\": \"1\"}");
-        Assert.Equal("invalid_argument", mixed.Code);
-        Assert.Contains("'room_id'", mixed.Message);
-    }
-
-    [Fact]
-    public void FromPrefabsAreNamesAndTheOtherOptionsAreRead()
-    {
-        StructureSwapForm.Run run = Assert.IsType<StructureSwapForm.Run>(Parse(
-            "{\"to\": \"W\", \"room_id\": \"1\"," +
-            " \"from_prefabs\": [\"StructureWallIron\", \" StructureWallIron02 \"]," +
-            " \"from_id\": \"77\", \"refund\": false, \"skip_unmatched\": true, \"limit\": 5}"));
-
-        Assert.Equal(new[] { "StructureWallIron", "StructureWallIron02" }, run.Arguments.FromPrefabs);
-        Assert.Equal(77L, run.Arguments.From!.Value.Value);
-        Assert.Equal((false, true, 5), (run.Arguments.Refund, run.Arguments.SkipUnmatched, run.Arguments.Limit));
-        Assert.Equal("invalid_argument",
-            Refusal("{\"to\": \"W\", \"room_id\": \"1\", \"from_prefabs\": [\"\"]}").Code);
-        Assert.Equal("invalid_argument", Refusal("{\"to\": \"W\", \"room_id\": \"1\", \"limit\": 0}").Code);
-    }
-}
-
-/// <summary>replace_walls and replace_frames: reply shapes the tool descriptions promise.</summary>
+/// <summary>swap wall and swap frame: the planned view a report and a job carry.</summary>
 public sealed class StructureSwapWireTests
 {
-    private static StructureSwapReportView Report(List<UpgradeProblemView> problems, string status = "dry_run",
+    internal static StructureSwapReportView Report(List<UpgradeProblemView> problems, string status = "dry_run",
         string? jobId = null)
     {
         UpgradeHeader header = new UpgradeHeader("replace_walls", "StructureCompositeWall", status, jobId,
@@ -550,8 +459,8 @@ public sealed class ToolRegistrationTests
 
         Assert.Empty(names.Except(handled).Except(SidecarOnly).Except(CatalogueChecks.RetiredMethods.Names));
         Assert.Empty(handled.Except(names));
-        Assert.Subset(names, new HashSet<string> { "replace_walls", "replace_frames" });
-        Assert.Subset(handled, new HashSet<string> { "replace_walls", "replace_frames" });
+        Assert.Subset(names, new HashSet<string> { "place_structure", "place_cables" });
+        Assert.Subset(handled, new HashSet<string> { "place_structure", "place_cables" });
     }
 
     private static HashSet<string> StringsIn(SyntaxNode node) =>

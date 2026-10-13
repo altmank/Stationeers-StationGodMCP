@@ -68,5 +68,7 @@ internal static class VerbHandlers
         VerbHandler.For(MoveItemOptions.Spec, MoveItemOptions.Bind, MoveItem.Run),
         VerbHandler.For(MovePlayerOptions.Spec, MovePlayerOptions.Bind, MovePlayer.Run),
         VerbHandler.For(MoveGasOptions.Spec, MoveGasOptions.Bind, MoveGas.Run),
+        VerbHandler.For(SwapWallOptions.Spec, SwapWallOptions.Bind, SwapWall.Run),
+        VerbHandler.For(SwapFrameOptions.Spec, SwapFrameOptions.Bind, SwapFrame.Run),
     });
 }
