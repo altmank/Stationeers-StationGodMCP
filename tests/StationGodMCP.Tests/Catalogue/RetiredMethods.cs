@@ -49,6 +49,7 @@ internal static class RetiredMethods
         "rocket_status",
         "rooms",
         "sample_logic",
+        "screen_press",
         "screen_read",
         "set_uplink",
         "thing_health",

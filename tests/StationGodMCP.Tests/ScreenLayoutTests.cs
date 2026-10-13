@@ -8,7 +8,7 @@ using Xunit;
 
 namespace StationGodMCP.Tests;
 
-/// <summary>screen_read's boxes and screen_press's hit test, as ScriptedScreens places elements.</summary>
+/// <summary>inspect screen's boxes and write screen's hit test, as ScriptedScreens places elements.</summary>
 public sealed class ScreenLayoutTests
 {
     private static ScreenElement Px(string id, string type, double x, double y, double w, double h, double z = 0,

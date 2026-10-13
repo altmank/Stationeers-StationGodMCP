@@ -238,7 +238,6 @@ internal static class ReplyShapes
         {
             PlaceReportInto(S<ShowPreviewView>()).List("ShowPreviewView.Notes", 0)
         };
-        shapes["screen_press"] = new[] { S<ScreenPressView>().Absent("ScreenElementView.Style") };
         // A suit, its tools and a few lockers' cells; a whole battery room is a larger, deliberate call.
         shapes["set_battery_charge"] = new[]
         {

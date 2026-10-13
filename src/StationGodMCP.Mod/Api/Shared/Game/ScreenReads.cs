@@ -91,9 +91,62 @@ internal static class ScreenReads
 /// <summary>What inspect screen asks of one surface: which, the elements kept, style and the picture.</summary>
 internal sealed record ScreenQuery(string? Surface, string? Type, string? Text, bool ShownOnly, bool Style, bool Image);
 
-/// <summary>What reading and pressing a screen share: the surface asked for, its elements, their layout and views.</summary>
+/// <summary>
+/// What reading and pressing a screen share: the surface asked for, its elements, their layout and views; and the
+/// press itself: a touch as a player's touch does, through the host's input path (ScreenHost.Press), so the script's
+/// handler runs on its next tick and sees the player's name. Host only.
+/// </summary>
 internal static class Screens
 {
+    private const string LocalName = "StationGod";
+
+    /// <summary>The touch on the circuit holder's screen: the control it reached and whether the screen took it.</summary>
+    internal static ScreenPressView Press(IcTarget holder, ScreenPress press)
+    {
+        if (NetworkManager.IsClient && !NetworkManager.IsServer)
+        {
+            throw ApiErrors.Refused("not_host", "This game is a multiplayer client; screens run their scripts on the host.");
+        }
+
+        ScreenHost host = ScreenHost.Require(holder);
+        string surface = SurfaceOf(host, press.Surface);
+        List<ScreenElementData> elements = ElementsOf(host, surface);
+        ScreenLayout layout = LayoutOf(elements, host.SizeOf(surface));
+        ScreenElementData target = Touched(press.On, elements, layout, surface);
+        string player = press.AsPlayer ?? LocalPlayerName();
+        bool accepted = host.Press(surface, target.Element.Id, press.Event, press.Text ?? string.Empty, player);
+        return new ScreenPressView(host.Ic.HolderView, surface, ViewOf(target, layout, false), press.Event, press.Text,
+            player, accepted);
+    }
+
+    private static string LocalPlayerName()
+    {
+        Human? human = PlayerOrigin.Current().Player;
+        return human != null ? human.DisplayName ?? LocalName : LocalName;
+    }
+
+    private static ScreenElementData Touched(ScreenPress.Target on, List<ScreenElementData> elements,
+        ScreenLayout layout, string surface)
+    {
+        switch (on)
+        {
+            case ScreenPress.Target.Element element:
+                return elements.Find(found => found.Element.Id == element.Id) ?? throw ApiErrors.Refused(
+                    "element_not_found",
+                    $"element: surface '{surface}' has no element '{element.Id}'; inspect screen lists them.");
+            case ScreenPress.Target.Pixel pixel:
+                ScreenElement? hit = layout.ControlAt(elements.ConvertAll(static element => element.Element), pixel.X,
+                    pixel.Y);
+                return hit != null
+                    ? elements.Find(found => found.Element.Id == hit.Id)!
+                    : throw ApiErrors.Refused("no_control_at",
+                        $"pixel: no shown control stands at ({pixel.X}, {pixel.Y}) on surface '{surface}'; inspect " +
+                        "screen gives each element's box.");
+            default:
+                throw new InvalidOperationException("A touch is on an element or a pixel.");
+        }
+    }
+
     private static readonly string[] TextProps = { "text", "label", "title", "placeholder", "value" };
 
     /// <summary>The surface named, else the one the main screen shows, else the first by name.</summary>

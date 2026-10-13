@@ -45,7 +45,6 @@ internal static class ApiHost
             ["set_ic_pins"] = static args => SetIcPinsApi.Handle(args),
             ["solar_aim"] = static args => SolarAimApi.Handle(args),
             ["paint"] = static args => PaintApi.Handle(args),
-            ["screen_press"] = static args => ScreenPressApi.Handle(args),
             ["advance_build_state"] = static args => AdvanceBuildStateApi.Handle(args),
             ["set_battery_charge"] = static args => SetBatteryChargeApi.Handle(args),
             ["move_player"] = static args => MovePlayerApi.Handle(args),
