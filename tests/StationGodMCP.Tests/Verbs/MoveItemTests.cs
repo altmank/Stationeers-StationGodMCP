@@ -74,10 +74,13 @@ public sealed class MoveItemTests
     [InlineData("into_vault", """{"to": "9", "location": "player"}""", false)]
     [InlineData("into_vault", """{"to": "9", "id": ["5", "6"], "location": "any"}""", true)]
     [InlineData("out_of_vault", """{"source": "9", "prefab": "ItemIronIngot", "quantity": 5, "to": "player"}""", false)]
-    [InlineData("out_of_vault", """{"source": "9", "reagent": "Iron", "quantity": 5, "to": "player"}""", true)]
-    [InlineData("vault_to_vault", """{"source": "9", "to": "8", "items": "all"}""", true)]
+    [InlineData("out_of_vault", """{"source": "9", "reagent": "Iron", "quantity": 5, "to": "player"}""", false)]
+    [InlineData("vault_to_vault", """{"source": "9", "to": "8", "items": "all"}""", false)]
+    [InlineData("vault_to_vault", """{"source": "9", "to": "8", "items": [{"reagent": "Iron", "quantity": 5}]}""",
+        true)]
+    [InlineData("out_of_silo", """{"source": "9", "prefab": "ItemIronOre", "quantity": 5, "to": "player"}""", false)]
     [InlineData("into_vault", """{"to": "9", "items": [{"id": "5", "quantity": 2}]}""", true)]
-    public void TypedIdsActAndForceOrAFilterReportsUntilConfirm(string route, string json, bool acts)
+    public void TypedIdsOrItemLinesActAndForceAKindOrAFilterReportsUntilConfirm(string route, string json, bool acts)
     {
         MoveItemOptions options = Options(json);
 

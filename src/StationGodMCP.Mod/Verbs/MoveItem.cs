@@ -17,7 +17,8 @@ namespace StationGodMCP.Verbs;
 /// or into or out of a vault or silo store (VaultDeposits, VaultWithdrawals, VaultTransfers, SiloDeposits,
 /// SiloWithdrawals). The route (ItemMoveRoutes) is settled first: slot or moves make a slot move; a vault or silo as
 /// source or to makes a store move. Typed ids act at once; force (a cheat), every filter (a spread, prefab
-/// included) and a move into a store that names no things report until confirm (ItemMoveGiven.Acts).
+/// included) and a store move that names no things by typed ids or item lines report until confirm
+/// (ItemMoveGiven.Acts).
 /// </summary>
 internal static class MoveItem
 {
