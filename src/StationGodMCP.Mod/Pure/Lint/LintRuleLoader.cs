@@ -78,7 +78,8 @@ internal sealed class LintRuleSet
 /// Reads lint-rules.json files and builds the effective set. Format: {"schema_version": 1, "rules": [...]}. The save's
 /// file (next to the save) takes priority: a rule with an id the mod's file has replaces it when it carries select or
 /// assert; otherwise its enabled, level, level_when, on, message and description patch the mod's rule ("enabled":
-/// false turns it off). Rules with new ids are added after the mod's. A rule that does not compile is left out and
+/// false turns it off). Any other field in a patch is an error at its key, and the patch's valid fields still apply.
+/// Rules with new ids are added after the mod's. A rule that does not compile is left out and
 /// reported; the rest still run.
 /// </summary>
 internal static class LintRuleLoader
@@ -133,10 +134,9 @@ internal static class LintRuleLoader
                 bool replaces = rule["select"] != null || rule["assert"] != null;
                 if (byId.TryGetValue(id, out int at))
                 {
-                    if (!replaces && rule["route"] is JToken route)
+                    if (!replaces)
                     {
-                        errors.Add(ErrorAt(save.File, id, "route", route,
-                            "route can only be set on a whole rule in a world file, not in a patch"));
+                        PatchErrors(save, id, rule, errors);
                     }
 
                     merged[at] = replaces ? (rule, LintRuleOrigin.Save, save.File) : (Patched(merged[at].Rule, rule), merged[at].Origin, merged[at].File);
@@ -173,6 +173,91 @@ internal static class LintRuleLoader
         }
 
         return new LintRuleSet(rules, errors, files, disabled);
+    }
+
+    private static void PatchErrors(LintRuleText save, string id, JObject patch, List<LintRuleError> errors)
+    {
+        foreach (JProperty property in patch.Properties())
+        {
+            string field = property.Name;
+            if (field == "id" || Array.IndexOf(PatchFields, field) >= 0)
+            {
+                continue;
+            }
+
+            string message = Known.Contains(field)
+                ? $"{field} can only be set on a whole rule in a world file, not in a patch"
+                : UnknownPatchField(field);
+            errors.Add(ErrorAtKey(save, id, property, message));
+        }
+    }
+
+    private static string UnknownPatchField(string field)
+    {
+        string message = $"unknown field {field}; a patch can set {string.Join(", ", PatchFields)}";
+        return NearestName.Of(field, PatchFields) is string nearest ? $"{message}; did you mean {nearest}?" : message;
+    }
+
+    /// <summary>An error at a property's key: the line and column of its opening quote, as an editor shows them.</summary>
+    private static LintRuleError ErrorAtKey(LintRuleText text, string id, JProperty property, string message)
+    {
+        (int line, int column) = KeyStart(text.Text, property);
+        return new LintRuleError(text.File, id, property.Name, line, column, message);
+    }
+
+    // Newtonsoft places a property at its colon; the key's opening quote is the first unescaped quote before the
+    // closing one, which precedes the colon past any whitespace (possibly on an earlier line).
+    private static (int Line, int Column) KeyStart(string text, IJsonLineInfo property)
+    {
+        if (!property.HasLineInfo())
+        {
+            return (0, 0);
+        }
+
+        string[] lines = text.Split('\n');
+        int line = property.LineNumber - 1;
+        int at = property.LinePosition - 2;
+        bool closed = false;
+        while (line >= 0 && line < lines.Length)
+        {
+            string row = lines[line];
+            for (at = Math.Min(at, row.Length - 1); at >= 0; at--)
+            {
+                char c = row[at];
+                if (c != '"' || IsEscaped(row, at))
+                {
+                    if (!closed && !char.IsWhiteSpace(c))
+                    {
+                        return (property.LineNumber, property.LinePosition);
+                    }
+
+                    continue;
+                }
+
+                if (closed)
+                {
+                    return (line + 1, at + 1);
+                }
+
+                closed = true;
+            }
+
+            line--;
+            at = line >= 0 ? lines[line].Length - 1 : -1;
+        }
+
+        return (property.LineNumber, property.LinePosition);
+    }
+
+    private static bool IsEscaped(string row, int at)
+    {
+        int slashes = 0;
+        for (int before = at - 1; before >= 0 && row[before] == '\\'; before--)
+        {
+            slashes++;
+        }
+
+        return slashes % 2 == 1;
     }
 
     private static JObject Patched(JObject rule, JObject patch)

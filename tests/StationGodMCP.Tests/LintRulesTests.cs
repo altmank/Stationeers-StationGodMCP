@@ -333,17 +333,47 @@ public sealed class LintRuleFileTests
         Assert.Contains(LintTestKit.Rules(json).Errors, error => error.Message.Contains(expected));
     }
 
-    [Fact]
-    public void ARouteInAPatchIsAnError()
+    // A patch changes only enabled, level, level_when, on, message and description. Any other key is an error at the
+    // key itself (its opening quote, as an editor shows it), and the patch's valid fields still apply.
+    [Theory]
+    [InlineData("route", "\"off_windows\"", "route can only be set on a whole rule in a world file, not in a patch")]
+    [InlineData("let", "{\"n\": \"1\"}", "let can only be set on a whole rule in a world file, not in a patch")]
+    [InlineData("other", "\"devices\"", "other can only be set on a whole rule in a world file, not in a patch")]
+    [InlineData("examples", "[]", "examples can only be set on a whole rule in a world file, not in a patch")]
+    [InlineData("colour", "1", "unknown field colour; a patch can set enabled, level, level_when, on, message, description")]
+    [InlineData("levl", "\"info\"", "unknown field levl; a patch can set enabled, level, level_when, on, message, description; did you mean level?")]
+    public void AnyFieldOutsideAPatchsFieldsIsAnErrorAtItsKey(string field, string value, string expected)
     {
-        LintRuleSet set = LintTestKit.Defaults(save: LintTestKit.File1(
-            "{\"id\": \"not_replaceable\", \"route\": \"off_windows\"}"));
+        string save = "{\"schema_version\": 1, \"rules\": [\n" +
+                      "  {\n" +
+                      "    \"id\": \"not_replaceable\",\n" +
+                      "    \"level\": \"info\",\n" +
+                      $"      \"{field}\" : {value}\n" +
+                      "  }\n" +
+                      "]}";
+        LintRuleSet set = LintTestKit.Defaults(save: save);
 
         LintRuleError error = Assert.Single(set.Errors);
         Assert.Equal("save/lint-rules.json", error.File);
         Assert.Equal("not_replaceable", error.RuleId);
-        Assert.Equal("route", error.Field);
-        Assert.Equal("route can only be set on a whole rule in a world file, not in a patch", error.Message);
+        Assert.Equal(field, error.Field);
+        Assert.Equal(expected, error.Message);
+        Assert.Equal(5, error.Line);
+        Assert.Equal(7, error.Column);
+        Assert.Equal(ConflictLevel.Info, set.Find("not_replaceable")!.Level);
+    }
+
+    [Fact]
+    public void APatchKeyIsFoundAcrossLinesAndEscapedQuotes()
+    {
+        string save = "{\"schema_version\": 1, \"rules\": [ {\"id\": \"not_replaceable\",\r\n" +
+                      "\t\"we\\\"ird\"\r\n" +
+                      "   : 1} ]}";
+
+        LintRuleError error = Assert.Single(LintTestKit.Defaults(save: save).Errors);
+        Assert.Equal("we\"ird", error.Field);
+        Assert.Equal(2, error.Line);
+        Assert.Equal(2, error.Column);
     }
 
     // The phase is report, with no alias: an old save file's "dry_run" fails and the error names report.
