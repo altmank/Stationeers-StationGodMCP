@@ -336,9 +336,9 @@ public sealed class RouteLintRuleTests
     private static readonly GridCell Port = new GridCell(5910, 2125, 6295);
 
     [Fact]
-    public void TheShippedChuteRuleRefusesCellsOutsideFramesExceptBesideTheEnds()
+    public void LusChuteRuleRefusesCellsOutsideFramesExceptBesideTheEnds()
     {
-        RouteLintRule? rule = RouteLintRule.From(LintTestKit.Defaults(), LintRoute.InsideFrames,
+        RouteLintRule? rule = RouteLintRule.From(LintTestKit.World(), LintRoute.InsideFrames,
             new[] { Port });
 
         Assert.NotNull(rule);
@@ -364,7 +364,7 @@ public sealed class RouteLintRuleTests
     [Fact]
     public void ATurnedOffRuleIsNotHonoured()
     {
-        LintRuleSet set = LintTestKit.Defaults(save: LintTestKit.File1("{\"id\": \"chute_outside_frame\", \"enabled\": false}"));
+        LintRuleSet set = LintTestKit.WorldWith("{\"id\": \"chute_outside_frame\", \"enabled\": false}");
 
         Assert.Null(RouteLintRule.From(set, LintRoute.InsideFrames, new[] { Port }));
     }
@@ -375,7 +375,7 @@ public sealed class RouteLintRuleTests
     [InlineData("{\"id\": \"run_crosses_window\", \"enabled\": false}", "None")]
     public void RoutesTreatAWindowsPlaneAsTheWindowRuleSays(string? save, string expected)
     {
-        LintRuleSet set = LintTestKit.Defaults(save: save != null ? LintTestKit.File1(save) : null);
+        LintRuleSet set = save != null ? LintTestKit.WorldWith(save) : LintTestKit.World();
         WindowRule rule = RouteLintRule.WindowsUnder(RouteLintRule.From(set, LintRoute.OffWindows, new GridCell[0]));
         GridCell seam = new GridCell(7040, 2030, 6780);
         OpeningGuard guard = new OpeningGuard(cell => cell.Equals(seam) ? OpeningZone.OnWindow(500) : OpeningZone.Clear,
@@ -394,7 +394,7 @@ public sealed class RouteLintRuleTests
     [Fact]
     public void ALoweredRuleAvoidsInsteadOfRefusing()
     {
-        LintRuleSet set = LintTestKit.Defaults(save: LintTestKit.File1("{\"id\": \"chute_outside_frame\", \"level\": \"warning\"}"));
+        LintRuleSet set = LintTestKit.WorldWith("{\"id\": \"chute_outside_frame\", \"level\": \"warning\"}");
 
         Assert.False(RouteLintRule.From(set, LintRoute.InsideFrames, new[] { Port })!.Refuses);
     }

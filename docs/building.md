@@ -176,10 +176,10 @@ own ports are released so the door can still be wired.
 - `place_cables`, `place_pipes`, `place_chutes` and `place_structure` refuse a new piece there with `in_door_keepout`;
   `allow_door_keepout: true` makes it a warning.
 - A window's plane (its closed square, seams with the next pane, edges and base included: glass, composite, padded
-  and shuttered windows and window shutters; floor gratings are floors, not windows) takes no run while lint rule
-  `run_crosses_window` is a problem (shipped): the planners keep off it and the place tools refuse a piece there. At
-  warning it costs a route extra and warns; turned off, nothing. A device's mesh on a window's plane is lint
-  `blocks_window`.
+  and shuttered windows and window shutters; floor gratings are floors, not windows) takes no run while a lint rule
+  whose `route` is `off_windows` is a problem (LU's world file sets it on `run_crosses_window`): the planners keep off
+  it and the place tools refuse a piece there. At warning it costs a route extra and warns; with none, nothing. A
+  device's mesh on a window's plane is lint `blocks_window` in that file.
 - `grid_survey` lists `doors` (faces, plane, band, port cells) and each wall's `kind` (wall, window, door).
 
 ## Planning a route

@@ -862,7 +862,7 @@ public sealed class HeldRestoreWireTests
     {
         private readonly object _sync = new object();
         private readonly Dictionary<(long, ushort), double> _values = new Dictionary<(long, ushort), double>();
-        private readonly LintRuleSet _rules = LintTestKit.Defaults();
+        private readonly LintRuleSet _rules = LintTestKit.World();
         private readonly Dictionary<string, LintValue> _network = new Dictionary<string, LintValue>(StringComparer.Ordinal)
         {
             ["id"] = LintValue.Of(7), ["kind"] = LintValue.Of("pipe"), ["temperature"] = LintValue.Of(290.0),

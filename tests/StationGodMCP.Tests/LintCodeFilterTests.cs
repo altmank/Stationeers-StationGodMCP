@@ -75,10 +75,10 @@ public sealed class LintCodeFilterTests
 
     private static List<LintFinding> Findings() => new List<LintFinding>
     {
-        new LintFinding("not_replaceable", "cladding", 1, new Vec3(1, 1, 1), 2),
-        new LintFinding("not_replaceable", "triangle", 3, new Vec3(1, 1, 3), 4),
+        LintTestKit.Finding("not_replaceable", "cladding", 1, new Vec3(1, 1, 1), 2),
+        LintTestKit.Finding("not_replaceable", "triangle", 3, new Vec3(1, 1, 3), 4),
         new LintFinding("rule_error", ConflictLevel.Warning, 0, "failed", null, new Vec3(1, 1, 1), null, null, null,
             "not_replaceable"),
-        new LintFinding("floating_run", "air", 5, new Vec3(3, 1, 1))
+        LintTestKit.Finding("floating_run", "air", 5, new Vec3(3, 1, 1))
     };
 }

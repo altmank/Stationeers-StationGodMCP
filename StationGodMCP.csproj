@@ -27,7 +27,7 @@
 
   <ItemGroup>
     <Compile Include="src\StationGodMCP.Mod\**\*.cs" />
-    <!-- The default lint rules, built in for when the mod folder's lint-rules.json is missing. -->
+    <!-- The built-in lint rules: always loaded, with the save's lint-rules.json over them; the mod folder's copy is never loaded. -->
     <EmbeddedResource Include="lint-rules.json" LogicalName="StationGodMCP.lint-rules.json" />
     <!-- The method catalogue, assembled from catalogue/ (CatalogueConsistencyTests keeps it current). -->
     <EmbeddedResource Include="catalogue.json" LogicalName="StationGodMCP.catalogue.json" />

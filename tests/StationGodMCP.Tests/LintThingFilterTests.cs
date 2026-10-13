@@ -69,15 +69,15 @@ public sealed class LintThingFilterTests(ITestOutputHelper output)
         List<LintFinding> all = new List<LintFinding>();
         for (int index = 0; index < 90; index++)
         {
-            all.Add(new LintFinding(index % 3 == 0 ? "floating_run" : "not_replaceable",
+            all.Add(LintTestKit.Finding(index % 3 == 0 ? "floating_run" : "not_replaceable",
                 "Composite Wall (StructureCompositeWall " + (2_200_000 + index) + ") could not be placed again: " +
                 "Placement is blocked by Composite Wall", 2_200_000 + index, new Vec3(593 + index % 9 * 2, 211, 627),
                 2_200_100 + index));
         }
 
-        all.Add(new LintFinding("controls_blocked", "Turbo Volume Pump (StructureTurboVolumePump 2500001): the side " +
+        all.Add(LintTestKit.Finding("controls_blocked", "Turbo Volume Pump (StructureTurboVolumePump 2500001): the side " +
             "its controls face, +z, has a wall right in front of it.", 2_500_001, new Vec3(601, 211, 633)));
-        all.Add(new LintFinding("floating_run", "Pipe (StructurePipeStraight 2500002) stands in air.", 2_500_002,
+        all.Add(LintTestKit.Finding("floating_run", "Pipe (StructurePipeStraight 2500002) stands in air.", 2_500_002,
             new Vec3(601, 211, 635)));
         int before = Reply(all, LintCodeFilter.Every, LintThingFilter.Every, 500).Length;
         string after = Reply(all, LintCodeFilter.Every, LintThingFilter.Of(null, 2_500_001), 500);
@@ -103,10 +103,10 @@ public sealed class LintThingFilterTests(ITestOutputHelper output)
 
     private static List<LintFinding> Findings() => new List<LintFinding>
     {
-        new LintFinding("not_replaceable", "cladding", 1, new Vec3(1, 1, 1), 2),
-        new LintFinding("not_replaceable", "triangle", 3, new Vec3(1, 1, 3), 4),
-        new LintFinding("floating_run", "air", 4, new Vec3(3, 1, 1)),
-        new LintFinding("controls_blocked", "pump", 9000, new Vec3(5, 1, 1), 7),
-        new LintFinding("floating_run", "pipe", 9001, new Vec3(5, 1, 3))
+        LintTestKit.Finding("not_replaceable", "cladding", 1, new Vec3(1, 1, 1), 2),
+        LintTestKit.Finding("not_replaceable", "triangle", 3, new Vec3(1, 1, 3), 4),
+        LintTestKit.Finding("floating_run", "air", 4, new Vec3(3, 1, 1)),
+        LintTestKit.Finding("controls_blocked", "pump", 9000, new Vec3(5, 1, 1), 7),
+        LintTestKit.Finding("floating_run", "pipe", 9001, new Vec3(5, 1, 3))
     };
 }

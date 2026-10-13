@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Lint;
@@ -115,6 +116,42 @@ internal static class LintTestKit
         LintRuleLoader.Load(library ?? Library(), new LintRuleText("mod/lint-rules.json", DefaultText(), LintRuleOrigin.Mod),
             save != null ? new LintRuleText("save/lint-rules.json", save, LintRuleOrigin.Save) : null);
 
+    /// <summary>LU's world file (StationeersWorkspace tools/lint/Vulcan2_4.lint-rules.json, copied byte for byte).</summary>
+    internal static string WorldText() =>
+        File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "Lint", "Vulcan2_4.lint-rules.json"));
+
+    /// <summary>The built-in rules with LU's world file over them, as his saves load them.</summary>
+    internal static LintRuleSet World(LintLibrary? library = null) => Defaults(library, WorldText());
+
+    private static readonly Lazy<LintRuleSet> WorldSet = new Lazy<LintRuleSet>(() => World());
+
+    /// <summary>A finding of a rule in LU's world, with the rule's level and its place in that set.</summary>
+    internal static LintFinding Finding(string code, string message, long? thingId, Vec3 at, long? otherId = null) =>
+        new LintFinding(code, WorldSet.Value.Find(code)!.Level, WorldSet.Value.IndexOf(code), message, thingId, at,
+            otherId, null, null);
+
+    /// <summary>
+    /// LU's world with one of its rules changed as patch says (its fields set over the rule's): his save's file is the
+    /// world file, so a change to one of its rules is made in that file.
+    /// </summary>
+    internal static LintRuleSet WorldWith(string patch)
+    {
+        JObject change = JObject.Parse(patch);
+        JObject world = JObject.Parse(WorldText());
+        foreach (JToken rule in (JArray)world["rules"]!)
+        {
+            if ((string?)rule["id"] == (string?)change["id"])
+            {
+                foreach (JProperty field in change.Properties())
+                {
+                    rule[field.Name] = field.Value.DeepClone();
+                }
+            }
+        }
+
+        return Defaults(save: world.ToString());
+    }
+
     internal static LintRuleSet Rules(string json, LintLibrary? library = null) =>
         LintRuleLoader.Load(library ?? Library(), new LintRuleText("test.json", json, LintRuleOrigin.Mod), null);
 
@@ -133,7 +170,34 @@ public sealed class LintRuleFileTests
     {
         LintRuleSet set = LintTestKit.Defaults();
         Assert.Empty(set.Errors);
+        Assert.Equal(6, set.Rules.Count);
+    }
+
+    // A world with no lint file gets the built-in rules only: the six game-cited ones.
+    [Fact]
+    public void WithNoLintFileOnlyTheBuiltInRulesApply()
+    {
+        LintRuleSet set = LintTestKit.Defaults();
+
+        Assert.Equal(System.Array.ConvertAll(LintCodes.Rules, rule => rule.Code),
+            System.Linq.Enumerable.ToArray(System.Linq.Enumerable.Select(set.Rules, rule => rule.Id)));
+        Assert.Null(set.Find("run_crosses_window"));
+        Assert.Null(RouteLintRule.From(set, LintRoute.OffWindows, new GridCell[0]));
+        Assert.Null(RouteLintRule.From(set, LintRoute.InsideFrames, new GridCell[0]));
+    }
+
+    // LU's world file holds the other 20 whole: with it, all 26 load, his 20 from his file.
+    [Fact]
+    public void LusWorldFileAddsItsTwentyWholeRules()
+    {
+        LintRuleSet set = LintTestKit.World();
+
+        Assert.Empty(set.Errors);
         Assert.Equal(26, set.Rules.Count);
+        Assert.Equal(20, set.Rules.Count(rule => rule.Origin == LintRuleOrigin.Save));
+        Assert.Equal(ConflictLevel.Problem, set.Find("controls_blocked")!.Level);
+        Assert.Equal("run_crosses_window", RouteLintRule.From(set, LintRoute.OffWindows, new GridCell[0])!.Id);
+        Assert.Equal("chute_outside_frame", RouteLintRule.From(set, LintRoute.InsideFrames, new GridCell[0])!.Id);
     }
 
     [Fact]
@@ -164,14 +228,14 @@ public sealed class LintRuleFileTests
     [InlineData("cable_on_frames", "warning")]
     public void TheGeneralRulesShipAtTheirLevels(string id, string level)
     {
-        Assert.Equal(level, LintRule.NameOf(LintTestKit.Defaults().Find(id)!.Level));
+        Assert.Equal(level, LintRule.NameOf(LintTestKit.World().Find(id)!.Level));
     }
 
     [Fact]
     public void EveryShippedRuleHasExamplesAndTheyHold()
     {
         LintLibrary library = LintTestKit.Library();
-        foreach (LintRule rule in LintTestKit.Defaults(library).Rules)
+        foreach (LintRule rule in LintTestKit.World(library).Rules)
         {
             List<LintExampleResult> results = LintExamples.Run(rule, library);
             Assert.Contains(results, result => result.Expected == "pass");
@@ -188,7 +252,7 @@ public sealed class LintRuleFileTests
     public void AFailingExampleRendersTheMessage()
     {
         LintLibrary library = LintTestKit.Library();
-        LintRule rule = LintTestKit.Defaults(library).Find("floating_run")!;
+        LintRule rule = LintTestKit.World(library).Find("floating_run")!;
         LintExampleResult fail = LintExamples.Run(rule, library).Find(result => result.Expected == "fail")!;
         Assert.Equal("StructurePipeStraight 3 floats in air (1 of 2 cells on no frame and no wall plane).", fail.Message);
     }
@@ -197,18 +261,18 @@ public sealed class LintRuleFileTests
     public void TheSavesFileDisablesChangesLevelReplacesAndAdds()
     {
         string save = LintTestKit.File1(
-            "{\"id\": \"floating_run\", \"enabled\": false}," +
-            "{\"id\": \"run_along_door\", \"level\": \"warning\"}," +
-            "{\"id\": \"cable_on_frames\", \"level\": \"info\", \"select\": \"pieces where kind == 'cable'\", \"assert\": \"true\", \"message\": \"m\"}," +
+            "{\"id\": \"deep_miner_column_clear\", \"enabled\": false}," +
+            "{\"id\": \"port_cell_foreign_network\", \"level\": \"info\"}," +
+            "{\"id\": \"cable_grade_matches_network\", \"level\": \"info\", \"select\": \"pieces where kind == 'cable'\", \"assert\": \"true\", \"message\": \"m\"}," +
             "{\"id\": \"my_rule\", \"level\": \"info\", \"select\": \"devices\", \"assert\": \"has(room)\", \"message\": \"{prefab} outdoors\"}");
         LintRuleSet set = LintTestKit.Defaults(save: save);
         Assert.Empty(set.Errors);
-        Assert.Null(set.Find("floating_run"));
-        Assert.Contains("floating_run", set.Disabled);
-        Assert.Equal(ConflictLevel.Warning, set.Find("run_along_door")!.Level);
-        Assert.Equal(LintRuleOrigin.Mod, set.Find("run_along_door")!.Origin);
-        Assert.Equal(LintRuleOrigin.Save, set.Find("cable_on_frames")!.Origin);
-        Assert.Equal("true", set.Find("cable_on_frames")!.AssertText);
+        Assert.Null(set.Find("deep_miner_column_clear"));
+        Assert.Contains("deep_miner_column_clear", set.Disabled);
+        Assert.Equal(ConflictLevel.Info, set.Find("port_cell_foreign_network")!.Level);
+        Assert.Equal(LintRuleOrigin.Mod, set.Find("port_cell_foreign_network")!.Origin);
+        Assert.Equal(LintRuleOrigin.Save, set.Find("cable_grade_matches_network")!.Origin);
+        Assert.Equal("true", set.Find("cable_grade_matches_network")!.AssertText);
         Assert.Equal(set.Rules.Count - 1, set.IndexOf("my_rule"));
         Assert.Equal(new[] { "mod/lint-rules.json", "save/lint-rules.json" }, set.Files);
     }

@@ -112,9 +112,10 @@ public sealed class LiveTest144Tests
     [Fact]
     public void RunsAlongADoorHaveAKindNeutralCode()
     {
-        Assert.Equal("run_along_door", LintCodes.RunAlongDoor);
-        Assert.Equal(ConflictLevel.Info, LintCodes.LevelOf("run_along_door"));
-        Assert.Throws<System.ArgumentException>(() => LintCodes.LevelOf("pipe_along_door"));
+        StationGodMCP.Pure.Lint.LintRuleSet world = LintTestKit.World();
+
+        Assert.Equal(ConflictLevel.Info, world.Find("run_along_door")!.Level);
+        Assert.Null(world.Find("pipe_along_door"));
     }
 
     [Fact]

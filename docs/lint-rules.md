@@ -21,8 +21,8 @@ How the save's file applies, rule by rule (by `id`):
 - A rule with a new id is added, after the mod's rules.
 - A rule with an id the mod's file has, and its own `select` or `assert`, replaces the mod's rule whole.
 - A rule with an id the mod's file has and no `select` or `assert` changes only what it gives: `enabled`, `level`,
-  `level_when`, `on`, `message`, `description`. `{"id": "run_along_door", "enabled": false}` turns a rule off;
-  `{"id": "floating_run", "level": "info"}` makes it information only.
+  `level_when`, `on`, `message`, `description`. `{"id": "deep_miner_column_clear", "enabled": false}` turns a rule
+  off; `{"id": "port_cell_foreign_network", "level": "info"}` makes it information only.
 
 A rule that does not load (a typo, a field that does not exist) is left out and reported; every other rule still
 runs. `lint_rules` with `action: "validate"` lists every error with its file, rule, field, line, column and the
@@ -34,7 +34,7 @@ A small save file:
 {
   "schema_version": 1,
   "rules": [
-    { "id": "run_along_door", "enabled": false },
+    { "id": "deep_miner_column_clear", "enabled": false },
     {
       "id": "batteries_charged",
       "level": "info",
@@ -57,8 +57,8 @@ A small save file:
   removes or replaces left out. Each finding about a planned thing is `lint_<rule id>`: at level `problem` (the rule's
   `level`, or its `level_when`) it refuses the request, naming the rule and how to allow it (set its `level` to
   `warning`, or `"enabled": false`, in the save's lint-rules.json); at `warning` or `info` it is a warning. A rule
-  turned off never runs. `plan_chute_route` also routes around `chute_outside_frame` while it is in effect, whatever
-  the `style`: cells outside a frame's body are refused at level problem and avoided otherwise (the ends and the cells
+  turned off never runs. `plan_chute_route` also routes around a rule whose `route` is `inside_frames` while it is
+  in effect, whatever the `style`: cells outside a frame's body are refused at level problem and avoided otherwise (the ends and the cells
   next to them excepted). A planned thing knows only its prefab, place, turn, cells and ports: it has no
   network, slots or logic yet. The grid around it is read as it stands now, so a frame or wall the same request also
   places does not yet count as support for its other placements. Removals (`remove_*`, `plan_removal`) are not
@@ -191,34 +191,23 @@ must pass (or be left out by the `where`), a `fail` example must fail. Every shi
 
 ## The rules the mod ships
 
+The mod builds in only rules whose finding is a fact of the game's code in any world and any build:
+
 | Rule | Level | Runs on | Finds |
 | --- | --- | --- | --- |
 | `not_replaceable` | problem | audit | a piece, device or 2 m structure a player could not place again where it stands ([check_replaceable](walls-frames-structures.md#could-a-player-place-it-again-150)) |
-| `run_in_door_keepout` | warning | both | a cable, pipe or chute piece in a door's keep-out |
-| `port_into_doorway` | warning | both | a device port that joins in a door's keep-out |
 | `port_cell_foreign_network` | warning | both | a port whose joining cell holds a piece that does not join it |
-| `floating_run` | warning | both | a cable, pipe or chute piece in air (in-line tanks and passive vents are not runs) |
-| `run_crosses_window` | problem | both | a cable, pipe or chute piece on a window's plane, its seams with the next pane, edges and base included; the route planners keep off it while the rule is a problem (pay extra at warning, ignore it when off) |
-| `device_visual_overlap` | warning | both | two devices whose mesh boxes run more than 0.1 m into each other, or one inside the other |
-| `mounted_faces_out_of_room` | warning | both | a mounted device facing out of the room behind it |
-| `device_crosses_seam` | warning | both | a mounted device spanning two wall sections though it could fit one |
-| `controls_blocked` | problem (info for a forward fallback) | both | the side with a device's slots and buttons facing a device, a frame's body, a wall or frame right in front, or any plate, frame or thing covering a quarter of that side within 0.5 m (controls sunk in a floor or facing down onto it); never a device with no control a player uses (a radiator) |
-| `clips_surface` | problem | both | a small-grid device whose mesh box runs more than 0.1 m into a wall, floor or ceiling plate or a frame's body it does not rest on (built lying, its body sunk into the floor) |
-| `blocks_window` | problem | both | a device or other small-grid thing whose mesh box crosses or sits on a window's plane within the window's rectangle, mounted there or not (pieces are `run_crosses_window`'s) |
-| `run_along_door` | info | both | a cable, pipe or chute piece hugging a door's jamb |
-| `controls_not_on_wall` | info | both | a console, computer, display, dial, button, switch, lever or keypad not on a wall |
 | `replaceable_unchecked` | info | audit | a thing `not_replaceable` could not ask about |
-| `solar_outdoor_reinforced` | problem | both | a solar panel storms reach that is not a Reinforced panel (nor one with a WeatherDamageScale of 0): each storm wears the others down |
 | `cable_grade_matches_network` | warning | audit | a cable lighter than its network's heaviest while the power through the network is more than its weakest cable carries (the power tick burns a cable rated below that flow) |
-| `controller_labels` | warning | audit | a device a chip on its data network batches by name (lbn, sbn, batch_write_name) that carries none of those names, so the chip never reaches it |
-| `solar_unshaded` | warning | both | a solar panel with a structure or the terrain between it and the sun somewhere on the day's path |
-| `filter_output_capped` | warning | audit | a filtration unit with an output network holding no tank or regulator, or with no chip switching it On and off: it pushes with no back-pressure check |
-| `no_oxidiser_vented_outdoors` | problem | audit, write | an outdoor vent whose network, or anything upstream of it through pumps, valves, regulators, filters and mixers, holds oxygen, nitrous oxide or ozone |
 | `fuel_oxidiser_mix_temperature` | warning | audit, write | a pipe network holding fuel and oxidiser above its auto-ignition temperature |
-| `outdoor_liquid_insulated` | warning | audit | an outdoor liquid pipe that is not insulated while its network is at or below a freezing point of what it holds |
 | `deep_miner_column_clear` | warning | both | a frame or other full-cell structure in a deep miner's drill column, which stops it |
-| `cable_on_frames` | warning | both | a cable with a cell off the frames (in air or along a bare wall) |
-| `chute_outside_frame` | problem | both | a chute piece with a cell outside a frame's body (on a frame's face, a wall or floor plane, or in air); a device's port stub (the piece in its chute port's joining cell, or one cell from it) is not checked |
+
+Every other rule belongs to a world: a planet, a storm, a building style. Such rules live in that world's own
+`lint-rules.json`, in its save's folder, as whole rules (`id`, `level`, `on`, `select`, `let`, `assert`, `message`,
+`examples`). LU's world file, with the door, window, frame, controls, solar, oxidiser and labelling rules this page
+names, is `tools/lint/Vulcan2_4.lint-rules.json` in the StationeersWorkspace repository; copy it into a save's folder to
+have its rules there. Its `run_crosses_window` and `chute_outside_frame` carry the `route` field, so with it the route
+planners keep off windows and keep chutes inside frames; without it they do neither.
 
 `lint_rules` with `action: "list"` and a `rule_id` shows any rule in full.
 

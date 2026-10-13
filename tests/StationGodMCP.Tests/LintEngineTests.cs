@@ -101,7 +101,7 @@ public sealed class LintEngineTests
 
     private static LintRuleSet Only(params string[] ids)
     {
-        LintRuleSet all = LintTestKit.Defaults();
+        LintRuleSet all = LintTestKit.World();
         List<LintRule> rules = new List<LintRule>();
         foreach (string id in ids)
         {
@@ -390,7 +390,7 @@ public sealed class LintModelRobustnessTests
         }
 
         List<LintRule> rules = new List<LintRule>();
-        foreach (LintRule rule in LintTestKit.Defaults().Rules)
+        foreach (LintRule rule in LintTestKit.World().Rules)
         {
             if (rule.Id != "not_replaceable" && rule.Id != "replaceable_unchecked")
             {

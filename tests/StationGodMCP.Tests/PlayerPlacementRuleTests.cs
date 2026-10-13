@@ -185,7 +185,7 @@ public sealed class PlayerPlacementRuleTests
 
         var ordered = LintReport.Ordered(new System.Collections.Generic.List<LintFinding>
         {
-            new LintFinding(LintCodes.FloatingRun, "floats", 1, new Vec3(0, 0, 0)),
+            new LintFinding(LintCodes.PortCellForeignNetwork, "foreign", 1, new Vec3(0, 0, 0)),
             new LintFinding(LintCodes.ReplaceableUnchecked, "unchecked", 2, new Vec3(0, 0, 0)),
             new LintFinding(LintCodes.NotReplaceable, "floating vent", 3, new Vec3(0, 0, 0))
         });

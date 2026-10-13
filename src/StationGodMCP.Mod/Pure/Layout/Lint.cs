@@ -11,36 +11,22 @@ namespace StationGodMCP.Pure;
 /// </summary>
 internal static class LintCodes
 {
-    internal const string FloatingRun = "floating_run";
-    internal const string RunInDoorKeepOut = "run_in_door_keepout";
-    internal const string DeviceCrossesSeam = "device_crosses_seam";
-    internal const string DeviceVisualOverlap = "device_visual_overlap";
-    internal const string MountedFacesOutOfRoom = "mounted_faces_out_of_room";
-    internal const string ControlsNotOnWall = "controls_not_on_wall";
-    internal const string PortIntoDoorway = "port_into_doorway";
-    internal const string PortCellForeignNetwork = "port_cell_foreign_network";
-    internal const string RunAlongDoor = "run_along_door";
-    internal const string RunCrossesWindow = "run_crosses_window";
     internal const string NotReplaceable = "not_replaceable";
+    internal const string PortCellForeignNetwork = "port_cell_foreign_network";
     internal const string ReplaceableUnchecked = "replaceable_unchecked";
-    internal const string ControlsBlocked = "controls_blocked";
+    internal const string CableGradeMatchesNetwork = "cable_grade_matches_network";
+    internal const string FuelOxidiserMixTemperature = "fuel_oxidiser_mix_temperature";
+    internal const string DeepMinerColumnClear = "deep_miner_column_clear";
 
     /// <summary>Every rule with its level, in report order.</summary>
     internal static readonly (string Code, ConflictLevel Level)[] Rules =
     {
         (NotReplaceable, ConflictLevel.Problem),
-        (RunInDoorKeepOut, ConflictLevel.Warning),
-        (PortIntoDoorway, ConflictLevel.Warning),
         (PortCellForeignNetwork, ConflictLevel.Warning),
-        (FloatingRun, ConflictLevel.Warning),
-        (RunCrossesWindow, ConflictLevel.Problem),
-        (DeviceVisualOverlap, ConflictLevel.Warning),
-        (MountedFacesOutOfRoom, ConflictLevel.Warning),
-        (DeviceCrossesSeam, ConflictLevel.Warning),
-        (ControlsBlocked, ConflictLevel.Problem),
-        (RunAlongDoor, ConflictLevel.Info),
-        (ControlsNotOnWall, ConflictLevel.Info),
-        (ReplaceableUnchecked, ConflictLevel.Info)
+        (ReplaceableUnchecked, ConflictLevel.Info),
+        (CableGradeMatchesNetwork, ConflictLevel.Warning),
+        (FuelOxidiserMixTemperature, ConflictLevel.Warning),
+        (DeepMinerColumnClear, ConflictLevel.Warning)
     };
 
     internal static ConflictLevel LevelOf(string code)

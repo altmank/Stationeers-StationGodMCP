@@ -108,16 +108,16 @@ public sealed class LintLayoutTests
     {
         List<LintFinding> findings = new List<LintFinding>
         {
-            new LintFinding(LintCodes.ControlsNotOnWall, "c", 1, Vec3.Zero),
-            new LintFinding(LintCodes.FloatingRun, "f", 2, Vec3.Zero),
-            new LintFinding(LintCodes.RunInDoorKeepOut, "d", 3, Vec3.Zero, 983),
-            new LintFinding(LintCodes.FloatingRun, "f2", 4, Vec3.Zero)
+            new LintFinding(LintCodes.ReplaceableUnchecked, "c", 1, Vec3.Zero),
+            new LintFinding(LintCodes.CableGradeMatchesNetwork, "f", 2, Vec3.Zero),
+            new LintFinding(LintCodes.PortCellForeignNetwork, "d", 3, Vec3.Zero, 983),
+            new LintFinding(LintCodes.CableGradeMatchesNetwork, "f2", 4, Vec3.Zero)
         };
         List<LintFinding> ordered = LintReport.Ordered(findings);
         Assert.Equal(new List<string> { "d", "f", "f2", "c" }, ordered.ConvertAll(finding => finding.Message));
         Assert.Equal(ConflictLevel.Info, ordered[3].Level);
         Dictionary<string, int> counts = LintReport.Counts(findings);
-        Assert.Equal(2, counts[LintCodes.FloatingRun]);
+        Assert.Equal(2, counts[LintCodes.CableGradeMatchesNetwork]);
     }
 
     [Fact]

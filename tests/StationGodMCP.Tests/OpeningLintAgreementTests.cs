@@ -84,7 +84,7 @@ public sealed class OpeningLintAgreementTests
     [InlineData(false, "Oxygen", 5.0)]
     public void TheAuditAndTheWriteJudgeFindTheSameOnTheSameWorld(bool outdoors, string gas, double mol)
     {
-        LintRuleSet rules = LintTestKit.Defaults();
+        LintRuleSet rules = LintTestKit.World();
         VentSite site = new VentSite(outdoors, new Dictionary<string, double> { [gas] = mol });
         TestLintWorld audit = site.Audit();
 
@@ -131,7 +131,7 @@ public sealed class OpeningLintAgreementTests
     [Fact]
     public void ARuleFileWhoseOxidiserRuleRunsOnAuditOnlyLeavesTheOpeningUnchecked()
     {
-        string stale = LintTestKit.DefaultText()
+        string stale = LintTestKit.WorldText()
             .Replace("\"on\": [\"audit\", \"write\"]", "\"on\": [\"audit\"]");
         LintRuleSet rules = LintTestKit.Rules(stale);
         VentSite site = new VentSite(true, new Dictionary<string, double> { ["Oxygen"] = 5.0 });
@@ -144,7 +144,7 @@ public sealed class OpeningLintAgreementTests
         Assert.True(audited);
         Assert.True(verdict.Opens);
         Assert.Empty(verdict.Problems);
-        Assert.Contains(OpeningLint.Phase, LintTestKit.Defaults().Find(OxidiserRule)!.On);
+        Assert.Contains(OpeningLint.Phase, LintTestKit.World().Find(OxidiserRule)!.On);
     }
 
     [Fact]

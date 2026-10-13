@@ -225,7 +225,7 @@ public sealed class WriteLintTests
     /// </summary>
     private sealed class Site
     {
-        private readonly LintRuleSet _rules = LintTestKit.Defaults();
+        private readonly LintRuleSet _rules = LintTestKit.World();
         private readonly Dictionary<string, LintValue> _ventNetwork;
         private readonly Dictionary<string, LintValue>? _otherNetwork;
         private readonly LintRecord _vent;

@@ -23,6 +23,7 @@
     <None Include="..\..\docs\lint-rules.md" Link="lint-rules.md" CopyToOutputDirectory="PreserveNewest" />
     <!-- Synthetic replies (no game data) the mod's shaping is compared against the sidecar's on. -->
     <None Include="Fixtures\Shaping\*.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Fixtures\Lint\*.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
