@@ -11,8 +11,21 @@ namespace StationGodMCP.Pure.Verbs;
 /// What the reply holds (PLAN 2.0, shaping): fields keeps keys in each entry, omit leaves key paths out, list_limits
 /// keeps more of a list cut by default (all three the call's shape), include adds parts, verbose gives the long form.
 /// </summary>
-internal sealed record Fields(ShapeRequest? Shape, IReadOnlyList<string> Include, bool Verbose)
+internal sealed class Fields
 {
+    internal Fields(ShapeRequest? shape, IReadOnlyList<string> include, bool verbose)
+    {
+        Shape = shape;
+        Include = include;
+        Verbose = verbose;
+    }
+
+    public ShapeRequest? Shape { get; }
+
+    public IReadOnlyList<string> Include { get; }
+
+    public bool Verbose { get; }
+
     internal static Fields None { get; } = new Fields(null, Array.Empty<string>(), false);
 
     internal static Fields Bind(OptionReader options) =>

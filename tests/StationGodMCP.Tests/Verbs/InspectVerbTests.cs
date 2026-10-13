@@ -70,7 +70,7 @@ public sealed class InspectVerbTests
         PrefabFilter parts = PrefabFilter.Bind(Reader(InspectPrefabOptions.Spec, """{"prefab": "*Frame*"}"""))!;
 
         Assert.IsType<PrefabPattern.Whole>(named.Patterns[0]);
-        Assert.Equal(new PrefabPattern.Hash(-1234), hashed.Patterns[0]);
+        Assert.Equal(-1234, Assert.IsType<PrefabPattern.Hash>(hashed.Patterns[0]).Value);
         Assert.IsType<PrefabPattern.Parts>(parts.Patterns[0]);
         Assert.NotNull(Check("""{"what": "prefab", "prefab": ["StructureFrame"]}"""));
     }

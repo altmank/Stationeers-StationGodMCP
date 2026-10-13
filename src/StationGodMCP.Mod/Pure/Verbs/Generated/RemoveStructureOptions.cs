@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of remove structure, in verb names (catalogue/verbs/remove.json).</summary>
-internal sealed record RemoveStructureOptions
+internal sealed class RemoveStructureOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("remove", "structure", "placements", null, new WriteSpec("confirm", "undo", "[undo]"), new WhatCost(CostClass.Job),
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}", true),
@@ -26,21 +26,21 @@ internal sealed record RemoveStructureOptions
         new OptionSpec("queue", "{\"type\":\"boolean\"}", false, "true"),
         new OptionSpec("max_wait", "{\"type\":\"number\",\"minimum\":0}", false, "30"));
 
-    internal Selector Selector { get; private init; } = Selector.None;
+    internal Selector Selector { get; private set; } = Selector.None;
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal ReportConfirm Report { get; private init; } = ReportConfirm.Acting;
+    internal ReportConfirm Report { get; private set; } = ReportConfirm.Acting;
 
-    internal MaterialsSource Materials { get; private init; } = MaterialsSource.Player;
+    internal MaterialsSource Materials { get; private set; } = MaterialsSource.Player;
 
-    internal IReadOnlyList<string>? Allow { get; private init; }
+    internal IReadOnlyList<string>? Allow { get; private set; }
 
-    internal string? GasTo { get; private init; }
+    internal string? GasTo { get; private set; }
 
-    internal string? AcknowledgeGasLost { get; private init; }
+    internal string? AcknowledgeGasLost { get; private set; }
 
-    internal bool? Queue { get; private init; }
+    internal bool? Queue { get; private set; }
 
     internal static RemoveStructureOptions Bind(OptionReader options) => new RemoveStructureOptions
     {

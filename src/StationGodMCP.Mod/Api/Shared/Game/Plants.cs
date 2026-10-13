@@ -83,4 +83,18 @@ internal static class Plants
 }
 
 /// <summary>The game's clock as plants read it.</summary>
-internal sealed record PlantClock(float GameTimeS, int DayLengthS, bool DebugFastGrowth);
+internal sealed class PlantClock
+{
+    internal PlantClock(float gameTimeS, int dayLengthS, bool debugFastGrowth)
+    {
+        GameTimeS = gameTimeS;
+        DayLengthS = dayLengthS;
+        DebugFastGrowth = debugFastGrowth;
+    }
+
+    public float GameTimeS { get; }
+
+    public int DayLengthS { get; }
+
+    public bool DebugFastGrowth { get; }
+}

@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of write logic, in verb names (catalogue/verbs/write.json).</summary>
-internal sealed record WriteLogicOptions
+internal sealed class WriteLogicOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("write", "logic", "results", null, new WriteSpec("acts", "mixed", "[undo] held settings; [cannot undo: action] pulse and action types"), new WhatCost(CostClass.Bounded, new[] { "id", "writes" }),
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}"),
@@ -22,21 +22,21 @@ internal sealed record WriteLogicOptions
         new OptionSpec("allow", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"lint\"]}}"),
         new OptionSpec("confirm", "{\"type\":\"boolean\"}", false, "false"));
 
-    internal Selector Selector { get; private init; } = Selector.None;
+    internal Selector Selector { get; private set; } = Selector.None;
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal ReportConfirm Report { get; private init; } = ReportConfirm.Acting;
+    internal ReportConfirm Report { get; private set; } = ReportConfirm.Acting;
 
-    internal JToken? Logic { get; private init; }
+    internal JToken? Logic { get; private set; }
 
-    internal double? Value { get; private init; }
+    internal double? Value { get; private set; }
 
-    internal JToken? Writes { get; private init; }
+    internal JToken? Writes { get; private set; }
 
-    internal string? Gateway { get; private init; }
+    internal string? Gateway { get; private set; }
 
-    internal IReadOnlyList<string>? Allow { get; private init; }
+    internal IReadOnlyList<string>? Allow { get; private set; }
 
     internal static WriteLogicOptions Bind(OptionReader options) => new WriteLogicOptions
     {

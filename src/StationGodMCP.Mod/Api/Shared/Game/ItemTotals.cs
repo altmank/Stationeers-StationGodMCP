@@ -66,7 +66,24 @@ internal static class ItemTotals
 }
 
 /// <summary>The rows, most first, and the item, machine stock and silo entries they sum.</summary>
-internal sealed record Totalled(List<PrefabTally> Rows, int Items, int StockEntries, int SiloEntries);
+internal sealed class Totalled
+{
+    internal Totalled(List<PrefabTally> rows, int items, int stockEntries, int siloEntries)
+    {
+        Rows = rows;
+        Items = items;
+        StockEntries = stockEntries;
+        SiloEntries = siloEntries;
+    }
+
+    public List<PrefabTally> Rows { get; }
+
+    public int Items { get; }
+
+    public int StockEntries { get; }
+
+    public int SiloEntries { get; }
+}
 
 /// <summary>One prefab's items (or one working-load reagent) summed, overall, by place and per holder.</summary>
 internal sealed class PrefabTally

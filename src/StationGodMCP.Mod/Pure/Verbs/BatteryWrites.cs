@@ -12,16 +12,49 @@ namespace StationGodMCP.Pure.Verbs;
 /// One battery's result, in the call's order: its charge before and after (checked for a report, read back once
 /// set), or the refusal that leaves it alone. Each fails alone.
 /// </summary>
-internal abstract record BatteryResult
+internal abstract class BatteryResult
 {
     private BatteryResult()
     {
     }
 
-    internal sealed record Charged(int Index, ThingView Battery, PowerStoreKind Kind, ThingView? HeldBy,
-        ChargeChange Change) : BatteryResult;
+    internal sealed class Charged : BatteryResult
+    {
+        internal Charged(int index, ThingView battery, PowerStoreKind kind, ThingView? heldBy, ChargeChange change)
+        {
+            Index = index;
+            Battery = battery;
+            Kind = kind;
+            HeldBy = heldBy;
+            Change = change;
+        }
 
-    internal sealed record Refused(int Index, ThingId? Id, ApiException Error) : BatteryResult;
+        public int Index { get; }
+
+        public ThingView Battery { get; }
+
+        public PowerStoreKind Kind { get; }
+
+        public ThingView? HeldBy { get; }
+
+        public ChargeChange Change { get; }
+    }
+
+    internal sealed class Refused : BatteryResult
+    {
+        internal Refused(int index, ThingId? id, ApiException error)
+        {
+            Index = index;
+            Id = id;
+            Error = error;
+        }
+
+        public int Index { get; }
+
+        public ThingId? Id { get; }
+
+        public ApiException Error { get; }
+    }
 }
 
 /// <summary>

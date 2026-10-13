@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of write screen, in verb names (catalogue/verbs/write.json).</summary>
-internal sealed record WriteScreenOptions
+internal sealed class WriteScreenOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("write", "screen", null, null, new WriteSpec("acts", "cannot", "[cannot undo: screen press]"), new WhatCost(CostClass.Instant),
         new OptionSpec("id", "{\"type\":\"string\"}", true),
@@ -23,23 +23,23 @@ internal sealed record WriteScreenOptions
         new OptionSpec("text", "{\"type\":\"string\"}"),
         new OptionSpec("as_player", "{\"type\":\"string\"}"));
 
-    internal Selector Selector { get; private init; } = Selector.None;
+    internal Selector Selector { get; private set; } = Selector.None;
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal string? Gateway { get; private init; }
+    internal string? Gateway { get; private set; }
 
-    internal string? Surface { get; private init; }
+    internal string? Surface { get; private set; }
 
-    internal string? Element { get; private init; }
+    internal string? Element { get; private set; }
 
-    internal JToken? Pixel { get; private init; }
+    internal JToken? Pixel { get; private set; }
 
-    internal string? Event { get; private init; }
+    internal string? Event { get; private set; }
 
-    internal string? Text { get; private init; }
+    internal string? Text { get; private set; }
 
-    internal string? AsPlayer { get; private init; }
+    internal string? AsPlayer { get; private set; }
 
     internal static WriteScreenOptions Bind(OptionReader options) => new WriteScreenOptions
     {

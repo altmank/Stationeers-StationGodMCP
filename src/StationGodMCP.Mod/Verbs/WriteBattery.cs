@@ -50,5 +50,16 @@ internal static class WriteBattery
                 plan => BatteryReplies.Reported(goal!, plan.Targets.FoundIn, plan.Checked, undoMark));
     }
 
-    private sealed record BatteryPlan(BatteryTargets Targets, List<BatteryResult> Checked);
+    private sealed class BatteryPlan
+    {
+        internal BatteryPlan(BatteryTargets targets, List<BatteryResult> @checked)
+        {
+            Targets = targets;
+            Checked = @checked;
+        }
+
+        public BatteryTargets Targets { get; }
+
+        public List<BatteryResult> Checked { get; }
+    }
 }

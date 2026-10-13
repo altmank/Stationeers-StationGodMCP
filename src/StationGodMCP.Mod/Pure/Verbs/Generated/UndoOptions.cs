@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of undo, in verb names (catalogue/verbs/undo.json).</summary>
-internal sealed record UndoOptions
+internal sealed class UndoOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("undo", "-", "piece_runs", null, new WriteSpec("confirm", "cannot", "[cannot undo]"), new WhatCost(CostClass.Job),
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}", true),
@@ -24,21 +24,21 @@ internal sealed record UndoOptions
         new OptionSpec("confirm", "{\"type\":\"boolean\"}", false, "false"),
         new OptionSpec("max_wait", "{\"type\":\"number\",\"minimum\":0}", false, "30"));
 
-    internal Selector Selector { get; private init; } = Selector.None;
+    internal Selector Selector { get; private set; } = Selector.None;
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal ReportConfirm Report { get; private init; } = ReportConfirm.Acting;
+    internal ReportConfirm Report { get; private set; } = ReportConfirm.Acting;
 
-    internal MaterialsSource Materials { get; private init; } = MaterialsSource.Player;
+    internal MaterialsSource Materials { get; private set; } = MaterialsSource.Player;
 
-    internal JToken? AllowBridge { get; private init; }
+    internal JToken? AllowBridge { get; private set; }
 
-    internal string? AcknowledgeGasLost { get; private init; }
+    internal string? AcknowledgeGasLost { get; private set; }
 
-    internal IReadOnlyList<string>? Allow { get; private init; }
+    internal IReadOnlyList<string>? Allow { get; private set; }
 
-    internal long? FromStep { get; private init; }
+    internal long? FromStep { get; private set; }
 
     internal static UndoOptions Bind(OptionReader options) => new UndoOptions
     {

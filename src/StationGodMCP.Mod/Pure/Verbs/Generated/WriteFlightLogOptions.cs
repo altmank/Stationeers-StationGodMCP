@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of write flight_log, in verb names (catalogue/verbs/write.json).</summary>
-internal sealed record WriteFlightLogOptions
+internal sealed class WriteFlightLogOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("write", "flight_log", "events", null, new WriteSpec("acts", "cannot", "[cannot undo: flight log]"), new WhatCost(CostClass.Instant),
         new OptionSpec("action", "{\"type\":\"string\",\"enum\":[\"start\",\"stop\",\"clear\"]}", true),
@@ -20,17 +20,17 @@ internal sealed record WriteFlightLogOptions
         new OptionSpec("capacity", "{\"type\":\"integer\",\"minimum\":10,\"maximum\":100000}", false, "3600"),
         new OptionSpec("csv", "{\"type\":\"boolean\"}", false, "false"));
 
-    internal Selector Selector { get; private init; } = Selector.None;
+    internal Selector Selector { get; private set; } = Selector.None;
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal string? Action { get; private init; }
+    internal string? Action { get; private set; }
 
-    internal double? IntervalS { get; private init; }
+    internal double? IntervalS { get; private set; }
 
-    internal long? Capacity { get; private init; }
+    internal long? Capacity { get; private set; }
 
-    internal bool? Csv { get; private init; }
+    internal bool? Csv { get; private set; }
 
     internal static WriteFlightLogOptions Bind(OptionReader options) => new WriteFlightLogOptions
     {

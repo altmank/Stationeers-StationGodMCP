@@ -11,15 +11,15 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of inspect prefab, in verb names (catalogue/verbs/inspect.json).</summary>
-internal sealed record InspectPrefabOptions
+internal sealed class InspectPrefabOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("inspect", "prefab", "ports", null, null, new WhatCost(CostClass.Instant),
         new OptionSpec("prefab", "{\"type\":[\"string\",\"integer\"]}", true),
         new OptionSpec("include", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"small_cells\"]}}"));
 
-    internal Selector Selector { get; private init; } = Selector.None;
+    internal Selector Selector { get; private set; } = Selector.None;
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
     internal static InspectPrefabOptions Bind(OptionReader options) => new InspectPrefabOptions
     {

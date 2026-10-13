@@ -8,8 +8,21 @@ namespace StationGodMCP.Pure.Verbs;
 /// ids act; refs, networks and spreads report), sends confirm: true for every call it lets act. rows is how many rows
 /// each list of a report shows (0 for none; left out, all); everything is still counted and checked.
 /// </summary>
-internal sealed record ReportConfirm(bool TakesConfirm, bool Confirm, int? Rows)
+internal sealed class ReportConfirm
 {
+    internal ReportConfirm(bool takesConfirm, bool confirm, int? rows)
+    {
+        TakesConfirm = takesConfirm;
+        Confirm = confirm;
+        Rows = rows;
+    }
+
+    public bool TakesConfirm { get; }
+
+    public bool Confirm { get; }
+
+    public int? Rows { get; }
+
     internal static ReportConfirm Acting { get; } = new ReportConfirm(false, false, null);
 
     internal static ReportConfirm Bind(OptionReader options)

@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of find damaged, in verb names (catalogue/verbs/find.json).</summary>
-internal sealed record FindDamagedOptions
+internal sealed class FindDamagedOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("find", "damaged", "things", null, null, new WhatCost(CostClass.World),
         new OptionSpec("min_damage", "{\"type\":\"number\",\"minimum\":0}", false, "0"),
@@ -23,17 +23,17 @@ internal sealed record FindDamagedOptions
         new OptionSpec("offset", "{\"type\":\"integer\",\"minimum\":0}", false, "0"),
         new OptionSpec("cursor", "{\"type\":\"string\"}"));
 
-    internal Selector Selector { get; private init; } = Selector.None;
+    internal Selector Selector { get; private set; } = Selector.None;
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal Paging Paging { get; private init; } = Paging.All;
+    internal Paging Paging { get; private set; } = Paging.All;
 
-    internal double? MinDamage { get; private init; }
+    internal double? MinDamage { get; private set; }
 
-    internal bool? BrokenOnly { get; private init; }
+    internal bool? BrokenOnly { get; private set; }
 
-    internal bool? StructuresOnly { get; private init; }
+    internal bool? StructuresOnly { get; private set; }
 
     internal static FindDamagedOptions Bind(OptionReader options) => new FindDamagedOptions
     {

@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of plan spot, in verb names (catalogue/verbs/plan.json).</summary>
-internal sealed record PlanSpotOptions
+internal sealed class PlanSpotOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("plan", "spot", "spots", null, null, new WhatCost(CostClass.Plan),
         new OptionSpec("prefab", "{\"type\":[\"string\",\"integer\"]}", true),
@@ -27,25 +27,25 @@ internal sealed record PlanSpotOptions
         new OptionSpec("limit", "{\"type\":\"integer\",\"minimum\":1,\"maximum\":20}", false, "5"),
         new OptionSpec("max_checks", "{\"type\":\"integer\",\"minimum\":1,\"maximum\":200}", false, "40"));
 
-    internal Selector Selector { get; private init; } = Selector.None;
+    internal Selector Selector { get; private set; } = Selector.None;
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal Paging Paging { get; private init; } = Paging.All;
+    internal Paging Paging { get; private set; } = Paging.All;
 
-    internal string? Plane { get; private init; }
+    internal string? Plane { get; private set; }
 
-    internal string? Side { get; private init; }
+    internal string? Side { get; private set; }
 
-    internal bool? Looking { get; private init; }
+    internal bool? Looking { get; private set; }
 
-    internal JToken? Around { get; private init; }
+    internal JToken? Around { get; private set; }
 
-    internal string? Facing { get; private init; }
+    internal string? Facing { get; private set; }
 
-    internal JToken? Require { get; private init; }
+    internal JToken? Require { get; private set; }
 
-    internal long? MaxChecks { get; private init; }
+    internal long? MaxChecks { get; private set; }
 
     internal static PlanSpotOptions Bind(OptionReader options) => new PlanSpotOptions
     {

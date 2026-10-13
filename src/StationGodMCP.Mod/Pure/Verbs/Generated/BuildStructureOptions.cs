@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of build structure, in verb names (catalogue/verbs/build.json).</summary>
-internal sealed record BuildStructureOptions
+internal sealed class BuildStructureOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("build", "structure", "placements", null, new WriteSpec("confirm", "undo", "[undo]"), new WhatCost(CostClass.Job),
         new OptionSpec("placements", "{\"type\":\"array\",\"items\":{\"type\":\"object\"},\"maxItems\":64}"),
@@ -38,47 +38,47 @@ internal sealed record BuildStructureOptions
         new OptionSpec("queue", "{\"type\":\"boolean\"}", false, "true"),
         new OptionSpec("max_wait", "{\"type\":\"number\",\"minimum\":0}", false, "30"));
 
-    internal Selector Selector { get; private init; } = Selector.None;
+    internal Selector Selector { get; private set; } = Selector.None;
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal ReportConfirm Report { get; private init; } = ReportConfirm.Acting;
+    internal ReportConfirm Report { get; private set; } = ReportConfirm.Acting;
 
-    internal MaterialsSource Materials { get; private init; } = MaterialsSource.Player;
+    internal MaterialsSource Materials { get; private set; } = MaterialsSource.Player;
 
-    internal JToken? Placements { get; private init; }
+    internal JToken? Placements { get; private set; }
 
-    internal JToken? At { get; private init; }
+    internal JToken? At { get; private set; }
 
-    internal JToken? Rotation { get; private init; }
+    internal JToken? Rotation { get; private set; }
 
-    internal JToken? Spread { get; private init; }
+    internal JToken? Spread { get; private set; }
 
-    internal string? Facing { get; private init; }
+    internal string? Facing { get; private set; }
 
-    internal string? Up { get; private init; }
+    internal string? Up { get; private set; }
 
-    internal string? Face { get; private init; }
+    internal string? Face { get; private set; }
 
-    internal JToken? Orient { get; private init; }
+    internal JToken? Orient { get; private set; }
 
-    internal double? AboveFloor { get; private init; }
+    internal double? AboveFloor { get; private set; }
 
-    internal JToken? BuildState { get; private init; }
+    internal JToken? BuildState { get; private set; }
 
-    internal string? Label { get; private init; }
+    internal string? Label { get; private set; }
 
-    internal JToken? Color { get; private init; }
+    internal JToken? Color { get; private set; }
 
-    internal bool? Free { get; private init; }
+    internal bool? Free { get; private set; }
 
-    internal IReadOnlyList<string>? Allow { get; private init; }
+    internal IReadOnlyList<string>? Allow { get; private set; }
 
-    internal string? AcknowledgeGasLost { get; private init; }
+    internal string? AcknowledgeGasLost { get; private set; }
 
-    internal string? FromPlan { get; private init; }
+    internal string? FromPlan { get; private set; }
 
-    internal bool? Queue { get; private init; }
+    internal bool? Queue { get; private set; }
 
     internal static BuildStructureOptions Bind(OptionReader options) => new BuildStructureOptions
     {

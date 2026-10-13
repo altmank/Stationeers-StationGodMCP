@@ -12,8 +12,18 @@ namespace StationGodMCP.Pure.Verbs;
 /// container id, or a list tried in turn; left out, inventory, source, storage, ground). A build paying from the player
 /// carries the warning materials_from_player.
 /// </summary>
-internal sealed record MaterialsSource(IReadOnlyList<Payer> Payers, RefundRoute RefundTo)
+internal sealed class MaterialsSource
 {
+    internal MaterialsSource(IReadOnlyList<Payer> payers, RefundRoute refundTo)
+    {
+        Payers = payers;
+        RefundTo = refundTo;
+    }
+
+    public IReadOnlyList<Payer> Payers { get; }
+
+    public RefundRoute RefundTo { get; }
+
     internal const string FromPlayerWarning = "materials_from_player";
 
     internal static MaterialsSource Player { get; } =
@@ -122,13 +132,23 @@ internal sealed record MaterialsSource(IReadOnlyList<Payer> Payers, RefundRoute 
 }
 
 /// <summary>One holder that pays: the player, or a thing by id.</summary>
-internal abstract record Payer
+internal abstract class Payer
 {
     private Payer()
     {
     }
 
-    internal sealed record Player : Payer;
+    internal sealed class Player : Payer
+    {
+    }
 
-    internal sealed record Holder(string Id) : Payer;
+    internal sealed class Holder : Payer
+    {
+        internal Holder(string id)
+        {
+            Id = id;
+        }
+
+        public string Id { get; }
+    }
 }

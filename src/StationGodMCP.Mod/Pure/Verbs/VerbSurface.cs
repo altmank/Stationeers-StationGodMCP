@@ -155,14 +155,41 @@ internal sealed class WhatSpec
 /// A write what's rules: route (acts: typed ids act at once; confirm: reports until confirm), undo class (undo, cannot,
 /// mixed) and the undo mark its report rows carry (x-undo-mark).
 /// </summary>
-internal sealed record WriteSpec(string Route, string Undo, string UndoMark);
+internal sealed class WriteSpec
+{
+    internal WriteSpec(string route, string undo, string undoMark)
+    {
+        Route = route;
+        Undo = undo;
+        UndoMark = undoMark;
+    }
+
+    public string Route { get; }
+
+    public string Undo { get; }
+
+    public string UndoMark { get; }
+}
 
 /// <summary>
 /// A what's cost (x-cost): its class (world, plan and job are heavy by nature), the options whose list lengths count
 /// its items (per), and the option that sets how long it runs (duration).
 /// </summary>
-internal sealed record WhatCost(CostClass Class, IReadOnlyList<string>? Per = null, CostDuration? Duration = null)
+internal sealed class WhatCost
 {
+    internal WhatCost(CostClass @class, IReadOnlyList<string>? per = null, CostDuration? duration = null)
+    {
+        Class = @class;
+        Per = per;
+        Duration = duration;
+    }
+
+    public CostClass Class { get; }
+
+    public IReadOnlyList<string>? Per { get; }
+
+    public CostDuration? Duration { get; }
+
     internal static WhatCost Unstated { get; } = new WhatCost(CostClass.Bounded);
 
     /// <summary>The cost at these options: the class, with the per options' list lengths added (at least 1).</summary>
@@ -185,8 +212,18 @@ internal sealed record WhatCost(CostClass Class, IReadOnlyList<string>? Per = nu
 /// The option that sets how many seconds a call runs (x-cost duration), and its most: the option as given, at most
 /// max_s; max_s when it is left out.
 /// </summary>
-internal sealed record CostDuration(string Option, double MaxSeconds)
+internal sealed class CostDuration
 {
+    internal CostDuration(string option, double maxSeconds)
+    {
+        Option = option;
+        MaxSeconds = maxSeconds;
+    }
+
+    public string Option { get; }
+
+    public double MaxSeconds { get; }
+
     internal int Ms(JObject? options)
     {
         double seconds = OptionReader.NumberOf(options?[Option]) is { } given
@@ -257,8 +294,18 @@ internal sealed class OptionSpec
 /// One x-default-when form: the default it gives (as text) when every condition holds. A condition is an option and
 /// either {"present": true} (the option is given) or a value the option equals, as given or else by its own default.
 /// </summary>
-internal sealed record DefaultForm(JObject When, string Default)
+internal sealed class DefaultForm
 {
+    internal DefaultForm(JObject when, string @default)
+    {
+        When = when;
+        Default = @default;
+    }
+
+    public JObject When { get; }
+
+    public string Default { get; }
+
     internal static IReadOnlyList<DefaultForm> Parse(string? forms)
     {
         if (forms == null)

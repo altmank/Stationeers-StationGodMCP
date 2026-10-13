@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of survey feeds, in verb names (catalogue/verbs/survey.json).</summary>
-internal sealed record SurveyFeedsOptions
+internal sealed class SurveyFeedsOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("survey", "feeds", "devices", null, null, new WhatCost(CostClass.Plan),
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}", true),
@@ -19,13 +19,13 @@ internal sealed record SurveyFeedsOptions
         new OptionSpec("port", "{\"type\":\"integer\",\"minimum\":0,\"maximum\":64}"),
         new OptionSpec("kind", "{\"type\":\"string\",\"enum\":[\"cable\",\"pipe\",\"chute\"]}", false, "cable"));
 
-    internal Selector Selector { get; private init; } = Selector.None;
+    internal Selector Selector { get; private set; } = Selector.None;
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal long? Port { get; private init; }
+    internal long? Port { get; private set; }
 
-    internal string? Kind { get; private init; }
+    internal string? Kind { get; private set; }
 
     internal static SurveyFeedsOptions Bind(OptionReader options) => new SurveyFeedsOptions
     {

@@ -11,14 +11,14 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of inspect connections, in verb names (catalogue/verbs/inspect.json).</summary>
-internal sealed record InspectConnectionsOptions
+internal sealed class InspectConnectionsOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("inspect", "connections", "ends", null, null, new WhatCost(CostClass.Bounded),
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}", true));
 
-    internal Selector Selector { get; private init; } = Selector.None;
+    internal Selector Selector { get; private set; } = Selector.None;
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
     internal static InspectConnectionsOptions Bind(OptionReader options) => new InspectConnectionsOptions
     {

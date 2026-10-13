@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of read logic, in verb names (catalogue/verbs/read.json).</summary>
-internal sealed record ReadLogicOptions
+internal sealed class ReadLogicOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("read", "logic", "results", null, null, new WhatCost(CostClass.Bounded, new[] { "id", "reads" }),
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}"),
@@ -20,15 +20,15 @@ internal sealed record ReadLogicOptions
         new OptionSpec("gateway", "{\"type\":\"string\"}", false, "world"),
         new OptionSpec("include", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"clock\"]}}"));
 
-    internal Selector Selector { get; private init; } = Selector.None;
+    internal Selector Selector { get; private set; } = Selector.None;
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal JToken? Logic { get; private init; }
+    internal JToken? Logic { get; private set; }
 
-    internal JToken? Reads { get; private init; }
+    internal JToken? Reads { get; private set; }
 
-    internal string? Gateway { get; private init; }
+    internal string? Gateway { get; private set; }
 
     internal static ReadLogicOptions Bind(OptionReader options) => new ReadLogicOptions
     {

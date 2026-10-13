@@ -1,6 +1,7 @@
 #nullable enable
 
 using System.Collections.Generic;
+using System.Linq;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
@@ -51,7 +52,7 @@ public sealed class SurveyVerbTests
         Selector selector = Selector.Bind(reader);
 
         Assert.Null(selector.Network);
-        Assert.Equal(new[] { new NetworkTarget("17", null), new NetworkTarget("40", "2") }, selector.Networks);
+        Assert.Equal(new[] { ("17", (string?)null), ("40", "2") }, selector.Networks!.Select(Fields));
         Assert.Equal("network[1]", Assert.Single(reader.Problems).Path);
         Assert.Null(Check("""{"what": "area", "room": "28", "network": ["17", "18"], "kind": ["pipe"]}"""));
     }
@@ -89,9 +90,9 @@ public sealed class SurveyVerbTests
         FreeRectRequest? request = FreeRectRequest.Of(JObject.Parse("""{"w": 1.5, "h": 2}"""), problems);
 
         Assert.Empty(problems);
-        Assert.Equal(new FreeRectRequest(1.5, 2, true, true, FreeRectRequest.DefaultLimit), request);
-        Assert.Equal(new FreeRectRequest(1, 1, false, true, 5),
-            FreeRectRequest.Of(JObject.Parse("""{"w": 1, "h": 1, "one_section": false, "limit": 5}"""), problems));
+        Assert.Equal((1.5, 2.0, true, true, FreeRectRequest.DefaultLimit), Fields(request));
+        Assert.Equal((1.0, 1.0, false, true, 5),
+            Fields(FreeRectRequest.Of(JObject.Parse("""{"w": 1, "h": 1, "one_section": false, "limit": 5}"""), problems)));
         Assert.Null(FreeRectRequest.Of(null, problems));
     }
 
@@ -123,11 +124,11 @@ public sealed class SurveyVerbTests
     [Fact]
     public void NetworkNamesANetworkAPieceADeviceOrADevicesPort()
     {
-        Assert.Equal(new NetworkTarget("17", null),
-            SurveyNetworkOptions.Bind(Reader(SurveyNetworkOptions.Spec, """{"network": " 17 "}""")).Selector.Network);
-        Assert.Equal(new NetworkTarget("552", "1"),
-            SurveyNetworkOptions.Bind(Reader(SurveyNetworkOptions.Spec, """{"network": {"id": "552", "port": 1}}"""))
-                .Selector.Network);
+        Assert.Equal(("17", (string?)null),
+            Fields(SurveyNetworkOptions.Bind(Reader(SurveyNetworkOptions.Spec, """{"network": " 17 "}""")).Selector.Network));
+        Assert.Equal(("552", (string?)"1"),
+            Fields(SurveyNetworkOptions.Bind(Reader(SurveyNetworkOptions.Spec, """{"network": {"id": "552", "port": 1}}"""))
+                .Selector.Network));
         Assert.Null(Check("""{"what": "network", "network": "17", "kind": "pipe", "prefab": "*Valve*", "open_ends": true}"""));
         Assert.NotNull(Check("""{"what": "network", "network": "17", "kind": "wire"}"""));
         Assert.NotNull(Check("""{"what": "network", "network": "17", "radius": 1001, "near": [0, 0, 0]}"""));
@@ -168,4 +169,9 @@ public sealed class SurveyVerbTests
         Assert.Equal(2, (int)listed["count"]!);
         Assert.Equal("thing_not_found", (string?)listed["results"]![1]!["error"]!["code"]);
     }
+
+    private static (double W, double H, bool OneSection, bool RequireWall, int Limit) Fields(FreeRectRequest? request) =>
+        (request!.W, request.H, request.OneSection, request.RequireWall, request.Limit);
+
+    private static (string Id, string? Port) Fields(NetworkTarget? network) => (network!.Id, network.Port);
 }

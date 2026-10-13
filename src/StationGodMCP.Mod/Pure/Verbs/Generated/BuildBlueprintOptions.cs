@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of build blueprint, in verb names (catalogue/verbs/build.json).</summary>
-internal sealed record BuildBlueprintOptions
+internal sealed class BuildBlueprintOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("build", "blueprint", null, null, new WriteSpec("confirm", "mixed", "[undo] the newest paste only"), new WhatCost(CostClass.Job),
         new OptionSpec("blueprint", "{\"type\":\"string\"}", true),
@@ -19,15 +19,15 @@ internal sealed record BuildBlueprintOptions
         new OptionSpec("turn", "{\"type\":\"integer\",\"enum\":[0,90,180,270]}", false, "0"),
         new OptionSpec("confirm", "{\"type\":\"boolean\"}", false, "false"));
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal ReportConfirm Report { get; private init; } = ReportConfirm.Acting;
+    internal ReportConfirm Report { get; private set; } = ReportConfirm.Acting;
 
-    internal string? Blueprint { get; private init; }
+    internal string? Blueprint { get; private set; }
 
-    internal JToken? At { get; private init; }
+    internal JToken? At { get; private set; }
 
-    internal long? Turn { get; private init; }
+    internal long? Turn { get; private set; }
 
     internal static BuildBlueprintOptions Bind(OptionReader options) => new BuildBlueprintOptions
     {

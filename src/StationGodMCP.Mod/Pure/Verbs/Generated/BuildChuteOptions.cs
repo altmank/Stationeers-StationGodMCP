@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of build chute, in verb names (catalogue/verbs/build.json).</summary>
-internal sealed record BuildChuteOptions
+internal sealed class BuildChuteOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("build", "chute", "cells", null, new WriteSpec("confirm", "undo", "[undo]"), new WhatCost(CostClass.Job),
         new OptionSpec("grade", "{\"type\":\"string\",\"enum\":[\"chute\"]}", false, "chute"),
@@ -40,47 +40,47 @@ internal sealed record BuildChuteOptions
         new OptionSpec("queue", "{\"type\":\"boolean\"}", false, "true"),
         new OptionSpec("max_wait", "{\"type\":\"number\",\"minimum\":0}", false, "30"));
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal ReportConfirm Report { get; private init; } = ReportConfirm.Acting;
+    internal ReportConfirm Report { get; private set; } = ReportConfirm.Acting;
 
-    internal MaterialsSource Materials { get; private init; } = MaterialsSource.Player;
+    internal MaterialsSource Materials { get; private set; } = MaterialsSource.Player;
 
-    internal string? Grade { get; private init; }
+    internal string? Grade { get; private set; }
 
-    internal JToken? Waypoints { get; private init; }
+    internal JToken? Waypoints { get; private set; }
 
-    internal JToken? Cells { get; private init; }
+    internal JToken? Cells { get; private set; }
 
-    internal JToken? Piece { get; private init; }
+    internal JToken? Piece { get; private set; }
 
-    internal JToken? Pieces { get; private init; }
+    internal JToken? Pieces { get; private set; }
 
-    internal JToken? Branches { get; private init; }
+    internal JToken? Branches { get; private set; }
 
-    internal JToken? ExtraEnds { get; private init; }
+    internal JToken? ExtraEnds { get; private set; }
 
-    internal string? Join { get; private init; }
+    internal string? Join { get; private set; }
 
-    internal IReadOnlyList<string>? Allow { get; private init; }
+    internal IReadOnlyList<string>? Allow { get; private set; }
 
-    internal bool? SplitLong { get; private init; }
+    internal bool? SplitLong { get; private set; }
 
-    internal IReadOnlyList<string>? RemoveIds { get; private init; }
+    internal IReadOnlyList<string>? RemoveIds { get; private set; }
 
-    internal IReadOnlyList<string>? AssumeRemoved { get; private init; }
+    internal IReadOnlyList<string>? AssumeRemoved { get; private set; }
 
-    internal JToken? AllowBridge { get; private init; }
+    internal JToken? AllowBridge { get; private set; }
 
-    internal string? Root { get; private init; }
+    internal string? Root { get; private set; }
 
-    internal JToken? JoinTo { get; private init; }
+    internal JToken? JoinTo { get; private set; }
 
-    internal bool? JoinTrunk { get; private init; }
+    internal bool? JoinTrunk { get; private set; }
 
-    internal string? FromPlan { get; private init; }
+    internal string? FromPlan { get; private set; }
 
-    internal bool? Queue { get; private init; }
+    internal bool? Queue { get; private set; }
 
     internal static BuildChuteOptions Bind(OptionReader options) => new BuildChuteOptions
     {

@@ -28,7 +28,7 @@ public sealed class WriteScreenTests
     {
         ScreenPress press = Parse("""{"id": "5", "element": "start"}""", out _)!;
 
-        Assert.Equal(new ScreenPress.Target.Element("start"), press.On);
+        Assert.Equal("start", Assert.IsType<ScreenPress.Target.Element>(press.On).Id);
         Assert.Equal("click", press.Event);
         Assert.Null(press.Surface);
     }
@@ -38,7 +38,8 @@ public sealed class WriteScreenTests
     {
         ScreenPress press = Parse("""{"id": "5", "pixel": [12, 40.5], "surface": "main", "as_player": "Ann"}""", out _)!;
 
-        Assert.Equal(new ScreenPress.Target.Pixel(12, 40.5), press.On);
+        ScreenPress.Target.Pixel pixel = Assert.IsType<ScreenPress.Target.Pixel>(press.On);
+        Assert.Equal((12.0, 40.5), (pixel.X, pixel.Y));
         Assert.Equal(("main", "Ann"), (press.Surface, press.AsPlayer));
     }
 

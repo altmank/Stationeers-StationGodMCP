@@ -141,4 +141,18 @@ internal sealed class FramedPage<TView> where TView : class
 /// A framed page's answer: the page, the cursor id its walk goes on with (null when none), and what the walk's first
 /// page counted (kept).
 /// </summary>
-internal sealed record FramedResult<TView>(Page<TView> Page, string? CursorId, object? Kept = null);
+internal sealed class FramedResult<TView>
+{
+    internal FramedResult(Page<TView> page, string? cursorId, object? kept = null)
+    {
+        Page = page;
+        CursorId = cursorId;
+        Kept = kept;
+    }
+
+    public Page<TView> Page { get; }
+
+    public string? CursorId { get; }
+
+    public object? Kept { get; }
+}

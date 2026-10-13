@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of plan route, in verb names (catalogue/verbs/plan.json).</summary>
-internal sealed record PlanRouteOptions
+internal sealed class PlanRouteOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("plan", "route", null, null, null, new WhatCost(CostClass.Plan),
         new OptionSpec("kind", "{\"type\":\"string\",\"enum\":[\"cable\",\"pipe\",\"chute\"]}", true),
@@ -42,59 +42,59 @@ internal sealed record PlanRouteOptions
         new OptionSpec("summarize", "{\"type\":\"boolean\"}", false, "false"),
         new OptionSpec("rows", "{\"type\":\"integer\",\"minimum\":0,\"maximum\":1024}", false, "5"));
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal ReportConfirm Report { get; private init; } = ReportConfirm.Acting;
+    internal ReportConfirm Report { get; private set; } = ReportConfirm.Acting;
 
-    internal MaterialsSource Materials { get; private init; } = MaterialsSource.Player;
+    internal MaterialsSource Materials { get; private set; } = MaterialsSource.Player;
 
-    internal string? Kind { get; private init; }
+    internal string? Kind { get; private set; }
 
-    internal JToken? Start { get; private init; }
+    internal JToken? Start { get; private set; }
 
-    internal JToken? End { get; private init; }
+    internal JToken? End { get; private set; }
 
-    internal JToken? Reroute { get; private init; }
+    internal JToken? Reroute { get; private set; }
 
-    internal JToken? Trunk { get; private init; }
+    internal JToken? Trunk { get; private set; }
 
-    internal string? Grade { get; private init; }
+    internal string? Grade { get; private set; }
 
-    internal string? Style { get; private init; }
+    internal string? Style { get; private set; }
 
-    internal IReadOnlyList<string>? Allow { get; private init; }
+    internal IReadOnlyList<string>? Allow { get; private set; }
 
-    internal bool? SplitLong { get; private init; }
+    internal bool? SplitLong { get; private set; }
 
-    internal IReadOnlyList<string>? Avoid { get; private init; }
+    internal IReadOnlyList<string>? Avoid { get; private set; }
 
-    internal JToken? AvoidNetworks { get; private init; }
+    internal JToken? AvoidNetworks { get; private set; }
 
-    internal bool? MinBends { get; private init; }
+    internal bool? MinBends { get; private set; }
 
-    internal string? AxisOrder { get; private init; }
+    internal string? AxisOrder { get; private set; }
 
-    internal long? MaxLength { get; private init; }
+    internal long? MaxLength { get; private set; }
 
-    internal double? Margin { get; private init; }
+    internal double? Margin { get; private set; }
 
-    internal string? Join { get; private init; }
+    internal string? Join { get; private set; }
 
-    internal JToken? AllowBridge { get; private init; }
+    internal JToken? AllowBridge { get; private set; }
 
-    internal string? Root { get; private init; }
+    internal string? Root { get; private set; }
 
-    internal JToken? JoinTo { get; private init; }
+    internal JToken? JoinTo { get; private set; }
 
-    internal bool? JoinTrunk { get; private init; }
+    internal bool? JoinTrunk { get; private set; }
 
-    internal JToken? ReserveCells { get; private init; }
+    internal JToken? ReserveCells { get; private set; }
 
-    internal JToken? ReservePorts { get; private init; }
+    internal JToken? ReservePorts { get; private set; }
 
-    internal IReadOnlyList<string>? AssumeRemoved { get; private init; }
+    internal IReadOnlyList<string>? AssumeRemoved { get; private set; }
 
-    internal bool? Summarize { get; private init; }
+    internal bool? Summarize { get; private set; }
 
     internal static PlanRouteOptions Bind(OptionReader options) => new PlanRouteOptions
     {

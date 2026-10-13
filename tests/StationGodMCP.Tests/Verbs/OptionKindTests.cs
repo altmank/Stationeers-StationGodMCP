@@ -144,8 +144,11 @@ public sealed class OptionKindTests
     {
         WhatSpec what = SurveyNetworkOptions.Spec;
 
-        Assert.Equal(new NetworkTarget("88", null), Selector.Bind(Reader(what, """{"network": " 88 "}""")).Network);
-        Assert.Equal(new NetworkTarget("88", "2"), Selector.Bind(Reader(what, """{"network": {"id": "88", "port": 2}}""")).Network);
+        NetworkTarget plain = Selector.Bind(Reader(what, """{"network": " 88 "}""")).Network!;
+        NetworkTarget port = Selector.Bind(Reader(what, """{"network": {"id": "88", "port": 2}}""")).Network!;
+
+        Assert.Equal(("88", (string?)null), (plain.Id, plain.Port));
+        Assert.Equal(("88", (string?)"2"), (port.Id, port.Port));
         OptionReader bad = Reader(what, """{"network": {"port": 2}}""");
         Selector.Bind(bad);
         Assert.Equal("network", Assert.Single(bad.Problems).Path);
@@ -169,7 +172,10 @@ public sealed class OptionKindTests
     {
         Selector selector = Selector.Bind(Reader(ReadClockOptions.Spec, """{"id": "1", "near": "player"}"""));
 
-        Assert.Equal(Selector.None, selector);
+        Assert.Null(selector.Ids);
+        Assert.Null(selector.Near);
+        Assert.Null(selector.Radius);
+        Assert.False(selector.HasSpread);
     }
 
     // ---- fields ----
@@ -263,7 +269,9 @@ public sealed class OptionKindTests
             """{"materials": ["501", "player"], "refund_to": ["storage", "9001"]}"""));
         MaterialsSource none = MaterialsSource.Bind(Reader(RemoveStructureOptions.Spec, """{"refund_to": "none"}"""));
 
-        Assert.Equal(new Payer[] { new Payer.Holder("501"), new Payer.Player() }, holders.Payers);
+        Assert.Equal(2, holders.Payers.Count);
+        Assert.Equal("501", Assert.IsType<Payer.Holder>(holders.Payers[0]).Id);
+        Assert.IsType<Payer.Player>(holders.Payers[1]);
         Assert.Equal(new[] { "storage", "9001" }, holders.RefundTo.Words);
         Assert.False(none.RefundTo.GivesBack);
         Assert.False(MaterialsSource.Bind(Reader(RemoveStructureOptions.Spec, """{"materials": "501"}""")).FromPlayer);

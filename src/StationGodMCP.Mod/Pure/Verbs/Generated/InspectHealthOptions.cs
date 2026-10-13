@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of inspect health, in verb names (catalogue/verbs/inspect.json).</summary>
-internal sealed record InspectHealthOptions
+internal sealed class InspectHealthOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("inspect", "health", "things", null, null, new WhatCost(CostClass.Bounded, new[] { "id" }),
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}"),
@@ -22,15 +22,15 @@ internal sealed record InspectHealthOptions
         new OptionSpec("offset", "{\"type\":\"integer\",\"minimum\":0}", false, "0"),
         new OptionSpec("cursor", "{\"type\":\"string\"}"));
 
-    internal Selector Selector { get; private init; } = Selector.None;
+    internal Selector Selector { get; private set; } = Selector.None;
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal Paging Paging { get; private init; } = Paging.All;
+    internal Paging Paging { get; private set; } = Paging.All;
 
-    internal string? Kind { get; private init; }
+    internal string? Kind { get; private set; }
 
-    internal bool? DamagedOnly { get; private init; }
+    internal bool? DamagedOnly { get; private set; }
 
     internal static InspectHealthOptions Bind(OptionReader options) => new InspectHealthOptions
     {

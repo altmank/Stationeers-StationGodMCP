@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of find thing, in verb names (catalogue/verbs/find.json).</summary>
-internal sealed record FindThingOptions
+internal sealed class FindThingOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("find", "thing", "things", null, null, new WhatCost(CostClass.World),
         new OptionSpec("name", "{\"type\":\"string\"}"),
@@ -32,27 +32,27 @@ internal sealed record FindThingOptions
         new OptionSpec("cursor", "{\"type\":\"string\"}"),
         new OptionSpec("order", "{\"type\":\"string\",\"enum\":[\"nearest\",\"id\"]}", false, "nearest"));
 
-    internal Selector Selector { get; private init; } = Selector.None;
+    internal Selector Selector { get; private set; } = Selector.None;
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal Paging Paging { get; private init; } = Paging.All;
+    internal Paging Paging { get; private set; } = Paging.All;
 
-    internal string? Category { get; private init; }
+    internal string? Category { get; private set; }
 
-    internal bool? Labelled { get; private init; }
+    internal bool? Labelled { get; private set; }
 
-    internal string? RuntimeType { get; private init; }
+    internal string? RuntimeType { get; private set; }
 
-    internal bool? Broken { get; private init; }
+    internal bool? Broken { get; private set; }
 
-    internal bool? HasAtmosphere { get; private init; }
+    internal bool? HasAtmosphere { get; private set; }
 
-    internal string? MadeBy { get; private init; }
+    internal string? MadeBy { get; private set; }
 
-    internal double? MadeSince { get; private init; }
+    internal double? MadeSince { get; private set; }
 
-    internal string? Location { get; private init; }
+    internal string? Location { get; private set; }
 
     internal static FindThingOptions Bind(OptionReader options) => new FindThingOptions
     {

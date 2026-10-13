@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of survey wall, in verb names (catalogue/verbs/survey.json).</summary>
-internal sealed record SurveyWallOptions
+internal sealed class SurveyWallOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("survey", "wall", "things", null, null, new WhatCost(CostClass.World),
         new OptionSpec("plane", "{\"type\":\"string\"}"),
@@ -21,19 +21,19 @@ internal sealed record SurveyWallOptions
         new OptionSpec("half_width", "{\"type\":\"number\",\"minimum\":0,\"maximum\":16}", false, "4"),
         new OptionSpec("free_rects", "{\"type\":\"object\"}"));
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal string? Plane { get; private init; }
+    internal string? Plane { get; private set; }
 
-    internal string? Side { get; private init; }
+    internal string? Side { get; private set; }
 
-    internal bool? Looking { get; private init; }
+    internal bool? Looking { get; private set; }
 
-    internal JToken? At { get; private init; }
+    internal JToken? At { get; private set; }
 
-    internal double? HalfWidth { get; private init; }
+    internal double? HalfWidth { get; private set; }
 
-    internal JToken? FreeRects { get; private init; }
+    internal JToken? FreeRects { get; private set; }
 
     internal static SurveyWallOptions Bind(OptionReader options) => new SurveyWallOptions
     {

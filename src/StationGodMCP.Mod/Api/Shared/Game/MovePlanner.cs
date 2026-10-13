@@ -17,15 +17,25 @@ using StationGodMCP.Pure.Protocol;
 namespace StationGodMCP.Api.Shared.Game;
 
 /// <summary>Which slot to move into: a given index, or the first that takes the item.</summary>
-internal abstract record SlotChoice
+internal abstract class SlotChoice
 {
     private SlotChoice()
     {
     }
 
-    internal sealed record Exact(int Index) : SlotChoice;
+    internal sealed class Exact : SlotChoice
+    {
+        internal Exact(int index)
+        {
+            Index = index;
+        }
 
-    internal sealed record Auto : SlotChoice;
+        public int Index { get; }
+    }
+
+    internal sealed class Auto : SlotChoice
+    {
+    }
 }
 
 /// <summary>
@@ -34,8 +44,34 @@ internal abstract record SlotChoice
 /// does (Force, Pure/ForcedSlotRule), and whether a part its device is using may be taken (AllowInUse,
 /// Pure/PartInUseRule).
 /// </summary>
-internal sealed record ItemMove(ThingId Item, int? Quantity, ThingId Target, SlotChoice Slot, bool Merge, bool Force,
-    bool AllowInUse);
+internal sealed class ItemMove
+{
+    internal ItemMove(ThingId item, int? quantity, ThingId target, SlotChoice slot, bool merge, bool force,
+        bool allowInUse)
+    {
+        Item = item;
+        Quantity = quantity;
+        Target = target;
+        Slot = slot;
+        Merge = merge;
+        Force = force;
+        AllowInUse = allowInUse;
+    }
+
+    public ThingId Item { get; }
+
+    public int? Quantity { get; }
+
+    public ThingId Target { get; }
+
+    public SlotChoice Slot { get; }
+
+    public bool Merge { get; }
+
+    public bool Force { get; }
+
+    public bool AllowInUse { get; }
+}
 
 /// <summary>Checks one move against the game's rules and settles which slot and which stack it uses.</summary>
 internal static class MovePlanner

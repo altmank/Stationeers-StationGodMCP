@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of read sample, in verb names (catalogue/verbs/read.json).</summary>
-internal sealed record ReadSampleOptions
+internal sealed class ReadSampleOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("read", "sample", null, "reads", null, new WhatCost(CostClass.Stream, null, new CostDuration("seconds", 30)),
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}"),
@@ -21,19 +21,19 @@ internal sealed record ReadSampleOptions
         new OptionSpec("seconds", "{\"type\":\"number\",\"minimum\":0.1,\"maximum\":30}", false, "5"),
         new OptionSpec("interval", "{\"type\":\"number\",\"minimum\":0.05,\"maximum\":5}", false, "0.5"));
 
-    internal Selector Selector { get; private init; } = Selector.None;
+    internal Selector Selector { get; private set; } = Selector.None;
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal JToken? Logic { get; private init; }
+    internal JToken? Logic { get; private set; }
 
-    internal JToken? Reads { get; private init; }
+    internal JToken? Reads { get; private set; }
 
-    internal string? Gateway { get; private init; }
+    internal string? Gateway { get; private set; }
 
-    internal double? Seconds { get; private init; }
+    internal double? Seconds { get; private set; }
 
-    internal double? Interval { get; private init; }
+    internal double? Interval { get; private set; }
 
     internal static ReadSampleOptions Bind(OptionReader options) => new ReadSampleOptions
     {

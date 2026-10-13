@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of move gas, in verb names (catalogue/verbs/move.json).</summary>
-internal sealed record MoveGasOptions
+internal sealed class MoveGasOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("move", "gas", null, null, new WriteSpec("confirm", "cannot", "[cannot undo: gas move]"), new WhatCost(CostClass.Job),
         new OptionSpec("source", "{\"type\":[\"string\",\"object\"]}"),
@@ -24,23 +24,23 @@ internal sealed record MoveGasOptions
         new OptionSpec("confirm", "{\"type\":\"boolean\"}", false, "false"),
         new OptionSpec("max_wait", "{\"type\":\"number\",\"minimum\":0}", false, "30"));
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal ReportConfirm Report { get; private init; } = ReportConfirm.Acting;
+    internal ReportConfirm Report { get; private set; } = ReportConfirm.Acting;
 
-    internal JToken? Source { get; private init; }
+    internal JToken? Source { get; private set; }
 
-    internal JToken? To { get; private init; }
+    internal JToken? To { get; private set; }
 
-    internal bool? Delete { get; private init; }
+    internal bool? Delete { get; private set; }
 
-    internal IReadOnlyList<string>? Gases { get; private init; }
+    internal IReadOnlyList<string>? Gases { get; private set; }
 
-    internal double? AmountMol { get; private init; }
+    internal double? AmountMol { get; private set; }
 
-    internal IReadOnlyList<string>? Allow { get; private init; }
+    internal IReadOnlyList<string>? Allow { get; private set; }
 
-    internal bool? Joined { get; private init; }
+    internal bool? Joined { get; private set; }
 
     internal static MoveGasOptions Bind(OptionReader options) => new MoveGasOptions
     {

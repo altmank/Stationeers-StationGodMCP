@@ -11,18 +11,18 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of inspect device, in verb names (catalogue/verbs/inspect.json).</summary>
-internal sealed record InspectDeviceOptions
+internal sealed class InspectDeviceOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("inspect", "device", "logic_types", null, null, new WhatCost(CostClass.Instant),
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}", true),
         new OptionSpec("gateway", "{\"type\":\"string\"}", false, "world"),
         new OptionSpec("include", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"logic_types\"]}}"));
 
-    internal Selector Selector { get; private init; } = Selector.None;
+    internal Selector Selector { get; private set; } = Selector.None;
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal string? Gateway { get; private init; }
+    internal string? Gateway { get; private set; }
 
     internal static InspectDeviceOptions Bind(OptionReader options) => new InspectDeviceOptions
     {

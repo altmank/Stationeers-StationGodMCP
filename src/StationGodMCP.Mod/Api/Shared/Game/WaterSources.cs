@@ -225,4 +225,18 @@ internal sealed class WaterSum
 }
 
 /// <summary>The water sources found, largest first, their totals, and the player they were measured from.</summary>
-internal sealed record WaterFound(List<WaterSourceView> Sources, WaterView Totals, LocalPlayerView? LocalPlayer);
+internal sealed class WaterFound
+{
+    internal WaterFound(List<WaterSourceView> sources, WaterView totals, LocalPlayerView? localPlayer)
+    {
+        Sources = sources;
+        Totals = totals;
+        LocalPlayer = localPlayer;
+    }
+
+    public List<WaterSourceView> Sources { get; }
+
+    public WaterView Totals { get; }
+
+    public LocalPlayerView? LocalPlayer { get; }
+}

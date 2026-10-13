@@ -10,14 +10,41 @@ using StationGodMCP.Api.Views;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>One logic write a call asks for: its place in the call, the device's id as given, the logic type and value.</summary>
-internal sealed record LogicOrder(int Index, string Id, JToken Logic, double Value);
+internal sealed class LogicOrder
+{
+    internal LogicOrder(int index, string id, JToken logic, double value)
+    {
+        Index = index;
+        Id = id;
+        Logic = logic;
+        Value = value;
+    }
+
+    public int Index { get; }
+
+    public string Id { get; }
+
+    public JToken Logic { get; }
+
+    public double Value { get; }
+}
 
 /// <summary>
 /// write logic's writes (catalogue write.json): id (one or a list), each given logic = value, or writes, each
 /// {id, logic, value}, in order. Every problem with the options is listed at once; neither form is missing_target.
 /// </summary>
-internal sealed record LogicOrders(IReadOnlyList<LogicOrder> Orders, bool AnswersRows)
+internal sealed class LogicOrders
 {
+    internal LogicOrders(IReadOnlyList<LogicOrder> orders, bool answersRows)
+    {
+        Orders = orders;
+        AnswersRows = answersRows;
+    }
+
+    public IReadOnlyList<LogicOrder> Orders { get; }
+
+    public bool AnswersRows { get; }
+
     internal const string MissingTarget = "missing_target";
 
     internal static VerbError Missing(string label) =>
@@ -143,17 +170,59 @@ internal sealed record LogicOrders(IReadOnlyList<LogicOrder> Orders, bool Answer
 /// check of the game (Failed); each fails alone. Name is the device's display name, Id the id as given when the write
 /// failed before its device was found.
 /// </summary>
-internal abstract record LogicWriteResult
+internal abstract class LogicWriteResult
 {
     private LogicWriteResult()
     {
     }
 
-    internal sealed record Planned(int Index, string? Name, LogicWriteChecked Write) : LogicWriteResult;
+    internal sealed class Planned : LogicWriteResult
+    {
+        internal Planned(int index, string? name, LogicWriteChecked write)
+        {
+            Index = index;
+            Name = name;
+            Write = write;
+        }
 
-    internal sealed record Written(int Index, string? Name, LogicWrite Write) : LogicWriteResult;
+        public int Index { get; }
 
-    internal sealed record Failed(int Index, string? Id, VerbError Error) : LogicWriteResult;
+        public string? Name { get; }
+
+        public LogicWriteChecked Write { get; }
+    }
+
+    internal sealed class Written : LogicWriteResult
+    {
+        internal Written(int index, string? name, LogicWrite write)
+        {
+            Index = index;
+            Name = name;
+            Write = write;
+        }
+
+        public int Index { get; }
+
+        public string? Name { get; }
+
+        public LogicWrite Write { get; }
+    }
+
+    internal sealed class Failed : LogicWriteResult
+    {
+        internal Failed(int index, string? id, VerbError error)
+        {
+            Index = index;
+            Id = id;
+            Error = error;
+        }
+
+        public int Index { get; }
+
+        public string? Id { get; }
+
+        public VerbError Error { get; }
+    }
 }
 
 /// <summary>

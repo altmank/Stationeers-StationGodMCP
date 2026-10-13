@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of find frame, in verb names (catalogue/verbs/find.json).</summary>
-internal sealed record FindFrameOptions
+internal sealed class FindFrameOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("find", "frame", "frames", null, null, new WhatCost(CostClass.World),
         new OptionSpec("near", "{\"type\":[\"string\",\"array\"]}"),
@@ -22,11 +22,11 @@ internal sealed record FindFrameOptions
         new OptionSpec("cursor", "{\"type\":\"string\"}"),
         new OptionSpec("order", "{\"type\":\"string\",\"enum\":[\"nearest\",\"id\"]}", false, "nearest"));
 
-    internal Selector Selector { get; private init; } = Selector.None;
+    internal Selector Selector { get; private set; } = Selector.None;
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal Paging Paging { get; private init; } = Paging.All;
+    internal Paging Paging { get; private set; } = Paging.All;
 
     internal static FindFrameOptions Bind(OptionReader options) => new FindFrameOptions
     {

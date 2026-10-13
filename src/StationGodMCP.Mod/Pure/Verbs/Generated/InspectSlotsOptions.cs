@@ -11,20 +11,20 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of inspect slots, in verb names (catalogue/verbs/inspect.json).</summary>
-internal sealed record InspectSlotsOptions
+internal sealed class InspectSlotsOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("inspect", "slots", "slots", null, null, new WhatCost(CostClass.Instant),
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}", true),
         new OptionSpec("gateway", "{\"type\":\"string\"}", false, "world"),
         new OptionSpec("slot", "{\"type\":\"integer\",\"minimum\":0}"));
 
-    internal Selector Selector { get; private init; } = Selector.None;
+    internal Selector Selector { get; private set; } = Selector.None;
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal string? Gateway { get; private init; }
+    internal string? Gateway { get; private set; }
 
-    internal long? Slot { get; private init; }
+    internal long? Slot { get; private set; }
 
     internal static InspectSlotsOptions Bind(OptionReader options) => new InspectSlotsOptions
     {

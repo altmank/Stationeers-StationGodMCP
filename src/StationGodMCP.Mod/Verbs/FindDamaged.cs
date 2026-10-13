@@ -76,8 +76,21 @@ internal static class FindDamaged
             ("scanned", counts.Scanned), ("min_damage_ratio", minimum), ("local_player", origin.View));
 
     /// <summary>The scan's counts a walk's every page answers.</summary>
-    internal sealed record DamageCounts(int Structures, int Broken, int Scanned)
+    internal sealed class DamageCounts
     {
+        internal DamageCounts(int structures, int broken, int scanned)
+        {
+            Structures = structures;
+            Broken = broken;
+            Scanned = scanned;
+        }
+
+        public int Structures { get; }
+
+        public int Broken { get; }
+
+        public int Scanned { get; }
+
         internal static DamageCounts None { get; } = new DamageCounts(0, 0, 0);
     }
 }

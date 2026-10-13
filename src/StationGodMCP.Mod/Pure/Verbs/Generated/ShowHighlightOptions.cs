@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of show highlight, in verb names (catalogue/verbs/show.json).</summary>
-internal sealed record ShowHighlightOptions
+internal sealed class ShowHighlightOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("show", "highlight", null, null, null, new WhatCost(CostClass.Instant),
         new OptionSpec("targets", "{\"type\":\"array\",\"items\":{\"type\":\"object\"},\"maxItems\":64}"),
@@ -19,15 +19,15 @@ internal sealed record ShowHighlightOptions
         new OptionSpec("keep", "{\"type\":\"boolean\"}", false, "false"),
         new OptionSpec("clear", "{\"type\":\"boolean\"}"));
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal JToken? Targets { get; private init; }
+    internal JToken? Targets { get; private set; }
 
-    internal double? Seconds { get; private init; }
+    internal double? Seconds { get; private set; }
 
-    internal bool? Keep { get; private init; }
+    internal bool? Keep { get; private set; }
 
-    internal bool? Clear { get; private init; }
+    internal bool? Clear { get; private set; }
 
     internal static ShowHighlightOptions Bind(OptionReader options) => new ShowHighlightOptions
     {

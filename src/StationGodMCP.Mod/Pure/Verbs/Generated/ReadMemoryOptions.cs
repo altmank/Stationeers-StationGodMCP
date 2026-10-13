@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of read memory, in verb names (catalogue/verbs/read.json).</summary>
-internal sealed record ReadMemoryOptions
+internal sealed class ReadMemoryOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("read", "memory", null, null, null, new WhatCost(CostClass.Instant),
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}", true),
@@ -19,15 +19,15 @@ internal sealed record ReadMemoryOptions
         new OptionSpec("start", "{\"type\":\"integer\",\"minimum\":0}", true),
         new OptionSpec("count", "{\"type\":\"integer\",\"minimum\":1,\"maximum\":512}", true));
 
-    internal Selector Selector { get; private init; } = Selector.None;
+    internal Selector Selector { get; private set; } = Selector.None;
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal string? Gateway { get; private init; }
+    internal string? Gateway { get; private set; }
 
-    internal long? Start { get; private init; }
+    internal long? Start { get; private set; }
 
-    internal long? Count { get; private init; }
+    internal long? Count { get; private set; }
 
     internal static ReadMemoryOptions Bind(OptionReader options) => new ReadMemoryOptions
     {

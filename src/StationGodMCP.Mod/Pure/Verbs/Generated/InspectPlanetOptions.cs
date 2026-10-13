@@ -11,11 +11,11 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of inspect planet, in verb names (catalogue/verbs/inspect.json).</summary>
-internal sealed record InspectPlanetOptions
+internal sealed class InspectPlanetOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("inspect", "planet", "gases", null, null, new WhatCost(CostClass.Instant));
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
     internal static InspectPlanetOptions Bind(OptionReader options) => new InspectPlanetOptions
     {

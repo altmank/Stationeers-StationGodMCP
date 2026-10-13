@@ -11,15 +11,15 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of find room, in verb names (catalogue/verbs/find.json).</summary>
-internal sealed record FindRoomOptions
+internal sealed class FindRoomOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("find", "room", "rooms", null, null, new WhatCost(CostClass.World),
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}"),
         new OptionSpec("include", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"cells\",\"devices\"]}}"));
 
-    internal Selector Selector { get; private init; } = Selector.None;
+    internal Selector Selector { get; private set; } = Selector.None;
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
     internal static FindRoomOptions Bind(OptionReader options) => new FindRoomOptions
     {

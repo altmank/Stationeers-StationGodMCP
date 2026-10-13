@@ -21,7 +21,24 @@ internal delegate void VerbTimed(string what, bool ok, double handlerMs, double 
 /// What verb calls run with: the (verb, what) table, the largest reply sent, the frame a reply names, and where each
 /// answered call's times go (MethodStats in the mod; null keeps none).
 /// </summary>
-internal sealed record VerbRunner(VerbDispatcher Verbs, int MaxReplyBytes, Func<long> Frame, VerbTimed? Timed = null);
+internal sealed class VerbRunner
+{
+    internal VerbRunner(VerbDispatcher verbs, int maxReplyBytes, Func<long> frame, VerbTimed? timed = null)
+    {
+        Verbs = verbs;
+        MaxReplyBytes = maxReplyBytes;
+        Frame = frame;
+        Timed = timed;
+    }
+
+    public VerbDispatcher Verbs { get; }
+
+    public int MaxReplyBytes { get; }
+
+    public Func<long> Frame { get; }
+
+    public VerbTimed? Timed { get; }
+}
 
 /// <summary>
 /// A verb call run on the main thread (protocol.md, Verb calls): the dispatcher binds and runs its (verb, what) handler,

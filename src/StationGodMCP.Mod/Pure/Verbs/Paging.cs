@@ -12,8 +12,24 @@ namespace StationGodMCP.Pure.Verbs;
 /// "open" on a first page keeps the rest of the list under a cursor when more follows (the reply's cursor_id), and
 /// that cursor id on a later call takes the walk's next page.
 /// </summary>
-internal sealed record Paging(int? Limit, int Offset, ListOrder Order, string? Cursor = null)
+internal sealed class Paging
 {
+    internal Paging(int? limit, int offset, ListOrder order, string? cursor = null)
+    {
+        Limit = limit;
+        Offset = offset;
+        Order = order;
+        Cursor = cursor;
+    }
+
+    public int? Limit { get; }
+
+    public int Offset { get; }
+
+    public ListOrder Order { get; }
+
+    public string? Cursor { get; }
+
     /// <summary>The wire cursor's word on a first page: keep the rest under a cursor when more follows.</summary>
     internal const string OpenCursor = "open";
 
@@ -62,4 +78,24 @@ internal sealed record Paging(int? Limit, int Offset, ListOrder Order, string? C
 }
 
 /// <summary>One page of a list: its entries, the list's total, where it starts, the page size, and whether more follow.</summary>
-internal sealed record Page<T>(IReadOnlyList<T> Entries, int Total, int Offset, int? Limit, bool HasMore);
+internal sealed class Page<T>
+{
+    internal Page(IReadOnlyList<T> entries, int total, int offset, int? limit, bool hasMore)
+    {
+        Entries = entries;
+        Total = total;
+        Offset = offset;
+        Limit = limit;
+        HasMore = hasMore;
+    }
+
+    public IReadOnlyList<T> Entries { get; }
+
+    public int Total { get; }
+
+    public int Offset { get; }
+
+    public int? Limit { get; }
+
+    public bool HasMore { get; }
+}

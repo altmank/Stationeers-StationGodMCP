@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of write chip, in verb names (catalogue/verbs/write.json).</summary>
-internal sealed record WriteChipOptions
+internal sealed class WriteChipOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("write", "chip", null, null, new WriteSpec("acts", "mixed", "source [cannot undo: chip source]; pins [undo]; run [cannot undo: run control]"), new WhatCost(CostClass.Instant),
         new OptionSpec("id", "{\"type\":\"string\"}", true),
@@ -23,19 +23,19 @@ internal sealed record WriteChipOptions
         new OptionSpec("run", "{\"type\":\"string\",\"enum\":[\"pause\",\"step\",\"resume\",\"restart\"]}"),
         new OptionSpec("include", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"code\"]}}"));
 
-    internal Selector Selector { get; private init; } = Selector.None;
+    internal Selector Selector { get; private set; } = Selector.None;
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal string? Gateway { get; private init; }
+    internal string? Gateway { get; private set; }
 
-    internal string? Code { get; private init; }
+    internal string? Code { get; private set; }
 
-    internal JToken? Pins { get; private init; }
+    internal JToken? Pins { get; private set; }
 
-    internal IReadOnlyList<string>? Allow { get; private init; }
+    internal IReadOnlyList<string>? Allow { get; private set; }
 
-    internal string? Run { get; private init; }
+    internal string? Run { get; private set; }
 
     internal static WriteChipOptions Bind(OptionReader options) => new WriteChipOptions
     {

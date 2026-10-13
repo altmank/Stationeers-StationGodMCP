@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of help, in verb names (catalogue/verbs/help.json).</summary>
-internal sealed record HelpOptions
+internal sealed class HelpOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("help", "-", null, null, null, null,
         new OptionSpec("verb", "{\"type\":\"string\"}"),
@@ -20,15 +20,15 @@ internal sealed record HelpOptions
         new OptionSpec("topic", "{\"type\":\"string\"}"),
         new OptionSpec("subtopic", "{\"type\":\"string\"}"));
 
-    internal string? Verb { get; private init; }
+    internal string? Verb { get; private set; }
 
-    internal string? Lang { get; private init; }
+    internal string? Lang { get; private set; }
 
-    internal string? What { get; private init; }
+    internal string? What { get; private set; }
 
-    internal string? Topic { get; private init; }
+    internal string? Topic { get; private set; }
 
-    internal string? Subtopic { get; private init; }
+    internal string? Subtopic { get; private set; }
 
     internal static HelpOptions Bind(OptionReader options) => new HelpOptions
     {

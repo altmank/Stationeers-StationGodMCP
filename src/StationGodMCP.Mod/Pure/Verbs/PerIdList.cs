@@ -10,8 +10,21 @@ namespace StationGodMCP.Pure.Verbs;
 /// row per id ({index, ok, reference_id, payload | error}), unless the what's id_list names the list option the ids
 /// fill instead (move item's moves, read sample's reads: one entry per id). One id answers the what's single shape.
 /// </summary>
-internal sealed record PerIdList(IReadOnlyList<string> Ids, bool GivenAsList, string? FillsList)
+internal sealed class PerIdList
 {
+    internal PerIdList(IReadOnlyList<string> ids, bool givenAsList, string? fillsList)
+    {
+        Ids = ids;
+        GivenAsList = givenAsList;
+        FillsList = fillsList;
+    }
+
+    public IReadOnlyList<string> Ids { get; }
+
+    public bool GivenAsList { get; }
+
+    public string? FillsList { get; }
+
     /// <summary>The id option's kind: absent (null) when the what takes no id or the call gives none.</summary>
     internal static PerIdList? Bind(OptionReader options)
     {

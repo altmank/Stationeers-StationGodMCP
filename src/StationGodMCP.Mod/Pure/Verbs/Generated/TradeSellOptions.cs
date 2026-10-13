@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of trade sell, in verb names (catalogue/verbs/trade.json).</summary>
-internal sealed record TradeSellOptions
+internal sealed class TradeSellOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("trade", "sell", "delivered", null, new WriteSpec("confirm", "cannot", "[cannot undo: trade]"), new WhatCost(CostClass.Instant),
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}", true),
@@ -19,15 +19,15 @@ internal sealed record TradeSellOptions
         new OptionSpec("items", "{\"type\":\"array\",\"items\":{\"type\":\"object\"},\"maxItems\":32}", true),
         new OptionSpec("confirm", "{\"type\":\"boolean\"}", false, "false"));
 
-    internal Selector Selector { get; private init; } = Selector.None;
+    internal Selector Selector { get; private set; } = Selector.None;
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal ReportConfirm Report { get; private init; } = ReportConfirm.Acting;
+    internal ReportConfirm Report { get; private set; } = ReportConfirm.Acting;
 
-    internal string? Card { get; private init; }
+    internal string? Card { get; private set; }
 
-    internal JToken? Items { get; private init; }
+    internal JToken? Items { get; private set; }
 
     internal static TradeSellOptions Bind(OptionReader options) => new TradeSellOptions
     {

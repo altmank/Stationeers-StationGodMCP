@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of find ore, in verb names (catalogue/verbs/find.json).</summary>
-internal sealed record FindOreOptions
+internal sealed class FindOreOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("find", "ore", "spots", null, null, new WhatCost(CostClass.World),
         new OptionSpec("near", "{\"type\":\"array\"}"),
@@ -21,17 +21,17 @@ internal sealed record FindOreOptions
         new OptionSpec("step", "{\"type\":\"number\",\"minimum\":0.5,\"maximum\":500}"),
         new OptionSpec("limit", "{\"type\":\"integer\",\"minimum\":1,\"maximum\":20}", false, "5"));
 
-    internal Selector Selector { get; private init; } = Selector.None;
+    internal Selector Selector { get; private set; } = Selector.None;
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal Paging Paging { get; private init; } = Paging.All;
+    internal Paging Paging { get; private set; } = Paging.All;
 
-    internal IReadOnlyList<string>? Ores { get; private init; }
+    internal IReadOnlyList<string>? Ores { get; private set; }
 
-    internal double? Separation { get; private init; }
+    internal double? Separation { get; private set; }
 
-    internal double? Step { get; private init; }
+    internal double? Step { get; private set; }
 
     internal static FindOreOptions Bind(OptionReader options) => new FindOreOptions
     {

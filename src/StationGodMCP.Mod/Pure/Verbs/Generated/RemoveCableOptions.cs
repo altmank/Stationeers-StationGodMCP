@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of remove cable, in verb names (catalogue/verbs/remove.json).</summary>
-internal sealed record RemoveCableOptions
+internal sealed class RemoveCableOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("remove", "cable", "removals", null, new WriteSpec("confirm", "undo", "[undo]"), new WhatCost(CostClass.Job),
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}"),
@@ -28,23 +28,23 @@ internal sealed record RemoveCableOptions
         new OptionSpec("queue", "{\"type\":\"boolean\"}", false, "true"),
         new OptionSpec("max_wait", "{\"type\":\"number\",\"minimum\":0}", false, "30"));
 
-    internal Selector Selector { get; private init; } = Selector.None;
+    internal Selector Selector { get; private set; } = Selector.None;
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal ReportConfirm Report { get; private init; } = ReportConfirm.Acting;
+    internal ReportConfirm Report { get; private set; } = ReportConfirm.Acting;
 
-    internal MaterialsSource Materials { get; private init; } = MaterialsSource.Player;
+    internal MaterialsSource Materials { get; private set; } = MaterialsSource.Player;
 
-    internal JToken? Waypoints { get; private init; }
+    internal JToken? Waypoints { get; private set; }
 
-    internal JToken? Cells { get; private init; }
+    internal JToken? Cells { get; private set; }
 
-    internal IReadOnlyList<string>? Allow { get; private init; }
+    internal IReadOnlyList<string>? Allow { get; private set; }
 
-    internal string? Root { get; private init; }
+    internal string? Root { get; private set; }
 
-    internal bool? Queue { get; private init; }
+    internal bool? Queue { get; private set; }
 
     internal static RemoveCableOptions Bind(OptionReader options) => new RemoveCableOptions
     {

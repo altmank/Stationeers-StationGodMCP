@@ -116,10 +116,44 @@ internal static class HealthReader
 /// What a damage scan keeps: damage ratio above minDamageRatio, only broken things, only structures, and within metres
 /// of the player.
 /// </summary>
-internal sealed record HealthScanFilter(double MinDamageRatio, bool StructuresOnly, bool BrokenOnly, double? NearPlayerM);
+internal sealed class HealthScanFilter
+{
+    internal HealthScanFilter(double minDamageRatio, bool structuresOnly, bool brokenOnly, double? nearPlayerM)
+    {
+        MinDamageRatio = minDamageRatio;
+        StructuresOnly = structuresOnly;
+        BrokenOnly = brokenOnly;
+        NearPlayerM = nearPlayerM;
+    }
+
+    public double MinDamageRatio { get; }
+
+    public bool StructuresOnly { get; }
+
+    public bool BrokenOnly { get; }
+
+    public double? NearPlayerM { get; }
+}
 
 /// <summary>A scan's things, broken first then worst first, the structures and broken things among them, and the things scanned.</summary>
-internal sealed record HealthScanned(List<Thing> Things, int Structures, int Broken, int Scanned);
+internal sealed class HealthScanned
+{
+    internal HealthScanned(List<Thing> things, int structures, int broken, int scanned)
+    {
+        Things = things;
+        Structures = structures;
+        Broken = broken;
+        Scanned = scanned;
+    }
+
+    public List<Thing> Things { get; }
+
+    public int Structures { get; }
+
+    public int Broken { get; }
+
+    public int Scanned { get; }
+}
 
 /// <summary>
 /// A scan of every damaged thing registered in OcclusionManager.AllThings, broken first, then worst first; broken
@@ -290,5 +324,25 @@ internal sealed class NetworkHealth
 }
 
 /// <summary>A network's health facts, which every page of its walk answers.</summary>
-internal sealed record NetworkHealthFacts(ThingId NetworkId, string Kind, int Pieces, bool DamagedOnly,
-    BrokenNeighbourReport Broken);
+internal sealed class NetworkHealthFacts
+{
+    internal NetworkHealthFacts(ThingId networkId, string kind, int pieces, bool damagedOnly,
+        BrokenNeighbourReport broken)
+    {
+        NetworkId = networkId;
+        Kind = kind;
+        Pieces = pieces;
+        DamagedOnly = damagedOnly;
+        Broken = broken;
+    }
+
+    public ThingId NetworkId { get; }
+
+    public string Kind { get; }
+
+    public int Pieces { get; }
+
+    public bool DamagedOnly { get; }
+
+    public BrokenNeighbourReport Broken { get; }
+}

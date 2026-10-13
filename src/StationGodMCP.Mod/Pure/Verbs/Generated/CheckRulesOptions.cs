@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of check rules, in verb names (catalogue/verbs/check.json).</summary>
-internal sealed record CheckRulesOptions
+internal sealed class CheckRulesOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("check", "rules", "rules", null, null, new WhatCost(CostClass.Instant),
         new OptionSpec("action", "{\"type\":\"string\",\"enum\":[\"list\",\"validate\",\"fields\",\"functions\",\"test\",\"explain\"]}", false, "list"),
@@ -23,23 +23,23 @@ internal sealed record CheckRulesOptions
         new OptionSpec("other", "{\"type\":\"string\"}"),
         new OptionSpec("at", "{\"type\":\"array\"}"));
 
-    internal Selector Selector { get; private init; } = Selector.None;
+    internal Selector Selector { get; private set; } = Selector.None;
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal string? Action { get; private init; }
+    internal string? Action { get; private set; }
 
-    internal string? Rule { get; private init; }
+    internal string? Rule { get; private set; }
 
-    internal bool? Full { get; private init; }
+    internal bool? Full { get; private set; }
 
-    internal string? RulesText { get; private init; }
+    internal string? RulesText { get; private set; }
 
-    internal long? Port { get; private init; }
+    internal long? Port { get; private set; }
 
-    internal string? Other { get; private init; }
+    internal string? Other { get; private set; }
 
-    internal JToken? At { get; private init; }
+    internal JToken? At { get; private set; }
 
     internal static CheckRulesOptions Bind(OptionReader options) => new CheckRulesOptions
     {

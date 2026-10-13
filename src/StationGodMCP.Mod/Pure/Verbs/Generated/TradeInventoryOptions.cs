@@ -11,17 +11,17 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of trade inventory, in verb names (catalogue/verbs/trade.json).</summary>
-internal sealed record TradeInventoryOptions
+internal sealed class TradeInventoryOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("trade", "inventory", "contacts", null, null, new WhatCost(CostClass.Instant),
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}"),
         new OptionSpec("card", "{\"type\":\"string\"}"));
 
-    internal Selector Selector { get; private init; } = Selector.None;
+    internal Selector Selector { get; private set; } = Selector.None;
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal string? Card { get; private init; }
+    internal string? Card { get; private set; }
 
     internal static TradeInventoryOptions Bind(OptionReader options) => new TradeInventoryOptions
     {

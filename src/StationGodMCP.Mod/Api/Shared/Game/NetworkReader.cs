@@ -394,5 +394,28 @@ internal static class NetworkReader
 }
 
 /// <summary>One page of a network's members, its network, its summary, its structure and device counts and its warning.</summary>
-internal sealed record MembersPage(NetworkRefView Network, object? Summary, Page<NetworkMemberView> Page,
-    int Structures, int Devices, string? Warning);
+internal sealed class MembersPage
+{
+    internal MembersPage(NetworkRefView network, object? summary, Page<NetworkMemberView> page, int structures,
+        int devices, string? warning)
+    {
+        Network = network;
+        Summary = summary;
+        Page = page;
+        Structures = structures;
+        Devices = devices;
+        Warning = warning;
+    }
+
+    public NetworkRefView Network { get; }
+
+    public object? Summary { get; }
+
+    public Page<NetworkMemberView> Page { get; }
+
+    public int Structures { get; }
+
+    public int Devices { get; }
+
+    public string? Warning { get; }
+}

@@ -11,11 +11,11 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of find food, in verb names (catalogue/verbs/find.json).</summary>
-internal sealed record FindFoodOptions
+internal sealed class FindFoodOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("find", "food", "food", null, null, new WhatCost(CostClass.World));
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
     internal static FindFoodOptions Bind(OptionReader options) => new FindFoodOptions
     {

@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of move item, in verb names (catalogue/verbs/move.json).</summary>
-internal sealed record MoveItemOptions
+internal sealed class MoveItemOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("move", "item", "results", "moves", new WriteSpec("acts", "mixed", "slot move [undo]; a merge into another stack [cannot undo: merged into <id>]; store move or force [cannot undo: store move]"), new WhatCost(CostClass.Instant),
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}"),
@@ -35,37 +35,37 @@ internal sealed record MoveItemOptions
         new OptionSpec("at_most", "{\"type\":\"integer\",\"minimum\":1,\"maximum\":1000}", false, "vault 256, silo 64"),
         new OptionSpec("confirm", "{\"type\":\"boolean\"}", false, "false"));
 
-    internal Selector Selector { get; private init; } = Selector.None;
+    internal Selector Selector { get; private set; } = Selector.None;
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal ReportConfirm Report { get; private init; } = ReportConfirm.Acting;
+    internal ReportConfirm Report { get; private set; } = ReportConfirm.Acting;
 
-    internal double? Quantity { get; private init; }
+    internal double? Quantity { get; private set; }
 
-    internal string? To { get; private init; }
+    internal string? To { get; private set; }
 
-    internal JToken? Slot { get; private init; }
+    internal JToken? Slot { get; private set; }
 
-    internal bool? Merge { get; private init; }
+    internal bool? Merge { get; private set; }
 
-    internal bool? Force { get; private init; }
+    internal bool? Force { get; private set; }
 
-    internal IReadOnlyList<string>? Allow { get; private init; }
+    internal IReadOnlyList<string>? Allow { get; private set; }
 
-    internal JToken? Moves { get; private init; }
+    internal JToken? Moves { get; private set; }
 
-    internal string? Source { get; private init; }
+    internal string? Source { get; private set; }
 
-    internal string? Reagent { get; private init; }
+    internal string? Reagent { get; private set; }
 
-    internal JToken? Items { get; private init; }
+    internal JToken? Items { get; private set; }
 
-    internal string? Location { get; private init; }
+    internal string? Location { get; private set; }
 
-    internal string? Category { get; private init; }
+    internal string? Category { get; private set; }
 
-    internal long? AtMost { get; private init; }
+    internal long? AtMost { get; private set; }
 
     internal static MoveItemOptions Bind(OptionReader options) => new MoveItemOptions
     {

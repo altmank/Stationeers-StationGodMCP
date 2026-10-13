@@ -11,20 +11,20 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of server profiling, in verb names (catalogue/verbs/server.json).</summary>
-internal sealed record ServerProfilingOptions
+internal sealed class ServerProfilingOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("server", "profiling", "scopes", null, new WriteSpec("acts", "undo", "[undo: the other action]"), new WhatCost(CostClass.Instant),
         new OptionSpec("action", "{\"type\":\"string\",\"enum\":[\"on\",\"off\",\"reset\",\"report\"]}", true),
         new OptionSpec("slow_frame_ms", "{\"type\":\"number\",\"minimum\":1,\"maximum\":1000}", false, "8"),
         new OptionSpec("csv", "{\"type\":\"boolean\"}"));
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal string? Action { get; private init; }
+    internal string? Action { get; private set; }
 
-    internal double? SlowFrameMs { get; private init; }
+    internal double? SlowFrameMs { get; private set; }
 
-    internal bool? Csv { get; private init; }
+    internal bool? Csv { get; private set; }
 
     internal static ServerProfilingOptions Bind(OptionReader options) => new ServerProfilingOptions
     {

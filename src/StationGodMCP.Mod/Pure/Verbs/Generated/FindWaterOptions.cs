@@ -11,14 +11,14 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of find water, in verb names (catalogue/verbs/find.json).</summary>
-internal sealed record FindWaterOptions
+internal sealed class FindWaterOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("find", "water", "sources", null, null, new WhatCost(CostClass.World),
         new OptionSpec("min_mol", "{\"type\":\"number\"}", false, "1"));
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal double? MinMol { get; private init; }
+    internal double? MinMol { get; private set; }
 
     internal static FindWaterOptions Bind(OptionReader options) => new FindWaterOptions
     {

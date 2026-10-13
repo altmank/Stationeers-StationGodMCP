@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of swap chute, in verb names (catalogue/verbs/swap.json).</summary>
-internal sealed record SwapChuteOptions
+internal sealed class SwapChuteOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("swap", "chute", "pieces", null, new WriteSpec("confirm", "cannot", "[cannot undo: change job]"), new WhatCost(CostClass.Job),
         new OptionSpec("network", "{\"type\":[\"string\",\"object\"]}"),
@@ -29,21 +29,21 @@ internal sealed record SwapChuteOptions
         new OptionSpec("queue", "{\"type\":\"boolean\"}", false, "true"),
         new OptionSpec("max_wait", "{\"type\":\"number\",\"minimum\":0}", false, "30"));
 
-    internal Selector Selector { get; private init; } = Selector.None;
+    internal Selector Selector { get; private set; } = Selector.None;
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal ReportConfirm Report { get; private init; } = ReportConfirm.Acting;
+    internal ReportConfirm Report { get; private set; } = ReportConfirm.Acting;
 
-    internal MaterialsSource Materials { get; private init; } = MaterialsSource.Player;
+    internal MaterialsSource Materials { get; private set; } = MaterialsSource.Player;
 
-    internal IReadOnlyList<string>? Spare { get; private init; }
+    internal IReadOnlyList<string>? Spare { get; private set; }
 
-    internal string? Riding { get; private init; }
+    internal string? Riding { get; private set; }
 
-    internal bool? SkipUnmatched { get; private init; }
+    internal bool? SkipUnmatched { get; private set; }
 
-    internal bool? Queue { get; private init; }
+    internal bool? Queue { get; private set; }
 
     internal static SwapChuteOptions Bind(OptionReader options) => new SwapChuteOptions
     {

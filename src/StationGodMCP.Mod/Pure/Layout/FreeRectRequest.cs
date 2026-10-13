@@ -10,8 +10,27 @@ namespace StationGodMCP.Pure;
 /// survey wall's free_rects: where a w x h metre rectangle fits on the map, in one section only (one_section, default
 /// true), on wall only (require_wall, default true), the first limit places (default 20, at most 50).
 /// </summary>
-internal sealed record FreeRectRequest(double W, double H, bool OneSection, bool RequireWall, int Limit)
+internal sealed class FreeRectRequest
 {
+    internal FreeRectRequest(double w, double h, bool oneSection, bool requireWall, int limit)
+    {
+        W = w;
+        H = h;
+        OneSection = oneSection;
+        RequireWall = requireWall;
+        Limit = limit;
+    }
+
+    public double W { get; }
+
+    public double H { get; }
+
+    public bool OneSection { get; }
+
+    public bool RequireWall { get; }
+
+    public int Limit { get; }
+
     internal const int DefaultLimit = 20;
     internal const int MaximumLimit = 50;
 

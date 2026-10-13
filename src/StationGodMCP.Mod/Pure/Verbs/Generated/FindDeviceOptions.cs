@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of find device, in verb names (catalogue/verbs/find.json).</summary>
-internal sealed record FindDeviceOptions
+internal sealed class FindDeviceOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("find", "device", "devices", null, null, new WhatCost(CostClass.World),
         new OptionSpec("gateway", "{\"type\":\"string\"}", false, "world"),
@@ -21,13 +21,13 @@ internal sealed record FindDeviceOptions
         new OptionSpec("offset", "{\"type\":\"integer\",\"minimum\":0}", false, "0"),
         new OptionSpec("cursor", "{\"type\":\"string\"}"));
 
-    internal Selector Selector { get; private init; } = Selector.None;
+    internal Selector Selector { get; private set; } = Selector.None;
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal Paging Paging { get; private init; } = Paging.All;
+    internal Paging Paging { get; private set; } = Paging.All;
 
-    internal string? Gateway { get; private init; }
+    internal string? Gateway { get; private set; }
 
     internal static FindDeviceOptions Bind(OptionReader options) => new FindDeviceOptions
     {

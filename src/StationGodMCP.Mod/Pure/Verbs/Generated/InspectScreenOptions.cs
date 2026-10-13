@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of inspect screen, in verb names (catalogue/verbs/inspect.json).</summary>
-internal sealed record InspectScreenOptions
+internal sealed class InspectScreenOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("inspect", "screen", "elements", null, null, new WhatCost(CostClass.Instant),
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}", true),
@@ -25,21 +25,21 @@ internal sealed record InspectScreenOptions
         new OptionSpec("offset", "{\"type\":\"integer\",\"minimum\":0}", false, "0"),
         new OptionSpec("cursor", "{\"type\":\"string\"}"));
 
-    internal Selector Selector { get; private init; } = Selector.None;
+    internal Selector Selector { get; private set; } = Selector.None;
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal Paging Paging { get; private init; } = Paging.All;
+    internal Paging Paging { get; private set; } = Paging.All;
 
-    internal string? Gateway { get; private init; }
+    internal string? Gateway { get; private set; }
 
-    internal string? Surface { get; private init; }
+    internal string? Surface { get; private set; }
 
-    internal string? Type { get; private init; }
+    internal string? Type { get; private set; }
 
-    internal string? Text { get; private init; }
+    internal string? Text { get; private set; }
 
-    internal bool? ShownOnly { get; private init; }
+    internal bool? ShownOnly { get; private set; }
 
     internal static InspectScreenOptions Bind(OptionReader options) => new InspectScreenOptions
     {

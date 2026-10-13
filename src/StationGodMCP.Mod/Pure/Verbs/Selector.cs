@@ -12,24 +12,47 @@ namespace StationGodMCP.Pure.Verbs;
 /// radius, within, box, room, network, prefab and name. Each is null when the call gives none or the what does not
 /// take it. Every filter but ids is a spread (catalogue x-target role spread, decision M6).
 /// </summary>
-internal sealed record Selector(
-    PerIdList? Ids,
-    NearPoint? Near,
-    double? Radius,
-    string? Within,
-    BoxCorners? Box,
-    string? Room,
-    NetworkTarget? Network,
-    PrefabFilter? Prefab,
-    string? Name)
+internal sealed class Selector
 {
+    internal Selector(PerIdList? ids, NearPoint? near, double? radius, string? within, BoxCorners? box, string? room,
+        NetworkTarget? network, PrefabFilter? prefab, string? name)
+    {
+        Ids = ids;
+        Near = near;
+        Radius = radius;
+        Within = within;
+        Box = box;
+        Room = room;
+        Network = network;
+        Prefab = prefab;
+        Name = name;
+    }
+
+    public PerIdList? Ids { get; }
+
+    public NearPoint? Near { get; }
+
+    public double? Radius { get; }
+
+    public string? Within { get; }
+
+    public BoxCorners? Box { get; }
+
+    public string? Room { get; }
+
+    public NetworkTarget? Network { get; }
+
+    public PrefabFilter? Prefab { get; }
+
+    public string? Name { get; }
+
     internal static Selector None { get; } = new Selector(null, null, null, null, null, null, null, null, null);
 
     /// <summary>
     /// network as a list (where the what takes several, as survey area does): every network named, in order; null
     /// when the call gives none or gives one (Network).
     /// </summary>
-    internal IReadOnlyList<NetworkTarget>? Networks { get; private init; }
+    internal IReadOnlyList<NetworkTarget>? Networks { get; private set; }
 
     internal static Selector Bind(OptionReader options)
     {
@@ -127,19 +150,39 @@ internal sealed record Selector(
 }
 
 /// <summary>near: a point, the player, the thing the crosshair is on, or a thing by id (its position).</summary>
-internal abstract record NearPoint
+internal abstract class NearPoint
 {
     private NearPoint()
     {
     }
 
-    internal sealed record Player : NearPoint;
+    internal sealed class Player : NearPoint
+    {
+    }
 
-    internal sealed record LookingAt : NearPoint;
+    internal sealed class LookingAt : NearPoint
+    {
+    }
 
-    internal sealed record At(Vec3 Point) : NearPoint;
+    internal sealed class At : NearPoint
+    {
+        internal At(Vec3 point)
+        {
+            Point = point;
+        }
 
-    internal sealed record Thing(string Id) : NearPoint;
+        public Vec3 Point { get; }
+    }
+
+    internal sealed class Thing : NearPoint
+    {
+        internal Thing(string id)
+        {
+            Id = id;
+        }
+
+        public string Id { get; }
+    }
 
     internal static NearPoint? Bind(OptionReader options)
     {
@@ -176,8 +219,18 @@ internal abstract record NearPoint
 }
 
 /// <summary>box: two corners [[x, y, z], [x, y, z]], in either order.</summary>
-internal sealed record BoxCorners(Vec3 First, Vec3 Second)
+internal sealed class BoxCorners
 {
+    internal BoxCorners(Vec3 first, Vec3 second)
+    {
+        First = first;
+        Second = second;
+    }
+
+    public Vec3 First { get; }
+
+    public Vec3 Second { get; }
+
     internal static BoxCorners? Bind(OptionReader options)
     {
         JToken? given = options.Raw("box");
@@ -198,8 +251,18 @@ internal sealed record BoxCorners(Vec3 First, Vec3 Second)
 }
 
 /// <summary>network: a network's id, a piece or device on it, or {id, port} (the network on one of a device's ports).</summary>
-internal sealed record NetworkTarget(string Id, string? Port)
+internal sealed class NetworkTarget
 {
+    internal NetworkTarget(string id, string? port)
+    {
+        Id = id;
+        Port = port;
+    }
+
+    public string Id { get; }
+
+    public string? Port { get; }
+
     private const string Form = "must be a network's id, a piece or device on it, or {id, port}";
 
     internal static NetworkTarget? Bind(OptionReader options)
@@ -263,8 +326,15 @@ internal sealed record NetworkTarget(string Id, string? Port)
 /// prefab: whole names, hashes, or parts with * ('*Battery*', '*Tank*Insulated*': each part, in any order), one or a
 /// list. A thing passes when it matches any of them; names match in any case.
 /// </summary>
-internal sealed record PrefabFilter(IReadOnlyList<PrefabPattern> Patterns)
+internal sealed class PrefabFilter
 {
+    internal PrefabFilter(IReadOnlyList<PrefabPattern> patterns)
+    {
+        Patterns = patterns;
+    }
+
+    public IReadOnlyList<PrefabPattern> Patterns { get; }
+
     internal static PrefabFilter? Bind(OptionReader options)
     {
         JToken? given = options.Raw("prefab");
@@ -309,7 +379,7 @@ internal sealed record PrefabFilter(IReadOnlyList<PrefabPattern> Patterns)
 }
 
 /// <summary>One prefab pattern: a hash, a whole name, or the parts a name must hold.</summary>
-internal abstract record PrefabPattern
+internal abstract class PrefabPattern
 {
     private PrefabPattern()
     {
@@ -317,19 +387,40 @@ internal abstract record PrefabPattern
 
     internal abstract bool Keeps(string? prefabName, int prefabHash);
 
-    internal sealed record Hash(int Value) : PrefabPattern
+    internal sealed class Hash : PrefabPattern
     {
+        internal Hash(int value)
+        {
+            Value = value;
+        }
+
+        public int Value { get; }
+
         internal override bool Keeps(string? prefabName, int prefabHash) => prefabHash == Value;
     }
 
-    internal sealed record Whole(string Name) : PrefabPattern
+    internal sealed class Whole : PrefabPattern
     {
+        internal Whole(string name)
+        {
+            Name = name;
+        }
+
+        public string Name { get; }
+
         internal override bool Keeps(string? prefabName, int prefabHash) =>
             string.Equals(prefabName, Name, StringComparison.OrdinalIgnoreCase);
     }
 
-    internal sealed record Parts(IReadOnlyList<string> Pieces) : PrefabPattern
+    internal sealed class Parts : PrefabPattern
     {
+        internal Parts(IReadOnlyList<string> pieces)
+        {
+            Pieces = pieces;
+        }
+
+        public IReadOnlyList<string> Pieces { get; }
+
         internal override bool Keeps(string? prefabName, int prefabHash)
         {
             if (prefabName == null)

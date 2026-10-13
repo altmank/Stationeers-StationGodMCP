@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of find item, in verb names (catalogue/verbs/find.json).</summary>
-internal sealed record FindItemOptions
+internal sealed class FindItemOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("find", "item", "items", null, null, new WhatCost(CostClass.World),
         new OptionSpec("name", "{\"type\":\"string\"}"),
@@ -29,19 +29,19 @@ internal sealed record FindItemOptions
         new OptionSpec("cursor", "{\"type\":\"string\"}"),
         new OptionSpec("order", "{\"type\":\"string\",\"enum\":[\"nearest\",\"id\"]}", false, "nearest"));
 
-    internal Selector Selector { get; private init; } = Selector.None;
+    internal Selector Selector { get; private set; } = Selector.None;
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal Paging Paging { get; private init; } = Paging.All;
+    internal Paging Paging { get; private set; } = Paging.All;
 
-    internal string? Location { get; private init; }
+    internal string? Location { get; private set; }
 
-    internal string? GroupBy { get; private init; }
+    internal string? GroupBy { get; private set; }
 
-    internal long? Holders { get; private init; }
+    internal long? Holders { get; private set; }
 
-    internal bool? ExcludeInUse { get; private init; }
+    internal bool? ExcludeInUse { get; private set; }
 
     internal static FindItemOptions Bind(OptionReader options) => new FindItemOptions
     {

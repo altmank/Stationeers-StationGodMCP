@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of check layout, in verb names (catalogue/verbs/check.json).</summary>
-internal sealed record CheckLayoutOptions
+internal sealed class CheckLayoutOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("check", "layout", "findings", null, null, new WhatCost(CostClass.World),
         new OptionSpec("room", "{\"type\":\"string\"}"),
@@ -22,17 +22,17 @@ internal sealed record CheckLayoutOptions
         new OptionSpec("since", "{\"type\":\"string\"}"),
         new OptionSpec("limit", "{\"type\":\"integer\",\"minimum\":1,\"maximum\":500}", false, "25"));
 
-    internal Selector Selector { get; private init; } = Selector.None;
+    internal Selector Selector { get; private set; } = Selector.None;
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal Paging Paging { get; private init; } = Paging.All;
+    internal Paging Paging { get; private set; } = Paging.All;
 
-    internal IReadOnlyList<string>? Codes { get; private init; }
+    internal IReadOnlyList<string>? Codes { get; private set; }
 
-    internal IReadOnlyList<string>? ExcludeCodes { get; private init; }
+    internal IReadOnlyList<string>? ExcludeCodes { get; private set; }
 
-    internal string? Since { get; private init; }
+    internal string? Since { get; private set; }
 
     internal static CheckLayoutOptions Bind(OptionReader options) => new CheckLayoutOptions
     {

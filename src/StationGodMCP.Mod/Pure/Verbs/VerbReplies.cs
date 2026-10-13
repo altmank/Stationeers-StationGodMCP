@@ -11,21 +11,45 @@ namespace StationGodMCP.Pure.Verbs;
 /// What a verb handler answers: a reply object, a refusal in verb words, or work that goes on over frames and answers
 /// once it is ready (Pending: its Result is the call's Answered or Refused outcome).
 /// </summary>
-internal abstract record VerbOutcome
+internal abstract class VerbOutcome
 {
     private VerbOutcome()
     {
     }
 
-    internal sealed record Answered(JObject Reply) : VerbOutcome;
+    internal sealed class Answered : VerbOutcome
+    {
+        internal Answered(JObject reply)
+        {
+            Reply = reply;
+        }
 
-    internal sealed record Refused(VerbError Error) : VerbOutcome;
+        public JObject Reply { get; }
+    }
+
+    internal sealed class Refused : VerbOutcome
+    {
+        internal Refused(VerbError error)
+        {
+            Error = error;
+        }
+
+        public VerbError Error { get; }
+    }
 
     /// <summary>
     /// The call goes on over later frames: Work is stepped in the scheduler's slice lane, and its Result is the call's
     /// answer (an Answered or Refused outcome, or the reply object itself).
     /// </summary>
-    internal sealed record Pending(IPendingResult Work) : VerbOutcome;
+    internal sealed class Pending : VerbOutcome
+    {
+        internal Pending(IPendingResult work)
+        {
+            Work = work;
+        }
+
+        public IPendingResult Work { get; }
+    }
 
     /// <summary>A pending result's outcome: Answered or Refused as given, a reply object as Answered.</summary>
     internal static VerbOutcome Of(object? result) => result switch
@@ -215,16 +239,37 @@ internal static class ReplyFields
 /// One report target (SPEC-NOTES 18): [id or cell, name, current -> new], with its undo mark, the guards lifted for it
 /// (PASSED) and what drives it (driven_by: a chip or writer that may write it back).
 /// </summary>
-internal sealed record ReportTarget(
-    string? Id,
-    JToken? Cell,
-    string? Name,
-    JToken? Current,
-    JToken? New,
-    string Mark,
-    IReadOnlyList<string>? Passed = null,
-    JToken? DrivenBy = null)
+internal sealed class ReportTarget
 {
+    internal ReportTarget(string? id, JToken? cell, string? name, JToken? current, JToken? @new, string mark,
+        IReadOnlyList<string>? passed = null, JToken? drivenBy = null)
+    {
+        Id = id;
+        Cell = cell;
+        Name = name;
+        Current = current;
+        New = @new;
+        Mark = mark;
+        Passed = passed;
+        DrivenBy = drivenBy;
+    }
+
+    public string? Id { get; }
+
+    public JToken? Cell { get; }
+
+    public string? Name { get; }
+
+    public JToken? Current { get; }
+
+    public JToken? New { get; }
+
+    public string Mark { get; }
+
+    public IReadOnlyList<string>? Passed { get; }
+
+    public JToken? DrivenBy { get; }
+
     internal JObject ToJson()
     {
         JObject row = new JObject();
@@ -286,8 +331,21 @@ internal sealed record ReportTarget(
 /// index (left out for the whole call) on the thing reference_id names (left out when none is known). A report that
 /// lists a problem still answers.
 /// </summary>
-internal sealed record ReportProblem(int? Index, string? ReferenceId, VerbError Error)
+internal sealed class ReportProblem
 {
+    internal ReportProblem(int? index, string? referenceId, VerbError error)
+    {
+        Index = index;
+        ReferenceId = referenceId;
+        Error = error;
+    }
+
+    public int? Index { get; }
+
+    public string? ReferenceId { get; }
+
+    public VerbError Error { get; }
+
     internal JObject ToJson()
     {
         JObject problem = new JObject();

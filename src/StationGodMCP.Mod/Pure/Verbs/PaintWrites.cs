@@ -9,24 +9,65 @@ using StationGodMCP.Api.Views;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>One thing to paint: its place in the call, its id as given, and the colour as given.</summary>
-internal sealed record PaintOrder(int Index, string Id, string Color);
+internal sealed class PaintOrder
+{
+    internal PaintOrder(int index, string id, string color)
+    {
+        Index = index;
+        Id = id;
+        Color = color;
+    }
+
+    public int Index { get; }
+
+    public string Id { get; }
+
+    public string Color { get; }
+}
 
 /// <summary>
 /// What write paint is asked (catalogue write.json, paint): with no target, the game's colours (Colors); things by id,
 /// one color for all, or items, a color each (Things); or a pipe, cable or chute network's pieces, and its devices
 /// with include devices, one color for all (Network: the game finds the members). Every problem at once.
 /// </summary>
-internal abstract record PaintRequest
+internal abstract class PaintRequest
 {
     private PaintRequest()
     {
     }
 
-    internal sealed record Colors : PaintRequest;
+    internal sealed class Colors : PaintRequest
+    {
+    }
 
-    internal sealed record Things(IReadOnlyList<PaintOrder> Orders) : PaintRequest;
+    internal sealed class Things : PaintRequest
+    {
+        internal Things(IReadOnlyList<PaintOrder> orders)
+        {
+            Orders = orders;
+        }
 
-    internal sealed record Network(NetworkTarget Target, string? Kind, bool Devices, string Color) : PaintRequest;
+        public IReadOnlyList<PaintOrder> Orders { get; }
+    }
+
+    internal sealed class Network : PaintRequest
+    {
+        internal Network(NetworkTarget target, string? kind, bool devices, string color)
+        {
+            Target = target;
+            Kind = kind;
+            Devices = devices;
+            Color = color;
+        }
+
+        public NetworkTarget Target { get; }
+
+        public string? Kind { get; }
+
+        public bool Devices { get; }
+
+        public string Color { get; }
+    }
 
     /// <summary>The request the options make; null with every problem added.</summary>
     internal static PaintRequest? Of(PerIdList? ids, NetworkTarget? network, string? kind, bool devices,
@@ -139,17 +180,62 @@ internal abstract record PaintRequest
 /// colour it would get), painted (Painted: the colour before and after), or refused by a check of the game (Failed);
 /// each fails alone.
 /// </summary>
-internal abstract record PaintResult
+internal abstract class PaintResult
 {
     private PaintResult()
     {
     }
 
-    internal sealed record Planned(ThingId ReferenceId, string? Name, ThingColorView Now, string? Color) : PaintResult;
+    internal sealed class Planned : PaintResult
+    {
+        internal Planned(ThingId referenceId, string? name, ThingColorView now, string? color)
+        {
+            ReferenceId = referenceId;
+            Name = name;
+            Now = now;
+            Color = color;
+        }
 
-    internal sealed record Painted(ThingId ReferenceId, ThingColorView Previous, ThingColorView Color) : PaintResult;
+        public ThingId ReferenceId { get; }
 
-    internal sealed record Failed(int Index, string Id, VerbError Error) : PaintResult;
+        public string? Name { get; }
+
+        public ThingColorView Now { get; }
+
+        public string? Color { get; }
+    }
+
+    internal sealed class Painted : PaintResult
+    {
+        internal Painted(ThingId referenceId, ThingColorView previous, ThingColorView color)
+        {
+            ReferenceId = referenceId;
+            Previous = previous;
+            Color = color;
+        }
+
+        public ThingId ReferenceId { get; }
+
+        public ThingColorView Previous { get; }
+
+        public ThingColorView Color { get; }
+    }
+
+    internal sealed class Failed : PaintResult
+    {
+        internal Failed(int index, string id, VerbError error)
+        {
+            Index = index;
+            Id = id;
+            Error = error;
+        }
+
+        public int Index { get; }
+
+        public string Id { get; }
+
+        public VerbError Error { get; }
+    }
 }
 
 /// <summary>

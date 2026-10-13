@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of read flight_log, in verb names (catalogue/verbs/read.json).</summary>
-internal sealed record ReadFlightLogOptions
+internal sealed class ReadFlightLogOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("read", "flight_log", "rows", null, null, new WhatCost(CostClass.Instant),
         new OptionSpec("action", "{\"type\":\"string\",\"enum\":[\"read\",\"list\"]}", false, "read"),
@@ -21,15 +21,15 @@ internal sealed record ReadFlightLogOptions
         new OptionSpec("offset", "{\"type\":\"integer\",\"minimum\":0}", false, "0"),
         new OptionSpec("cursor", "{\"type\":\"string\"}"));
 
-    internal Selector Selector { get; private init; } = Selector.None;
+    internal Selector Selector { get; private set; } = Selector.None;
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal Paging Paging { get; private init; } = Paging.All;
+    internal Paging Paging { get; private set; } = Paging.All;
 
-    internal string? Action { get; private init; }
+    internal string? Action { get; private set; }
 
-    internal long? Every { get; private init; }
+    internal long? Every { get; private set; }
 
     internal static ReadFlightLogOptions Bind(OptionReader options) => new ReadFlightLogOptions
     {

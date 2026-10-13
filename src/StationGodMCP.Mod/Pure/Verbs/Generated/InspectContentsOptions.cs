@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of inspect contents, in verb names (catalogue/verbs/inspect.json).</summary>
-internal sealed record InspectContentsOptions
+internal sealed class InspectContentsOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("inspect", "contents", "slots", null, null, new WhatCost(CostClass.Instant),
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}", true),
@@ -23,13 +23,13 @@ internal sealed record InspectContentsOptions
         new OptionSpec("offset", "{\"type\":\"integer\",\"minimum\":0,\"maximum\":600}", false, "0"),
         new OptionSpec("cursor", "{\"type\":\"string\"}"));
 
-    internal Selector Selector { get; private init; } = Selector.None;
+    internal Selector Selector { get; private set; } = Selector.None;
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal Paging Paging { get; private init; } = Paging.All;
+    internal Paging Paging { get; private set; } = Paging.All;
 
-    internal long? Depth { get; private init; }
+    internal long? Depth { get; private set; }
 
     internal static InspectContentsOptions Bind(OptionReader options) => new InspectContentsOptions
     {

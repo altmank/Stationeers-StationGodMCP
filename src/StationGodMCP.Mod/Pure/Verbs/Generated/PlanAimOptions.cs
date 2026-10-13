@@ -11,17 +11,17 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of plan aim, in verb names (catalogue/verbs/plan.json).</summary>
-internal sealed record PlanAimOptions
+internal sealed class PlanAimOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("plan", "aim", null, null, null, new WhatCost(CostClass.Plan),
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}", true),
         new OptionSpec("contact", "{\"type\":\"string\"}"));
 
-    internal Selector Selector { get; private init; } = Selector.None;
+    internal Selector Selector { get; private set; } = Selector.None;
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal string? Contact { get; private init; }
+    internal string? Contact { get; private set; }
 
     internal static PlanAimOptions Bind(OptionReader options) => new PlanAimOptions
     {

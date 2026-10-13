@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of inspect chip, in verb names (catalogue/verbs/inspect.json).</summary>
-internal sealed record InspectChipOptions
+internal sealed class InspectChipOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("inspect", "chip", "pins", null, null, new WhatCost(CostClass.Instant),
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}", true),
@@ -22,21 +22,21 @@ internal sealed record InspectChipOptions
         new OptionSpec("log", "{\"type\":\"integer\",\"minimum\":0,\"maximum\":200}", false, "5"),
         new OptionSpec("targets", "{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"maxItems\":256}"));
 
-    internal Selector Selector { get; private init; } = Selector.None;
+    internal Selector Selector { get; private set; } = Selector.None;
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal string? Gateway { get; private init; }
+    internal string? Gateway { get; private set; }
 
-    internal IReadOnlyList<string>? Parts { get; private init; }
+    internal IReadOnlyList<string>? Parts { get; private set; }
 
-    internal long? Start { get; private init; }
+    internal long? Start { get; private set; }
 
-    internal long? Count { get; private init; }
+    internal long? Count { get; private set; }
 
-    internal long? Log { get; private init; }
+    internal long? Log { get; private set; }
 
-    internal IReadOnlyList<string>? Targets { get; private init; }
+    internal IReadOnlyList<string>? Targets { get; private set; }
 
     internal static InspectChipOptions Bind(OptionReader options) => new InspectChipOptions
     {

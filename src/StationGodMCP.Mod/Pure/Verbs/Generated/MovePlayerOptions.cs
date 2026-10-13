@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of move player, in verb names (catalogue/verbs/move.json).</summary>
-internal sealed record MovePlayerOptions
+internal sealed class MovePlayerOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("move", "player", null, null, new WriteSpec("confirm", "cannot", "[cannot undo: player move]"), new WhatCost(CostClass.Instant),
         new OptionSpec("player", "{\"type\":\"string\"}"),
@@ -21,19 +21,19 @@ internal sealed record MovePlayerOptions
         new OptionSpec("safe_ground", "{\"type\":\"boolean\"}", false, "false"),
         new OptionSpec("confirm", "{\"type\":\"boolean\"}", false, "false"));
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal ReportConfirm Report { get; private init; } = ReportConfirm.Acting;
+    internal ReportConfirm Report { get; private set; } = ReportConfirm.Acting;
 
-    internal string? Player { get; private init; }
+    internal string? Player { get; private set; }
 
-    internal JToken? At { get; private init; }
+    internal JToken? At { get; private set; }
 
-    internal string? To { get; private init; }
+    internal string? To { get; private set; }
 
-    internal string? ToPlayer { get; private init; }
+    internal string? ToPlayer { get; private set; }
 
-    internal bool? SafeGround { get; private init; }
+    internal bool? SafeGround { get; private set; }
 
     internal static MovePlayerOptions Bind(OptionReader options) => new MovePlayerOptions
     {

@@ -55,4 +55,15 @@ internal static class NearCentres
 }
 
 /// <summary>A selector's place: metres around the player (near "player"), and the area things must stand in.</summary>
-internal sealed record SelectorPlace(double? AroundPlayerM, PointArea Area);
+internal sealed class SelectorPlace
+{
+    internal SelectorPlace(double? aroundPlayerM, PointArea area)
+    {
+        AroundPlayerM = aroundPlayerM;
+        Area = area;
+    }
+
+    public double? AroundPlayerM { get; }
+
+    public PointArea Area { get; }
+}

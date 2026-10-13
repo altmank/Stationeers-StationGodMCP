@@ -69,8 +69,18 @@ internal static class FindFrame
             ("total_outer", counts.TotalOuter), ("include_inner", includeInner), ("local_player", origin.View));
 
     /// <summary>The census's counts a walk's every page answers.</summary>
-    internal sealed record FrameCounts(int TotalFrames, int TotalOuter)
+    internal sealed class FrameCounts
     {
+        internal FrameCounts(int totalFrames, int totalOuter)
+        {
+            TotalFrames = totalFrames;
+            TotalOuter = totalOuter;
+        }
+
+        public int TotalFrames { get; }
+
+        public int TotalOuter { get; }
+
         internal static FrameCounts None { get; } = new FrameCounts(0, 0);
     }
 }

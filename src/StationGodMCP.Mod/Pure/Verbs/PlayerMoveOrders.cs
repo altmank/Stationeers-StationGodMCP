@@ -13,8 +13,21 @@ namespace StationGodMCP.Pure.Verbs;
 /// move player's order (catalogue move.json, player): the player (a name or id; the player when left out), exactly one
 /// destination (at, to or to_player) and safe_ground.
 /// </summary>
-internal sealed record PlayerMoveOrder(string? Player, MoveDestination Destination, bool SafeGround)
+internal sealed class PlayerMoveOrder
 {
+    internal PlayerMoveOrder(string? player, MoveDestination destination, bool safeGround)
+    {
+        Player = player;
+        Destination = destination;
+        SafeGround = safeGround;
+    }
+
+    public string? Player { get; }
+
+    public MoveDestination Destination { get; }
+
+    public bool SafeGround { get; }
+
     /// <summary>The order the options give; null with every problem added.</summary>
     internal static PlayerMoveOrder? Of(string? player, JToken? at, string? to, string? toPlayer, bool safeGround,
         List<OptionProblem> problems)
@@ -31,7 +44,7 @@ internal sealed record PlayerMoveOrder(string? Player, MoveDestination Destinati
 }
 
 /// <summary>Where the player goes: a point, beside a thing, or beside another player.</summary>
-internal abstract record MoveDestination
+internal abstract class MoveDestination
 {
     /// <summary>The largest coordinate a point may have, in metres.</summary>
     internal const double MaximumCoordinate = 100000.0;
@@ -94,20 +107,41 @@ internal abstract record MoveDestination
         !double.IsNaN(point.X) && !double.IsInfinity(point.X) && !double.IsNaN(point.Y) &&
         !double.IsInfinity(point.Y) && !double.IsNaN(point.Z) && !double.IsInfinity(point.Z);
 
-    internal sealed record Point(Vec3 At) : MoveDestination
+    internal sealed class Point : MoveDestination
     {
+        internal Point(Vec3 at)
+        {
+            At = at;
+        }
+
+        public Vec3 At { get; }
+
         internal override string Form => "at";
     }
 
     /// <summary>Beside a thing: its id as given (a reference id or "looking_at").</summary>
-    internal sealed record NextToThing(string Id) : MoveDestination
+    internal sealed class NextToThing : MoveDestination
     {
+        internal NextToThing(string id)
+        {
+            Id = id;
+        }
+
+        public string Id { get; }
+
         internal override string Form => "to";
     }
 
     /// <summary>Beside another player: their name or reference id.</summary>
-    internal sealed record NextToPlayer(string Player) : MoveDestination
+    internal sealed class NextToPlayer : MoveDestination
     {
+        internal NextToPlayer(string player)
+        {
+            Player = player;
+        }
+
+        public string Player { get; }
+
         internal override string Form => "to_player";
     }
 }

@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of build finish, in verb names (catalogue/verbs/build.json).</summary>
-internal sealed record BuildFinishOptions
+internal sealed class BuildFinishOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("build", "finish", null, null, new WriteSpec("confirm", "cannot", "[cannot undo: change job]"), new WhatCost(CostClass.Instant),
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}", true),
@@ -20,17 +20,17 @@ internal sealed record BuildFinishOptions
         new OptionSpec("free", "{\"type\":\"boolean\"}", false, "false"),
         new OptionSpec("confirm", "{\"type\":\"boolean\"}", false, "false"));
 
-    internal Selector Selector { get; private init; } = Selector.None;
+    internal Selector Selector { get; private set; } = Selector.None;
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal ReportConfirm Report { get; private init; } = ReportConfirm.Acting;
+    internal ReportConfirm Report { get; private set; } = ReportConfirm.Acting;
 
-    internal MaterialsSource Materials { get; private init; } = MaterialsSource.Player;
+    internal MaterialsSource Materials { get; private set; } = MaterialsSource.Player;
 
-    internal long? State { get; private init; }
+    internal long? State { get; private set; }
 
-    internal bool? Free { get; private init; }
+    internal bool? Free { get; private set; }
 
     internal static BuildFinishOptions Bind(OptionReader options) => new BuildFinishOptions
     {

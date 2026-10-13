@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of write genes, in verb names (catalogue/verbs/write.json).</summary>
-internal sealed record WriteGenesOptions
+internal sealed class WriteGenesOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("write", "genes", "results", null, new WriteSpec("confirm", "undo", "[undo]"), new WhatCost(CostClass.Bounded),
         new OptionSpec("id", "{\"type\":\"string\"}", true),
@@ -20,17 +20,17 @@ internal sealed record WriteGenesOptions
         new OptionSpec("allow", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"out_of_range\"]}}"),
         new OptionSpec("confirm", "{\"type\":\"boolean\"}", false, "false"));
 
-    internal Selector Selector { get; private init; } = Selector.None;
+    internal Selector Selector { get; private set; } = Selector.None;
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal ReportConfirm Report { get; private init; } = ReportConfirm.Acting;
+    internal ReportConfirm Report { get; private set; } = ReportConfirm.Acting;
 
-    internal long? Unit { get; private init; }
+    internal long? Unit { get; private set; }
 
-    internal JToken? Genes { get; private init; }
+    internal JToken? Genes { get; private set; }
 
-    internal IReadOnlyList<string>? Allow { get; private init; }
+    internal IReadOnlyList<string>? Allow { get; private set; }
 
     internal static WriteGenesOptions Bind(OptionReader options) => new WriteGenesOptions
     {

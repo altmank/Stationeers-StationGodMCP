@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of show preview, in verb names (catalogue/verbs/show.json).</summary>
-internal sealed record ShowPreviewOptions
+internal sealed class ShowPreviewOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("show", "preview", null, null, null, new WhatCost(CostClass.Instant),
         new OptionSpec("placements", "{\"type\":\"array\",\"items\":{\"type\":\"object\"},\"maxItems\":64}"),
@@ -32,41 +32,41 @@ internal sealed record ShowPreviewOptions
         new OptionSpec("clear", "{\"type\":\"boolean\"}"),
         new OptionSpec("xray", "{\"type\":\"boolean\"}", false, "false"));
 
-    internal Selector Selector { get; private init; } = Selector.None;
+    internal Selector Selector { get; private set; } = Selector.None;
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal JToken? Placements { get; private init; }
+    internal JToken? Placements { get; private set; }
 
-    internal JToken? At { get; private init; }
+    internal JToken? At { get; private set; }
 
-    internal JToken? Rotation { get; private init; }
+    internal JToken? Rotation { get; private set; }
 
-    internal string? Facing { get; private init; }
+    internal string? Facing { get; private set; }
 
-    internal string? Up { get; private init; }
+    internal string? Up { get; private set; }
 
-    internal string? Face { get; private init; }
+    internal string? Face { get; private set; }
 
-    internal JToken? Orient { get; private init; }
+    internal JToken? Orient { get; private set; }
 
-    internal double? AboveFloor { get; private init; }
+    internal double? AboveFloor { get; private set; }
 
-    internal JToken? BuildState { get; private init; }
+    internal JToken? BuildState { get; private set; }
 
-    internal IReadOnlyList<string>? Allow { get; private init; }
+    internal IReadOnlyList<string>? Allow { get; private set; }
 
-    internal JToken? Cells { get; private init; }
+    internal JToken? Cells { get; private set; }
 
-    internal JToken? Boxes { get; private init; }
+    internal JToken? Boxes { get; private set; }
 
-    internal double? Seconds { get; private init; }
+    internal double? Seconds { get; private set; }
 
-    internal bool? Keep { get; private init; }
+    internal bool? Keep { get; private set; }
 
-    internal bool? Clear { get; private init; }
+    internal bool? Clear { get; private set; }
 
-    internal bool? Xray { get; private init; }
+    internal bool? Xray { get; private set; }
 
     internal static ShowPreviewOptions Bind(OptionReader options) => new ShowPreviewOptions
     {

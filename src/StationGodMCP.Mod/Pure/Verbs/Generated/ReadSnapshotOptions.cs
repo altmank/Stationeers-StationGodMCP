@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of read snapshot, in verb names (catalogue/verbs/read.json).</summary>
-internal sealed record ReadSnapshotOptions
+internal sealed class ReadSnapshotOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("read", "snapshot", "devices", null, null, new WhatCost(CostClass.World),
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}"),
@@ -22,15 +22,15 @@ internal sealed record ReadSnapshotOptions
         new OptionSpec("include", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"zero_ratios\"]}}"),
         new OptionSpec("limit", "{\"type\":\"integer\",\"minimum\":1,\"maximum\":256}", false, "2"));
 
-    internal Selector Selector { get; private init; } = Selector.None;
+    internal Selector Selector { get; private set; } = Selector.None;
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal Paging Paging { get; private init; } = Paging.All;
+    internal Paging Paging { get; private set; } = Paging.All;
 
-    internal JToken? Logic { get; private init; }
+    internal JToken? Logic { get; private set; }
 
-    internal string? Gateway { get; private init; }
+    internal string? Gateway { get; private set; }
 
     internal static ReadSnapshotOptions Bind(OptionReader options) => new ReadSnapshotOptions
     {

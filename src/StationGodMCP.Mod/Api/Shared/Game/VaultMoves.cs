@@ -307,8 +307,24 @@ internal static class WithdrawStock
 /// A deposit's filter form: every item the filter keeps that the vault takes and kind keeps, nearest the player first,
 /// at most limit; Matched counts what the filter kept and Skipped what the vault does not take.
 /// </summary>
-internal sealed record DepositPicks(List<DepositEntry> Entries, int Matched, int Skipped, int Taken)
+internal sealed class DepositPicks
 {
+    internal DepositPicks(List<DepositEntry> entries, int matched, int skipped, int taken)
+    {
+        Entries = entries;
+        Matched = matched;
+        Skipped = skipped;
+        Taken = taken;
+    }
+
+    public List<DepositEntry> Entries { get; }
+
+    public int Matched { get; }
+
+    public int Skipped { get; }
+
+    public int Taken { get; }
+
     internal bool Truncated => Taken > Entries.Count;
 
     internal static DepositPicks Nearest(ItemFilter filter, VaultMaterial kind, int limit)

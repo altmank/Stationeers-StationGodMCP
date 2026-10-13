@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of survey network, in verb names (catalogue/verbs/survey.json).</summary>
-internal sealed record SurveyNetworkOptions
+internal sealed class SurveyNetworkOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("survey", "network", "members", null, null, new WhatCost(CostClass.Bounded),
         new OptionSpec("network", "{\"type\":[\"string\",\"object\"]}"),
@@ -26,17 +26,17 @@ internal sealed record SurveyNetworkOptions
         new OptionSpec("offset", "{\"type\":\"integer\",\"minimum\":0}", false, "0"),
         new OptionSpec("cursor", "{\"type\":\"string\"}"));
 
-    internal Selector Selector { get; private init; } = Selector.None;
+    internal Selector Selector { get; private set; } = Selector.None;
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal Paging Paging { get; private init; } = Paging.All;
+    internal Paging Paging { get; private set; } = Paging.All;
 
-    internal string? Kind { get; private init; }
+    internal string? Kind { get; private set; }
 
-    internal bool? Summarize { get; private init; }
+    internal bool? Summarize { get; private set; }
 
-    internal bool? OpenEnds { get; private init; }
+    internal bool? OpenEnds { get; private set; }
 
     internal static SurveyNetworkOptions Bind(OptionReader options) => new SurveyNetworkOptions
     {

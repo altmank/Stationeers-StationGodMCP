@@ -10,15 +10,39 @@ using StationGodMCP.Api.Views;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>One rename a call asks for: its place in the call, the thing's id as given, and the name.</summary>
-internal sealed record LabelOrder(int Index, string Id, string Label);
+internal sealed class LabelOrder
+{
+    internal LabelOrder(int index, string id, string label)
+    {
+        Index = index;
+        Id = id;
+        Label = label;
+    }
+
+    public int Index { get; }
+
+    public string Id { get; }
+
+    public string Label { get; }
+}
 
 /// <summary>
 /// write label's renames (catalogue write.json, label): one id gets label; a list names each '&lt;label&gt; 1',
 /// '&lt;label&gt; 2' in the order given (an empty label gives each its game name back, unnumbered); labels are
 /// {id, label} each, in order. Every problem with the options is listed at once.
 /// </summary>
-internal sealed record LabelOrders(IReadOnlyList<LabelOrder> Orders, bool AnswersRows)
+internal sealed class LabelOrders
 {
+    internal LabelOrders(IReadOnlyList<LabelOrder> orders, bool answersRows)
+    {
+        Orders = orders;
+        AnswersRows = answersRows;
+    }
+
+    public IReadOnlyList<LabelOrder> Orders { get; }
+
+    public bool AnswersRows { get; }
+
     /// <summary>The renames the options ask for; null with every problem added.</summary>
     internal static LabelOrders? Of(PerIdList? ids, string? label, JToken? labels, List<OptionProblem> problems)
     {
@@ -117,24 +141,86 @@ internal sealed record LabelOrders(IReadOnlyList<LabelOrder> Orders, bool Answer
 }
 
 /// <summary>A rename as the game made it: the thing, the name as written, whether a client sent it, the names around it.</summary>
-internal sealed record Relabel(ThingId ReferenceId, string? PrefabName, string Written, bool SentToHost,
-    LabelStateView Previous, LabelStateView Current);
+internal sealed class Relabel
+{
+    internal Relabel(ThingId referenceId, string? prefabName, string written, bool sentToHost, LabelStateView previous,
+        LabelStateView current)
+    {
+        ReferenceId = referenceId;
+        PrefabName = prefabName;
+        Written = written;
+        SentToHost = sentToHost;
+        Previous = previous;
+        Current = current;
+    }
+
+    public ThingId ReferenceId { get; }
+
+    public string? PrefabName { get; }
+
+    public string Written { get; }
+
+    public bool SentToHost { get; }
+
+    public LabelStateView Previous { get; }
+
+    public LabelStateView Current { get; }
+}
 
 /// <summary>
 /// One rename's result, in the call's order: checked for a report (Planned: the thing's name now and the name the
 /// Labeller would write), renamed (Renamed), or refused by a check of the game (Failed); each fails alone.
 /// </summary>
-internal abstract record LabelResult
+internal abstract class LabelResult
 {
     private LabelResult()
     {
     }
 
-    internal sealed record Planned(ThingId ReferenceId, string? Name, string? Now, string Written) : LabelResult;
+    internal sealed class Planned : LabelResult
+    {
+        internal Planned(ThingId referenceId, string? name, string? now, string written)
+        {
+            ReferenceId = referenceId;
+            Name = name;
+            Now = now;
+            Written = written;
+        }
 
-    internal sealed record Renamed(Relabel Rename) : LabelResult;
+        public ThingId ReferenceId { get; }
 
-    internal sealed record Failed(int Index, string Id, VerbError Error) : LabelResult;
+        public string? Name { get; }
+
+        public string? Now { get; }
+
+        public string Written { get; }
+    }
+
+    internal sealed class Renamed : LabelResult
+    {
+        internal Renamed(Relabel rename)
+        {
+            Rename = rename;
+        }
+
+        public Relabel Rename { get; }
+    }
+
+    internal sealed class Failed : LabelResult
+    {
+        internal Failed(int index, string id, VerbError error)
+        {
+            Index = index;
+            Id = id;
+            Error = error;
+        }
+
+        public int Index { get; }
+
+        public string Id { get; }
+
+        public VerbError Error { get; }
+    }
 }
 
 /// <summary>

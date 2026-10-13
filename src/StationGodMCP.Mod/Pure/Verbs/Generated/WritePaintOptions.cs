@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of write paint, in verb names (catalogue/verbs/write.json).</summary>
-internal sealed record WritePaintOptions
+internal sealed class WritePaintOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("write", "paint", "colors", null, new WriteSpec("acts", "undo", "[undo]"), new WhatCost(CostClass.Instant),
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}"),
@@ -22,17 +22,17 @@ internal sealed record WritePaintOptions
         new OptionSpec("items", "{\"type\":\"array\",\"items\":{\"type\":\"object\"},\"maxItems\":256}"),
         new OptionSpec("confirm", "{\"type\":\"boolean\"}", false, "false"));
 
-    internal Selector Selector { get; private init; } = Selector.None;
+    internal Selector Selector { get; private set; } = Selector.None;
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal ReportConfirm Report { get; private init; } = ReportConfirm.Acting;
+    internal ReportConfirm Report { get; private set; } = ReportConfirm.Acting;
 
-    internal string? Kind { get; private init; }
+    internal string? Kind { get; private set; }
 
-    internal string? Color { get; private init; }
+    internal string? Color { get; private set; }
 
-    internal JToken? Items { get; private init; }
+    internal JToken? Items { get; private set; }
 
     internal static WritePaintOptions Bind(OptionReader options) => new WritePaintOptions
     {

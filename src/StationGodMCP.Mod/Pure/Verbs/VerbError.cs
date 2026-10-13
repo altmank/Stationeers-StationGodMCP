@@ -8,8 +8,24 @@ using StationGodMCP.Api.Shared;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>A verb call's refusal: its code, its message in verb words, and the data a program can act on.</summary>
-internal sealed record VerbError(string Code, string Message, JToken? Data = null)
+internal sealed class VerbError
 {
+    internal VerbError(string code, string message, JToken? data = null)
+    {
+        Code = code;
+        Message = message;
+        Data = data;
+    }
+
+    public string Code { get; }
+
+    public string Message { get; }
+
+    public JToken? Data { get; }
+
+    /// <summary>The same error with another message.</summary>
+    internal VerbError WithMessage(string message) => new VerbError(Code, message, Data);
+
     internal const string InvalidArgument = "invalid_argument";
     internal const string MethodNotFound = "method_not_found";
 
@@ -44,8 +60,21 @@ internal sealed record VerbError(string Code, string Message, JToken? Data = nul
 }
 
 /// <summary>One thing wrong with a verb call: where (an option name or path), what, and the nearest valid names.</summary>
-internal sealed record OptionProblem(string Path, string Problem, IReadOnlyList<string>? Nearest = null)
+internal sealed class OptionProblem
 {
+    internal OptionProblem(string path, string problem, IReadOnlyList<string>? nearest = null)
+    {
+        Path = path;
+        Problem = problem;
+        Nearest = nearest;
+    }
+
+    public string Path { get; }
+
+    public string Problem { get; }
+
+    public IReadOnlyList<string>? Nearest { get; }
+
     internal JObject ToJson()
     {
         JObject problem = new JObject { ["path"] = Path, ["problem"] = Problem };

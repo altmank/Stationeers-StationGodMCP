@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of inspect rocket, in verb names (catalogue/verbs/inspect.json).</summary>
-internal sealed record InspectRocketOptions
+internal sealed class InspectRocketOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("inspect", "rocket", "rockets", null, null, new WhatCost(CostClass.World),
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}"),
@@ -19,13 +19,13 @@ internal sealed record InspectRocketOptions
         new OptionSpec("self_test", "{\"type\":\"boolean\"}", false, "true", "[{\"when\":{\"compact\":true},\"default\":\"false\"}]"),
         new OptionSpec("include", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"parts\",\"explain\"]}}"));
 
-    internal Selector Selector { get; private init; } = Selector.None;
+    internal Selector Selector { get; private set; } = Selector.None;
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal bool? Compact { get; private init; }
+    internal bool? Compact { get; private set; }
 
-    internal bool? SelfTest { get; private init; }
+    internal bool? SelfTest { get; private set; }
 
     internal static InspectRocketOptions Bind(OptionReader options) => new InspectRocketOptions
     {

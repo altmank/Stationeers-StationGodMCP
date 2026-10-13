@@ -13,14 +13,31 @@ namespace StationGodMCP.Pure.Verbs;
 /// out; a room or the planet needs them named), amount_mol per gas (all when left out), allow burst and joined. The
 /// planet only gives gas up: source "planet" goes with delete and named gases.
 /// </summary>
-internal sealed record GasMoveOrder(
-    GasPlaceOption Source,
-    GasPlaceOption? To,
-    IReadOnlyList<string>? Gases,
-    double? AmountMol,
-    bool AllowBurst,
-    bool Joined)
+internal sealed class GasMoveOrder
 {
+    internal GasMoveOrder(GasPlaceOption source, GasPlaceOption? to, IReadOnlyList<string>? gases, double? amountMol,
+        bool allowBurst, bool joined)
+    {
+        Source = source;
+        To = to;
+        Gases = gases;
+        AmountMol = amountMol;
+        AllowBurst = allowBurst;
+        Joined = joined;
+    }
+
+    public GasPlaceOption Source { get; }
+
+    public GasPlaceOption? To { get; }
+
+    public IReadOnlyList<string>? Gases { get; }
+
+    public double? AmountMol { get; }
+
+    public bool AllowBurst { get; }
+
+    public bool Joined { get; }
+
     private const string SourceOption = "source";
     private const string ToOption = "to";
     private const string DeleteOption = "delete";

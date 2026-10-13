@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of write label, in verb names (catalogue/verbs/write.json).</summary>
-internal sealed record WriteLabelOptions
+internal sealed class WriteLabelOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("write", "label", "results", null, new WriteSpec("acts", "undo", "[undo]"), new WhatCost(CostClass.Instant),
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}"),
@@ -19,15 +19,15 @@ internal sealed record WriteLabelOptions
         new OptionSpec("labels", "{\"type\":\"array\",\"items\":{\"type\":\"object\"},\"maxItems\":64}"),
         new OptionSpec("confirm", "{\"type\":\"boolean\"}", false, "false"));
 
-    internal Selector Selector { get; private init; } = Selector.None;
+    internal Selector Selector { get; private set; } = Selector.None;
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal ReportConfirm Report { get; private init; } = ReportConfirm.Acting;
+    internal ReportConfirm Report { get; private set; } = ReportConfirm.Acting;
 
-    internal string? Label { get; private init; }
+    internal string? Label { get; private set; }
 
-    internal JToken? Labels { get; private init; }
+    internal JToken? Labels { get; private set; }
 
     internal static WriteLabelOptions Bind(OptionReader options) => new WriteLabelOptions
     {

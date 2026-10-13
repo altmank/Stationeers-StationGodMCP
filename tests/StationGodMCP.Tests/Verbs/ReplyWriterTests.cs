@@ -75,7 +75,7 @@ public sealed class ReplyWriterTests
 
         VerbOutcome.Refused refused = Assert.IsType<VerbOutcome.Refused>(rows.For(Ids("7")));
 
-        Assert.Equal(new VerbError("not_found", "No thing 7.", refused.Error.Data), refused.Error);
+        Assert.Equal(("not_found", "No thing 7."), (refused.Error.Code, refused.Error.Message));
         Assert.Equal("7", (string?)refused.Error.Data!["id"]);
     }
 

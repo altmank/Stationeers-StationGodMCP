@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of plan mining, in verb names (catalogue/verbs/plan.json).</summary>
-internal sealed record PlanMiningOptions
+internal sealed class PlanMiningOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("plan", "mining", "sites", null, null, new WhatCost(CostClass.Instant),
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}"),
@@ -19,13 +19,13 @@ internal sealed record PlanMiningOptions
         new OptionSpec("collectable_only", "{\"type\":\"boolean\"}", false, "false"),
         new OptionSpec("include", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"explain\"]}}"));
 
-    internal Selector Selector { get; private init; } = Selector.None;
+    internal Selector Selector { get; private set; } = Selector.None;
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal string? Node { get; private init; }
+    internal string? Node { get; private set; }
 
-    internal bool? CollectableOnly { get; private init; }
+    internal bool? CollectableOnly { get; private set; }
 
     internal static PlanMiningOptions Bind(OptionReader options) => new PlanMiningOptions
     {

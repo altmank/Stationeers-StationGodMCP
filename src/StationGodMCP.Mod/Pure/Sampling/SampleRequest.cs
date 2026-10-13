@@ -12,7 +12,21 @@ namespace StationGodMCP.Pure.Sampling;
 /// One value read sample watches: a thing's id (or "looking_at") and a logic type (a name or a number), with the option
 /// path that named it (id, id[i] or reads[i]).
 /// </summary>
-internal sealed record SampleTarget(string Id, JToken Logic, string Path = "id");
+internal sealed class SampleTarget
+{
+    internal SampleTarget(string id, JToken logic, string path = "id")
+    {
+        Id = id;
+        Logic = logic;
+        Path = path;
+    }
+
+    public string Id { get; }
+
+    public JToken Logic { get; }
+
+    public string Path { get; }
+}
 
 /// <summary>
 /// read sample's request (catalogue read.json, what sample): the targets (every id with every logic type, or the reads

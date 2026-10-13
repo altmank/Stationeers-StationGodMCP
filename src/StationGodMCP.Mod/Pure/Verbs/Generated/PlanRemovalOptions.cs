@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of plan removal, in verb names (catalogue/verbs/plan.json).</summary>
-internal sealed record PlanRemovalOptions
+internal sealed class PlanRemovalOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("plan", "removal", "removals", null, null, new WhatCost(CostClass.Plan),
         new OptionSpec("kind", "{\"type\":\"string\",\"enum\":[\"cable\",\"pipe\",\"chute\"]}", false, "cable"),
@@ -26,23 +26,23 @@ internal sealed record PlanRemovalOptions
         new OptionSpec("include", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"links\",\"notes\",\"network_devices\"]}}"),
         new OptionSpec("rows", "{\"type\":\"integer\",\"minimum\":0,\"maximum\":1024}", false, "5"));
 
-    internal Selector Selector { get; private init; } = Selector.None;
+    internal Selector Selector { get; private set; } = Selector.None;
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal ReportConfirm Report { get; private init; } = ReportConfirm.Acting;
+    internal ReportConfirm Report { get; private set; } = ReportConfirm.Acting;
 
-    internal MaterialsSource Materials { get; private init; } = MaterialsSource.Player;
+    internal MaterialsSource Materials { get; private set; } = MaterialsSource.Player;
 
-    internal string? Kind { get; private init; }
+    internal string? Kind { get; private set; }
 
-    internal JToken? Waypoints { get; private init; }
+    internal JToken? Waypoints { get; private set; }
 
-    internal JToken? Cells { get; private init; }
+    internal JToken? Cells { get; private set; }
 
-    internal string? Root { get; private init; }
+    internal string? Root { get; private set; }
 
-    internal IReadOnlyList<string>? Allow { get; private init; }
+    internal IReadOnlyList<string>? Allow { get; private set; }
 
     internal static PlanRemovalOptions Bind(OptionReader options) => new PlanRemovalOptions
     {

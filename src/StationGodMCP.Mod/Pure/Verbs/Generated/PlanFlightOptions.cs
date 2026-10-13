@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of plan flight, in verb names (catalogue/verbs/plan.json).</summary>
-internal sealed record PlanFlightOptions
+internal sealed class PlanFlightOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("plan", "flight", "legs", null, null, new WhatCost(CostClass.Plan),
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}"),
@@ -34,43 +34,43 @@ internal sealed record PlanFlightOptions
         new OptionSpec("column_check", "{\"type\":\"boolean\"}", false, "true"),
         new OptionSpec("include", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"explain\"]}}"));
 
-    internal Selector Selector { get; private init; } = Selector.None;
+    internal Selector Selector { get; private set; } = Selector.None;
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal string? Node { get; private init; }
+    internal string? Node { get; private set; }
 
-    internal string? Profile { get; private init; }
+    internal string? Profile { get; private set; }
 
-    internal double? ParkS { get; private init; }
+    internal double? ParkS { get; private set; }
 
-    internal bool? Mine { get; private init; }
+    internal bool? Mine { get; private set; }
 
-    internal bool? FillHolds { get; private init; }
+    internal bool? FillHolds { get; private set; }
 
-    internal long? AddCargoSlots { get; private init; }
+    internal long? AddCargoSlots { get; private set; }
 
-    internal double? ParkLoadW { get; private init; }
+    internal double? ParkLoadW { get; private set; }
 
-    internal bool? ThenReturn { get; private init; }
+    internal bool? ThenReturn { get; private set; }
 
-    internal string? ReturnTo { get; private init; }
+    internal string? ReturnTo { get; private set; }
 
-    internal bool? DeployPayload { get; private init; }
+    internal bool? DeployPayload { get; private set; }
 
-    internal double? TransferMol { get; private init; }
+    internal double? TransferMol { get; private set; }
 
-    internal string? TransferWith { get; private init; }
+    internal string? TransferWith { get; private set; }
 
-    internal double? TransferBatteryJ { get; private init; }
+    internal double? TransferBatteryJ { get; private set; }
 
-    internal JToken? WhatIf { get; private init; }
+    internal JToken? WhatIf { get; private set; }
 
-    internal double? MinConfidence { get; private init; }
+    internal double? MinConfidence { get; private set; }
 
-    internal bool? Limits { get; private init; }
+    internal bool? Limits { get; private set; }
 
-    internal bool? ColumnCheck { get; private init; }
+    internal bool? ColumnCheck { get; private set; }
 
     internal static PlanFlightOptions Bind(OptionReader options) => new PlanFlightOptions
     {

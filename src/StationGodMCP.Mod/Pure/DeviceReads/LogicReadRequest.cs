@@ -10,7 +10,18 @@ using StationGodMCP.Pure.Verbs;
 namespace StationGodMCP.Pure.DeviceReads;
 
 /// <summary>One (id, logic type) pair read logic reads: a thing's id (or "looking_at") and a logic type name or number.</summary>
-internal sealed record LogicPair(string Id, JToken Logic);
+internal sealed class LogicPair
+{
+    internal LogicPair(string id, JToken logic)
+    {
+        Id = id;
+        Logic = logic;
+    }
+
+    public string Id { get; }
+
+    public JToken Logic { get; }
+}
 
 /// <summary>
 /// read logic's request (catalogue read.json, what logic), in its three reply forms: One, one id with one logic type;
@@ -19,7 +30,7 @@ internal sealed record LogicPair(string Id, JToken Logic);
 /// one row per entry in one frame, up to 128 entries and 1,024 values. Built with every problem at once (Of), in verb
 /// names; what a logic name means is left to the game, which fails that value alone.
 /// </summary>
-internal abstract record LogicReadRequest
+internal abstract class LogicReadRequest
 {
     internal const int MaximumPairs = 256;
 
@@ -33,11 +44,35 @@ internal abstract record LogicReadRequest
     {
     }
 
-    internal sealed record One(LogicPair Pair) : LogicReadRequest;
+    internal sealed class One : LogicReadRequest
+    {
+        internal One(LogicPair pair)
+        {
+            Pair = pair;
+        }
 
-    internal sealed record Pairs(IReadOnlyList<LogicPair> Entries) : LogicReadRequest;
+        public LogicPair Pair { get; }
+    }
 
-    internal sealed record Items(DeviceReadRequest Request) : LogicReadRequest;
+    internal sealed class Pairs : LogicReadRequest
+    {
+        internal Pairs(IReadOnlyList<LogicPair> entries)
+        {
+            Entries = entries;
+        }
+
+        public IReadOnlyList<LogicPair> Entries { get; }
+    }
+
+    internal sealed class Items : LogicReadRequest
+    {
+        internal Items(DeviceReadRequest request)
+        {
+            Request = request;
+        }
+
+        public DeviceReadRequest Request { get; }
+    }
 
     /// <summary>
     /// The request the options give; null with what is wrong with them in problems. bounded false leaves the size bounds

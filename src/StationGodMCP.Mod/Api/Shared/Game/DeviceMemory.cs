@@ -96,5 +96,28 @@ internal static class DeviceMemory
 }
 
 /// <summary>A checked memory write: where, the device's name, the values, and the memory there before.</summary>
-internal sealed record MemoryWritePlan(MemoryPlace Place, string? Name, IMemoryWritable Memory,
-    IMemoryReadable? Readable, IReadOnlyList<double> Values, List<double>? Previous);
+internal sealed class MemoryWritePlan
+{
+    internal MemoryWritePlan(MemoryPlace place, string? name, IMemoryWritable memory, IMemoryReadable? readable,
+        IReadOnlyList<double> values, List<double>? previous)
+    {
+        Place = place;
+        Name = name;
+        Memory = memory;
+        Readable = readable;
+        Values = values;
+        Previous = previous;
+    }
+
+    public MemoryPlace Place { get; }
+
+    public string? Name { get; }
+
+    public IMemoryWritable Memory { get; }
+
+    public IMemoryReadable? Readable { get; }
+
+    public IReadOnlyList<double> Values { get; }
+
+    public List<double>? Previous { get; }
+}

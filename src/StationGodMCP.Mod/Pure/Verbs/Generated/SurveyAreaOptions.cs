@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of survey area, in verb names (catalogue/verbs/survey.json).</summary>
-internal sealed record SurveyAreaOptions
+internal sealed class SurveyAreaOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("survey", "area", "cells", null, null, new WhatCost(CostClass.World),
         new OptionSpec("box", "{\"type\":\"array\",\"minItems\":2,\"maxItems\":2}"),
@@ -28,21 +28,21 @@ internal sealed record SurveyAreaOptions
         new OptionSpec("offset", "{\"type\":\"integer\",\"minimum\":0}", false, "0"),
         new OptionSpec("cursor", "{\"type\":\"string\"}"));
 
-    internal Selector Selector { get; private init; } = Selector.None;
+    internal Selector Selector { get; private set; } = Selector.None;
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal Paging Paging { get; private init; } = Paging.All;
+    internal Paging Paging { get; private set; } = Paging.All;
 
-    internal IReadOnlyList<string>? Sections { get; private init; }
+    internal IReadOnlyList<string>? Sections { get; private set; }
 
-    internal bool? Networks { get; private init; }
+    internal bool? Networks { get; private set; }
 
-    internal IReadOnlyList<string>? Kind { get; private init; }
+    internal IReadOnlyList<string>? Kind { get; private set; }
 
-    internal string? CellDetail { get; private init; }
+    internal string? CellDetail { get; private set; }
 
-    internal bool? OccupiedOnly { get; private init; }
+    internal bool? OccupiedOnly { get; private set; }
 
     internal static SurveyAreaOptions Bind(OptionReader options) => new SurveyAreaOptions
     {

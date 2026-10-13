@@ -112,7 +112,7 @@ internal static class VerbOptionsCode
         code.Append("namespace ").Append(Namespace).Append(";\n\n");
         code.Append("/// <summary>The options of ").Append(label).Append(", in verb names (catalogue/verbs/")
             .Append(verbName).Append(".json).</summary>\n");
-        code.Append("internal sealed record ").Append(type).Append("\n{\n");
+        code.Append("internal sealed class ").Append(type).Append("\n{\n");
         code.Append("    internal static WhatSpec Spec { get; } = new WhatSpec(").Append(Literal(verbName)).Append(", ")
             .Append(Literal(what)).Append(", ").Append(Literal((string?)source["reply"]?["list"])).Append(", ")
             .Append(Literal((string?)source["id_list"])).Append(", ").Append(WriteSpec(source)).Append(", ")
@@ -156,7 +156,7 @@ internal static class VerbOptionsCode
         foreach ((string property, string propertyType, string _, string? empty) in members)
         {
             code.Append("\n    internal ").Append(propertyType).Append(' ').Append(property)
-                .Append(" { get; private init; }").Append(empty == null ? "\n" : " = " + empty + ";\n");
+                .Append(" { get; private set; }").Append(empty == null ? "\n" : " = " + empty + ";\n");
         }
 
         code.Append("\n    internal static ").Append(type).Append(" Bind(OptionReader options) => new ").Append(type)

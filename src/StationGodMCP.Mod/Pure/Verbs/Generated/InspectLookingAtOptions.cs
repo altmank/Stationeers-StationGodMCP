@@ -11,15 +11,15 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of inspect looking_at, in verb names (catalogue/verbs/inspect.json).</summary>
-internal sealed record InspectLookingAtOptions
+internal sealed class InspectLookingAtOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("inspect", "looking_at", null, null, null, new WhatCost(CostClass.Instant),
         new OptionSpec("distance", "{\"type\":\"number\",\"minimum\":0,\"maximum\":50}", false, "10"),
         new OptionSpec("include", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"player\",\"interactable\",\"view\",\"hit\",\"body\",\"all\"]}}"));
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal double? Distance { get; private init; }
+    internal double? Distance { get; private set; }
 
     internal static InspectLookingAtOptions Bind(OptionReader options) => new InspectLookingAtOptions
     {

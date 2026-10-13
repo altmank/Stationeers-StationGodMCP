@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of write memory, in verb names (catalogue/verbs/write.json).</summary>
-internal sealed record WriteMemoryOptions
+internal sealed class WriteMemoryOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("write", "memory", null, null, new WriteSpec("confirm", "undo", "[undo]"), new WhatCost(CostClass.Instant),
         new OptionSpec("id", "{\"type\":\"string\"}", true),
@@ -20,17 +20,17 @@ internal sealed record WriteMemoryOptions
         new OptionSpec("values", "{\"type\":\"array\",\"items\":{\"type\":\"number\"},\"maxItems\":512}", true),
         new OptionSpec("confirm", "{\"type\":\"boolean\"}", false, "false"));
 
-    internal Selector Selector { get; private init; } = Selector.None;
+    internal Selector Selector { get; private set; } = Selector.None;
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal ReportConfirm Report { get; private init; } = ReportConfirm.Acting;
+    internal ReportConfirm Report { get; private set; } = ReportConfirm.Acting;
 
-    internal string? Gateway { get; private init; }
+    internal string? Gateway { get; private set; }
 
-    internal long? Start { get; private init; }
+    internal long? Start { get; private set; }
 
-    internal JToken? Values { get; private init; }
+    internal JToken? Values { get; private set; }
 
     internal static WriteMemoryOptions Bind(OptionReader options) => new WriteMemoryOptions
     {

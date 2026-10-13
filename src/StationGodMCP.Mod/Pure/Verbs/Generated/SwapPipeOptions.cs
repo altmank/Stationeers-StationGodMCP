@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of swap pipe, in verb names (catalogue/verbs/swap.json).</summary>
-internal sealed record SwapPipeOptions
+internal sealed class SwapPipeOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("swap", "pipe", "pieces", null, new WriteSpec("confirm", "cannot", "[cannot undo: change job]"), new WhatCost(CostClass.Job),
         new OptionSpec("network", "{\"type\":[\"string\",\"object\"]}"),
@@ -33,31 +33,31 @@ internal sealed record SwapPipeOptions
         new OptionSpec("queue", "{\"type\":\"boolean\"}", false, "true"),
         new OptionSpec("max_wait", "{\"type\":\"number\",\"minimum\":0}", false, "30"));
 
-    internal Selector Selector { get; private init; } = Selector.None;
+    internal Selector Selector { get; private set; } = Selector.None;
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal ReportConfirm Report { get; private init; } = ReportConfirm.Acting;
+    internal ReportConfirm Report { get; private set; } = ReportConfirm.Acting;
 
-    internal MaterialsSource Materials { get; private init; } = MaterialsSource.Player;
+    internal MaterialsSource Materials { get; private set; } = MaterialsSource.Player;
 
-    internal string? Into { get; private init; }
+    internal string? Into { get; private set; }
 
-    internal JToken? Tidy { get; private init; }
+    internal JToken? Tidy { get; private set; }
 
-    internal IReadOnlyList<string>? Spare { get; private init; }
+    internal IReadOnlyList<string>? Spare { get; private set; }
 
-    internal IReadOnlyList<string>? Only { get; private init; }
+    internal IReadOnlyList<string>? Only { get; private set; }
 
-    internal string? OlderThan { get; private init; }
+    internal string? OlderThan { get; private set; }
 
-    internal string? Root { get; private init; }
+    internal string? Root { get; private set; }
 
-    internal string? AcknowledgeGasLost { get; private init; }
+    internal string? AcknowledgeGasLost { get; private set; }
 
-    internal bool? SkipUnmatched { get; private init; }
+    internal bool? SkipUnmatched { get; private set; }
 
-    internal bool? Queue { get; private init; }
+    internal bool? Queue { get; private set; }
 
     internal static SwapPipeOptions Bind(OptionReader options) => new SwapPipeOptions
     {

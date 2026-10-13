@@ -28,7 +28,21 @@ internal readonly struct RealTimeTick
 }
 
 /// <summary>One target a sample could not read: its place in the request's targets, and why, in verb words.</summary>
-internal sealed record SampleMiss(int Index, string Code, string Message);
+internal sealed class SampleMiss
+{
+    internal SampleMiss(int index, string code, string message)
+    {
+        Index = index;
+        Code = code;
+        Message = message;
+    }
+
+    public int Index { get; }
+
+    public string Code { get; }
+
+    public string Message { get; }
+}
 
 /// <summary>
 /// One sample's read: the gateway the reads went through and the targets it could not read (each still has its entry,

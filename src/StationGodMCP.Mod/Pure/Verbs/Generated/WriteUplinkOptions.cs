@@ -11,20 +11,20 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of write uplink, in verb names (catalogue/verbs/write.json).</summary>
-internal sealed record WriteUplinkOptions
+internal sealed class WriteUplinkOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("write", "uplink", null, null, new WriteSpec("acts", "cannot", "[cannot undo: uplink]"), new WhatCost(CostClass.Instant),
         new OptionSpec("id", "{\"type\":\"string\"}", true),
         new OptionSpec("downlink", "{\"type\":\"string\"}", true),
         new OptionSpec("gateway", "{\"type\":\"string\"}", false, "world"));
 
-    internal Selector Selector { get; private init; } = Selector.None;
+    internal Selector Selector { get; private set; } = Selector.None;
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal string? Downlink { get; private init; }
+    internal string? Downlink { get; private set; }
 
-    internal string? Gateway { get; private init; }
+    internal string? Gateway { get; private set; }
 
     internal static WriteUplinkOptions Bind(OptionReader options) => new WriteUplinkOptions
     {

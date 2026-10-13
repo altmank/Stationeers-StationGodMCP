@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of write battery, in verb names (catalogue/verbs/write.json).</summary>
-internal sealed record WriteBatteryOptions
+internal sealed class WriteBatteryOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("write", "battery", "results", null, new WriteSpec("confirm", "undo", "[undo: restores the value, not what happened since]"), new WhatCost(CostClass.Instant),
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}"),
@@ -21,17 +21,17 @@ internal sealed record WriteBatteryOptions
         new OptionSpec("joules", "{\"type\":\"number\",\"minimum\":0}", false, "full"),
         new OptionSpec("confirm", "{\"type\":\"boolean\"}", false, "false"));
 
-    internal Selector Selector { get; private init; } = Selector.None;
+    internal Selector Selector { get; private set; } = Selector.None;
 
-    internal Fields Fields { get; private init; } = Fields.None;
+    internal Fields Fields { get; private set; } = Fields.None;
 
-    internal ReportConfirm Report { get; private init; } = ReportConfirm.Acting;
+    internal ReportConfirm Report { get; private set; } = ReportConfirm.Acting;
 
-    internal string? Rocket { get; private init; }
+    internal string? Rocket { get; private set; }
 
-    internal double? Ratio { get; private init; }
+    internal double? Ratio { get; private set; }
 
-    internal double? Joules { get; private init; }
+    internal double? Joules { get; private set; }
 
     internal static WriteBatteryOptions Bind(OptionReader options) => new WriteBatteryOptions
     {

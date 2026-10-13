@@ -11,20 +11,58 @@ namespace StationGodMCP.Pure.Screens;
 /// element id or the point [x, y] in surface pixels from the top left, the event (click, change or toggle), the new
 /// value as text with change, and the name the script's handler receives (null: the player's).
 /// </summary>
-internal sealed record ScreenPress(string? Surface, ScreenPress.Target On, string Event, string? Text, string? AsPlayer)
+internal sealed class ScreenPress
 {
+    internal ScreenPress(string? surface, ScreenPress.Target on, string @event, string? text, string? asPlayer)
+    {
+        Surface = surface;
+        On = on;
+        Event = @event;
+        Text = text;
+        AsPlayer = asPlayer;
+    }
+
+    public string? Surface { get; }
+
+    public ScreenPress.Target On { get; }
+
+    public string Event { get; }
+
+    public string? Text { get; }
+
+    public string? AsPlayer { get; }
+
     internal const string Change = "change";
 
     /// <summary>The control touched: by element id, or the one at a point.</summary>
-    internal abstract record Target
+    internal abstract class Target
     {
         private Target()
         {
         }
 
-        internal sealed record Element(string Id) : Target;
+        internal sealed class Element : Target
+        {
+            internal Element(string id)
+            {
+                Id = id;
+            }
 
-        internal sealed record Pixel(double X, double Y) : Target;
+            public string Id { get; }
+        }
+
+        internal sealed class Pixel : Target
+        {
+            internal Pixel(double x, double y)
+            {
+                X = x;
+                Y = y;
+            }
+
+            public double X { get; }
+
+            public double Y { get; }
+        }
     }
 
     /// <summary>The touch the options ask for; null with every problem added.</summary>

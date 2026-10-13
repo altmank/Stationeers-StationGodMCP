@@ -89,7 +89,30 @@ internal static class ScreenReads
 }
 
 /// <summary>What inspect screen asks of one surface: which, the elements kept, style and the picture.</summary>
-internal sealed record ScreenQuery(string? Surface, string? Type, string? Text, bool ShownOnly, bool Style, bool Image);
+internal sealed class ScreenQuery
+{
+    internal ScreenQuery(string? surface, string? type, string? text, bool shownOnly, bool style, bool image)
+    {
+        Surface = surface;
+        Type = type;
+        Text = text;
+        ShownOnly = shownOnly;
+        Style = style;
+        Image = image;
+    }
+
+    public string? Surface { get; }
+
+    public string? Type { get; }
+
+    public string? Text { get; }
+
+    public bool ShownOnly { get; }
+
+    public bool Style { get; }
+
+    public bool Image { get; }
+}
 
 /// <summary>
 /// What reading and pressing a screen share: the surface asked for, its elements, their layout and views; and the

@@ -63,7 +63,7 @@ internal static class WriteParts
                 {
                     return new VerbOutcome.Refused(notRun.Count == 0
                         ? error
-                        : error with { Message = $"{error.Message} Not run: {string.Join(", ", notRun)}." });
+                        : error.WithMessage($"{error.Message} Not run: {string.Join(", ", notRun)}."));
                 }
 
                 reply[part] = error.ToJson();
