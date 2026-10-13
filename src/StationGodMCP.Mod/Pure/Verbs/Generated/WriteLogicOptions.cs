@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of write logic, in verb names (catalogue/verbs/write.json).</summary>
 internal sealed class WriteLogicOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("write", "logic", "results", null, new WriteSpec("acts", "mixed", "[undo] held settings; [cannot undo: action] pulse and action types"), new WhatCost(CostClass.Bounded, new[] { "id", "writes" }),
+    internal static WhatSpec Spec { get; } = new WhatSpec("write", "logic", "results", null, new WriteSpec("acts", "mixed", "[undo] held settings; [cannot undo: action] pulse and action types"), new WhatCost(CostClass.Bounded, new[] { "id", "writes" }), null,
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}"),
         new OptionSpec("logic", "{\"type\":[\"string\",\"integer\"]}"),
         new OptionSpec("value", "{\"type\":\"number\"}"),

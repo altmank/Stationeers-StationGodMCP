@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of find gateway, in verb names (catalogue/verbs/find.json).</summary>
 internal sealed class FindGatewayOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("find", "gateway", "gateways", null, null, new WhatCost(CostClass.Instant));
+    internal static WhatSpec Spec { get; } = new WhatSpec("find", "gateway", "gateways", null, null, new WhatCost(CostClass.Instant), null);
 
     internal Fields Fields { get; private set; } = Fields.None;
 

@@ -135,6 +135,7 @@
       ],
       "example": {"command": "help", "confirm": true},
       "x-cost": {"class": "world"},
+      "x-cost-report": {"class": "instant"},
       "reply": {
         "list": "output",
         "variants": [

@@ -6,6 +6,9 @@ using System.IO;
 using System.Linq;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
+using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Catalogue;
+using StationGodMCP.Pure.Verbs;
 using StationGodMCP.Tests.CatalogueChecks;
 using Xunit;
 using Xunit.Abstractions;
@@ -221,6 +224,110 @@ public sealed class VerbCatalogueTests
         Assert.Equal(30, (double)sample["duration"]!["max_s"]!);
         Assert.Equal("world", (string)VerbCatalogue.Verb("find")["whats"]!["thing"]!["x-cost"]!["class"]!);
     }
+
+    /// <summary>
+    /// What a report call of each what counts as (x-cost-report): every confirm-route what states one and no other
+    /// what does, it has x-cost's shape and one of its classes, and it is the class the what's old method reported by
+    /// (dry_run absent or true; finish, the blueprints' paste, move gas and player, trade, write memory and battery
+    /// and server command reported instant, write genes bounded). The acting call keeps x-cost.
+    /// </summary>
+    [Fact]
+    public void EveryConfirmRouteWhatStatesItsReportCost()
+    {
+        JsonObject expected = JsonNode.Parse("""
+            {
+              "build.structure": "plan", "build.cable": "plan", "build.pipe": "plan", "build.chute": "plan",
+              "build.blueprint": "instant", "build.finish": "instant",
+              "move.gas": "instant", "move.player": "instant",
+              "remove.structure": "plan", "remove.cable": "plan", "remove.pipe": "plan", "remove.chute": "plan",
+              "server.command": "instant",
+              "swap.wall": "plan", "swap.frame": "plan", "swap.cable": "plan", "swap.pipe": "plan",
+              "swap.chute": "plan",
+              "trade.buy": "instant", "trade.sell": "instant",
+              "undo": "plan",
+              "write.memory": "instant", "write.battery": "instant", "write.genes": "bounded"
+            }
+            """)!.AsObject();
+        string[] classes = { "instant", "bounded", "world", "plan", "job", "stream" };
+        List<string> problems = new();
+        int confirmRoute = 0;
+        foreach ((string verb, string what, JsonObject source) in VerbCatalogue.Whats())
+        {
+            string key = verb + (what == VerbCatalogue.WhatlessKey ? "" : "." + what);
+            JsonObject? report = source["x-cost-report"] as JsonObject;
+            if ((string?)VerbCatalogue.WriteOf(source)?["route"] != "confirm")
+            {
+                if (report != null)
+                {
+                    problems.Add(key + ": x-cost-report on a what that is not confirm-route");
+                }
+
+                continue;
+            }
+
+            confirmRoute++;
+            if (report == null)
+            {
+                problems.Add(key + ": no x-cost-report");
+                continue;
+            }
+
+            if (!report.All(pair => pair.Key is "class" or "per" or "duration"))
+            {
+                problems.Add(key + ": x-cost-report keys");
+            }
+
+            string? stated = (string?)report["class"];
+            if (stated == null || !classes.Contains(stated))
+            {
+                problems.Add(key + ": x-cost-report class '" + stated + "'");
+            }
+            else if ((string?)expected[key] != stated)
+            {
+                problems.Add(key + ": x-cost-report is " + stated + ", its old method reported " + expected[key]);
+            }
+
+            expected.Remove(key);
+        }
+
+        Assert.True(problems.Count == 0, string.Join("\n", problems));
+        Assert.True(expected.Count == 0, "no x-cost-report for: " + string.Join(", ", expected.Select(pair => pair.Key)));
+        Assert.Equal(24, confirmRoute);
+    }
+
+    /// <summary>
+    /// A report call (a confirm-route what without confirm: true) is scheduled by the report class, an acting call
+    /// (confirm: true) by x-cost.
+    /// </summary>
+    [Fact]
+    public void AReportCallSchedulesByTheReportCostAndAnActingCallByItsCost()
+    {
+        int confirmRoute = 0;
+        foreach ((string verb, string what, JsonObject source) in VerbCatalogue.Whats())
+        {
+            if ((string?)VerbCatalogue.WriteOf(source)?["route"] != "confirm")
+            {
+                continue;
+            }
+
+            confirmRoute++;
+            WhatSpec spec = VerbSurface.Verb(verb)!.What(what == VerbCatalogue.WhatlessKey ? null : what)!;
+            CostClass report = Class((string)source["x-cost-report"]!["class"]!);
+            CostClass acting = Class((string)source["x-cost"]!["class"]!);
+
+            Assert.Equal(acting, spec.Cost.Class);
+            Assert.Equal(report, spec.ReportCost!.Class);
+            Assert.Equal(report, spec.CostFor(null).Class);
+            Assert.Equal(report, spec.CostFor(new JObject()).Class);
+            Assert.Equal(report, spec.CostFor(JObject.Parse("""{"confirm": false}""")).Class);
+            Assert.Equal(acting, spec.CostFor(JObject.Parse("""{"confirm": true}""")).Class);
+        }
+
+        Assert.Equal(24, confirmRoute);
+    }
+
+    // The cost class a catalogue word names.
+    private static CostClass Class(string word) => Enum.Parse<CostClass>(word, ignoreCase: true);
 
     [Fact]
     public void EveryDefaultFormNamesOptionsOfItsWhat()

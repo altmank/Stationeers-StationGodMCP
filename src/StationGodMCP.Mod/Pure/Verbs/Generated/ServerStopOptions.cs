@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of server stop, in verb names (catalogue/verbs/server.json).</summary>
 internal sealed class ServerStopOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("server", "stop", null, null, new WriteSpec("acts", "cannot", "[cannot undo: stop]"), new WhatCost(CostClass.Instant),
+    internal static WhatSpec Spec { get; } = new WhatSpec("server", "stop", null, null, new WriteSpec("acts", "cannot", "[cannot undo: stop]"), new WhatCost(CostClass.Instant), null,
         new OptionSpec("id", "{\"type\":\"string\"}"));
 
     internal Selector Selector { get; private set; } = Selector.None;

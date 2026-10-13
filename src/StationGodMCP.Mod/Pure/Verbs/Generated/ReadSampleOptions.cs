@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of read sample, in verb names (catalogue/verbs/read.json).</summary>
 internal sealed class ReadSampleOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("read", "sample", null, "reads", null, new WhatCost(CostClass.Stream, null, new CostDuration("seconds", 30)),
+    internal static WhatSpec Spec { get; } = new WhatSpec("read", "sample", null, "reads", null, new WhatCost(CostClass.Stream, null, new CostDuration("seconds", 30)), null,
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}"),
         new OptionSpec("logic", "{\"type\":[\"string\",\"integer\",\"array\"]}"),
         new OptionSpec("reads", "{\"type\":\"array\",\"items\":{\"type\":\"object\"},\"maxItems\":32}"),

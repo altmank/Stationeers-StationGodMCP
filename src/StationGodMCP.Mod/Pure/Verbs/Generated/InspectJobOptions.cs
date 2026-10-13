@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of inspect job, in verb names (catalogue/verbs/inspect.json).</summary>
 internal sealed class InspectJobOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("inspect", "job", null, null, null, new WhatCost(CostClass.Instant),
+    internal static WhatSpec Spec { get; } = new WhatSpec("inspect", "job", null, null, null, new WhatCost(CostClass.Instant), null,
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}"),
         new OptionSpec("max_wait", "{\"type\":\"number\",\"minimum\":0}", false, "30"),
         new OptionSpec("verbose", "{\"type\":\"boolean\"}", false, "false"));

@@ -116,7 +116,7 @@ internal static class VerbOptionsCode
         code.Append("    internal static WhatSpec Spec { get; } = new WhatSpec(").Append(Literal(verbName)).Append(", ")
             .Append(Literal(what)).Append(", ").Append(Literal((string?)source["reply"]?["list"])).Append(", ")
             .Append(Literal((string?)source["id_list"])).Append(", ").Append(WriteSpec(source)).Append(", ")
-            .Append(CostSpec(source));
+            .Append(CostSpec(source)).Append(", ").Append(ReportCostSpec(source));
         foreach ((string name, JsonObject option) in options)
         {
             code.Append(",\n        ").Append(OptionSpec(name, option));
@@ -269,13 +269,16 @@ internal static class VerbOptionsCode
     }
 
     // x-cost: new WhatCost(CostClass.World), with the per options and the duration where it states them.
-    private static string CostSpec(JsonObject source)
-    {
-        if (source["x-cost"] is not JsonObject cost)
-        {
-            return "null";
-        }
+    private static string CostSpec(JsonObject source) =>
+        source["x-cost"] is JsonObject cost ? CostCode(cost) : "null";
 
+    // x-cost-report: what a report call of the what counts as; null where the what states none (a report counts as
+    // x-cost then).
+    private static string ReportCostSpec(JsonObject source) =>
+        source["x-cost-report"] is JsonObject report ? CostCode(report) : "null";
+
+    private static string CostCode(JsonObject cost)
+    {
         StringBuilder spec = new StringBuilder("new WhatCost(CostClass.").Append(Pascal((string)cost["class"]!));
         List<string> per = cost["per"] switch
         {

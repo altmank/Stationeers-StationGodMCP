@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of check replaceable, in verb names (catalogue/verbs/check.json).</summary>
 internal sealed class CheckReplaceableOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("check", "replaceable", "results", null, null, new WhatCost(CostClass.Bounded, new[] { "id" }),
+    internal static WhatSpec Spec { get; } = new WhatSpec("check", "replaceable", "results", null, null, new WhatCost(CostClass.Bounded, new[] { "id" }), null,
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}", true));
 
     internal Selector Selector { get; private set; } = Selector.None;

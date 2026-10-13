@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of plan mining, in verb names (catalogue/verbs/plan.json).</summary>
 internal sealed class PlanMiningOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("plan", "mining", "sites", null, null, new WhatCost(CostClass.Instant),
+    internal static WhatSpec Spec { get; } = new WhatSpec("plan", "mining", "sites", null, null, new WhatCost(CostClass.Instant), null,
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}"),
         new OptionSpec("node", "{\"type\":\"string\"}"),
         new OptionSpec("collectable_only", "{\"type\":\"boolean\"}", false, "false"),

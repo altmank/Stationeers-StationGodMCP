@@ -96,6 +96,31 @@ public sealed class OptionKindTests
         Assert.Equal("undo", UndoOptions.Spec.Key);
     }
 
+    [Fact]
+    public void AReportCallCountsAsTheWhatsReportCostAndAWhatThatStatesNoneAsItsCost()
+    {
+        // build structure reports as a plan and acts as a job
+        Assert.Equal(StationGodMCP.Pure.Catalogue.CostClass.Plan, BuildStructureOptions.Spec.CostFor(new JObject()).Class);
+        Assert.Equal(StationGodMCP.Pure.Catalogue.CostClass.Job,
+            BuildStructureOptions.Spec.CostFor(JObject.Parse("""{"confirm": true}""")).Class);
+
+        // a confirm-route what that states no x-cost-report reports as it acts
+        WhatSpec silent = new WhatSpec("test", "what", null, null,
+            new WriteSpec("confirm", "cannot", "[cannot undo]"),
+            new WhatCost(StationGodMCP.Pure.Catalogue.CostClass.Job), null);
+        Assert.Equal(StationGodMCP.Pure.Catalogue.CostClass.Job, silent.CostFor(new JObject()).Class);
+        Assert.Equal(StationGodMCP.Pure.Catalogue.CostClass.Job,
+            silent.CostFor(JObject.Parse("""{"confirm": true}""")).Class);
+
+        // a what that acts at once always counts as its cost
+        WhatSpec acts = new WhatSpec("test", "acts", null, null, new WriteSpec("acts", "undo", "[undo]"),
+            new WhatCost(StationGodMCP.Pure.Catalogue.CostClass.Instant),
+            new WhatCost(StationGodMCP.Pure.Catalogue.CostClass.Plan));
+        Assert.Equal(StationGodMCP.Pure.Catalogue.CostClass.Instant, acts.CostFor(new JObject()).Class);
+        Assert.Equal(StationGodMCP.Pure.Catalogue.CostClass.Instant,
+            acts.CostFor(JObject.Parse("""{"confirm": true}""")).Class);
+    }
+
     // ---- the selector ----
 
     [Theory]

@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of check layout, in verb names (catalogue/verbs/check.json).</summary>
 internal sealed class CheckLayoutOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("check", "layout", "findings", null, null, new WhatCost(CostClass.World),
+    internal static WhatSpec Spec { get; } = new WhatSpec("check", "layout", "findings", null, null, new WhatCost(CostClass.World), null,
         new OptionSpec("room", "{\"type\":\"string\"}"),
         new OptionSpec("box", "{\"type\":\"array\",\"minItems\":2,\"maxItems\":2}"),
         new OptionSpec("codes", "{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"maxItems\":64}"),

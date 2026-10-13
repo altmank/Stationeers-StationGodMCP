@@ -101,6 +101,7 @@
       },
       "example": {"id": "4820585", "start": 10, "values": [1, 0, 2], "confirm": true},
       "x-cost": {"class": "instant"},
+      "x-cost-report": {"class": "instant"},
       "reply": {
         "variants": [
           {
@@ -587,6 +588,7 @@
       },
       "example": {"within": "player", "confirm": true},
       "x-cost": {"class": "instant"},
+      "x-cost-report": {"class": "instant"},
       "reply": {
         "list": "results",
         "variants": [
@@ -642,6 +644,7 @@
       },
       "example": {"id": "3311223", "genes": {"GrowthSpeedMultiplier": 1}, "confirm": true},
       "x-cost": {"class": "bounded"},
+      "x-cost-report": {"class": "bounded"},
       "reply": {
         "list": "results",
         "variants": [

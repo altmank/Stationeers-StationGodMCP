@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of swap frame, in verb names (catalogue/verbs/swap.json).</summary>
 internal sealed class SwapFrameOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("swap", "frame", "pieces", null, new WriteSpec("confirm", "cannot", "[cannot undo: change job]"), new WhatCost(CostClass.Job),
+    internal static WhatSpec Spec { get; } = new WhatSpec("swap", "frame", "pieces", null, new WriteSpec("confirm", "cannot", "[cannot undo: change job]"), new WhatCost(CostClass.Job), new WhatCost(CostClass.Plan),
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}"),
         new OptionSpec("room", "{\"type\":\"string\"}"),
         new OptionSpec("into", "{\"type\":\"string\"}"),

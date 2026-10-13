@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of write memory, in verb names (catalogue/verbs/write.json).</summary>
 internal sealed class WriteMemoryOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("write", "memory", null, null, new WriteSpec("confirm", "undo", "[undo]"), new WhatCost(CostClass.Instant),
+    internal static WhatSpec Spec { get; } = new WhatSpec("write", "memory", null, null, new WriteSpec("confirm", "undo", "[undo]"), new WhatCost(CostClass.Instant), new WhatCost(CostClass.Instant),
         new OptionSpec("id", "{\"type\":\"string\"}", true),
         new OptionSpec("gateway", "{\"type\":\"string\"}", false, "world"),
         new OptionSpec("start", "{\"type\":\"integer\",\"minimum\":0}", true),

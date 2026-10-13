@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of check rules, in verb names (catalogue/verbs/check.json).</summary>
 internal sealed class CheckRulesOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("check", "rules", "rules", null, null, new WhatCost(CostClass.Instant),
+    internal static WhatSpec Spec { get; } = new WhatSpec("check", "rules", "rules", null, null, new WhatCost(CostClass.Instant), null,
         new OptionSpec("action", "{\"type\":\"string\",\"enum\":[\"list\",\"validate\",\"fields\",\"functions\",\"test\",\"explain\"]}", false, "list"),
         new OptionSpec("rule", "{\"type\":\"string\"}"),
         new OptionSpec("full", "{\"type\":\"boolean\"}", false, "false"),

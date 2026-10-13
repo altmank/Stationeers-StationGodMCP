@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of find damaged, in verb names (catalogue/verbs/find.json).</summary>
 internal sealed class FindDamagedOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("find", "damaged", "things", null, null, new WhatCost(CostClass.World),
+    internal static WhatSpec Spec { get; } = new WhatSpec("find", "damaged", "things", null, null, new WhatCost(CostClass.World), null,
         new OptionSpec("min_damage", "{\"type\":\"number\",\"minimum\":0}", false, "0"),
         new OptionSpec("broken_only", "{\"type\":\"boolean\"}", false, "false"),
         new OptionSpec("structures_only", "{\"type\":\"boolean\"}", false, "false"),

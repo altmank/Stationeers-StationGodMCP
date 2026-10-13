@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of write label, in verb names (catalogue/verbs/write.json).</summary>
 internal sealed class WriteLabelOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("write", "label", "results", null, new WriteSpec("acts", "undo", "[undo]"), new WhatCost(CostClass.Instant),
+    internal static WhatSpec Spec { get; } = new WhatSpec("write", "label", "results", null, new WriteSpec("acts", "undo", "[undo]"), new WhatCost(CostClass.Instant), null,
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}"),
         new OptionSpec("label", "{\"type\":\"string\"}"),
         new OptionSpec("labels", "{\"type\":\"array\",\"items\":{\"type\":\"object\"},\"maxItems\":64}"),

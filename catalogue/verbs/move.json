@@ -282,6 +282,7 @@
       ],
       "example": {"source": "2005300", "gases": ["Hydrogen"], "delete": true},
       "x-cost": {"class": "job"},
+      "x-cost-report": {"class": "instant"},
       "reply": {
         "variants": [
           {
@@ -334,6 +335,7 @@
       },
       "example": {"to_player": "xceled", "confirm": true},
       "x-cost": {"class": "instant"},
+      "x-cost-report": {"class": "instant"},
       "reply": {
         "variants": [
           {

@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of move gas, in verb names (catalogue/verbs/move.json).</summary>
 internal sealed class MoveGasOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("move", "gas", null, null, new WriteSpec("confirm", "cannot", "[cannot undo: gas move]"), new WhatCost(CostClass.Job),
+    internal static WhatSpec Spec { get; } = new WhatSpec("move", "gas", null, null, new WriteSpec("confirm", "cannot", "[cannot undo: gas move]"), new WhatCost(CostClass.Job), new WhatCost(CostClass.Instant),
         new OptionSpec("source", "{\"type\":[\"string\",\"object\"]}"),
         new OptionSpec("to", "{\"type\":[\"string\",\"object\"]}"),
         new OptionSpec("delete", "{\"type\":\"boolean\"}", false, "false"),

@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of find pad, in verb names (catalogue/verbs/find.json).</summary>
 internal sealed class FindPadOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("find", "pad", "pads", null, null, new WhatCost(CostClass.Instant));
+    internal static WhatSpec Spec { get; } = new WhatSpec("find", "pad", "pads", null, null, new WhatCost(CostClass.Instant), null);
 
     internal Fields Fields { get; private set; } = Fields.None;
 

@@ -59,6 +59,7 @@
       ],
       "example": {"id": "place-41", "confirm": true},
       "x-cost": {"class": "job"},
+      "x-cost-report": {"class": "plan"},
       "reply": {
         "list": "piece_runs",
         "variants": [

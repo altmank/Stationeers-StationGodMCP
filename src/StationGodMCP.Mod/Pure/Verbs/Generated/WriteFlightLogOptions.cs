@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of write flight_log, in verb names (catalogue/verbs/write.json).</summary>
 internal sealed class WriteFlightLogOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("write", "flight_log", "events", null, new WriteSpec("acts", "cannot", "[cannot undo: flight log]"), new WhatCost(CostClass.Instant),
+    internal static WhatSpec Spec { get; } = new WhatSpec("write", "flight_log", "events", null, new WriteSpec("acts", "cannot", "[cannot undo: flight log]"), new WhatCost(CostClass.Instant), null,
         new OptionSpec("action", "{\"type\":\"string\",\"enum\":[\"start\",\"stop\",\"clear\"]}", true),
         new OptionSpec("id", "{\"type\":\"string\"}"),
         new OptionSpec("interval_s", "{\"type\":\"number\",\"minimum\":0.1,\"maximum\":600}", false, "1"),

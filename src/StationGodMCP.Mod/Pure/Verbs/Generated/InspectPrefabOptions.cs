@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of inspect prefab, in verb names (catalogue/verbs/inspect.json).</summary>
 internal sealed class InspectPrefabOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("inspect", "prefab", "ports", null, null, new WhatCost(CostClass.Instant),
+    internal static WhatSpec Spec { get; } = new WhatSpec("inspect", "prefab", "ports", null, null, new WhatCost(CostClass.Instant), null,
         new OptionSpec("prefab", "{\"type\":[\"string\",\"integer\"]}", true),
         new OptionSpec("include", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"small_cells\"]}}"));
 

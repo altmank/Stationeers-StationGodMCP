@@ -74,6 +74,7 @@
       },
       "example": {"id": "7", "items": [{"prefab": "ItemIronIngot", "quantity": 50}], "confirm": true},
       "x-cost": {"class": "instant"},
+      "x-cost-report": {"class": "instant"},
       "reply": {
         "list": "delivered",
         "variants": [
@@ -122,6 +123,7 @@
       },
       "example": {"id": "7", "items": [{"prefab": "ItemGoldIngot", "quantity": 20}]},
       "x-cost": {"class": "instant"},
+      "x-cost-report": {"class": "instant"},
       "reply": {
         "list": "delivered",
         "variants": [

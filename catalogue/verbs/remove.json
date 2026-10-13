@@ -48,6 +48,7 @@
       },
       "example": {"id": ["1559707"], "confirm": true},
       "x-cost": {"class": "job"},
+      "x-cost-report": {"class": "plan"},
       "reply": {
         "list": "removals",
         "variants": [
@@ -134,6 +135,7 @@
       },
       "example": {"id": ["3763565"]},
       "x-cost": {"class": "job"},
+      "x-cost-report": {"class": "plan"},
       "reply": {
         "list": "removals",
         "variants": [
@@ -232,6 +234,7 @@
       },
       "example": {"id": ["3763565"]},
       "x-cost": {"class": "job"},
+      "x-cost-report": {"class": "plan"},
       "reply": {
         "list": "removals",
         "variants": [
@@ -329,6 +332,7 @@
       },
       "example": {"id": ["3763565"]},
       "x-cost": {"class": "job"},
+      "x-cost-report": {"class": "plan"},
       "reply": {
         "list": "removals",
         "variants": [

@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of find plant, in verb names (catalogue/verbs/find.json).</summary>
 internal sealed class FindPlantOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("find", "plant", "plants", null, null, new WhatCost(CostClass.World),
+    internal static WhatSpec Spec { get; } = new WhatSpec("find", "plant", "plants", null, null, new WhatCost(CostClass.World), null,
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}"),
         new OptionSpec("include", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"unplanted\"]}}"),
         new OptionSpec("verbose", "{\"type\":\"boolean\"}", false, "false"));

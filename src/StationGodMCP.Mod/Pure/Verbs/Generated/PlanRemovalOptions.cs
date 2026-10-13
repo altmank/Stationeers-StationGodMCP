@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of plan removal, in verb names (catalogue/verbs/plan.json).</summary>
 internal sealed class PlanRemovalOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("plan", "removal", "removals", null, null, new WhatCost(CostClass.Plan),
+    internal static WhatSpec Spec { get; } = new WhatSpec("plan", "removal", "removals", null, null, new WhatCost(CostClass.Plan), null,
         new OptionSpec("kind", "{\"type\":\"string\",\"enum\":[\"cable\",\"pipe\",\"chute\"]}", false, "cable"),
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}"),
         new OptionSpec("waypoints", "{\"type\":\"array\",\"items\":{\"type\":\"array\"},\"maxItems\":1024}"),

@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of trade contacts, in verb names (catalogue/verbs/trade.json).</summary>
 internal sealed class TradeContactsOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("trade", "contacts", "contacts", null, null, new WhatCost(CostClass.Instant));
+    internal static WhatSpec Spec { get; } = new WhatSpec("trade", "contacts", "contacts", null, null, new WhatCost(CostClass.Instant), null);
 
     internal Fields Fields { get; private set; } = Fields.None;
 

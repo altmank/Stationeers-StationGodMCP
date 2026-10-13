@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of move item, in verb names (catalogue/verbs/move.json).</summary>
 internal sealed class MoveItemOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("move", "item", "results", "moves", new WriteSpec("acts", "mixed", "slot move [undo]; a merge into another stack [cannot undo: merged into <id>]; store move or force [cannot undo: store move]"), new WhatCost(CostClass.Instant),
+    internal static WhatSpec Spec { get; } = new WhatSpec("move", "item", "results", "moves", new WriteSpec("acts", "mixed", "slot move [undo]; a merge into another stack [cannot undo: merged into <id>]; store move or force [cannot undo: store move]"), new WhatCost(CostClass.Instant), null,
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}"),
         new OptionSpec("quantity", "{\"type\":\"number\",\"minimum\":0}"),
         new OptionSpec("to", "{\"type\":\"string\"}"),

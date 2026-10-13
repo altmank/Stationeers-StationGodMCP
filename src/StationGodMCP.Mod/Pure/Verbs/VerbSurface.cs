@@ -91,14 +91,14 @@ internal sealed class VerbSpec
 
 /// <summary>
 /// One what: its options in catalogue order, the reply's main list, the list option an id list fills (id_list), its
-/// cost (x-cost), and for a write its write rules.
+/// cost (x-cost) and what a report call of it counts as (x-cost-report), and for a write its write rules.
 /// </summary>
 internal sealed class WhatSpec
 {
     private readonly Dictionary<string, OptionSpec> _options = new Dictionary<string, OptionSpec>(StringComparer.Ordinal);
 
     internal WhatSpec(string verb, string name, string? mainList, string? idList, WriteSpec? write, WhatCost? cost,
-        params OptionSpec[] options)
+        WhatCost? reportCost, params OptionSpec[] options)
     {
         Verb = verb;
         Name = name;
@@ -106,6 +106,7 @@ internal sealed class WhatSpec
         IdList = idList;
         Write = write;
         Cost = cost ?? WhatCost.Unstated;
+        ReportCost = reportCost;
         List<string> names = new List<string>(options.Length);
         foreach (OptionSpec option in options)
         {
@@ -133,6 +134,21 @@ internal sealed class WhatSpec
 
     /// <summary>How the scheduler counts a call of this what (x-cost); bounded, one item, where the catalogue states none.</summary>
     internal WhatCost Cost { get; }
+
+    /// <summary>What the scheduler counts a report call of this what as (x-cost-report); null where the catalogue states none.</summary>
+    internal WhatCost? ReportCost { get; }
+
+    /// <summary>
+    /// The cost a call of this what is scheduled by: an acting call counts as x-cost; a confirm-route call without
+    /// confirm: true is a report and counts as x-cost-report (x-cost where the what states none), reading confirm as
+    /// ReportConfirm does.
+    /// </summary>
+    internal WhatCost CostFor(JObject? parameters) =>
+        Write?.Route == "confirm" && !Confirms(parameters) ? ReportCost ?? Cost : Cost;
+
+    // Whether the call says confirm: true, read from the raw params before the options are checked.
+    private static bool Confirms(JObject? parameters) =>
+        parameters?["confirm"] is { Type: JTokenType.Boolean } confirm && (bool)confirm;
 
     /// <summary>The what's name in stats, the cost predictor and profiling: find.thing, or undo for a whatless verb.</summary>
     internal string Key => Name == VerbSurface.WhatlessKey ? Verb : Verb + "." + Name;
@@ -172,8 +188,8 @@ internal sealed class WriteSpec
 }
 
 /// <summary>
-/// A what's cost (x-cost): its class (world, plan and job are heavy by nature), the options whose list lengths count
-/// its items (per), and the option that sets how long it runs (duration).
+/// A what's cost (x-cost, or x-cost-report for a report call): its class (world, plan and job are heavy by nature), the
+/// options whose list lengths count its items (per), and the option that sets how long it runs (duration).
 /// </summary>
 internal sealed class WhatCost
 {
