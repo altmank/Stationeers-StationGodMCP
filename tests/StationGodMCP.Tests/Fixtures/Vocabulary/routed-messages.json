@@ -259,6 +259,10 @@
     "join_trunk: none of the {Math.Min(candidates.Count, MaximumTries)} taps tried towards network {target} plans ready; the run is left as given.",
     "join_trunk: the run stopped {Gap(miss)} {Describe(plan, miss.Piece)}; the tap ({TapText(miss)}) is added, so the run joins network {target}."
   ],
+  "Api/Shared/Game/SiloMoves.cs": [
+    " and {more} more kinds (container_contents lists them)",
+    "The game could not load entry {entry.Index} ({entry.PrefabName}) from its save data; it stays in the silo. Entries before it were taken (container_contents shows the silo)."
+  ],
   "Api/Shared/Game/Silos.cs": [
     "Nothing with reference id {id} is in the world: {Names.Of(silo)} ({silo.ReferenceId}) stores it as entry {index} ({root.PrefabName}). silo_withdraw takes it out."
   ],
@@ -357,8 +361,6 @@
     "show_preview takes placements, not a job_id."
   ],
   "Api/SiloWithdraw.cs": [
-    " and {more} more kinds (container_contents lists them)",
-    "The game could not load entry {entry.Index} ({entry.PrefabName}) from its save data; it stays in the silo. Entries before it were taken (container_contents shows the silo).",
     "{Names.Of(holder)} has no room for all {request.Quantity} {Names.Of(template)} ({placement.Pooled.Unplaced + placement.Whole.Unplaced} left over; a thing stored with contents or a stored food takes an empty slot of its own). Free a slot, name another holder, or pass allow_ground: true for the rest. Nothing was changed."
   ],
   "Api/TraderTrade.cs": [
