@@ -333,6 +333,19 @@ public sealed class LintRuleFileTests
         Assert.Contains(LintTestKit.Rules(json).Errors, error => error.Message.Contains(expected));
     }
 
+    [Fact]
+    public void ARouteInAPatchIsAnError()
+    {
+        LintRuleSet set = LintTestKit.Defaults(save: LintTestKit.File1(
+            "{\"id\": \"not_replaceable\", \"route\": \"off_windows\"}"));
+
+        LintRuleError error = Assert.Single(set.Errors);
+        Assert.Equal("save/lint-rules.json", error.File);
+        Assert.Equal("not_replaceable", error.RuleId);
+        Assert.Equal("route", error.Field);
+        Assert.Equal("route can only be set on a whole rule in a world file, not in a patch", error.Message);
+    }
+
     // The phase is report, with no alias: an old save file's "dry_run" fails and the error names report.
     [Fact]
     public void AnOldSaveFilesDryRunPhaseFailsNamingReport()

@@ -133,6 +133,12 @@ internal static class LintRuleLoader
                 bool replaces = rule["select"] != null || rule["assert"] != null;
                 if (byId.TryGetValue(id, out int at))
                 {
+                    if (!replaces && rule["route"] is JToken route)
+                    {
+                        errors.Add(ErrorAt(save.File, id, "route", route,
+                            "route can only be set on a whole rule in a world file, not in a patch"));
+                    }
+
                     merged[at] = replaces ? (rule, LintRuleOrigin.Save, save.File) : (Patched(merged[at].Rule, rule), merged[at].Origin, merged[at].File);
                 }
                 else if (replaces)
