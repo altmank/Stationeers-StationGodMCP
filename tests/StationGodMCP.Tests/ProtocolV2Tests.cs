@@ -17,6 +17,7 @@ using StationGodMCP.Pure;
 using StationGodMCP.Pure.Catalogue;
 using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Scheduling;
+using StationGodMCP.Tests.Verbs;
 using Xunit;
 
 namespace StationGodMCP.Tests;
@@ -28,15 +29,15 @@ namespace StationGodMCP.Tests;
 public sealed class ProtocolV2Tests
 {
     [Theory]
-    [InlineData("""{"id":"1","method":"game_clock","params":{}}""")]
+    [InlineData("""{"id":"1","method":"read","params":{"what":"clock"}}""")]
     [InlineData("""{"id":"1","method":"hello","params":{}}""")]
     [InlineData("{}")]
     [InlineData("hello there")]
     [InlineData("""{"type":"helloo"}""")]
-    [InlineData("""{"type":"call","id":"1","method":"game_clock"}""")]
+    [InlineData("""{"type":"call","id":"1","method":"read","params":{"what":"clock"}}""")]
     [InlineData("""{"type":"cancel","id":"1"}""")]
     [InlineData("""{"type":"bye"}""")]
-    [InlineData("""{"type":"call","id":"1","id":"2","method":"game_clock"}""")]
+    [InlineData("""{"type":"call","id":"1","id":"2","method":"read","params":{"what":"clock"}}""")]
     public async Task AnythingButHelloFirstIsAProtocolErrorAndClosesTheConnection(string line)
     {
         using PipeRig rig = new PipeRig();
@@ -100,12 +101,12 @@ public sealed class ProtocolV2Tests
         using PipeRig rig = Loose();
         using V2Client client = await V2Client.Connect(rig);
 
-        JObject reply = client.Call("a1", "game_clock", new JObject { ["x"] = 1 });
+        JObject reply = client.Call("a1", "read", TestVerbs.Clock(new JObject { ["x"] = 1 }));
 
         Assert.Equal("reply", (string?)reply["type"]);
         Assert.Equal("a1", (string?)reply["id"]);
         Assert.True((bool)reply["ok"]!);
-        Assert.Equal("game_clock", (string?)reply["result"]!["method"]);
+        Assert.Equal("read", (string?)reply["result"]!["method"]);
         Assert.NotNull(reply["queue_ms"]);
     }
 
@@ -121,7 +122,7 @@ public sealed class ProtocolV2Tests
         };
         using V2Client client = await V2Client.Connect(rig);
 
-        client.Call("a1", "game_clock", new JObject());
+        client.Call("a1", "read", TestVerbs.Clock());
 
         Assert.Equal(new CallContext((string)client.Welcome["client_id"]!, 0), seen);
     }
@@ -133,7 +134,7 @@ public sealed class ProtocolV2Tests
         using V2Client client = await V2Client.Connect(rig);
         for (int index = 0; index < 17; index++)
         {
-            client.Send(Call($"b{index}", "game_clock"));
+            client.Send(Call($"b{index}", "read", TestVerbs.Clock()));
         }
 
         JObject refused = client.Next();
@@ -157,8 +158,8 @@ public sealed class ProtocolV2Tests
     {
         using PipeRig rig = new PipeRig(mainThread: false);
         using V2Client client = await V2Client.Connect(rig);
-        client.Send(Call("d", "game_clock"));
-        client.Send(Call("d", "game_clock"));
+        client.Send(Call("d", "read", TestVerbs.Clock()));
+        client.Send(Call("d", "read", TestVerbs.Clock()));
 
         JObject duplicate = client.Next();
         Assert.Equal("duplicate_id", (string?)duplicate["error"]!["code"]);
@@ -166,7 +167,7 @@ public sealed class ProtocolV2Tests
 
         rig.Mod.RunPending();
         Assert.True((bool)client.Next()["ok"]!);
-        client.Send(Call("d", "game_clock"));
+        client.Send(Call("d", "read", TestVerbs.Clock()));
         rig.Mod.WaitSubmitted(2);
         rig.Mod.RunPending();
         Assert.True((bool)client.Next()["ok"]!);
@@ -305,8 +306,9 @@ public sealed class ProtocolV2Tests
     {
         using PipeRig rig = new PipeRig(mainThread: false);
         using V2Client client = await V2Client.Connect(rig);
-        client.Send(Call("w", "write_logic", new JObject { ["reference_id"] = "1", ["logic_type"] = "Setting", ["value"] = 7 }));
-        client.Send(Call("r", "read_logic", new JObject { ["reference_id"] = "1", ["logic_type"] = "Setting" }));
+        client.Send(Call("w", "write",
+            new JObject { ["what"] = "logic", ["id"] = "1", ["logic"] = "Setting", ["value"] = 7, ["confirm"] = true }));
+        client.Send(Call("r", "read", new JObject { ["what"] = "logic", ["id"] = "1", ["logic"] = "Setting" }));
         rig.Mod.WaitSubmitted(2);
 
         rig.Mod.RunPending();
@@ -321,7 +323,7 @@ public sealed class ProtocolV2Tests
     {
         using PipeRig rig = Loose(mainThread: false);
         using V2Client client = await V2Client.Connect(rig);
-        client.Send(Call("c1", "game_clock"));
+        client.Send(Call("c1", "read", TestVerbs.Clock()));
         client.Send("""{"type":"cancel","id":"c1"}""");
         client.Send("""{"type":"cancel","id":"nobody"}""");
 
@@ -343,12 +345,12 @@ public sealed class ProtocolV2Tests
             rig.Mod.WaitSubmitted(submitted + 2);
             return null;
         };
-        client.Send(Call("c2", "game_clock"));
+        client.Send(Call("c2", "read", TestVerbs.Clock()));
         rig.Mod.WaitSubmitted(submitted + 1);
         Task running = Task.Run(() => rig.Mod.RunPending());
         Assert.True(started.Wait(30000));
         client.Send("""{"type":"cancel","id":"c2"}""");
-        client.Send(Call("after", "game_clock"));
+        client.Send(Call("after", "read", TestVerbs.Clock()));
         await running;
         JObject answered = client.Next();
         Assert.Equal("c2", (string?)answered["id"]);
@@ -363,7 +365,7 @@ public sealed class ProtocolV2Tests
         Scheduling.FakeClock clock = new Scheduling.FakeClock();
         using PipeRig rig = new PipeRig(mainThread: false, deadlineClock: clock);
         using V2Client client = await V2Client.Connect(rig);
-        client.Send("""{"type":"call","id":"t","method":"game_clock","deadline_ms":200}""");
+        client.Send("""{"type":"call","id":"t","method":"read","params":{"what":"clock"},"deadline_ms":200}""");
         rig.Mod.WaitSubmitted(1);
 
         clock.Advance(199);
@@ -379,8 +381,8 @@ public sealed class ProtocolV2Tests
     }
 
     [Theory]
-    [InlineData("""{"type":"call","id":"x","method":"game_clock","deadline_ms":50}""")]
-    [InlineData("""{"type":"call","id":"x","method":"game_clock","params":[1]}""")]
+    [InlineData("""{"type":"call","id":"x","method":"read","params":{"what":"clock"},"deadline_ms":50}""")]
+    [InlineData("""{"type":"call","id":"x","method":"read","params":[1]}""")]
     public async Task ABadCallIsRefusedAndTheConnectionStays(string line)
     {
         using PipeRig rig = new PipeRig();
@@ -388,7 +390,7 @@ public sealed class ProtocolV2Tests
         client.Send(line);
 
         Assert.Equal("invalid_argument", (string?)client.Next()["error"]!["code"]);
-        Assert.True((bool)client.Call("y", "game_clock", new JObject())["ok"]!);
+        Assert.True((bool)client.Call("y", "read", TestVerbs.Clock())["ok"]!);
     }
 
     [Fact]
@@ -396,7 +398,7 @@ public sealed class ProtocolV2Tests
     {
         using PipeRig rig = new PipeRig();
         using V2Client client = await V2Client.Connect(rig);
-        client.SendRaw("\r\n\n" + Call("f", "game_clock") + "\r\n");
+        client.SendRaw("\r\n\n" + Call("f", "read", TestVerbs.Clock()) + "\r\n");
 
         Assert.Equal("f", (string?)client.Next()["id"]);
     }
@@ -411,7 +413,7 @@ public sealed class ProtocolV2Tests
         {
             try
             {
-                client.SendRaw("{\"type\":\"call\",\"id\":\"big\",\"method\":\"game_clock\",\"params\":{\"x\":\"" +
+                client.SendRaw("{\"type\":\"call\",\"id\":\"big\",\"method\":\"read\",\"params\":{\"what\":\"clock\",\"x\":\"" +
                                new string('a', 5 * 1024 * 1024) + "\"}}\n");
             }
             catch (IOException)
@@ -430,8 +432,8 @@ public sealed class ProtocolV2Tests
 
     [Theory]
     [InlineData("""{"type":"shout"}""")]
-    [InlineData("""{"type":"call","id":"1","method":"game_clock","extra":true}""")]
-    [InlineData("""{"type":"call","method":"game_clock"}""")]
+    [InlineData("""{"type":"call","id":"1","method":"read","params":{"what":"clock"},"extra":true}""")]
+    [InlineData("""{"type":"call","method":"read","params":{"what":"clock"}}""")]
     [InlineData("""{"type":"hello","protocol":[2],"client":{"name":"again"}}""")]
     [InlineData("""{"type":"auth","client":"x","proof":"00"}""")]
     [InlineData("not json")]
@@ -498,7 +500,7 @@ public sealed class ProtocolV2Tests
     {
         using PipeRig rig = new PipeRig(mainThread: false);
         using V2Client client = await V2Client.Connect(rig);
-        client.Send(Call("s", "game_clock"));
+        client.Send(Call("s", "read", TestVerbs.Clock()));
         rig.Mod.WaitSubmitted(1);
 
         rig.Host.CloseAll("shutting_down", 2000);
@@ -530,7 +532,7 @@ public sealed class ProtocolV2Tests
         using PipeRig rig = Loose();
         using V2Client client = await V2Client.Connect(rig);
 
-        JObject reply = client.Call("big", "game_clock", new JObject { ["reply_bytes"] = 16 * 1024 * 1024 - 4096 }, 20000);
+        JObject reply = client.Call("big", "read", TestVerbs.Clock(new JObject { ["reply_bytes"] = 16 * 1024 * 1024 - 4096 }), 20000);
 
         Assert.Equal(16 * 1024 * 1024 - 4096, ((string)reply["result"]!["filler"]!).Length);
     }
@@ -543,7 +545,7 @@ public sealed class ProtocolV2Tests
         client.StopReading();
         for (int index = 0; index < 4; index++)
         {
-            client.Send(Call($"s{index}", "game_clock", new JObject { ["reply_bytes"] = 1024 * 1024 }));
+            client.Send(Call($"s{index}", "read", TestVerbs.Clock(new JObject { ["reply_bytes"] = 1024 * 1024 })));
         }
 
         Stopwatch watch = Stopwatch.StartNew();

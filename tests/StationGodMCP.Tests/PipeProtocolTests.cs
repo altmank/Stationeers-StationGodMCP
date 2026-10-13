@@ -15,6 +15,7 @@ using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Sampling;
 using StationGodMCP.Pure.Scheduling;
 using StationGodMCP.Pure.Subscriptions;
+using StationGodMCP.Tests.Verbs;
 using Xunit;
 
 namespace StationGodMCP.Tests;
@@ -132,7 +133,7 @@ public sealed class PipeProtocolTests
         Assert.InRange(watch.ElapsedMilliseconds, 200, 3000);
 
         using V2Client next = await V2Client.Connect(rig);
-        Assert.True((bool)next.Call("n", "game_clock", new JObject())["ok"]!);
+        Assert.True((bool)next.Call("n", "read", TestVerbs.Clock())["ok"]!);
     }
 
     [Fact]
@@ -169,7 +170,7 @@ public sealed class PipeProtocolTests
         Scheduling.FakeClock clock = new Scheduling.FakeClock();
         using PipeRig rig = new PipeRig(mainThread: false, frameClock: clock, deadlineClock: clock);
         using V2Client client = await V2Client.Connect(rig);
-        client.Send("""{"type":"call","id":"late","method":"game_clock","params":{},"deadline_ms":400}""");
+        client.Send("""{"type":"call","id":"late","method":"read","params":{"what":"clock"},"deadline_ms":400}""");
         rig.Mod.WaitSubmitted(1);
         clock.Advance(300);
         rig.Deadlines.CheckNow();
@@ -200,7 +201,7 @@ public sealed class PipeProtocolTests
         for (int index = 0; index < 3; index++)
         {
             V2Client client = await V2Client.Connect(rig);
-            client.Call($"h{index}", "game_clock", new JObject());
+            client.Call($"h{index}", "read", TestVerbs.Clock());
             held.Add(client);
         }
 
@@ -212,7 +213,7 @@ public sealed class PipeProtocolTests
         using V2Client next = new V2Client(waiting);
         next.Hello("waiting");
         Assert.Equal("welcome", (string?)next.Next()["type"]);
-        Assert.True((bool)next.Call("w", "game_clock", new JObject())["ok"]!);
+        Assert.True((bool)next.Call("w", "read", TestVerbs.Clock())["ok"]!);
 
         foreach (V2Client client in held)
         {
@@ -268,7 +269,7 @@ internal sealed class PipeRig : IDisposable
         Func<SamplingTick>? tick = null, Func<RealTimeTick>? realTick = null, StreamStores? stores = null,
         int resumeWindowMs = 0, IMonotonicClock? resumeClock = null, HeldRestores? restores = null,
         Func<WorldFacts>? world = null, Scheduling.FakeClock? frameClock = null,
-        Scheduling.FakeClock? deadlineClock = null)
+        Scheduling.FakeClock? deadlineClock = null, StationGodMCP.Pure.Verbs.VerbDispatcher? verbs = null)
     {
         _deadlines = new DeadlineWatch(deadlineClock);
         Name = "StationGodMCP-test-" + Guid.NewGuid().ToString("N");
@@ -280,7 +281,7 @@ internal sealed class PipeRig : IDisposable
                 realTick?.Invoke() ?? new RealTimeTick(1, 0, DateTimeOffset.UnixEpoch));
             Mod.CallHook = (call, queueMs) => SubscriptionHub.Handles(call.Request.Method)
                 ? new CallOutcome(subscriptions.Run(call, queueMs), call.Request.Method)
-                : call.Request.Method == SubscriptionHub.SampleLogicMethod
+                : IsSampleRun(call.Request)
                     ? subscriptions.StartSampleLogic(call, queueMs)
                     : null;
             Mod.ClosedHook = subscriptions.Closed;
@@ -292,13 +293,22 @@ internal sealed class PipeRig : IDisposable
         Holds = new ResumeHolds(resumeWindowMs, Mod, resumeClock);
         Mod.Holds = Holds;
         Host = new ProtocolHost(settings ?? new ProtocolSettings(maxConnections, firstLineMs), Mod, _deadlines,
-            TestCatalogue.File.Value, subscriptions: subscriptions, holds: Holds, restores: restores);
+            TestCatalogue.File.Value, subscriptions: subscriptions, holds: Holds, restores: restores,
+            verbs: verbs ?? Verbs.TestVerbs.Every);
         _listener = new PipeListener(Name, Host);
         _listener.Connected += connection => _connected.Add(connection);
         _listener.Start();
     }
 
     internal string Name { get; }
+
+    /// <summary>
+    /// read {what: "sample"} sent with the sampler's own arguments (targets, duration_seconds, interval_seconds) on a
+    /// rig that does not check options on the reader thread: the sampler's run over frames, before read sample has its
+    /// verb handler.
+    /// </summary>
+    internal static bool IsSampleRun(CallRequest call) =>
+        call.Method == "read" && (string?)call.Params?["what"] == "sample";
 
     internal FakeMod Mod { get; }
 

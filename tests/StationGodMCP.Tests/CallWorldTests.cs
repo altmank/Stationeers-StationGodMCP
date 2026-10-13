@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Protocol;
+using StationGodMCP.Tests.Verbs;
 using Xunit;
 
 namespace StationGodMCP.Tests;
@@ -96,7 +97,7 @@ public sealed class CallWorldTests
     {
         using PipeRig rig = Rig();
         using V2Client client = await V2Client.Connect(rig);
-        client.Send($$"""{"type":"call","id":"x","method":"game_clock","params":{},"world":{{world}}}""");
+        client.Send($$"""{"type":"call","id":"x","method":"read","params":{"what":"clock"},"world":{{world}}}""");
 
         JObject refused = client.Next();
         rig.Mod.RunPending();
@@ -112,7 +113,7 @@ public sealed class CallWorldTests
 
     private static string CallLine(string id, string? world)
     {
-        JObject call = new JObject { ["type"] = "call", ["id"] = id, ["method"] = "game_clock", ["params"] = new JObject() };
+        JObject call = new JObject { ["type"] = "call", ["id"] = id, ["method"] = "read", ["params"] = TestVerbs.Clock() };
         if (world != null)
         {
             call["world"] = world;

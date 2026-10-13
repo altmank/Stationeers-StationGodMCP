@@ -19,10 +19,11 @@ using Xunit;
 namespace StationGodMCP.Tests.Sampling;
 
 /// <summary>
-/// sample_logic in the mod, over a real pipe with the lane scheduler's frames run by the test: the call starts a run
-/// whose samples are taken in the subscription lane on the real clock, and is answered when its last sample is taken,
-/// invalid arguments are answered at once; a closed connection drops its run; and the
-/// call's deadline and every wait for it grow by its duration.
+/// The sampler (SubscriptionHub's sample runs) over a real pipe with the lane scheduler's frames run by the test,
+/// reached as read {what: "sample"} with the sampler's own arguments on a rig that does not check options on the reader
+/// thread (PipeRig.IsSampleRun): the call starts a run whose samples are taken in the subscription lane on the real
+/// clock, and is answered when its last sample is taken; invalid arguments are answered at once; a closed connection
+/// drops its run.
 /// </summary>
 public sealed class SampleLogicWireTests
 {
@@ -95,7 +96,7 @@ public sealed class SampleLogicWireTests
     public async Task InvalidArgumentsAreAnsweredAtOnce()
     {
         SubscriptionHub hub = Hub();
-        using PipeRig rig = Rig(hub, strict: false);
+        using PipeRig rig = Rig(hub);
         using V2Client client = await V2Client.Connect(rig);
         client.Send(Call("1", new JObject
         {
@@ -191,44 +192,29 @@ public sealed class SampleLogicWireTests
         Assert.Equal(0, read!.DurationMs(new JObject()));
     }
 
-    [Fact]
-    public async Task ACallWaitsInTheQueueForItsDeadlinePlusItsDuration()
-    {
-        SubscriptionHub hub = Hub();
-        using PipeRig rig = Rig(hub);
-        using V2Client client = await V2Client.Connect(rig);
-        JObject call = JObject.Parse(Call("1", new JObject
-        {
-            ["targets"] = new JArray(new JObject { ["reference_id"] = "100", ["logic_type"] = "On" }),
-            ["duration_seconds"] = 1,
-            ["interval_seconds"] = 0.5
-        }));
-        call["deadline_ms"] = 100;
-        client.Send(call.ToString(Formatting.None));
-
-        // Past its 100 ms deadline, but not past the deadline plus its 1 s duration: it still starts.
-        rig.Mod.WaitSubmitted(1);
-        _clock.Advance(400);
-        rig.Deadlines.CheckNow();
-        StartRuns(rig, hub, 1, atS: 0.0);
-        Assert.Null(client.NextOrNull(50));
-    }
-
     private SubscriptionHub Hub() => new SubscriptionHub(NoDevices.Instance, _logic, SubscriptionLimits.Default);
 
-    private PipeRig Rig(SubscriptionHub hub, bool strict = true) =>
-        new PipeRig(mainThread: false, subscriptions: hub, settings: new ProtocolSettings(32, strictArguments: strict),
+    // Not strict: read {what: "sample"} goes with the sampler's own arguments (PipeRig.IsSampleRun).
+    private PipeRig Rig(SubscriptionHub hub) =>
+        new PipeRig(mainThread: false, subscriptions: hub, settings: new ProtocolSettings(32, strictArguments: false),
             tick: () => new SamplingTick(_frame, 0), realTick: () => new RealTimeTick(_frame, _realS, DateTimeOffset.UnixEpoch),
             frameClock: _clock, deadlineClock: _clock);
 
     private static string CallOn(string id, JObject parameters, long stream) =>
         new JObject
         {
-            ["type"] = "call", ["id"] = id, ["method"] = "sample_logic", ["params"] = parameters, ["stream"] = stream
+            ["type"] = "call", ["id"] = id, ["method"] = "read", ["params"] = Sampled(parameters), ["stream"] = stream
         }.ToString(Formatting.None);
 
+    private static JObject Sampled(JObject parameters)
+    {
+        JObject sampled = new JObject { ["what"] = "sample" };
+        sampled.Merge(parameters);
+        return sampled;
+    }
+
     private static string Call(string id, JObject parameters) =>
-        new JObject { ["type"] = "call", ["id"] = id, ["method"] = "sample_logic", ["params"] = parameters }
+        new JObject { ["type"] = "call", ["id"] = id, ["method"] = "read", ["params"] = Sampled(parameters) }
             .ToString(Formatting.None);
 
     private static double[] ElapsedOf(JObject result)

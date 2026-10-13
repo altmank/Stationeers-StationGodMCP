@@ -18,6 +18,7 @@ using StationGodMCP.Pure;
 using StationGodMCP.Pure.Profiling;
 using StationGodMCP.Pure.Scheduling;
 using StationGodMCP.Pure.Subscriptions;
+using StationGodMCP.Verbs;
 using UnityEngine;
 
 namespace StationGodMCP;
@@ -302,7 +303,8 @@ public sealed class StationGodMod : ModBehaviour
         {
             ProtocolHost host = new ProtocolHost(
                 new ProtocolSettings(_server.MaxPipeConnections, strictArguments: _server.StrictArguments), _dispatcher,
-                Deadlines, ApiHost.CatalogueFile, subscriptions: _subscriptions, holds: Holds, restores: Restores);
+                Deadlines, ApiHost.CatalogueFile, subscriptions: _subscriptions, holds: Holds, restores: Restores,
+                verbs: VerbHandlers.Dispatcher);
             PipeListener listener = new PipeListener(Pipe.Value, host);
             listener.Start();
             _pipeListener = listener;
@@ -373,7 +375,8 @@ public sealed class StationGodMod : ModBehaviour
         {
             ProtocolHost host = new ProtocolHost(
                 new ProtocolSettings(_server.MaxTcpConnections, strictArguments: _server.StrictArguments),
-                _dispatcher, Deadlines, ApiHost.CatalogueFile, remote.Secret, _subscriptions, Holds, Restores);
+                _dispatcher, Deadlines, ApiHost.CatalogueFile, remote.Secret, _subscriptions, Holds, Restores,
+                VerbHandlers.Dispatcher);
             server = new TcpAcceptor(remote.BindAddress, remote.Port, _server.MaxTcpConnections, host);
             server.Start();
             _tcpListener = server;

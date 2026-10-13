@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **The mod answers verbs.** A call's method is a verb, `{"method": "<verb>", "params": {"what", ...options}}`, or
+  a protocol method; every per-tool method (`read_logic`, `sample_logic`, `mod_info`, ...) is refused
+  `method_not_found`, listing the verbs, and so is a verb or what with no handler yet. A verb call's options are
+  checked in the mod, every problem at once in verb names with the nearest valid names, and bound to a typed options
+  class generated from the catalogue; replies come from shared writers (per-id rows, list pages, one report shape).
+  The call key `rename` and the welcome feature `rename` are gone.
 - **The sidecar serves the verbs.** tools/list is the 15 verbs plus help and run_script (generated/verbs/tools.json)
   with their instructions; today's 104 tools are no longer listed or callable. Each verb call is checked against its
   what's options before anything is sent (every problem at once as `invalid_argument`, with the nearest valid names,

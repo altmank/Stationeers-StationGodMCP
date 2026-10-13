@@ -149,6 +149,37 @@ the catalogue, as `thing_health` kept `min_ratio` (CHANGELOG 1.x, *Arguments are
 
 ## Calls and replies
 
+### Verb calls
+
+A call's `method` is a verb or a protocol method (*Protocol methods*). A verb call is
+`{"type": "call", "id", "method": "<verb>", "params": {"what": "<what>", ...options}}`, the verbs, whats and options
+of `catalogue/verbs` (PLAN 2.0); a whatless verb (undo, help) takes no `what`. Any other method (a per-tool name such
+as `read_logic`, `run_script`, which is the hub's, or a made-up name) is refused `method_not_found` on the reader
+thread, listing the verbs; nothing runs.
+
+- **Admission.** One handler per (verb, what) answers a verb call (`VerbDispatcher`). A verb with no handler, or a
+  what of it with none, is `method_not_found` too, whatever its options.
+- **The option check** (`Pure/Verbs/OptionCheck.cs`): the what (required for a verb with whats; the nearest whats
+  when it is not one) and every option against the what's schema: types, enum (trimmed, any case), bounds, list
+  lengths, list items, required options. Every problem comes back at once as one `invalid_argument`, in verb names:
+  `data.problems` `[{path, problem, nearest?}]` and, for an unknown name, `data.valid`, the what's options with the
+  three nearest first. JSON `null` is an omitted option. The hub's own options (`output_file`, `whole`, `repeat`,
+  `max_wait`, and a file option such as `code_file`) never reach the game: one given here is a problem. With
+  `StrictArguments` the reader thread checks before queueing; without it the main thread checks before the handler
+  runs.
+- **Shaping.** `fields`, `omit` and `list_limits` given as options are the call's shape (`list_limits` its `limit`),
+  each replacing the same key of the call's `shape`; every verb but help takes them.
+- **Binding.** The main thread binds the what's generated options class (`Pure/Verbs/Generated`, generated from the
+  catalogue) from the checked options, through the shared option kinds: the selector (ids and the per-id list form,
+  near, radius, within, box, room, network, prefab, name), fields, paging (limit, offset, order), report and confirm,
+  and the materials source. A value a kind cannot use (`near: [1, 2]`) refuses the call with every such problem.
+- **Replies** come from the shared writers: per-id rows `{index, ok, reference_id, payload | error}` with `count`,
+  `success_count` and `error_count` (one id answers the what's single shape, and its error is the call's refusal); a
+  list page with `count`, `total`, `offset`, `limit` and `has_more`; and the one report shape, `report_only: true`
+  with `targets`, every target as `[id or cell, name, current -> new]` with its undo mark, `passed` and `driven_by`.
+- **Order.** A verb that is not read-only, or a what with write rules, is ordered on its stream like a write (*Order
+  on one stream*).
+
 ### Ids
 
 A call's `id` MUST NOT equal the id of another call of the same connection still in flight, whatever their streams. A
@@ -446,8 +477,8 @@ their own (see [clients.md](clients.md), *Reconnecting*).
 | `protocol_error` | A message the protocol does not allow: not a JSON object, unknown `type`, unknown top-level key, a call before `welcome`, a repeated `hello`. The connection is closed after the reply. | `{line_start}` (first 80 characters) | no |
 | `unsupported_protocol` | No common major version. | `{supported}` | no |
 | `unauthorized` | Over TCP, the shared secret is missing or wrong. The connection is closed. Same code as today's TCP refusal (`src/StationGodMCP.Mod/StationGodTcpServer.cs:187-192`). | none | no |
-| `method_not_found` | No such method. As today (`ApiHost.cs:159-161`). | `{nearest}` when one is close | no |
-| `invalid_argument` | The arguments break the catalogue (version 2) or a tool's own reading (both versions), or a call's `stream`, a `stream_end` or a `release` is malformed (a `stream_end` or `release` refusal has a null id). Nothing ran. | `{problems: [{path, problem}]}` on version 2; none for `stream`, `stream_end` and `release` | no |
+| `method_not_found` | No such method: not a verb or a protocol method, or a verb or what with no handler (*Verb calls*). The message lists the verbs. Nothing ran. | none | no |
+| `invalid_argument` | The options break the what's schema (every problem at once, *Verb calls*), a protocol method's arguments break the catalogue, a value cannot be used, or a call's `stream`, a `stream_end` or a `release` is malformed (a `stream_end` or `release` refusal has a null id). Nothing ran. | `{problems: [{path, problem, nearest?}], valid?}`; none for `stream`, `stream_end` and `release` | no |
 | `invalid_shape` | Version 2 only: `shape` is malformed (see *Shaping*). Nothing ran. | `{problems}` | no |
 | `duplicate_id` | The id is already in flight on this connection. Nothing ran. | none | no |
 | `too_many_in_flight` | More calls in flight on the stream than `limits.max_in_flight`, or on the connection than `max_in_flight_per_connection`. Nothing ran. | `{limit, scope}`, `scope` `stream` or `connection` | yes |

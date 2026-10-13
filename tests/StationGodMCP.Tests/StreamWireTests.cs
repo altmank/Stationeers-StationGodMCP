@@ -11,6 +11,7 @@ using StationGodMCP.Protocol;
 using StationGodMCP.Pure.Catalogue;
 using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Scheduling;
+using StationGodMCP.Tests.Verbs;
 using Xunit;
 
 namespace StationGodMCP.Tests;
@@ -67,13 +68,13 @@ public sealed class StreamWireTests
     {
         using PipeRig rig = Loose();
         using V2Client client = await V2Client.Connect(rig);
-        client.Send($$"""{"type":"call","id":"x","method":"game_clock","params":{},"stream":{{stream}}}""");
+        client.Send($$"""{"type":"call","id":"x","method":"read","params":{"what":"clock"},"stream":{{stream}}}""");
 
         JObject refused = client.Next();
 
         Assert.Equal("x", (string?)refused["id"]);
         Assert.Equal("invalid_argument", (string?)refused["error"]!["code"]);
-        Assert.True((bool)client.Call("after", "game_clock", new JObject())["ok"]!);
+        Assert.True((bool)client.Call("after", "read", TestVerbs.Clock())["ok"]!);
         Assert.Equal(1, rig.Mod.Ran);
     }
 
@@ -229,8 +230,8 @@ public sealed class StreamWireTests
         {
             client.Send(new JObject
             {
-                ["type"] = "call", ["id"] = $"s{index}", ["method"] = "game_clock", ["stream"] = index,
-                ["params"] = new JObject { ["reply_bytes"] = 1024 * 1024 }
+                ["type"] = "call", ["id"] = $"s{index}", ["method"] = "read", ["stream"] = index,
+                ["params"] = TestVerbs.Clock(new JObject { ["reply_bytes"] = 1024 * 1024 })
             }.ToString(Formatting.None));
         }
 
@@ -359,7 +360,7 @@ public sealed class StreamWireTests
     private static string ClientId(V2Client client) => (string)client.Welcome["client_id"]!;
 
     private static string CallLine(string id, long stream) =>
-        new JObject { ["type"] = "call", ["id"] = id, ["method"] = "game_clock", ["params"] = new JObject(), ["stream"] = stream }
+        new JObject { ["type"] = "call", ["id"] = id, ["method"] = "read", ["params"] = TestVerbs.Clock(), ["stream"] = stream }
             .ToString(Formatting.None);
 
     private static JObject CallOn(V2Client client, string id, long stream)

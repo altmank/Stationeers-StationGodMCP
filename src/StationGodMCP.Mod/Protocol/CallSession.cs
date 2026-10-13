@@ -7,6 +7,7 @@ using StationGodMCP.Pure.Catalogue;
 using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Scheduling;
 using StationGodMCP.Pure.Shaping;
+using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Protocol;
 
@@ -307,6 +308,19 @@ internal sealed class CallSession : Session
             return;
         }
 
+        if (VerbCalls.Handles(call.Method))
+        {
+            AcceptVerb(call);
+            return;
+        }
+
+        if (Array.IndexOf(ProtocolMethods.Names, call.Method) < 0)
+        {
+            VerbError unknown = VerbError.UnknownMethod(call.Method);
+            _connection.Send(Wire.Refusal(call.Id, unknown.Code, unknown.Message));
+            return;
+        }
+
         CatalogueMethod? method = null;
         _host.Catalogue?.Catalogue.TryGet(call.Method, out method);
         ShapeRequest? shape;
@@ -335,8 +349,52 @@ internal sealed class CallSession : Session
         CallProfile profile = method != null
             ? new CallProfile(method.Name, method.ClassAt(call.Params), method.CostAt(call.Params))
             : CallProfiles.Of(null, call.Method, call.Params);
-        // A method that runs for a while (x-duration: sample_logic) gets that long added to its deadline.
-        int deadlineMs = call.DeadlineMs + (method?.DurationMs(call.Params) ?? 0);
+        Queue(call, request, profile, call.DeadlineMs);
+    }
+
+    // A verb call (protocol.md, Verb calls): admitted only when a handler answers its verb; with StrictArguments its
+    // what (a handler answers it too), options and shape are checked in full here, every problem at once, and without
+    // it the main thread checks them before the handler runs. A write verb or what is ordered on its stream.
+    private void AcceptVerb(ClientMessage.Call call)
+    {
+        VerbSpec verb = VerbSurface.Verb(call.Method)!;
+        WhatSpec? what = null;
+        ShapeRequest? shape;
+        bool strict = _host.Settings.StrictArguments;
+        VerbError? refused = strict
+            ? _host.Verbs.Admit(call.Method, call.Params, out what)
+            : _host.Verbs.Answers(verb.Name) ? null : VerbError.UnknownMethod(call.Method);
+        if (refused != null)
+        {
+            _connection.Send(Wire.Refusal(call.Id, refused.Code, refused.Message, refused.Data));
+            return;
+        }
+
+        if (strict)
+        {
+            List<string> shapeProblems = new List<string>();
+            shape = Fields.ShapeOf(call.Shape, call.Params, null, shapeProblems);
+            if (shapeProblems.Count > 0)
+            {
+                RefuseShape(call.Id, shapeProblems);
+                return;
+            }
+        }
+        else
+        {
+            shape = ShapeRequest.Lenient(call.Shape);
+        }
+
+        what ??= verb.What(call.Params?[OptionCheck.WhatKey]?.Type == JTokenType.String
+            ? (string)call.Params[OptionCheck.WhatKey]!
+            : null);
+        MethodClass callClass = what?.Write != null || !verb.ReadOnly ? MethodClass.Write : MethodClass.Read;
+        Queue(call, new CallRequest(call.Id, call.Method, call.Params, shape, strict, call.World),
+            new CallProfile(call.Method, callClass, new CallCost(CostClass.Bounded, 1)), call.DeadlineMs);
+    }
+
+    private void Queue(ClientMessage.Call call, CallRequest request, CallProfile profile, int deadlineMs)
+    {
         ProtocolCall queued = new ProtocolCall(request, profile, _host.Deadlines.Clock.NowMs + deadlineMs, _connection,
             new CallContext(_connection.Owner, call.Stream), _hello?.ClientName, Answered);
         lock (_sync)
@@ -370,23 +428,15 @@ internal sealed class CallSession : Session
         _host.Submit(queued);
     }
 
-    // The full check, before anything is queued: the shape (invalid_shape), then the params against the method's
-    // schema (invalid_argument with every problem and its path). A method the catalogue does not have is left to the
-    // main thread, which answers method_not_found.
+    // A protocol method's full check, before anything is queued: the shape (invalid_shape), then the params against
+    // the method's schema (invalid_argument with every problem and its path).
     private bool Checked(ClientMessage.Call call, CatalogueMethod? method, out ShapeRequest? shape)
     {
         List<string> shapeProblems = new List<string>();
         shape = ShapeRequest.Strict(call.Shape, method?.ReplyLists, shapeProblems);
         if (shapeProblems.Count > 0)
         {
-            List<Dictionary<string, string>> listed = new List<Dictionary<string, string>>(shapeProblems.Count);
-            foreach (string problem in shapeProblems)
-            {
-                listed.Add(new Dictionary<string, string> { ["path"] = "shape", ["problem"] = problem });
-            }
-
-            _connection.Send(Wire.Refusal(call.Id, "invalid_shape", string.Join(" ", shapeProblems),
-                new Dictionary<string, object> { ["problems"] = listed }));
+            RefuseShape(call.Id, shapeProblems);
             return false;
         }
 
@@ -415,6 +465,18 @@ internal sealed class CallSession : Session
         _connection.Send(Wire.Refusal(call.Id, "invalid_argument", string.Join(" ", sentences),
             new Dictionary<string, object> { ["problems"] = found }));
         return false;
+    }
+
+    private void RefuseShape(string id, List<string> shapeProblems)
+    {
+        List<Dictionary<string, string>> listed = new List<Dictionary<string, string>>(shapeProblems.Count);
+        foreach (string problem in shapeProblems)
+        {
+            listed.Add(new Dictionary<string, string> { ["path"] = "shape", ["problem"] = problem });
+        }
+
+        _connection.Send(Wire.Refusal(id, "invalid_shape", string.Join(" ", shapeProblems),
+            new Dictionary<string, object> { ["problems"] = listed }));
     }
 
     // The protocol method catalogue: the embedded file itself, answered here without the main thread.

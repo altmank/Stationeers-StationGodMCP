@@ -12,6 +12,7 @@ using StationGodMCP.Pure.Jobs;
 using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Scheduling;
 using StationGodMCP.Tests.Scheduling;
+using StationGodMCP.Tests.Verbs;
 using Xunit;
 
 namespace StationGodMCP.Tests.Jobs;
@@ -228,7 +229,8 @@ public sealed class JobPinWireTests
         stores.Register(_kept);
         PipeRig rig = new PipeRig(settings: new ProtocolSettings(32, strictArguments: false), stores: stores,
             resumeWindowMs: WindowMs, resumeClock: _clock);
-        rig.Mod.CallHook = (call, _) => call.Request.Method == "start" ? new CallOutcome(Started(call), "start") : null;
+        // build {what: "structure"} stands in for any call that starts a job; job is the fake main thread's own param.
+        rig.Mod.CallHook = (call, _) => call.Request.Method == "build" ? new CallOutcome(Started(call), "build") : null;
         return rig;
     }
 
@@ -252,12 +254,13 @@ public sealed class JobPinWireTests
 
     private static void Start(V2Client client, string job, long stream)
     {
-        JObject reply = CallOn(client, "start-" + job, "start", new JObject { ["job"] = job }, stream);
+        JObject reply = CallOn(client, "start-" + job, "build", new JObject { ["what"] = "structure", ["job"] = job },
+            stream);
         Assert.True((bool)reply["ok"]!, reply.ToString());
     }
 
     // A call on stream 0 after a message: its reply means the frame that took the message in has run.
-    private static JObject Sync(V2Client client, string id) => CallOn(client, id, "game_clock", new JObject(), 0);
+    private static JObject Sync(V2Client client, string id) => CallOn(client, id, "read", TestVerbs.Clock(), 0);
 
     private static JObject CallOn(V2Client client, string id, string method, JObject parameters, long stream)
     {

@@ -11,6 +11,7 @@ using StationGodMCP.Protocol;
 using StationGodMCP.Pure.Paging;
 using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Tests.Scheduling;
+using StationGodMCP.Tests.Verbs;
 using Xunit;
 
 namespace StationGodMCP.Tests;
@@ -154,12 +155,12 @@ public sealed class ResumeWireTests
         using (V2Client first = await Resume(rig))
         {
             first.Send("""{"type":"stream_end","stream":5}""");
-            Assert.True((bool)first.Call("sync", "game_clock", new JObject())["ok"]!);
+            Assert.True((bool)first.Call("sync", "read", TestVerbs.Clock())["ok"]!);
         }
 
         WaitHeld(rig, 1);
         using V2Client second = await Resume(rig);
-        second.Send("""{"type":"call","id":"late","method":"game_clock","params":{},"stream":5}""");
+        second.Send("""{"type":"call","id":"late","method":"read","params":{"what":"clock"},"stream":5}""");
         JObject refused = second.Next();
 
         Assert.Equal("stream_ended", (string?)refused["error"]!["code"]);
@@ -324,7 +325,8 @@ public sealed class ResumeWireTests
         Assert.Equal(new[] { leaving.Owner, expiring.Owner, reloaded.Owner }, calls.Ended.ConvertAll(end => end.Owner));
     }
 
-    // ---- the rig: a walk over ids 1..10, two a page, kept in the test's own cursor store ----
+    // ---- the rig: a walk over ids 1..10, two a page, kept in the test's own cursor store; find {what: "thing"} stands
+    // in for a walking list, with the fake main thread's own cursor_id on this loose rig ----
 
     private PipeRig Rig(int windowMs = WindowMs)
     {
@@ -332,7 +334,7 @@ public sealed class ResumeWireTests
         stores.Register(_cursors);
         PipeRig rig = new PipeRig(settings: new ProtocolSettings(32, strictArguments: false), stores: stores,
             resumeWindowMs: windowMs, resumeClock: _clock);
-        rig.Mod.CallHook = (call, _) => call.Request.Method == "walk" ? new CallOutcome(WalkReply(call), "walk") : null;
+        rig.Mod.CallHook = (call, _) => call.Request.Method == "find" ? new CallOutcome(WalkReply(call), "find") : null;
         return rig;
     }
 
@@ -380,10 +382,15 @@ public sealed class ResumeWireTests
 
     private static JObject Walk(V2Client client, string id, string? cursorId, long stream)
     {
-        JObject parameters = cursorId == null ? new JObject() : new JObject { ["cursor_id"] = cursorId };
+        JObject parameters = new JObject { ["what"] = "thing" };
+        if (cursorId != null)
+        {
+            parameters["cursor_id"] = cursorId;
+        }
+
         client.Send(new JObject
         {
-            ["type"] = "call", ["id"] = id, ["method"] = "walk", ["params"] = parameters, ["stream"] = stream
+            ["type"] = "call", ["id"] = id, ["method"] = "find", ["params"] = parameters, ["stream"] = stream
         }.ToString(Formatting.None));
         return NextReply(client, id);
     }
@@ -392,7 +399,7 @@ public sealed class ResumeWireTests
     {
         client.Send(new JObject
         {
-            ["type"] = "call", ["id"] = id, ["method"] = "game_clock", ["params"] = new JObject(), ["stream"] = stream
+            ["type"] = "call", ["id"] = id, ["method"] = "read", ["params"] = TestVerbs.Clock(), ["stream"] = stream
         }.ToString(Formatting.None));
         return NextReply(client, id);
     }

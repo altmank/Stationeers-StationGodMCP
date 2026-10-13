@@ -24,7 +24,7 @@ namespace StationGodMCP.Tests;
 /// mod applies at an abrupt end (a dropped socket whose resume window passes, session_end, a tokenless close without
 /// bye) and clears unapplied at a normal one (bye, stream_end). Each applies only in its world and only while the
 /// device holds the stream's last written value; welcome reports the results on the next resume. The devices are fakes
-/// behind IRestoreDevices, and write_logic is a fake that writes to them and tells the store, as LogicOps.Write does.
+/// behind IRestoreDevices, and write {what: "logic"} is a fake that writes to them and tells the store, as LogicOps.Write does.
 /// </summary>
 public sealed class HeldRestoreWireTests
 {
@@ -722,18 +722,18 @@ public sealed class HeldRestoreWireTests
         rig.Mod.CallHook = (call, queueMs) => call.Request.Method switch
         {
             HoldRestoreCalls.HoldRestoreMethod => new CallOutcome(holds.Run(call, queueMs, 1), call.Request.Method),
-            "write_logic" => new CallOutcome(FakeWrite(call), call.Request.Method),
+            "write" => new CallOutcome(FakeWrite(call), call.Request.Method),
             _ => null
         };
         return rig;
     }
 
-    // write_logic as LogicOps.Write does it: the device's value set, then the stream's last written value told.
+    // write {what: "logic"} as a logic write does it: the device's value set, then the stream's last written value told.
     private string FakeWrite(ProtocolCall call)
     {
         JObject parameters = call.Request.Params!;
-        long id = long.Parse((string)parameters["reference_id"]!, CultureInfo.InvariantCulture);
-        ushort type = _devices.LogicType(parameters["logic_type"]).Id;
+        long id = long.Parse((string)parameters["id"]!, CultureInfo.InvariantCulture);
+        ushort type = _devices.LogicType(parameters["logic"]).Id;
         double value = (double)parameters["value"]!;
         _devices.Set(id, type, value);
         _restores.Wrote(CallContext.Current, id, type, _devices.Get(id, type));
@@ -770,8 +770,11 @@ public sealed class HeldRestoreWireTests
     private static string WriteLine(string id, long device, string logicType, double value, long stream) =>
         new JObject
         {
-            ["type"] = "call", ["id"] = id, ["method"] = "write_logic", ["stream"] = stream,
-            ["params"] = new JObject { ["reference_id"] = Id(device), ["logic_type"] = logicType, ["value"] = value }
+            ["type"] = "call", ["id"] = id, ["method"] = "write", ["stream"] = stream,
+            ["params"] = new JObject
+            {
+                ["what"] = "logic", ["id"] = Id(device), ["logic"] = logicType, ["value"] = value, ["confirm"] = true
+            }
         }.ToString(Formatting.None);
 
     private static string HoldLine(string id, long stream, params JObject[] sets) =>

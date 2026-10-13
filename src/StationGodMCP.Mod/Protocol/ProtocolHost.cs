@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Threading;
 using StationGodMCP.Pure.Catalogue;
 using StationGodMCP.Pure.Protocol;
+using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Protocol;
 
@@ -57,7 +58,7 @@ internal sealed class ProtocolSettings
 
 /// <summary>
 /// What every connection shares: the settings, the queue to the main thread, the deadline watch, the catalogue, the
-/// resume tokens, the session for a new connection, and the list of open connections.
+/// verb handlers, the resume tokens, the session for a new connection, and the list of open connections.
 /// </summary>
 internal sealed class ProtocolHost
 {
@@ -66,8 +67,9 @@ internal sealed class ProtocolHost
 
     internal ProtocolHost(ProtocolSettings settings, ICallQueue calls, DeadlineWatch deadlines, CatalogueFile? catalogue,
         string? legacySecret = null, SubscriptionHub? subscriptions = null, ResumeHolds? holds = null,
-        HeldRestores? restores = null)
+        HeldRestores? restores = null, VerbDispatcher? verbs = null)
     {
+        Verbs = verbs ?? VerbDispatcher.None;
         Restores = restores;
         Subscriptions = subscriptions;
         Holds = holds ?? new ResumeHolds(0, calls);
@@ -103,6 +105,9 @@ internal sealed class ProtocolHost
 
     /// <summary>The embedded catalogue; null when it did not load (every call is then answered internal_error).</summary>
     internal CatalogueFile? Catalogue { get; }
+
+    /// <summary>The (verb, what) handlers: a verb call is admitted on the reader thread only when one answers it.</summary>
+    internal VerbDispatcher Verbs { get; }
 
     /// <summary>Raised (on the connection's reader thread) when a connection has ended and freed its transport.</summary>
     internal event Action<Connection>? ConnectionEnded;

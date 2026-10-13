@@ -20,7 +20,7 @@ namespace StationGodMCP.Tests.Subscriptions;
 /// <summary>
 /// Subscriptions and sample_logic across a resume (protocol.md, Resuming), on a real pipe with the frames run by the
 /// test: a held token's subscriptions take no samples, and on resume the next frame sends each one's reading whole to
-/// the new connection, changed or not; past the window they are gone. A sample_logic run ends with its call's connection, unanswered.
+/// the new connection, changed or not; past the window they are gone. A sampler run ends with its call's connection, unanswered.
 /// </summary>
 public sealed class ResumeSubscriptionTests
 {
@@ -98,14 +98,15 @@ public sealed class ResumeSubscriptionTests
     public async Task ASampleLogicRunEndsWithItsConnectionAndIsNotAnsweredOnResume()
     {
         SubscriptionHub hub = Hub();
-        using PipeRig rig = Rig(hub);
+        using PipeRig rig = Rig(hub, strict: false);
         using (V2Client first = await Resume(rig))
         {
             first.Send(new JObject
             {
-                ["type"] = "call", ["id"] = "run", ["method"] = "sample_logic", ["stream"] = 3,
+                ["type"] = "call", ["id"] = "run", ["method"] = "read", ["stream"] = 3,
                 ["params"] = new JObject
                 {
+                    ["what"] = "sample",
                     ["targets"] = new JArray(new JObject { ["reference_id"] = "100", ["logic_type"] = "On" }),
                     ["duration_seconds"] = 1,
                     ["interval_seconds"] = 0.1
@@ -150,8 +151,9 @@ public sealed class ResumeSubscriptionTests
 
     private SubscriptionHub Hub() => new SubscriptionHub(_reader, _logic, SubscriptionLimits.Default);
 
-    private PipeRig Rig(SubscriptionHub hub) =>
-        new PipeRig(mainThread: false, subscriptions: hub, settings: new ProtocolSettings(32, strictArguments: true),
+    // strict false: read {what: "sample"} with the sampler's own arguments (PipeRig.IsSampleRun).
+    private PipeRig Rig(SubscriptionHub hub, bool strict = true) =>
+        new PipeRig(mainThread: false, subscriptions: hub, settings: new ProtocolSettings(32, strictArguments: strict),
             tick: () => new SamplingTick(_frame, _gameTimeS),
             realTick: () => new RealTimeTick(_frame, _gameTimeS, DateTimeOffset.UnixEpoch),
             resumeWindowMs: WindowMs, resumeClock: _clock);

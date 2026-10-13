@@ -11,13 +11,14 @@ using StationGodMCP.Pure;
 using StationGodMCP.Pure.Profiling;
 using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Scheduling;
+using StationGodMCP.Verbs;
 
 namespace StationGodMCP;
 
 /// <summary>
 /// Hands calls from the connections to the main thread and their answers back. Connections post a call to the
 /// scheduler's inbox; StationGodMod.Update runs one frame of the lane scheduler on the main thread, where the game's
-/// objects may be used (ApiHost.HandleCall): the subscription lane's samples, light calls in rounds by client and
+/// objects may be used (VerbCalls for a verb, the protocol methods' own runners): the subscription lane's samples, light calls in rounds by client and
 /// then by stream within the frame's budget, then at most one heavy call (scheduling.md). Each answer goes straight to its
 /// call's Deliver: no thread waits on the main thread. A call the main thread does not reach before its deadline is
 /// answered game_timeout by the DeadlineWatch (or by the scheduler when it meets it) unrun; a call it has started is
@@ -113,7 +114,9 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
     // A method name the frame's call list, the slow-frame log and a connection's counts may show: one the mod answers,
     // else "unknown".
     private static string KnownMethod(string? method) =>
-        ProtocolMethods.RunsOnMainThread(method) ? method! : MethodStats.Counted(method) ?? UnknownMethod;
+        ProtocolMethods.RunsOnMainThread(method) || VerbCalls.Handles(method)
+            ? method!
+            : MethodStats.Counted(method) ?? UnknownMethod;
 
     /// <summary>
     /// Runs one call on the main thread, and counts it for its connection (mod_info connections: calls, tool errors
@@ -158,6 +161,12 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
             {
                 return new CallOutcome(ControllerInspections.Run(call, queueWaitMs, UnityEngine.Time.frameCount),
                     call.Request.Method);
+            }
+
+            if (VerbCalls.Handles(call.Request.Method))
+            {
+                return new CallOutcome(VerbCalls.Run(VerbHandlers.Dispatcher, call, queueWaitMs,
+                    UnityEngine.Time.frameCount, ApiHost.MaxReplyBytes), call.Request.Method);
             }
 
             HandledRequest handled = ApiHost.HandleCall(call.Request, queueWaitMs, UnityEngine.Time.frameCount);

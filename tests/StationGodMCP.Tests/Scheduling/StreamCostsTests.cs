@@ -9,6 +9,7 @@ using StationGodMCP.Protocol;
 using StationGodMCP.Pure.Catalogue;
 using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Scheduling;
+using StationGodMCP.Tests.Verbs;
 using Xunit;
 
 namespace StationGodMCP.Tests.Scheduling;
@@ -261,8 +262,15 @@ public sealed class StreamCostsTests
 
     private static PipeRig Loose() => new PipeRig(settings: new ProtocolSettings(32, strictArguments: false));
 
-    private static JObject CallOn(V2Client client, string id, long stream, JObject parameters, string method = "game_clock")
+    // A call on the stream: read {what: "clock"} with the fake main thread's own params, or the method given.
+    private static JObject CallOn(V2Client client, string id, long stream, JObject parameters, string? method = null)
     {
+        if (method == null)
+        {
+            method = "read";
+            parameters = TestVerbs.Clock(parameters);
+        }
+
         client.Send(new JObject
         {
             ["type"] = "call", ["id"] = id, ["method"] = method, ["params"] = parameters, ["stream"] = stream
