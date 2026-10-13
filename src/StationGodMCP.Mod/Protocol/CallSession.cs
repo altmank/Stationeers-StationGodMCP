@@ -50,11 +50,11 @@ internal sealed class CallSession : Session
 
     /// <summary>What welcome lists in features: what this server does beyond the basics.</summary>
     internal static readonly string[] Features =
-        { "shape", "shape.paths", "shape.omit", "cancel", "streams", "cursors", "rename", "release" };
+        { "shape", "shape.paths", "shape.omit", "cancel", "streams", "cursors", "release" };
 
     /// <summary>The features with subscriptions, when the server has them.</summary>
     internal static readonly string[] FeaturesWithSubscriptions =
-        { "shape", "shape.paths", "shape.omit", "subscriptions", "cancel", "streams", "cursors", "rename", "release" };
+        { "shape", "shape.paths", "shape.omit", "subscriptions", "cancel", "streams", "cursors", "release" };
 
     private static readonly string[] FeaturesWithResume = WithResume(Features);
 
@@ -313,13 +313,7 @@ internal sealed class CallSession : Session
         bool namesChecked = false;
         if (_host.Settings.StrictArguments)
         {
-            bool passed;
-            using (Vocabulary.Enter(call.Rename))
-            {
-                passed = Checked(call, method, out shape);
-            }
-
-            if (!passed)
+            if (!Checked(call, method, out shape))
             {
                 return;
             }
@@ -336,7 +330,7 @@ internal sealed class CallSession : Session
             shape = ShapeRequest.WithDefaultLimits(shape, method.DefaultLimits);
         }
 
-        CallRequest request = new CallRequest(call.Id, call.Method, call.Params, shape, namesChecked, call.Rename,
+        CallRequest request = new CallRequest(call.Id, call.Method, call.Params, shape, namesChecked,
             call.World);
         CallProfile profile = method != null
             ? new CallProfile(method.Name, method.ClassAt(call.Params), method.CostAt(call.Params))
@@ -413,7 +407,7 @@ internal sealed class CallSession : Session
         {
             found.Add(new Dictionary<string, string>
             {
-                ["path"] = Vocabulary.Path(problem.Path), ["problem"] = problem.Problem
+                ["path"] = problem.Path, ["problem"] = problem.Problem
             });
             sentences.Add(problem.Problem);
         }

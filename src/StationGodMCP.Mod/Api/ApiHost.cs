@@ -141,8 +141,7 @@ internal static class ApiHost
 
     /// <summary>
     /// One call: its reply message as JSON text (type reply, shaped, elapsed_ms, queue_ms, frame, budget_hit when the
-    /// frame's request budget was reached as the handler finished), its messages naming arguments and tools as the
-    /// call's rename map says (Vocabulary). Top-level argument names are checked here unless the connection's reader
+    /// frame's request budget was reached as the handler finished). Top-level argument names are checked here unless the connection's reader
     /// thread already refused unknown ones (StrictArguments: the full check); the result is shaped by the call's shape, and a reply larger than max_reply_bytes (or the shape's
     /// max_bytes) is answered reply_too_large. A handler whose result is not ready (IPendingResult) leaves the call
     /// deferred: the reply carries Work (PendingCall), which the scheduler steps over later frames and which answers
@@ -150,7 +149,6 @@ internal static class ApiHost
     /// </summary>
     internal static HandledRequest HandleCall(CallRequest call, double queueWaitMs, long frame)
     {
-        using Vocabulary.Scope vocabulary = Vocabulary.Enter(call.Rename);
         Stopwatch watch = Stopwatch.StartNew();
         EntryCost.Begin();
         Answer answer = Run(call, watch);
@@ -170,7 +168,6 @@ internal static class ApiHost
     internal static HandledRequest FinishCall(CallRequest call, IPendingResult pending, double spentMs,
         double queueWaitMs, long frame)
     {
-        using Vocabulary.Scope vocabulary = Vocabulary.Enter(call.Rename);
         Stopwatch watch = Stopwatch.StartNew();
         EntryCost.Begin();
         return Reply(Run(call, watch, pending, spentMs), queueWaitMs, frame);

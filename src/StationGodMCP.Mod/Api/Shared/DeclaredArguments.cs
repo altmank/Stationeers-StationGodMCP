@@ -86,24 +86,5 @@ internal sealed class DeclaredArguments
         }
     }
 
-    // The names as the caller says them, each phrase once (a map may say min and max both as box).
-    private static string Listed(ArgumentNames names)
-    {
-        if (Vocabulary.Current == null)
-        {
-            return string.Join(", ", names.Sorted);
-        }
-
-        List<string> said = new List<string>(names.Sorted.Count);
-        foreach (string name in names.Sorted)
-        {
-            string phrase = Vocabulary.Arg(name);
-            if (!said.Contains(phrase))
-            {
-                said.Add(phrase);
-            }
-        }
-
-        return string.Join(", ", said);
-    }
+    private static string Listed(ArgumentNames names) => string.Join(", ", names.Sorted);
 }

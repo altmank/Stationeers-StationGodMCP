@@ -290,7 +290,7 @@ public interface IGameLink
     Task<JsonElement?> WaitJobAsync(string jobId, TimeSpan timeout, CancellationToken cancellation); // jobs topic
 }
 
-public sealed class GameCall      // method, params, shape?, stream, rename?, deadline_ms; world added by the link
+public sealed class GameCall      // method, params, shape?, stream, deadline_ms; world added by the link
 public abstract class GameReply   // Ok {Result, Frame, ElapsedMs, BudgetHit} | Refused {Code, Message, Data} | Unreachable {MaybeRan}
 public sealed class StreamCost    // Stream, Calls, MainThreadMs, OverBudgetFrames
 

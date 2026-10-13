@@ -85,7 +85,7 @@ internal sealed class ErrorView
         Code = code;
         Message = message;
         Data = data;
-        See = Said(ErrorGuide.SeeOf(code));
+        See = ErrorGuide.SeeOf(code);
     }
 
     public string Code { get; }
@@ -97,14 +97,8 @@ internal sealed class ErrorView
     public object? Data { get; }
 
     /// <summary>
-    /// The tool_info node that explains the code; absent for a code the catalogue gives none. Its tool is named as the
-    /// call's rename map says (Vocabulary).
+    /// The tool_info node that explains the code; absent for a code the catalogue gives none.
     /// </summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public ErrorSee? See { get; }
-
-    private static ErrorSee? Said(ErrorSee? see) =>
-        see?.Tool == null || Vocabulary.Current == null
-            ? see
-            : new ErrorSee(Vocabulary.Tool(see.Tool), see.Topic, see.Subtopic);
 }
