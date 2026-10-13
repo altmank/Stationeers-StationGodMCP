@@ -16,8 +16,6 @@ namespace StationGodMCP.Verbs;
 /// </summary>
 internal static class PlanRoute
 {
-    private const string ReportPath = "build_report.";
-
     internal static VerbOutcome Run(PlanRouteOptions options)
     {
         string label = PlanRouteOptions.Spec.Label;
@@ -30,22 +28,22 @@ internal static class PlanRoute
 
         PlannedRoute planned = RoutePlanning.Plan(order, label);
         JObject? report = null;
-        JObject? summary = null;
         if (planned.Report is { } view)
         {
             if (order.Summarize)
             {
-                summary = JobReports.Body(RunSummaryView.Of(view), view.Ready);
+                report = JobReports.Body(RunSummaryView.Of(view), view.Ready);
             }
             else
             {
-                view.NoteTruncations(ReportPath);
+                view.NoteTruncations(PlanRouteView.ReportKey + ".");
                 report = JobReports.Body(view, view.Ready);
             }
         }
 
         PlanRouteView reply = new PlanRouteView(planned.Tool, planned.Route, planned.Failure, planned.BuildArguments,
-            report, summary, planned.Notes);
-        return new VerbOutcome.Answered(JObject.FromObject(reply, ApiJson.Fresh()));
+            planned.Notes);
+        return new VerbOutcome.Answered(reply.Reply(order.Summarize ? PlanRouteView.SummaryKey : PlanRouteView.ReportKey,
+            report));
     }
 }

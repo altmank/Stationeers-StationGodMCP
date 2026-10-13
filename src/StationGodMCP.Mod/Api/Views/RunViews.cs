@@ -1108,20 +1108,20 @@ internal sealed class RunVerificationView
 
 /// <summary>
 /// plan route: the route found (or why none was), the build options that lay it (build_arguments), and build's report
-/// of it, whole (build_report) or in short (build_report_summary, with summarize).
+/// of it, whole (build_report) or in short (build_report_summary, with summarize), added by Reply.
 /// </summary>
 internal sealed class PlanRouteView
 {
-    internal PlanRouteView(string tool, RouteView? route, string? failure, JObject? buildArguments,
-        JObject? buildReport, JObject? buildReportSummary, List<string> notes)
+    internal const string ReportKey = "build_report";
+    internal const string SummaryKey = "build_report_summary";
+
+    internal PlanRouteView(string tool, RouteView? route, string? failure, JObject? buildArguments, List<string> notes)
     {
         Tool = tool;
         Found = route != null;
         Route = route;
         Failure = failure;
         BuildArguments = buildArguments;
-        BuildReport = buildReport;
-        BuildReportSummary = buildReportSummary;
         Notes = notes;
     }
 
@@ -1140,14 +1140,22 @@ internal sealed class PlanRouteView
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public JObject? BuildArguments { get; }
 
-    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-    public JObject? BuildReport { get; }
-
-    /// <summary>build's report in short, in place of build_report, with summarize.</summary>
-    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-    public JObject? BuildReportSummary { get; }
-
     public List<string> Notes { get; }
+
+    /// <summary>
+    /// The reply: the view's keys, with build's report under key (ReportKey, or SummaryKey for the short form) before
+    /// notes; the report is taken as it is, not copied.
+    /// </summary>
+    internal JObject Reply(string key, JObject? report)
+    {
+        JObject reply = JObject.FromObject(this, ApiJson.Fresh());
+        if (report != null)
+        {
+            reply.Property("notes")!.AddBeforeSelf(new JProperty(key, report));
+        }
+
+        return reply;
+    }
 }
 
 /// <summary>
