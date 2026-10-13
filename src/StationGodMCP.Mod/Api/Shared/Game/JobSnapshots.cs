@@ -31,15 +31,9 @@ internal static class JobSnapshots
 
     /// <summary>
     /// Records a started (or queued) job's snapshots under the job id its reply carries; a reply without one (busy,
-    /// refused) records nothing. burnt: the burnt cables it removes (debris no coil lays), recorded as such so undo_job
-    /// leaves them gone. Returns the reply unchanged.
-    /// </summary>
-    internal static object Record(object reply, string tool, IEnumerable<Structure> removed, Args args,
-        IEnumerable<Structure>? burnt = null) =>
-        Record(reply, tool, removed, SourceOf(args), burnt);
-
-    /// <summary>
-    /// As the Args form, with the source the request named: where the job took its materials and put its refund.
+    /// refused) records nothing. source: where the job took its materials and put its refund (JobSource). burnt: the
+    /// burnt cables it removes (debris no coil lays), recorded as such so undo_job leaves them gone. Returns the reply
+    /// unchanged.
     /// </summary>
     internal static object Record(object reply, string tool, IEnumerable<Structure> removed, JobSource source,
         IEnumerable<Structure>? burnt = null)
@@ -114,11 +108,6 @@ internal static class JobSnapshots
 
     /// <summary>A job's id in a tool's reply; null when the reply started none (busy, refused, a dry run).</summary>
     internal static string? JobIdOf(object? reply) => reply == null ? null : JobIdIn(reply);
-
-    // The request's own source fields; each tool has already checked them.
-    private static JobSource SourceOf(Args args) =>
-        new JobSource(SourceArgs.First(SourceArgs.Of(args))?.Value, args.OptionalBool("free") ?? false,
-            RefundArgs.RouteOf(args.Optional(RefundArgs.Argument)), args.OptionalBool(RefundArgs.Flag));
 
     internal static ThingSnapshot Of(Structure structure)
     {

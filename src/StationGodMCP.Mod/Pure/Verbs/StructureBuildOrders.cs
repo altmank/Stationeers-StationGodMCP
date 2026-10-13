@@ -1,0 +1,495 @@
+#nullable enable
+
+using System;
+using System.Collections.Generic;
+using Newtonsoft.Json.Linq;
+using StationGodMCP.Api.Shared;
+
+namespace StationGodMCP.Pure.Verbs;
+
+/// <summary>
+/// build structure's call, checked without the game: the placements (at most 64) or one top-level placement (prefab,
+/// at, rotation, facing, up, face, orient, above_floor, build_state, label, color); spread ({from, to, step} or a list
+/// of them) standing in for at; who pays (materials) and whether the build is free; allow door_keepout and lint;
+/// include notes and footprint_cells; verbose, acknowledge_gas_lost (checked), confirm and queue. Every placement's
+/// fields are read by the shared place readers (BuildArgs), so the checks are the ones the old place surface made; the
+/// what's label prefixes every refusal ("build structure: ...").
+/// </summary>
+internal sealed class StructureBuildOrder
+{
+    internal const int MaximumPlacements = BuildArgs.MaximumPlacements;
+
+    /// <summary>The two ways the call names its placements: the list, or one at the top level.</summary>
+    internal const string ByPlacements = "placements";
+
+    internal const string ByPrefab = "prefab";
+
+    /// <summary>A placement's own fields, at the top level or in an item (above_floor read here: the shared reader
+    /// knows it as above_floor_m).</summary>
+    private static readonly string[] PlacementFields =
+    {
+        "prefab", "at", "rotation", "facing", "up", "face", "orient", "above_floor", "build_state", "label", "color"
+    };
+
+    private StructureBuildOrder(WhatSpec spec)
+    {
+        Label = spec.Label;
+        Mark = spec.Write!.UndoMark;
+    }
+
+    /// <summary>The call's label, as its refusals prefix it: "build structure".</summary>
+    public string Label { get; }
+
+    /// <summary>The what's undo mark, as its report rows carry it ("[undo]").</summary>
+    public string Mark { get; }
+
+    /// <summary>Every placement, in order: the list's items, the one at the top level, or spread's points.</summary>
+    public List<PlacementArgs> Placements { get; } = new List<PlacementArgs>();
+
+    /// <summary>Who pays; a placement refunds nothing, so the refund route is the default.</summary>
+    public MaterialsSource Materials { get; private set; } = MaterialsSource.Player;
+
+    /// <summary>free: place without materials (creative worlds only).</summary>
+    public bool Free { get; private set; }
+
+    /// <summary>allow door_keepout: a placement in a door's keep-out is a warning instead of a problem.</summary>
+    public bool AllowDoorKeepOut { get; private set; }
+
+    /// <summary>allow lint: a lint problem is a warning and the rows about it say PASSED.</summary>
+    public bool AllowLint { get; private set; }
+
+    /// <summary>include footprint_cells: each layout preview lists its footprint's cells, not only a count.</summary>
+    public bool FootprintCells { get; private set; }
+
+    /// <summary>include notes (the what's fixed explanations) and verbose, as the call gives them.</summary>
+    public Fields Fields { get; private set; } = Fields.None;
+
+    /// <summary>confirm: whether this call acts, and how many rows a report lists.</summary>
+    public ReportConfirm Report { get; private set; } = ReportConfirm.Acting;
+
+    /// <summary>queue: start behind a job already running, instead of answering busy while one is.</summary>
+    public bool Queue { get; private set; } = true;
+
+    /// <summary>acknowledge_gas_lost, as the call gives it.</summary>
+    public string? AcknowledgeGasLost { get; private set; }
+
+    /// <summary>
+    /// The order build structure's options give; null with every problem added, or with missing set when the call
+    /// names no placement at all.
+    /// </summary>
+    internal static StructureBuildOrder? Of(BuildStructureOptions options, List<OptionProblem> problems,
+        out VerbError? missing)
+    {
+        StructureBuildOrder order = new StructureBuildOrder(BuildStructureOptions.Spec);
+        order.Materials = options.Materials;
+        order.Free = options.Free ?? false;
+        order.Fields = options.Fields;
+        order.FootprintCells = options.Fields.Includes("footprint_cells");
+        order.Report = options.Report;
+        order.Queue = options.Queue ?? true;
+        order.AcknowledgeGasLost = options.AcknowledgeGasLost;
+        order.AllowDoorKeepOut = Allow.Lifts(options.Allow, "door_keepout");
+        order.AllowLint = Allow.Lifts(options.Allow, WriteLint.Guard);
+        int before = problems.Count;
+        GasHoldArgs.Check(order.AcknowledgeGasLost, problems);
+        missing = order.Read(options, problems);
+        return problems.Count == before && missing == null ? order : null;
+    }
+
+    /// <summary>
+    /// The order undo_job's placement replay starts: the placements the job put back, who pays (the undo's from_id,
+    /// else the player), whether the call acts (confirm) or only reports, whether it queues behind the removal, and
+    /// the caller's acknowledge_gas_lost. Nothing is lifted: a replay gives no allow. Null with every problem added.
+    /// </summary>
+    internal static StructureBuildOrder? Replay(JArray placements, string? fromId, bool acts, bool queue,
+        string? acknowledgeGasLost, List<OptionProblem> problems)
+    {
+        StructureBuildOrder order = new StructureBuildOrder(BuildStructureOptions.Spec);
+        if (fromId != null)
+        {
+            order.Materials = new MaterialsSource(new Payer[] { new Payer.Holder(fromId) }, RefundRoute.Default);
+        }
+
+        order.Report = new ReportConfirm(true, acts, null);
+        order.Queue = queue;
+        order.AcknowledgeGasLost = acknowledgeGasLost;
+        order.Items(placements, problems);
+        return problems.Count == 0 ? order : null;
+    }
+
+    /// <summary>The request the game plans: the placements, who pays, and what the call includes.</summary>
+    internal PlaceArguments Arguments(ThingId? from, List<ThingId> moreFrom) =>
+        new PlaceArguments(Placements, from, Free, AllowDoorKeepOut, FootprintCells,
+            new ReportDetail(Fields.Includes("notes"), Fields.Verbose), moreFrom, AllowLint);
+
+    // The placements the call names: the list, or the one placement's own fields at the top level (spread standing in
+    // for at). Null with missing set when it names none.
+    private VerbError? Read(BuildStructureOptions options, List<OptionProblem> problems)
+    {
+        if (options.Placements != null)
+        {
+            BesidePlacements(options, problems);
+            Items(options.Placements, problems);
+            return null;
+        }
+
+        return One(options, problems);
+    }
+
+    // A placement's own field beside a placements list belongs in each item instead.
+    private static void BesidePlacements(BuildStructureOptions options, List<OptionProblem> problems)
+    {
+        foreach (string field in PlacementFields)
+        {
+            if (Given(options, field))
+            {
+                problems.Add(new OptionProblem(field,
+                    $"goes without {ByPlacements}: give it in each placement ({ByPlacements}[0].{field})"));
+            }
+        }
+
+        if (options.Spread != null)
+        {
+            problems.Add(new OptionProblem("spread",
+                $"goes without {ByPlacements}: it makes the one top-level placement's at"));
+        }
+    }
+
+    // Whether the call gives a placement field at the top level.
+    private static bool Given(BuildStructureOptions options, string field) => field switch
+    {
+        "prefab" => options.Selector.Prefab != null,
+        "at" => options.At != null,
+        "rotation" => options.Rotation != null,
+        "facing" => options.Facing != null,
+        "up" => options.Up != null,
+        "face" => options.Face != null,
+        "orient" => options.Orient != null,
+        "above_floor" => options.AboveFloor.HasValue,
+        "build_state" => options.BuildState != null,
+        "label" => options.Label != null,
+        "color" => options.Color != null,
+        _ => false
+    };
+
+    // The placements list: each item read as a placement, at most the what's MaximumPlacements of them.
+    private void Items(JToken given, List<OptionProblem> problems)
+    {
+        if (!(given is JArray items) || items.Count == 0 || items.Count > MaximumPlacements)
+        {
+            problems.Add(new OptionProblem(ByPlacements,
+                $"is a list of 1 to {MaximumPlacements} placements, each {{prefab, at, ...}}"));
+            return;
+        }
+
+        for (int index = 0; index < items.Count; index++)
+        {
+            string path = $"{ByPlacements}[{index}]";
+            if (!(items[index] is JObject item))
+            {
+                problems.Add(new OptionProblem(path, "is an object: {prefab, at, ...}"));
+                continue;
+            }
+
+            if (item["spread"] != null)
+            {
+                problems.Add(new OptionProblem($"{path}.spread",
+                    $"goes with the one top-level placement, not with {ByPlacements}"));
+            }
+
+            Add(path + ".", index, Shared(item, path, problems), problems);
+        }
+    }
+
+    // The one placement's own fields at the top level, or spread's points sharing them. Null with missing set when
+    // the call gives none of them.
+    private VerbError? One(BuildStructureOptions options, List<OptionProblem> problems)
+    {
+        JObject item = new JObject();
+        if (!AddPrefab(options.Selector.Prefab, item, problems))
+        {
+            return null;
+        }
+
+        if (options.At != null)
+        {
+            item["at"] = options.At.DeepClone();
+        }
+
+        if (options.Rotation != null)
+        {
+            item["rotation"] = options.Rotation.DeepClone();
+        }
+
+        if (options.Facing != null)
+        {
+            item["facing"] = options.Facing;
+        }
+
+        if (options.Up != null)
+        {
+            item["up"] = options.Up;
+        }
+
+        if (options.Face != null)
+        {
+            item["face"] = options.Face;
+        }
+
+        if (options.Orient != null)
+        {
+            item["orient"] = options.Orient.DeepClone();
+        }
+
+        if (options.AboveFloor.HasValue)
+        {
+            AddAboveFloor(new JValue(options.AboveFloor.Value), "above_floor", item, problems);
+        }
+
+        if (options.BuildState != null)
+        {
+            item["build_state"] = options.BuildState.DeepClone();
+        }
+
+        if (options.Label != null)
+        {
+            item["label"] = options.Label;
+        }
+
+        if (options.Color != null)
+        {
+            item["color"] = options.Color.DeepClone();
+        }
+
+        if (item.Count == 0)
+        {
+            return new VerbError(RemoveRunOrders.MissingTarget,
+                $"{Label}: name the placements ({ByPlacements}), or one placement by {ByPrefab} with at.",
+                new JObject { ["options"] = new JArray(ByPlacements, ByPrefab) });
+        }
+
+        if (options.Spread == null)
+        {
+            Add(string.Empty, 0, item, problems);
+            return null;
+        }
+
+        if (options.At != null)
+        {
+            problems.Add(new OptionProblem("spread", "goes without at: it makes the at positions"));
+        }
+
+        List<JArray>? points = Spread(options.Spread, problems);
+        for (int index = 0; points != null && index < points.Count; index++)
+        {
+            item["at"] = points[index];
+            Add(string.Empty, index, item, problems);
+        }
+
+        return null;
+    }
+
+    // One placement read by the shared reader (BuildArgs.Placement), so it is checked exactly as the old surface
+    // checked a placement; a refusal it throws names the option it is about.
+    private void Add(string prefix, int index, JObject item, List<OptionProblem> problems)
+    {
+        try
+        {
+            Placements.Add(BuildArgs.Placement(new Args(item), index, prefix));
+        }
+        catch (ApiException refused)
+        {
+            problems.Add(ProblemFor(prefix.Length == 0 ? ByPrefab : prefix.TrimEnd('.'), prefix, refused.Message));
+        }
+    }
+
+    // A placement's fields as the shared reader reads them: an item that gives above_floor is this what's name for the shared
+    // above_floor_m, so a placement that gives it is read from a copy with that one key set. A placement that does not
+    // is read as given, so nothing is copied.
+    private static JObject Shared(JObject item, string path, List<OptionProblem> problems)
+    {
+        JToken? above = item["above_floor"];
+        if (above == null)
+        {
+            return item;
+        }
+
+        JObject fields = new JObject();
+        foreach (JProperty key in item.Properties())
+        {
+            fields[key.Name] = key.Value.DeepClone();
+        }
+
+        AddAboveFloor(above, $"{path}.above_floor", fields, problems);
+        return fields;
+    }
+
+    // above_floor: a placement's bottom this many metres above the floor below at, 0 to 20.
+    private static void AddAboveFloor(JToken? given, string path, JObject item, List<OptionProblem> problems)
+    {
+        if (given == null)
+        {
+            return;
+        }
+
+        double metres = given.Type is JTokenType.Integer or JTokenType.Float ? given.Value<double>() : double.NaN;
+        if (double.IsNaN(metres) || double.IsInfinity(metres) || metres < 0.0 || metres > 20.0)
+        {
+            problems.Add(new OptionProblem(path, "is 0 to 20, in metres"));
+            return;
+        }
+
+        item["above_floor_m"] = metres;
+    }
+
+    // The one prefab, from the what's prefab binding: its name or its hash. A * pattern is a filter, not a placement,
+    // so false with the problem (the placement is not read then: it would only repeat that its prefab is missing).
+    private static bool AddPrefab(PrefabFilter? filter, JObject item, List<OptionProblem> problems)
+    {
+        if (filter == null)
+        {
+            return true;
+        }
+
+        if (filter.Patterns.Count == 1 && filter.Patterns[0] is PrefabPattern.Hash hash)
+        {
+            item["prefab"] = hash.Value;
+            return true;
+        }
+
+        if (filter.Patterns.Count == 1 && filter.Patterns[0] is PrefabPattern.Whole whole)
+        {
+            item["prefab"] = whole.Name;
+            return true;
+        }
+
+        problems.Add(new OptionProblem(ByPrefab, "is one prefab's name or its hash, not a * pattern"));
+        return false;
+    }
+
+    // spread: {from, to, step} or a list of them. Each line's points are from + k*step along it: from included, to
+    // only when a step lands on it exactly. Every point is one placement.
+    private static List<JArray>? Spread(JToken given, List<OptionProblem> problems)
+    {
+        List<JArray> points = new List<JArray>();
+        if (given is JObject line)
+        {
+            Line(line, "spread", points, problems);
+            return points;
+        }
+
+        if (given is JArray lines && lines.Count > 0)
+        {
+            for (int index = 0; index < lines.Count; index++)
+            {
+                if (lines[index] is JObject one)
+                {
+                    Line(one, $"spread[{index}]", points, problems);
+                }
+                else
+                {
+                    problems.Add(new OptionProblem($"spread[{index}]", "is {from, to, step}"));
+                }
+            }
+
+            return points;
+        }
+
+        problems.Add(new OptionProblem("spread", "is {from, to, step}, or a list of them"));
+        return null;
+    }
+
+    // One spread line. Together with the lines before it it may make at most the what's MaximumPlacements placements.
+    private static void Line(JObject line, string path, List<JArray> points, List<OptionProblem> problems)
+    {
+        JToken? from = line["from"];
+        JToken? to = line["to"];
+        double step = line["step"] is { Type: JTokenType.Integer or JTokenType.Float } given
+            ? given.Value<double>()
+            : double.NaN;
+        if (from == null || to == null || double.IsNaN(step))
+        {
+            problems.Add(new OptionProblem(path, "is {from: [x, y, z], to: [x, y, z], step: metres}"));
+            return;
+        }
+
+        if (!(step > 0.0) || double.IsInfinity(step))
+        {
+            problems.Add(new OptionProblem($"{path}.step", "is more than 0 metres"));
+            return;
+        }
+
+        if (!Point(from, $"{path}.from", problems, out Metres start) ||
+            !Point(to, $"{path}.to", problems, out Metres end))
+        {
+            return;
+        }
+
+        double distance = Distance(start, end);
+        long count = distance <= 0.0 ? 1 : (long)Math.Floor(distance / step) + 1;
+        if (points.Count + count > MaximumPlacements)
+        {
+            problems.Add(new OptionProblem(path, $"makes {points.Count + count} placements with the lines before " +
+                $"it; the most is {MaximumPlacements}"));
+            return;
+        }
+
+        for (long index = 0; index < count; index++)
+        {
+            double covered = index * step;
+            double along = covered >= distance ? 1.0 : covered / distance;
+            points.Add(new JArray(Along(start.X, end.X, along), Along(start.Y, end.Y, along),
+                Along(start.Z, end.Z, along)));
+        }
+    }
+
+    // A point along the line: exactly from at its start, and exactly to where a step lands on it.
+    private static double Along(double start, double end, double along) =>
+        along <= 0.0 ? start : along >= 1.0 ? end : start + (end - start) * along;
+
+    private static double Distance(Metres from, Metres to)
+    {
+        double x = to.X - from.X;
+        double y = to.Y - from.Y;
+        double z = to.Z - from.Z;
+        return Math.Sqrt(x * x + y * y + z * z);
+    }
+
+    // A position in metres, through the shared reader (BuildArgs.PositionOf); a refusal it throws names the option.
+    private static bool Point(JToken token, string path, List<OptionProblem> problems, out Metres point)
+    {
+        try
+        {
+            point = BuildArgs.PositionOf(token, path);
+            return true;
+        }
+        catch (ApiException refused)
+        {
+            point = default;
+            problems.Add(ProblemFor(path, path, refused.Message));
+            return false;
+        }
+    }
+
+    // A shared reader's refusal as a problem: a message that names the option it is about (placements[2].at is
+    // required, or at is required) gives the path and the rest is the text; a message that names none (Give at most
+    // one of rotation, facing and face) is about the placement, known by its form.
+    private static OptionProblem ProblemFor(string form, string path, string message)
+    {
+        string text = message.Length > 0 && message[message.Length - 1] == '.'
+            ? message.Substring(0, message.Length - 1)
+            : message;
+        int space = text.IndexOf(' ');
+        string named = space < 0 ? text : text.Substring(0, space);
+        return space > 0 && Named(named, path)
+            ? new OptionProblem(named, text.Substring(space + 1))
+            : new OptionProblem(form, text);
+    }
+
+    // Whether the message's first word names the option it is about: a placement item's path (placements[2].at), or
+    // one of the what's own options (at) for the placement given at the top level.
+    private static bool Named(string word, string path) =>
+        path.Length > 0
+            ? word.StartsWith(path, StringComparison.Ordinal) && word.Length >= path.Length
+            : BuildStructureOptions.Spec.Option(word) != null;
+}

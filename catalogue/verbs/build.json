@@ -80,17 +80,14 @@
         "allow": {
           "use": "allow",
           "schema": {"type": "array", "items": {"type": "string", "enum": ["door_keepout", "lint", "pad"]}},
-          "description": "door_keepout: a keep-out cell is a warning; lint: lint problems are warnings (listed in lint_passed); pad: building in a landing pad's approach."
+          "description": "door_keepout: a keep-out cell is a warning; lint: lint problems are warnings the report marks PASSED; pad: building in a landing pad's approach."
         },
         "include": {
           "use": "include",
           "schema": {"type": "array", "items": {"type": "string", "enum": ["notes", "footprint_cells"]}},
           "description": "footprint_cells: each footprint's cells."
         },
-        "verbose": {
-          "use": "verbose",
-          "description": "Dry run: layouts a refused report leaves out; real run: the whole preflight."
-        },
+        "verbose": {"use": "verbose", "description": "Report: layouts a refused report leaves out; real run: the whole preflight."},
         "acknowledge_gas_lost": {"use": "acknowledge_gas_lost"},
         "from_plan": {
           "use": "from_plan",
@@ -115,9 +112,6 @@
             "label": "PlaceReport",
             "view": "PlaceReport",
             "keys": {
-              "tool": "str",
-              "status": "str",
-              "job_id": "str | None",
               "ready": "bool",
               "problems": "list[{code: str, message: str, index: int | None, reference_id: str | None}]",
               "warnings": "list[{code: str, message: str, index: int | None, reference_id: str | None}]",
@@ -125,25 +119,6 @@
               "materials": "list[{prefab_name: str | None, needed: int, available: int, paid_by: list[{reference_id: str, name: str | None, quantity: int, available: int}] | None}]",
               "from": "Thing | None",
               "free": "bool",
-              "notes": "list[str] | None"
-            }
-          },
-          {
-            "label": "RemoveReport",
-            "view": "RemoveReport",
-            "keys": {
-              "tool": "str",
-              "status": "str",
-              "job_id": "str | None",
-              "ready": "bool",
-              "problems": "list[{code: str, message: str, index: int | None, reference_id: str | None}]",
-              "warnings": "list[{code: str, message: str, index: int | None, reference_id: str | None}]",
-              "removals": "list[{index: int, reference_id: str, prefab_name: str | None, display_name: str | None, position: Vec3, build_state: int, kind: str, refund: list[{prefab_name: str | None, quantity: int}]}]",
-              "refund": "list[{prefab_name: str | None, quantity: int}]",
-              "refund_to": "Any",
-              "refund_plan": "RefundPlan | None",
-              "from": "Thing | None",
-              "will_burst": "list[{network_id: str, networks_left: int, volume_left_l: float, pressure_now_kpa: float, pressure_after_kpa: float, rating_kpa: float, pipes: list[{reference_id: str, prefab_name: str, rating_kpa: float, where: str, pressure_there_kpa: float}], where: list[str], holds_mol: float, released_mol: float, gases: list[{gas: str, amount_mol: float}]}]",
               "notes": "list[str] | None"
             }
           },

@@ -94,8 +94,10 @@ internal static class LintReport
         }
     }
 
-    /// <summary>The lint warnings of place_structure's resolved placements.</summary>
-    internal static void Check(PlacePlan plan)
+    /// <summary>The lint findings of build structure's resolved placements: a problem refuses the plan, unless the
+    /// call's allow names lint, which makes it a warning and has the report mark the placements it is about PASSED
+    /// (PlacePlan.Lifted).</summary>
+    internal static void Check(PlacePlan plan, bool allowLint)
     {
         List<PlannedThing> planned = new List<PlannedThing>(plan.Placements.Count);
         foreach (PlannedPlacement placement in plan.Placements)
@@ -109,14 +111,21 @@ internal static class LintReport
 
         foreach (LintFinding finding in Findings(planned, new HashSet<long>()))
         {
-            if (finding.Level == ConflictLevel.Problem)
+            int? index = IndexOf(finding, planned);
+            if (finding.Level != ConflictLevel.Problem)
             {
-                plan.Problem(CodePrefix + finding.Code, Refusal(finding), IndexOf(finding, planned));
+                plan.Warn(CodePrefix + finding.Code, finding.Message, index);
+                continue;
             }
-            else
+
+            if (allowLint)
             {
-                plan.Warn(CodePrefix + finding.Code, finding.Message, IndexOf(finding, planned));
+                plan.Warn(CodePrefix + finding.Code, Lifted(finding), index);
+                plan.Lifted.Add(new PlaceLift(WriteLint.Guard, index));
+                continue;
             }
+
+            plan.Problem(CodePrefix + finding.Code, Refusal(finding), index);
         }
     }
 

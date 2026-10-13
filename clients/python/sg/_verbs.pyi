@@ -1996,9 +1996,9 @@ def build(what: Literal['structure'], *,
     color: str | int = None,  # A colour name or index.
     materials: str | list[str] = None,  # Holder(s) that pay materials and take source refunds, tried in order; ids or "player". Default the player.
     free: bool = False,  # Creative worlds: no materials. Cheat.
-    allow: list[Literal['door_keepout', 'lint', 'pad']] = None,  # door_keepout: a keep-out cell is a warning; lint: lint problems are warnings (listed in lint_passed); pad: building in a landing pad's approach.
+    allow: list[Literal['door_keepout', 'lint', 'pad']] = None,  # door_keepout: a keep-out cell is a warning; lint: lint problems are warnings the report marks PASSED; pad: building in a landing pad's approach.
     include: list[Literal['notes', 'footprint_cells']] = None,  # footprint_cells: each footprint's cells.
-    verbose: bool = False,  # Dry run: layouts a refused report leaves out; real run: the whole preflight.
+    verbose: bool = False,  # Report: layouts a refused report leaves out; real run: the whole preflight.
     acknowledge_gas_lost: str = None,  # The job id whose gas loss you accept (with the user's agreement); lifts the gas hold.
     from_plan: str = None,  # A plan route or plan spot reply (p = sg.plan('route', ...)), or one spot (p['spots'][2]): build its build_arguments. With from_plan, what may be left out: sg.build(from_plan=p).
 ) -> dict:  # main list: r['placements']; iterating or indexing it walks every page, in order
@@ -2013,9 +2013,6 @@ def build(what: Literal['structure'], *,
     (BuildJob)
       BuildJob
     (PlaceReport)
-      tool: str
-      status: str
-      job_id: str | None
       ready: bool
       problems: list[{code: str, message: str, index: int | None, reference_id: str | None}]
       warnings: list[{code: str, message: str, index: int | None, reference_id: str | None}]
@@ -2039,23 +2036,6 @@ def build(what: Literal['structure'], *,
           available: int}] | None}]
       from: Thing | None
       free: bool
-      notes: list[str] | None
-    (RemoveReport)
-      tool: str
-      status: str
-      job_id: str | None
-      ready: bool
-      problems: list[{code: str, message: str, index: int | None, reference_id: str | None}]
-      warnings: list[{code: str, message: str, index: int | None, reference_id: str | None}]
-      removals: list[{index: int, reference_id: str, prefab_name: str | None, display_name: str | None, position: Vec3, build_state: int, kind: str,
-          refund: list[{prefab_name: str | None, quantity: int}]}]
-      refund: list[{prefab_name: str | None, quantity: int}]
-      refund_to: Any
-      refund_plan: RefundPlan | None
-      from: Thing | None
-      will_burst: list[{network_id: str, networks_left: int, volume_left_l: float, pressure_now_kpa: float, pressure_after_kpa: float, rating_kpa:
-          float, pipes: list[{reference_id: str, prefab_name: str, rating_kpa: float, where: str, pressure_there_kpa: float}], where: list[str],
-          holds_mol: float, released_mol: float, gases: list[{gas: str, amount_mol: float}]}]
       notes: list[str] | None
     (RunJob)
       RunJob

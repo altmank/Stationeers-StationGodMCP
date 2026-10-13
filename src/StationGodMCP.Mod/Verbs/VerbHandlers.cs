@@ -80,6 +80,7 @@ internal static class VerbHandlers
         VerbHandler.For(BuildCableOptions.Spec, BuildCableOptions.Bind, BuildCable.Run),
         VerbHandler.For(BuildPipeOptions.Spec, BuildPipeOptions.Bind, BuildPipe.Run),
         VerbHandler.For(BuildChuteOptions.Spec, BuildChuteOptions.Bind, BuildChute.Run),
+        VerbHandler.For(BuildStructureOptions.Spec, BuildStructureOptions.Bind, BuildStructure.Run),
         VerbHandler.For(CheckLayoutOptions.Spec, CheckLayoutOptions.Bind, CheckLayout.Run),
         VerbHandler.For(CheckRulesOptions.Spec, CheckRulesOptions.Bind, CheckRules.Run),
         VerbHandler.For(CheckReplaceableOptions.Spec, CheckReplaceableOptions.Bind, CheckReplaceable.Run),

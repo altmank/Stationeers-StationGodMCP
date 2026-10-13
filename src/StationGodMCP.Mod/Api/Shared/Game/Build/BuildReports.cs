@@ -24,9 +24,9 @@ internal static class BuildReports
         "A piece is built as a kit builds it (Constructor.SpawnConstruct) and raised to the chosen build state; the " +
         "cost is every build state's items up to that state (state 0 is the kit), taken from the source as a kit's " +
         "placement takes them. Tools, welder fuel and battery charge are not charged.",
-        "A real run needs {arg:dry_run}: false and {arg:confirm}: true; poll the job with {arg:job_id}.",
-        "Cables, pipes and chutes: {tool:place_cables}, {tool:place_pipes} and {tool:place_chutes} pick pieces by " +
-        "their connections and guard merges; walls and frames in place: {tool:replace_walls}, {tool:replace_frames}.");
+        "A real run needs confirm: true; the job is followed with inspect job.",
+        "Cables, pipes and chutes: build cable, build pipe and build chute pick pieces by their connections and " +
+        "guard merges; walls and frames in place: swap wall and swap frame.");
 
     private static readonly TextList RemoveNotes = new TextList(
         "Gives back what deconstructing by hand does: every build state's items down to the kit; a broken piece " +

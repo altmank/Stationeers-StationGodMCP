@@ -447,6 +447,24 @@ public sealed class ToolRegistrationTests
     // the catalogue.
     private static readonly string[] SidecarOnly = { "sample_logic", "tool_info" };
 
+    /// <summary>The methods the mod still handles per tool: every one A5 retires with the verbs.</summary>
+    private static readonly HashSet<string> LaterMethods = new HashSet<string>(System.StringComparer.Ordinal)
+    {
+        "advance_build_state",
+        "highlight",
+        "mod_info",
+        "paste_blueprint",
+        "profiling",
+        "read_console",
+        "run_console_command",
+        "show_preview",
+        "trader_buy",
+        "trader_contacts",
+        "trader_inventory",
+        "trader_sell",
+        "undo_job"
+    };
+
     [Fact]
     public void TheToolListAndTheModsHandlersAgree()
     {
@@ -460,8 +478,8 @@ public sealed class ToolRegistrationTests
         Assert.Empty(names.Except(handled).Except(SidecarOnly).Except(CatalogueChecks.RetiredMethods.Names));
         Assert.Empty(handled.Except(names));
         // The methods A5 has still to retire: the sidecar lists them and the mod still handles them.
-        Assert.Subset(names, new HashSet<string> { "place_structure" });
-        Assert.Subset(handled, new HashSet<string> { "place_structure" });
+        Assert.Subset(names, LaterMethods);
+        Assert.Subset(handled, LaterMethods);
     }
 
     private static HashSet<string> StringsIn(SyntaxNode node) =>

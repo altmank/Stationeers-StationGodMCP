@@ -19,11 +19,11 @@ namespace StationGodMCP.Api;
 /// undo_job: the inverse of a finished place or remove job (UndoPlanner): remove_structure every thing it built, then
 /// build again every thing it removed, each as it stood (the snapshot taken when the job started: JobSnapshots): cable,
 /// pipe and chute pieces through the build service (the pieces form, one call per kind and grade), so their
-/// would_bridge, burst and gas guards apply; everything else through place_structure. The pieces the job built of a
+/// would_bridge, burst and gas guards apply; everything else through build structure. The pieces the job built of a
 /// kind that a piece run also builds are removed by that kind's first run (remove_ids, UndoRemovals), so a network the
 /// job changed in its middle is taken apart and put back in one job; only the rest goes through remove_structure
 /// first. Refused when the world diverged from what the job left. Dry run by default: the plan, every tool's arguments and dry run (the
-/// piece runs checked as if the removal were done, assume_removed; place_structure only when nothing is removed
+/// piece runs checked as if the removal were done, assume_removed; the placements' report only when nothing is removed
 /// first); ready only when every one of them is. A real run makes the same checks, then starts the removal job and
 /// queues the placement jobs behind it (wait), each checked again against the world the jobs before it left. Every
 /// call takes the job's own from_id (UndoSource), or the caller's; removing what a free placement built gives nothing
@@ -121,7 +121,7 @@ internal static class UndoJobApi
 
         object? removal = removeArguments != null ? RemoveStructureApi.Handle(DryRun(removeArguments)) : null;
         object? placement = placeArguments != null && plan.Remove.Count == 0
-            ? PlaceStructureApi.Handle(DryRun(placeArguments))
+            ? StructureBuild.Reply(PlaceOrder(placeArguments, source, acknowledge, acts: false, queue: false))
             : null;
         List<UndoPieceRunView> checkedRuns = new List<UndoPieceRunView>(groups.Count);
         for (int index = 0; index < groups.Count; index++)
@@ -163,7 +163,9 @@ internal static class UndoJobApi
             }
         }
 
-        object? placeJob = placeArguments != null ? PlaceStructureApi.Handle(RealRun(placeArguments)) : null;
+        object? placeJob = placeArguments != null
+            ? StructureBuild.Reply(PlaceOrder(placeArguments, source, acknowledge, acts: true, queue: true))
+            : null;
         List<UndoPieceRunView> started = new List<UndoPieceRunView>(groups.Count);
         for (int index = 0; index < groups.Count; index++)
         {
@@ -457,6 +459,20 @@ internal static class UndoJobApi
             args.Optional("allow_bridge"), materials, job, acts, queue, acknowledge, problems);
         return order ?? throw ApiErrors.InvalidArgument(
             OptionProblem.Refusal(RunBuildOrder.SpecOf(run.Kind).Label, problems).Message);
+    }
+
+    // The typed call one placement run makes, for StructureBuild: the placements the job put back (the same form the
+    // reply's place_arguments shows), the undo's from_id, the caller's acknowledge_gas_lost, and whether the call acts
+    // (a real run queues behind the removal) or only reports. A call that cannot be read refuses the undo (the same
+    // refusal the old arguments gave).
+    private static StructureBuildOrder PlaceOrder(JObject arguments, UndoSource source, string? acknowledge, bool acts,
+        bool queue)
+    {
+        List<OptionProblem> problems = new List<OptionProblem>();
+        StructureBuildOrder? order = StructureBuildOrder.Replay((JArray)arguments["placements"]!,
+            source.FromId.HasValue ? Text(source.FromId.Value) : null, acts, queue, acknowledge, problems);
+        return order ?? throw ApiErrors.InvalidArgument(
+            OptionProblem.Refusal(BuildStructureOptions.Spec.Label, problems).Message);
     }
 
     // The pieces form of one call as undo_job's reply shows it (piece_runs[].arguments), and what it takes down

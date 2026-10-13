@@ -102,7 +102,24 @@ internal sealed class PlannedPlacement
     internal bool Resolved => Prefab != null && Cursor != null && Position.HasValue && State.HasValue;
 }
 
-/// <summary>A place_structure run as planned: every placement, the source, the stocks, problems and warnings.</summary>
+/// <summary>A problem-level finding a placement call's allow let through, about one placement (a null index: about
+/// no one placement): the report marks the rows about it PASSED.</summary>
+internal sealed class PlaceLift
+{
+    internal PlaceLift(string guard, int? index)
+    {
+        Guard = guard;
+        Index = index;
+    }
+
+    /// <summary>The allow word that lifted it (lint).</summary>
+    public string Guard { get; }
+
+    /// <summary>The placement it is about; null for the call as a whole.</summary>
+    public int? Index { get; }
+}
+
+/// <summary>A structure placement call as planned: every placement, the source, the stocks, problems and warnings.</summary>
 internal sealed class PlacePlan
 {
     internal PlacePlan(PlaceArguments arguments)
@@ -117,6 +134,12 @@ internal sealed class PlacePlan
     internal List<BuildIssueView> Problems { get; } = new List<BuildIssueView>();
 
     internal List<BuildIssueView> Warnings { get; } = new List<BuildIssueView>();
+
+    /// <summary>
+    /// The problem-level findings and guards the call's allow let through (their warnings are in Warnings): the
+    /// report marks the placements they are about PASSED.
+    /// </summary>
+    internal List<PlaceLift> Lifted { get; } = new List<PlaceLift>();
 
     /// <summary>Where materials come from; null when free or when there is none (a problem says so).</summary>
     internal Thing? From { get; set; }
@@ -153,7 +176,7 @@ internal sealed class PlacePlan
 }
 
 /// <summary>
-/// place_structure's whole preflight; nothing here changes the game. Each placement: the prefab (a loaded structure
+/// build structure's whole preflight; nothing here changes the game. Each placement: the prefab (a loaded structure
 /// some kit builds), the turn (refused where the cursor cannot turn a grid-placed piece that way), the position as
 /// the cursor snaps it, the game's own cursor check, the slot a small-grid piece takes, the build state, label and
 /// colour, and the cost: the build states up to the chosen one (MaterialRule; state 0 is the kit). Materials come
@@ -202,7 +225,7 @@ internal static class PlacePlanner
         CountMaterials(plan);
         if (lint)
         {
-            Lint.LintReport.Check(plan);
+            Lint.LintReport.Check(plan, arguments.AllowLint);
         }
 
         return plan;
@@ -258,7 +281,7 @@ internal static class PlacePlanner
         List<string> names = near.ConvertAll(broken =>
             $"{Names.Of(broken)} ({broken.PrefabName} {broken.ReferenceId})");
         return $" (broken there: {string.Join(", ", names)}; a broken structure still takes its place; remove it " +
-            "first with remove_structure allow_broken)";
+            "first with remove structure, allow: [\"broken\"])";
     }
 
     /// <summary>
@@ -597,7 +620,7 @@ internal static class PlacePlanner
     }
 
     /// <summary>
-    /// Whether place_structure accepts the turn: a grid-placed prefab only as its cursor turns it (a piece the cursor
+    /// Whether build structure accepts the turn: a grid-placed prefab only as its cursor turns it (a piece the cursor
     /// turns itself, a cable or pipe, any turn); a face-placed or mounted one any turn, the cursor check deciding.
     /// </summary>
     /// <summary>The prefab's visual top (VisualUp), knowing whether a placement can tip it off +y.</summary>
@@ -945,11 +968,11 @@ internal static class PlacePlanner
         }
     }
 
-    // The place tool of a cable, pipe or chute piece; null for anything else (devices on those networks included).
+    // The build what of a cable, pipe or chute piece; null for anything else (devices on those networks included).
     private static string? NetworkToolOf(Structure prefab) =>
-        new CableFamily().IsPiece(prefab) ? "place_cables"
-        : new PipeFamily().IsPiece(prefab) ? "place_pipes"
-        : new ChuteFamily().IsPiece(prefab) ? "place_chutes"
+        new CableFamily().IsPiece(prefab) ? "build cable"
+        : new PipeFamily().IsPiece(prefab) ? "build pipe"
+        : new ChuteFamily().IsPiece(prefab) ? "build chute"
         : null;
 
     private static void NetworkPieceNote(PlacePlan plan, Structure prefab, int index)
@@ -1121,7 +1144,7 @@ internal static class PlacePlanner
 
         if (human == null)
         {
-            plan.Problem("no_local_player", $"{player.Absence} Nothing to take materials from; pass from_id.");
+            plan.Problem("no_local_player", $"{player.Absence} Nothing to take materials from; pass materials.");
             return;
         }
 

@@ -39,7 +39,6 @@ internal static class ApiHost
             ["trader_contacts"] = static args => TraderContactsApi.Handle(args),
             ["trader_inventory"] = static args => TraderInventoryApi.Handle(args),
             ["advance_build_state"] = static args => AdvanceBuildStateApi.Handle(args),
-            ["place_structure"] = static args => PlaceStructureApi.Handle(args),
             ["show_preview"] = static args => ShowPreviewApi.Handle(args),
             ["highlight"] = static args => HighlightApi.Handle(args),
             ["undo_job"] = static args => UndoJobApi.Handle(args),

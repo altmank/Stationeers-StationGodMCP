@@ -21,7 +21,7 @@ internal static class RemoveStructureApi
         switch (BuildArgs.ParseRemove(args))
         {
             case BuildForm<RemoveArguments>.Poll poll:
-                return PlaceStructureApi.Polled(poll.JobId, poll.Verbose);
+                return Polled(poll.JobId, poll.Verbose);
             case BuildForm<RemoveArguments>.Run run:
                 RemovePlan plan = RemovePlanner.Plan(run.Arguments);
                 string? acknowledge = GasHoldArgs.Acknowledgement(args);
@@ -37,12 +37,22 @@ internal static class RemoveStructureApi
 
                 RemoveReportView preflight = BuildReports.Of(plan, BuildReports.Scheduled, null);
                 RemoveWork removing = new RemoveWork(run.Arguments, preflight, plan.TouchesPipes);
+                JobSource source = new JobSource(SourceArgs.First(SourceArgs.Of(args))?.Value,
+                    args.OptionalBool("free") ?? false, RefundArgs.RouteOf(args.Optional(RefundArgs.Argument)),
+                    args.OptionalBool(RefundArgs.Flag));
                 object started = JobSnapshots.Record(
                     BuildJobs.Start("remove", removing, args.OptionalBool("wait") ?? false, acknowledge),
-                    "remove_structure", plan.Takedowns.ConvertAll(takedown => takedown.Piece), args);
+                    "remove_structure", plan.Takedowns.ConvertAll(takedown => takedown.Piece), source);
                 return run.Verbose ? started : JobStartReplies.Brief(started, JobPreflightSummaryView.Of(preflight));
             default:
                 throw ApiErrors.InvalidArgument(Vocabulary.Text("Pass {arg:job_id}, or {arg:reference_ids}."));
         }
+    }
+
+    /// <summary>A job as polled: brief (no preflight, no final check unless refused) unless verbose.</summary>
+    private static object Polled(string jobId, bool verbose)
+    {
+        object polled = HeldTickJobs.Status(jobId);
+        return verbose ? polled : BuildJobView.Brief(polled);
     }
 }

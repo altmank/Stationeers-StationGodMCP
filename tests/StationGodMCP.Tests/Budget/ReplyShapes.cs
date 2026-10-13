@@ -90,10 +90,6 @@ internal static class ReplyShapes
         {
             S<BlueprintPasteStatusView>(), S<BlueprintUndoView>(), S<BlueprintPasteStartedView>()
         };
-        shapes["place_structure"] = new[]
-        {
-            PlaceReport(), S<JobQueuedView>().Absent("JobQueuedView.Preflight"), BuildPoll()
-        };
         // Bounded by what exists: the scopes and timed methods, the methods called, the last 16 tick holds; scopes and
         // calls are cut by default (x-default-limits), the worst frame's pieces and calls by the view (Shown).
         shapes["profiling"] = new[]
@@ -146,21 +142,12 @@ internal static class ReplyShapes
         return shapes;
     }
 
-    private static ReplyShape PlaceReport() => PlaceReportInto(S<PlaceReportView>());
-
-    // place_structure's dry run of one placement with its layout preview.
+    // place structure's dry run of one placement with its layout preview.
     private static ReplyShape PlaceReportInto(ReplyShape shape) => shape
         .List("PlaceReportView.Placements", 1).Absent("PlacementView.Orient", "FootprintView.LargeCells")
         .List("CellListView.Cells", 0).List("SectionsView.Walls", 1).List("PlacementLayoutView.Conflicts", 1)
         .List("PlacementLayoutView.PortChecks", 2).List("PlaceReportView.Materials", 2)
         .Absent("PlaceReportView.Notes");
-
-    // A build job's poll: status and result (placed, used, verification), the reports already answered left out.
-    private static ReplyShape BuildPoll() => S<BuildJobView>()
-        .Absent("BuildJobView.Preflight", "BuildJobView.PreflightSummary", "BuildJobResult.FinalCheck",
-            "BuildJobResult.RefundError", "BuildJobResult.StoppedAt", "BuildJobResult.Error", "BuildJobResult.GasCheck")
-        .List("BuildJobResult.Placed", 4).List("BuildJobResult.Removed", 0).List("BuildJobResult.Refunded", 0)
-        .List("BuildJobResult.Verification", 4).List("BuildCheckView.Issues", 0);
 
     // clean_chutes' dry run at the default limit: removals and dead pieces kept each listed up to it. kept_pieces holds
     // only pieces on a path left with an open end (a piece serving a path is not listed). riding: an item rides in a

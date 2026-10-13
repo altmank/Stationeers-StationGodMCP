@@ -58,6 +58,7 @@ internal static class RetiredMethods
         "place_cables",
         "place_chutes",
         "place_pipes",
+        "place_structure",
         "plan_removal",
         "planet",
         "plant_genes",

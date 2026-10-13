@@ -174,8 +174,10 @@ internal sealed class ReportDetail
 internal sealed class PlaceArguments
 {
     internal PlaceArguments(List<PlacementArgs> placements, ThingId? from, bool free, bool allowDoorKeepOut = false,
-        bool footprintCells = false, ReportDetail? detail = null, List<ThingId>? moreFrom = null)
+        bool footprintCells = false, ReportDetail? detail = null, List<ThingId>? moreFrom = null,
+        bool allowLint = false)
     {
+        AllowLint = allowLint;
         MoreFrom = moreFrom ?? new List<ThingId>();
         Detail = detail ?? ReportDetail.Brief;
         FootprintCells = footprintCells;
@@ -198,6 +200,9 @@ internal sealed class PlaceArguments
 
     /// <summary>allow_door_keepout: a piece in a door's keep-out is a warning instead of a problem.</summary>
     internal bool AllowDoorKeepOut { get; }
+
+    /// <summary>allow lint: a lint problem is a warning, and the report marks what it is about PASSED.</summary>
+    internal bool AllowLint { get; }
 
     /// <summary>include_footprint_cells: each layout preview lists its footprint's cells, not only a count.</summary>
     internal bool FootprintCells { get; }
