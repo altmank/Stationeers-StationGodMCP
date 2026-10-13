@@ -11,7 +11,7 @@ using Xunit;
 namespace StationGodMCP.Tests.Scheduling;
 
 /// <summary>
-/// protocol.md, Order on one stream: a deferred call (a find page built over frames, sample_logic) holds its stream
+/// protocol.md, Order on one stream: a deferred call (a find page built over frames, a read sample run) holds its stream
 /// until it answers, so a write sent after it on that stream starts only once it has answered and the find sees the
 /// world from before the write; other streams go on meanwhile. Every way a deferred call can end lets go of its stream.
 /// </summary>
@@ -71,10 +71,10 @@ public sealed class DeferredStreamHoldTests
     }
 
     [Fact]
-    public void ASampleLogicRunHoldsItsStreamUntilItIsAnswered()
+    public void AReadSampleRunHoldsItsStreamUntilItEnds()
     {
         LaneScheduler scheduler = Scheduler();
-        LoggedCall run = SampleLogic();
+        LoggedCall run = ReadSample();
         LoggedCall write = Write(Hub);
         scheduler.Add(run);
         scheduler.Add(write);
@@ -82,9 +82,10 @@ public sealed class DeferredStreamHoldTests
         scheduler.RunFrame(false, null, new NoRunner());
         Assert.Null(write.Answer);
 
-        run.Finish("samples", "sample_logic");
-        scheduler.RunFrame(false, null, new NoRunner());
+        run.Watch!.Ready = true;
+        RunUntilAnswered(scheduler, write);
 
+        Assert.Equal("samples", run.Answer);
         Assert.Equal("wrote", write.Answer);
     }
 
@@ -123,14 +124,14 @@ public sealed class DeferredStreamHoldTests
     }
 
     [Fact]
-    public void ASampleLogicAnswerFromAnotherThreadLetsGoOfTheStream() =>
-        EndingFreesTheStream(SampleLogic(), (_, call) => call.Finish("cancelled", "sample_logic"), "cancelled");
+    public void AReadSampleRunsEndLetsGoOfTheStream() =>
+        EndingFreesTheStream(ReadSample(), (_, call) => call.Watch!.Ready = true, "samples");
 
     [Fact]
-    public void TheStreamsEndLetsGoOfItEvenWhenTheCallIsNeverAnswered()
+    public void TheStreamsEndLetsGoOfItAndAnswersTheRunCancelled()
     {
         LaneScheduler scheduler = Scheduler();
-        LoggedCall run = SampleLogic();
+        LoggedCall run = ReadSample();
         scheduler.Add(run);
         scheduler.RunFrame(false, null, new NoRunner());
         Assert.Equal(1, scheduler.Holding);
@@ -141,7 +142,7 @@ public sealed class DeferredStreamHoldTests
         scheduler.RunFrame(false, null, new NoRunner());
 
         Assert.Equal("wrote", write.Answer);
-        Assert.Null(run.Answer);
+        Assert.Equal("refused cancelled", run.Answer);
         Assert.Equal(0, scheduler.Holding);
     }
 
@@ -149,7 +150,7 @@ public sealed class DeferredStreamHoldTests
     public void AWholeConnectionsEndLetsGoOfEveryStreamItHolds()
     {
         LaneScheduler scheduler = Scheduler();
-        scheduler.Add(SampleLogic());
+        scheduler.Add(ReadSample());
         scheduler.Add(Find(steps: 1000));
         scheduler.Add(Write(Other));
         scheduler.RunFrame(false, null, new NoRunner());
@@ -166,9 +167,9 @@ public sealed class DeferredStreamHoldTests
     {
         LaneScheduler scheduler = Scheduler();
         object other = new object();
-        scheduler.Add(SampleLogic());
+        scheduler.Add(ReadSample());
         scheduler.Add(Find(steps: 1000, context: Other));
-        LoggedCall stays = SampleLogic(other);
+        LoggedCall stays = ReadSample(other);
         scheduler.Add(stays);
         scheduler.RunFrame(false, null, new NoRunner());
         Assert.Equal(3, scheduler.Holding);
@@ -177,9 +178,11 @@ public sealed class DeferredStreamHoldTests
         scheduler.RunFrame(false, null, new NoRunner());
 
         Assert.Equal(1, scheduler.Holding);
-        Assert.Equal(0, scheduler.Deferred.Count);
-        stays.Finish("samples", "sample_logic");
+        Assert.Equal(1, scheduler.Deferred.Count);
+        stays.Watch!.Ready = true;
+        RunUntilAnswered(scheduler, stays);
         scheduler.RunFrame(false, null, new NoRunner());
+        Assert.Equal("samples", stays.Answer);
         Assert.Equal(0, scheduler.Holding);
     }
 
@@ -229,9 +232,14 @@ public sealed class DeferredStreamHoldTests
                     : CallOutcome.Continued(call.Work, "find.thing");
             });
 
-    private LoggedCall SampleLogic(object? source = null) =>
-        new LoggedCall(source ?? _connection, Hub, "sample_logic", Read("sample_logic"), 60000,
-            run: _ => CallOutcome.Deferred);
+    // A read sample run: its call waits in the slice lane until the run ends (Watch.Ready), then answers its samples.
+    private LoggedCall ReadSample(object? source = null) =>
+        new LoggedCall(source ?? _connection, Hub, "read sample", Read("read.sample"), 60000,
+            run: call =>
+            {
+                call.Watch = new WatchedRun();
+                return CallOutcome.Continued(call.Watch, "read.sample");
+            });
 
     private LoggedCall Write(CallContext context, int deadlineMs = 60000) =>
         new LoggedCall(_connection, context, "write",
@@ -285,6 +293,16 @@ public sealed class DeferredStreamHoldTests
         public string Finish() => _answer();
     }
 
+    /// <summary>A sample run's call: ready once the run ends.</summary>
+    private sealed class WatchedRun : IDeferredWork
+    {
+        internal bool Ready { get; set; }
+
+        public bool Step(double untilMs) => Ready;
+
+        public string Finish() => "samples";
+    }
+
     /// <summary>A call that runs what the test gives it and keeps its answer.</summary>
     private sealed class LoggedCall : QueuedCall
     {
@@ -307,6 +325,8 @@ public sealed class DeferredStreamHoldTests
         internal string? Answer { get; private set; }
 
         internal SteppedWork? Work { get; set; }
+
+        internal WatchedRun? Watch { get; set; }
 
         internal override object? Source => _source;
 

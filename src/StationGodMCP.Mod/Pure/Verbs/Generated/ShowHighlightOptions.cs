@@ -33,8 +33,8 @@ internal sealed record ShowHighlightOptions
     {
         Fields = Fields.Bind(options),
         Targets = options.Raw("targets"),
-        Seconds = options.Number("seconds"),
-        Keep = options.Flag("keep"),
+        Seconds = options.Number("seconds") ?? options.DefaultNumber("seconds"),
+        Keep = options.Flag("keep") ?? options.DefaultFlag("keep"),
         Clear = options.Flag("clear"),
     };
 }

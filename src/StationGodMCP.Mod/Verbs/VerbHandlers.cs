@@ -1,5 +1,6 @@
 #nullable enable
 
+using StationGodMCP.Protocol;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Verbs;
@@ -13,5 +14,6 @@ internal static class VerbHandlers
     internal static VerbDispatcher Dispatcher { get; } = new VerbDispatcher(new[]
     {
         VerbHandler.For(FindThingOptions.Spec, FindThingOptions.Bind, FindThing.Run),
+        ReadSample.Handler(static () => StationGodMod.Hub),
     });
 }

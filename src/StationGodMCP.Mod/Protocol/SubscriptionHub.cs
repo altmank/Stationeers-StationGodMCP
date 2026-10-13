@@ -17,26 +17,25 @@ using StationGodMCP.Pure.Subscriptions;
 namespace StationGodMCP.Protocol;
 
 /// <summary>
-/// The subscription lane's work on the wire (protocol.md, Subscriptions; sample_logic): subscribe and unsubscribe as
+/// The subscription lane's work on the wire (protocol.md, Subscriptions; read sample): subscribe and unsubscribe as
 /// calls run on the main thread, the engine's samples, and its events into each connection's outbound queue,
 /// where an update waits as its subscription's UpdateSlot and is written by the connection's writer thread; and
-/// sample_logic, whose call starts a LogicSampler run and is answered when the run's last sample is taken. The lane
-/// takes sample_logic samples first, then subscription samples, one at a time. Subscriptions and sample_logic runs
-/// belong to the (owner, stream) of the call that made them (CallContext: the connection, or its resume token): a
-/// stream's end (stream_end, a slow client, a closed connection, a resume window that passed) ends them at the start
-/// of the next frame. A sample_logic run also ends, unanswered, when its call's connection closes, since its reply
-/// cannot be delivered. While a resume token is held its subscriptions take no samples; when a connection resumes it,
+/// read sample runs (StartSample), each a LogicSampler run whose call waits in the slice lane (SampleWatch) until the
+/// run's last sample is taken. The lane takes read sample samples first, then subscription samples, one at a time.
+/// Subscriptions and sample runs belong to the (owner, stream) of the call that made them (CallContext: the
+/// connection, or its resume token): a stream's end (stream_end, a slow client, a closed connection, a resume window
+/// that passed) ends them at the start of the next frame, and the slice lane answers a waiting call cancelled. A
+/// sample run also ends when its owner's connection closes, since its reply cannot be delivered. While a resume token is held its subscriptions take no samples; when a connection resumes it,
 /// their events go to that connection and each devices subscription's next sample is sent whole. Main thread only,
 /// apart from Closed, StreamEnded, Held and Resumed, which connection threads call.
 /// </summary>
-internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, ISampleLogicEvents<BatchItemView>, ISampleLane
+internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, ISampleEvents<BatchItemView>, ISampleLane
 {
     internal const string SubscribeMethod = "subscribe";
     internal const string UnsubscribeMethod = "unsubscribe";
-    internal const string SampleLogicMethod = "sample_logic";
     internal const string UnknownSubscriptionCode = "unknown_subscription";
 
-    /// <summary>The owner sample_logic runs of calls without a context share.</summary>
+    /// <summary>The owner sample runs of calls without a context share.</summary>
     private static readonly ConnectionId NoConnection = new ConnectionId("pipe");
 
     private readonly SubscriptionEngine<ReadDevicesView> _engine;
@@ -46,8 +45,8 @@ internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, IS
     private readonly ConcurrentQueue<Ending> _ended = new ConcurrentQueue<Ending>();
     private readonly OneSample _one = new OneSample();
     private readonly LogicSampler<BatchItemView> _sampler;
-    private readonly Dictionary<SampleLogicRun<BatchItemView>, SampleLogicCall> _runs =
-        new Dictionary<SampleLogicRun<BatchItemView>, SampleLogicCall>();
+    private readonly Dictionary<SampleRun<BatchItemView>, SampleWatch> _runs =
+        new Dictionary<SampleRun<BatchItemView>, SampleWatch>();
     private SamplingTick _tick;
     private RealTimeTick _real;
 
@@ -58,8 +57,8 @@ internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, IS
         _sampler = new LogicSampler<BatchItemView>(logicReader, LogicResultComparer.Instance);
     }
 
-    /// <summary>sample_logic runs in progress.</summary>
-    internal int SampleLogicRuns => _sampler.Active;
+    /// <summary>Sample runs in progress.</summary>
+    internal int SampleRuns => _sampler.Active;
 
     internal SubscriptionLimits Limits => _engine.Limits;
 
@@ -71,10 +70,9 @@ internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, IS
 
     /// <summary>
     /// The start of a frame: what connection threads posted since the last one, in order (streams and owners that
-    /// ended drop their subscriptions silently and their sample_logic runs: a run of one ended stream answers its call
-    /// cancelled, the runs of an ended owner or a closed connection answer nothing, there is no one to tell; held
-    /// owners pause, resumed ones go on), and the frame's ticks (game time for subscriptions, real time for
-    /// sample_logic) are what samples and replies are stamped with.
+    /// ended drop their subscriptions silently and their sample runs, whose waiting calls the slice lane answers
+    /// cancelled or drops with their connection; held owners pause, resumed ones go on), and the frame's ticks (game
+    /// time for subscriptions, real time for sample runs) are what samples and replies are stamped with.
     /// </summary>
     internal void BeginFrame(SamplingTick tick, RealTimeTick real)
     {
@@ -103,7 +101,7 @@ internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, IS
     }
 
     /// <summary>
-    /// A connection ended (any thread): at the next frame its sample_logic runs end unanswered, and without a resume
+    /// A connection ended (any thread): at the next frame its owner's sample runs end, and without a resume
     /// token its subscriptions end without an event (a token's are held or ended through ResumeHolds).
     /// </summary>
     internal void Closed(object source)
@@ -115,7 +113,7 @@ internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, IS
     }
 
     /// <summary>
-    /// Streams of an owner ended (any thread): their subscriptions end without an event and their sample_logic runs
+    /// Streams of an owner ended (any thread): their subscriptions end without an event and their sample runs
     /// end at the next frame.
     /// </summary>
     internal void StreamEnded(object source, StreamEnd end)
@@ -143,7 +141,7 @@ internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, IS
 
     private void ConnectionClosed(Connection connection)
     {
-        foreach (SampleLogicRun<BatchItemView> run in RunsOf(connection))
+        foreach (SampleRun<BatchItemView> run in RunsOf(new ConnectionId(connection.Owner), null))
         {
             _runs.Remove(run);
             _sampler.Cancel(run);
@@ -170,32 +168,30 @@ internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, IS
         }
 
         _engine.DropStream(owner, end.Stream);
-        foreach (SampleLogicRun<BatchItemView> run in RunsOf(owner, end.Stream))
+        foreach (SampleRun<BatchItemView> run in RunsOf(owner, end.Stream))
         {
-            SampleLogicCall pending = _runs[run];
             _runs.Remove(run);
             _sampler.Cancel(run);
-            pending.Call.Finish(ProtocolCall.StreamEndedRunReply(pending.Id), SampleLogicMethod);
         }
     }
 
-    // Every subscription and sample_logic run of the owner ends without a word.
+    // Every subscription and sample run of the owner ends without a word.
     private void DropOwner(ConnectionId owner)
     {
         _engine.DropConnection(owner);
         _connections.Remove(owner);
         _sampler.CancelConnection(owner);
-        foreach (SampleLogicRun<BatchItemView> run in RunsOf(owner, null))
+        foreach (SampleRun<BatchItemView> run in RunsOf(owner, null))
         {
             _runs.Remove(run);
         }
     }
 
     // The runs of the owner, of one stream or (stream null) of all; a list, since the caller removes them.
-    private List<SampleLogicRun<BatchItemView>> RunsOf(ConnectionId owner, long? stream)
+    private List<SampleRun<BatchItemView>> RunsOf(ConnectionId owner, long? stream)
     {
-        List<SampleLogicRun<BatchItemView>> found = new List<SampleLogicRun<BatchItemView>>();
-        foreach (SampleLogicRun<BatchItemView> run in _runs.Keys)
+        List<SampleRun<BatchItemView>> found = new List<SampleRun<BatchItemView>>();
+        foreach (SampleRun<BatchItemView> run in _runs.Keys)
         {
             if (run.Connection.Equals(owner) && (stream == null || run.Stream == stream.Value))
             {
@@ -205,22 +201,6 @@ internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, IS
 
         return found;
     }
-
-    // The runs whose call came on the connection.
-    private List<SampleLogicRun<BatchItemView>> RunsOf(Connection connection)
-    {
-        List<SampleLogicRun<BatchItemView>> found = new List<SampleLogicRun<BatchItemView>>();
-        foreach (KeyValuePair<SampleLogicRun<BatchItemView>, SampleLogicCall> run in _runs)
-        {
-            if (run.Value.Call.Source == connection)
-            {
-                found.Add(run.Key);
-            }
-        }
-
-        return found;
-    }
-
 
     /// <summary>A world finished loading: devices subscriptions end, world-topic ones hear the new id.</summary>
     internal void WorldChanged(string worldId) => _engine.WorldChanged(WorldId.Of(worldId), this);
@@ -300,48 +280,24 @@ internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, IS
     }
 
     /// <summary>
-    /// sample_logic: invalid arguments are answered at once; otherwise a run starts, its first sample is
-    /// due now, and the call is answered when the run ends.
+    /// read sample: a run for the call on its (owner, stream), its first sample due now; the returned watch is the
+    /// call's pending result, ready once the run's last sample is taken or a sample's read failed.
     /// </summary>
-    internal CallOutcome StartSampleLogic(ProtocolCall call, double queueWaitMs)
+    internal SampleWatch StartSample(SampleRequest request, CallContext context)
     {
-        CallRequest request = call.Request;
-        return Start(call, request.Params,
-            new SampleLogicCall(call, request.Id, request.Shape, Math.Round(queueWaitMs, 2)));
+        ConnectionId connection = context.IsNone ? NoConnection : new ConnectionId(context.Owner!);
+        SampleWatch watch = new SampleWatch();
+        _runs.Add(_sampler.Start(connection, request, _real.RealTimeS, context.Stream), watch);
+        return watch;
     }
 
-    void ISampleLogicEvents<BatchItemView>.Finished(SampleLogicRun<BatchItemView> run,
-        SampleLogicOutcome<BatchItemView> outcome)
+    void ISampleEvents<BatchItemView>.Finished(SampleRun<BatchItemView> run,
+        SampleOutcome<BatchItemView> outcome)
     {
-        if (!_runs.TryGetValue(run, out SampleLogicCall? pending))
+        if (_runs.TryGetValue(run, out SampleWatch? watch))
         {
-            return;
-        }
-
-        _runs.Remove(run);
-        string reply = outcome switch
-        {
-            SampleLogicOutcome<BatchItemView>.Completed completed => pending.Reply(completed.Result, null, _tick.Frame),
-            SampleLogicOutcome<BatchItemView>.Failed failed =>
-                pending.Reply(null, new ErrorView(failed.Code, failed.Message), _tick.Frame),
-            _ => pending.Reply(null, new ErrorView("internal_error", "Unknown sample_logic outcome."), _tick.Frame)
-        };
-        pending.Call.Finish(reply, SampleLogicMethod);
-    }
-
-    private CallOutcome Start(QueuedCall call, JObject? parameters, SampleLogicCall pending)
-    {
-        switch (SampleLogicArguments.Of(parameters))
-        {
-            case SampleLogicParse.Parsed parsed:
-                ConnectionId connection = call.Context.IsNone ? NoConnection : new ConnectionId(call.Context.Owner!);
-                _runs.Add(_sampler.Start(connection, parsed.Arguments, _real.RealTimeS, call.Context.Stream), pending);
-                return CallOutcome.Deferred;
-            case SampleLogicParse.Invalid invalid:
-                return new CallOutcome(pending.Reply(null, new ErrorView(ApiErrors.InvalidArgumentCode, invalid.Message),
-                    _tick.Frame), SampleLogicMethod);
-            default:
-                throw new InvalidOperationException("Unknown sample_logic arguments.");
+            _runs.Remove(run);
+            watch.End(outcome);
         }
     }
 
@@ -432,41 +388,6 @@ internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, IS
 
     /// <summary>The reply's budget_hit: whether the frame the reply is built in has reached its request budget.</summary>
     private static bool BudgetHit() => CurrentFrame.BudgetReached(StopwatchClock.Instance.NowMs);
-
-    /// <summary>A sample_logic call waiting for its run to end, and how its reply is written.</summary>
-    private sealed class SampleLogicCall
-    {
-        private readonly string? _id;
-        private readonly ShapeRequest? _shape;
-        private readonly double _queueMs;
-        private readonly Stopwatch _since = Stopwatch.StartNew();
-
-        internal SampleLogicCall(QueuedCall call, string? id, ShapeRequest? shape, double queueMs)
-        {
-            Call = call;
-            _id = id;
-            _shape = shape;
-            _queueMs = queueMs;
-        }
-
-        internal QueuedCall Call { get; }
-
-        internal string? Id => _id;
-
-        /// <summary>
-        /// The reply: the result shaped as the call asked, or the error. elapsed_ms is the run's whole real time, from
-        /// its start to its last sample; budget_hit is for the frame this reply is built in, not the one the run began in.
-        /// </summary>
-        internal string Reply(object? result, ErrorView? error, long frame)
-        {
-            double elapsedMs = Elapsed(_since);
-            bool budgetHit = BudgetHit();
-            return result == null
-                ? ApiJson.WriteShared(CallReplyView.Failed(_id, error!, elapsedMs, _queueMs, frame, budgetHit))
-                : ApiJson.WriteShaped(CallReplyView.Of(_id, result, _shape != null, elapsedMs, _queueMs, frame, budgetHit),
-                    _shape ?? ShapeRequest.None).Json;
-        }
-    }
 
     private enum EndingKind
     {

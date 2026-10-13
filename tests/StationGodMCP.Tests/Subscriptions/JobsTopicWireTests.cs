@@ -233,7 +233,7 @@ public sealed class JobsTopicWireTests
     {
         internal static readonly NoLogic Instance = new NoLogic();
 
-        public LogicSampleRead Read(SampleLogicArguments arguments, List<BatchItemView> into) =>
-            throw new InvalidOperationException("No sample_logic here.");
+        public LogicSampleRead Read(SampleRequest arguments, List<BatchItemView> into) =>
+            throw new InvalidOperationException("No read sample here.");
     }
 }

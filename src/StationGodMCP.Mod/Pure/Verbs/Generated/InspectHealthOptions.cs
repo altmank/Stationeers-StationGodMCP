@@ -37,7 +37,7 @@ internal sealed record InspectHealthOptions
         Selector = Selector.Bind(options),
         Fields = Fields.Bind(options),
         Paging = Paging.Bind(options),
-        Kind = options.Text("kind"),
-        DamagedOnly = options.Flag("damaged_only"),
+        Kind = options.Text("kind") ?? options.DefaultText("kind"),
+        DamagedOnly = options.Flag("damaged_only") ?? options.DefaultFlag("damaged_only"),
     };
 }

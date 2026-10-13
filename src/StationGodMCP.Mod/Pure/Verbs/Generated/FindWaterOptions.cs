@@ -23,6 +23,6 @@ internal sealed record FindWaterOptions
     internal static FindWaterOptions Bind(OptionReader options) => new FindWaterOptions
     {
         Fields = Fields.Bind(options),
-        MinMol = options.Number("min_mol"),
+        MinMol = options.Number("min_mol") ?? options.DefaultNumber("min_mol"),
     };
 }

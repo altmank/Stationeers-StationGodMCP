@@ -50,6 +50,6 @@ internal sealed record InspectScreenOptions
         Surface = options.Text("surface"),
         Type = options.Text("type"),
         Text = options.Text("text"),
-        ShownOnly = options.Flag("shown_only"),
+        ShownOnly = options.Flag("shown_only") ?? options.DefaultFlag("shown_only"),
     };
 }

@@ -322,13 +322,13 @@ public sealed class SubscriptionWireTests
         }
     }
 
-    /// <summary>No sample_logic in these tests.</summary>
+    /// <summary>No read sample in these tests.</summary>
     private sealed class NoLogic : ILogicSampleReader<BatchItemView>
     {
         internal static readonly NoLogic Instance = new NoLogic();
 
-        public LogicSampleRead Read(StationGodMCP.Pure.Sampling.SampleLogicArguments arguments, List<BatchItemView> into) =>
-            throw new InvalidOperationException("No sample_logic here.");
+        public LogicSampleRead Read(StationGodMCP.Pure.Sampling.SampleRequest arguments, List<BatchItemView> into) =>
+            throw new InvalidOperationException("No read sample here.");
     }
 
     /// <summary>One device whose On value the test sets.</summary>

@@ -35,6 +35,6 @@ internal sealed record BuildBlueprintOptions
         Report = ReportConfirm.Bind(options),
         Blueprint = options.Text("blueprint"),
         At = options.Raw("at"),
-        Turn = options.Integer("turn"),
+        Turn = options.Integer("turn") ?? options.DefaultInteger("turn"),
     };
 }

@@ -24,6 +24,6 @@ internal sealed record InspectLookingAtOptions
     internal static InspectLookingAtOptions Bind(OptionReader options) => new InspectLookingAtOptions
     {
         Fields = Fields.Bind(options),
-        Distance = options.Number("distance"),
+        Distance = options.Number("distance") ?? options.DefaultNumber("distance"),
     };
 }

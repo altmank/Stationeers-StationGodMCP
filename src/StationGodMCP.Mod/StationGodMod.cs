@@ -123,7 +123,7 @@ public sealed class StationGodMod : ModBehaviour
             _dispatcher = new StationGodRequestDispatcher(Deadlines,
                 new LaneScheduler(PerformanceSettings.Scheduler, world: CallWorld));
             _subscriptions = new SubscriptionHub(Subscriptions.ReadDevicesReader.Instance,
-                Subscriptions.ReadLogicManyReader.Instance, SubscriptionLimits.From(PerformanceSettings.Scheduler.SubscriptionBudgetMs, PerformanceSettings.RequestBudgetMs));
+                Subscriptions.SampleReader.Instance, SubscriptionLimits.From(PerformanceSettings.Scheduler.SubscriptionBudgetMs, PerformanceSettings.RequestBudgetMs));
             _dispatcher.Subscriptions = _subscriptions;
             Hub = _subscriptions;
             SubscriptionHub jobsHub = _subscriptions;
@@ -646,7 +646,7 @@ internal static class PerformanceSettings
         RequestBudgetMs = configured ?? FrameBudget.DefaultMs;
         double subscriptions = NonNegative(configuration.Bind(Section, "SubscriptionBudgetMs",
             SchedulerSettings.DefaultSubscriptionBudgetMs,
-            "Main-thread milliseconds of each frame for subscription and sample_logic samples, taken out of the same " +
+            "Main-thread milliseconds of each frame for subscription and read sample samples, taken out of the same " +
             "frame and at most half of RequestBudgetMs. The first due sample of a frame always runs. 0 turns " +
             "subscriptions off. Restart the game to apply."), SchedulerSettings.DefaultSubscriptionBudgetMs);
         double heavy = NonNegative(configuration.Bind(Section, "HeavyThresholdMs", SchedulerSettings.DefaultHeavyThresholdMs,

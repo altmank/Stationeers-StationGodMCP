@@ -42,7 +42,7 @@ internal sealed record ReadSampleOptions
         Logic = options.Raw("logic"),
         Reads = options.Raw("reads"),
         Gateway = options.Text("gateway"),
-        Seconds = options.Number("seconds"),
-        Interval = options.Number("interval"),
+        Seconds = options.Number("seconds") ?? options.DefaultNumber("seconds"),
+        Interval = options.Number("interval") ?? options.DefaultNumber("interval"),
     };
 }

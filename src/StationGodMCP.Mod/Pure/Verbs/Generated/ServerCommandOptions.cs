@@ -31,6 +31,6 @@ internal sealed record ServerCommandOptions
         Fields = Fields.Bind(options),
         Report = ReportConfirm.Bind(options),
         Command = options.Text("command"),
-        Lines = options.Integer("lines"),
+        Lines = options.Integer("lines") ?? options.DefaultInteger("lines"),
     };
 }

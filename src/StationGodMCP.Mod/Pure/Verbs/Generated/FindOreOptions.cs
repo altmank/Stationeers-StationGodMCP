@@ -39,7 +39,7 @@ internal sealed record FindOreOptions
         Fields = Fields.Bind(options),
         Paging = Paging.Bind(options),
         Ores = options.Words("ores"),
-        Separation = options.Number("separation"),
+        Separation = options.Number("separation") ?? options.DefaultNumber("separation"),
         Step = options.Number("step"),
     };
 }

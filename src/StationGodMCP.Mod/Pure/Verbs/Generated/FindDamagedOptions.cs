@@ -40,8 +40,8 @@ internal sealed record FindDamagedOptions
         Selector = Selector.Bind(options),
         Fields = Fields.Bind(options),
         Paging = Paging.Bind(options),
-        MinDamage = options.Number("min_damage"),
-        BrokenOnly = options.Flag("broken_only"),
-        StructuresOnly = options.Flag("structures_only"),
+        MinDamage = options.Number("min_damage") ?? options.DefaultNumber("min_damage"),
+        BrokenOnly = options.Flag("broken_only") ?? options.DefaultFlag("broken_only"),
+        StructuresOnly = options.Flag("structures_only") ?? options.DefaultFlag("structures_only"),
     };
 }

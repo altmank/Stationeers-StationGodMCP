@@ -2,19 +2,21 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure.Sampling;
 using StationGodMCP.Pure.Subscriptions;
+using StationGodMCP.Pure.Verbs;
 using StationGodMCP.Tests.Subscriptions;
 using Xunit;
 
 namespace StationGodMCP.Tests.Sampling;
 
 /// <summary>
-/// Stage 12's sampler: the sidecar loop's arguments, schedule, change list, counts and rounding, on the real clock,
-/// sampled in the first frame at or after each due time.
+/// read sample's sampler: its request from the verb's options, and the sidecar loop's schedule, change list, counts and
+/// rounding, on the real clock, sampled in the first frame at or after each due time; the reply in the catalogue's shape.
 /// </summary>
 public sealed class LogicSamplerTests
 {
@@ -37,7 +39,7 @@ public sealed class LogicSamplerTests
 
         internal Func<int, int, bool> Failing { get; set; } = (_, _) => false;
 
-        public LogicSampleRead Read(SampleLogicArguments arguments, List<BatchItemView> into)
+        public LogicSampleRead Read(SampleRequest arguments, List<BatchItemView> into)
         {
             int sample = Samples++;
             if (sample == FailAt)
@@ -54,48 +56,23 @@ public sealed class LogicSamplerTests
                     : new LogicReadItemView(target, new LogicRead(id, type, _values(target, sample))));
             }
 
-            return LogicSampleRead.Read(arguments.GatewayId ?? "world");
+            return LogicSampleRead.Read(arguments.Gateway ?? "world");
         }
     }
 
-    private sealed class Outcomes : ISampleLogicEvents<BatchItemView>
+    private sealed class Outcomes : ISampleEvents<BatchItemView>
     {
-        internal List<SampleLogicOutcome<BatchItemView>> Finished { get; } = new List<SampleLogicOutcome<BatchItemView>>();
+        internal List<SampleOutcome<BatchItemView>> Finished { get; } = new List<SampleOutcome<BatchItemView>>();
 
-        void ISampleLogicEvents<BatchItemView>.Finished(SampleLogicRun<BatchItemView> run,
-            SampleLogicOutcome<BatchItemView> outcome) => Finished.Add(outcome);
+        void ISampleEvents<BatchItemView>.Finished(SampleRun<BatchItemView> run,
+            SampleOutcome<BatchItemView> outcome) => Finished.Add(outcome);
     }
 
-    private static SampleLogicArguments Arguments(int targets = 1, double duration = 1.0, double interval = 0.05,
-        string? gateway = null)
-    {
-        JObject parameters = new JObject
-        {
-            ["targets"] = Targets(targets),
-            ["duration_seconds"] = duration,
-            ["interval_seconds"] = interval,
-        };
-        if (gateway != null)
-        {
-            parameters["gateway_id"] = gateway;
-        }
-
-        return Assert.IsType<SampleLogicParse.Parsed>(SampleLogicArguments.Of(parameters)).Arguments;
-    }
-
-    private static JArray Targets(int count)
-    {
-        JArray targets = new JArray();
-        for (int index = 0; index < count; index++)
-        {
-            targets.Add(new JObject { ["reference_id"] = (100 + index).ToString(), ["logic_type"] = "On" });
-        }
-
-        return targets;
-    }
+    private static SampleRequest Arguments(int targets = 1, double duration = 1.0, double interval = 0.05,
+        string? gateway = null) => SampleRequests.Of(targets, duration, interval, gateway);
 
     /// <summary>Runs one call to its end with a frame every frameS real seconds from startS; returns its outcome.</summary>
-    private static SampleLogicOutcome<BatchItemView> Run(ScriptedReader reader, SampleLogicArguments arguments,
+    private static SampleOutcome<BatchItemView> Run(ScriptedReader reader, SampleRequest arguments,
         double frameS, double startS = 0.0, Func<long, bool>? frameSkipped = null)
     {
         LogicSampler<BatchItemView> sampler = new LogicSampler<BatchItemView>(reader, LogicResultComparer.Instance);
@@ -116,8 +93,8 @@ public sealed class LogicSamplerTests
         return Assert.Single(outcomes.Finished);
     }
 
-    private static SampleLogicResult<BatchItemView> Completed(SampleLogicOutcome<BatchItemView> outcome) =>
-        Assert.IsType<SampleLogicOutcome<BatchItemView>.Completed>(outcome).Result;
+    private static SampleResult<BatchItemView> Completed(SampleOutcome<BatchItemView> outcome) =>
+        Assert.IsType<SampleOutcome<BatchItemView>.Completed>(outcome).Result;
 
     // ---- the sidecar loop, as a model ----
 
@@ -127,7 +104,7 @@ public sealed class LogicSamplerTests
     /// compare each result's JSON text with the last one of its index.
     /// </summary>
     private static (int SampleCount, List<(double Elapsed, List<string> Readings)> Changes, double Duration)
-        SidecarLoop(ScriptedReader reader, SampleLogicArguments arguments)
+        SidecarLoop(ScriptedReader reader, SampleRequest arguments)
     {
         Dictionary<int, string> previous = new Dictionary<int, string>();
         List<(double, List<string>)> changes = new List<(double, List<string>)>();
@@ -154,13 +131,13 @@ public sealed class LogicSamplerTests
             }
 
             sampleCount++;
-            double remaining = arguments.DurationSeconds - elapsed;
+            double remaining = arguments.Seconds - elapsed;
             if (remaining <= 1e-9)
             {
                 break;
             }
 
-            elapsed += Math.Min(arguments.IntervalSeconds, remaining);
+            elapsed += Math.Min(arguments.Interval, remaining);
         }
 
         return (sampleCount, changes, Math.Round(elapsed, 3));
@@ -191,12 +168,12 @@ public sealed class LogicSamplerTests
     [MemberData(nameof(Sequences))]
     public void ChangesCountsAndRoundingEqualTheSidecarLoops(double duration, double interval, int targets)
     {
-        SampleLogicArguments arguments = Arguments(targets, duration, interval);
+        SampleRequest arguments = Arguments(targets, duration, interval);
         (int sampleCount, List<(double Elapsed, List<string> Readings)> changes, double loopDuration) =
             SidecarLoop(new ScriptedReader(Value) { Failing = Failing }, arguments);
 
         // Frames of a millisecond from an odd start, so every due time lands on a frame.
-        SampleLogicResult<BatchItemView> result = Completed(
+        SampleResult<BatchItemView> result = Completed(
             Run(new ScriptedReader(Value) { Failing = Failing }, arguments, frameS: 0.001, startS: 1234.5));
 
         Assert.Equal(sampleCount, result.SampleCount);
@@ -213,7 +190,7 @@ public sealed class LogicSamplerTests
     [Fact]
     public void AnIntervalOfFiftyMillisecondsIsKeptAtSixtyFramesASecond()
     {
-        SampleLogicResult<BatchItemView> result = Completed(Run(new ScriptedReader((_, sample) => sample),
+        SampleResult<BatchItemView> result = Completed(Run(new ScriptedReader((_, sample) => sample),
             Arguments(duration: 1.0, interval: 0.05), frameS: 1.0 / 60.0));
 
         Assert.Equal(21, result.SampleCount);
@@ -231,7 +208,7 @@ public sealed class LogicSamplerTests
     public void SlowFramesTakeOneSampleEachAndNeverABurst()
     {
         // A frame every 0.2 s against a 0.05 s interval: one sample per frame, the last at the duration.
-        SampleLogicResult<BatchItemView> result = Completed(Run(new ScriptedReader((_, sample) => sample),
+        SampleResult<BatchItemView> result = Completed(Run(new ScriptedReader((_, sample) => sample),
             Arguments(duration: 1.0, interval: 0.05), frameS: 0.2));
 
         Assert.Equal(6, result.SampleCount);
@@ -243,7 +220,7 @@ public sealed class LogicSamplerTests
     public void AStallLongerThanTheDurationEndsTheRunWithItsNextSample()
     {
         // Frames 1 to 99 never come (the game hung for two seconds): the sample after the stall is the last.
-        SampleLogicResult<BatchItemView> result = Completed(Run(new ScriptedReader((_, sample) => sample),
+        SampleResult<BatchItemView> result = Completed(Run(new ScriptedReader((_, sample) => sample),
             Arguments(duration: 1.0, interval: 0.05), frameS: 0.02, frameSkipped: frame => frame > 0 && frame < 100));
 
         Assert.Equal(2, result.SampleCount);
@@ -253,10 +230,10 @@ public sealed class LogicSamplerTests
     [Fact]
     public void TheFirstSampleIsAtZeroAndCarriesEveryReading()
     {
-        SampleLogicResult<BatchItemView> result = Completed(Run(new ScriptedReader((_, _) => 1.0),
+        SampleResult<BatchItemView> result = Completed(Run(new ScriptedReader((_, _) => 1.0),
             Arguments(targets: 3, duration: 0.5, interval: 0.1), frameS: 0.01, startS: 50.0));
 
-        SampleLogicChange<BatchItemView> first = Assert.Single(result.Changes);
+        SampleChange<BatchItemView> first = Assert.Single(result.Changes);
         Assert.Equal(0.0, first.ElapsedSeconds);
         Assert.Equal(3, first.Readings.Count);
         Assert.Equal(6, result.SampleCount);
@@ -268,10 +245,10 @@ public sealed class LogicSamplerTests
     [Fact]
     public void AFailedReadFailsTheCallWithItsError()
     {
-        SampleLogicOutcome<BatchItemView> outcome = Run(new ScriptedReader((_, _) => 1.0) { FailAt = 3 },
+        SampleOutcome<BatchItemView> outcome = Run(new ScriptedReader((_, _) => 1.0) { FailAt = 3 },
             Arguments(), frameS: 0.01);
 
-        SampleLogicOutcome<BatchItemView>.Failed failed = Assert.IsType<SampleLogicOutcome<BatchItemView>.Failed>(outcome);
+        SampleOutcome<BatchItemView>.Failed failed = Assert.IsType<SampleOutcome<BatchItemView>.Failed>(outcome);
         Assert.Equal("gateway_not_found", failed.Code);
         Assert.Equal("No gateway gw9.", failed.Message);
     }
@@ -282,9 +259,9 @@ public sealed class LogicSamplerTests
         ScriptedReader reader = new ScriptedReader((_, _) => 1.0);
         LogicSampler<BatchItemView> sampler = new LogicSampler<BatchItemView>(reader, LogicResultComparer.Instance);
         Outcomes outcomes = new Outcomes();
-        SampleLogicRun<BatchItemView> early = sampler.Start(A, Arguments(interval: 0.1), 0.0);
+        SampleRun<BatchItemView> early = sampler.Start(A, Arguments(interval: 0.1), 0.0);
         sampler.Poll(new RealTimeTick(0, 0.0, Utc), new CountBudget(1), outcomes);
-        SampleLogicRun<BatchItemView> late = sampler.Start(A, Arguments(interval: 0.1), 0.12);
+        SampleRun<BatchItemView> late = sampler.Start(A, Arguments(interval: 0.1), 0.12);
 
         sampler.Poll(new RealTimeTick(1, 0.15, Utc), new CountBudget(1), outcomes);
 
@@ -311,7 +288,7 @@ public sealed class LogicSamplerTests
         LogicSampler<BatchItemView> sampler = new LogicSampler<BatchItemView>(new ScriptedReader((_, _) => 1.0),
             LogicResultComparer.Instance);
         sampler.Start(A, Arguments(), 0.0);
-        SampleLogicRun<BatchItemView> other = sampler.Start(new ConnectionId("c2"), Arguments(), 0.0);
+        SampleRun<BatchItemView> other = sampler.Start(new ConnectionId("c2"), Arguments(), 0.0);
 
         sampler.CancelConnection(A);
 
@@ -323,12 +300,12 @@ public sealed class LogicSamplerTests
     // ---- the reply on the wire ----
 
     [Fact]
-    public void TheReplyHasTheSidecarsKeys()
+    public void TheReplyIsTheCataloguesShapeWithARowPerChangedValue()
     {
-        SampleLogicResult<BatchItemView> result = Completed(Run(new ScriptedReader((_, sample) => sample),
+        SampleResult<BatchItemView> result = Completed(Run(new ScriptedReader((_, sample) => sample),
             Arguments(duration: 0.1, interval: 0.05, gateway: "gw1"), frameS: 0.05));
 
-        JObject json = JObject.Parse(ApiJson.WriteFresh(result));
+        JObject json = StationGodMCP.Protocol.SampleReply.Of(result);
 
         List<string> keys = new List<string>();
         foreach (JProperty property in json.Properties())
@@ -336,78 +313,91 @@ public sealed class LogicSamplerTests
             keys.Add(property.Name);
         }
 
-        Assert.Equal(new[]
+        List<string> declared = new List<string>();
+        foreach (KeyValuePair<string, System.Text.Json.Nodes.JsonNode?> key in Verbs.VerbCatalogue.Verb("read")["whats"]!
+                     ["sample"]!["reply"]!["variants"]![0]!["keys"]!.AsObject())
         {
-            "gateway_id", "started_at_utc", "duration_seconds", "interval_seconds", "sample_count", "change_count",
-            "changes",
-        }, keys.ToArray());
+            declared.Add(key.Key);
+        }
+
+        Assert.Equal(declared, keys);
         Assert.Equal("gw1", (string?)json["gateway_id"]);
         Assert.Equal(3, (int)json["sample_count"]!);
-        Assert.Equal(0.05, (double)json["changes"]![1]!["elapsed_seconds"]!);
-        Assert.Equal("100", (string?)json["changes"]![0]!["readings"]![0]!["reference_id"]);
+        Assert.Equal(3, (int)json["change_count"]!);
+        Assert.Equal("""{"reference_id":"100","logic_type":"On","value":1.0,"at_s":0.05}""",
+            json["changes"]![1]!.ToString(Newtonsoft.Json.Formatting.None));
     }
 
-    // ---- arguments ----
+    [Fact]
+    public void AWholeWorldRunAnswersTheWorld()
+    {
+        SampleResult<BatchItemView> result = Completed(Run(new ScriptedReader((_, sample) => sample),
+            Arguments(duration: 0.05, interval: 0.05), frameS: 0.05));
 
-    private static string Invalid(string json) =>
-        Assert.IsType<SampleLogicParse.Invalid>(SampleLogicArguments.Of(JObject.Parse(json))).Message;
+        Assert.Equal("world", (string?)StationGodMCP.Protocol.SampleReply.Of(result)["gateway_id"]);
+    }
 
-    private const string OneTarget = "\"targets\": [{\"reference_id\": \"5\", \"logic_type\": \"On\"}]";
+    // ---- the request ----
 
     [Fact]
-    public void DefaultsAreFiveSecondsAtHalfASecond()
+    public void DefaultsAreTheCataloguesFiveSecondsAtHalfASecond()
     {
-        SampleLogicArguments arguments = Assert.IsType<SampleLogicParse.Parsed>(
-            SampleLogicArguments.Of(JObject.Parse("{" + OneTarget + "}"))).Arguments;
+        SampleRequest request = SampleRequests.Of(JObject.Parse("""{"id": "5", "logic": "On"}"""));
 
-        Assert.Equal(5.0, arguments.DurationSeconds);
-        Assert.Equal(0.5, arguments.IntervalSeconds);
-        Assert.Equal(11, arguments.PlannedSamples);
-        Assert.Null(arguments.GatewayId);
-        Assert.Equal("5", (string?)arguments.ReadArguments()["reads"]![0]!["reference_id"]);
+        Assert.Equal(5.0, request.Seconds);
+        Assert.Equal(0.5, request.Interval);
+        Assert.Equal(11, request.PlannedSamples);
+        Assert.Null(request.Gateway);
+        Assert.Equal(new SampleTarget("5", "On"), request.Targets[0], new TargetComparer());
+    }
+
+    [Fact]
+    public void EveryIdIsWatchedForEveryLogicTypeOrEachReadsPair()
+    {
+        SampleRequest crossed = SampleRequests.Of(JObject.Parse("""{"id": ["1", "2"], "logic": ["On", 12]}"""));
+        SampleRequest pairs = SampleRequests.Of(JObject.Parse("""{"reads": [{"id": "1", "logic": "On"}, {"id": "3", "logic": "Mode"}]}"""));
+
+        Assert.Equal(new[] { "1 On", "1 12", "2 On", "2 12" }, Texts(crossed));
+        Assert.Equal(new[] { "1 On", "3 Mode" }, Texts(pairs));
     }
 
     [Theory]
-    [InlineData("{}", "Argument 'targets' must be an array of 1 to 32 entries.")]
-    [InlineData("{\"targets\": []}", "Argument 'targets' must be an array of 1 to 32 entries.")]
-    [InlineData("{" + OneTarget + ", \"gateway_id\": 3}", "Argument 'gateway_id' must be a string.")]
-    [InlineData("{" + OneTarget + ", \"duration_seconds\": 0.05}", "Argument 'duration_seconds' must be from 0.1 to 30.")]
-    [InlineData("{" + OneTarget + ", \"duration_seconds\": 31}", "Argument 'duration_seconds' must be from 0.1 to 30.")]
-    [InlineData("{" + OneTarget + ", \"interval_seconds\": 0.04}", "Argument 'interval_seconds' must be from 0.05 to 5.")]
-    [InlineData("{" + OneTarget + ", \"interval_seconds\": 6}", "Argument 'interval_seconds' must be from 0.05 to 5.")]
-    [InlineData("{" + OneTarget + ", \"interval_seconds\": null}", "Argument 'interval_seconds' must be a finite number.")]
-    [InlineData("{" + OneTarget + ", \"duration_seconds\": \"5\"}", "Argument 'duration_seconds' must be a finite number.")]
-    [InlineData("{" + OneTarget + ", \"duration_seconds\": 30, \"interval_seconds\": 0.25}",
-        "duration_seconds 30 at interval_seconds 0.25 asks for 121 samples (the first at 0 s included); at most 120.")]
-    public void BoundsAndMessagesAreTheSidecars(string json, string message)
+    [InlineData("""{}""", "id")]
+    [InlineData("""{"id": "5"}""", "logic")]
+    [InlineData("""{"id": "5", "logic": "On", "reads": [{"id": "6", "logic": "On"}]}""", "reads")]
+    [InlineData("""{"reads": [{"logic": "On"}]}""", "reads[0]")]
+    [InlineData("""{"id": "5", "logic": "On", "seconds": 30, "interval": 0.25}""", "interval")]
+    public void AnUnusableRequestIsAProblemAtItsOption(string options, string path)
     {
-        Assert.Equal(message, Invalid(json));
+        OptionProblem problem = Assert.Single(SampleRequests.Problems(JObject.Parse(options)));
+
+        Assert.Equal(path, problem.Path);
     }
 
     [Fact]
     public void ThirtyTwoTargetsAndOneHundredTwentySamplesAreAllowed()
     {
-        JObject parameters = new JObject
-        {
-            ["targets"] = Targets(32), ["duration_seconds"] = 29.75, ["interval_seconds"] = 0.25,
-        };
-
-        SampleLogicArguments arguments = Assert.IsType<SampleLogicParse.Parsed>(SampleLogicArguments.Of(parameters))
-            .Arguments;
-
-        Assert.Equal(120, arguments.PlannedSamples);
-        parameters["targets"] = Targets(33);
-        Assert.IsType<SampleLogicParse.Invalid>(SampleLogicArguments.Of(parameters));
+        Assert.Equal(120, SampleRequests.Of(32, 29.75, 0.25).PlannedSamples);
+        Assert.Equal("id", Assert.Single(SampleRequests.Problems(SampleRequests.Watching(33, 1.0, 0.25))).Path);
+        Assert.Contains("121 samples", Assert.Single(SampleRequests.Problems(SampleRequests.Watching(1, 30, 0.25))).Problem);
     }
 
     [Fact]
-    public void ABlankGatewayIsTheWholeWorld()
+    public void TheWorldGatewayIsTheWholeWorld()
     {
-        SampleLogicArguments arguments = Assert.IsType<SampleLogicParse.Parsed>(
-            SampleLogicArguments.Of(JObject.Parse("{" + OneTarget + ", \"gateway_id\": \"  \"}"))).Arguments;
+        Assert.Null(SampleRequests.Of(SampleRequests.Watching(gateway: "world")).Gateway);
+        Assert.Equal("77", SampleRequests.Of(SampleRequests.Watching(gateway: " 77 ")).Gateway);
+    }
 
-        Assert.Null(arguments.GatewayId);
-        Assert.Null(arguments.ReadArguments()["gateway_id"]);
+    private static string[] Texts(SampleRequest request) =>
+        request.Targets.Select(target => target.Id + " " + target.Logic).ToArray();
+
+    private sealed class TargetComparer : IEqualityComparer<SampleTarget>
+    {
+        public bool Equals(SampleTarget? a, SampleTarget? b) =>
+            a?.Id == b?.Id && JToken.DeepEquals(a?.Logic, b?.Logic);
+
+        public int GetHashCode(SampleTarget target) => target.Id.GetHashCode();
     }
 
     // ---- the comparison ----

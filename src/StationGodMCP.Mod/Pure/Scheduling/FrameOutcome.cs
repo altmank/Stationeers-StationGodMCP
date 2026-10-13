@@ -58,7 +58,7 @@ internal readonly struct FrameOutcome
         BudgetStopped = budgetStopped;
     }
 
-    /// <summary>Subscription and sample_logic samples taken.</summary>
+    /// <summary>Subscription and read sample samples taken.</summary>
     internal int Samples { get; }
 
     internal int LightCalls { get; }

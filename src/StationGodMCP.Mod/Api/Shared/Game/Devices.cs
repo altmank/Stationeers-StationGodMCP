@@ -31,7 +31,28 @@ internal static class Devices
             return DeviceScope.World;
         }
 
-        ThingId id = args.ThingId("gateway_id");
+        return ScopeOf(args.ThingId("gateway_id"));
+    }
+
+    /// <summary>
+    /// The scope a verb's gateway option names: the world when it is left out or "world", else that gateway, refused
+    /// when no gateway has the id or it is unavailable.
+    /// </summary>
+    internal static DeviceScope Scope(string? gateway)
+    {
+        string? text = gateway?.Trim();
+        if (string.IsNullOrEmpty(text) || string.Equals(text, DeviceScope.WorldId, StringComparison.OrdinalIgnoreCase))
+        {
+            return DeviceScope.World;
+        }
+
+        return ThingId.TryRead(new JValue(text), out ThingId id)
+            ? ScopeOf(id)
+            : throw ApiErrors.Refused("gateway_not_found", $"gateway: '{text}' is not a gateway's id or \"world\".");
+    }
+
+    private static DeviceScope ScopeOf(ThingId id)
+    {
         if (!GatewayRegistry.TryGet(id.Value, out StationGodGateway? gateway))
         {
             throw ApiErrors.Refused("gateway_not_found", $"No StationGod Gateway has reference ID {id}.");

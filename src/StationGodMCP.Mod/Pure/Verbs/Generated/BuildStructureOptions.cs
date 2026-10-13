@@ -98,10 +98,10 @@ internal sealed record BuildStructureOptions
         BuildState = options.Raw("build_state"),
         Label = options.Text("label"),
         Color = options.Raw("color"),
-        Free = options.Flag("free"),
+        Free = options.Flag("free") ?? options.DefaultFlag("free"),
         Allow = options.Words("allow"),
         AcknowledgeGasLost = options.Text("acknowledge_gas_lost"),
         FromPlan = options.Text("from_plan"),
-        Queue = options.Flag("queue"),
+        Queue = options.Flag("queue") ?? options.DefaultFlag("queue"),
     };
 }

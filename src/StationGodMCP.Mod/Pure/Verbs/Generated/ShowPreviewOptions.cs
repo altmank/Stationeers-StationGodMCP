@@ -84,9 +84,9 @@ internal sealed record ShowPreviewOptions
         Allow = options.Words("allow"),
         Cells = options.Raw("cells"),
         Boxes = options.Raw("boxes"),
-        Seconds = options.Number("seconds"),
-        Keep = options.Flag("keep"),
+        Seconds = options.Number("seconds") ?? options.DefaultNumber("seconds"),
+        Keep = options.Flag("keep") ?? options.DefaultFlag("keep"),
         Clear = options.Flag("clear"),
-        Xray = options.Flag("xray"),
+        Xray = options.Flag("xray") ?? options.DefaultFlag("xray"),
     };
 }

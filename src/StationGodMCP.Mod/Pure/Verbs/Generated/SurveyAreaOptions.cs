@@ -50,9 +50,9 @@ internal sealed record SurveyAreaOptions
         Fields = Fields.Bind(options),
         Paging = Paging.Bind(options),
         Sections = options.Words("sections"),
-        Networks = options.Flag("networks"),
+        Networks = options.Flag("networks") ?? options.DefaultFlag("networks"),
         Kind = options.Words("kind"),
-        CellDetail = options.Text("cell_detail"),
-        OccupiedOnly = options.Flag("occupied_only"),
+        CellDetail = options.Text("cell_detail") ?? options.DefaultText("cell_detail"),
+        OccupiedOnly = options.Flag("occupied_only") ?? options.DefaultFlag("occupied_only"),
     };
 }

@@ -32,6 +32,6 @@ internal sealed record PlanMiningOptions
         Selector = Selector.Bind(options),
         Fields = Fields.Bind(options),
         Node = options.Text("node"),
-        CollectableOnly = options.Flag("collectable_only"),
+        CollectableOnly = options.Flag("collectable_only") ?? options.DefaultFlag("collectable_only"),
     };
 }

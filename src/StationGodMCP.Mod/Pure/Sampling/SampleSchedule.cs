@@ -5,7 +5,7 @@ using System;
 namespace StationGodMCP.Pure.Sampling;
 
 /// <summary>
-/// When sample_logic samples, in real seconds since its first sample, as the sidecar loop did: the first sample at 0,
+/// When read sample samples, in real seconds since its first sample, as the sidecar loop did: the first sample at 0,
 /// then one per interval, the last at the duration; the run ends with the first sample at or after the duration.
 /// Each sample is taken in the first frame at or after it is due. A late sample does not shift the grid; a frame that
 /// missed whole intervals takes one sample, not a burst.

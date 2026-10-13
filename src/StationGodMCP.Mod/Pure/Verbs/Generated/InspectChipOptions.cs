@@ -44,9 +44,9 @@ internal sealed record InspectChipOptions
         Fields = Fields.Bind(options),
         Gateway = options.Text("gateway"),
         Parts = options.Words("parts"),
-        Start = options.Integer("start"),
-        Count = options.Integer("count"),
-        Log = options.Integer("log"),
+        Start = options.Integer("start") ?? options.DefaultInteger("start"),
+        Count = options.Integer("count") ?? options.DefaultInteger("count"),
+        Log = options.Integer("log") ?? options.DefaultInteger("log"),
         Targets = options.Words("targets"),
     };
 }

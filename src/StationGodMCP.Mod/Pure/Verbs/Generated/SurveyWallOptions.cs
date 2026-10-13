@@ -42,7 +42,7 @@ internal sealed record SurveyWallOptions
         Side = options.Text("side"),
         Looking = options.Flag("looking"),
         At = options.Raw("at"),
-        HalfWidth = options.Number("half_width"),
+        HalfWidth = options.Number("half_width") ?? options.DefaultNumber("half_width"),
         FreeRects = options.Raw("free_rects"),
     };
 }

@@ -48,9 +48,9 @@ internal sealed record FindItemOptions
         Selector = Selector.Bind(options),
         Fields = Fields.Bind(options),
         Paging = Paging.Bind(options),
-        Location = options.Text("location"),
+        Location = options.Text("location") ?? options.DefaultText("location"),
         GroupBy = options.Text("group_by"),
-        Holders = options.Integer("holders"),
-        ExcludeInUse = options.Flag("exclude_in_use"),
+        Holders = options.Integer("holders") ?? options.DefaultInteger("holders"),
+        ExcludeInUse = options.Flag("exclude_in_use") ?? options.DefaultFlag("exclude_in_use"),
     };
 }

@@ -48,10 +48,10 @@ internal sealed record MoveGasOptions
         Report = ReportConfirm.Bind(options),
         Source = options.Raw("source"),
         To = options.Raw("to"),
-        Delete = options.Flag("delete"),
+        Delete = options.Flag("delete") ?? options.DefaultFlag("delete"),
         Gases = options.Words("gases"),
         AmountMol = options.Number("amount_mol"),
         Allow = options.Words("allow"),
-        Joined = options.Flag("joined"),
+        Joined = options.Flag("joined") ?? options.DefaultFlag("joined"),
     };
 }

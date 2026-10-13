@@ -32,7 +32,7 @@ internal interface ICallRunner<in TCall>
     void Expire(TCall call);
 
     /// <summary>
-    /// Whether the call has its answer. A call Run left unanswered goes on over later frames (a find page, sample_logic)
+    /// Whether the call has its answer. A call Run left unanswered goes on over later frames (a find page, read sample)
     /// and holds its stream until this turns true.
     /// </summary>
     bool IsAnswered(TCall call);
@@ -51,7 +51,7 @@ internal interface ISliceLane
 }
 
 /// <summary>
-/// The subscription lane's source of work: due subscription samples and sample_logic samples, oldest due first and
+/// The subscription lane's source of work: due subscription samples and read sample samples, oldest due first and
 /// round-robin across connections (scheduling.md, Subscriptions, Running late).
 /// </summary>
 internal interface ISampleLane

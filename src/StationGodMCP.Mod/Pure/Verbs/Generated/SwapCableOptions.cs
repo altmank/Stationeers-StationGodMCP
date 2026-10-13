@@ -68,7 +68,7 @@ internal sealed record SwapCableOptions
         Only = options.Words("only"),
         OlderThan = options.Text("older_than"),
         Root = options.Text("root"),
-        SkipUnmatched = options.Flag("skip_unmatched"),
-        Queue = options.Flag("queue"),
+        SkipUnmatched = options.Flag("skip_unmatched") ?? options.DefaultFlag("skip_unmatched"),
+        Queue = options.Flag("queue") ?? options.DefaultFlag("queue"),
     };
 }

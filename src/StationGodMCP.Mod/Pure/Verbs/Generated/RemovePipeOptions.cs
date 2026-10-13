@@ -60,6 +60,6 @@ internal sealed record RemovePipeOptions
         Allow = options.Words("allow"),
         Root = options.Text("root"),
         AcknowledgeGasLost = options.Text("acknowledge_gas_lost"),
-        Queue = options.Flag("queue"),
+        Queue = options.Flag("queue") ?? options.DefaultFlag("queue"),
     };
 }

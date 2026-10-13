@@ -50,7 +50,7 @@ internal sealed record PlanRemovalOptions
         Fields = Fields.Bind(options),
         Report = ReportConfirm.Bind(options),
         Materials = MaterialsSource.Bind(options),
-        Kind = options.Text("kind"),
+        Kind = options.Text("kind") ?? options.DefaultText("kind"),
         Waypoints = options.Raw("waypoints"),
         Cells = options.Raw("cells"),
         Root = options.Text("root"),

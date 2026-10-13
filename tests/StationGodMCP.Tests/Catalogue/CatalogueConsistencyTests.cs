@@ -145,12 +145,11 @@ public sealed class CatalogueConsistencyTests
     [Fact]
     public void TheCatalogueListsExactlyTheModsMethods()
     {
-        // sample_logic runs over many frames in the subscription lane (SubscriptionHub), not as an ApiHost handler;
-        // an x-runs-in sidecar method (tool_info) is answered by the MCP server from the catalogue.
+        // An x-runs-in sidecar method (tool_info) is answered by the MCP server from the catalogue.
         HashSet<string> catalogued = Methods()
             .Where(method => (string?)method["x-runs-in"] != "sidecar")
             .Select(method => (string)method["name"]!)
-            .Where(name => name != StationGodMCP.Protocol.SubscriptionHub.SampleLogicMethod && !RetiredMethods.Has(name))
+            .Where(name => !RetiredMethods.Has(name))
             .ToHashSet(StringComparer.Ordinal);
         Assert.Equal(new[] { "tool_info" }, Methods().Where(method => (string?)method["x-runs-in"] == "sidecar")
             .Select(method => (string)method["name"]!));
@@ -159,7 +158,6 @@ public sealed class CatalogueConsistencyTests
         Assert.True(catalogued.SetEquals(handled),
             $"Only in the catalogue: {string.Join(", ", catalogued.Except(handled))}. " +
             $"Only in ApiHost.Methods: {string.Join(", ", handled.Except(catalogued))}.");
-        Assert.Contains(Methods(), method => (string?)method["name"] == StationGodMCP.Protocol.SubscriptionHub.SampleLogicMethod);
         // The protocol methods are exactly those the protocol layer answers itself.
         Assert.Equal(StationGodMCP.Protocol.ProtocolMethods.Names.OrderBy(name => name, StringComparer.Ordinal),
             Assembled.Value["protocol_methods"]!.AsArray().Select(method => (string)method!["name"]!)

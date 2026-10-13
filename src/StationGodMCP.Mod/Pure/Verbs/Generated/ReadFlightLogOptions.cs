@@ -36,7 +36,7 @@ internal sealed record ReadFlightLogOptions
         Selector = Selector.Bind(options),
         Fields = Fields.Bind(options),
         Paging = Paging.Bind(options),
-        Action = options.Text("action"),
-        Every = options.Integer("every"),
+        Action = options.Text("action") ?? options.DefaultText("action"),
+        Every = options.Integer("every") ?? options.DefaultInteger("every"),
     };
 }

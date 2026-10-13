@@ -30,7 +30,7 @@ internal sealed record ServerProfilingOptions
     {
         Fields = Fields.Bind(options),
         Action = options.Text("action"),
-        SlowFrameMs = options.Number("slow_frame_ms"),
+        SlowFrameMs = options.Number("slow_frame_ms") ?? options.DefaultNumber("slow_frame_ms"),
         Csv = options.Flag("csv"),
     };
 }

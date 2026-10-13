@@ -20,7 +20,7 @@ namespace StationGodMCP.Tests;
 /// Resuming across a reconnect (protocol.md, Resuming) with walks: a hello with resume keeps the connection's walk
 /// cursors and ended streams under the token, held for the window after a close and picked up by the next connection
 /// that presents it; the window passing, a bye, a world change or no token at all end that state as stream_end would.
-/// A live token is taken over. Subscriptions and sample_logic runs across a resume are in ResumeSubscriptionTests.
+/// A live token is taken over. Subscriptions and read sample runs across a resume are in ResumeSubscriptionTests.
 /// </summary>
 public sealed class ResumeWireTests
 {

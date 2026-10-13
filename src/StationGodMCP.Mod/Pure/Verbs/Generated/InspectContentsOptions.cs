@@ -36,6 +36,6 @@ internal sealed record InspectContentsOptions
         Selector = Selector.Bind(options),
         Fields = Fields.Bind(options),
         Paging = Paging.Bind(options),
-        Depth = options.Integer("depth"),
+        Depth = options.Integer("depth") ?? options.DefaultInteger("depth"),
     };
 }

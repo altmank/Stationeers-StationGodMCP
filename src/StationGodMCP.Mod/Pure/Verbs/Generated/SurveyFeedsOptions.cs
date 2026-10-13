@@ -32,6 +32,6 @@ internal sealed record SurveyFeedsOptions
         Selector = Selector.Bind(options),
         Fields = Fields.Bind(options),
         Port = options.Integer("port"),
-        Kind = options.Text("kind"),
+        Kind = options.Text("kind") ?? options.DefaultText("kind"),
     };
 }

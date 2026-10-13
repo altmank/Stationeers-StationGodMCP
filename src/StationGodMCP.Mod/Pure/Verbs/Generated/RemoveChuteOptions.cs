@@ -56,6 +56,6 @@ internal sealed record RemoveChuteOptions
         Cells = options.Raw("cells"),
         Allow = options.Words("allow"),
         Root = options.Text("root"),
-        Queue = options.Flag("queue"),
+        Queue = options.Flag("queue") ?? options.DefaultFlag("queue"),
     };
 }

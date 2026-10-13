@@ -45,9 +45,9 @@ internal sealed record CheckRulesOptions
     {
         Selector = Selector.Bind(options),
         Fields = Fields.Bind(options),
-        Action = options.Text("action"),
+        Action = options.Text("action") ?? options.DefaultText("action"),
         Rule = options.Text("rule"),
-        Full = options.Flag("full"),
+        Full = options.Flag("full") ?? options.DefaultFlag("full"),
         RulesText = options.Text("rules_text"),
         Port = options.Integer("port"),
         Other = options.Text("other"),

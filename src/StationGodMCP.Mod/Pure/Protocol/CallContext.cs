@@ -11,7 +11,7 @@ namespace StationGodMCP.Pure.Protocol;
 /// resume window (protocol.md, Resuming). Stores that hold something per stream key by it, and StreamEnd says which
 /// keys a stream_end, a closed connection, an expired resume window or a world change ends. Handlers do not take it as an argument: the
 /// lane scheduler enters a call's context around the call's run, and whatever a call starts that goes on over later
-/// frames (a building job, a sample_logic run) keeps the context it was started in and enters it around each later
+/// frames (a building job, a read sample run) keeps the context it was started in and enters it around each later
 /// step. Outside those it is None.
 /// <para>
 /// A readonly struct, so making one per call allocates nothing and it compares and hashes by value, which is what a

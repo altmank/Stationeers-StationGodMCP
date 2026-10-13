@@ -3,29 +3,27 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO.Pipes;
-using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Protocol;
-using StationGodMCP.Pure.Catalogue;
 using StationGodMCP.Pure.Sampling;
 using StationGodMCP.Pure.Subscriptions;
+using StationGodMCP.Pure.Verbs;
 using Xunit;
 
 namespace StationGodMCP.Tests.Sampling;
 
 /// <summary>
-/// The sampler (SubscriptionHub's sample runs) over a real pipe with the lane scheduler's frames run by the test,
-/// reached as read {what: "sample"} with the sampler's own arguments on a rig that does not check options on the reader
-/// thread (PipeRig.IsSampleRun): the call starts a run whose samples are taken in the subscription lane on the real
-/// clock, and is answered when its last sample is taken; invalid arguments are answered at once; a closed connection
-/// drops its run.
+/// read {what: "sample"} over a real pipe with the lane scheduler's frames run by the test: its handler (ReadSample)
+/// starts a run in the subscription lane on the real clock, and its call waits in the slice lane until the run's last
+/// sample is taken, answering the catalogue's reply; an unusable request is refused at once; a failed read fails the
+/// call; a closed connection drops its run; its stream's end answers it cancelled; and it waits in the queue for its
+/// deadline plus the seconds it runs (x-cost duration).
 /// </summary>
-public sealed class SampleLogicWireTests
+public sealed class SampleWireTests
 {
     private readonly ToggleReader _logic = new ToggleReader();
     private readonly Scheduling.FakeClock _clock = new Scheduling.FakeClock();
@@ -38,12 +36,7 @@ public sealed class SampleLogicWireTests
         SubscriptionHub hub = Hub();
         using PipeRig rig = Rig(hub);
         using V2Client client = await V2Client.Connect(rig);
-        client.Send(Call("1", new JObject
-        {
-            ["targets"] = new JArray(new JObject { ["reference_id"] = "100", ["logic_type"] = "On" }),
-            ["duration_seconds"] = 0.3,
-            ["interval_seconds"] = 0.1
-        }));
+        client.Send(Call("1", Watching(0.3, 0.1)));
         StartRuns(rig, hub, 1, atS: 0.0);
         Frame(rig, 0.0);
 
@@ -54,19 +47,19 @@ public sealed class SampleLogicWireTests
             Assert.Null(client.NextOrNull(50));
         }
 
-        Frame(rig, 0.3);
-        JObject reply = client.Next();
+        JObject reply = NextAfterFrames(rig, client, 0.3);
         Assert.Equal("reply", (string?)reply["type"]);
         Assert.True((bool)reply["ok"]!, reply.ToString());
         JObject result = (JObject)reply["result"]!;
         Assert.Equal(4, (int)result["sample_count"]!);
         Assert.Equal(4, (int)result["change_count"]!);
-        Assert.Equal(new[] { 0.0, 0.1, 0.2, 0.3 }, ElapsedOf(result));
+        Assert.Equal(new[] { 0.0, 0.1, 0.2, 0.3 }, AtOf(result));
         Assert.Equal(0.3, (double)result["duration_seconds"]!);
         Assert.Equal(0.1, (double)result["interval_seconds"]!);
+        Assert.Equal("world", (string?)result["gateway_id"]);
         Assert.NotNull(reply["frame"]);
         Assert.NotNull(reply["elapsed_ms"]);
-        Assert.Equal(0, hub.SampleLogicRuns);
+        Assert.Equal(0, hub.SampleRuns);
     }
 
     [Fact]
@@ -75,12 +68,7 @@ public sealed class SampleLogicWireTests
         SubscriptionHub hub = Hub();
         using PipeRig rig = Rig(hub);
         using V2Client client = await V2Client.Connect(rig);
-        client.Send(Call("1", new JObject
-        {
-            ["targets"] = new JArray(new JObject { ["reference_id"] = "100", ["logic_type"] = "On" }),
-            ["duration_seconds"] = 0.1,
-            ["interval_seconds"] = 0.1
-        }));
+        client.Send(Call("1", Watching(0.1, 0.1)));
         StartRuns(rig, hub, 1, atS: 0.0);
 
         _frame++;
@@ -89,28 +77,23 @@ public sealed class SampleLogicWireTests
         _frame++;
         _realS = 0.1;
         Assert.Equal(1, rig.Mod.RunFrame().Samples);
-        Assert.Equal(2, (int)client.Next()["result"]!["sample_count"]!);
+        Assert.Equal(2, (int)NextAfterFrames(rig, client, 0.1)["result"]!["sample_count"]!);
     }
 
     [Fact]
-    public async Task InvalidArgumentsAreAnsweredAtOnce()
+    public async Task AnUnusableRequestIsRefusedAtOnce()
     {
         SubscriptionHub hub = Hub();
         using PipeRig rig = Rig(hub);
         using V2Client client = await V2Client.Connect(rig);
-        client.Send(Call("1", new JObject
-        {
-            ["targets"] = new JArray(new JObject { ["reference_id"] = "100", ["logic_type"] = "On" }),
-            ["duration_seconds"] = 30,
-            ["interval_seconds"] = 0.05
-        }));
+        client.Send(Call("1", Watching(30, 0.05)));
 
-        JObject reply = NextAfterFrames(rig, client);
+        JObject reply = NextAfterFrames(rig, client, 0.0);
 
         Assert.False((bool)reply["ok"]!);
         Assert.Equal("invalid_argument", (string?)reply["error"]!["code"]);
-        Assert.Contains("at most 120", (string?)reply["error"]!["message"]);
-        Assert.Equal(0, hub.SampleLogicRuns);
+        Assert.Contains("at most 120", reply["error"]!.ToString(Formatting.None));
+        Assert.Equal(0, hub.SampleRuns);
     }
 
     [Fact]
@@ -120,15 +103,12 @@ public sealed class SampleLogicWireTests
         _logic.Failure = ("gateway_not_found", "No gateway gw9.");
         using PipeRig rig = Rig(hub);
         using V2Client client = await V2Client.Connect(rig);
-        client.Send(Call("1", new JObject
-        {
-            ["targets"] = new JArray(new JObject { ["reference_id"] = "100", ["logic_type"] = "On" })
-        }));
+        client.Send(Call("1", Watching(5, 0.5)));
 
-        JObject reply = NextAfterFrames(rig, client);
+        JObject reply = NextAfterFrames(rig, client, 0.0);
 
         Assert.Equal("gateway_not_found", (string?)reply["error"]!["code"]);
-        Assert.Equal(0, hub.SampleLogicRuns);
+        Assert.Equal(0, hub.SampleRuns);
     }
 
     [Fact]
@@ -137,11 +117,7 @@ public sealed class SampleLogicWireTests
         SubscriptionHub hub = Hub();
         using PipeRig rig = Rig(hub);
         V2Client client = await V2Client.Connect(rig);
-        client.Send(Call("1", new JObject
-        {
-            ["targets"] = new JArray(new JObject { ["reference_id"] = "100", ["logic_type"] = "On" }),
-            ["duration_seconds"] = 5
-        }));
+        client.Send(Call("1", Watching(5, 0.5)));
         StartRuns(rig, hub, 1, atS: 0.0);
 
         client.Dispose();
@@ -153,7 +129,7 @@ public sealed class SampleLogicWireTests
         }
 
         Frame(rig, 0.5);
-        Assert.Equal(0, hub.SampleLogicRuns);
+        Assert.Equal(0, hub.SampleRuns);
     }
 
     [Fact]
@@ -162,70 +138,89 @@ public sealed class SampleLogicWireTests
         SubscriptionHub hub = Hub();
         using PipeRig rig = Rig(hub);
         using V2Client client = await V2Client.Connect(rig);
-        JObject parameters = new JObject
-        {
-            ["targets"] = new JArray(new JObject { ["reference_id"] = "100", ["logic_type"] = "On" }),
-            ["duration_seconds"] = 5
-        };
-        client.Send(CallOn("1", parameters, 3));
-        client.Send(CallOn("2", parameters, 0));
+        client.Send(CallOn("1", Watching(5, 0.5), 3));
+        client.Send(CallOn("2", Watching(5, 0.5), 0));
         StartRuns(rig, hub, 2, atS: 0.0);
 
         client.Send("""{"type":"stream_end","stream":3}""");
-        JObject reply = NextAfterFrames(rig, client);
+        JObject reply = NextAfterFrames(rig, client, 0.0);
 
         Assert.Equal("1", (string?)reply["id"]);
         Assert.False((bool)reply["ok"]!);
         Assert.Equal("cancelled", (string?)reply["error"]!["code"]);
-        Assert.Equal(1, hub.SampleLogicRuns);
+        Assert.Equal(1, hub.SampleRuns);
     }
 
     [Fact]
-    public void TheDurationIsTheArgumentAtMostItsMaximumElseTheMaximum()
+    public async Task ACallWaitsInTheQueueForItsDeadlinePlusItsDuration()
     {
-        Assert.True(TestCatalogue.File.Value.Catalogue.TryGet("sample_logic", out CatalogueMethod? method));
+        SubscriptionHub hub = Hub();
+        using PipeRig rig = Rig(hub);
+        using V2Client client = await V2Client.Connect(rig);
+        JObject call = JObject.Parse(Call("1", Watching(1, 0.5)));
+        call["deadline_ms"] = 100;
+        client.Send(call.ToString(Formatting.None));
 
-        Assert.Equal(5000, method!.DurationMs(JObject.Parse("""{"duration_seconds": 5}""")));
-        Assert.Equal(30000, method.DurationMs(JObject.Parse("""{"duration_seconds": 300}""")));
-        Assert.Equal(30000, method.DurationMs(new JObject()));
-        Assert.True(TestCatalogue.File.Value.Catalogue.TryGet("read_logic", out CatalogueMethod? read));
-        Assert.Equal(0, read!.DurationMs(new JObject()));
+        // Past its 100 ms deadline, but not past the deadline plus its 1 s of watching: it still starts.
+        rig.Mod.WaitSubmitted(1);
+        _clock.Advance(400);
+        rig.Deadlines.CheckNow();
+        StartRuns(rig, hub, 1, atS: 0.0);
+        Assert.Null(client.NextOrNull(50));
+    }
+
+    [Fact]
+    public async Task ACallPastItsDeadlinePlusItsDurationIsNotStarted()
+    {
+        SubscriptionHub hub = Hub();
+        using PipeRig rig = Rig(hub);
+        using V2Client client = await V2Client.Connect(rig);
+        JObject call = JObject.Parse(Call("1", Watching(1, 0.5)));
+        call["deadline_ms"] = 100;
+        client.Send(call.ToString(Formatting.None));
+
+        rig.Mod.WaitSubmitted(1);
+        _clock.Advance(1200);
+        rig.Deadlines.CheckNow();
+
+        Assert.Equal("game_timeout", (string?)client.Next()["error"]!["code"]);
+        Frame(rig, 0.0);
+        Assert.Equal(0, hub.SampleRuns);
     }
 
     private SubscriptionHub Hub() => new SubscriptionHub(NoDevices.Instance, _logic, SubscriptionLimits.Default);
 
-    // Not strict: read {what: "sample"} goes with the sampler's own arguments (PipeRig.IsSampleRun).
+    // Strict: the reader thread checks read sample's options against the catalogue, as the mod does.
     private PipeRig Rig(SubscriptionHub hub) =>
-        new PipeRig(mainThread: false, subscriptions: hub, settings: new ProtocolSettings(32, strictArguments: false),
+        new PipeRig(mainThread: false, subscriptions: hub, settings: new ProtocolSettings(32, strictArguments: true),
             tick: () => new SamplingTick(_frame, 0), realTick: () => new RealTimeTick(_frame, _realS, DateTimeOffset.UnixEpoch),
             frameClock: _clock, deadlineClock: _clock);
+
+    // Watch id 100's On for seconds, at most every interval.
+    private static JObject Watching(double seconds, double interval) => new JObject
+    {
+        ["what"] = "sample", ["id"] = new JArray("100"), ["logic"] = "On", ["seconds"] = seconds, ["interval"] = interval
+    };
 
     private static string CallOn(string id, JObject parameters, long stream) =>
         new JObject
         {
-            ["type"] = "call", ["id"] = id, ["method"] = "read", ["params"] = Sampled(parameters), ["stream"] = stream
+            ["type"] = "call", ["id"] = id, ["method"] = "read", ["params"] = parameters, ["stream"] = stream
         }.ToString(Formatting.None);
 
-    private static JObject Sampled(JObject parameters)
-    {
-        JObject sampled = new JObject { ["what"] = "sample" };
-        sampled.Merge(parameters);
-        return sampled;
-    }
-
     private static string Call(string id, JObject parameters) =>
-        new JObject { ["type"] = "call", ["id"] = id, ["method"] = "read", ["params"] = Sampled(parameters) }
+        new JObject { ["type"] = "call", ["id"] = id, ["method"] = "read", ["params"] = parameters }
             .ToString(Formatting.None);
 
-    private static double[] ElapsedOf(JObject result)
+    private static double[] AtOf(JObject result)
     {
-        List<double> elapsed = new List<double>();
+        List<double> at = new List<double>();
         foreach (JToken change in (JArray)result["changes"]!)
         {
-            elapsed.Add((double)change["elapsed_seconds"]!);
+            at.Add((double)change["at_s"]!);
         }
 
-        return elapsed.ToArray();
+        return at.ToArray();
     }
 
     private void Frame(PipeRig rig, double atS)
@@ -240,16 +235,16 @@ public sealed class SampleLogicWireTests
     {
         rig.Mod.WaitSubmitted(calls);
         Frame(rig, atS);
-        Assert.Equal(calls, hub.SampleLogicRuns);
+        Assert.Equal(calls, hub.SampleRuns);
     }
 
-    // Frames until a line comes; the bound only ends a hang.
-    private JObject NextAfterFrames(PipeRig rig, V2Client client)
+    // Frames at atS until a line comes; the bound only ends a hang.
+    private JObject NextAfterFrames(PipeRig rig, V2Client client, double atS)
     {
         Stopwatch watch = Stopwatch.StartNew();
         while (watch.ElapsedMilliseconds < 30000)
         {
-            Frame(rig, _realS);
+            Frame(rig, atS);
             JObject? message = client.NextOrNull(20);
             if (message != null)
             {
@@ -267,7 +262,7 @@ public sealed class SampleLogicWireTests
 
         internal (string Code, string Message)? Failure { get; set; }
 
-        public LogicSampleRead Read(SampleLogicArguments arguments, List<BatchItemView> into)
+        public LogicSampleRead Read(SampleRequest arguments, List<BatchItemView> into)
         {
             if (Failure is { } failure)
             {

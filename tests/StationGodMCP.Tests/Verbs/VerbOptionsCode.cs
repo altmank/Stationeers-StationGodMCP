@@ -142,8 +142,15 @@ internal static class VerbOptionsCode
                 continue;
             }
 
-            (string propertyType, string read) = Typed(option["schema"] as JsonObject ?? new JsonObject());
-            members.Add((Pascal(name), propertyType, "options." + read + "(" + Literal(name) + ")", null));
+            JsonObject schema = option["schema"] as JsonObject ?? new JsonObject();
+            (string propertyType, string read) = Typed(schema);
+            string bind = "options." + read + "(" + Literal(name) + ")";
+            if (DefaultRead(read, schema, option) is { } fallback)
+            {
+                bind += " ?? options." + fallback + "(" + Literal(name) + ")";
+            }
+
+            members.Add((Pascal(name), propertyType, bind, null));
         }
 
         foreach ((string property, string propertyType, string _, string? empty) in members)
@@ -166,6 +173,26 @@ internal static class VerbOptionsCode
     // max_wait and a file option (code_file: a path the hub reads into code) are the hub's: the game never gets them.
     private static bool IsHubOption(string name, HashSet<string> taken) =>
         name == "max_wait" || (name.EndsWith("_file", StringComparison.Ordinal) && taken.Contains(name[..^"_file".Length]));
+
+    // The reader's method for an own option's catalogue default, when the default is a value of the option's type (a
+    // flag, a number, or a word its enum takes): the default of the form the call takes (x-default-when) fills the
+    // option left out. Prose defaults ("every supplier") bind nothing.
+    private static string? DefaultRead(string read, JsonObject schema, JsonObject option)
+    {
+        if (option["default"] is not JsonValue given || !given.TryGetValue(out string? text))
+        {
+            return null;
+        }
+
+        return read switch
+        {
+            "Flag" when text is "true" or "false" => "DefaultFlag",
+            "Integer" when long.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out _) => "DefaultInteger",
+            "Number" when double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out _) => "DefaultNumber",
+            "Text" when schema["enum"] is JsonArray words && words.Any(word => (string?)word == text) => "DefaultText",
+            _ => null
+        };
+    }
 
     // The property type and the reader's method for an own option, by its schema.
     private static (string Type, string Read) Typed(JsonObject schema)

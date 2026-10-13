@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using StationGodMCP.Api;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
+using Assets.Scripts.Objects.Motherboards;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure.Sampling;
 using StationGodMCP.Pure.Subscriptions;
@@ -27,26 +28,66 @@ internal sealed class ReadDevicesReader : IDeviceReader<ReadDevicesView>
         ReadDevicesApi.Read(Devices.Scope(new Args(query.ReadArguments)), query.Request);
 }
 
-/// <summary>A sample_logic sample through read_logic_many's own handler: each target read as read_logic reads it.</summary>
-internal sealed class ReadLogicManyReader : ILogicSampleReader<BatchItemView>
+/// <summary>
+/// A read sample sample: every target read as read logic reads it (the device in the gateway's scope, the logic type
+/// readable), "looking_at" the thing under the crosshair. A target that cannot be read fails the sample with that
+/// read's error, naming the target, so the call fails with it.
+/// </summary>
+internal sealed class SampleReader : ILogicSampleReader<BatchItemView>
 {
-    internal static readonly ReadLogicManyReader Instance = new ReadLogicManyReader();
+    internal static readonly SampleReader Instance = new SampleReader();
 
-    private ReadLogicManyReader()
+    private const string LookingAt = "looking_at";
+
+    private SampleReader()
     {
     }
 
-    public LogicSampleRead Read(SampleLogicArguments arguments, List<BatchItemView> into)
+    public LogicSampleRead Read(SampleRequest request, List<BatchItemView> into)
     {
+        DeviceScope scope;
         try
         {
-            LogicBatchView batch = ReadLogicManyApi.Handle(new Args(arguments.ReadArguments()));
-            into.AddRange(batch.Results);
-            return LogicSampleRead.Read(batch.GatewayId);
+            scope = Devices.Scope(request.Gateway);
         }
         catch (ApiException refused)
         {
             return LogicSampleRead.Failed(refused.Code, refused.Message);
         }
+
+        for (int index = 0; index < request.Targets.Count; index++)
+        {
+            SampleTarget target = request.Targets[index];
+            try
+            {
+                ScopedTarget device = Devices.Require(scope, IdOf(target.Id));
+                LogicType type = LogicTypes.Parse(target.Logic);
+                into.Add(new LogicReadItemView(index, new LogicRead(new ThingId(device.ReferenceId),
+                    LogicTypes.ViewOf(type), LogicOps.ReadValue(device, type))));
+            }
+            catch (ApiException refused)
+            {
+                return LogicSampleRead.Failed(refused.Code,
+                    $"read sample: {target.Id} {target.Logic.ToString(Newtonsoft.Json.Formatting.None)}: {refused.Message}");
+            }
+        }
+
+        return LogicSampleRead.Read(scope.Id);
+    }
+
+    // A target's id: a thing's reference id, or the thing under the crosshair.
+    private static ThingId IdOf(string id)
+    {
+        if (string.Equals(id, LookingAt, System.StringComparison.OrdinalIgnoreCase))
+        {
+            Assets.Scripts.Objects.Thing? thing = PlayerView.Current().Require("read sample").Target;
+            return thing != null
+                ? new ThingId(thing.ReferenceId)
+                : throw ApiErrors.Refused("thing_not_found", "read sample: nothing is under the crosshair for \"looking_at\".");
+        }
+
+        return ThingId.TryRead(new Newtonsoft.Json.Linq.JValue(id), out ThingId read)
+            ? read
+            : throw ApiErrors.Refused("thing_not_found", $"read sample: '{id}' is not a thing's id.");
     }
 }

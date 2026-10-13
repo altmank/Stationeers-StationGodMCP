@@ -54,33 +54,33 @@ internal readonly struct LogicSampleRead
 /// <summary>Reads every target once, in the calling frame, as read_logic_many reads them, one result per target in order.</summary>
 internal interface ILogicSampleReader<TItem> where TItem : class
 {
-    LogicSampleRead Read(SampleLogicArguments arguments, List<TItem> into);
+    LogicSampleRead Read(SampleRequest request, List<TItem> into);
 }
 
 /// <summary>Told when a run has its outcome, so the call's reply can be sent. Main thread.</summary>
-internal interface ISampleLogicEvents<TItem> where TItem : class
+internal interface ISampleEvents<TItem> where TItem : class
 {
-    void Finished(SampleLogicRun<TItem> run, SampleLogicOutcome<TItem> outcome);
+    void Finished(SampleRun<TItem> run, SampleOutcome<TItem> outcome);
 }
 
 /// <summary>A run's end: the reply, or the error a sample's read failed with (the call's error, as the sidecar's was).</summary>
-internal abstract class SampleLogicOutcome<TItem> where TItem : class
+internal abstract class SampleOutcome<TItem> where TItem : class
 {
-    private SampleLogicOutcome()
+    private SampleOutcome()
     {
     }
 
-    internal sealed class Completed : SampleLogicOutcome<TItem>
+    internal sealed class Completed : SampleOutcome<TItem>
     {
-        internal Completed(SampleLogicResult<TItem> result)
+        internal Completed(SampleResult<TItem> result)
         {
             Result = result;
         }
 
-        internal SampleLogicResult<TItem> Result { get; }
+        internal SampleResult<TItem> Result { get; }
     }
 
-    internal sealed class Failed : SampleLogicOutcome<TItem>
+    internal sealed class Failed : SampleOutcome<TItem>
     {
         internal Failed(string code, string message)
         {
@@ -95,13 +95,13 @@ internal abstract class SampleLogicOutcome<TItem> where TItem : class
 }
 
 /// <summary>
-/// sample_logic's reply, as the sidecar loop gave it: {gateway_id, started_at_utc, duration_seconds, interval_seconds,
+/// A sample run's result: {gateway_id, started_at_utc, duration_seconds, interval_seconds,
 /// sample_count, change_count, changes: [{elapsed_seconds, readings}]}.
 /// </summary>
-internal sealed class SampleLogicResult<TItem> where TItem : class
+internal sealed class SampleResult<TItem> where TItem : class
 {
-    internal SampleLogicResult(string? gatewayId, DateTimeOffset startedAtUtc, double durationSeconds,
-        double intervalSeconds, int sampleCount, List<SampleLogicChange<TItem>> changes)
+    internal SampleResult(string? gatewayId, DateTimeOffset startedAtUtc, double durationSeconds,
+        double intervalSeconds, int sampleCount, List<SampleChange<TItem>> changes)
     {
         GatewayId = gatewayId;
         StartedAtUtc = startedAtUtc;
@@ -124,13 +124,13 @@ internal sealed class SampleLogicResult<TItem> where TItem : class
 
     public int ChangeCount => Changes.Count;
 
-    public List<SampleLogicChange<TItem>> Changes { get; }
+    public List<SampleChange<TItem>> Changes { get; }
 }
 
 /// <summary>One sample that changed something: when (0 for the first sample) and every reading that changed.</summary>
-internal sealed class SampleLogicChange<TItem> where TItem : class
+internal sealed class SampleChange<TItem> where TItem : class
 {
-    internal SampleLogicChange(double elapsedSeconds, List<TItem> readings)
+    internal SampleChange(double elapsedSeconds, List<TItem> readings)
     {
         ElapsedSeconds = elapsedSeconds;
         Readings = readings;
@@ -141,24 +141,24 @@ internal sealed class SampleLogicChange<TItem> where TItem : class
     public List<TItem> Readings { get; }
 }
 
-/// <summary>One sample_logic call in progress: its schedule, the last reading of each target, and the changes so far.</summary>
-internal sealed class SampleLogicRun<TItem> where TItem : class
+/// <summary>One read sample call in progress: its schedule, the last reading of each target, and the changes so far.</summary>
+internal sealed class SampleRun<TItem> where TItem : class
 {
     private readonly List<TItem> _previous;
-    private readonly List<SampleLogicChange<TItem>> _changes = new List<SampleLogicChange<TItem>>();
+    private readonly List<SampleChange<TItem>> _changes = new List<SampleChange<TItem>>();
     private string? _gatewayId;
     private double _startS;
     private DateTimeOffset _startedAtUtc;
     private int _sampleCount;
 
-    internal SampleLogicRun(ConnectionId connection, SampleLogicArguments arguments, double startedS, long stream = 0)
+    internal SampleRun(ConnectionId connection, SampleRequest request, double startedS, long stream = 0)
     {
         Connection = connection;
         Stream = stream;
         Context = new CallContext(connection.Value, stream);
-        Arguments = arguments;
-        _gatewayId = arguments.GatewayId;
-        _previous = new List<TItem>(arguments.Targets.Count);
+        Request = request;
+        _gatewayId = request.Gateway;
+        _previous = new List<TItem>(request.Targets.Count);
         DueS = startedS;
         LastSampledFrame = long.MinValue;
     }
@@ -171,7 +171,7 @@ internal sealed class SampleLogicRun<TItem> where TItem : class
     /// <summary>The context of the call that started it, current around each of its samples.</summary>
     internal CallContext Context { get; }
 
-    internal SampleLogicArguments Arguments { get; }
+    internal SampleRequest Request { get; }
 
     /// <summary>Real time the next sample is due; the first is due when the call started.</summary>
     internal double DueS { get; private set; }
@@ -181,7 +181,7 @@ internal sealed class SampleLogicRun<TItem> where TItem : class
     internal int SampleCount => _sampleCount;
 
     /// <summary>One sample: null while the run goes on, its outcome once it has ended.</summary>
-    internal SampleLogicOutcome<TItem>? Sample(RealTimeTick tick, ILogicSampleReader<TItem> reader,
+    internal SampleOutcome<TItem>? Sample(RealTimeTick tick, ILogicSampleReader<TItem> reader,
         IReadingComparer<TItem> comparer, List<TItem> buffer)
     {
         LastSampledFrame = tick.Frame;
@@ -189,17 +189,17 @@ internal sealed class SampleLogicRun<TItem> where TItem : class
         LogicSampleRead read;
         try
         {
-            read = reader.Read(Arguments, buffer);
+            read = reader.Read(Request, buffer);
         }
         catch (Exception failure)
         {
             // The game tick's boundary: a read that throws fails this call, never the frame.
-            return new SampleLogicOutcome<TItem>.Failed("internal_error", failure.Message);
+            return new SampleOutcome<TItem>.Failed("internal_error", failure.Message);
         }
 
         if (!read.Ok)
         {
-            return new SampleLogicOutcome<TItem>.Failed(read.Code!, read.Message ?? read.Code!);
+            return new SampleOutcome<TItem>.Failed(read.Code!, read.Message ?? read.Code!);
         }
 
         bool first = _sampleCount == 0;
@@ -234,23 +234,23 @@ internal sealed class SampleLogicRun<TItem> where TItem : class
 
         if (changed != null)
         {
-            _changes.Add(new SampleLogicChange<TItem>(first ? 0.0 : SampleSchedule.Round(elapsed), changed));
+            _changes.Add(new SampleChange<TItem>(first ? 0.0 : SampleSchedule.Round(elapsed), changed));
         }
 
         _sampleCount++;
-        if (SampleSchedule.Ends(elapsed, Arguments.DurationSeconds))
+        if (SampleSchedule.Ends(elapsed, Request.Seconds))
         {
-            return new SampleLogicOutcome<TItem>.Completed(new SampleLogicResult<TItem>(_gatewayId, _startedAtUtc,
-                SampleSchedule.Round(elapsed), Arguments.IntervalSeconds, _sampleCount, _changes));
+            return new SampleOutcome<TItem>.Completed(new SampleResult<TItem>(_gatewayId, _startedAtUtc,
+                SampleSchedule.Round(elapsed), Request.Interval, _sampleCount, _changes));
         }
 
-        DueS = _startS + SampleSchedule.NextDue(elapsed, Arguments.IntervalSeconds, Arguments.DurationSeconds);
+        DueS = _startS + SampleSchedule.NextDue(elapsed, Request.Interval, Request.Seconds);
         return null;
     }
 }
 
 /// <summary>
-/// sample_logic in the mod: every call's run, sampled on the real clock in the subscription lane, so a paused game
+/// read sample in the mod: every call's run, sampled on the real clock in the subscription lane, so a paused game
 /// keeps sampling. Each frame the due runs are sampled, the most overdue first, at most once per run, while the lane's
 /// budget allows; a run whose last sample is taken hands its outcome to the events. Pure: the reads, the comparison
 /// and the clock come in from outside.
@@ -259,8 +259,8 @@ internal sealed class LogicSampler<TItem> where TItem : class
 {
     private readonly ILogicSampleReader<TItem> _reader;
     private readonly IReadingComparer<TItem> _comparer;
-    private readonly List<SampleLogicRun<TItem>> _runs = new List<SampleLogicRun<TItem>>();
-    private readonly List<TItem> _buffer = new List<TItem>(SampleLogicArguments.MaximumTargets);
+    private readonly List<SampleRun<TItem>> _runs = new List<SampleRun<TItem>>();
+    private readonly List<TItem> _buffer = new List<TItem>(SampleRequest.MaximumTargets);
 
     internal LogicSampler(ILogicSampleReader<TItem> reader, IReadingComparer<TItem> comparer)
     {
@@ -274,16 +274,16 @@ internal sealed class LogicSampler<TItem> where TItem : class
     /// A new run for a call on the connection's stream, started at real time nowS; its first sample is due then (the
     /// next Poll takes it).
     /// </summary>
-    internal SampleLogicRun<TItem> Start(ConnectionId connection, SampleLogicArguments arguments, double nowS,
+    internal SampleRun<TItem> Start(ConnectionId connection, SampleRequest request, double nowS,
         long stream = 0)
     {
-        SampleLogicRun<TItem> run = new SampleLogicRun<TItem>(connection, arguments, nowS, stream);
+        SampleRun<TItem> run = new SampleRun<TItem>(connection, request, nowS, stream);
         _runs.Add(run);
         return run;
     }
 
     /// <summary>Drops a run without an outcome (its call was cancelled); false when it is not running.</summary>
-    internal bool Cancel(SampleLogicRun<TItem> run) => _runs.Remove(run);
+    internal bool Cancel(SampleRun<TItem> run) => _runs.Remove(run);
 
     /// <summary>The connection closed: its runs are dropped.</summary>
     internal void CancelConnection(ConnectionId connection)
@@ -301,13 +301,13 @@ internal sealed class LogicSampler<TItem> where TItem : class
     /// One frame: due samples, most overdue first, while the budget allows, each in the context of the call that
     /// started its run. Returns the samples taken.
     /// </summary>
-    internal int Poll(RealTimeTick tick, ISamplingBudget budget, ISampleLogicEvents<TItem> events)
+    internal int Poll(RealTimeTick tick, ISamplingBudget budget, ISampleEvents<TItem> events)
     {
         int taken = 0;
-        while (MostOverdue(tick) is SampleLogicRun<TItem> run && budget.MayTakeAnother())
+        while (MostOverdue(tick) is SampleRun<TItem> run && budget.MayTakeAnother())
         {
             taken++;
-            SampleLogicOutcome<TItem>? outcome;
+            SampleOutcome<TItem>? outcome;
             using (CallContext.Enter(run.Context))
             {
                 outcome = run.Sample(tick, _reader, _comparer, _buffer);
@@ -323,10 +323,10 @@ internal sealed class LogicSampler<TItem> where TItem : class
         return taken;
     }
 
-    private SampleLogicRun<TItem>? MostOverdue(RealTimeTick tick)
+    private SampleRun<TItem>? MostOverdue(RealTimeTick tick)
     {
-        SampleLogicRun<TItem>? most = null;
-        foreach (SampleLogicRun<TItem> run in _runs)
+        SampleRun<TItem>? most = null;
+        foreach (SampleRun<TItem> run in _runs)
         {
             if (run.LastSampledFrame != tick.Frame && SampleSchedule.IsDue(run.DueS, tick.RealTimeS) &&
                 (most == null || run.DueS < most.DueS))

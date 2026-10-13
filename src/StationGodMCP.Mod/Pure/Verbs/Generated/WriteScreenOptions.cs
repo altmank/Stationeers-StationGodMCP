@@ -49,7 +49,7 @@ internal sealed record WriteScreenOptions
         Surface = options.Text("surface"),
         Element = options.Text("element"),
         Pixel = options.Raw("pixel"),
-        Event = options.Text("event"),
+        Event = options.Text("event") ?? options.DefaultText("event"),
         Text = options.Text("text"),
         AsPlayer = options.Text("as_player"),
     };

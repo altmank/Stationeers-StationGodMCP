@@ -31,7 +31,7 @@ internal sealed record InspectRocketOptions
     {
         Selector = Selector.Bind(options),
         Fields = Fields.Bind(options),
-        Compact = options.Flag("compact"),
-        SelfTest = options.Flag("self_test"),
+        Compact = options.Flag("compact") ?? options.DefaultFlag("compact"),
+        SelfTest = options.Flag("self_test") ?? options.DefaultFlag("self_test"),
     };
 }

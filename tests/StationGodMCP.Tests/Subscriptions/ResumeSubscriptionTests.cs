@@ -18,7 +18,7 @@ using Xunit;
 namespace StationGodMCP.Tests.Subscriptions;
 
 /// <summary>
-/// Subscriptions and sample_logic across a resume (protocol.md, Resuming), on a real pipe with the frames run by the
+/// Subscriptions and read sample across a resume (protocol.md, Resuming), on a real pipe with the frames run by the
 /// test: a held token's subscriptions take no samples, and on resume the next frame sends each one's reading whole to
 /// the new connection, changed or not; past the window they are gone. A sampler run ends with its call's connection, unanswered.
 /// </summary>
@@ -95,7 +95,7 @@ public sealed class ResumeSubscriptionTests
     }
 
     [Fact]
-    public async Task ASampleLogicRunEndsWithItsConnectionAndIsNotAnsweredOnResume()
+    public async Task AReadSampleRunEndsWithItsConnectionAndIsNotAnsweredOnResume()
     {
         SubscriptionHub hub = Hub();
         using PipeRig rig = Rig(hub, strict: false);
@@ -107,21 +107,22 @@ public sealed class ResumeSubscriptionTests
                 ["params"] = new JObject
                 {
                     ["what"] = "sample",
-                    ["targets"] = new JArray(new JObject { ["reference_id"] = "100", ["logic_type"] = "On" }),
-                    ["duration_seconds"] = 1,
-                    ["interval_seconds"] = 0.1
+                    ["id"] = new JArray("100"),
+                    ["logic"] = "On",
+                    ["seconds"] = 1,
+                    ["interval"] = 0.1
                 }
             }.ToString(Formatting.None));
             WaitUntil(() =>
             {
                 Frame(rig, atS: 0.0);
-                return hub.SampleLogicRuns == 1;
+                return hub.SampleRuns == 1;
             });
         }
 
         WaitHeldAndClosed(rig);
         Frame(rig, atS: 0.1);
-        Assert.Equal(0, hub.SampleLogicRuns);
+        Assert.Equal(0, hub.SampleRuns);
 
         using V2Client second = await Resume(rig);
         for (int frame = 0; frame < 12; frame++)
@@ -248,7 +249,7 @@ public sealed class ResumeSubscriptionTests
     {
         private int _samples;
 
-        public LogicSampleRead Read(SampleLogicArguments arguments, List<BatchItemView> into)
+        public LogicSampleRead Read(SampleRequest arguments, List<BatchItemView> into)
         {
             int sample = _samples++;
             for (int target = 0; target < arguments.Targets.Count; target++)

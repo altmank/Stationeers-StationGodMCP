@@ -23,6 +23,6 @@ internal sealed record ServerConsoleOptions
     internal static ServerConsoleOptions Bind(OptionReader options) => new ServerConsoleOptions
     {
         Fields = Fields.Bind(options),
-        Lines = options.Integer("lines"),
+        Lines = options.Integer("lines") ?? options.DefaultInteger("lines"),
     };
 }

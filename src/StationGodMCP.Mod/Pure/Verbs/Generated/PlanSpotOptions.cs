@@ -58,6 +58,6 @@ internal sealed record PlanSpotOptions
         Around = options.Raw("around"),
         Facing = options.Text("facing"),
         Require = options.Raw("require"),
-        MaxChecks = options.Integer("max_checks"),
+        MaxChecks = options.Integer("max_checks") ?? options.DefaultInteger("max_checks"),
     };
 }

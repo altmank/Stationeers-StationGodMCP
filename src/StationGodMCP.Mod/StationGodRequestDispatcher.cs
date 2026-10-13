@@ -43,7 +43,7 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
     internal static DispatchStats Stats { get; } = new DispatchStats();
 
     /// <summary>
-    /// subscribe, unsubscribe and sample_logic, and the closing of their connections; null before the mod has loaded.
+    /// subscribe, unsubscribe and read sample, and the closing of their connections; null before the mod has loaded.
     /// </summary>
     internal SubscriptionHub? Subscriptions { get; set; }
 
@@ -129,7 +129,7 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
 
     /// <summary>
     /// Runs one call on the main thread, and counts it for its connection (mod_info connections: calls, tool errors
-    /// and main-thread ms per known method; subscribe, unsubscribe, sample_logic, drop_job, stream_costs,
+    /// and main-thread ms per known method; subscribe, unsubscribe, read sample, drop_job, stream_costs,
     /// hold_restore and inspect_controllers count as answered). The lane scheduler times the same span for the call's
     /// stream (stream_costs), and adds the slices of a call deferred over frames to both.
     /// </summary>
@@ -143,11 +143,6 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
             if (Subscriptions != null && SubscriptionHub.Handles(call.Request.Method))
             {
                 return new CallOutcome(Subscriptions.Run(call, queueWaitMs), call.Request.Method);
-            }
-
-            if (Subscriptions != null && call.Request.Method == SubscriptionHub.SampleLogicMethod)
-            {
-                return Subscriptions.StartSampleLogic(call, queueWaitMs);
             }
 
             if (JobDropCalls.Handles(call.Request.Method))

@@ -37,8 +37,8 @@ internal sealed record WriteFlightLogOptions
         Selector = Selector.Bind(options),
         Fields = Fields.Bind(options),
         Action = options.Text("action"),
-        IntervalS = options.Number("interval_s"),
-        Capacity = options.Integer("capacity"),
-        Csv = options.Flag("csv"),
+        IntervalS = options.Number("interval_s") ?? options.DefaultNumber("interval_s"),
+        Capacity = options.Integer("capacity") ?? options.DefaultInteger("capacity"),
+        Csv = options.Flag("csv") ?? options.DefaultFlag("csv"),
     };
 }

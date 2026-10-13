@@ -61,7 +61,7 @@ internal interface ICallScheduler
 /// <para>
 /// A call that goes on with work over frames (CallOutcome.Continued) joins Deferred, the frame's slice lane, until it
 /// answers; ended streams, closed connections and the calls' own cancels, deadlines and worlds stop it there. Every
-/// deferred call (sample_logic's too) holds its stream in FrameScheduler until its state is answered, by whoever
+/// deferred call (read sample's too) holds its stream in FrameScheduler until its state is answered, by whoever
 /// answers it; its stream's end or its connection's close lets go of it unanswered.
 /// </para>
 /// <para>

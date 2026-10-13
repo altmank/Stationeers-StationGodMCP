@@ -21,7 +21,7 @@ namespace StationGodMCP.Protocol;
 /// flight on one stream and MaxInFlightPerConnection on the connection, its streams together; ids stay unique per
 /// connection. stream_end answers the stream's unstarted calls cancelled here, marks the stream ended (a later call on
 /// it is refused stream_ended), and posts the end for the main thread, which drops the stream's waiting calls,
-/// subscriptions, sample_logic runs and per-stream stores at the next frame. A slow client goes the same way for every
+/// subscriptions, read sample runs and per-stream stores at the next frame. A slow client goes the same way for every
 /// stream before it is closed.
 /// </para>
 /// <para>
@@ -175,7 +175,7 @@ internal sealed class CallSession : Session
     /// <summary>
     /// One socket and one writer serve every stream, so a write that timed out cannot be pinned on one stream: every
     /// stream of the connection ends as with stream_end (its unstarted calls dropped, unanswered since the client takes
-    /// nothing, and its subscriptions, sample_logic runs and per-stream stores ended), then the connection closes. A
+    /// nothing, and its subscriptions, read sample runs and per-stream stores ended), then the connection closes. A
     /// connection holding a resume token only drops its unstarted calls: its streams are the token's, held on close.
     /// </summary>
     internal override void OnSlowClient()
@@ -647,11 +647,10 @@ internal static class ProtocolMethods
     };
 
     /// <summary>
-    /// A method the main thread answers outside ApiHost: subscribe, unsubscribe, sample_logic, drop_job, stream_costs,
-    /// hold_restore and inspect_controllers.
+    /// A method the main thread answers outside ApiHost: subscribe, unsubscribe, drop_job, stream_costs, hold_restore
+    /// and inspect_controllers.
     /// </summary>
     internal static bool RunsOnMainThread(string? method) =>
-        method != null && (SubscriptionHub.Handles(method) || method == SubscriptionHub.SampleLogicMethod ||
-                           JobDropCalls.Handles(method) || StreamCostCalls.Handles(method) ||
+        method != null && (SubscriptionHub.Handles(method) || JobDropCalls.Handles(method) || StreamCostCalls.Handles(method) ||
                            HoldRestoreCalls.Handles(method) || ControllerCalls.Handles(method));
 }

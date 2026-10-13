@@ -39,6 +39,6 @@ internal sealed record BuildFinishOptions
         Report = ReportConfirm.Bind(options),
         Materials = MaterialsSource.Bind(options),
         State = options.Integer("state"),
-        Free = options.Flag("free"),
+        Free = options.Flag("free") ?? options.DefaultFlag("free"),
     };
 }

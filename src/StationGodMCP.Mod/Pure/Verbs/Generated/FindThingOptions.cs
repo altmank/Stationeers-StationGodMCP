@@ -59,13 +59,13 @@ internal sealed record FindThingOptions
         Selector = Selector.Bind(options),
         Fields = Fields.Bind(options),
         Paging = Paging.Bind(options),
-        Category = options.Text("category"),
-        Labelled = options.Flag("labelled"),
+        Category = options.Text("category") ?? options.DefaultText("category"),
+        Labelled = options.Flag("labelled") ?? options.DefaultFlag("labelled"),
         RuntimeType = options.Text("runtime_type"),
         Broken = options.Flag("broken"),
         HasAtmosphere = options.Flag("has_atmosphere"),
         MadeBy = options.Text("made_by"),
         MadeSince = options.Number("made_since"),
-        Location = options.Text("location"),
+        Location = options.Text("location") ?? options.DefaultText("location"),
     };
 }

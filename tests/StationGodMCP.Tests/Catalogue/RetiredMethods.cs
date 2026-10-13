@@ -14,7 +14,8 @@ internal static class RetiredMethods
 {
     internal static IReadOnlyCollection<string> Names { get; } = new HashSet<string>(StringComparer.Ordinal)
     {
-        "find_things"
+        "find_things",
+        "sample_logic"
     };
 
     internal static bool Has(string? name) => name != null && ((HashSet<string>)Names).Contains(name);

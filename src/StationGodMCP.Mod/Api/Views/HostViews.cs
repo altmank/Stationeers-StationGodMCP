@@ -58,7 +58,7 @@ internal sealed class CallReplyView
     /// frame spent it, a heavy call's overrun included. Absent otherwise, so the usual reply gains no bytes. A call that
     /// finished before the budget was reached says nothing of later calls in the same frame that reached it; the reply
     /// is built before the frame ends. Never true with an unlimited budget or outside a scheduler frame; a deferred
-    /// call (sample_logic) takes it from the frame its reply is built in. Refused replies never carry it.
+    /// call (read sample) takes it from the frame its reply is built in. Refused replies never carry it.
     /// </summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public bool? BudgetHit { get; }

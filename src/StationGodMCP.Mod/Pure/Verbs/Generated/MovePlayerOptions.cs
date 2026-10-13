@@ -43,6 +43,6 @@ internal sealed record MovePlayerOptions
         At = options.Raw("at"),
         To = options.Text("to"),
         ToPlayer = options.Text("to_player"),
-        SafeGround = options.Flag("safe_ground"),
+        SafeGround = options.Flag("safe_ground") ?? options.DefaultFlag("safe_ground"),
     };
 }

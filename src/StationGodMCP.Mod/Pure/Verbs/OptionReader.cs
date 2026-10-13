@@ -103,6 +103,13 @@ internal sealed class OptionReader
             ? number
             : null;
 
+    /// <summary>The number the catalogue gives as an option's default for this call, or null when it gives none.</summary>
+    internal double? DefaultNumber(string name) =>
+        DefaultText(name) is { } text &&
+        double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out double number)
+            ? number
+            : null;
+
     /// <summary>The flag the catalogue gives as an option's default for this call, or null when it gives none.</summary>
     internal bool? DefaultFlag(string name) => DefaultText(name) switch
     {

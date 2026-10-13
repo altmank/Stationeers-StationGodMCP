@@ -52,8 +52,8 @@ internal sealed record SwapChuteOptions
         Report = ReportConfirm.Bind(options),
         Materials = MaterialsSource.Bind(options),
         Spare = options.Words("spare"),
-        Riding = options.Text("riding"),
-        SkipUnmatched = options.Flag("skip_unmatched"),
-        Queue = options.Flag("queue"),
+        Riding = options.Text("riding") ?? options.DefaultText("riding"),
+        SkipUnmatched = options.Flag("skip_unmatched") ?? options.DefaultFlag("skip_unmatched"),
+        Queue = options.Flag("queue") ?? options.DefaultFlag("queue"),
     };
 }

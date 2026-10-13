@@ -49,7 +49,7 @@ internal sealed record SwapFrameOptions
         Report = ReportConfirm.Bind(options),
         Materials = MaterialsSource.Bind(options),
         Into = options.Text("into"),
-        SkipUnmatched = options.Flag("skip_unmatched"),
-        Queue = options.Flag("queue"),
+        SkipUnmatched = options.Flag("skip_unmatched") ?? options.DefaultFlag("skip_unmatched"),
+        Queue = options.Flag("queue") ?? options.DefaultFlag("queue"),
     };
 }

@@ -70,7 +70,6 @@ internal static class ReplyShapes
             "Left to the rocket tools: compact shortens each rocket, rocket_id asks for one, and the explanations come " +
             "only with explain.",
         ["move_gas"] = "Its replies are built from JSON trees, not views; members of from/to are the request's atmospheres.",
-        ["sample_logic"] = "A stream: its reply is the changes the caller asked to sample, built from JSON trees.",
     };
 
     private static ReplyShape S<T>() => new ReplyShape(typeof(T));

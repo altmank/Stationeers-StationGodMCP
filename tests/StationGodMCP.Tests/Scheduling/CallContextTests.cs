@@ -136,7 +136,7 @@ public sealed class CallContextTests
     }
 
     [Fact]
-    public void EachSampleLogicSampleRunsInTheContextOfTheCallThatStartedIt()
+    public void EachSampleRunsInTheContextOfTheCallThatStartedIt()
     {
         ContextReader reader = new ContextReader();
         LogicSampler<BatchItemView> sampler = new LogicSampler<BatchItemView>(reader, LogicResultComparer.Instance);
@@ -149,31 +149,22 @@ public sealed class CallContextTests
         Assert.True(CallContext.Current.IsNone);
     }
 
-    private static SampleLogicArguments Arguments()
-    {
-        JObject parameters = new JObject
-        {
-            ["targets"] = new JArray(new JObject { ["reference_id"] = "100", ["logic_type"] = "On" }),
-            ["duration_seconds"] = 1.0,
-            ["interval_seconds"] = 0.5,
-        };
-        return Assert.IsType<SampleLogicParse.Parsed>(SampleLogicArguments.Of(parameters)).Arguments;
-    }
+    private static SampleRequest Arguments() => Sampling.SampleRequests.Of(seconds: 1.0, interval: 0.5);
 
     private sealed class ContextReader : ILogicSampleReader<BatchItemView>
     {
         internal List<CallContext> Seen { get; } = new List<CallContext>();
 
-        public LogicSampleRead Read(SampleLogicArguments arguments, List<BatchItemView> into)
+        public LogicSampleRead Read(SampleRequest arguments, List<BatchItemView> into)
         {
             Seen.Add(CallContext.Current);
             return LogicSampleRead.Read("world");
         }
     }
 
-    private sealed class NoEvents : ISampleLogicEvents<BatchItemView>
+    private sealed class NoEvents : ISampleEvents<BatchItemView>
     {
-        public void Finished(SampleLogicRun<BatchItemView> run, SampleLogicOutcome<BatchItemView> outcome)
+        public void Finished(SampleRun<BatchItemView> run, SampleOutcome<BatchItemView> outcome)
         {
         }
     }

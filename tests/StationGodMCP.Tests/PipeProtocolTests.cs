@@ -279,10 +279,13 @@ internal sealed class PipeRig : IDisposable
             Mod.Samples = subscriptions;
             Mod.BeforeFrame = () => subscriptions.BeginFrame(tick?.Invoke() ?? new SamplingTick(1, 0),
                 realTick?.Invoke() ?? new RealTimeTick(1, 0, DateTimeOffset.UnixEpoch));
+            VerbRunner sampling = new VerbRunner(
+                new StationGodMCP.Pure.Verbs.VerbDispatcher(new[] { ReadSample.Handler(() => subscriptions) }),
+                ProtocolSettings.DefaultMaxReplyBytes, () => 1);
             Mod.CallHook = (call, queueMs) => SubscriptionHub.Handles(call.Request.Method)
                 ? new CallOutcome(subscriptions.Run(call, queueMs), call.Request.Method)
                 : IsSampleRun(call.Request)
-                    ? subscriptions.StartSampleLogic(call, queueMs)
+                    ? VerbCalls.Run(sampling, call, queueMs)
                     : null;
             Mod.ClosedHook = subscriptions.Closed;
             Mod.StreamEndedHook = subscriptions.StreamEnded;
@@ -302,11 +305,7 @@ internal sealed class PipeRig : IDisposable
 
     internal string Name { get; }
 
-    /// <summary>
-    /// read {what: "sample"} sent with the sampler's own arguments (targets, duration_seconds, interval_seconds) on a
-    /// rig that does not check options on the reader thread: the sampler's run over frames, before read sample has its
-    /// verb handler.
-    /// </summary>
+    /// <summary>read {what: "sample"}: on a rig with a subscription hub, its verb handler (ReadSample) runs it.</summary>
     internal static bool IsSampleRun(CallRequest call) =>
         call.Method == "read" && (string?)call.Params?["what"] == "sample";
 

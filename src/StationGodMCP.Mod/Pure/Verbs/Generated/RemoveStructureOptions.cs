@@ -51,6 +51,6 @@ internal sealed record RemoveStructureOptions
         Allow = options.Words("allow"),
         GasTo = options.Text("gas_to"),
         AcknowledgeGasLost = options.Text("acknowledge_gas_lost"),
-        Queue = options.Flag("queue"),
+        Queue = options.Flag("queue") ?? options.DefaultFlag("queue"),
     };
 }

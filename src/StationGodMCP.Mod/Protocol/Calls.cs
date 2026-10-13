@@ -154,8 +154,8 @@ internal abstract class QueuedCall
 
 /// <summary>
 /// A call's answer from the main thread: the reply line and the known method it named, if any. Deferred when the call
-/// goes on over later frames: its runner answers it with QueuedCall.Finish once it ends (sample_logic), or Work goes
-/// on in the scheduler's slice lane until it answers (DeferredCalls: a walk's build).
+/// goes on over later frames: Work goes on in the scheduler's slice lane until it answers (DeferredCalls: a page built
+/// over frames, a read sample run).
 /// </summary>
 internal readonly struct CallOutcome
 {
@@ -172,9 +172,6 @@ internal readonly struct CallOutcome
         Method = method;
         Work = work;
     }
-
-    /// <summary>The call is still running: nothing to deliver now.</summary>
-    internal static CallOutcome Deferred => default;
 
     internal bool IsDeferred => Reply == null;
 
@@ -289,10 +286,6 @@ internal sealed class ProtocolCall : QueuedCall
 
     internal string CancelledReply() => Wire.Refusal(Request.Id, CancelledCode, "Cancelled before it started; it did not run.");
 
-    /// <summary>A started sample_logic call whose stream ended before its run finished: its samples are dropped.</summary>
-    internal static string StreamEndedRunReply(string? id) => Wire.Refusal(id, CancelledCode,
-        "The stream ended before the run finished; its samples so far were dropped. Nothing in the world changed.");
-
     internal string ShuttingDownReply() => Wire.Refusal(Request.Id, ShuttingDownCode,
         "The mod is stopping or the world is unloading; the call was not started.");
 
@@ -310,7 +303,7 @@ internal interface ICallQueue
     /// <summary>
     /// Streams of an owner ended (stream_end; every stream of a slow client, of a closed connection's resume token
     /// after a bye, or of a token whose resume window passed): at the next frame the source connection's waiting calls
-    /// on them leave the scheduler, their subscriptions and sample_logic runs end, and the per-stream stores drop what
+    /// on them leave the scheduler, their subscriptions and read sample runs end, and the per-stream stores drop what
     /// they keep for them. Whoever ended them has already answered their unstarted calls. The source is the connection,
     /// or any other object when none is left (a passed window).
     /// </summary>
@@ -335,7 +328,7 @@ internal interface ICallQueue
     void SessionEnded(string owner);
 
     /// <summary>
-    /// The connection ended: its waiting calls are dropped and its sample_logic runs end unanswered. Without a resume
+    /// The connection ended: its waiting calls are dropped and its read sample runs end unanswered. Without a resume
     /// token what it had going on the main thread ends with it; a resume token's state is held or ended by ResumeHolds.
     /// </summary>
     void Closed(object source);

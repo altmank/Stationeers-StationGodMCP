@@ -44,7 +44,7 @@ internal sealed record SurveyNetworkOptions
         Fields = Fields.Bind(options),
         Paging = Paging.Bind(options),
         Kind = options.Text("kind"),
-        Summarize = options.Flag("summarize"),
-        OpenEnds = options.Flag("open_ends"),
+        Summarize = options.Flag("summarize") ?? options.DefaultFlag("summarize"),
+        OpenEnds = options.Flag("open_ends") ?? options.DefaultFlag("open_ends"),
     };
 }

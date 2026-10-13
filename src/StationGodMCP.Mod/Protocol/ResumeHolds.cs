@@ -17,7 +17,7 @@ namespace StationGodMCP.Protocol;
 /// over a VPN a broken connection can look open for up to the slow-client timeout). A window that passes, a bye, or a
 /// world change ends the token's state as a stream_end ends each of its streams; a window that passes first ends the
 /// token's session (ICallQueue.SessionEnded), so its held restores apply. Calls are never resumed: a closed
-/// connection's unstarted calls are dropped unanswered and its sample_logic runs end unanswered.
+/// connection's unstarted calls are dropped unanswered and its read sample runs end unanswered.
 /// <para>
 /// Claim, Goodbye and Release run on connection threads; Tick and WorldChanged on the main thread. One lock covers the
 /// tables, and every notice to the main thread (ICallQueue) is posted under it, so the main thread hears a token's

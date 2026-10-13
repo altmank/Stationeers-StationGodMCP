@@ -9,7 +9,7 @@ using Connection = StationGodMCP.Pure.Scheduling.FrameScheduler<StationGodMCP.Te
 namespace StationGodMCP.Tests.Scheduling;
 
 /// <summary>
-/// A call that goes on over frames after it starts (a find page, sample_logic) holds its (connection, stream) until it
+/// A call that goes on over frames after it starts (a find page, read sample) holds its (connection, stream) until it
 /// answers: no later call of that stream starts meanwhile, reads included; other streams and connections go on; ending
 /// the stream or closing the connection lets go of it at once.
 /// </summary>
@@ -61,13 +61,13 @@ public sealed class FrameSchedulerDeferredTests
     {
         SchedulerRig rig = new SchedulerRig();
         Connection a = rig.Scheduler.Open("agent");
-        FakeCall run = rig.DeferredOn(a, 1, "sample_logic", SchedulerRig.Read("sample_logic"));
+        FakeCall run = rig.DeferredOn(a, 1, "read.sample", SchedulerRig.Read("read.sample"));
         rig.Frame();
         rig.LightOn(a, 1, "after");
 
         rig.Frame(samples: new AnsweringSamples(run));
 
-        Assert.Equal(new[] { "sample_logic", "after" }, rig.Runner.RanNames());
+        Assert.Equal(new[] { "read.sample", "after" }, rig.Runner.RanNames());
     }
 
     [Fact]
@@ -75,8 +75,8 @@ public sealed class FrameSchedulerDeferredTests
     {
         SchedulerRig rig = new SchedulerRig();
         Connection a = rig.Scheduler.Open("agent");
-        FakeCall first = rig.DeferredOn(a, 1, "first", SchedulerRig.Read("sample_logic"));
-        FakeCall second = rig.DeferredOn(a, 1, "second", SchedulerRig.Read("sample_logic"));
+        FakeCall first = rig.DeferredOn(a, 1, "first", SchedulerRig.Read("read.sample"));
+        FakeCall second = rig.DeferredOn(a, 1, "second", SchedulerRig.Read("read.sample"));
         rig.Frame();
         List<string> firstOnly = rig.Runner.RanNames();
         rig.LightOn(a, 1, "after");
@@ -322,7 +322,7 @@ public sealed class FrameSchedulerDeferredTests
         return names;
     }
 
-    /// <summary>A sample lane whose one sample answers a deferred call, as sample_logic's last sample does.</summary>
+    /// <summary>A sample lane whose one sample answers a deferred call, as read sample's last sample does.</summary>
     private sealed class AnsweringSamples : ISampleLane
     {
         private FakeCall? _call;
