@@ -531,7 +531,7 @@
           "room": {"type": "string"},
           "into": {
             "type": "string",
-            "description": "wall: The new wall prefab. frame: The new frame prefab; default each frame's own (finishes it). cable: Upgrade to this grade (heavy was today's default). One of into or tidy is required. pipe: insulated (today's default), or repair: burst pieces become new. One of into or tidy is required."
+            "description": "wall: The new wall prefab. frame: The new frame prefab; default each frame's own (finishes it). cable: Upgrade to this grade; heavy when tidy is left out. pipe: insulated, or repair: burst pieces become new; insulated when tidy is left out."
           },
           "prefab": {
             "type": ["string", "integer", "array"],
@@ -564,7 +564,7 @@
                 "simplify_junctions"
               ]
             },
-            "description": "cable: Tidy operations, alone or together; true is [simplify_junctions], today's default. pipe: Tidy operations; true is [simplify_junctions], today's default."
+            "description": "cable: Tidy operations, alone or together; true is [simplify_junctions]. pipe: Tidy operations; true is [simplify_junctions]."
           },
           "spare": {"type": "array", "items": {"type": "string"}},
           "only": {"type": "array", "items": {"type": "string"}},

@@ -5,7 +5,7 @@ using System.Collections.Generic;
 namespace StationGodMCP.Pure;
 
 /// <summary>
-/// The clean tools' operations by name, the order they run in, and which may not run together. The order is fixed:
+/// The tidy operations of swap cable and pipe by name, the order they run in, and which may not run together. The order is fixed:
 /// dead ends go first so every later operation sees the network without them; then loops are cut (never by default:
 /// a loop may be deliberate redundancy), then whatever no device needs (remove_redundant, never by default
 /// either); then long straights are split or runs merged; junctions are simplified last, against the network as the
@@ -20,14 +20,14 @@ internal static class CleanOperationSet
     internal const string MergeStraights = "merge_straights";
     internal const string SimplifyJunctions = "simplify_junctions";
 
-    /// <summary>clean_chutes' one operation; never named in operations, so not in Order.</summary>
+    /// <summary>swap chute's one operation; never named in tidy, so not in Order.</summary>
     internal const string RemoveDeadChutes = "remove_dead_chutes";
 
     /// <summary>Every operation, in the order they run.</summary>
     internal static readonly string[] Order =
         { RemoveDeadEnds, RemoveLoops, RemoveRedundant, SplitLongStraights, MergeStraights, SimplifyJunctions };
 
-    /// <summary>What runs when the request names none: junction simplification only.</summary>
+    /// <summary>What tidy: true runs: junction simplification only.</summary>
     internal static readonly string[] Default = { SimplifyJunctions };
 
     // Pairs that undo each other.
@@ -45,7 +45,7 @@ internal static class CleanOperationSet
             string name = (raw ?? string.Empty).Trim().ToLowerInvariant();
             if (System.Array.IndexOf(Order, name) < 0)
             {
-                error = $"Unknown operation '{raw}'; use {string.Join(", ", Order)}.";
+                error = $"has no operation '{raw}'; use {string.Join(", ", Order)}";
                 return null;
             }
 
@@ -54,7 +54,7 @@ internal static class CleanOperationSet
 
         if (asked.Count == 0)
         {
-            error = $"operations needs at least one of {string.Join(", ", Order)}.";
+            error = $"names no operation; use at least one of {string.Join(", ", Order)}";
             return null;
         }
 
@@ -62,7 +62,7 @@ internal static class CleanOperationSet
         {
             if (asked.Contains(pair[0]) && asked.Contains(pair[1]))
             {
-                error = $"{pair[0]} and {pair[1]} undo each other; ask for one of them.";
+                error = $"{pair[0]} and {pair[1]} undo each other; ask for one of them";
                 return null;
             }
         }

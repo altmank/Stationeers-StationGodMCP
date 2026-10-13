@@ -2,8 +2,8 @@ def swap(what: Literal['pipe'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
     network: str | dict = None,  # A network: its id, a piece or device on it, or {id, port}.
     id: str | list[str] = None,  # Target: an id, a list of ids, or "looking_at" (the thing the crosshair is on); "player" where the what says.
-    into: Literal['insulated', 'repair'] = None,  # insulated (today's default), or repair: burst pieces become new. One of into or tidy is required.
-    tidy: list[Literal['remove_dead_ends', 'remove_loops', 'remove_redundant', 'split_long_straights', 'merge_straights', 'simplify_junctions']] | bool = None,  # Tidy operations; True is [simplify_junctions], today's default.
+    into: Literal['insulated', 'repair'] = None,  # insulated, or repair: burst pieces become new; insulated when tidy is left out.
+    tidy: list[Literal['remove_dead_ends', 'remove_loops', 'remove_redundant', 'split_long_straights', 'merge_straights', 'simplify_junctions']] | bool = None,  # Tidy operations; True is [simplify_junctions].
     spare: list[str] = None,  # tidy: pieces never removed, loops spared.
     only: list[str] = None,  # remove_redundant: the only pieces that may go.
     older_than: str = None,  # remove_redundant: only pieces with a lower id may go.
@@ -23,12 +23,10 @@ def swap(what: Literal['pipe'], *,
     (JobQueued)
       JobQueued
     (UpgradeReport)
-      tool: str
       target: str
-      status: str
-      job_id: str | None
       ready: bool
       problems: list[{code: str, message: str, reference_id: str | None}]
+      warnings: list[{code: str, message: str, reference_id: str | None}] | None
       pieces_total: int
       to_swap: int
       kept: int

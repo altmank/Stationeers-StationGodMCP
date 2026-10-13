@@ -56,13 +56,13 @@ internal static class CleanOperationCatalogue
             _ => throw ApiErrors.InvalidArgument($"Unknown operation '{name}'.")
         };
 
-    /// <summary>The operations the request named, in run order; invalid_argument when the names do not parse.</summary>
+    /// <summary>The operations tidy named, in run order; invalid_argument when the names do not parse.</summary>
     internal static List<ICleanOperation> Parse(IReadOnlyList<string> names, CleanOptions options)
     {
         List<string>? ordered = CleanOperationSet.Parse(names, out string? error);
         if (ordered == null)
         {
-            throw ApiErrors.InvalidArgument(error ?? "operations is not valid.");
+            throw ApiErrors.InvalidArgument($"tidy {error ?? "is not valid"}.");
         }
 
         return ordered.ConvertAll(name => Create(name, options));

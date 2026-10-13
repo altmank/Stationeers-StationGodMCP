@@ -297,20 +297,6 @@
     "{count} piece(s) the job built are removed by {groups[index].Tool} itself (remove_ids), in the job that builds the old pieces again: the network is never left cut between two jobs, and that run's guards see it as it ends up.",
     "{notFound.Message} Its snapshots are not kept either, so the created_ids, removed, changed and placed passed are not enough to undo it."
   ],
-  "Api/UpgradeNetwork.cs": [
-    "A real run needs dry_run: false and confirm: true; nothing was changed.",
-    "Argument 'to' must be heavy or super_heavy.",
-    "Argument 'to' must be insulated or repair.",
-    "Pass max too.",
-    "Pass min too.",
-    "a dry run (it is for a confirmed run or a job_id poll)",
-    "confirm: true needs dry_run: false; nothing was changed.",
-    "job_id",
-    "keep_ids spares pieces from remove_loops and remove_redundant; ask for one of them too.",
-    "network_id (from connections) or reference_ids",
-    "network_id (from connections), reference_ids, or min and max (a box)",
-    "{name} goes with remove_redundant; ask for it too."
-  ],
   "Api/Views/GasCheckViews.cs": [
     " Further pipe jobs are refused until the world is loaded again, or until a run acknowledges this loss (acknowledge_gas_lost with this job's id, only after the user has agreed).",
     " Up to {Mol(release)} mol may leak out once the networks the plan leaves over their weakest pipe burst (allow_burst, will_burst); that release is expected and not put back."

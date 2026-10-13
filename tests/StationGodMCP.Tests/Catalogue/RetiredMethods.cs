@@ -15,7 +15,9 @@ internal static class RetiredMethods
     internal static IReadOnlyCollection<string> Names { get; } = new HashSet<string>(StringComparer.Ordinal)
     {
         "atmosphere_contents",
+        "clean_cables",
         "clean_chutes",
+        "clean_pipes",
         "connections",
         "consumables",
         "control_ic_execution",
@@ -69,6 +71,8 @@ internal static class RetiredMethods
         "silo_deposit",
         "silo_withdraw",
         "thing_health",
+        "upgrade_cables",
+        "upgrade_pipes",
         "vault_contents",
         "vault_deposit",
         "vault_transfer",

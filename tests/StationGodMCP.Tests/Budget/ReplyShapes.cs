@@ -225,11 +225,6 @@ internal static class ReplyShapes
                 .List("RemoveReportView.WillBurst", 0).List("RefundPlanView.Skipped", 0)
                 .List("RefundPlanView.Destinations", 2).Absent("RemoveReportView.Notes")
         };
-        foreach (string tool in new[] { "upgrade_cables", "upgrade_pipes", "clean_cables", "clean_pipes" })
-        {
-            shapes[tool] = new[] { UpgradeReport() };
-        }
-
         return shapes;
     }
 
@@ -282,20 +277,6 @@ internal static class ReplyShapes
             "BuildJobResult.RefundError", "BuildJobResult.StoppedAt", "BuildJobResult.Error", "BuildJobResult.GasCheck")
         .List("BuildJobResult.Placed", 4).List("BuildJobResult.Removed", 0).List("BuildJobResult.Refunded", 0)
         .List("BuildJobResult.Verification", 4).List("BuildCheckView.Issues", 0);
-
-    private static ReplyShape UpgradeReport() => S<UpgradeReportView>()
-        .List("UpgradeReportView.Pieces", Math.Min(W.CableNetworkMembers, D.UpgradeListed))
-        .List("UpgradePieceView.MergedReferenceIds", 0).List("UpgradeReportView.ByPrefab", 6)
-        .List("UpgradeReportView.KeptPieces", D.UpgradeListed).List("UpgradeReportView.UnmatchedPieces", 0)
-        .List("UpgradeReportView.DeadEndPieces", 0).List("UpgradeReportView.Loops", 0)
-        .Absent("UpgradeReportView.Redundant").Absent("UpgradeReportView.Riding").List("UpgradeReportView.Coils", 2)
-        .List("RefundPlanView.Skipped", 0).List("RefundPlanView.Destinations", 2)
-        .List("UpgradeReportView.Networks", 1).Holds("UpgradeReportView.Networks", typeof(CableNetworkReportView))
-        .Absent("CableNetworkReportView.Devices")
-        .List("UpgradeReportView.Devices", W.DataNetworkDevices).List("UpgradeDeviceView.NetworkIds", 1)
-        .List("UpgradeConnectivityView.Added", 0).List("UpgradeConnectivityView.Lost", 0)
-        .List("UpgradeConnectivityView.ModelDifferences", 0).List("UpgradeConnectivityView.Mounted", 4)
-        .List("UpgradeConnectivityView.Devices", W.DataNetworkDevices).Absent("UpgradeReportView.Notes");
 
     // clean_chutes' dry run at the default limit: removals and dead pieces kept each listed up to it. kept_pieces holds
     // only pieces on a path left with an open end (a piece serving a path is not listed). riding: an item rides in a

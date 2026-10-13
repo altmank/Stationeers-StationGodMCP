@@ -196,7 +196,6 @@ public sealed class TruncationNoticeTests
         ["Api/Shared/Game/LuaChips.cs"] = typeof(LuaLogView),
         ["Api/Shared/Game/Runs/RunArgs.cs"] = typeof(RunReportView),
         ["Api/Shared/Game/Upgrades/UpgradePlan.cs"] = typeof(UpgradeReportView),
-        ["Api/UpgradeNetwork.cs"] = typeof(UpgradeReportView),
         ["Api/Shared/StructureSwapOrders.cs"] = typeof(StructureSwapReportView),
         ["Verbs/SwapNetworks.cs"] = typeof(UpgradeReportView),
     };

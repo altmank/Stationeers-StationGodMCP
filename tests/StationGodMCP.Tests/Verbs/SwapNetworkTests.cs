@@ -57,4 +57,64 @@ public sealed class SwapNetworkTests
             problems, out VerbError? missing));
         Assert.Equal(new[] { "id", "network" }, missing!.Data!["options"]!.Select(option => (string)option!));
     }
+
+    // ---- swap cable and pipe: into or tidy ----
+
+    private static List<string>? Tidy(string json, List<OptionProblem> problems)
+    {
+        SwapCableOptions options = SwapCableOptions.Bind(new OptionReader(SwapCableOptions.Spec, JObject.Parse(json)));
+        return NetworkSwapOrders.Tidy(options.Tidy, options.Into,
+            new TidyLimits(options.Spare != null, options.Only != null, options.OlderThan != null, options.Root != null),
+            problems);
+    }
+
+    [Theory]
+    [InlineData("""{"network": "1"}""")]
+    [InlineData("""{"network": "1", "into": "super_heavy"}""")]
+    [InlineData("""{"network": "1", "tidy": false}""")]
+    public void IntoOrNoTidyIsTheUpgrade(string json)
+    {
+        List<OptionProblem> problems = new();
+
+        Assert.Null(Tidy(json, problems));
+        Assert.Empty(problems);
+    }
+
+    [Fact]
+    public void TidyTrueIsSimplifyJunctionsAndAListRunsInItsOrder()
+    {
+        List<OptionProblem> problems = new();
+
+        Assert.Equal(new[] { "simplify_junctions" }, Tidy("""{"network": "1", "tidy": true}""", problems));
+        Assert.Equal(new[] { "remove_dead_ends", "remove_redundant" },
+            Tidy("""{"network": "1", "tidy": ["remove_redundant", "remove_dead_ends"], "only": ["5"], "root": "9"}""",
+                problems));
+        Assert.Empty(problems);
+    }
+
+    [Fact]
+    public void EveryTidyProblemIsListedAtOnce()
+    {
+        List<OptionProblem> problems = new();
+
+        Tidy("""{"network": "1", "tidy": ["simplify_junctions"], "spare": ["2"], "only": ["3"], "older_than": "4"}""",
+            problems);
+        Assert.Equal(new[] { "spare", "only", "older_than" }, problems.Select(problem => problem.Path));
+
+        problems.Clear();
+        Tidy("""{"network": "1", "into": "heavy", "tidy": true}""", problems);
+        Assert.Equal("tidy", Assert.Single(problems).Path);
+
+        problems.Clear();
+        Tidy("""{"network": "1", "tidy": ["split_long_straights", "merge_straights"]}""", problems);
+        Assert.Contains("undo each other", Assert.Single(problems).Problem);
+
+        problems.Clear();
+        Tidy("""{"network": "1", "tidy": []}""", problems);
+        Assert.StartsWith("names no operation", Assert.Single(problems).Problem);
+
+        problems.Clear();
+        Tidy("""{"network": "1", "spare": ["2"]}""", problems);
+        Assert.Equal("spare", Assert.Single(problems).Path);
+    }
 }

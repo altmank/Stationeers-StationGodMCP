@@ -7,10 +7,10 @@
       "id": "frame, pipe, chute: An id, a list, a ref ('r3'), or \"looking_at\". cable: Pieces (up to 4096). Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the one-id reply; a bad id is a row with error.",
       "materials": "Holder(s) that pay, in order; ids or \"player\".",
       "confirm": "true acts; left out, it reports.",
-      "into": "wall: The new wall prefab. frame: The new frame prefab; default each frame's own (finishes it). cable: Upgrade to this grade (heavy was today's default). One of into or tidy is required. pipe: insulated (today's default), or repair: burst pieces become new. One of into or tidy is required.",
+      "into": "wall: The new wall prefab. frame: The new frame prefab; default each frame's own (finishes it). cable: Upgrade to this grade; heavy when tidy is left out. pipe: insulated, or repair: burst pieces become new; insulated when tidy is left out.",
       "prefab": "wall: Only pieces of these prefabs; the others are kept. frame: Only pieces of these prefabs.",
       "network": "A network: its id, a piece or device on it, or {id, port}.",
-      "tidy": "cable: Tidy operations, alone or together; true is [simplify_junctions], today's default. pipe: Tidy operations; true is [simplify_junctions], today's default.",
+      "tidy": "cable: Tidy operations, alone or together; true is [simplify_junctions]. pipe: Tidy operations; true is [simplify_junctions].",
       "box": "Every chute piece in the box (at most a 32 m cube).",
       "riding": "A piece holding an item: skip it, or refuse the run. Default skip.",
       "fields": "Keys to keep.",
@@ -195,7 +195,7 @@
         "id": {"use": "id", "description": "Pieces (up to 4096)."},
         "into": {
           "schema": {"type": "string", "enum": ["heavy", "super_heavy"]},
-          "description": "Upgrade to this grade (heavy was today's default). One of into or tidy is required.",
+          "description": "Upgrade to this grade; heavy when tidy is left out.",
           "x-script": "same"
         },
         "tidy": {
@@ -214,8 +214,8 @@
             },
             "maxItems": 6
           },
-          "description": "Tidy operations, alone or together; true is [simplify_junctions], today's default.",
-          "x-script": "Tidy operations, alone or together; True is [simplify_junctions], today's default."
+          "description": "Tidy operations, alone or together; true is [simplify_junctions].",
+          "x-script": "Tidy operations, alone or together; True is [simplify_junctions]."
         },
         "spare": {
           "schema": {"type": "array", "items": {"type": "string"}, "maxItems": 4096},
@@ -272,12 +272,10 @@
             "label": "UpgradeReport",
             "view": "UpgradeReport",
             "keys": {
-              "tool": "str",
               "target": "str",
-              "status": "str",
-              "job_id": "str | None",
               "ready": "bool",
               "problems": "list[{code: str, message: str, reference_id: str | None}]",
+              "warnings": "list[{code: str, message: str, reference_id: str | None}] | None",
               "pieces_total": "int",
               "to_swap": "int",
               "kept": "int",
@@ -339,7 +337,7 @@
         },
         "into": {
           "schema": {"type": "string", "enum": ["insulated", "repair"]},
-          "description": "insulated (today's default), or repair: burst pieces become new. One of into or tidy is required.",
+          "description": "insulated, or repair: burst pieces become new; insulated when tidy is left out.",
           "x-script": "same"
         },
         "tidy": {
@@ -358,8 +356,8 @@
             },
             "maxItems": 6
           },
-          "description": "Tidy operations; true is [simplify_junctions], today's default.",
-          "x-script": "Tidy operations; True is [simplify_junctions], today's default."
+          "description": "Tidy operations; true is [simplify_junctions].",
+          "x-script": "Tidy operations; True is [simplify_junctions]."
         },
         "spare": {
           "schema": {"type": "array", "items": {"type": "string"}, "maxItems": 4096},
@@ -417,12 +415,10 @@
             "label": "UpgradeReport",
             "view": "UpgradeReport",
             "keys": {
-              "tool": "str",
               "target": "str",
-              "status": "str",
-              "job_id": "str | None",
               "ready": "bool",
               "problems": "list[{code: str, message: str, reference_id: str | None}]",
+              "warnings": "list[{code: str, message: str, reference_id: str | None}] | None",
               "pieces_total": "int",
               "to_swap": "int",
               "kept": "int",

@@ -2,8 +2,8 @@ def swap(what: Literal['cable'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
     network: str | dict = None,  # A network: its id, a piece or device on it, or {id, port}.
     id: str | list[str] = None,  # Pieces (up to 4096).
-    into: Literal['heavy', 'super_heavy'] = None,  # Upgrade to this grade (heavy was today's default). One of into or tidy is required.
-    tidy: list[Literal['remove_dead_ends', 'remove_loops', 'remove_redundant', 'split_long_straights', 'merge_straights', 'simplify_junctions']] | bool = None,  # Tidy operations, alone or together; True is [simplify_junctions], today's default.
+    into: Literal['heavy', 'super_heavy'] = None,  # Upgrade to this grade; heavy when tidy is left out.
+    tidy: list[Literal['remove_dead_ends', 'remove_loops', 'remove_redundant', 'split_long_straights', 'merge_straights', 'simplify_junctions']] | bool = None,  # Tidy operations, alone or together; True is [simplify_junctions].
     spare: list[str] = None,  # tidy: pieces never removed, loops spared.
     only: list[str] = None,  # remove_redundant: the only pieces that may go.
     older_than: str = None,  # remove_redundant: only pieces with a lower id may go.
@@ -22,12 +22,10 @@ def swap(what: Literal['cable'], *,
     (JobQueued)
       JobQueued
     (UpgradeReport)
-      tool: str
       target: str
-      status: str
-      job_id: str | None
       ready: bool
       problems: list[{code: str, message: str, reference_id: str | None}]
+      warnings: list[{code: str, message: str, reference_id: str | None}] | None
       pieces_total: int
       to_swap: int
       kept: int

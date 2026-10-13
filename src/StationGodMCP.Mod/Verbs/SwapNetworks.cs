@@ -2,6 +2,7 @@
 
 using System.Collections.Generic;
 using Assets.Scripts.Objects;
+using Assets.Scripts.Objects.Electrical;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
@@ -103,6 +104,53 @@ internal static class SwapNetworks
         return null;
     }
 
+    /// <summary>The ids of an id list option (spare, only) as reference ids; empty when it is left out.</summary>
+    internal static HashSet<long> IdSet(IReadOnlyList<string>? ids, string label)
+    {
+        HashSet<long> set = new HashSet<long>();
+        foreach (string id in ids ?? System.Array.Empty<string>())
+        {
+            set.Add(TargetIds.Of(id, label).Value);
+        }
+
+        return set;
+    }
+
+    /// <summary>
+    /// swap cable or pipe: the upgrade (into, or into's default when tidy is left out or false) or the tidy
+    /// operations; every problem with into, tidy, spare, only, older_than, root and the pieces at once.
+    /// </summary>
+    internal static VerbOutcome Tidyable(UpgradeFamily family, WhatSpec spec, string noun, NetworkSwapCall call,
+        string? into, JToken? tidy, TidyOptions narrowing, System.Func<string?, SwapGoal> upgrade, string tidyTool)
+    {
+        string label = spec.Label;
+        List<OptionProblem> problems = new List<OptionProblem>();
+        List<string>? operations = NetworkSwapOrders.Tidy(tidy, into, narrowing.Given, problems);
+        NetworkSwapOrders.Form(call.Selector, false, label, noun, problems, out VerbError? missing);
+        GasHoldArgs.Check(call.AcknowledgeGasLost, problems);
+        if (problems.Count > 0)
+        {
+            return new VerbOutcome.Refused(OptionProblem.Refusal(label, problems));
+        }
+
+        if (missing != null)
+        {
+            return new VerbOutcome.Refused(missing);
+        }
+
+        List<ThingId?> named = new List<ThingId?>();
+        List<ReportProblem> unread = new List<ReportProblem>();
+        PieceSelection selection = Selection(family, label, noun, false, call, named, unread, out _)!;
+        SwapGoal goal = operations == null
+            ? upgrade(into)
+            : new EndCleanupGoal(tidyTool, CleanOperationCatalogue.Parse(operations,
+                new CleanOptions(IdSet(narrowing.Spare, label), new RedundancyOptions(
+                    narrowing.Only != null ? IdSet(narrowing.Only, label) : null,
+                    narrowing.OlderThan != null ? TargetIds.Of(narrowing.OlderThan, label).Value : null,
+                    narrowing.Root != null ? TargetIds.Of(narrowing.Root, label).Value : null))));
+        return Run(Request(family, goal, selection, call, label), spec, call, named, unread);
+    }
+
     /// <summary>The request the planner takes: the goal, the pieces, the payers, rows for the job's result.</summary>
     internal static UpgradeRequest Request(UpgradeFamily family, SwapGoal goal, PieceSelection selection,
         NetworkSwapCall call, string label)
@@ -192,16 +240,71 @@ internal static class SwapChute
             return new VerbOutcome.Refused(refused!);
         }
 
-        HashSet<long> spare = new HashSet<long>();
-        foreach (string id in options.Spare ?? System.Array.Empty<string>())
-        {
-            spare.Add(TargetIds.Of(id, label).Value);
-        }
-
+        HashSet<long> spare = SwapNetworks.IdSet(options.Spare, label);
         RidingPolicy riding = options.Riding == "refuse" ? RidingPolicy.Refuse : RidingPolicy.Skip;
         SwapGoal goal = new EndCleanupGoal(JobTool,
             new List<ICleanOperation> { new RemoveDeadChutes(spare, riding) });
         return SwapNetworks.Run(SwapNetworks.Request(family, goal, selection, call, label), SwapChuteOptions.Spec,
             call, named, unread);
     }
+}
+
+/// <summary>spare, only, older_than and root of a swap cable or pipe call: the options that narrow a tidy.</summary>
+internal sealed class TidyOptions
+{
+    internal TidyOptions(IReadOnlyList<string>? spare, IReadOnlyList<string>? only, string? olderThan, string? root)
+    {
+        Spare = spare;
+        Only = only;
+        OlderThan = olderThan;
+        Root = root;
+    }
+
+    public IReadOnlyList<string>? Spare { get; }
+
+    public IReadOnlyList<string>? Only { get; }
+
+    public string? OlderThan { get; }
+
+    public string? Root { get; }
+
+    internal TidyLimits Given => new TidyLimits(Spare != null, Only != null, OlderThan != null, Root != null);
+}
+
+/// <summary>
+/// swap cable (catalogue swap.json): cable upgraded in place to heavy or super_heavy (heavy when tidy is left out), or
+/// a network tidied.
+/// </summary>
+internal static class SwapCable
+{
+    // The jobs' names in their status and in inspect job.
+    private const string TidyTool = "clean_cables";
+
+    internal static VerbOutcome Run(SwapCableOptions options) =>
+        SwapNetworks.Tidyable(new CableFamily(), SwapCableOptions.Spec, "cable",
+            new NetworkSwapCall(options.Selector, options.Materials, options.SkipUnmatched ?? false, options.Fields,
+                options.Report, options.Queue ?? true, null),
+            options.Into, options.Tidy,
+            new TidyOptions(options.Spare, options.Only, options.OlderThan, options.Root),
+            static into => new CableUpgrade(into == "super_heavy" ? Cable.Type.superHeavy : Cable.Type.heavy),
+            TidyTool);
+}
+
+/// <summary>
+/// swap pipe (catalogue swap.json): pipe made insulated in place (insulated when tidy is left out) or its burst pieces
+/// made new (repair), or a network tidied, keeping each network's contents.
+/// </summary>
+internal static class SwapPipe
+{
+    // The jobs' names in their status and in inspect job.
+    private const string TidyTool = "clean_pipes";
+
+    internal static VerbOutcome Run(SwapPipeOptions options) =>
+        SwapNetworks.Tidyable(new PipeFamily(), SwapPipeOptions.Spec, "pipe",
+            new NetworkSwapCall(options.Selector, options.Materials, options.SkipUnmatched ?? false, options.Fields,
+                options.Report, options.Queue ?? true, options.AcknowledgeGasLost),
+            options.Into, options.Tidy,
+            new TidyOptions(options.Spare, options.Only, options.OlderThan, options.Root),
+            static into => into == "repair" ? new PipeRepair() : new PipeUpgrade(),
+            TidyTool);
 }
