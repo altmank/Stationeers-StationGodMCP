@@ -16,14 +16,6 @@
     "Argument 'anchor' is required.",
     "Argument 'rotation' must be 0, 90, 180 or 270."
   ],
-  "Api/PlaceRuns.cs": [
-    "A real run needs dry_run: false and confirm: true; nothing was changed.",
-    "Pass waypoints, cells, piece or pieces.",
-    "a dry run (it is for a confirmed run or a job_id poll)",
-    "confirm: true needs dry_run: false; nothing was changed.",
-    "job_id",
-    "job_id"
-  ],
   "Api/RemoveStructures.cs": [
     "Pass job_id, or reference_ids."
   ],
@@ -103,10 +95,6 @@
   "Api/Shared/Game/JobGas.cs": [
     "Its atmosphere work ran past the {AtmosphericsThread.LimitSeconds} s limit and finished after the job had stopped, so the pipe networks' contents were not checked; look at them (atmosphere_contents) before acknowledging."
   ],
-  "Api/Shared/Game/Lint/LintReport.cs": [
-    "The report lint rules could not run: {error.GetType().Name}: {error.Message}",
-    "{finding.Message} Refused by lint rule {finding.Code} (level problem). To allow it, set its \"level\" to \"warning\" or \"enabled\": false in the save's lint-rules.json (lint_rules lists the files)."
-  ],
   "Api/Shared/Game/Refunds.cs": [
     "refund_to names {Names.Of(thing)} {id}, which has no slot a refund could go into.",
     "refund_to names {id}, and there is no thing with that reference id."
@@ -133,11 +121,6 @@
   "Api/Shared/JobDrops.cs": [
     "Job {id} has ended; there is nothing to drop. Poll it with job_id for its result.",
     "Job {id} has started; it cannot be dropped. Poll it with job_id to follow it to its end."
-  ],
-  "Api/Shared/NetworkHandle.cs": [
-    "{name} must be a network id, a piece or device reference id, or {reference_id, port}.",
-    "{name} needs reference_id (a device, with port, or a piece).",
-    "{name} takes reference_id and port only; '{property.Name}' is not one of them."
   ],
   "Api/Shared/ProfilingArgs.cs": [
     "Argument 'action' must be on, off, reset or report.",
@@ -169,13 +152,6 @@
     "items[{index}] needs name, prefab_name or both.",
     "{matches.Count} of the trader's entries are {Wanted(item)}; give both name and prefab_name.",
     "{player.Absence} No player carries a credit card; pass credit_card_id."
-  ],
-  "Api/UndoJob.cs": [
-    "A real run needs dry_run: false and confirm: true; nothing was changed.",
-    "confirm: true needs dry_run: false; nothing was changed.",
-    "refund_to ground: remove_structure puts each refund where its piece stood; the pieces a piece run removes give theirs on the ground in front of the source, as that tool does.",
-    "{count} piece(s) the job built are removed by {groups[index].Tool} itself (remove_ids), in the job that builds the old pieces again: the network is never left cut between two jobs, and that run's guards see it as it ends up.",
-    "{notFound.Message} Its snapshots are not kept either, so the created_ids, removed, changed and placed passed are not enough to undo it."
   ],
   "Api/Views/GasCheckViews.cs": [
     " Further pipe jobs are refused until the world is loaded again, or until a run acknowledges this loss (acknowledge_gas_lost with this job's id, only after the user has agreed).",
@@ -236,11 +212,6 @@
   "Pure/Layout/JobEndFacts.cs": [
     "Argument '{name}' must be a list, as the job's final reply gives it.",
     "Every entry of '{name}' must be {shape}, as the job's final reply gives it."
-  ],
-  "Pure/Layout/Undo.cs": [
-    "{id} ({snapshot.Prefab}) is a network piece no coil or kit lays; undo_job builds network pieces again only through {snapshot.Piece.Tool}, so its guards apply.",
-    "{job.JobId} is a {job.Tool} job; undo_job undoes place_* and remove_* jobs only (paste_blueprint has its own undo).",
-    "{job.JobId} was already undone: undo_job started {string.Join(\", \", undo)}. Nothing is left to undo; undo those jobs, the last first, to have it back."
   ],
   "Pure/Layout/UndoFactsSource.cs": [
     "{JobId}'s final status was evicted under the memory bound for kept jobs. Pass the created_ids, removed, changed and placed its job_ended event or final reply gave to undo it; nothing was changed.",

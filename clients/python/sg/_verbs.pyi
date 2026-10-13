@@ -2080,7 +2080,7 @@ def build(what: Literal['cable'], *,
     branches: list = None,  # Side runs, each {waypoints or cells, attach}.
     extra_ends: list = None,  # Extra ends on run cells, each {at, toward}.
     join: Literal['ends', 'none', 'all'] = 'ends',  # What the run joins.
-    allow: list[Literal['door_keepout', 'split']] = None,  # Guards to lift, by name.
+    allow: list[Literal['door_keepout', 'lint', 'split']] = None,  # Guards to lift, by name.
     split_long: bool = True,  # Split a long straight the run joins or crosses; False refuses.
     remove_ids: list[str] = None,  # Pieces of the run's kind removed in the same job first.
     assume_removed: list[str] = None,  # Things checked as if gone; a real run needs them gone.
@@ -2105,9 +2105,6 @@ def build(what: Literal['cable'], *,
     (RunJob)
       RunJob
     (RunReport)
-      tool: str
-      status: str
-      job_id: str | None
       grade: str | None
       ready: bool
       problems: list[{code: str, message: str, reference_id: str | None, at: Vec3 | None}]
@@ -2162,7 +2159,7 @@ def build(what: Literal['pipe'], *,
     branches: list = None,  # Side runs, each {waypoints or cells, attach}.
     extra_ends: list = None,  # Extra ends on run cells, each {at, toward}.
     join: Literal['ends', 'none', 'all'] = 'ends',  # What the run joins.
-    allow: list[Literal['door_keepout', 'split']] = None,  # Guards to lift, by name.
+    allow: list[Literal['door_keepout', 'lint', 'split']] = None,  # Guards to lift, by name.
     split_long: bool = True,  # Split a long straight the run joins or crosses; False refuses.
     remove_ids: list[str] = None,  # Pieces of the run's kind removed in the same job first.
     assume_removed: list[str] = None,  # Things checked as if gone; a real run needs them gone.
@@ -2188,9 +2185,6 @@ def build(what: Literal['pipe'], *,
     (RunJob)
       RunJob
     (RunReport)
-      tool: str
-      status: str
-      job_id: str | None
       grade: str | None
       ready: bool
       problems: list[{code: str, message: str, reference_id: str | None, at: Vec3 | None}]
@@ -2245,7 +2239,7 @@ def build(what: Literal['chute'], *,
     branches: list = None,  # Side runs, each {waypoints or cells, attach}.
     extra_ends: list = None,  # Extra ends on run cells, each {at, toward}.
     join: Literal['ends', 'none', 'all'] = 'ends',  # What the run joins.
-    allow: list[Literal['door_keepout', 'split']] = None,  # Guards to lift, by name.
+    allow: list[Literal['door_keepout', 'lint', 'split']] = None,  # Guards to lift, by name.
     split_long: bool = True,  # Split a long straight the run joins or crosses; False refuses.
     remove_ids: list[str] = None,  # Pieces of the run's kind removed in the same job first.
     assume_removed: list[str] = None,  # Things checked as if gone; a real run needs them gone.
@@ -2270,9 +2264,6 @@ def build(what: Literal['chute'], *,
     (RunJob)
       RunJob
     (RunReport)
-      tool: str
-      status: str
-      job_id: str | None
       grade: str | None
       ready: bool
       problems: list[{code: str, message: str, reference_id: str | None, at: Vec3 | None}]

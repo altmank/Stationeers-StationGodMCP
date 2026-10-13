@@ -18,19 +18,11 @@ namespace StationGodMCP.Api.Shared.Game;
 /// a network id, as before; one that names a piece of the family stands for the piece's network, one that names a
 /// device for its only network of the family (several: ambiguous_port, listing them). {reference_id, port} names the
 /// network of the piece joined to that port of a device (Device.OpenEnds[port], the piece in the end's cell that the
-/// game's IsConnected accepts), or a piece's own network. A per-tool call's handle that was not a plain network id is
-/// recorded for that reply's resolved_networks; a verb's network option (NetworkTarget) is resolved the same way.
+/// game's IsConnected accepts), or a piece's own network. A handle that was not a plain network id is recorded for
+/// the reply's resolved_networks.
 /// </summary>
 internal static class NetworkHandles
 {
-    internal static ThingId Resolve(Args args, string name, UpgradeFamily family) =>
-        Resolve(args.Optional(name) ?? throw ApiErrors.InvalidArgument($"Argument '{name}' is " +
-            "required."), name,
-            family);
-
-    internal static ThingId Resolve(JToken token, string name, UpgradeFamily family) =>
-        Recorded(NetworkHandle.Read(token, name), name, family);
-
     // The handle's network, recorded for resolved_networks when the handle named a thing.
     private static ThingId Recorded(NetworkHandle handle, string name, UpgradeFamily family)
     {
@@ -168,23 +160,7 @@ internal static class NetworkHandles
     /// no thing and no network of the family is network_not_found; one naming another thing, or a device with fewer
     /// than two ports that bridges accepts (it has nothing to bridge: a locker), is invalid_argument.
     /// </summary>
-    internal static HashSet<long> ResolveAllowances(Args args, string name, int maximum, UpgradeFamily family,
-        System.Func<Connection, bool> bridges)
-    {
-        List<NetworkHandle> handles = new List<NetworkHandle>();
-        if (args.Has(name))
-        {
-            JArray array = args.Array(name, maximum);
-            for (int index = 0; index < array.Count; index++)
-            {
-                handles.Add(NetworkHandle.Read(array[index], $"{name}[{index}]"));
-            }
-        }
-
-        return Allowances(handles, name, family, bridges);
-    }
-
-    /// <summary>As the Args form, for a verb's allow_bridge: each entry a network's id, a piece or device, or {id, port}.</summary>
+    /// <remarks>Each entry a network's id, a piece or device, or {id, port}.</remarks>
     internal static HashSet<long> ResolveAllowances(IReadOnlyList<NetworkTarget> targets, string option,
         UpgradeFamily family, System.Func<Connection, bool> bridges)
     {

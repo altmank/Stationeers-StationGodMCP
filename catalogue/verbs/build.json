@@ -203,7 +203,10 @@
           "default": "ends",
           "x-script": "same"
         },
-        "allow": {"use": "allow", "schema": {"type": "array", "items": {"type": "string", "enum": ["door_keepout", "split"]}}},
+        "allow": {
+          "use": "allow",
+          "schema": {"type": "array", "items": {"type": "string", "enum": ["door_keepout", "lint", "split"]}}
+        },
         "split_long": {
           "schema": {"type": "boolean"},
           "description": "Split a long straight the run joins or crosses; false refuses.",
@@ -281,9 +284,6 @@
             "label": "RunReport",
             "view": "RunReport",
             "keys": {
-              "tool": "str",
-              "status": "str",
-              "job_id": "str | None",
               "grade": "str | None",
               "ready": "bool",
               "problems": "list[{code: str, message: str, reference_id: str | None, at: Vec3 | None}]",
@@ -366,7 +366,10 @@
           "default": "ends",
           "x-script": "same"
         },
-        "allow": {"use": "allow", "schema": {"type": "array", "items": {"type": "string", "enum": ["door_keepout", "split"]}}},
+        "allow": {
+          "use": "allow",
+          "schema": {"type": "array", "items": {"type": "string", "enum": ["door_keepout", "lint", "split"]}}
+        },
         "split_long": {
           "schema": {"type": "boolean"},
           "description": "Split a long straight the run joins or crosses; false refuses.",
@@ -445,9 +448,6 @@
             "label": "RunReport",
             "view": "RunReport",
             "keys": {
-              "tool": "str",
-              "status": "str",
-              "job_id": "str | None",
               "grade": "str | None",
               "ready": "bool",
               "problems": "list[{code: str, message: str, reference_id: str | None, at: Vec3 | None}]",
@@ -530,7 +530,10 @@
           "default": "ends",
           "x-script": "same"
         },
-        "allow": {"use": "allow", "schema": {"type": "array", "items": {"type": "string", "enum": ["door_keepout", "split"]}}},
+        "allow": {
+          "use": "allow",
+          "schema": {"type": "array", "items": {"type": "string", "enum": ["door_keepout", "lint", "split"]}}
+        },
         "split_long": {
           "schema": {"type": "boolean"},
           "description": "Split a long straight the run joins or crosses; false refuses.",
@@ -608,9 +611,6 @@
             "label": "RunReport",
             "view": "RunReport",
             "keys": {
-              "tool": "str",
-              "status": "str",
-              "job_id": "str | None",
               "grade": "str | None",
               "ready": "bool",
               "problems": "list[{code: str, message: str, reference_id: str | None, at: Vec3 | None}]",

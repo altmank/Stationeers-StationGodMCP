@@ -53,41 +53,6 @@ internal abstract class NetworkHandle
     }
 
     internal const int MaximumPort = 64;
-
-    /// <summary>The handle in a token: a reference id or {reference_id, port}; else invalid_argument.</summary>
-    internal static NetworkHandle Read(JToken? token, string name)
-    {
-        if (ThingId.TryRead(token, out ThingId id))
-        {
-            return new ById(id);
-        }
-
-        if (token is JObject item)
-        {
-            Args fields = new Args(item);
-            foreach (JProperty property in item.Properties())
-            {
-                if (property.Name != "reference_id" && property.Name != "port")
-                {
-                    throw ApiErrors.InvalidArgument(
-                        $"{Vocabulary.Path(name)} takes {Vocabulary.Arg("reference_id")} and " +
-                        $"{Vocabulary.Arg("port")} only; '{property.Name}' is not one of them.");
-                }
-            }
-
-            if (!fields.Has("reference_id"))
-            {
-                throw ApiErrors.InvalidArgument($"{Vocabulary.Path(name)} needs {Vocabulary.Arg("reference_id")} (a " +
-                    $"device, with {Vocabulary.Arg("port")}, or a piece).");
-            }
-
-            return new ByPort(fields.ThingId("reference_id"), fields.OptionalInt("port", 0, MaximumPort));
-        }
-
-        throw ApiErrors.InvalidArgument(
-            $"{Vocabulary.Path(name)} must be a network id, a piece or device reference id, or " +
-            $"{{{Vocabulary.Arg("reference_id")}, {Vocabulary.Arg("port")}}}.");
-    }
 }
 
 /// <summary>A handle given as {reference_id, port}, echoed in resolved_networks.</summary>

@@ -398,7 +398,7 @@ public sealed class KeptJobsTests
                 parts.Add(new PieceCell(new GridCell(index, 0, 0), default));
             }
 
-            piece = new NetworkPiece("place_cables", "cable", parts);
+            piece = new NetworkPiece("cable", "heavy", parts);
         }
 
         return new ThingSnapshot(id, "StructureCableStraight", new Vec3(0, 0, 0), CubeRotation.All[0], 0, label, piece);

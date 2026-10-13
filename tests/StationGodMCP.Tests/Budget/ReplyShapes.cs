@@ -90,11 +90,6 @@ internal static class ReplyShapes
         {
             S<BlueprintPasteStatusView>(), S<BlueprintUndoView>(), S<BlueprintPasteStartedView>()
         };
-        foreach (string tool in new[] { "place_cables", "place_pipes", "place_chutes" })
-        {
-            shapes[tool] = RunTool(tool);
-        }
-
         shapes["place_structure"] = new[]
         {
             PlaceReport(), S<JobQueuedView>().Absent("JobQueuedView.Preflight"), BuildPoll()
@@ -150,40 +145,6 @@ internal static class ReplyShapes
         };
         return shapes;
     }
-
-    // A place_* or remove_* tool: its dry run (the default), a confirmed run's reply and a poll of its job.
-    private static ReplyShape[] RunTool(string tool) => new[]
-    {
-        RunReport(S<RunReportView>(), tool),
-        S<RunJobView>().Absent("RunJobView.Preflight", "RunJobView.FinalCheck", "RunJobView.Log", "RunJobView.Verification",
-            "RunJobView.GasCheck", "RunJobView.Error"),
-        S<RunJobView>().Absent("RunJobView.Preflight", "RunJobView.FinalCheck", "RunJobView.PreflightSummary",
-                "RunJobView.Error", "RunLogView.StoppedAt", "RunLogView.RefundError")
-            .List("RunLogView.Removed", 2).List("RunLogView.Changed", 4).List("RunLogView.PlacedPieces", W.RunCells)
-            .List("RunLogView.Refunded", 2).List("RunLogView.CreatedIds", W.RunCells + 4)
-            .List("RunLogView.CreatedByPart", 2).List("RunCreatedPartView.Ids", W.RunCells / 2)
-            .List("RunVerificationView.NetworksNow", 2).Absent("RunJobView.GasCheck")
-    };
-
-    // A run report as a dry run answers it by default: notes and link lists left out, device lists as counts.
-    private static ReplyShape RunReport(ReplyShape shape, string tool) => With(shape
-        .List("RunReportView.Cells", Math.Min(W.RunCells, D.RunListed)).List("RunReportView.Removals", 2)
-        .List("RefundPlanView.Skipped", 0).List("RefundPlanView.Destinations", 2)
-        .List("RunReportView.NetworksBefore", 2)
-        .Holds("RunReportView.NetworksBefore", tool.EndsWith("chutes", StringComparison.Ordinal)
-            ? typeof(RunChuteNetworkView)
-            : tool.Contains("pipe") ? typeof(RunPipeNetworkView) : typeof(RunCableNetworkView))
-        .Absent("RunCableNetworkView.Devices", "RunPipeNetworkView.Devices", "RunChuteNetworkView.Devices",
-            "RunNetworkAfterView.Devices")
-        .Absent("RunChuteNetworkView.Items")
-        .List("RunReportView.NetworksAfter", 1).List("RunNetworkAfterView.NetworksBefore", 2)
-        .Holds("RunNetworkAfterView.Guard", typeof(RunPowerAfterView))
-        .List("RunReportView.WouldBridge", 0).List("RunReportView.WouldSplit", 0)
-        .Absent("RunLinksView.Added", "RunLinksView.Lost", "RunReportView.Notes").List("RunLinksView.ModelDifferences", 0),
-        // A new cell has no piece standing in it (existing), and only a chute cell has a flow.
-        tool.Contains("chute") ? null : new[] { "RunCellView.Existing", "RunCellView.Flow" });
-
-    private static ReplyShape With(ReplyShape shape, string[]? absent) => absent == null ? shape : shape.Absent(absent);
 
     private static ReplyShape PlaceReport() => PlaceReportInto(S<PlaceReportView>());
 

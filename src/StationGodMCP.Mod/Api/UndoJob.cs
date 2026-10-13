@@ -5,21 +5,24 @@ using Assets.Scripts.Objects;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
+using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Jobs;
 using StationGodMCP.Pure.Protocol;
+using StationGodMCP.Pure.Verbs;
+using StationGodMCP.Verbs;
 
 namespace StationGodMCP.Api;
 
 /// <summary>
 /// undo_job: the inverse of a finished place or remove job (UndoPlanner): remove_structure every thing it built, then
 /// build again every thing it removed, each as it stood (the snapshot taken when the job started: JobSnapshots): cable,
-/// pipe and chute pieces through place_cables, place_pipes and place_chutes (the pieces form, one call per tool and
-/// grade), so their would_bridge, burst and gas guards apply; everything else through place_structure. The pieces the
-/// job built of a tool that also builds pieces again are removed by that tool's first piece run (remove_ids,
-/// UndoRemovals), so a network the job changed in its middle is taken apart and put back in one job; only the rest goes
-/// through remove_structure first. Refused when the world diverged from what the job left. Dry run by default: the plan, every tool's arguments and dry run (the
+/// pipe and chute pieces through the build service (the pieces form, one call per kind and grade), so their
+/// would_bridge, burst and gas guards apply; everything else through place_structure. The pieces the job built of a
+/// kind that a piece run also builds are removed by that kind's first run (remove_ids, UndoRemovals), so a network the
+/// job changed in its middle is taken apart and put back in one job; only the rest goes through remove_structure
+/// first. Refused when the world diverged from what the job left. Dry run by default: the plan, every tool's arguments and dry run (the
 /// piece runs checked as if the removal were done, assume_removed; place_structure only when nothing is removed
 /// first); ready only when every one of them is. A real run makes the same checks, then starts the removal job and
 /// queues the placement jobs behind it (wait), each checked again against the world the jobs before it left. Every
@@ -41,14 +44,14 @@ internal static class UndoJobApi
         bool confirm = args.OptionalBool("confirm") ?? false;
         if (dryRun && confirm)
         {
-            throw ApiErrors.InvalidArgument(Vocabulary.Text("{arg:confirm}: true needs {arg:dry_run}: false; nothing " +
-                "was changed."));
+            throw ApiErrors.InvalidArgument("confirm: true needs dry_run: false; nothing " +
+                "was changed.");
         }
 
         if (!dryRun && !confirm)
         {
             throw ApiErrors.Refused("confirm_required",
-                Vocabulary.Text("A real run needs {arg:dry_run}: false and {arg:confirm}: true; nothing was changed."));
+                "A real run needs dry_run: false and confirm: true; nothing was changed.");
         }
 
         long? fromId = args.OptionalThingId("from_id")?.Value;
@@ -74,8 +77,7 @@ internal static class UndoJobApi
                 new Dictionary<string, string> { ["job_id"] = jobId }),
             UndoFactsSource.NotFound { FactsGiven: true } => throw ApiErrors.Refused(notFound!.Code,
                 notFound.Message + " Its snapshots are not kept either, " +
-                Vocabulary.Text("so the {arg:created_ids}, {arg:removed}, {arg:changed} and {arg:placed} passed " +
-                    "are not enough to undo it.")),
+                "so the created_ids, removed, changed and placed passed are not enough to undo it."),
             _ => throw notFound!
         };
         string tool = job.Value<string>("tool") ?? recorded?.Tool ?? "unknown";
@@ -102,11 +104,13 @@ internal static class UndoJobApi
             ? Acknowledging(PlaceArguments(structures, source), acknowledge)
             : null;
         List<UndoPieceRunView> pieceRuns = new List<UndoPieceRunView>(groups.Count);
+        List<RunBuildOrder> orders = new List<RunBuildOrder>(groups.Count);
         for (int index = 0; index < groups.Count; index++)
         {
-            pieceRuns.Add(new UndoPieceRunView(groups[index].Tool,
-                Acknowledging(PieceArguments(groups[index], removals.ByRun[index], plan, args, source), acknowledge),
-                null));
+            PieceRun run = new PieceRun(groups[index], removals.ByRun[index], plan);
+            pieceRuns.Add(new UndoPieceRunView(run.Kind,
+                Acknowledging(PieceArguments(run, args, source), acknowledge), null));
+            orders.Add(PieceOrder(run, args, source, acknowledge, acts: false, queue: false));
         }
 
         if (!plan.Ready)
@@ -119,8 +123,13 @@ internal static class UndoJobApi
         object? placement = placeArguments != null && plan.Remove.Count == 0
             ? PlaceStructureApi.Handle(DryRun(placeArguments))
             : null;
-        List<UndoPieceRunView> checkedRuns = pieceRuns.ConvertAll(run =>
-            new UndoPieceRunView(run.Tool, run.Arguments, PlaceTool(run.Tool, DryRun(run.Arguments))));
+        List<UndoPieceRunView> checkedRuns = new List<UndoPieceRunView>(groups.Count);
+        for (int index = 0; index < groups.Count; index++)
+        {
+            checkedRuns.Add(new UndoPieceRunView(pieceRuns[index].Tool, pieceRuns[index].Arguments,
+                BuildRuns.Reply(RunKind.Named(groups[index].Kind), orders[index])));
+        }
+
         bool ready = IsReady(removal) && IsReady(placement) && checkedRuns.TrueForAll(run => IsReady(run.Reply));
         if (dryRun || !ready)
         {
@@ -134,12 +143,14 @@ internal static class UndoJobApi
             throw GasHold.Refusal(held);
         }
 
-        return Start(jobId, tool, plan, removeArguments, placeArguments, pieceRuns);
+        return Start(jobId, tool, plan, removeArguments, placeArguments, pieceRuns, groups, removals, args, source,
+            acknowledge);
     }
 
     // The removal job first; the placements queued behind it (wait), each checked again when it starts.
     private static UndoJobView Start(string jobId, string tool, UndoPlan plan, JObject? removeArguments,
-        JObject? placeArguments, List<UndoPieceRunView> pieceRuns)
+        JObject? placeArguments, List<UndoPieceRunView> pieceRuns, List<PieceRestore> groups, UndoRemovals removals,
+        Args args, UndoSource source, string? acknowledge)
     {
         object? removeJob = null;
         if (removeArguments != null)
@@ -153,8 +164,15 @@ internal static class UndoJobApi
         }
 
         object? placeJob = placeArguments != null ? PlaceStructureApi.Handle(RealRun(placeArguments)) : null;
-        List<UndoPieceRunView> started = pieceRuns.ConvertAll(run =>
-            new UndoPieceRunView(run.Tool, run.Arguments, PlaceTool(run.Tool, RealRun(run.Arguments))));
+        List<UndoPieceRunView> started = new List<UndoPieceRunView>(groups.Count);
+        for (int index = 0; index < groups.Count; index++)
+        {
+            PieceRun run = new PieceRun(groups[index], removals.ByRun[index], plan);
+            RunBuildOrder order = PieceOrder(run, args, source, acknowledge, acts: true, queue: true);
+            started.Add(new UndoPieceRunView(pieceRuns[index].Tool, pieceRuns[index].Arguments,
+                BuildRuns.Reply(RunKind.Named(run.Kind), order)));
+        }
+
         JobSnapshots.RecordUndo(jobId, StartedJobs(removeJob, placeJob, started));
         return new UndoJobView(jobId, tool, "scheduled", ViewOf(plan, true), removeArguments, placeArguments,
             removeJob, placeJob, started);
@@ -177,14 +195,6 @@ internal static class UndoJobApi
 
         return ids;
     }
-
-    private static object PlaceTool(string tool, Args args) => tool switch
-    {
-        "place_cables" => PlaceCablesApi.Handle(args),
-        "place_pipes" => PlacePipesApi.Handle(args),
-        "place_chutes" => PlaceChutesApi.Handle(args),
-        _ => throw new System.ArgumentException($"No place tool {tool}.", nameof(tool))
-    };
 
     // The caller's acknowledge_gas_lost on one of the calls, so the tool that runs a held pipe job judges it.
     private static JObject Acknowledging(JObject arguments, string? acknowledge)
@@ -269,9 +279,31 @@ internal static class UndoJobApi
     private static JArray Ids(IEnumerable<long> ids)
     {
         JArray array = new JArray();
+        foreach (string id in Texts(ids))
+        {
+            array.Add(id);
+        }
+
+        return array;
+    }
+
+    private static List<string> Texts(IEnumerable<long> ids)
+    {
+        List<string> texts = new List<string>();
         foreach (long id in ids)
         {
-            array.Add(Text(id));
+            texts.Add(Text(id));
+        }
+
+        return texts;
+    }
+
+    private static JArray Texts(IReadOnlyList<string> ids)
+    {
+        JArray array = new JArray();
+        foreach (string id in ids)
+        {
+            array.Add(id);
         }
 
         return array;
@@ -286,17 +318,16 @@ internal static class UndoJobApi
             int count = removals.ByRun[index].Count;
             if (count > 0)
             {
-                notes.Add($"{count} piece(s) the job built are removed by {Vocabulary.Tool(groups[index].Tool)} " +
-                    $"itself ({Vocabulary.Arg("remove_ids")}), in the job that builds the old pieces again: the " +
-                    "network is never left cut between two jobs, and that run's guards see it as it ends up.");
+                notes.Add($"{count} piece(s) the job built are removed by the {groups[index].Kind} run " +
+                    "itself (remove_ids), in the job that builds the old pieces again: the network is never left " +
+                    "cut between two jobs, and that run's guards see it as it ends up.");
             }
         }
 
         if (source.RefundTo == RefundRoute.WherePieceStood && removals.InRuns > 0)
         {
-            notes.Add(Vocabulary.Text("{arg:refund_to} ground: {tool:remove_structure} puts each refund where its " +
-                "piece stood; the pieces a piece run removes give theirs on the ground in front of the source, as " +
-                "that tool does."));
+            notes.Add("refund_to ground: removing a structure puts each refund where its piece stood; the pieces " +
+                "a build takes down give theirs on the ground in front of the source, as it does.");
         }
 
         return notes;
@@ -326,13 +357,40 @@ internal static class UndoJobApi
         return WithSource(new JObject { ["placements"] = placements }, source, false);
     }
 
-    // The pieces form of one tool and grade: each piece's cells with the ends it had there (a long straight comes back
-    // as singles), removing in the same job the pieces it takes down itself (remove_ids; refund_to none: refund false;
-    // any other refund_to passed on),
-    // checked as if what the other steps remove were gone already (assume_removed: the small-grid things of the rest of
-    // the removal), with the caller's allow_bridge and the undo's source.
-    private static JObject PieceArguments(PieceRestore group, List<long> own, UndoPlan plan, Args args,
-        UndoSource source)
+    /// <summary>
+    /// One piece run of an undo: the kind and grade it builds again, the pieces it lays (each cell with the ends it
+    /// had there) and the pieces it takes down itself (remove_ids). Its reply's arguments and the typed call both come
+    /// from it, so the two cannot drift apart.
+    /// </summary>
+    private sealed class PieceRun
+    {
+        internal PieceRun(PieceRestore group, List<long> own, UndoPlan plan)
+        {
+            Kind = group.Kind;
+            Grade = group.Grade;
+            Own = own;
+            Pieces = PieceCells(group);
+            Assumed = AssumedIds(plan, own);
+        }
+
+        internal string Kind { get; }
+
+        internal string Grade { get; }
+
+        /// <summary>remove_ids: the pieces the same run takes down.</summary>
+        internal List<long> Own { get; }
+
+        /// <summary>The pieces form: each piece's cells with the ends it had there (a long straight comes back as
+        /// singles).</summary>
+        internal JArray Pieces { get; }
+
+        /// <summary>assume_removed: the small-grid things of the rest of the removal, checked as gone.</summary>
+        internal List<string> Assumed { get; }
+    }
+
+    // The pieces form of one kind and grade: each piece's cells with the ends it had there (a long straight comes back
+    // as singles).
+    private static JArray PieceCells(PieceRestore group)
     {
         JArray pieces = new JArray();
         foreach (ThingSnapshot snapshot in group.Pieces)
@@ -353,10 +411,62 @@ internal static class UndoJobApi
             }
         }
 
-        JObject arguments = WithSource(new JObject { ["pieces"] = pieces, ["grade"] = group.Grade }, source, false);
-        if (own.Count > 0)
+        return pieces;
+    }
+
+    // The small-grid things of the rest of the removal the run checks as gone.
+    private static List<string> AssumedIds(UndoPlan plan, List<long> own)
+    {
+        List<string> assumed = new List<string>();
+        foreach (long id in plan.Remove)
         {
-            arguments["remove_ids"] = Ids(own);
+            if (!own.Contains(id) && GameLookup.TryFindThing(new ThingId(id), out Thing thing) && thing is SmallGrid)
+            {
+                assumed.Add(Text(id));
+            }
+        }
+
+        return assumed;
+    }
+
+    // Where the run's refunds go, as its call gives them: nothing back when the undo's source gives nothing back and
+    // the run takes pieces down; left out (null) is the default chain.
+    private static RefundRoute? Refunds(UndoSource source, PieceRun run) =>
+        source.RefundTo is { GivesBack: false } && run.Own.Count > 0 ? RefundRoute.Nothing : source.RefundTo;
+
+    // Who pays: the undo's from_id when it has one, else the player.
+    private static List<Payer> Payers(UndoSource source)
+    {
+        List<Payer> payers = new List<Payer>(1);
+        payers.Add(source.FromId.HasValue ? new Payer.Holder(Text(source.FromId.Value)) : new Payer.Player());
+        return payers;
+    }
+
+    // The typed call one piece run makes, for BuildRuns: the pieces and grade it lays again, the pieces it takes down
+    // itself, the rest of the removal checked as gone, the caller's allow_bridge and the undo's source. A call that
+    // cannot be read refuses the undo (the same refusal the old arguments gave).
+    private static RunBuildOrder PieceOrder(PieceRun run, Args args, UndoSource source, string? acknowledge, bool acts,
+        bool queue)
+    {
+        RefundRoute? refunds = Refunds(source, run);
+        MaterialsSource materials = new MaterialsSource(Payers(source), refunds ?? RefundRoute.Default);
+        JobSource job = new JobSource(source.FromId, false, refunds is { GivesBack: true } ? refunds : null,
+            refunds is { GivesBack: false } && run.Own.Count > 0 ? false : (bool?)null);
+        List<OptionProblem> problems = new List<OptionProblem>();
+        RunBuildOrder? order = RunBuildOrder.Replay(run.Kind, run.Grade, run.Pieces, Texts(run.Own), run.Assumed,
+            args.Optional("allow_bridge"), materials, job, acts, queue, acknowledge, problems);
+        return order ?? throw ApiErrors.InvalidArgument(
+            OptionProblem.Refusal(RunBuildOrder.SpecOf(run.Kind).Label, problems).Message);
+    }
+
+    // The pieces form of one call as undo_job's reply shows it (piece_runs[].arguments), and what it takes down
+    // itself: refund_to none is refund false, any other refund_to is passed on, and the caller's allow_bridge.
+    private static JObject PieceArguments(PieceRun run, Args args, UndoSource source)
+    {
+        JObject arguments = WithSource(new JObject { ["pieces"] = run.Pieces, ["grade"] = run.Grade }, source, false);
+        if (run.Own.Count > 0)
+        {
+            arguments["remove_ids"] = Ids(run.Own);
             if (source.RefundTo is { GivesBack: false })
             {
                 arguments[RefundArgs.Flag] = false;
@@ -368,18 +478,9 @@ internal static class UndoJobApi
             arguments[RefundArgs.Argument] = RefundArgs.Wire(source.RefundTo);
         }
 
-        JArray assumed = new JArray();
-        foreach (long id in plan.Remove)
+        if (run.Assumed.Count > 0)
         {
-            if (!own.Contains(id) && GameLookup.TryFindThing(new ThingId(id), out Thing thing) && thing is SmallGrid)
-            {
-                assumed.Add(Text(id));
-            }
-        }
-
-        if (assumed.Count > 0)
-        {
-            arguments["assume_removed"] = assumed;
+            arguments["assume_removed"] = Texts(run.Assumed);
         }
 
         JToken? allow = args.Optional("allow_bridge");

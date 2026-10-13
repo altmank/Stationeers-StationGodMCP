@@ -9,36 +9,35 @@ namespace StationGodMCP.Tests;
 /// <summary>Fixes from round 5 of the cables live test of 1.4.4.</summary>
 public sealed class CablesRound5Tests
 {
-    private static ThingSnapshot Piece(long id, string tool, string grade) =>
+    private static ThingSnapshot Piece(long id, string kind, string grade) =>
         new ThingSnapshot(id, "StructureCableStraight", new Vec3(0, 0, 0), CubeRotation.All[0], 0, null,
-            new NetworkPiece(tool, grade, new List<PieceCell>()));
+            new NetworkPiece(kind, grade, new List<PieceCell>()));
 
     private static List<PieceRestore> Runs(params ThingSnapshot[] restore) =>
         new UndoPlan(new List<long>(), new List<ThingSnapshot>(restore), new List<string>(), new List<string>())
             .RestorePieces;
 
-    // cables-38: undoing a tee added onto a trunk removes the job's pieces in the same place_cables job that builds the
-    // old straight again, so the trunk is never cut between two jobs (the rebuild was refused would_bridge).
+    // cables-38: undoing a tee added onto a trunk removes the job's pieces in the same cable run that builds the old
+    // straight again, so the trunk is never cut between two jobs (the rebuild was refused would_bridge).
     [Fact]
     public void TheJobsPiecesAreRemovedByThePieceRunThatBuildsTheOldOnesAgain()
     {
-        List<PieceRestore> runs = Runs(Piece(2395, "place_cables", "normal"));
-        UndoRemovals removals = UndoRemovals.Of(new List<long> { 2776, 2777, 2778 }, runs,
-            static _ => "place_cables");
+        List<PieceRestore> runs = Runs(Piece(2395, "cable", "normal"));
+        UndoRemovals removals = UndoRemovals.Of(new List<long> { 2776, 2777, 2778 }, runs, static _ => "cable");
 
         Assert.Empty(removals.Structures);
         Assert.Equal(new List<long> { 2776, 2777, 2778 }, removals.ByRun[0]);
         Assert.Equal(3, removals.InRuns);
     }
 
-    // A tool with several grades to build again: its first run removes the job's pieces, the later ones none.
+    // A kind with several grades to build again: its first run removes the job's pieces, the later ones none.
     [Fact]
-    public void OnlyTheFirstRunOfAToolRemovesItsPieces()
+    public void OnlyTheFirstRunOfAKindRemovesItsPieces()
     {
-        List<PieceRestore> runs = Runs(Piece(1, "place_cables", "heavy"), Piece(2, "place_cables", "normal"),
-            Piece(3, "place_pipes", "gas"));
+        List<PieceRestore> runs = Runs(Piece(1, "cable", "heavy"), Piece(2, "cable", "normal"),
+            Piece(3, "pipe", "gas"));
         UndoRemovals removals = UndoRemovals.Of(new List<long> { 10, 11, 20 }, runs,
-            id => id == 20 ? "place_pipes" : "place_cables");
+            id => id == 20 ? "pipe" : "cable");
 
         Assert.Equal(new List<long> { 10, 11 }, removals.ByRun[0]);
         Assert.Empty(removals.ByRun[1]);
@@ -47,19 +46,19 @@ public sealed class CablesRound5Tests
     }
 
     // What no piece run builds again (a new run with nothing changed, a device, a chute when only cables come back)
-    // is still removed by remove_structure first.
+    // is still removed by removing structures first.
     [Fact]
-    public void WhatNoPieceRunBuildsAgainGoesThroughRemoveStructure()
+    public void WhatNoPieceRunBuildsAgainGoesThroughAStructureRemoval()
     {
-        List<PieceRestore> runs = Runs(Piece(1, "place_cables", "normal"));
+        List<PieceRestore> runs = Runs(Piece(1, "cable", "normal"));
         UndoRemovals removals = UndoRemovals.Of(new List<long> { 10, 30, 40 }, runs,
-            id => id == 10 ? "place_cables" : id == 30 ? "place_chutes" : null);
+            id => id == 10 ? "cable" : id == 30 ? "chute" : null);
 
         Assert.Equal(new List<long> { 30, 40 }, removals.Structures);
         Assert.Equal(new List<long> { 10 }, removals.ByRun[0]);
 
         UndoRemovals nothingBack = UndoRemovals.Of(new List<long> { 10 }, new List<PieceRestore>(),
-            static _ => "place_cables");
+            static _ => "cable");
         Assert.Equal(new List<long> { 10 }, nothingBack.Structures);
         Assert.Equal(0, nothingBack.InRuns);
     }

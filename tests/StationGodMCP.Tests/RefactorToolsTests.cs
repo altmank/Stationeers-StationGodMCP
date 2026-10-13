@@ -419,45 +419,13 @@ public sealed class FaceSealTests
 
 public sealed class NetworkHandleTests
 {
-    [Fact]
-    public void AnIdReadsAsAPlainHandle()
-    {
-        NetworkHandle handle = NetworkHandle.Read(new JValue("135796"), "network_id");
-        Assert.IsType<NetworkHandle.ById>(handle);
-        Assert.Equal(135796L, handle.Id.Value);
-        Assert.IsType<NetworkHandle.ById>(NetworkHandle.Read(new JValue(42), "network_id"));
-    }
-
-    [Fact]
-    public void ADevicePortReadsWithItsPort()
-    {
-        NetworkHandle handle = NetworkHandle.Read(JObject.Parse("{\"reference_id\": \"1378\", \"port\": 1}"), "join_to");
-        NetworkHandle.ByPort port = Assert.IsType<NetworkHandle.ByPort>(handle);
-        Assert.Equal(1378L, port.Id.Value);
-        Assert.Equal(1, port.Port);
-        Assert.Null(Assert.IsType<NetworkHandle.ByPort>(
-            NetworkHandle.Read(JObject.Parse("{\"reference_id\": \"7\"}"), "x")).Port);
-    }
-
-    [Theory]
-    [InlineData("{\"port\": 1}")]
-    [InlineData("{\"reference_id\": \"1\", \"network_id\": \"2\"}")]
-    [InlineData("true")]
-    [InlineData("[1]")]
-    public void AnythingElseIsRefusedByName(string json)
-    {
-        ApiException error = Assert.Throws<ApiException>(() => NetworkHandle.Read(JToken.Parse(json), "join_to"));
-        Assert.Equal(ApiErrors.InvalidArgumentCode, error.Code);
-        Assert.Contains("join_to", error.Message);
-    }
-
     // Id churn: the network's id changed after an edit; the handle named a device port, and the reply says which id
     // it stood for this time.
     [Fact]
     public void TheReplyListsWhatEachHandleResolvedTo()
     {
         ResolvedNetworks.Begin();
-        NetworkHandle handle = NetworkHandle.Read(JObject.Parse("{\"reference_id\": \"1378\", \"port\": 1}"), "join_to");
+        NetworkHandle handle = new NetworkHandle.ByPort(new ThingId(1378), 1);
         ResolvedNetworks.Record("join_to", handle, new ThingId(140001));
         ResolvedNetworks.Record("join_to", handle, new ThingId(140001));
         object result = ResolvedNetworks.Attach(new GameClockView(1f, false, 0.5f, 3), ResolvedNetworks.Take());

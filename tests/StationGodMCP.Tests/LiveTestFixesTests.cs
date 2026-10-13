@@ -189,11 +189,11 @@ public sealed class JoinTargetTests
     public void OneHandleIsListedOnce()
     {
         ResolvedNetworks.Begin();
-        NetworkHandle handle = NetworkHandle.Read(new JValue("5001"), "to.network_id");
+        NetworkHandle handle = new NetworkHandle.ById(new ThingId(5001));
         ResolvedNetworks.Record("to.network_id", handle, new ThingId(140001));
         ResolvedNetworks.Record("join_to", handle, new ThingId(140001));
         ResolvedNetworks.Record("to.network_id", handle, new ThingId(140001));
-        ResolvedNetworks.Record("allow_bridge[0]", NetworkHandle.Read(new JValue("5002"), "x"), new ThingId(140002));
+        ResolvedNetworks.Record("allow_bridge[0]", new NetworkHandle.ById(new ThingId(5002)), new ThingId(140002));
 
         JObject json = JObject.Parse(WireCheck.New(ResolvedNetworks.Attach(new GameClockView(1f, false, 0.5f, 3),
             ResolvedNetworks.Take())));
@@ -207,12 +207,11 @@ public sealed class JoinTargetTests
     public void AnotherThreadsRequestNeitherClearsNorAddsToThisThreadsList()
     {
         ResolvedNetworks.Begin();
-        ResolvedNetworks.Record("to.network_id", NetworkHandle.Read(new JValue("5001"), "to.network_id"),
-            new ThingId(140001));
+        ResolvedNetworks.Record("to.network_id", new NetworkHandle.ById(new ThingId(5001)), new ThingId(140001));
         Thread other = new Thread(() =>
         {
             ResolvedNetworks.Begin();
-            ResolvedNetworks.Record("join_to", NetworkHandle.Read(new JValue("5009"), "join_to"), new ThingId(140009));
+            ResolvedNetworks.Record("join_to", new NetworkHandle.ById(new ThingId(5009)), new ThingId(140009));
             ResolvedNetworks.Take();
         });
         other.Start();

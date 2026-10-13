@@ -41,15 +41,18 @@ internal static class LintReport
             return new List<LintFinding>
             {
                 new LintFinding(CodePrefix + "unavailable", ConflictLevel.Warning, 0,
-                    $"The {Vocabulary.Arg("report")} lint rules could not run: {error.GetType().Name}: " +
+                    $"The report lint rules could not run: {error.GetType().Name}: " +
                     $"{error.Message}", null, Vec3.Zero,
                     null, null, null)
             };
         }
     }
 
-    /// <summary>The lint warnings of a cable, pipe or chute run's planned pieces.</summary>
-    internal static void Check(RunPlan plan)
+    /// <summary>
+    /// The lint findings of a cable, pipe or chute run's planned pieces: a problem refuses the run, unless the call's
+    /// allow names lint, which makes it a warning and has the report mark the rows about it PASSED (RunPlan.Lifted).
+    /// </summary>
+    internal static void Check(RunPlan plan, bool allowLint)
     {
         List<PlannedThing> planned = new List<PlannedThing>(plan.Cells.Count);
         HashSet<long> gone = new HashSet<long>();
@@ -71,15 +74,23 @@ internal static class LintReport
 
         foreach (LintFinding finding in Findings(planned, gone))
         {
-            if (finding.Level == ConflictLevel.Problem)
+            if (finding.Level != ConflictLevel.Problem)
             {
-                plan.Problem(CodePrefix + finding.Code, Refusal(finding), finding.OtherId, CellOf(finding.At));
+                plan.Warnings.Add(new LayoutIssue(CodePrefix + finding.Code, finding.Message, CellOf(finding.At),
+                    finding.OtherId));
+                continue;
             }
-            else
+
+            if (allowLint)
             {
-                plan.Warnings.Add(new LayoutIssue(CodePrefix + finding.Code, finding.Message,
-                    CellOf(finding.At), finding.OtherId));
+                LayoutIssue lifted = new LayoutIssue(CodePrefix + finding.Code, Lifted(finding), CellOf(finding.At),
+                    finding.OtherId);
+                plan.Warnings.Add(lifted);
+                plan.Lifted.Add(lifted);
+                continue;
             }
+
+            plan.Problem(CodePrefix + finding.Code, Refusal(finding), finding.OtherId, CellOf(finding.At));
         }
     }
 
@@ -112,8 +123,15 @@ internal static class LintReport
     /// <summary>A problem finding as the refusal it makes: the rule, and how the save's file allows it.</summary>
     internal static string Refusal(LintFinding finding) =>
         $"{finding.Message} Refused by lint rule {finding.Code} (level problem). To allow it, set its \"level\" to " +
-        $"\"warning\" or \"enabled\": false in the save's lint-rules.json ({Vocabulary.Tool("lint_rules")} lists the " +
+        $"\"warning\" or \"enabled\": false in the save's lint-rules.json (check {{what: \"rules\"}} lists the " +
         "files).";
+
+    /// <summary>
+    /// A problem finding allow lint let through: the rule, and that it is now a warning the report marks PASSED.
+    /// </summary>
+    internal static string Lifted(LintFinding finding) =>
+        $"{finding.Message} Lint rule {finding.Code} (level problem) let through by allow: [\"lint\"]; the report " +
+        "marks what it is about PASSED.";
 
     private static GridCell CellOf(Vec3 at) =>
         new GridCell((int)Math.Round(at.X * 2.0) * 5, (int)Math.Round(at.Y * 2.0) * 5, (int)Math.Round(at.Z * 2.0) * 5);

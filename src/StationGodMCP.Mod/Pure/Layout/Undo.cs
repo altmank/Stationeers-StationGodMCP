@@ -20,20 +20,19 @@ internal sealed class PieceCell
 }
 
 /// <summary>
-/// A cable, pipe or chute piece as its place tool builds it again: the tool (place_cables, place_pipes,
-/// place_chutes), the grade name it takes (null when no coil or kit lays this piece: the tool cannot build it), and
-/// the ends in each of its cells.
+/// A cable, pipe or chute piece as build lays it again: the kind (cable, pipe or chute), the grade name it takes (null
+/// when no coil or kit lays this piece: build cannot lay it), and the ends in each of its cells.
 /// </summary>
 internal sealed class NetworkPiece
 {
-    internal NetworkPiece(string tool, string? grade, List<PieceCell> cells)
+    internal NetworkPiece(string kind, string? grade, List<PieceCell> cells)
     {
-        Tool = tool;
+        Kind = kind;
         Grade = grade;
         Cells = cells;
     }
 
-    internal string Tool { get; }
+    internal string Kind { get; }
 
     internal string? Grade { get; }
 
@@ -109,14 +108,15 @@ internal sealed class ThingSnapshot
 /// <summary>Network pieces one place tool builds again in one job: the tool, the grade, the snapshots.</summary>
 internal sealed class PieceRestore
 {
-    internal PieceRestore(string tool, string grade, List<ThingSnapshot> pieces)
+    internal PieceRestore(string kind, string grade, List<ThingSnapshot> pieces)
     {
-        Tool = tool;
+        Kind = kind;
         Grade = grade;
         Pieces = pieces;
     }
 
-    internal string Tool { get; }
+    /// <summary>cable, pipe or chute: the kind of piece this run builds again.</summary>
+    internal string Kind { get; }
 
     internal string Grade { get; }
 
@@ -124,8 +124,8 @@ internal sealed class PieceRestore
 }
 
 /// <summary>
-/// Who removes what an undo removes. A piece of a tool that also builds pieces again is removed by that tool's first
-/// piece run (its remove_ids), in the same job that builds the old pieces back: a job that changed a piece in the
+/// Who removes what an undo removes. A piece of a kind that a piece run also builds again is removed by that kind's
+/// first piece run (its remove_ids), in the same job that builds the old pieces back: a job that changed a piece in the
 /// middle of a network (a tee added onto a trunk, a long straight crossed) is then undone in one step, so the network
 /// is never cut between two jobs (the rebuild would be a would_bridge of the two halves) and the run's guards see the
 /// networks as they end up. Everything else goes through remove_structure first.
@@ -157,15 +157,15 @@ internal sealed class UndoRemovals
 
     /// <param name="remove">UndoPlan.Remove.</param>
     /// <param name="runs">UndoPlan.RestorePieces.</param>
-    /// <param name="toolOf">The place tool whose piece the thing with that id is; null for anything else.</param>
-    internal static UndoRemovals Of(List<long> remove, List<PieceRestore> runs, System.Func<long, string?> toolOf)
+    /// <param name="kindOf">The kind of piece the thing with that id is (cable, pipe or chute); null for anything else.</param>
+    internal static UndoRemovals Of(List<long> remove, List<PieceRestore> runs, System.Func<long, string?> kindOf)
     {
         List<List<long>> byRun = runs.ConvertAll(_ => new List<long>());
         List<long> structures = new List<long>();
         foreach (long id in remove)
         {
-            string? tool = toolOf(id);
-            int run = tool == null ? -1 : runs.FindIndex(group => group.Tool == tool);
+            string? kind = kindOf(id);
+            int run = kind == null ? -1 : runs.FindIndex(group => group.Kind == kind);
             (run >= 0 ? byRun[run] : structures).Add(id);
         }
 
@@ -265,10 +265,10 @@ internal sealed class UndoPlan
                     continue;
                 }
 
-                PieceRestore? group = groups.Find(found => found.Tool == piece.Tool && found.Grade == piece.Grade);
+                PieceRestore? group = groups.Find(found => found.Kind == piece.Kind && found.Grade == piece.Grade);
                 if (group == null)
                 {
-                    group = new PieceRestore(piece.Tool, piece.Grade, new List<ThingSnapshot>());
+                    group = new PieceRestore(piece.Kind, piece.Grade, new List<ThingSnapshot>());
                     groups.Add(group);
                 }
 
@@ -289,7 +289,7 @@ internal sealed class UndoPlan
 
 /// <summary>
 /// Plans the inverse of a finished job: remove everything it built, then build again everything it removed, each as it
-/// stood (network pieces by their place tool). Refused (diverged) when something it built is gone or is no longer that
+/// stood (network pieces by their kind and grade). Refused (diverged) when something it built is gone or is no longer that
 /// prefab, when something it removed has no snapshot, stood off the grid's axes or is a network piece no coil or kit
 /// lays, or when the job had not finished; and when the job was already undone (an earlier real undo_job run started
 /// jobs that were not all refused). A burnt cable the job removed is never built again: a note says so and the
@@ -313,15 +313,15 @@ internal static class UndoPlanner
         List<string> notes = new List<string>();
         if (System.Array.IndexOf(Tools, job.Tool) < 0)
         {
-            diverged.Add($"{job.JobId} is a {Vocabulary.Tool(job.Tool)} job; {Vocabulary.Tool("undo_job")} undoes " +
-                $"place_* and remove_* jobs only ({Vocabulary.Tool("paste_blueprint")} has its own undo).");
+            diverged.Add($"{job.JobId} is a {job.Tool} job; undo undoes build and remove jobs only " +
+                "(build blueprint has its own undo).");
             return new UndoPlan(new List<long>(), new List<ThingSnapshot>(), diverged, notes);
         }
 
         List<UndoStep> undo = job.UndoneBy.FindAll(step => !step.Refused);
         if (undo.Count > 0)
         {
-            diverged.Add($"{job.JobId} was already undone: {Vocabulary.Tool("undo_job")} started " +
+            diverged.Add($"{job.JobId} was already undone: undo started " +
                 $"{string.Join(", ", undo)}. Nothing is left to undo; undo those jobs, the last first, to have it " +
                 "back.");
             return new UndoPlan(new List<long>(), new List<ThingSnapshot>(), diverged, notes,
@@ -383,8 +383,7 @@ internal static class UndoPlanner
             else if (snapshot.Piece != null && snapshot.Piece.Grade == null)
             {
                 diverged.Add($"{id} ({snapshot.Prefab}) is a network piece no coil or kit lays; " +
-                    $"{Vocabulary.Tool("undo_job")} builds network pieces again only through " +
-                    $"{Vocabulary.Tool(snapshot.Piece.Tool)}, so its guards apply.");
+                    $"undo builds network pieces again only through build {snapshot.Piece.Kind}, so its guards apply.");
             }
             else if (standing(id) != null)
             {

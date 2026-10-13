@@ -22,7 +22,7 @@ internal sealed class BuildChuteOptions
         new OptionSpec("branches", "{\"type\":\"array\",\"items\":{\"type\":\"object\"},\"maxItems\":16}"),
         new OptionSpec("extra_ends", "{\"type\":\"array\",\"items\":{\"type\":\"object\"},\"maxItems\":64}"),
         new OptionSpec("join", "{\"type\":\"string\",\"enum\":[\"ends\",\"none\",\"all\"]}", false, "ends"),
-        new OptionSpec("allow", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"door_keepout\",\"split\"]}}"),
+        new OptionSpec("allow", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"door_keepout\",\"lint\",\"split\"]}}"),
         new OptionSpec("split_long", "{\"type\":\"boolean\"}", false, "true"),
         new OptionSpec("remove_ids", "{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"maxItems\":1024}"),
         new OptionSpec("assume_removed", "{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"maxItems\":1024}"),

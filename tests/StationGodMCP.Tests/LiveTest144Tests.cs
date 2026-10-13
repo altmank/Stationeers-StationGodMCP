@@ -156,7 +156,7 @@ public sealed class LiveTest144Tests
         Assert.False(forecast.IsBridging(data));
     }
 
-    private static ThingSnapshot Piece(long id, string tool, string? grade, params (GridCell Cell, string[] Ends)[] cells)
+    private static ThingSnapshot Piece(long id, string kind, string? grade, params (GridCell Cell, string[] Ends)[] cells)
     {
         List<PieceCell> parts = new List<PieceCell>();
         foreach ((GridCell cell, string[] ends) in cells)
@@ -165,7 +165,7 @@ public sealed class LiveTest144Tests
         }
 
         return new ThingSnapshot(id, "StructureCableStraightH", new Vec3(719, 200, 667.5),
-            CubeRotation.FromFacing(S("+x"), S("+y")), 0, null, new NetworkPiece(tool, grade, parts));
+            CubeRotation.FromFacing(S("+x"), S("+y")), 0, null, new NetworkPiece(kind, grade, parts));
     }
 
     [Fact]
@@ -173,9 +173,9 @@ public sealed class LiveTest144Tests
     {
         Dictionary<long, ThingSnapshot> snapshots = new Dictionary<long, ThingSnapshot>
         {
-            [400] = Piece(400, "place_cables", "heavy", (RunModels.At(0, 0, 0), new[] { "+x", "-x" })),
-            [401] = Piece(401, "place_cables", "normal", (RunModels.At(1, 0, 0), new[] { "-x", "+z" })),
-            [402] = Piece(402, "place_cables", "heavy", (RunModels.At(2, 0, 0), new[] { "+x", "-x" })),
+            [400] = Piece(400, "cable", "heavy", (RunModels.At(0, 0, 0), new[] { "+x", "-x" })),
+            [401] = Piece(401, "cable", "normal", (RunModels.At(1, 0, 0), new[] { "-x", "+z" })),
+            [402] = Piece(402, "cable", "heavy", (RunModels.At(2, 0, 0), new[] { "+x", "-x" })),
             [403] = new ThingSnapshot(403, "StructureWallLight", new Vec3(720, 201, 668),
                 CubeRotation.FromFacing(S("+z"), S("+y")), 0, null)
         };
@@ -186,7 +186,7 @@ public sealed class LiveTest144Tests
         Assert.Equal(new List<long> { 403 }, plan.RestoreStructures.ConvertAll(snapshot => snapshot.Id));
         List<PieceRestore> groups = plan.RestorePieces;
         Assert.Equal(2, groups.Count);
-        Assert.Equal(("place_cables", "heavy"), (groups[0].Tool, groups[0].Grade));
+        Assert.Equal(("cable", "heavy"), (groups[0].Kind, groups[0].Grade));
         Assert.Equal(new List<long> { 400, 402 }, groups[0].Pieces.ConvertAll(snapshot => snapshot.Id));
         Assert.Equal("normal", groups[1].Grade);
     }
@@ -196,13 +196,13 @@ public sealed class LiveTest144Tests
     {
         Dictionary<long, ThingSnapshot> snapshots = new Dictionary<long, ThingSnapshot>
         {
-            [410] = Piece(410, "place_pipes", null, (RunModels.At(0, 0, 0), new[] { "+x", "-x" }))
+            [410] = Piece(410, "pipe", null, (RunModels.At(0, 0, 0), new[] { "+x", "-x" }))
         };
         JobFacts job = new JobFacts("run-10", "remove_pipes", "applied", new List<(long, string?)>(),
             new List<long> { 410 }, snapshots);
         UndoPlan plan = UndoPlanner.Plan(job, _ => null);
         Assert.False(plan.Ready);
-        Assert.Contains(plan.Diverged, reason => reason.Contains("place_pipes"));
+        Assert.Contains(plan.Diverged, reason => reason.Contains("build pipe"));
         Assert.Empty(plan.RestorePieces);
         Assert.Empty(plan.RestoreStructures);
     }

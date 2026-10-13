@@ -121,11 +121,12 @@ internal sealed class RunOptions
 {
     internal RunOptions(EditAllowance allow, ThingId? from, RefundRoute refundTo, int listLimit, bool splitLong = true,
         RunTargets? targets = null, bool allowDoorKeepOut = false, RunDetail? detail = null,
-        List<ThingId>? moreFrom = null)
+        List<ThingId>? moreFrom = null, bool allowLint = false)
     {
         MoreFrom = moreFrom ?? new List<ThingId>();
         Detail = detail ?? RunDetail.Brief;
         AllowDoorKeepOut = allowDoorKeepOut;
+        AllowLint = allowLint;
         Allow = allow;
         From = from;
         RefundTo = refundTo;
@@ -138,13 +139,19 @@ internal sealed class RunOptions
     internal RunTargets Targets { get; }
 
     internal RunOptions WithTargets(RunTargets targets) =>
-        new RunOptions(Allow, From, RefundTo, ListLimit, SplitLong, targets, AllowDoorKeepOut, Detail, MoreFrom);
+        new RunOptions(Allow, From, RefundTo, ListLimit, SplitLong, targets, AllowDoorKeepOut, Detail, MoreFrom,
+            AllowLint);
 
     /// <summary>include_links and include_notes: what the report lists beyond its counts.</summary>
     internal RunDetail Detail { get; }
 
-    /// <summary>allow_door_keepout: new pieces in a door's keep-out are a warning instead of a problem.</summary>
+    /// <summary>allow door_keepout: new pieces in a door's keep-out are a warning instead of a problem.</summary>
     internal bool AllowDoorKeepOut { get; }
+
+    /// <summary>
+    /// allow lint: a lint problem is a warning instead of a refusal, and the report marks the rows about it PASSED.
+    /// </summary>
+    internal bool AllowLint { get; }
 
     /// <summary>
     /// allow_split_long: a long straight the run must join in its middle or cross is split into singles in the same
@@ -319,6 +326,12 @@ internal sealed class RunPlan
     internal List<LayoutIssue> Problems { get; } = new List<LayoutIssue>();
 
     internal List<LayoutIssue> Warnings { get; } = new List<LayoutIssue>();
+
+    /// <summary>
+    /// The problem-level findings allow lint let through (their warnings are in Warnings): the report marks the rows
+    /// about them PASSED.
+    /// </summary>
+    internal List<LayoutIssue> Lifted { get; } = new List<LayoutIssue>();
 
     /// <summary>The run's new cells on no frame and no wall plane (CellSupports).</summary>
     internal List<GridCell> AirCells { get; } = new List<GridCell>();

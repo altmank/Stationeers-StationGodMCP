@@ -135,7 +135,7 @@ internal static class JobSnapshots
 
     private static readonly RunKind[] Kinds = { new CableRunKind(), new PipeRunKind(), new ChuteRunKind() };
 
-    /// <summary>The place tool whose piece the standing thing with that id is (undo_job's UndoRemovals); null otherwise.</summary>
+    /// <summary>The kind of piece the standing thing with that id is (cable, pipe or chute); null otherwise.</summary>
     internal static string? PieceToolOf(long id)
     {
         if (!GameLookup.TryFindThing(new ThingId(id), out Thing thing) || !(thing is SmallGrid piece))
@@ -144,11 +144,11 @@ internal static class JobSnapshots
         }
 
         RunKind? kind = System.Array.Find(Kinds, candidate => candidate.Family.IsPiece(piece));
-        return kind?.PlaceTool;
+        return kind?.Noun;
     }
 
-    // A cable, pipe or chute piece as its place tool builds it again: the tool, the grade name that lays it (null when
-    // no coil or kit does) and its ends cell by cell; null for anything else.
+    // A cable, pipe or chute piece as build lays it again: the kind, the grade name that lays it (null when no coil
+    // or kit does) and its ends cell by cell; null for anything else.
     private static NetworkPiece? PieceOf(Structure structure)
     {
         if (!(structure is SmallGrid piece))
@@ -167,7 +167,7 @@ internal static class JobSnapshots
             string? name = grade == null
                 ? null
                 : System.Array.Find(kind.GradeNames, candidate => kind.GradeOf(candidate)?.SameAs(grade) == true);
-            return new NetworkPiece(kind.PlaceTool, name, NetworkPiece.CellsOf(PieceShapes.Live(piece)));
+            return new NetworkPiece(kind.Noun, name, NetworkPiece.CellsOf(PieceShapes.Live(piece)));
         }
 
         return null;

@@ -43,7 +43,7 @@ internal static class RunPlanner
         plan = request.Options.Targets.JoinTrunk ? RunTaps.Tapped(request, plan, PlanOnce) : plan;
         if (lint)
         {
-            Lint.LintReport.Check(plan);
+            Lint.LintReport.Check(plan, request.Options.AllowLint);
         }
 
         return plan;

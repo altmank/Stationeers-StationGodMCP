@@ -459,8 +459,9 @@ public sealed class ToolRegistrationTests
 
         Assert.Empty(names.Except(handled).Except(SidecarOnly).Except(CatalogueChecks.RetiredMethods.Names));
         Assert.Empty(handled.Except(names));
-        Assert.Subset(names, new HashSet<string> { "place_structure", "place_cables" });
-        Assert.Subset(handled, new HashSet<string> { "place_structure", "place_cables" });
+        // The methods A5 has still to retire: the sidecar lists them and the mod still handles them.
+        Assert.Subset(names, new HashSet<string> { "place_structure" });
+        Assert.Subset(handled, new HashSet<string> { "place_structure" });
     }
 
     private static HashSet<string> StringsIn(SyntaxNode node) =>

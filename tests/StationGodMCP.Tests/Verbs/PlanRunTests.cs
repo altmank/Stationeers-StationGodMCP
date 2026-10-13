@@ -267,3 +267,55 @@ public sealed class PlanRunTests
         Assert.True((bool)body["ready"]!);
     }
 }
+
+/// <summary>
+/// The D-A4-8 handover: what plan route and plan spot answer as build_arguments feeds build as it is. Every key
+/// RouteBuildArguments.Of emits, and a spot's {what, prefab, at, facing, up}, is an option of the what it names, so
+/// plan and build cannot drift apart.
+/// </summary>
+public sealed class BuildArgumentContractTests
+{
+    private static GridCell Cell(int x) => new GridCell(x * GridStep.CellSize, 0, 0);
+
+    [Theory]
+    [InlineData("cable", "heavy")]
+    [InlineData("pipe", "gas")]
+    [InlineData("chute", "chute")]
+    public void EveryBuildArgumentARouteEmitsIsAnOptionOfItsWhat(string kind, string grade)
+    {
+        List<OptionProblem> problems = new();
+        RouteOrder order = RouteOrder.Of(PlanRouteOptions.Bind(new OptionReader(PlanRouteOptions.Spec,
+            JObject.Parse($$"""
+                {"kind": "{{kind}}", "grade": "{{grade}}", "start": {"at": [1, 2, 3]}, "end": {"at": [4, 2, 3]},
+                "join": "all", "allow": ["door_keepout", "split"], "split_long": false, "materials": "720",
+                "root": "88", "join_trunk": true, "allow_bridge": ["5001"]}
+                """))), problems)!;
+        RouteTree tree = new RouteTree(new List<GridCell> { Cell(0), Cell(1), Cell(2) }, 3.0, 9);
+        tree.Branches.Add(new RunBranch(new List<GridCell> { Cell(3) }, Cell(2)));
+        tree.AddExtra(new ExtraEnd(Cell(1), GridStep.All[0]));
+
+        JObject arguments = RouteBuildArguments.Of(order, grade, tree, new[] { new ThingId(31) },
+            new[] { new ThingId(32) }, new NetworkTarget("1378", "1"), cell => new Vec3(cell.X / 10.0, 0, 0));
+
+        Assert.Empty(problems);
+        Assert.Equal(kind, (string?)arguments["what"]);
+        Assert.Equal(new[] { "what", "waypoints", "grade", "join", "branches", "extra_ends", "remove_ids",
+            "assume_removed", "allow_bridge", "allow", "split_long", "materials", "root", "join_to",
+            "join_trunk" }, arguments.Properties().Select(key => key.Name));
+        VerbError? refused = OptionCheck.Check(VerbSurface.Verb("build")!, arguments, out WhatSpec? what);
+        Assert.Null(refused);
+        Assert.Equal("build." + kind, what!.Key);
+    }
+
+    [Fact]
+    public void EveryBuildArgumentASpotEmitsIsAnOptionOfTheStructureWhat()
+    {
+        JObject spot = JObject.Parse("""
+            {"what": "structure", "prefab": "StructureWallLight", "at": [1, 2, 3], "facing": "-x", "up": "+y"}
+            """);
+
+        VerbError? refused = OptionCheck.Check(VerbSurface.Verb("build")!, spot, out WhatSpec? what);
+        Assert.Null(refused);
+        Assert.Equal("build.structure", what!.Key);
+    }
+}

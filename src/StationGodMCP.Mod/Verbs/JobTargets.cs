@@ -14,9 +14,12 @@ namespace StationGodMCP.Verbs;
 internal static class JobTargets
 {
     /// <summary>
-    /// The ids in the order given, null where one cannot be read; each such id is a problem at its index.
+    /// The ids in the order given, null where one cannot be read; each such id is a problem at its index. The first
+    /// index is the place of the first id among everything the call named (a second id list continues where the
+    /// first ends).
     /// </summary>
-    internal static List<ThingId?> Ids(IReadOnlyList<string> given, string label, List<ReportProblem> problems)
+    internal static List<ThingId?> Ids(IReadOnlyList<string> given, string label, List<ReportProblem> problems,
+        int first = 0)
     {
         List<ThingId?> ids = new List<ThingId?>(given.Count);
         for (int index = 0; index < given.Count; index++)
@@ -28,7 +31,7 @@ internal static class JobTargets
             catch (ApiException refused)
             {
                 ids.Add(null);
-                problems.Add(new ReportProblem(index, null, VerbError.Of(refused)));
+                problems.Add(new ReportProblem(first + index, null, VerbError.Of(refused)));
             }
         }
 
