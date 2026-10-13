@@ -1,5 +1,6 @@
 #nullable enable
 
+using System;
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
@@ -11,8 +12,9 @@ namespace StationGodMCP.Verbs;
 /// <summary>
 /// write chip (catalogue write.json): a circuit holder's chip, in the gateway's scope, by id or "looking_at": code
 /// writes its source (IC10, or Lua for a Lua chip), pins sets an IC Housing's d0..d5, run pauses, steps, resumes or
-/// restarts it (ChipWrites). Given together they act in that order (WriteParts): one part answers its reply, several
-/// {code, pins, run}, the first refusal stopping the rest, named in not_run. include code echoes the stored source;
+/// restarts it (ChipWrites). Given together, every part is checked before any acts, and a refused part refuses the
+/// call with every refused part at once; then they act in that order (WriteParts): one part answers its reply, several
+/// {code, pins, run}, a refusal while acting stopping the rest, named in not_run. include code echoes the stored source;
 /// allow off_network pins a device off the housing's data network.
 /// </summary>
 internal static class WriteChip
@@ -59,11 +61,12 @@ internal static class WriteChip
         IcTarget ic = CircuitHolders.Require(scope, TargetIds.Of(options.Selector.Ids!.Ids[0], label));
         bool echo = options.Fields.Includes(CodePart);
         bool offNetwork = Allow.Lifts(options.Allow, "off_network");
-        return WriteParts.Of(parts, part => part switch
+        bool sourceFirst = options.Code != null;
+        return WriteParts.Of(label, parts, part => part switch
         {
             CodePart => ChipWrites.Source(scope, ic, options.Code!, echo),
             PinsPart => ChipWrites.Pins(scope, ic, (JObject)options.Pins!, offNetwork),
-            _ => ChipWrites.Run(scope, ic, options.Run!)
+            _ => (Func<object>)ChipWrites.Run(scope, ic, options.Run!, sourceFirst)
         });
     }
 }

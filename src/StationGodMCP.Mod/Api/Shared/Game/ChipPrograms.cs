@@ -39,6 +39,12 @@ internal abstract class ChipProgram
     /// <summary>Refuses pausing and stepping where they mean nothing.</summary>
     internal abstract void RequireSteppable(string action);
 
+    /// <summary>Refuses a source this chip cannot take, before anything is written.</summary>
+    internal abstract void RequireWritable(string source);
+
+    /// <summary>Refuses a restart on a chip that has none (IC10).</summary>
+    internal abstract void RequireRestartable();
+
     protected abstract LuaStateView? LuaState(ProgrammableChip chip, int logLines);
 
     /// <summary>
@@ -59,7 +65,13 @@ internal abstract class ChipProgram
             return Ic10Source.Notes(source, stored);
         }
 
-        internal override void Restart(IcTarget ic, ProgrammableChip chip) =>
+        internal override void Restart(IcTarget ic, ProgrammableChip chip) => RequireRestartable();
+
+        internal override void RequireWritable(string source)
+        {
+        }
+
+        internal override void RequireRestartable() =>
             throw ApiErrors.Refused("not_a_lua_chip",
                 "run: restart is for Lua chips; an IC10 chip restarts at line 0 when write chip's code writes it.");
 
@@ -96,6 +108,12 @@ internal abstract class ChipProgram
             LuaChips.ForgetFailedSource(chip, required: true);
             ic.Holder.SetSourceCode(ic.Holder.GetSourceCode());
             chip.SendUpdate();
+        }
+
+        internal override void RequireWritable(string source) => LuaChips.RequireSourceSize(source);
+
+        internal override void RequireRestartable()
+        {
         }
 
         internal override void RequireSteppable(string action) =>

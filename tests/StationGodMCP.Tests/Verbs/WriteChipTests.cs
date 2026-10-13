@@ -13,8 +13,9 @@ using Xunit;
 namespace StationGodMCP.Tests.Verbs;
 
 /// <summary>
-/// write chip's replies: its parts in order (WriteParts: one part answers its reply, several {code, pins, run}, the
-/// first refusal stopping the rest, named in not_run), and each part's reply in the catalogue's keys: code (the
+/// write chip's replies: its parts (WriteParts: every part checked before any acts, the refused ones refusing the
+/// call at once; then in order, one part answering its reply, several {code, pins, run}, a refusal while acting
+/// stopping the rest, named in not_run), and each part's reply in the catalogue's keys: code (the
 /// source written, a Lua chip compiling), pins (the changes and every pin, a pin holding nothing left out) and run
 /// (the action and the chip after it).
 /// </summary>
@@ -37,10 +38,13 @@ public sealed class WriteChipTests
 
     // ---- the parts ----
 
+    private static VerbOutcome Write(string[] parts, Func<string, object> act) =>
+        WriteParts.Of("write chip", parts, part => () => act(part));
+
     [Fact]
     public void OnePartAnswersItsOwnReply()
     {
-        JObject reply = Answered(WriteParts.Of(new[] { "run" }, _ => new JObject { ["action"] = "pause" }));
+        JObject reply = Answered(Write(new[] { "run" }, _ => new JObject { ["action"] = "pause" }));
 
         Assert.Equal("pause", (string?)reply["action"]);
         Assert.Null(reply["run"]);
@@ -50,7 +54,7 @@ public sealed class WriteChipTests
     public void SeveralPartsActInOrderEachUnderItsName()
     {
         List<string> acted = new List<string>();
-        JObject reply = Answered(WriteParts.Of(new[] { "code", "pins", "run" }, part =>
+        JObject reply = Answered(Write(new[] { "code", "pins", "run" }, part =>
         {
             acted.Add(part);
             return new JObject { ["part"] = part };
@@ -62,10 +66,36 @@ public sealed class WriteChipTests
     }
 
     [Fact]
-    public void AFirstPartRefusedIsTheCallsRefusalNamingWhatDidNotRun()
+    public void EveryPartRefusedByItsCheckRefusesTheCallAtOnceBeforeAnyActs()
+    {
+        List<string> checkedParts = new List<string>();
+        List<string> acted = new List<string>();
+        VerbOutcome outcome = WriteParts.Of("write chip", new[] { "code", "pins", "run" }, part =>
+        {
+            checkedParts.Add(part);
+            return part == "pins"
+                ? () =>
+                {
+                    acted.Add(part);
+                    return new JObject();
+                }
+                : throw ApiErrors.Refused("no_chip", $"{part}: the housing has no chip.");
+        });
+
+        VerbError refused = Assert.IsType<VerbOutcome.Refused>(outcome).Error;
+        Assert.Equal(new[] { "code", "pins", "run" }, checkedParts);
+        Assert.Empty(acted);
+        Assert.Equal("invalid_argument", refused.Code);
+        Assert.Equal(new[] { "code", "run" },
+            ((JArray)refused.Data!["problems"]!).Select(problem => (string?)problem["path"]));
+        Assert.Contains("code: cannot be written (no_chip): code: the housing has no chip.", refused.Message);
+    }
+
+    [Fact]
+    public void AFirstPartRefusedWhileActingIsTheCallsRefusalNamingWhatDidNotRun()
     {
         List<string> acted = new List<string>();
-        VerbOutcome outcome = WriteParts.Of(new[] { "code", "run" }, part =>
+        VerbOutcome outcome = Write(new[] { "code", "run" }, part =>
         {
             acted.Add(part);
             throw ApiErrors.Refused("no_chip", "The housing has no chip.");
@@ -78,9 +108,9 @@ public sealed class WriteChipTests
     }
 
     [Fact]
-    public void ALaterPartRefusedKeepsWhatActedAndNamesTheRest()
+    public void ALaterPartRefusedWhileActingKeepsWhatActedAndNamesTheRest()
     {
-        JObject reply = Answered(WriteParts.Of(new[] { "code", "pins", "run" }, part => part == "pins"
+        JObject reply = Answered(Write(new[] { "code", "pins", "run" }, part => part == "pins"
             ? throw ApiErrors.Refused("not_on_data_network", "pins.d0: off the network.")
             : new JObject { ["part"] = part }));
 
@@ -94,7 +124,9 @@ public sealed class WriteChipTests
     public void AFaultIsNoRefusal()
     {
         Assert.Throws<InvalidOperationException>(() =>
-            WriteParts.Of(new[] { "code" }, _ => throw new InvalidOperationException("broken")));
+            Write(new[] { "code" }, _ => throw new InvalidOperationException("broken")));
+        Assert.Throws<InvalidOperationException>(() =>
+            WriteParts.Of("write chip", new[] { "code" }, _ => throw new InvalidOperationException("broken")));
     }
 
     // ---- code ----
@@ -105,7 +137,7 @@ public sealed class WriteChipTests
         ChipState state = new ChipState(0, true, "0", "None",
             "Error <color=red>IncorrectArgumentCount</color> at line 0\n", new CompileError(0, "IncorrectArgumentCount"));
         IcChip chip = new IcChip(IcChip.Ic10, LuaChip, "yield", null);
-        JObject reply = Answered(WriteParts.Of(new[] { "code" },
+        JObject reply = Answered(Write(new[] { "code" },
             _ => new IcSourceSetView(Console, chip.WithoutSource(), state, new List<SourceNote>())));
 
         Assert.Equal("ic10", (string?)reply["language"]);
@@ -117,7 +149,7 @@ public sealed class WriteChipTests
     [Fact]
     public void ALuaSourceJustWrittenIsCompiling()
     {
-        JObject lua = (JObject)Answered(WriteParts.Of(new[] { "code" }, _ => new IcSourceSetView(Console,
+        JObject lua = (JObject)Answered(Write(new[] { "code" }, _ => new IcSourceSetView(Console,
             new IcChip(IcChip.Lua, LuaChip, Script, Compiling), Clean, new List<SourceNote>())))["lua"]!;
 
         Assert.Equal(
@@ -141,7 +173,7 @@ public sealed class WriteChipTests
             {
                 new IcPinView(0, new ThingView(new ThingId(401), "StructureGasSensor", "Gas Sensor"), "Sensor", true)
             });
-        JObject reply = Answered(WriteParts.Of(new[] { "pins" }, _ => view));
+        JObject reply = Answered(Write(new[] { "pins" }, _ => view));
 
         Assert.Equal(new[] { "gateway_id", "reference_id", "has_data_network", "changes", "pins" },
             reply.Properties().Select(key => key.Name));
@@ -166,7 +198,7 @@ public sealed class WriteChipTests
     [Fact]
     public void ARestartAnswersTheActionAndTheLuaBlock()
     {
-        JObject reply = Answered(WriteParts.Of(new[] { "run" }, _ => new IcControlView(Console,
+        JObject reply = Answered(Write(new[] { "run" }, _ => new IcControlView(Console,
             new IcControlOutcome("restart", false, 0.0), Clean, new IcChip(IcChip.Lua, LuaChip, Script, Compiling))));
 
         Assert.Equal("restart", (string?)reply["action"]);

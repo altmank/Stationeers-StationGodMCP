@@ -16,7 +16,7 @@ namespace StationGodMCP.Api.Shared.Game;
 /// <summary>
 /// The writes on a circuit holder's chip, as the game's own tools make them: the source as the IC editor's export
 /// writes it (Source), the IC Housing's pins as its screws set them (Pins), and the chip's execution paused, resumed,
-/// stepped or restarted (Run).
+/// stepped or restarted (Run). Each checks what it can before anything acts and returns the act.
 /// </summary>
 internal static class ChipWrites
 {
@@ -28,16 +28,20 @@ internal static class ChipWrites
     /// 0; a Lua chip compiles on a worker thread (ChipProgram), so the reply may still say compiling. An IC10 source is
     /// stored with LF line ends and as ASCII, and the reply's warnings say so, and when it passes the in-game editor's
     /// limits (Ic10Source). The reply echoes the stored source only when echo asks: the caller sent it. Sends the chip
-    /// to clients.
+    /// to clients. Checks the chip and the source's size now and returns the write.
     /// </summary>
-    internal static IcSourceSetView Source(DeviceScope scope, IcTarget ic, string code, bool echo)
+    internal static Func<IcSourceSetView> Source(DeviceScope scope, IcTarget ic, string code, bool echo)
     {
         ProgrammableChip chip = ic.RequireChip();
         ChipProgram program = ChipProgram.Of(chip);
-        List<SourceNote> notes = program.Write(ic, chip, code);
-        IcChip written = program.Describe(ic, chip, 0);
-        return new IcSourceSetView(IcRuntime.PlaceOf(scope, ic), echo ? written : written.WithoutSource(),
-            IcRuntime.State(chip), notes);
+        program.RequireWritable(code);
+        return () =>
+        {
+            List<SourceNote> notes = program.Write(ic, chip, code);
+            IcChip written = program.Describe(ic, chip, 0);
+            return new IcSourceSetView(IcRuntime.PlaceOf(scope, ic), echo ? written : written.WithoutSource(),
+                IcRuntime.State(chip), notes);
+        };
     }
 
     /// <summary>
@@ -47,10 +51,10 @@ internal static class ChipWrites
     /// housing's data network (InputNetwork1.DataDeviceList) and, when the housing has no data network at all, gives
     /// the pinned device whatever it is. There is no pin cache to clear. On a host, the screwdriver raises one
     /// NetworkUpdateFlags bit per screw so that CircuitHousing.BuildUpdate sends that pin's reference id to clients.
-    /// Every pin is checked before any is written, so a refused write changes nothing. allowOffNetwork stores a device
-    /// that is not on the housing's data network.
+    /// Every pin is checked now, before any is written, and the returned write sets them. allowOffNetwork stores a
+    /// device that is not on the housing's data network.
     /// </summary>
-    internal static SetIcPinsView Pins(DeviceScope scope, IcTarget ic, JObject pins, bool allowOffNetwork)
+    internal static Func<SetIcPinsView> Pins(DeviceScope scope, IcTarget ic, JObject pins, bool allowOffNetwork)
     {
         CircuitHousing? housing = ic.Housing;
         if (housing == null)
@@ -63,6 +67,12 @@ internal static class ChipWrites
         PinCheck check = new PinCheck(scope, housing, allowOffNetwork);
         SortedDictionary<int, Device?> planned =
             check.PlanAll(pins, Math.Min(housing.Devices.Length, PinUpdateFlags.Length));
+        return () => SetPins(scope, ic, housing, planned);
+    }
+
+    private static SetIcPinsView SetPins(DeviceScope scope, IcTarget ic, CircuitHousing housing,
+        SortedDictionary<int, Device?> planned)
+    {
         List<PinChangeView> changes = new List<PinChangeView>(planned.Count);
         foreach (KeyValuePair<int, Device?> entry in planned)
         {
@@ -86,31 +96,52 @@ internal static class ChipWrites
     /// Pauses a chip, resumes it, steps it one instruction, or restarts a Lua chip. Pausing skips the holder's Execute
     /// (IcExecutionController's prefixes on CircuitHousing.Execute and SuitBase.Execute); a step pauses, then runs
     /// ProgrammableChip.Execute(1) once and sends the chip to clients. Pause and step are IC10 only; restart is Lua
-    /// only (ChipProgram).
+    /// only (ChipProgram). Checks the chip and the action now and returns the act. A step's compile check is made now
+    /// unless sourceFirst says a source is written before it, and again when it acts.
     /// </summary>
-    internal static IcControlView Run(DeviceScope scope, IcTarget ic, string action)
+    internal static Func<IcControlView> Run(DeviceScope scope, IcTarget ic, string action, bool sourceFirst)
     {
         ProgrammableChip chip = ic.RequireChip();
         ChipProgram program = ChipProgram.Of(chip);
-        double previousLine = chip.LineNumber;
         switch (action)
         {
             case "pause":
                 program.RequireSteppable("pause");
+                break;
+            case "resume":
+                break;
+            case "step":
+                program.RequireSteppable("step");
+                RequireSteppable(ic, chip, sourceFirst);
+                break;
+            case "restart":
+                program.RequireRestartable();
+                break;
+            default:
+                throw ApiErrors.InvalidArgument("run: must be pause, step, resume or restart.");
+        }
+
+        return () => Act(scope, ic, chip, program, action);
+    }
+
+    private static IcControlView Act(DeviceScope scope, IcTarget ic, ProgrammableChip chip, ChipProgram program,
+        string action)
+    {
+        double previousLine = chip.LineNumber;
+        switch (action)
+        {
+            case "pause":
                 IcExecutionController.Pause(ic.HolderId);
                 break;
             case "resume":
                 IcExecutionController.Resume(ic.HolderId);
                 break;
             case "step":
-                program.RequireSteppable("step");
                 Step(ic, chip);
                 break;
-            case "restart":
+            default:
                 program.Restart(ic, chip);
                 break;
-            default:
-                throw ApiErrors.InvalidArgument("run: must be pause, step, resume or restart.");
         }
 
         IcControlOutcome outcome = new IcControlOutcome(action, IcExecutionController.IsPaused(ic.HolderId),
@@ -122,7 +153,15 @@ internal static class ChipWrites
     // Refusals come before the pause, so a refused step leaves a running chip running.
     private static void Step(IcTarget ic, ProgrammableChip chip)
     {
-        if (chip.CompilationError)
+        RequireSteppable(ic, chip, sourceFirst: false);
+        IcExecutionController.Pause(ic.HolderId);
+        chip.Execute(1);
+        chip.SendUpdate();
+    }
+
+    private static void RequireSteppable(IcTarget ic, ProgrammableChip chip, bool sourceFirst)
+    {
+        if (!sourceFirst && chip.CompilationError)
         {
             throw ApiErrors.Refused("ic_compile_error", "run: the chip cannot be stepped while it has a compilation error.");
         }
@@ -133,10 +172,6 @@ internal static class ChipWrites
                 ? "run: the IC Housing must be on, powered, and operable before stepping."
                 : "run: the worn item needs a charged battery before its chip can be stepped.");
         }
-
-        IcExecutionController.Pause(ic.HolderId);
-        chip.Execute(1);
-        chip.SendUpdate();
     }
 
     /// <summary>The checks a pin's new device must pass, all made before any pin is written.</summary>
