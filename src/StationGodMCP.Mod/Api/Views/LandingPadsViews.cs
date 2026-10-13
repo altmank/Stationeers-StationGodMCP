@@ -134,7 +134,7 @@ internal sealed class ContactFitView
         Reason = verdict.Reason;
     }
 
-    /// <summary>The contact's id, as trader_contacts gives it.</summary>
+    /// <summary>The contact's id, as trade contacts gives it.</summary>
     public ThingId ReferenceId { get; }
 
     public string? Name { get; }

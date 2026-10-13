@@ -7,15 +7,14 @@ using StationGodMCP.Api.Shared;
 
 namespace StationGodMCP.Api.Views;
 
-/// <summary>trader_buy and trader_sell: the trade as a whole, and each line of it.</summary>
+/// <summary>trade buy and trade sell: the trade as a whole, and each line of it.</summary>
 internal sealed class TradeView
 {
-    internal TradeView(ThingId referenceId, string? name, bool dryRun, ThingId creditCardId, float creditsBefore,
+    internal TradeView(ThingId referenceId, string? name, ThingId creditCardId, float creditsBefore,
         float creditsAfter, BatchResultView items, List<DeliveredView> delivered, ThingId? gasAtmosphereId)
     {
         ReferenceId = referenceId;
         Name = name;
-        DryRun = dryRun;
         CreditCardId = creditCardId;
         CreditsBefore = Credits.Round(creditsBefore);
         CreditsAfter = Credits.Round(creditsAfter);
@@ -32,8 +31,6 @@ internal sealed class TradeView
 
     public string? Name { get; }
 
-    public bool DryRun { get; }
-
     /// <summary>The card paid from or into (CreditCard.Currency).</summary>
     public ThingId CreditCardId { get; }
 
@@ -49,14 +46,14 @@ internal sealed class TradeView
 
     public int ErrorCount { get; }
 
-    /// <summary>Bought goods, each where the game put it; empty for a sale or a dry run.</summary>
+    /// <summary>Bought goods, each where the game put it; empty for a sale or a report.</summary>
     public List<DeliveredView> Delivered { get; }
 
     /// <summary>The pad network's atmosphere, where bought gas goes and sold gas comes from; null without.</summary>
     public ThingId? GasAtmosphereId { get; }
 
     /// <summary>
-    /// A dry run's credits_after: the balance once every line that would go through has traded, less what they would
+    /// A report's credits_after: the balance once every line that would go through has traded, less what they would
     /// spend and plus what they would earn; a line that would go through only in part (a purchase that runs out of
     /// room) counts for its part, a refused line for nothing.
     /// </summary>
@@ -77,7 +74,7 @@ internal sealed class TradeView
     }
 }
 
-/// <summary>One line of a trade that went through (or, for a dry run, would).</summary>
+/// <summary>One line of a trade that went through (or, on a report, would).</summary>
 internal sealed class TradedView : BatchItemView
 {
     internal TradedView(int index, TradeLine line, bool buying, int quantity, float credits, int limitAfter)
@@ -104,19 +101,19 @@ internal sealed class TradedView : BatchItemView
 
     public float CreditsEach { get; }
 
-    /// <summary>Credits paid; trader_buy only.</summary>
+    /// <summary>Credits paid; trade buy only.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public float? CreditsSpent { get; }
 
-    /// <summary>Credits received; trader_sell only.</summary>
+    /// <summary>Credits received; trade sell only.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public float? CreditsEarned { get; }
 
-    /// <summary>The trader's stock after the purchase; trader_buy only.</summary>
+    /// <summary>The trader's stock after the purchase; trade buy only.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public int? StockAfter { get; }
 
-    /// <summary>How many more the trader wants after the sale; trader_sell only.</summary>
+    /// <summary>How many more the trader wants after the sale; trade sell only.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public int? WantedAfter { get; }
 }

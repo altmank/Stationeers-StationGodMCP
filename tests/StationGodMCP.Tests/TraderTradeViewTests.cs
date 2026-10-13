@@ -7,7 +7,7 @@ using Xunit;
 
 namespace StationGodMCP.Tests;
 
-/// <summary>trader_buy and trader_sell: the reply shapes the tool descriptions promise.</summary>
+/// <summary>trade buy and trade sell: the reply shapes the catalogue promises.</summary>
 public sealed class TraderTradeViewTests
 {
     private static readonly TradeLine Oxite = new TradeLine("Oxite", "ItemOxite", gas: false, creditsEach: 2.5f);
@@ -38,7 +38,7 @@ public sealed class TraderTradeViewTests
         Assert.Contains("\"credits_spent\":10.0,", WireCheck.New(new TradedView(0, Oxite, buying: true, 4, 10.000001f, 5)));
         Assert.Contains("\"credits\":1.2,",
             WireCheck.New(new NotTradedView(0, Oxite, 1, 1.20000076f, ApiErrors.Refused("trade_failed", "no"))));
-        TradeView trade = new TradeView(new ThingId(5), "Trader", dryRun: false, new ThingId(9), 16.2000008f,
+        TradeView trade = new TradeView(new ThingId(5), "Trader", new ThingId(9), 16.2000008f,
             1.20000076f, new BatchBuilder(0).Build(), new List<DeliveredView>(), null);
         Assert.Contains("\"credits_before\":16.2,\"credits_after\":1.2,", WireCheck.New(trade));
     }
@@ -49,10 +49,10 @@ public sealed class TraderTradeViewTests
         BatchBuilder batch = new BatchBuilder(1);
         batch.Failed(new NotTradedView(0, null, 0, 0f, ApiErrors.Refused("not_sold", "no")));
         TradeView trade = new TradeView(
-            new ThingId(5), "Trader", dryRun: true, new ThingId(9), 100f, 100f, batch.Build(),
+            new ThingId(5), "Trader", new ThingId(9), 100f, 100f, batch.Build(),
             new List<DeliveredView>(), null);
         Assert.Equal(
-            "{\"reference_id\":\"5\",\"name\":\"Trader\",\"dry_run\":true,\"credit_card_id\":\"9\","
+            "{\"reference_id\":\"5\",\"name\":\"Trader\",\"credit_card_id\":\"9\","
             + "\"credits_before\":100.0,\"credits_after\":100.0,\"results\":[{\"index\":0,\"ok\":false,\"name\":null,"
             + "\"prefab_name\":null,\"quantity\":0,\"credits\":0.0,"
             + "\"error\":{\"code\":\"not_sold\",\"message\":\"no\"}}],"

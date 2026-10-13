@@ -5,7 +5,7 @@ using Xunit;
 
 namespace StationGodMCP.Tests;
 
-/// <summary>trader_buy's dry run adds its lines up: credits, stock and room carry from line to line.</summary>
+/// <summary>trade buy's report adds its lines up: credits, stock and room carry from line to line.</summary>
 public sealed class BuyLedgerTests
 {
     private const string Coil = "coil";

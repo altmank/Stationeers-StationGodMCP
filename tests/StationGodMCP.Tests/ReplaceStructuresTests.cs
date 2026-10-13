@@ -456,10 +456,6 @@ public sealed class ToolRegistrationTests
         "read_console",
         "run_console_command",
         "show_preview",
-        "trader_buy",
-        "trader_contacts",
-        "trader_inventory",
-        "trader_sell",
         "undo_job"
     };
 

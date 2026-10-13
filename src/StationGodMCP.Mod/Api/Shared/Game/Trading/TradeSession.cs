@@ -10,51 +10,15 @@ using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Electrical;
 using Assets.Scripts.Objects.Entities;
 using Assets.Scripts.Objects.Items;
-using Newtonsoft.Json.Linq;
 using Objects.Electrical;
 using Objects.Items;
-using StationGodMCP.Api.Shared;
-using StationGodMCP.Api.Shared.Game;
+using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
-using StationGodMCP.Pure.Protocol;
 using TraderUI;
 using Trading;
 
-namespace StationGodMCP.Api;
-
-/// <summary>
-/// trader_buy: buy from a landed trader exactly as the trade window's Buy button does on the host
-/// (TraderCanvas.BuyItem, which calls TradeDataHelper.BuyItem). Writes; host only.
-///
-/// The game's buy (CODE, TraderUI.TradeDataHelper): the window opens only while the pad's trader is ready and trading
-/// with this contact (ITraderDestination.IsTraderReady, CurrentTradingContact) on a pad that is on and without error.
-/// TradeDataHelper.BuyItem refuses more than SellDataInstance.Stock, no card, or a cost above CreditCard.Currency.
-/// Goods go into the first empty tradable slot (ITradableInventory.IsSlotTradable) of the vending machines on the
-/// pad's data network (LandingPadNetwork.GetVendorsOnNetwork), then of the card holder's inventory, made one by one
-/// straight into the slot (TradeDataHelper.Make, OnServer.MoveToSlot) and stacked up to their maximum; it charges
-/// only for what it delivered and says the trade was incomplete when it ran out of room. Gas goes into the pad
-/// network's atmosphere (AtmosphericEventInstance.CreateAdd). The price is TransactionData.GetCost per unit, divided
-/// by DifficultySetting.RespawnStressTradePenalty while the player has respawn stress (TradeItem.SetTradeAmount).
-/// The game keeps no trader currency. The unused RequestTradeMessage path is not involved.
-/// </summary>
-internal static class TraderBuyApi
-{
-    internal static TradeView Handle(Args args) => TradeSession.Run(args, TradeSide.Buying);
-}
-
-/// <summary>
-/// trader_sell: sell to a landed trader exactly as the trade window's Sell button does on the host
-/// (TraderCanvas.SellItem, TradeDataHelper.SellItem). The mirror of trader_buy: the trader must still want the item
-/// (BuyDataInstance.Required); the goods are taken from the pad network's vending machines and then the card holder's
-/// inventory (TradeDataHelper.HandleSellItem destroys whole stacks and trims the last); gas is taken from the pad
-/// network's atmosphere. The price is BuyData's GetCost per unit, times the respawn stress penalty. The card must be
-/// held by a player or a vending machine (SellCard), and lines of one entry are sold together (SellRun).
-/// </summary>
-internal static class TraderSellApi
-{
-    internal static TradeView Handle(Args args) => TradeSession.Run(args, TradeSide.Selling);
-}
+namespace StationGodMCP.Api.Shared.Game.Trading;
 
 /// <summary>Which way a trade goes: its entries, its price and limit, and the game call that does it.</summary>
 internal abstract class TradeSide
@@ -81,7 +45,7 @@ internal abstract class TradeSide
     /// <summary>Refuses a card this side's game call cannot use.</summary>
     internal abstract void RequireUsable(CreditCard card);
 
-    /// <summary>Checks and trades (or, for a dry run, prices) every line of the request.</summary>
+    /// <summary>Checks and trades (or, for a report, prices) every line of the request.</summary>
     internal abstract BatchResultView Lines(TradeRequest request, TraderContact contact, CreditCard card,
         float stressPenalty);
 
@@ -111,7 +75,7 @@ internal abstract class TradeSide
         }
 
         // Line by line: the game's buy makes the goods straight into their slots and charges at once, so each line
-        // sees what the lines before it did. A dry run adds the lines up the same way (BuyDryRun).
+        // sees what the lines before it did. A report adds the lines up the same way (BuyDryRun).
         internal override BatchResultView Lines(TradeRequest request, TraderContact contact, CreditCard card,
             float stressPenalty)
         {
@@ -161,7 +125,7 @@ internal abstract class TradeSide
 /// <summary>One requested line: which entry (by prefab name or display name) and how many.</summary>
 internal sealed class TradeItemRequest
 {
-    private TradeItemRequest(string? prefabName, string? name, int quantity)
+    internal TradeItemRequest(string? prefabName, string? name, int quantity)
     {
         PrefabName = prefabName;
         Name = name;
@@ -173,35 +137,15 @@ internal sealed class TradeItemRequest
     internal string? Name { get; }
 
     internal int Quantity { get; }
-
-    internal static TradeItemRequest Parse(JToken token, int index)
-    {
-        if (!(token is JObject entry))
-        {
-            throw ApiErrors.InvalidArgument($"items[{index}] must be an object.");
-        }
-
-        Args args = new Args(entry, $"items[{index}]");
-        string? prefab = args.OptionalString("prefab_name");
-        string? name = args.OptionalString("name");
-        if (prefab == null && name == null)
-        {
-            throw ApiErrors.InvalidArgument($"{Vocabulary.Arg("items")}[{index}] needs {Vocabulary.Arg("name")}, " +
-                $"{Vocabulary.Arg("prefab_name")} or both.");
-        }
-
-        int quantity = args.OptionalInt("quantity", 1, int.MaxValue)
-            ?? throw ApiErrors.InvalidArgument($"items[{index}].quantity is required.");
-        return new TradeItemRequest(prefab, name, quantity);
-    }
 }
 
-/// <summary>A parsed trade request.</summary>
+/// <summary>
+/// A trade call's one trade: the contact, the card, the lines in order, and whether it only prices them (a report: no
+/// dry_run key; the call's confirm decides).
+/// </summary>
 internal sealed class TradeRequest
 {
-    internal const int MaximumItems = 32;
-
-    private TradeRequest(ThingId contact, ThingId? card, List<TradeItemRequest> items, bool dryRun)
+    internal TradeRequest(ThingId contact, ThingId? card, List<TradeItemRequest> items, bool dryRun)
     {
         Contact = contact;
         Card = card;
@@ -215,38 +159,25 @@ internal sealed class TradeRequest
 
     internal List<TradeItemRequest> Items { get; }
 
+    /// <summary>True on a report: every line is checked and priced, and nothing is traded.</summary>
     internal bool DryRun { get; }
-
-    internal static TradeRequest Parse(Args args)
-    {
-        JArray list = args.Array("items", MaximumItems);
-        List<TradeItemRequest> items = new List<TradeItemRequest>(list.Count);
-        for (int index = 0; index < list.Count; index++)
-        {
-            items.Add(TradeItemRequest.Parse(list[index], index));
-        }
-
-        return new TradeRequest(
-            args.ThingId("reference_id"),
-            args.OptionalThingId("credit_card_id"),
-            items,
-            args.OptionalBool("dry_run") ?? false);
-    }
 }
 
-/// <summary>Runs one trade request: checks the trader, pad and card, then each line in order.</summary>
+/// <summary>Runs one trade: the trader, pad and card checked, then each line in order.</summary>
 internal static class TradeSession
 {
-    internal static TradeView Run(Args args, TradeSide side)
+    /// <summary>Refused not_host on a multiplayer client: only the host trades (what trade buy and sell check first).</summary>
+    internal static void RequireHost()
     {
         if (NetworkManager.IsClient || !GameManager.RunSimulation)
         {
             throw ApiErrors.Refused("not_host", "This game is a multiplayer client; only the host trades.");
         }
+    }
 
-        TradeRequest request = TradeRequest.Parse(args);
-        TraderContact contact = RequireTradingContact(request.Contact);
-        CreditCard card = RequireCard(request.Card);
+    /// <summary>The one trade of a request, its contact and card already resolved: the card's own check, then each line.</summary>
+    internal static TradeView Run(TradeRequest request, TradeSide side, TraderContact contact, CreditCard card)
+    {
         side.RequireUsable(card);
         float creditsBefore = card.Currency;
         DeliverySnapshot delivery = DeliverySnapshot.Take(contact, card);
@@ -258,14 +189,31 @@ internal static class TradeSession
         float creditsAfter = request.DryRun
             ? TradeView.PredictedCredits(creditsBefore, results.Results, side.IsBuying)
             : card.Currency;
-        return new TradeView(request.Contact, Text.Plain(contact.DataInstance.DisplayName), request.DryRun,
+        return new TradeView(request.Contact, Text.Plain(contact.DataInstance.DisplayName),
             new ThingId(card.ReferenceId), creditsBefore, creditsAfter, results, delivered,
             gas == null ? (ThingId?)null : new ThingId(gas.ReferenceId));
     }
 
+    /// <summary>
+    /// The card an option names: the id the text gives, or card_not_found when the text is no reference id (the card
+    /// option as the trade whats read it). Left out, null: the card the player carries.
+    /// </summary>
+    internal static ThingId? CardId(string? text)
+    {
+        if (text == null)
+        {
+            return null;
+        }
+
+        return ThingId.TryRead(new JValue(text), out ThingId id)
+            ? id
+            : throw ApiErrors.Refused("card_not_found",
+                $"'{text}' is not a credit card: card is the card's reference id.");
+    }
+
     // As the trade window: a contact trading at a ready pad (LandingPadCenter.AttackWith opens it only then, and
     // refuses a pad that is off or in error).
-    private static TraderContact RequireTradingContact(ThingId id)
+    internal static TraderContact RequireTradingContact(ThingId id)
     {
         TraderContact? contact = null;
         foreach (TraderContact candidate in TraderContact.AllStationContacts)
@@ -337,8 +285,8 @@ internal static class TradeSession
         if (carried == null)
         {
             throw ApiErrors.Refused("no_credit_card", human != null
-                ? $"The player ({human.DisplayName}) carries no credit card; pass {Vocabulary.Arg("credit_card_id")}."
-                : $"{player.Absence} No player carries a credit card; pass {Vocabulary.Arg("credit_card_id")}.");
+                ? $"The player ({human.DisplayName}) carries no credit card; pass card."
+                : $"{player.Absence} No player carries a credit card; pass card.");
         }
 
         return carried!;
@@ -355,7 +303,7 @@ internal static class TradeSession
 }
 
 /// <summary>
-/// trader_buy's dry run: every line priced and checked in order against what the lines before it would leave (the
+/// trade buy's report: every line priced and checked in order against what the lines before it would leave (the
 /// card's credits, the trader's stock, the empty tradable slots), so it reports the lines a real run would refuse.
 /// </summary>
 internal static class BuyDryRun
@@ -439,7 +387,7 @@ internal static class BuyDryRun
 
 /// <summary>
 /// One line of a real purchase: find the entry, check it, then buy it through the game. Finding an entry and its
-/// price serve the dry run (BuyDryRun) and trader_sell (SellRun) too.
+/// price serve the report (BuyDryRun) and trade sell (SellRun) too.
 /// </summary>
 internal static class TradeLineRun
 {
@@ -473,7 +421,7 @@ internal static class TradeLineRun
         float creditsBefore = card.Currency;
         bool done = side.Execute(entry, card, contact, quantity, cost, out GameString? error);
         int traded = limitBefore - side.Limit(entry);
-        // Signed as the dry run reports it: a negative-price line (the trader pays you to take it) spends less than 0.
+        // Signed as the report reports it: a negative-price line (the trader pays you to take it) spends less than 0.
         float credits = side.IsBuying ? creditsBefore - card.Currency : card.Currency - creditsBefore;
         if (done)
         {
@@ -485,8 +433,8 @@ internal static class TradeLineRun
         batch.Failed(new NotTradedView(index, line, traded, credits, ApiErrors.Refused("trade_failed", message)));
     }
 
-    // By the entry's name as trader_inventory gives it first, prefab_name only to break a tie (a trader can sell two
-    // entries of one prefab, e.g. two ItemGasCanisterEmpty); by prefab_name alone when no name is given. An entry that
+    // By the entry's name as trade inventory gives it first, prefab only to break a tie (a trader can sell two
+    // entries of one prefab, e.g. two ItemGasCanisterEmpty); by prefab alone when no name is given. An entry that
     // is still ambiguous is refused, never picked.
     internal static bool TryFind(TradeSide side, TraderContact contact, TradeItemRequest item,
         out TransactionDataInstance? entry, out ApiException? refusal)
@@ -501,8 +449,7 @@ internal static class TradeLineRun
                 $"The trader does not {(side.IsBuying ? "sell" : "buy")} {Wanted(item)}."),
             _ => ApiErrors.Refused(
                 "ambiguous_item",
-                $"{matches.Count} of the trader's entries are {Wanted(item)}; give both {Vocabulary.Arg("name")} and " +
-                $"{Vocabulary.Arg("prefab_name")}."),
+                $"{matches.Count} of the trader's entries are {Wanted(item)}; give both name and prefab."),
         };
         return entry != null;
     }

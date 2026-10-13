@@ -7,7 +7,7 @@ namespace StationGodMCP.Pure;
 
 /// <summary>
 /// How many units a trader would accept from what is held, counted as the game's sell counts them
-/// (TradeDataHelper.GetSellItemQuantity and HandleSellItem): trader_inventory's have.
+/// (TradeDataHelper.GetSellItemQuantity and HandleSellItem): trade inventory's have.
 /// </summary>
 internal static class SellHoldings
 {

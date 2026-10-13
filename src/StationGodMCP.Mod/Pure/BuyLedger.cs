@@ -124,7 +124,7 @@ internal abstract class BuyVerdict
 }
 
 /// <summary>
-/// trader_buy's dry run: the lines of one call added up as a real run would meet them, one after the other. Each line
+/// trade buy's report: the lines of one call added up as a real run would meet them, one after the other. Each line
 /// is judged with the game's own checks in the game's order (TradeDataHelper.BuyItem: stock, then credits, then a free
 /// slot) against what the lines before it left: the card's credits, each entry's stock and the destination's empty
 /// slots. What a line takes is taken, so a later line sees it.

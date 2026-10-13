@@ -101,24 +101,6 @@ internal static class ReplyShapes
         {
             PlaceReportInto(S<ShowPreviewView>()).List("ShowPreviewView.Notes", 0)
         };
-        foreach (string tool in new[] { "trader_buy", "trader_sell" })
-        {
-            shapes[tool] = new[]
-            {
-                S<TradeView>().List("TradeView.Results", 4).Holds("TradeView.Results", typeof(TradedView))
-                    .List("TradeView.Delivered", 4)
-            };
-        }
-
-        shapes["trader_contacts"] = new[]
-        {
-            S<TraderContactsView>().List("TraderContactsView.Contacts", W.TraderContacts).List("TraderContactsView.Dishes", 2)
-        };
-        shapes["trader_inventory"] = new[]
-        {
-            S<TraderInventoryView>().List("TraderInventoryView.Contacts", W.TraderContacts).List("TraderStockView.Buys", 8)
-                .List("TraderBuysView.Conditions", 1).List("TraderStockView.Sells", 8)
-        };
         shapes["undo_job"] = new[]
         {
             // The plan with the removal's and the placement's dry runs (no piece runs: a structure was removed).

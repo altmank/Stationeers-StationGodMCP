@@ -3,27 +3,30 @@
 using System;
 using System.Collections.Generic;
 using Assets.Scripts;
+using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Electrical;
 using Assets.Scripts.Objects.Motherboards;
 using Assets.Scripts.Objects.Pipes;
+using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
+using StationGodMCP.Api.Shared.Game.Trading;
 using StationGodMCP.Api.Views;
-using Trading;
+using StationGodMCP.Pure.Verbs;
 using UnityEngine;
 
-namespace StationGodMCP.Api;
+namespace StationGodMCP.Verbs;
 
 /// <summary>
-/// trader_contacts: trader contacts in the sky (TraderContact.AllStationContacts) and where each satellite dish
-/// points, so a dish can be aimed from outside the game. Device logic reports only the one contact a dish is locked
-/// onto (SignalID) and nothing reports where a dish points. The game scores every contact against
+/// trade contacts (catalogue trade.json): trader contacts in the sky (TraderContact.AllStationContacts) and where each
+/// satellite dish points, so a dish can be aimed from outside the game. Device logic reports only the one contact a
+/// dish is locked onto (SignalID) and nothing reports where a dish points. The game scores every contact against
 /// SatelliteDish.DishForward: angle error = acos(dot(DishForward, contact.Angle)) (SatelliteDish.ScanForDishContacts).
-/// Read only.
+/// No options. Read only.
 /// </summary>
-internal static class TraderContactsApi
+internal static class TradeContacts
 {
-    internal static TraderContactsView Handle(Args args)
+    internal static VerbOutcome Run(TradeContactsOptions options)
     {
         float now = GameManager.GameTime;
         List<TraderContactView> contacts = new List<TraderContactView>();
@@ -41,7 +44,8 @@ internal static class TraderContactsApi
             }
         }
 
-        return new TraderContactsView(now, contacts, dishes);
+        return new VerbOutcome.Answered(
+            JObject.FromObject(new TraderContactsView(now, contacts, dishes), ApiJson.Fresh()));
     }
 
     // TraderContact.EndLifetime = InitialLifeTime (game time at spawn or load) + Lifetime; 0 once the slot ended it.
@@ -65,51 +69,4 @@ internal static class TraderContactsApi
             (int)GameMembers.DishMinWattage.GetValue(dish)!, (int)GameMembers.DishMaxWattage.GetValue(dish)!,
             (float)GameMembers.DishFieldOfView.GetValue(dish)!);
     }
-}
-
-/// <summary>The trader contacts, by id, and how the trader tools name one.</summary>
-internal static class Contacts
-{
-    /// <summary>Whether the dish turns now: SatelliteDish.CanRotate's three conditions, read one by one.</summary>
-    internal static DishReadiness Readiness(SatelliteDish dish) =>
-        new DishReadiness(dish.IsStructureCompleted, dish.Powered, dish.OnOff);
-
-    /// <summary>Every contact in the sky, by reference id.</summary>
-    internal static List<TraderContact> All()
-    {
-        List<TraderContact> contacts = new List<TraderContact>(TraderContact.AllStationContacts.Count);
-        foreach (TraderContact contact in TraderContact.AllStationContacts)
-        {
-            if (contact != null)
-            {
-                contacts.Add(contact);
-            }
-        }
-
-        contacts.Sort(static (a, b) => a.ReferenceId.CompareTo(b.ReferenceId));
-        return contacts;
-    }
-
-    internal static TraderContact? Find(long id)
-    {
-        foreach (TraderContact contact in TraderContact.AllStationContacts)
-        {
-            if (contact != null && contact.ReferenceId == id)
-            {
-                return contact;
-            }
-        }
-
-        return null;
-    }
-
-    internal static ContactIdentity Identity(TraderContact contact)
-    {
-        TraderDataInstance? data = contact.DataInstance;
-        Vector2 pad = contact.RequiredPadSize();
-        return new ContactIdentity(new ThingId(contact.ReferenceId), data?.TraderData?.Id, data?.DisplayName,
-            contact.ShuttleType.ToString(), new[] { (int)pad.x, (int)pad.y });
-    }
-
-    internal static float[] Vector(Vector3 vector) => new[] { vector.x, vector.y, vector.z };
 }

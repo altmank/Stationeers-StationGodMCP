@@ -7,7 +7,7 @@ using Xunit;
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// trader_sell's bookkeeping across the lines of one call: no unit counted twice, and a replay of the game's own walk
+/// trade sell's bookkeeping across the lines of one call: no unit counted twice, and a replay of the game's own walk
 /// that finds a sale which would be paid for goods it does not remove.
 /// </summary>
 public sealed class SellClaimsTests

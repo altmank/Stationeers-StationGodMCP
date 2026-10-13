@@ -6,13 +6,12 @@ using Assets.Scripts;
 using Assets.Scripts.Atmospherics;
 using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Items;
-using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using Trading;
 using GameString = Assets.Scripts.Localization2.GameString;
 
-namespace StationGodMCP.Api;
+namespace StationGodMCP.Api.Shared.Game.Trading;
 
 /// <summary>
 /// trader_sell's lines, run so that no unit is sold twice.
@@ -86,7 +85,6 @@ internal static class SellRun
         return group;
     }
 }
-
 /// <summary>One requested sell line that passed its checks.</summary>
 internal sealed class SellLine
 {
@@ -105,7 +103,6 @@ internal sealed class SellLine
 
     internal float Credits => Quantity * Line.CreditsEach;
 }
-
 /// <summary>The lines of one call that sell the same trader entry: checked one by one, sold in one game call.</summary>
 internal sealed class SellGroup
 {
@@ -197,7 +194,6 @@ internal sealed class SellGroup
         }
     }
 }
-
 /// <summary>Each line's result, put back in the order the lines were given.</summary>
 internal sealed class LineOutcomes
 {
@@ -229,7 +225,6 @@ internal sealed class LineOutcomes
         return batch.Build();
     }
 }
-
 /// <summary>
 /// What a sale can take, as the game's sell finds it: the goods on the pad network's vending machines and in the card
 /// holder's inventory (TradeDataHelper.HandleSellItem; the trade window's own count, GetSellItemQuantity, reads the
@@ -344,7 +339,6 @@ internal sealed class SellStock
         return 1f;
     }
 }
-
 /// <summary>
 /// The card a sale may use. TradeDataHelper.SellItem hands HandleSellItem the card's root parent as an
 /// ITradableInventory, which only a player (Human) or a vending machine is, and HandleSellItem reads its contents

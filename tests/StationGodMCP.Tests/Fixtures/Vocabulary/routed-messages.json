@@ -127,12 +127,6 @@
     "show_preview",
     "show_preview takes placements, not a job_id."
   ],
-  "Api/TraderTrade.cs": [
-    "The player ({human.DisplayName}) carries no credit card; pass credit_card_id.",
-    "items[{index}] needs name, prefab_name or both.",
-    "{matches.Count} of the trader's entries are {Wanted(item)}; give both name and prefab_name.",
-    "{player.Absence} No player carries a credit card; pass credit_card_id."
-  ],
   "Api/Views/GasCheckViews.cs": [
     " Further pipe jobs are refused until the world is loaded again, or until a run acknowledges this loss (acknowledge_gas_lost with this job's id, only after the user has agreed).",
     " Up to {Mol(release)} mol may leak out once the networks the plan leaves over their weakest pipe burst (allow_burst, will_burst); that release is expected and not put back."

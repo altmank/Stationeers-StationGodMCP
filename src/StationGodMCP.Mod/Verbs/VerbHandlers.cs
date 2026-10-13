@@ -93,5 +93,9 @@ internal static class VerbHandlers
         VerbHandler.For(PlanMiningOptions.Spec, PlanMiningOptions.Bind, PlanMining.Run),
         VerbHandler.For(PlanAimOptions.Spec, PlanAimOptions.Bind, PlanAim.Run),
         VerbHandler.For(PlanFlightOptions.Spec, PlanFlightOptions.Bind, PlanFlight.Run),
+        VerbHandler.For(TradeContactsOptions.Spec, TradeContactsOptions.Bind, TradeContacts.Run),
+        VerbHandler.For(TradeInventoryOptions.Spec, TradeInventoryOptions.Bind, TradeInventory.Run),
+        VerbHandler.For(TradeBuyOptions.Spec, TradeBuyOptions.Bind, TradeBuy.Run),
+        VerbHandler.For(TradeSellOptions.Spec, TradeSellOptions.Bind, TradeSell.Run),
     });
 }

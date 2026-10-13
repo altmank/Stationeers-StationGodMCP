@@ -31,7 +31,7 @@ internal sealed class SellGood
 }
 
 /// <summary>
-/// What the earlier lines of one trader_sell call have promised, so no unit is counted twice: units per good, taken in
+/// What the earlier lines of one trade sell call have promised, so no unit is counted twice: units per good, taken in
 /// the order the game's sell walks the goods, and moles of the pad network's gas.
 /// </summary>
 internal sealed class SellClaims

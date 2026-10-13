@@ -36,13 +36,9 @@ internal static class ApiHost
         {
             ["run_console_command"] = static args => RunConsoleCommandApi.Handle(args),
             ["read_console"] = static args => ReadConsoleApi.Handle(args),
-            ["trader_contacts"] = static args => TraderContactsApi.Handle(args),
-            ["trader_inventory"] = static args => TraderInventoryApi.Handle(args),
             ["show_preview"] = static args => ShowPreviewApi.Handle(args),
             ["highlight"] = static args => HighlightApi.Handle(args),
             ["undo_job"] = static args => UndoJobApi.Handle(args),
-            ["trader_buy"] = static args => TraderBuyApi.Handle(args),
-            ["trader_sell"] = static args => TraderSellApi.Handle(args),
             ["mod_info"] = static args => ModInfoApi.Handle(args),
             ["profiling"] = static args => ProfilingApi.Handle(args)
         };

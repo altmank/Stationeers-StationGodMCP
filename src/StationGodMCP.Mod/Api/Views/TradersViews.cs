@@ -5,7 +5,7 @@ using StationGodMCP.Api.Shared;
 
 namespace StationGodMCP.Api.Views;
 
-/// <summary>trader_contacts: every trader contact in the sky, and every satellite dish with where it points.</summary>
+/// <summary>trade contacts: every trader contact in the sky, and every satellite dish with where it points.</summary>
 internal sealed class TraderContactsView
 {
     internal TraderContactsView(float gameTime, List<TraderContactView> contacts, List<DishView> dishes)
@@ -308,7 +308,7 @@ internal sealed class DishNowView
     public float? ErrorDeg { get; }
 }
 
-/// <summary>trader_inventory: what each trader buys and sells, at what price and how many.</summary>
+/// <summary>trade inventory: what each trader buys and sells, at what price and how many.</summary>
 internal sealed class TraderInventoryView
 {
     internal TraderInventoryView(List<TraderStockView> contacts)

@@ -697,7 +697,7 @@
           },
           "card": {
             "type": "string",
-            "description": "inventory: The card whose holder's goods count; default the player's. buy: The credit card; default the one the player carries. sell:"
+            "description": "inventory: The card whose holder's goods count; default the player's. buy: The credit card; default the one the player carries. sell: The credit card paid into; default the one the player carries."
           },
           "items": {
             "type": "array",

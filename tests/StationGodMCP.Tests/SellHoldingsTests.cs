@@ -6,7 +6,7 @@ using Xunit;
 
 namespace StationGodMCP.Tests;
 
-/// <summary>trader_inventory's have: what a trader would accept from what is held, counted as its sell counts.</summary>
+/// <summary>trade inventory's have: what a trader would accept from what is held, counted as its sell counts.</summary>
 public sealed class SellHoldingsTests
 {
     private static SellGood Good(long id, int units = 1, bool accepted = true, bool destroyed = false) =>

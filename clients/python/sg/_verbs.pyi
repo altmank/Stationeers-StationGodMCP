@@ -3155,11 +3155,21 @@ def trade(what: Literal['inventory'], *,
     card: str = None,  # The card whose holder's goods count; default the player's.
 ) -> dict:  # main list: r['contacts']; iterating or indexing it walks every page, in order
     """What each contact buys and sells: prices, stock, conditions, and what you hold that meets them.
-    Reply:
+    Reply, one of:
+    (Inventory)
       contacts: list[{reference_id: str, trader: str | None, display_name: str | None, shuttle: str, pad_size_tiles: list[int], contacted: bool, buys:
           list[{name: str | None, prefab_name: str | None, credits_each: float, wanted: int, gas: bool, conditions: list[str | None], have: int,
           sellable: int | None}], sells: list[{name: str | None, prefab_name: str | None, credits_each: float, stock: int, gas: bool, details: str |
           None}]}]
+    (BatchResult)
+      results: list[{index: int, ok: bool, reference_id: str, contacts: list[{reference_id: str, trader: str | None, display_name: str | None,
+          shuttle: str, pad_size_tiles: list[int], contacted: bool, buys: list[{name: str | None, prefab_name: str | None, credits_each: float,
+          wanted: int, gas: bool, conditions: list[str | None], have: int, sellable: int | None}], sells: list[{name: str | None, prefab_name: str |
+          None, credits_each: float, stock: int, gas: bool, details: str | None}]}]} | {index: int, ok: bool, reference_id: str | None, error: Error}]
+      count: int
+      success_count: int
+      error_count: int
+    Types: Error = {code: str, message: str, data: Any | None, see: {tool: str | None, topic: str, subtopic: str | None} | None}
     Example: sg.trade('inventory', id='7')
     In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
     """
@@ -3167,16 +3177,16 @@ def trade(what: Literal['inventory'], *,
 @overload
 def trade(what: Literal['buy'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
-    id: str | list[str],  # The trader contact.
+    id: str | list[str],  # The trader contact. A list is one row per id; a contact that is not landed answers an error row, and the others still trade.
     card: str = None,  # The credit card; default the one the player carries.
     items: list,  # Up to 32 lines {name or prefab, quantity}, in order.
 ) -> dict:  # main list: r['delivered']; iterating or indexing it walks every page, in order
     """Buy from the landed trader as the trade window's Buy does.
     Reports in a report run; acts in a confirmed run.
-    Reply:
+    Reply, one of:
+    (Trade)
       reference_id: str
       name: str | None
-      dry_run: bool
       credit_card_id: str
       credits_before: float
       credits_after: float
@@ -3188,6 +3198,22 @@ def trade(what: Literal['buy'], *,
       error_count: int
       delivered: list[{reference_id: str, slot: int, item: Thing, quantity: float}]
       gas_atmosphere_id: str | None
+    (BatchResult)
+      results: list[{index: int, ok: bool, reference_id: str, name: str | None, credit_card_id: str, credits_before: float, credits_after: float,
+          results: list[{index: int, ok: bool, name: str | None, prefab_name: str | None, quantity: int, credits: float, error: Error} | {index: int,
+          ok: bool, name: str | None, prefab_name: str | None, gas: bool, quantity: int, credits_each: float, credits_spent: float | None,
+          credits_earned: float | None, stock_after: int | None, wanted_after: int | None} | {index: int, ok: bool, error: Error}], count: int,
+          success_count: int, error_count: int, delivered: list[{reference_id: str, slot: int, item: Thing, quantity: float}], gas_atmosphere_id: str
+          | None} | {index: int, ok: bool, reference_id: str | None, error: Error}]
+      count: int
+      success_count: int
+      error_count: int
+    (TradesReport)
+      trades: list[{reference_id: str, name: str | None, credit_card_id: str, credits_before: float, credits_after: float, results: list[{index: int,
+          ok: bool, name: str | None, prefab_name: str | None, quantity: int, credits: float, error: Error} | {index: int, ok: bool, name: str | None,
+          prefab_name: str | None, gas: bool, quantity: int, credits_each: float, credits_spent: float | None, credits_earned: float | None,
+          stock_after: int | None, wanted_after: int | None} | {index: int, ok: bool, error: Error}], count: int, success_count: int, error_count:
+          int, delivered: list[{reference_id: str, slot: int, item: Thing, quantity: float}], gas_atmosphere_id: str | None}]
     Types: Error = {code: str, message: str, data: Any | None, see: {tool: str | None, topic: str, subtopic: str | None} | None}; Thing =
         {reference_id: str, prefab_name: str | None, display_name: str | None}
     Example: sg.trade('buy', id='7', items=[{'prefab': 'ItemIronIngot', 'quantity': 50}])
@@ -3197,16 +3223,16 @@ def trade(what: Literal['buy'], *,
 @overload
 def trade(what: Literal['sell'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
-    id: str | list[str],  # The trader contact.
+    id: str | list[str],  # The trader contact. A list is one row per id; a contact that is not landed answers an error row, and the others still trade.
     card: str = None,  # The credit card paid into; default the one the player carries.
     items: list,  # Up to 32 lines {name or prefab, quantity}.
 ) -> dict:  # main list: r['delivered']; iterating or indexing it walks every page, in order
     """Sell to the landed trader as the trade window's Sell does.
     Reports in a report run; acts in a confirmed run.
-    Reply:
+    Reply, one of:
+    (Trade)
       reference_id: str
       name: str | None
-      dry_run: bool
       credit_card_id: str
       credits_before: float
       credits_after: float
@@ -3218,6 +3244,22 @@ def trade(what: Literal['sell'], *,
       error_count: int
       delivered: list[{reference_id: str, slot: int, item: Thing, quantity: float}]
       gas_atmosphere_id: str | None
+    (BatchResult)
+      results: list[{index: int, ok: bool, reference_id: str, name: str | None, credit_card_id: str, credits_before: float, credits_after: float,
+          results: list[{index: int, ok: bool, name: str | None, prefab_name: str | None, quantity: int, credits: float, error: Error} | {index: int,
+          ok: bool, name: str | None, prefab_name: str | None, gas: bool, quantity: int, credits_each: float, credits_spent: float | None,
+          credits_earned: float | None, stock_after: int | None, wanted_after: int | None} | {index: int, ok: bool, error: Error}], count: int,
+          success_count: int, error_count: int, delivered: list[{reference_id: str, slot: int, item: Thing, quantity: float}], gas_atmosphere_id: str
+          | None} | {index: int, ok: bool, reference_id: str | None, error: Error}]
+      count: int
+      success_count: int
+      error_count: int
+    (TradesReport)
+      trades: list[{reference_id: str, name: str | None, credit_card_id: str, credits_before: float, credits_after: float, results: list[{index: int,
+          ok: bool, name: str | None, prefab_name: str | None, quantity: int, credits: float, error: Error} | {index: int, ok: bool, name: str | None,
+          prefab_name: str | None, gas: bool, quantity: int, credits_each: float, credits_spent: float | None, credits_earned: float | None,
+          stock_after: int | None, wanted_after: int | None} | {index: int, ok: bool, error: Error}], count: int, success_count: int, error_count:
+          int, delivered: list[{reference_id: str, slot: int, item: Thing, quantity: float}], gas_atmosphere_id: str | None}]
     Types: Error = {code: str, message: str, data: Any | None, see: {tool: str | None, topic: str, subtopic: str | None} | None}; Thing =
         {reference_id: str, prefab_name: str | None, display_name: str | None}
     Example: sg.trade('sell', id='7', items=[{'prefab': 'ItemGoldIngot', 'quantity': 20}])

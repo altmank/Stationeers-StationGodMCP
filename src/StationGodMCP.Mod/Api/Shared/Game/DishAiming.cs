@@ -7,6 +7,7 @@ using Assets.Scripts.Objects.Motherboards;
 using Assets.Scripts.Util;
 using Objects.Electrical;
 using StationGodMCP.Api.Shared;
+using StationGodMCP.Api.Shared.Game.Trading;
 using StationGodMCP.Api.Views;
 using UnityEngine;
 
