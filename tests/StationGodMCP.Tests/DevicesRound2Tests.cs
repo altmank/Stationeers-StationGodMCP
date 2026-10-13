@@ -153,90 +153,6 @@ public sealed class DevicesRound2Tests
         Assert.Equal(JTokenType.Null, json["compile_error_type"]!.Type);
     }
 
-    [Theory]
-    [InlineData("write_logic", """{"reference_id":"99999999","logic_type":"On","value":1e309}""", "value")]
-    [InlineData("write_logic", """{"reference_id":"99999999","logic_type":"On","value":-1e309}""", "value")]
-    [InlineData("write_memory", """{"reference_id":"939","start_address":20,"values":[1e309]}""", "values[0]")]
-    public void ANumberPastADoubleIsRefused(string tool, string arguments, string path)
-    {
-        Assert.StartsWith($"Argument '{path}' must be a finite number",
-            Assert.Single(Problems(tool, arguments)));
-    }
-
-    [Theory]
-    [InlineData("set_ic_pins", """{"reference_id":"939","pins":{"d5":"1016","d5":"1026"}}""", "pins.d5")]
-    [InlineData("read_logic", """{"reference_id":"939","reference_id":"1016","logic_type":"PrefabHash"}""", "reference_id")]
-    public void AKeyGivenTwiceIsRefused(string tool, string arguments, string path)
-    {
-        Assert.Equal($"Argument '{path}' is given twice; name each key once.", Assert.Single(Problems(tool, arguments)));
-    }
-
-    [Theory]
-    [InlineData("1e2")]
-    [InlineData("3.0")]
-    [InlineData("7")]
-    public void AnIntegerMayHaveAnExponentOrAZeroFraction(string written)
-    {
-        string arguments = $$"""{"reference_id":"939","start_address":{{written}},"count":1}""";
-        Assert.Empty(Problems("read_memory", arguments));
-    }
-
-    [Fact]
-    public void AFractionIsStillNoInteger()
-    {
-        Assert.Equal("Argument 'start_address' must be an integer.",
-            Assert.Single(Problems("read_memory", """{"reference_id":"939","start_address":2.5,"count":1}""")));
-    }
-
-    [Fact]
-    public void AFractionalLogicTypeGetsNoQuoteHint()
-    {
-        Assert.Equal("Argument 'logic_type' must be a string or an integer.",
-            Assert.Single(Problems("read_logic", """{"reference_id":"939","logic_type":12.5}""")));
-    }
-
-    [Theory]
-    [InlineData("""{"reference_id":"939","action":"step"}""")]
-    [InlineData("""{"reference_id":"939","action":"Pause"}""")]
-    [InlineData("""{"reference_id":"939","action":" resume "}""")]
-    public void AnEnumTakesAnyCaseAsTheModDoes(string arguments)
-    {
-        Assert.Empty(Problems("control_ic_execution", arguments));
-    }
-
-    [Fact]
-    public void AValueTheEnumDoesNotListIsRefused()
-    {
-        Assert.Equal("Argument 'action' must be one of pause, step, resume, restart; did you mean 'pause'?",
-            Assert.Single(Problems("control_ic_execution", """{"reference_id":"939","action":"paus"}""")));
-        Assert.Equal("Argument 'action' must be one of pause, step, resume, restart.",
-            Assert.Single(Problems("control_ic_execution", """{"reference_id":"939","action":"bogus"}""")));
-    }
-
-    [Fact]
-    public void ANumberEnumComparesValues()
-    {
-        Assert.Empty(Problems("paste_blueprint", """{"name":"x","anchor":[0,0,0],"rotation":90.0}"""));
-        Assert.StartsWith("Argument 'rotation' must be one of 0, 90, 180, 270",
-            Assert.Single(Problems("paste_blueprint", """{"name":"x","anchor":[0,0,0],"rotation":45}""")));
-    }
-
-    [Fact]
-    public void AnEnumInsideAOneOfStillTakesTheOtherForm()
-    {
-        Assert.Empty(Problems("move_item", """{"reference_id":"1","to_id":"2","to_slot":"AUTO"}"""));
-        Assert.StartsWith("Argument 'to_slot' must be one of auto",
-            Assert.Single(Problems("move_item", """{"reference_id":"1","to_id":"2","to_slot":"first"}""")));
-    }
-
-    [Theory]
-    [InlineData("water_sources", """{"min_moles":2}""")]
-    [InlineData("thing_health", """{"min_ratio":0.25}""")]
-    public void TheDocumentedOldNamesAreDeclared(string tool, string arguments)
-    {
-        Assert.Empty(Problems(tool, arguments));
-    }
-
     [Fact]
     public async Task ARepeatedToolNameIsAnInvalidRequest()
     {
@@ -265,12 +181,6 @@ public sealed class DevicesRound2Tests
         JsonElement structured = reply.GetProperty("result").GetProperty("structuredContent");
 
         Assert.Equal("invalid_argument", structured.GetProperty("code").GetString());
-    }
-
-    private static IReadOnlyList<string> Problems(string tool, string arguments)
-    {
-        using JsonDocument document = JsonDocument.Parse(arguments);
-        return ArgumentCheck.Problems(Program.InputSchemas[tool], document.RootElement);
     }
 
     private static async Task<JsonElement> Handle(string line)

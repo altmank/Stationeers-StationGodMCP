@@ -52,31 +52,4 @@ public sealed class DevicesLiveTestTests
         WireCheck.Same(new { index = (int?)4, name = "Red", is_default = false }, ThingColorView.Of(4, "Red", false));
     }
 
-    [Fact]
-    public void AFailedLogicEntryNamesItsDeviceAndType()
-    {
-        var old = new
-        {
-            gateway_id = "world",
-            results = new List<object>
-            {
-                new
-                {
-                    index = 0, ok = false, reference_id = "377", logic_type = new { id = (ushort)12, name = "Power" },
-                    error = new { code = "logic_not_writable", message = "no" }
-                },
-                new
-                {
-                    index = 1, ok = false, reference_id = (string?)null, logic_type = (object?)null,
-                    error = new { code = "invalid_argument", message = "bad" }
-                }
-            },
-            count = 2, success_count = 0, error_count = 2
-        };
-        BatchBuilder batch = new BatchBuilder(2);
-        batch.Failed(new LogicFailedItemView(0, new ThingId(377), new LogicTypeView(12, "Power"),
-            ApiErrors.Refused("logic_not_writable", "no")));
-        batch.Failed(new LogicFailedItemView(1, null, null, ApiErrors.InvalidArgument("bad")));
-        WireCheck.Same(old, new LogicBatchView("world", batch.Build()));
-    }
 }

@@ -162,7 +162,7 @@ public sealed class CostlySkippingTests
 
     private static ShapeRequest Lenient(JObject shape) => ShapeRequest.Lenient(shape)!;
 
-    // A reply of each list form as find damaged (scan) and thing_health (network, many) build it: a structure with networks (unless skipped), an item without.
+    // A reply of each list form as find damaged (scan) and inspect health (network, many) build it: a structure with networks (unless skipped), an item without.
     private static object Reply(string form, bool withNetworks)
     {
         List<HealthView> views = new List<HealthView>
@@ -171,25 +171,26 @@ public sealed class CostlySkippingTests
             Health(701, "ItemKitPipe", structure: false, withNetworks),
             Health(702, "StructureCableStraight", structure: true, withNetworks)
         };
-        PageRequest page = PageRequest.From(new Args(new JObject { ["limit"] = 3 }), 200, 500);
+        JsonSerializer json = ApiJson.Fresh();
         switch (form)
         {
             case "scan":
-                JsonSerializer serializer = ApiJson.Fresh();
                 return ListReply.Of("things", views, new Pure.Verbs.Paging(3, 0, ListOrder.Nearest),
-                    view => JToken.FromObject(view, serializer),
+                    view => JToken.FromObject(view, json),
                     ReplyFields.Of(("structures", 2), ("broken", 0), ("scanned", 40), ("min_damage_ratio", 0.0),
                         ("local_player", new LocalPlayerView(new ThingId(1), "Player", new PositionView(0, 0, 0)))));
             case "network":
-                return new HealthNetworkView(new ThingId(900), "pipe", 12, false, Slice<HealthView>.Page(views, page, 3),
-                    BrokenNeighbourReport.None);
+                return ListReply.Of("things", views, new Pure.Verbs.Paging(3, 0, ListOrder.Nearest),
+                    view => JToken.FromObject(view, json),
+                    ReplyFields.Of(("network_id", "900"), ("kind", "pipe"), ("pieces", 12), ("damaged_only", false),
+                        ("warning", null), ("broken_neighbour_count", 0), ("broken_neighbours", null)));
             case "many":
-                BatchBuilder batch = new BatchBuilder(4);
-                batch.Succeeded(new HealthItemView(0, views[0]));
-                batch.Failed(1, new ApiException("thing_not_found", "No thing with reference id 5."));
-                batch.Succeeded(new HealthItemView(2, views[1]));
-                batch.Succeeded(new HealthItemView(3, views[2]));
-                return batch.Build();
+                Rows rows = new Rows();
+                rows.Succeeded("700", JObject.FromObject(views[0], json));
+                rows.Failed("5", new VerbError("thing_not_found", "No thing with reference id 5."));
+                rows.Succeeded("701", JObject.FromObject(views[1], json));
+                rows.Succeeded("702", JObject.FromObject(views[2], json));
+                return rows.Reply();
             default:
                 throw new ArgumentException(form);
         }

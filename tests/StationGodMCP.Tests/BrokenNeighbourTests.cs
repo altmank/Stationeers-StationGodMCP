@@ -80,52 +80,6 @@ public sealed class BrokenNeighbourTests
             BrokenNeighbourSearch.Warning(3, "cable", "members", "broken_neighbours with summarize true"));
     }
 
-    [Fact]
-    public void TheHealthNetworkFormWiresTheBrokenNeighbours()
-    {
-        BrokenNeighbourView junction = new BrokenNeighbourView(
-            new ThingView(new ThingId(2243415), "StructurePipeCrossJunction3", "Pipe (3-Way Junction)"),
-            new PositionView(725, 206.5, 683), "pressure", null, new ThingId(2243420));
-        BrokenNeighbourReport report = new BrokenNeighbourReport(new List<BrokenNeighbourView> { junction }, 1,
-            BrokenNeighbourSearch.Warning(1, "pipe", "things", "broken_neighbours"));
-        HealthNetworkView view = new HealthNetworkView(new ThingId(2243412), "pipe", 6, true,
-            Slice<HealthView>.Page(new List<HealthView>(), PageRequest.From(new Args(new JObject()), 8, 500), 0),
-            report);
-
-        JObject wire = JObject.Parse(WireCheck.New(view));
-
-        Assert.StartsWith("1 broken pipe piece touches this network", (string)wire["warning"]!);
-        Assert.Equal(1, (int)wire["broken_neighbour_count"]!);
-        Assert.Equal(
-            """{"reference_id":"2243415","prefab_name":"StructurePipeCrossJunction3","position":{"x":725.0,"y":206.5,"z":683.0},"pipe_burst":"pressure","network":null,"touches":"2243420"}""",
-            wire["broken_neighbours"]![0]!.ToString(Newtonsoft.Json.Formatting.None));
-        Assert.Empty((JArray)wire["things"]!);
-    }
-
-    [Fact]
-    public void WithoutBrokenNeighboursOnlyTheZeroCountIsSent()
-    {
-        JObject wire = JObject.Parse(WireCheck.New(new HealthNetworkView(new ThingId(5), "pipe", 0, false,
-            Slice<HealthView>.Page(new List<HealthView>(), PageRequest.From(new Args(new JObject()), 8, 500), 0),
-            BrokenNeighbourReport.None)));
-
-        Assert.Equal(0, (int)wire["broken_neighbour_count"]!);
-        Assert.Null(wire["broken_neighbours"]);
-        Assert.Null(wire["warning"]);
-    }
-
-    [Fact]
-    public void ThePagedMembersFormCarriesTheWarningOnly()
-    {
-        JObject wire = JObject.Parse(WireCheck.New(new NetworkMembersView(new NetworkRefView("pipe", new ThingId(5)),
-            null, Slice<NetworkMemberView>.Page(new List<NetworkMemberView>(),
-                PageRequest.From(new Args(new JObject()), 30, 1000), 0), 0, 0,
-            BrokenNeighbourSearch.Warning(1, "pipe", "members", "broken_neighbours with summarize true"))));
-
-        Assert.EndsWith("see broken_neighbours with summarize true.", (string)wire["warning"]!);
-        Assert.Null(wire["broken_neighbour_count"]);
-    }
-
     // Cells in decimetres; an end's Local is the neighbour's cell, Facing its own (EndCleanup.DirectionOf).
     private static PieceEnd End(GridCell own, int dx, int dy, int dz) =>
         new PieceEnd(new GridCell(own.X + dx, own.Y + dy, own.Z + dz), own, 1, 0);

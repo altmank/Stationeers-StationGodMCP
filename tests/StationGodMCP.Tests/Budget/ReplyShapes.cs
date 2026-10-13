@@ -178,9 +178,6 @@ internal static class ReplyShapes
         {
             // Every gene (19); meanings only with include_notes.
             S<PlantGenesView>().List("PlantGenesView.Genes", 19).Absent("GeneView.Meaning"),
-            // A batch answers every gene of each plant named: two seeds compared.
-            S<BatchResultView>().List("BatchResultView.Results", 2).Holds("BatchResultView.Results", typeof(PlantGenesItemView))
-                .List("PlantGenesView.Genes", 19).List("PlantGenesItemView.Genes", 19).Absent("GeneView.Meaning"),
             S<GenesWrittenView>().List("GenesWrittenView.Results", 12).Holds("GenesWrittenView.Results", typeof(GeneWrittenView))
         };
         shapes["move_player"] = new[] { S<MovePlayerView>() };

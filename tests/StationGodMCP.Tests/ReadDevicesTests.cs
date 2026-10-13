@@ -142,17 +142,6 @@ public sealed class ReadDevicesTests
         Assert.Null(JObject.Parse(WireCheck.New(atmosphere))["network_id"]);
     }
 
-    [Fact]
-    public void ThingHealthNetworkWire()
-    {
-        HealthNetworkView view = new HealthNetworkView(new ThingId(900120), "pipe", 214, true,
-            Slice<HealthView>.Page(new List<HealthView>(), PageRequestFor(0, 200), 0), BrokenNeighbourReport.None);
-
-        Assert.Equal(
-            """{"network_id":"900120","kind":"pipe","pieces":214,"damaged_only":true,"broken_neighbour_count":0,"things":[],"count":0,"total":0,"offset":0,"limit":200,"has_more":false}""",
-            WireCheck.New(view));
-    }
-
     private static PageRequest PageRequestFor(int offset, int limit) =>
         PageRequest.From(new Args(new JObject { ["offset"] = offset, ["limit"] = limit }), limit, 500);
 

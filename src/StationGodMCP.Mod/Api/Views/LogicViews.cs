@@ -185,29 +185,6 @@ internal sealed class LogicWrite
     internal double? CurrentValue { get; }
 }
 
-/// <summary>read_logic_many and write_logic_many's reads: each operation's result in order, and the counts.</summary>
-internal sealed class LogicBatchView
-{
-    internal LogicBatchView(string gatewayId, BatchResultView results)
-    {
-        GatewayId = gatewayId;
-        Results = results.Results;
-        Count = results.Count;
-        SuccessCount = results.SuccessCount;
-        ErrorCount = results.ErrorCount;
-    }
-
-    public string GatewayId { get; }
-
-    public List<BatchItemView> Results { get; }
-
-    public int Count { get; }
-
-    public int SuccessCount { get; }
-
-    public int ErrorCount { get; }
-}
-
 /// <summary>
 /// write_logic_many: each write's result in order, the counts, and the warnings the writes' checks raised, each with
 /// its entry's index (absent when there are none).

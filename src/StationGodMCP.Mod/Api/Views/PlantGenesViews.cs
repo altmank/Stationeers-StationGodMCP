@@ -53,29 +53,6 @@ internal sealed class GeneSetHeader
     internal bool IsTop { get; }
 }
 
-/// <summary>plant_genes' batch read: index and ok, then the same fields as PlantGenesView.</summary>
-internal sealed class PlantGenesItemView : BatchItemView
-{
-    private readonly PlantGenesView _genes;
-
-    internal PlantGenesItemView(int index, PlantGenesView genes) : base(index, ok: true)
-    {
-        _genes = genes;
-    }
-
-    public ThingView Thing => _genes.Thing;
-
-    public string Holder => _genes.Holder;
-
-    public int GeneSetCount => _genes.GeneSetCount;
-
-    public int Unit => _genes.Unit;
-
-    public bool IsTop => _genes.IsTop;
-
-    public List<GeneView> Genes => _genes.Genes;
-}
-
 internal sealed class GeneView
 {
     internal const float Minimum = -1f;

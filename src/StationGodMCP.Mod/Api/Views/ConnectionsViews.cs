@@ -116,54 +116,6 @@ internal sealed class NetworkRefView
     public ThingId Id { get; }
 }
 
-/// <summary>connections for a network: its summary and one page of its members, structures first.</summary>
-internal sealed class NetworkMembersView
-{
-    internal NetworkMembersView(NetworkRefView network, object? summary, Slice<NetworkMemberView> page,
-        int structureCount, int deviceCount, string? warning)
-    {
-        Warning = warning;
-        Network = network;
-        Summary = summary;
-        Members = page.Items;
-        Count = page.Items.Count;
-        StructureCount = structureCount;
-        DeviceCount = deviceCount;
-        Offset = page.Offset;
-        Limit = page.Limit;
-        Total = page.Total;
-        HasMore = page.HasMore;
-    }
-
-    public NetworkRefView Network { get; }
-
-    /// <summary>A PipeSummaryView, CableSummaryView or ChuteSummaryView; null for a pipe network without air.</summary>
-    public object? Summary { get; }
-
-    /// <summary>
-    /// Broken pieces touching the network that members does not list, and where they are listed (summarize); left out
-    /// when none.
-    /// </summary>
-    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-    public string? Warning { get; }
-
-    public List<NetworkMemberView> Members { get; }
-
-    public int Count { get; }
-
-    public int StructureCount { get; }
-
-    public int DeviceCount { get; }
-
-    public int Offset { get; }
-
-    public int Limit { get; }
-
-    public int Total { get; }
-
-    public bool HasMore { get; }
-}
-
 /// <summary>
 /// survey network's member filters: prefab (the verbs' prefab filter) and open_ends (only members with an end of the
 /// network's kind that nothing is attached at: a run's loose ends, a device port left unjoined), and an area (a box, or
@@ -317,32 +269,6 @@ internal sealed class PrefabCountView
     /// <summary>Colour name to how many show it; left out when none of them has a colour.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public SortedDictionary<string, int>? Colors { get; }
-}
-
-/// <summary>connections over a box: one page of the pieces of every network in it with an open end of their kind.</summary>
-internal sealed class AreaOpenEndsView
-{
-    internal AreaOpenEndsView(Slice<NetworkMemberView> page)
-    {
-        Members = page.Items;
-        Count = page.Items.Count;
-        Offset = page.Offset;
-        Limit = page.Limit;
-        Total = page.Total;
-        HasMore = page.HasMore;
-    }
-
-    public List<NetworkMemberView> Members { get; }
-
-    public int Count { get; }
-
-    public int Offset { get; }
-
-    public int Limit { get; }
-
-    public int Total { get; }
-
-    public bool HasMore { get; }
 }
 
 internal sealed class PipeSummaryView
