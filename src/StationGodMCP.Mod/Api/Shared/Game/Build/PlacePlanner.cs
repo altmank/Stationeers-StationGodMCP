@@ -202,7 +202,7 @@ internal static class PlacePlanner
         CountMaterials(plan);
         if (lint)
         {
-            Lint.LintDryRun.Check(plan);
+            Lint.LintReport.Check(plan);
         }
 
         return plan;

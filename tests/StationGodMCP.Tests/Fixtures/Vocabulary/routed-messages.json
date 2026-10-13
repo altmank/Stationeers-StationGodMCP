@@ -175,7 +175,7 @@
   "Api/Shared/Game/JobGas.cs": [
     "Its atmosphere work ran past the {AtmosphericsThread.LimitSeconds} s limit and finished after the job had stopped, so the pipe networks' contents were not checked; look at them (atmosphere_contents) before acknowledging."
   ],
-  "Api/Shared/Game/Lint/LintDryRun.cs": [
+  "Api/Shared/Game/Lint/LintReport.cs": [
     "The report lint rules could not run: {error.GetType().Name}: {error.Message}",
     "{finding.Message} Refused by lint rule {finding.Code} (level problem). To allow it, set its \"level\" to \"warning\" or \"enabled\": false in the save's lint-rules.json (lint_rules lists the files)."
   ],

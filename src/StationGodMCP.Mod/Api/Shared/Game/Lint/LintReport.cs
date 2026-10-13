@@ -18,7 +18,7 @@ namespace StationGodMCP.Api.Shared.Game.Lint;
 /// a problem (the rule's level, or its level_when, says problem) refuses the plan, naming how the save's file allows
 /// it; a warning or info is a warning. A rule turned off in the files never runs.
 /// </summary>
-internal static class LintDryRun
+internal static class LintReport
 {
     internal const string CodePrefix = "lint_";
 
@@ -34,7 +34,7 @@ internal static class LintDryRun
         {
             LintRuleSet rules = LintRuleFiles.Current();
             GameLintWorld world = GameLintWorld.DryRun(planned, gone);
-            return LintReport.Ordered(LintEngine.Run(rules, world, "report").Findings);
+            return Pure.LintReport.Ordered(LintEngine.Run(rules, world, "report").Findings);
         }
         catch (Exception error)
         {

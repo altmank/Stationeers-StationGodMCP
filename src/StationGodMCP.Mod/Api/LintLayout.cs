@@ -39,7 +39,7 @@ internal static class LintLayoutApi
         LintRuleSet rules = LintRuleFiles.Current();
         GameLintWorld world = GameLintWorld.Audit(region);
         LintRun run = LintEngine.Run(rules, world, "audit");
-        List<LintFinding> ordered = things.Keep(filter.Keep(LintReport.Ordered(run.Findings)));
+        List<LintFinding> ordered = things.Keep(filter.Keep(Pure.LintReport.Ordered(run.Findings)));
         List<LintFindingView> views = new List<LintFindingView>();
         for (int index = 0; index < ordered.Count && index < limit; index++)
         {
@@ -49,7 +49,7 @@ internal static class LintLayoutApi
         Pure.Shaping.Truncations.Capped("findings", views.Count, ordered.Count, "limit", MaximumLimit);
         return new LintLayoutView(described, region.Count, world.Subjects("pieces").Count,
             world.Subjects("devices").Count, world.Subjects("structures").Count, world.Doors,
-            LintReport.Counts(run.Findings), views, ordered.Count, new LintRuleSourceView(rules), run.Milliseconds,
+            Pure.LintReport.Counts(run.Findings), views, ordered.Count, new LintRuleSourceView(rules), run.Milliseconds,
             filter.Narrows || things.Narrows ? run.Findings.Count - ordered.Count : null);
     }
 
