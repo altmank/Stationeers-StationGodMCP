@@ -29,17 +29,17 @@ public sealed class SidecarFileAndOmitTests : IDisposable
     public void Dispose() => Directory.Delete(_folder, recursive: true);
 
     [Fact]
-    public async Task SourceFileIsSentAsSource()
+    public async Task CodeFileIsSentAsCode()
     {
         string path = Path.Combine(_folder, "hub.lua");
         File.WriteAllText(path, HubSource, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
 
-        (FakeCall forwarded, JsonElement result) = await Call("write", "set_ic_source",
+        (FakeCall forwarded, JsonElement result) = await Call("write",
             JsonSerializer.Serialize(new { what = "chip", id = "300", code_file = path }), """{"source_length":1}""");
 
-        Assert.Equal(HubSource, forwarded.Params.GetProperty("source").GetString());
-        Assert.False(forwarded.Params.TryGetProperty("source_file", out _));
-        Assert.Equal("300", forwarded.Params.GetProperty("reference_id").GetString());
+        Assert.Equal(HubSource, forwarded.Params.GetProperty("code").GetString());
+        Assert.False(forwarded.Params.TryGetProperty("code_file", out _));
+        Assert.Equal("300", forwarded.Params.GetProperty("id").GetString());
         Assert.Equal(1, result.GetProperty("source_length").GetInt32());
     }
 
@@ -66,7 +66,7 @@ public sealed class SidecarFileAndOmitTests : IDisposable
         Assert.Equal("invalid_argument", result.GetProperty("code").GetString());
         Assert.Equal("code_file", result.GetProperty("data").GetProperty("problems")[0].GetProperty("path").GetString());
         Assert.DoesNotContain("source", result.GetProperty("message").GetString());
-        Assert.Empty(game.CallsTo("set_ic_source"));
+        Assert.Empty(game.CallsTo("write"));
     }
 
     [Fact]
@@ -82,11 +82,11 @@ public sealed class SidecarFileAndOmitTests : IDisposable
     [Fact]
     public async Task OmitIsSentAsShapeOmitAndAnUnparsedOneIsReported()
     {
-        (FakeCall forwarded, JsonElement result) = await Call("inspect", "get_ic_status",
+        (FakeCall forwarded, JsonElement result) = await Call("inspect",
             """{"what":"chip","id":"300","omit":["source"," runtime.registers ","a-b"],"fields":["index"]}""",
             """{"reference_id":"300","pins":[{"index":0}]}""", shaped: true);
 
-        Assert.Equal("""{"reference_id":"300"}""", forwarded.Params.GetRawText());
+        Assert.Equal("""{"what":"chip","id":"300"}""", forwarded.Params.GetRawText());
         Assert.Equal("""{"fields":["index"],"omit":["source","runtime.registers"]}""", forwarded.Shape!.Value.GetRawText());
         Assert.Equal("""["a-b"]""", result.GetProperty("omit_unmatched").GetRawText());
     }
@@ -122,13 +122,13 @@ public sealed class SidecarFileAndOmitTests : IDisposable
         Assert.Equal(HubSource, file.RootElement.GetProperty("source").GetString());
     }
 
-    private async Task<(FakeCall Forwarded, JsonElement Result)> Call(string verb, string handler, string arguments,
+    private async Task<(FakeCall Forwarded, JsonElement Result)> Call(string verb, string arguments,
         string result, bool shaped = false)
     {
         await using FakeGame game = FakeGame.OnPipe();
         game.Answer = call => Task.FromResult<string?>(call.Ok(result, shaped));
         JsonElement reply = await CallWith(game, verb, arguments);
-        return (Assert.Single(game.CallsTo(handler)), reply);
+        return (Assert.Single(game.CallsTo(verb)), reply);
     }
 
     private async Task<JsonElement> CallWith(FakeGame game, string tool, string arguments)

@@ -19,40 +19,37 @@ internal sealed class FakeGameLink : IGameLink
 {
     public ConcurrentQueue<GameCall> Calls { get; } = new();
 
-    // The player's id is asked before a move to "player"; a logic write's dry run reports each write as the mod's
-    // does; every other call answers {}.
-    public Func<GameCall, GameReply> Answer { get; set; } = call => call.Method switch
-    {
-        "player_vitals" => Ok("""{"reference_id":"77"}"""),
-        "write_logic" or "write_logic_many" when call.Params()["dry_run"] is JsonValue dry && (bool)dry => LogicReport(call),
-        _ => Ok("{}")
-    };
+    // A logic write's report answers each write as a report row; every other call answers {}.
+    public Func<GameCall, GameReply> Answer { get; set; } = call =>
+        call.Method == "write" && (string?)call.Params()["what"] == "logic" && call.Params()["confirm"] == null
+            ? LogicReport(call)
+            : Ok("{}");
 
-    /// <summary>write_logic(_many)'s dry run: each write with the value there now (0), nothing written.</summary>
+    /// <summary>write logic's report: a row per write with the value there now (0), nothing written.</summary>
     public static GameReply LogicReport(GameCall call)
     {
         JsonObject args = call.Params();
-        JsonArray writes = args["writes"] as JsonArray ?? new JsonArray(args.DeepClone());
+        JsonArray writes = args["writes"] as JsonArray ?? new JsonArray();
+        foreach (JsonNode? id in args["id"] as JsonArray ?? new JsonArray(args["id"]?.DeepClone()))
+        {
+            writes.Add(new JsonObject { ["id"] = id?.DeepClone(), ["value"] = args["value"]?.DeepClone() });
+        }
+
         JsonArray rows = new();
         foreach (JsonNode? write in writes)
         {
+            string? id = (string?)write!["id"];
             rows.Add(new JsonObject
             {
-                ["index"] = rows.Count,
-                ["ok"] = true,
-                ["reference_id"] = write!["reference_id"]?.DeepClone(),
-                ["logic_type"] = new JsonObject { ["name"] = write["logic_type"]?.DeepClone() },
-                ["requested_value"] = write["value"]?.DeepClone(),
-                ["previous_value"] = 0,
-                ["opens"] = false
+                ["id"] = id,
+                ["current"] = 0,
+                ["new"] = write["value"]?.DeepClone(),
+                ["undo"] = "[undo]",
+                ["text"] = $"[{id}, ?, 0 -> {write["value"]?.ToJsonString()}] [undo]"
             });
         }
 
-        JsonObject report = args["writes"] is JsonArray
-            ? new JsonObject { ["report_only"] = true, ["problems"] = new JsonArray(), ["warnings"] = new JsonArray(), ["results"] = rows }
-            : (JsonObject)rows[0]!.DeepClone();
-        report["report_only"] = true;
-        return Ok(report.ToJsonString());
+        return Ok(new JsonObject { ["report_only"] = true, ["targets"] = rows }.ToJsonString());
     }
 
     /// <summary>The jobs topic: the job's facts, or null (a timeout, or early after a reconnect); unset: no job waits.</summary>
@@ -132,11 +129,13 @@ internal static class Verbs
 
     public static JsonObject Params(this GameCall call) => JsonNode.Parse(call.Parameters.GetRawText())!.AsObject();
 
-    public static JsonObject RenameArgs(this GameCall call) =>
-        JsonNode.Parse(call.Rename!.Value.GetRawText())!["args"]!.AsObject();
-
-    public static JsonObject RenameTools(this GameCall call) =>
-        JsonNode.Parse(call.Rename!.Value.GetRawText())!["tools"]!.AsObject();
+    /// <summary>The one call a verb call sends to the mod (its wire form).</summary>
+    public static GameCall Sent(string verb, string? what, string options, Face face = Face.Direct, IWriteGate? gate = null)
+    {
+        FakeGameLink game = new();
+        game.Pipeline(gate).Call(verb, what, options, face).Done();
+        return Assert.Single(game.Calls);
+    }
 
     /// <summary>Asserts the same JSON, keys in any order.</summary>
     public static void Same(string expected, JsonNode? actual) =>

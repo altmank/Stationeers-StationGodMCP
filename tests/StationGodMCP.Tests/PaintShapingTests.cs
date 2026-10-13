@@ -39,28 +39,10 @@ public sealed class PaintShapingTests
             """{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"write","arguments":{"what":"paint","id":["5"],"color":"Blue","fields":["index","ok"]}}}""",
             new Program.GameTransportSettings(game.Target));
 
-        FakeCall forwarded = Assert.Single(game.CallsTo("paint"));
+        FakeCall forwarded = Assert.Single(game.CallsTo("write"));
         Assert.Equal("""{"fields":["index","ok"]}""", forwarded.Shape!.Value.GetRawText());
         using JsonDocument reply = JsonDocument.Parse(line!);
         Assert.False(reply.RootElement.GetProperty("result").GetProperty("isError").GetBoolean());
     }
 
-    [Fact]
-    public async Task ASidecarArgumentASmallReplyToolDoesNotTakeIsRefused()
-    {
-        // inspect player's handler (player_vitals) answers a small reply: it takes no shaping.
-        const string tool = "player_vitals";
-        Assert.Contains(tool, ToolCatalogue.SmallReplies);
-        await using FakeGame game = FakeGame.OnPipe();
-
-        string? line = await Program.HandleMcpMessageAsync(
-            """{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"inspect","arguments":{"what":"player","fields":["x"]}}}""",
-            new Program.GameTransportSettings(game.Target));
-
-        using JsonDocument reply = JsonDocument.Parse(line!);
-        JsonElement result = reply.RootElement.GetProperty("result");
-        Assert.True(result.GetProperty("isError").GetBoolean());
-        Assert.Equal("invalid_argument", result.GetProperty("structuredContent").GetProperty("code").GetString());
-        Assert.Empty(game.CallsTo(tool));
-    }
 }

@@ -451,7 +451,7 @@ public sealed class ShapingTests
             """{"what":"thing","category":"structure","fields":["things.position.x"]}""", """{"things":[{"position":{"x":1}}]}""", shaped: true);
 
         using JsonDocument request = JsonDocument.Parse(forwarded);
-        Assert.Equal("""{"kind":"structure"}""", request.RootElement.GetProperty("params").GetRawText());
+        Assert.Equal("""{"what":"thing","category":"structure"}""", request.RootElement.GetProperty("params").GetRawText());
         Assert.Equal("""{"fields":["things.position.x"]}""", request.RootElement.GetProperty("shape").GetRawText());
         Assert.Equal("""{"things":[{"position":{"x":1}}]}""", result.GetRawText());
     }
@@ -485,7 +485,7 @@ public sealed class ShapingTests
             $$$"""{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"find","arguments":{{{arguments}}}}}""",
             new Program.GameTransportSettings(game.Target));
         using JsonDocument reply = JsonDocument.Parse(line!);
-        return (Assert.Single(game.CallsTo("find_things")).Message.GetRawText(),
+        return (Assert.Single(game.CallsTo("find")).Message.GetRawText(),
             reply.RootElement.GetProperty("result").GetProperty("structuredContent").Clone());
     }
 

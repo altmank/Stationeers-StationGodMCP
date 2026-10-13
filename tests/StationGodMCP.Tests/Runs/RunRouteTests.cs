@@ -27,7 +27,7 @@ public sealed class RunRouteTests
         Assert.Contains("to act, send the same code again with confirm: true", text);
         Assert.Contains("REPORTED write logic x1", text);
         Assert.Contains("[122643, Device 122643, 0 -> 1]", text);
-        Assert.Equal(0, bench.World.Count("write_logic_many") + bench.World.Count("write_logic"));
+        Assert.Equal(0, bench.World.Count("write.logic") + bench.World.Count("write.logic"));
         Assert.Equal(0, bench.World.Value("122643", "Open"));
     }
 
@@ -175,7 +175,7 @@ public sealed class RunRouteTests
         Assert.StartsWith("script-1 REPORT\n", text);
         Assert.Contains("the pass ended at line 4", text);
         Assert.Contains("REPORTED write logic x2", text);
-        Assert.Equal(0, bench.World.Count("write_logic_many"));
+        Assert.Equal(0, bench.World.Count("write.logic"));
     }
 
     [PythonFact]
@@ -207,8 +207,8 @@ public sealed class RunRouteTests
         Assert.Equal(0, bench.World.Value("7", "On"));
         var log = bench.World.Log;
         int set = log.FindIndex(entry => entry.StartsWith("hold_restore {\"set\"", StringComparison.Ordinal));
-        int firstWrite = log.IndexOf("write_logic_many");
-        int restore = log.LastIndexOf("write_logic_many");
+        int firstWrite = log.IndexOf("write.logic");
+        int restore = log.LastIndexOf("write.logic");
         int clear = log.FindIndex(entry => entry.StartsWith("hold_restore {\"clear\"", StringComparison.Ordinal));
         Assert.True(set >= 0 && set < firstWrite, string.Join(" | ", log));
         Assert.True(firstWrite < restore && restore < clear, string.Join(" | ", log));
@@ -223,11 +223,11 @@ public sealed class RunRouteTests
 
         string text = await bench.RunAsync(
             "from sg import _session\n" +
-            "r = _session.current_transport().call('write_logic', {'reference_id': '1', 'logic_type': 'On', 'value': 1})\n" +
+            "r = _session.current_transport().call('write', {'what': 'logic', 'id': '1', 'logic': 'On', 'value': 1, 'confirm': True})\n" +
             "print(r['error']['code'])", confirm: true);
 
         Assert.Contains("not_allowed", text);
-        Assert.Equal(0, bench.World.Count("write_logic"));
+        Assert.Equal(0, bench.World.Count("write.logic"));
         Assert.Equal(0, bench.World.Value("1", "On"));
     }
 

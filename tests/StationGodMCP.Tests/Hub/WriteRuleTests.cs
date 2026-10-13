@@ -11,7 +11,7 @@ using static StationGodMCP.Tests.Hub.Verbs;
 namespace StationGodMCP.Tests.Hub;
 
 /// <summary>
-/// The direct write rule (PLAN v9 2.0) per verb, the report forms by class, move item acting by typed ids, bulk writes
+/// The direct write rule (PLAN v9 2.0) per verb, reports (the mod's, or the hub's for a what with no confirm), bulk writes
 /// (write-N) and their undo, and the gate seam a run's gate builds on.
 /// </summary>
 public sealed class WriteRuleTests
@@ -69,18 +69,17 @@ public sealed class WriteRuleTests
     }
 
     [Fact]
-    public void ConfirmFalseSendsTheHandlersReportAndTypedIdsAct()
+    public void ConfirmFalseReportsAndTypedIdsAct()
     {
         FakeGameLink game = new();
 
         game.Pipeline().Call("write", "logic", """{"id":"1","logic":"On","value":1,"confirm":false}""").Done();
         game.Pipeline().Call("write", "logic", """{"id":"1","logic":"On","value":1}""").Done();
 
-        // The report is the mod's dry run (the world's rules are in it); the second call acts.
-        List<GameCall> writes = game.CallsTo("write_logic").ToList();
-        Same("""{"reference_id":"1","logic_type":"On","value":1,"dry_run":true}""", writes[0].Params());
-        Same("""{"reference_id":"1","logic_type":"On","value":1,"dry_run":false}""", writes[1].Params());
-        Assert.Empty(game.CallsTo("read_logic_many"));
+        // The report is the mod's (the world's rules are in it); the second call acts.
+        List<GameCall> writes = game.CallsTo("write").ToList();
+        Same("""{"what":"logic","id":"1","logic":"On","value":1}""", writes[0].Params());
+        Same("""{"what":"logic","id":"1","logic":"On","value":1,"confirm":true}""", writes[1].Params());
     }
 
     [Fact]
@@ -95,135 +94,59 @@ public sealed class WriteRuleTests
         }, default)).Done();
         JsonNode? report = pipeline.Call("remove", "pipe", """{"id":["6"]}""", Face.Script).Done();
 
-        Assert.False((bool)game.Single("remove_cables").Params()["dry_run"]!);
-        Assert.True((bool)game.Single("remove_cables").Params()["confirm"]!);
-        Assert.True((bool)game.Single("remove_pipes").Params()["dry_run"]!);
-        Assert.Null(game.Single("remove_pipes").Params()["confirm"]);
+        List<GameCall> removes = game.CallsTo("remove").ToList();
+        Same("""{"what":"cable","id":["5"],"confirm":true}""", removes[0].Params());
+        Same("""{"what":"pipe","id":["6"]}""", removes[1].Params());
         Assert.True((bool)report!["report_only"]!);
     }
 
-    // ---- report forms ----------------------------------------------------------------------------------------------
+    // ---- reports -----------------------------------------------------------------------------------------------------
 
     [Fact]
-    public void ADryRunClassReportSendsTheHandlersDryRunAndNamesEachTarget()
+    public void AReportIsTheModsOwnSentWithoutConfirmAndMarkedReportOnly()
     {
         FakeGameLink game = new();
-        game.Answer = call => call.Method == "thing_health"
-            ? FakeGameLink.Ok("""{"results":[{"reference_id":"5","display_name":"Cable (heavy)"}]}""")
-            : FakeGameLink.Ok("""{"status":"dry_run","ready":true,"to_remove":1}""");
+        game.Answer = _ => FakeGameLink.Ok("""{"targets":[{"id":"5","text":"[5, Cable (heavy), ? -> ?] [undo]"}],"to_remove":1}""");
 
         JsonNode? report = game.Pipeline().Call("remove", "cable", """{"id":["5"]}""").Done();
 
-        Same("""{"dry_run":true,"reference_ids":["5"],"wait":true}""", game.Single("remove_cables").Params());
+        Same("""{"what":"cable","id":["5"]}""", game.Single("remove").Params());
         Assert.True((bool)report!["report_only"]!);
         Assert.Equal(1, (int)report["to_remove"]!);
-        JsonNode row = report["targets"]![0]!;
-        Assert.Equal("5", (string)row["id"]!);
-        Assert.Equal("Cable (heavy)", (string)row["name"]!);
-        Assert.Equal("[undo]", (string)row["undo"]!);
-        Assert.Equal("[5, Cable (heavy), ? -> ?] [undo]", (string)row["text"]!);
+        Assert.Equal("[5, Cable (heavy), ? -> ?] [undo]", (string)report["targets"]![0]!["text"]!);
     }
 
     [Fact]
-    public void AModClassReportSendsTheHandlersOwnReport()
-    {
-        FakeGameLink game = new();
-
-        JsonNode? report = game.Pipeline().Call("write", "genes", """{"id":"3","genes":{"Growth":1}}""").Done();
-
-        Same("""{"genes":{"Growth":1},"reference_id":"3","dry_run":true}""", game.Single("plant_genes").Params());
-        Assert.True((bool)report!["report_only"]!);
-    }
-
-    [Fact]
-    public void AWriteLogicReportIsTheModsDryRunWithTheHubsNames()
-    {
-        FakeGameLink game = new();
-        game.Answer = call => call.Method switch
-        {
-            "write_logic_many" => FakeGameLink.Ok("""{"report_only":true,"problems":[],"warnings":[],"results":[{"index":0,"ok":true,"reference_id":"1","logic_type":{"id":28,"name":"On"},"requested_value":1,"previous_value":0,"opens":false},{"index":1,"ok":true,"reference_id":"2","logic_type":{"id":28,"name":"On"},"requested_value":1,"previous_value":1,"opens":false}]}"""),
-            "thing_health" => FakeGameLink.Ok("""{"results":[{"reference_id":"1","display_name":"Pump A"},{"reference_id":"2","display_name":"Pump B"}]}"""),
-            _ => FakeGameLink.Ok("{}")
-        };
-
-        JsonNode? report = game.Pipeline().Call("write", "logic", """{"id":["1","2"],"logic":"On","value":1,"confirm":false}""")
-            .Done();
-
-        Assert.True((bool)game.Single("write_logic_many").Params()["dry_run"]!);
-        // Each row its own mark: On holds a setting.
-        Assert.Equal("[1, Pump A, 0 -> 1] [undo]",
-            (string)report!["targets"]![0]!["text"]!);
-        Assert.Equal("Pump B", (string)report["targets"]![1]!["name"]!);
-        Assert.Equal(1, (int)report["targets"]![1]!["current"]!);
-    }
-
-    [Fact]
-    public void ANoneClassReportSendsNothing()
+    public void AWriteWithNoConfirmReportsFromTheHubAndSendsNothing()
     {
         FakeGameLink game = new();
 
         JsonNode? report = game.Pipeline().Call("server", "profiling", """{"action":"report"}""", Face.Script).Done();
+        JsonNode? chip = game.Pipeline().Call("write", "chip", """{"id":"7","run":"pause"}""", Face.Script).Done();
 
         Assert.Empty(game.Calls);
         Assert.True((bool)report!["report_only"]!);
+        Assert.Equal("[7, ?, ? -> ?] [cannot undo: run control]", (string)chip!["targets"]![0]!["text"]!);
     }
 
-    [Fact]
-    public void ABuildReportCarriesPlacedAndItsPlacementsByCell()
-    {
-        FakeGameLink game = new();
-
-        JsonNode? report = game.Pipeline().Call("build", "structure", """{"prefab":"StructureWallLight","at":[1,2,3]}""").Done();
-
-        Assert.Equal("[]", report!["placed"]!.ToJsonString());
-        Assert.Equal("[[1,2,3], StructureWallLight, ? -> placed] [undo]", (string)report["targets"]![0]!["text"]!);
-        Assert.True((bool)game.Single("place_structure").Params()["dry_run"]!);
-    }
+    // ---- bulk writes ---------------------------------------------------------------------------------------------------
 
     [Fact]
-    public void UndoPasteReportsFromThePasteStatusAndActsOnlyWithConfirm()
+    public void AMoveOfAnIdListActsOnTypedIdsAsABulkWrite()
     {
         FakeGameLink game = new();
-        game.Answer = _ => FakeGameLink.Ok("""{"known":true,"file":"airlock.bp","entries":42}""");
-
-        JsonNode? report = game.Pipeline().Call("undo", null, """{"id":"paste"}""").Done();
-        game.Pipeline().Call("undo", null, """{"id":"paste","confirm":true}""").Done();
-
-        List<GameCall> pastes = game.CallsTo("paste_blueprint").ToList();
-        Same("""{"status":true}""", pastes[0].Params());
-        Same("""{"undo":true}""", pastes[1].Params());
-        Assert.Equal("would undo the newest paste (airlock.bp, 42 entries)", (string)report!["targets"]![0]!["text"]!);
-    }
-
-    // ---- move item and bulk writes ---------------------------------------------------------------------------------
-
-    [Fact]
-    public void MoveItemActsOnTypedIdsWithNamesAndMarksMergesCannotUndo()
-    {
-        FakeGameLink game = new();
-        game.Answer = call => call.Method switch
-        {
-            "thing_health" => FakeGameLink.Ok("""{"results":[{"reference_id":"1","display_name":"Iron Ingot"},{"reference_id":"2","display_name":"Gold Ingot"}]}"""),
-            "move_item" => FakeGameLink.Ok("""{"results":[{"index":0,"ok":true,"reference_id":"1","from":{"id":"40","slot":2},"to":{"id":"9","slot":0},"merged_into":null},{"index":1,"ok":true,"reference_id":"2","from":{"id":"40","slot":3},"to":{"id":"9","slot":1},"merged_into":"55"}],"count":2,"success_count":2,"error_count":0}"""),
-            _ => FakeGameLink.Ok("{}")
-        };
 
         JsonNode? reply = game.Pipeline().Call("move", "item", """{"id":["1","2"],"to":"9"}""").Done();
 
-        Same("""{"dry_run":false,"moves":[{"reference_id":"1","to_id":"9","to_slot":"auto"},{"reference_id":"2","to_id":"9","to_slot":"auto"}]}""",
-            game.Single("move_item").Params());
-        JsonArray rows = reply!["results"]!.AsArray();
-        Assert.Equal("Iron Ingot", (string)rows[0]!["display_name"]!);
-        Assert.Equal("[undo]", (string)rows[0]!["undo"]!);
-        Assert.Equal("[cannot undo: merged into 55]", (string)rows[1]!["undo"]!);
-        Assert.Equal("write-1", (string)reply["job_id"]!);
+        Same("""{"what":"item","id":["1","2"],"to":"9","confirm":true}""", game.Single("move").Params());
+        Assert.Equal("write-1", (string)reply!["job_id"]!);
     }
 
     [Fact]
     public void ABulkWriteIsInspectedAndUndoneNewestFirstLeavingMergesOut()
     {
         FakeGameLink game = new();
-        game.Answer = call => call.Method == "write_logic_many" && call.Params()["writes"]!.AsArray().Count == 2
+        game.Answer = call => call.Method == "write" && call.Params()["id"] is JsonArray
             ? FakeGameLink.Ok("""{"results":[{"index":0,"ok":true,"reference_id":"1","logic_type":{"id":28,"name":"On"},"requested_value":1,"previous_value":0,"current_value":1},{"index":1,"ok":true,"reference_id":"2","logic_type":{"id":28,"name":"On"},"requested_value":1,"previous_value":1,"current_value":1}],"count":2,"success_count":2,"error_count":0}""")
             : FakeGameLink.Ok("{}");
         VerbPipeline pipeline = game.Pipeline();
@@ -237,9 +160,9 @@ public sealed class WriteRuleTests
         Assert.Equal("applied", (string)view!["status"]!);
         Assert.True((bool)report!["report_only"]!);
         Assert.Equal("2", (string)report["targets"]![0]!["id"]!);
-        List<GameCall> backs = game.CallsTo("write_logic_many").Skip(1).ToList();
-        Same("""{"writes":[{"reference_id":"2","logic_type":"On","value":1}]}""", backs[0].Params());
-        Same("""{"writes":[{"reference_id":"1","logic_type":"On","value":0}]}""", backs[1].Params());
+        List<GameCall> backs = game.CallsTo("write").Skip(1).ToList();
+        Same("""{"what":"logic","writes":[{"id":"2","logic":"On","value":1}],"confirm":true}""", backs[0].Params());
+        Same("""{"what":"logic","writes":[{"id":"1","logic":"On","value":0}],"confirm":true}""", backs[1].Params());
         Assert.Equal(2, (int)undone!["undone"]!);
         Assert.Equal("undone", (string)pipeline.Call("inspect", "job", """{"id":"write-1"}""").Done()!["status"]!);
     }
@@ -290,7 +213,7 @@ public sealed class WriteRuleTests
         Assert.Equal(1, (int)refused!["error_count"]!);
         Assert.Equal("cleanup", (string)refused["results"]![0]!["error"]!["code"]!);
         Assert.True((bool)report!["report_only"]!);
-        Assert.All(game.CallsTo("write_logic_many"), call => Assert.True((bool)call.Params()["dry_run"]!));
+        Assert.All(game.CallsTo("write"), call => Assert.Null(call.Params()["confirm"]));
     }
 
     [Fact]
@@ -298,7 +221,7 @@ public sealed class WriteRuleTests
     {
         ScriptedGate gate = new(new WriteDecision.Act());
         FakeGameLink game = new();
-        game.Answer = call => call.Method == "find_things"
+        game.Answer = call => call.Method == "find"
             ? FakeGameLink.Ok("""{"things":[{"reference_id":"1"},{"reference_id":"2"},{"reference_id":"3"}],"has_more":false}""")
             : FakeGameLink.Ok("{}");
         VerbPipeline pipeline = game.Pipeline(gate);

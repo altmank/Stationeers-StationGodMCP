@@ -75,7 +75,7 @@ public sealed class GameLinkHubTests
     private static FakeGame HubGame()
     {
         FakeGame game = FakeGame.OnPipe();
-        game.Features = ["shape", "subscriptions", "cancel", "streams", "rename", "resume"];
+        game.Features = ["shape", "subscriptions", "cancel", "streams", "resume"];
         return game;
     }
 

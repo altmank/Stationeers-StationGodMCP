@@ -13,7 +13,7 @@ using static StationGodMCP.Tests.Hub.Verbs;
 namespace StationGodMCP.Tests.Hub;
 
 /// <summary>
-/// Script and program main lists with a hub cursor walked by MoreAsync (find_things' walk cursor, else offset pages),
+/// Script and program main lists with a hub cursor walked by MoreAsync (offset pages of the same verb call),
 /// freed at the end, with the stream and on a world change; job waits on the jobs topic with one poll after (a null
 /// after a reconnect included), finality by the mod's final states, and a refused poll answered.
 /// </summary>
@@ -22,36 +22,8 @@ public sealed class CursorAndJobTests
     private static VerbReply More(VerbPipeline pipeline, long stream, string cursor, int? limit = null) =>
         pipeline.MoreAsync(stream, cursor, limit, CancellationToken.None).GetAwaiter().GetResult();
 
-    [Theory]
-    [InlineData(Face.Script)]
-    [InlineData(Face.Program)]
-    public void FindThingWalksTheModsCursor(Face face)
-    {
-        FakeGameLink game = new();
-        game.Answer = call => (string?)call.Params()["cursor_id"] switch
-        {
-            null => FakeGameLink.Ok("""{"things":[{"reference_id":"1"},{"reference_id":"2"}],"has_more":true,"cursor_id":"k7"}"""),
-            "k7" => FakeGameLink.Ok("""{"things":[{"reference_id":"3"}],"has_more":true,"cursor_id":"k8"}"""),
-            _ => FakeGameLink.Ok("""{"things":[{"reference_id":"4"}],"has_more":false}""")
-        };
-        VerbPipeline pipeline = game.Pipeline();
-
-        JsonNode first = pipeline.Call("find", "thing", """{"name":"Light"}""", face).Done()!;
-        string cursor = (string)first["cursor"]!;
-        JsonNode second = More(pipeline, 0, cursor, 5).Done()!;
-        JsonNode last = More(pipeline, 0, cursor).Done()!;
-
-        Same("""{"name_contains":"Light","cursor":true}""", game.CallsTo("find_things")[0].Params());
-        Assert.Equal("things", (string)first["main"]!);
-        Assert.Null(first["cursor_id"]);
-        Same("""{"cursor_id":"k7","limit":5}""", game.CallsTo("find_things")[1].Params());
-        Same("""{"entries":[{"reference_id":"3"}],"cursor":"c1"}""", second);
-        Same("""{"entries":[{"reference_id":"4"}]}""", last);
-        Assert.Equal("cursor_expired", More(pipeline, 0, cursor).Failed().Code);
-    }
-
     [Fact]
-    public void AListWithoutAWalkPagesByOffset()
+    public void AListPagesByOffset()
     {
         FakeGameLink game = new();
         game.Answer = call => (int?)call.Params()["offset"] switch
@@ -65,7 +37,7 @@ public sealed class CursorAndJobTests
         string cursor = (string)pipeline.Call("find", "item", """{"prefab":"ItemIronOre"}""", Face.Script).Done()!["cursor"]!;
         JsonNode page = More(pipeline, 0, cursor).Done()!;
 
-        Same("""{"prefab":"ItemIronOre","offset":2}""", game.CallsTo("find_items")[1].Params());
+        Same("""{"what":"item","prefab":"ItemIronOre","offset":2}""", game.CallsTo("find")[1].Params());
         Same("""{"entries":[{"reference_id":"3"}]}""", page);
     }
 
@@ -78,14 +50,14 @@ public sealed class CursorAndJobTests
         JsonNode reply = game.Pipeline().Call("find", "thing", """{"limit":1}""", Face.Script).Done()!;
 
         Assert.Null(reply["cursor"]);
-        Assert.Null(game.Single("find_things").Params()["cursor"]);
+        Assert.Null(game.Single("find").Params()["cursor"]);
     }
 
     [Fact]
     public void CursorsGoWithTheirStreamAndOnAWorldChangeAndBelongToTheirStream()
     {
         FakeGameLink game = new();
-        game.Answer = _ => FakeGameLink.Ok("""{"things":[{"reference_id":"1"}],"has_more":true,"cursor_id":"k1"}""");
+        game.Answer = _ => FakeGameLink.Ok("""{"things":[{"reference_id":"1"}],"has_more":true}""");
         VerbPipeline pipeline = game.Pipeline();
 
         string first = Open(pipeline, 3);
@@ -109,15 +81,15 @@ public sealed class CursorAndJobTests
     {
         FakeGameLink game = new();
         game.WaitJob = _ => JsonDocument.Parse("""{"job_id":"run-9","status":"applied"}""").RootElement.Clone();
-        game.Answer = call => call.Params()["job_id"] == null
+        game.Answer = call => call.Method == "build"
             ? FakeGameLink.Ok("""{"job_id":"run-9","status":"queued"}""")
             : FakeGameLink.Ok("""{"job_id":"run-9","status":"applied","held_ms":12}""");
 
         JsonNode reply = game.Pipeline().Call("build", "cable", """{"waypoints":[[0,0,0],[1,0,0]],"confirm":true}""").Done()!;
 
         Assert.Equal(new[] { "run-9" }, game.Waited);
-        Same("""{"job_id":"run-9"}""", game.CallsTo("place_cables")[1].Params());
-        Assert.Equal(2, game.CallsTo("place_cables").Count);
+        Same("""{"what":"job","id":"run-9"}""", game.Single("inspect").Params());
+        Assert.Single(game.CallsTo("build"));
         Assert.Equal("applied", (string)reply["status"]!);
         Assert.Null(reply["running"]);
     }
@@ -131,7 +103,7 @@ public sealed class CursorAndJobTests
 
         JsonNode reply = game.Pipeline().Call("inspect", "job", """{"id":"replace-2","max_wait":5}""").Done()!;
 
-        Assert.Equal(2, game.CallsTo("replace_walls").Count);
+        Assert.Equal(2, game.CallsTo("inspect").Count);
         Assert.Equal("replace-2", (string)reply["job_id"]!);
         Assert.True((bool)reply["running"]!);
     }
@@ -170,7 +142,7 @@ public sealed class CursorAndJobTests
 
         game.Pipeline().Call("inspect", "job", """{"id":"place-1"}""").Done();
 
-        Assert.Equal(final ? 1 : 2, game.CallsTo("place_structure").Count);
+        Assert.Equal(final ? 1 : 2, game.CallsTo("inspect").Count);
         Assert.Equal(final ? 0 : 1, game.Waited.Count);
     }
 }

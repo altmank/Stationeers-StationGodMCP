@@ -48,7 +48,7 @@ internal static class Wire
     /// deadline_ms only when the caller gave one.
     /// </summary>
     internal static string Call(IReadOnlySet<string> features, string id, string method, JsonElement parameters,
-        JsonElement? shape, int? deadlineMs, JsonElement? rename = null) => Write(writer =>
+        JsonElement? shape, int? deadlineMs) => Write(writer =>
     {
         writer.WriteString("type", "call");
         writer.WriteString("id", id);
@@ -74,18 +74,11 @@ internal static class Wire
         {
             writer.WriteNumber("deadline_ms", deadline);
         }
-
-        // An older server refuses the key as an unknown one, so it goes only where welcome lists the feature.
-        if (rename is { ValueKind: JsonValueKind.Object } names && features.Contains("rename"))
-        {
-            writer.WritePropertyName("rename");
-            names.WriteTo(writer);
-        }
     });
 
     /// <summary>
-    /// A link call: {type, id, method, params, stream?, shape?, rename?, deadline_ms?, world?}. stream only when it is
-    /// not 0 and the server lists streams, shape and rename only when listed, world whenever the link knows one.
+    /// A link call: {type, id, method, params, stream?, shape?, deadline_ms?, world?}. stream only when it is
+    /// not 0 and the server lists streams, shape only when listed, world whenever the link knows one.
     /// Written without a closure, since every call of the hub passes here.
     /// </summary>
     internal static string LinkCall(IReadOnlySet<string> features, string id, GameCall call, JsonElement parameters,
@@ -109,12 +102,6 @@ internal static class Wire
             {
                 writer.WritePropertyName("shape");
                 shape.WriteTo(writer);
-            }
-
-            if (call.Rename is { ValueKind: JsonValueKind.Object } rename && features.Contains("rename"))
-            {
-                writer.WritePropertyName("rename");
-                rename.WriteTo(writer);
             }
 
             if (call.DeadlineMs is { } deadline)

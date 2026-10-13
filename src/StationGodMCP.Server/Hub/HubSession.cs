@@ -31,7 +31,7 @@ public sealed partial class HubSession
 
     private static readonly string[] HelloKeys = ["type", "protocol", "client", "features", "resume"];
     private static readonly string[] CallKeys =
-        ["type", "id", "method", "params", "shape", "deadline_ms", "stream", "rename", "world"];
+        ["type", "id", "method", "params", "shape", "deadline_ms", "stream", "world"];
     private static readonly string[] CancelKeys = ["type", "id"];
     private static readonly string[] StreamKeys = ["type", "stream"];
     private static readonly string[] CursorKeys = ["type", "cursor_id"];
@@ -564,7 +564,6 @@ public sealed partial class HubSession
         GameCall call = new(method, parameters, hubStream)
         {
             Shape = Child(message, "shape"),
-            Rename = Child(message, "rename"),
             DeadlineMs = deadline
         };
         GameReply reply = await _link.CallAsync(call, cancellation).ConfigureAwait(false);
@@ -589,11 +588,6 @@ public sealed partial class HubSession
         if (Child(message, "shape") is { ValueKind: not JsonValueKind.Object })
         {
             return HubLines.Error(id, "invalid_argument", "shape must be an object.");
-        }
-
-        if (Child(message, "rename") is { ValueKind: not JsonValueKind.Object })
-        {
-            return HubLines.Error(id, "invalid_argument", "rename must be an object.");
         }
 
         if (Text(message, "world") is { } meant)

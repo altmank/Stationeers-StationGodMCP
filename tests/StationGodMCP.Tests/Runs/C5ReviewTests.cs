@@ -34,7 +34,7 @@ public sealed class C5ReviewTests : IDisposable
         });
         await bench.RunAsync("i = 0\nwhile True:\n    sg.write('logic', id='1', logic='On', value=i % 2)\n    i += 1",
             confirm: true, maxWait: 0);
-        await RunBench.UntilAsync(() => bench.World.Count("write_logic_many") >= 5, "the loop's writes");
+        await RunBench.UntilAsync(() => bench.World.Count("write.logic") >= 5, "the loop's writes");
 
         Task notices = Task.Run(async () =>
         {
@@ -61,7 +61,7 @@ public sealed class C5ReviewTests : IDisposable
             confirm: true);
         bench.World.Override = call =>
         {
-            if (call.Method == "read_logic_many" && call.Stream != bench.Host.Find("script-1")!.Stream)
+            if (RunWorld.KeyOf(call) == "read.logic" && call.Stream != bench.Host.Find("script-1")!.Stream)
             {
                 // The undo's first read: another save loads before the undo's write goes.
                 bench.World.ChangeWorldQuietly("world-2");
@@ -76,7 +76,7 @@ public sealed class C5ReviewTests : IDisposable
         Assert.StartsWith("world changed", ((VerbReply.Failed)reply).Message);
         Assert.Equal(1, bench.World.Value("2", "On"));
         Assert.Equal(1, bench.World.Value("1", "On"));
-        Assert.Contains(bench.World.Log, entry => entry == "refused_world write_logic_many");
+        Assert.Contains(bench.World.Log, entry => entry == "refused_world write.logic");
     }
 
     // ---- X3 ------------------------------------------------------------------------------------------------------------
@@ -89,7 +89,7 @@ public sealed class C5ReviewTests : IDisposable
         TaskCompletionSource release = new(TaskCreationOptions.RunContinuationsAsynchronously);
         bench.World.Gate = call =>
         {
-            if (call.Method != "write_logic_many")
+            if (RunWorld.KeyOf(call) != "write.logic")
             {
                 return null;
             }
@@ -345,7 +345,7 @@ public sealed class C5ReviewTests : IDisposable
         TaskCompletionSource release = new(TaskCreationOptions.RunContinuationsAsynchronously);
         bench.World.Gate = call =>
         {
-            if (call.Method != "read_logic_many")
+            if (RunWorld.KeyOf(call) != "read.logic")
             {
                 return null;
             }

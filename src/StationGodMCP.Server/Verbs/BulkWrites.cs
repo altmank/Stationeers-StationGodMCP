@@ -37,7 +37,7 @@ internal sealed class BulkWrite
             int count = 0;
             foreach (BulkStep step in Steps)
             {
-                if (step.Handler != null)
+                if (step.Back != null)
                 {
                     count++;
                 }
@@ -76,16 +76,14 @@ internal sealed class BulkWrite
 }
 
 /// <summary>
-/// One step of a bulk write's undo: the handler call that puts one target back (null when it cannot be undone), its
-/// report row with its own undo mark, and what the write left there (the drift check reads it again first).
+/// One step of a bulk write's undo: the options of the same what that put one target back (null when it cannot be
+/// undone), its report row with its own undo mark, and what the write left there (the drift check reads it again first).
 /// </summary>
-internal sealed class BulkStep(int number, string? handler, JsonObject args, JsonObject row, BulkCheck? check)
+internal sealed class BulkStep(int number, JsonObject? back, JsonObject row, BulkCheck? check)
 {
     internal int Number { get; } = number;
 
-    internal string? Handler { get; } = handler;
-
-    internal JsonObject Args { get; } = args;
+    internal JsonObject? Back { get; } = back;
 
     internal JsonObject Row { get; } = row;
 
@@ -244,33 +242,33 @@ internal sealed class BulkWrites
                     return Cannot(number, id, left, "[cannot undo: no previous value]");
                 }
 
-                JsonObject args = new()
+                JsonObject back = new()
                 {
                     ["writes"] = new JsonArray(new JsonObject
                     {
-                        ["reference_id"] = id, ["logic_type"] = logic?.DeepClone(), ["value"] = previous.DeepClone()
+                        ["id"] = id, ["logic"] = logic?.DeepClone(), ["value"] = previous.DeepClone()
                     })
                 };
-                return new BulkStep(number, "write_logic_many", args, Row(id, left, previous, "[undo]"),
+                return new BulkStep(number, back, Row(id, left, previous, "[undo]"),
                     new BulkCheck(id, logic, left));
             }
             case "write.label" when row["previous"] is JsonObject previous:
             {
                 JsonNode? name = previous["custom_name"] ?? JsonValue.Create(string.Empty);
                 JsonNode? left = row["current"]?["custom_name"];
-                JsonObject args = new()
+                JsonObject back = new()
                 {
-                    ["labels"] = new JsonArray(new JsonObject { ["reference_id"] = id, ["name"] = name?.DeepClone() })
+                    ["labels"] = new JsonArray(new JsonObject { ["id"] = id, ["label"] = name?.DeepClone() })
                 };
-                return new BulkStep(number, "label", args, Row(id, left, name, "[undo]"), new BulkCheck(id, null, left));
+                return new BulkStep(number, back, Row(id, left, name, "[undo]"), new BulkCheck(id, null, left));
             }
             case "write.paint" when row["previous_color"] is { } color:
             {
-                JsonObject args = new()
+                JsonObject back = new()
                 {
-                    ["items"] = new JsonArray(new JsonObject { ["reference_id"] = id, ["color"] = color.DeepClone() })
+                    ["items"] = new JsonArray(new JsonObject { ["id"] = id, ["color"] = color.DeepClone() })
                 };
-                return new BulkStep(number, "paint", args, Row(id, row["color"], color, "[undo]"), null);
+                return new BulkStep(number, back, Row(id, row["color"], color, "[undo]"), null);
             }
             case "move.item":
             {
@@ -289,15 +287,14 @@ internal sealed class BulkWrites
                     return Cannot(number, id, row["to"]?["id"], "[cannot undo: no slot it came from]");
                 }
 
-                JsonObject args = new()
+                JsonObject back = new()
                 {
                     ["moves"] = new JsonArray(new JsonObject
                     {
-                        ["reference_id"] = id, ["to_id"] = from["id"]?.DeepClone(), ["to_slot"] = from["slot"]?.DeepClone()
-                    }),
-                    ["dry_run"] = false
+                        ["id"] = id, ["to"] = from["id"]?.DeepClone(), ["slot"] = from["slot"]?.DeepClone()
+                    })
                 };
-                return new BulkStep(number, "move_item", args, Row(id, row["to"]?["id"], from["id"], "[undo]"), null);
+                return new BulkStep(number, back, Row(id, row["to"]?["id"], from["id"], "[undo]"), null);
             }
             default:
                 return Cannot(number, id, null, "[cannot undo]");
@@ -305,7 +302,7 @@ internal sealed class BulkWrites
     }
 
     private static BulkStep Cannot(int number, string id, JsonNode? left, string mark) =>
-        new(number, null, new JsonObject(), Row(id, left, null, mark), null);
+        new(number, null, Row(id, left, null, mark), null);
 
     private static JsonObject Row(string id, JsonNode? current, JsonNode? back, string mark) =>
         VerbPipeline.Row(id, null, null, current, back, mark);

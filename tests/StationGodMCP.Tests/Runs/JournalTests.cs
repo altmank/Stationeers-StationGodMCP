@@ -29,7 +29,7 @@ public sealed class JournalTests : IDisposable
         List<string>? atWrite = null;
         bench.World.Override = call =>
         {
-            if (call.Method == "write_logic_many")
+            if (RunWorld.KeyOf(call) == "write.logic")
             {
                 atWrite ??= journal.Lines();
             }

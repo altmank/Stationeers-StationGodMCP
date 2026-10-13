@@ -96,9 +96,6 @@ public sealed class GameCall
 
     public JsonElement? Shape { get; init; }
 
-    /// <summary>The rename envelope ({args, tools}) so the mod prints the caller's names; null for none.</summary>
-    public JsonElement? Rename { get; init; }
-
     public int? DeadlineMs { get; init; }
 
     /// <summary>

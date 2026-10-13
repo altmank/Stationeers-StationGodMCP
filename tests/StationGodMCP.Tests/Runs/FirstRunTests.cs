@@ -24,11 +24,11 @@ public sealed class FirstRunTests : IDisposable
     public async Task RunScriptAsTheFirstToolCallAfterStartRuns()
     {
         await using FakeGame game = FakeGame.OnPipe();
-        game.Features = ["shape", "shape.paths", "shape.omit", "subscriptions", "cancel", "streams", "rename", "resume"];
+        game.Features = ["shape", "shape.paths", "shape.omit", "subscriptions", "cancel", "streams", "resume"];
         // The game is slow to answer at first, as a real one is on its first connection.
         game.WelcomeDelay = _ => TimeSpan.FromMilliseconds(800);
         game.CatalogueDelay = TimeSpan.FromMilliseconds(500);
-        game.Answer = call => Task.FromResult<string?>(call.Method == "read_logic_many"
+        game.Answer = call => Task.FromResult<string?>(call.Method == "read"
             ? call.Ok("""{"results":[{"index":0,"ok":true,"reference_id":"1","logic_type":{"name":"On"},"value":1}]}""")
             : call.Ok("{}"));
         using AnonymousPipeServerStream toServer = new(PipeDirection.Out);
@@ -60,8 +60,8 @@ public sealed class FirstRunTests : IDisposable
     public async Task TheBuiltServerRunsAScriptAsItsFirstToolCall()
     {
         await using FakeGame game = FakeGame.OnPipe();
-        game.Features = ["shape", "shape.paths", "shape.omit", "subscriptions", "cancel", "streams", "rename", "resume"];
-        game.Answer = call => Task.FromResult<string?>(call.Method == "read_logic_many"
+        game.Features = ["shape", "shape.paths", "shape.omit", "subscriptions", "cancel", "streams", "resume"];
+        game.Answer = call => Task.FromResult<string?>(call.Method == "read"
             ? call.Ok("""{"results":[{"index":0,"ok":true,"reference_id":"1","logic_type":{"name":"On"},"value":1}]}""")
             : call.Ok("{}"));
         System.Diagnostics.ProcessStartInfo start = new("dotnet")

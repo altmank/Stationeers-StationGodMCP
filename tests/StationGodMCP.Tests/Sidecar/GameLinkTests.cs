@@ -56,32 +56,28 @@ public sealed class GameLinkTests
     }
 
     [Fact]
-    public async Task RenameShapeAndDeadlineAreSentWhenGivenAndListed()
+    public async Task ShapeAndDeadlineAreSentWhenGivenAndListed()
     {
         await using FakeGame game = HubGame();
         await using GameLink link = new(new ClientOptions(game.Target));
-        JsonElement rename = Json("""{"args":{"reference_id":"id"}}""");
 
         await link.CallAsync(new GameCall("weather", Json("{}"), 2)
         {
-            Rename = rename, Shape = Json("""{"fields":["a"]}"""), DeadlineMs = 1500
+            Shape = Json("""{"fields":["a"]}"""), DeadlineMs = 1500
         }, default);
-        game.Features.Remove("rename");
         game.Features.Remove("shape");
         game.DropAll();
         await Eventually(() => game.Connections == 2 && link.WorldId != null);
         await link.CallAsync(new GameCall("game_clock", Json("{}"))
         {
-            Rename = rename, Shape = Json("""{"fields":["a"]}"""), DeadlineMs = 900
+            Shape = Json("""{"fields":["a"]}"""), DeadlineMs = 900
         }, default);
         await link.CallAsync(new GameCall("weather_forecast", Json("{}")), default);
 
         JsonElement first = Assert.Single(game.CallsTo("weather")).Message;
-        Assert.Equal(rename.GetRawText(), first.GetProperty("rename").GetRawText());
         Assert.Equal("""{"fields":["a"]}""", first.GetProperty("shape").GetRawText());
         Assert.Equal(1500, first.GetProperty("deadline_ms").GetInt32());
         JsonElement second = Assert.Single(game.CallsTo("game_clock")).Message;
-        Assert.False(second.TryGetProperty("rename", out _));
         Assert.False(second.TryGetProperty("shape", out _));
         Assert.Equal(900, second.GetProperty("deadline_ms").GetInt32());
         Assert.False(Assert.Single(game.CallsTo("weather_forecast")).Message.TryGetProperty("deadline_ms", out _));
@@ -884,7 +880,7 @@ public sealed class GameLinkTests
     private static FakeGame HubGame()
     {
         FakeGame game = FakeGame.OnPipe();
-        game.Features = ["shape", "shape.paths", "shape.omit", "subscriptions", "cancel", "streams", "rename", "resume"];
+        game.Features = ["shape", "shape.paths", "shape.omit", "subscriptions", "cancel", "streams", "resume"];
         return game;
     }
 

@@ -5,7 +5,7 @@ namespace StationGodMCP.Server;
 
 /// <summary>
 /// Today's handler methods as the built-in method catalogue (catalogue.json) declares them: each one's params schema and
-/// file arguments. LegacyVerbMap reads argument types from them (a list id or one id, an object's own keys).
+/// file arguments.
 /// </summary>
 internal sealed class HandlerSchemas
 {

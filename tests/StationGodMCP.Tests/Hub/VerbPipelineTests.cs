@@ -11,13 +11,13 @@ using System.Threading.Tasks;
 using StationGodMCP.Client;
 using StationGodMCP.Server;
 using Xunit;
-using static StationGodMCP.Tests.Hub.HandlerSelectorTests;
+using static StationGodMCP.Tests.Hub.Verbs;
 
 namespace StationGodMCP.Tests.Hub;
 
 /// <summary>
-/// The pipeline around the translation: the rename envelope on every call, list routing by x-list (native, split with
-/// PLAN's rows, native-shape, one refused naming run_script), the faces' per-id rows, help pages and stubs, the
+/// The pipeline: every call goes to the mod as its verb ({method: verb, params: {what, ...options}}) without the hub's own
+/// options, a list for a one-id write is refused naming run_script, the faces' per-id lists, help pages and stubs, the
 /// recording, the write gate, job waits and the placeholders for the pieces to come.
 /// </summary>
 public sealed class VerbPipelineTests : IDisposable
@@ -32,142 +32,66 @@ public sealed class VerbPipelineTests : IDisposable
         }
     }
 
-    // ---- rename ------------------------------------------------------------------------------------------------
+    // ---- the wire form --------------------------------------------------------------------------------------
 
     [Fact]
-    public void TheRenameEnvelopeMapsTheHandlersArgumentsAndToolsToVerbNames()
+    public void ACallGoesToTheModAsItsVerbWithWhatAndItsOptions()
     {
-        GameCall call = Sent("find", "thing", """{"name":"Tank"}""");
+        GameCall call = Sent("find", "thing", """{"name":"Tank","near":"player","radius":10,"fields":["reference_id"]}""");
 
-        JsonObject args = call.RenameArgs();
-        Assert.Equal("name", (string)args["name_contains"]!);
-        Assert.Equal("category", (string)args["kind"]!);
-        Assert.Equal("box", (string)args["min"]!);
-        Assert.Equal("box", (string)args["max"]!);
-        Assert.Equal("radius", (string)args["radius_m"]!);
-        Assert.Equal("near: \"player\" with radius", (string)args["near_player_m"]!);
-        Assert.Equal("prefab", (string)args["prefab_contains"]!);
-        Assert.Null(args["near"]);
-        JsonObject tools = call.RenameTools();
-        Assert.Equal("find {what: \"thing\"}", (string)tools["find_things"]!);
-        Assert.Equal("inspect {what: \"device\"}", (string)tools["describe_device"]!);
-        Assert.Equal("undo", (string)tools["undo_job"]!);
-        Assert.Equal("help", (string)tools["tool_info"]!);
-        Assert.DoesNotContain(tools, tool => tool.Key.StartsWith("hub:", StringComparison.Ordinal));
+        Assert.Equal("find", call.Method);
+        Assert.Equal("""{"what":"thing","name":"Tank","near":"player","radius":10}""", call.Params().ToJsonString());
+        Assert.Contains("reference_id", call.Shape!.Value.GetRawText());
     }
 
     [Fact]
-    public void MergedSwitchesAreNamedByTheirWordAndNestedKeysByTheirOption()
+    public void AWhatlessVerbSendsNoWhat()
     {
-        JsonObject frame = Sent("find", "frame", "{}").RenameArgs();
-        JsonObject writes = Sent("write", "logic", """{"writes":[{"id":"1","logic":"On","value":1}]}""").RenameArgs();
-        JsonObject build = Sent("build", "cable", """{"waypoints":[[0,0,0],[1,0,0]]}""").RenameArgs();
+        GameCall call = Sent("undo", null, """{"id":"place-4","confirm":true}""");
 
-        Assert.Equal("include: [\"inner\"]", (string)frame["include_inner"]!);
-        Assert.Equal("id", (string)writes["reference_id"]!);
-        Assert.Equal("logic", (string)writes["logic_type"]!);
-        Assert.Equal("confirm", (string)build["dry_run"]!);
-        Assert.Equal("queue", (string)build["wait"]!);
-        Assert.Equal("materials", (string)build["from_id"]!);
+        Assert.Equal("undo", call.Method);
+        Assert.Equal("""{"id":"place-4","confirm":true}""", call.Params().ToJsonString());
     }
 
     [Fact]
-    public void ThePolledToolsJobIdIsTheWhatsId()
+    public void TheHubsOwnOptionsNeverReachTheMod()
     {
-        JsonObject args = Sent("inspect", "job", """{"id":"run-3"}""").RenameArgs();
+        GameCall call = Sent("inspect", "job", """{"id":"place-2","max_wait":0,"omit":["steps"],"list_limits":{"steps":2}}""");
 
-        Assert.Equal("id", (string)args["job_id"]!);
-        Assert.Equal("inspect {what: \"job\"}", (string)Sent("inspect", "job", """{"id":"run-3"}""").RenameTools()["move_gas"]!);
+        Assert.Equal("""{"what":"job","id":"place-2"}""", call.Params().ToJsonString());
     }
 
     [Fact]
-    public void EveryEnvelopeIsWithinTheModsBounds()
+    public void AnIdListGoesWholeInOneCall()
     {
-        LegacyVerbMap map = new FakeGameLink().Pipeline().Map;
-        foreach (VerbEntry verb in VerbCatalogue.Embedded.Verbs)
-        {
-            foreach (string name in verb.WhatNames)
-            {
-                WhatEntry what = verb.Whats[name];
-                foreach (HandlerEntry handler in what.Handlers.Where(handler => !handler.IsHub))
-                {
-                    JsonObject envelope = map.Rename.Build(what, handler.Name);
-                    int entries = envelope["args"]!.AsObject().Count + envelope["tools"]!.AsObject().Count;
-                    Assert.True(entries <= RenameEnvelope.MostEntries, $"{what.Key} {handler.Name}: {entries}");
-                    foreach ((string key, JsonNode? phrase) in envelope["args"]!.AsObject().Concat(envelope["tools"]!.AsObject()))
-                    {
-                        Assert.Matches("^[a-z][a-z0-9_]{0,63}$", key);
-                        Assert.InRange(((string)phrase!).Length, 1, 128);
-                    }
-                }
-            }
-        }
+        GameCall call = Sent("inspect", "device", """{"id":["1","2"]}""");
+
+        Assert.Equal("""{"what":"device","id":["1","2"]}""", call.Params().ToJsonString());
     }
 
-    // ---- list routing ------------------------------------------------------------------------------------------
-
     [Fact]
-    public void SplitCallsOncePerIdAndGathersRows()
+    public void AWriteActsWithConfirmTrueAndReportsWithoutIt()
     {
+        GameCall acted = Sent("write", "logic", """{"id":"1","logic":"On","value":1}""");
         FakeGameLink game = new();
-        game.Answer = call => (string)call.Params()["reference_id"]! == "2"
-            ? FakeGameLink.Refused("thing_not_found", "No thing with reference id 2.")
-            : FakeGameLink.Ok($$"""{"reference_id":"{{(string)call.Params()["reference_id"]!}}","prefab_name":"StructureVent"}""");
+        JsonNode? report = game.Pipeline().Call("remove", "pipe", """{"id":"1"}""").Done();
 
-        JsonNode? reply = game.Pipeline().Call("inspect", "device", """{"id":["1","2"]}""").Done();
-
-        Assert.Equal(2, game.CallsTo("describe_device").Count);
-        Assert.All(game.Calls, call => Assert.NotNull(call.Rename));
-        Assert.Equal(
-            """{"results":[{"index":0,"ok":true,"reference_id":"1","payload":{"reference_id":"1","prefab_name":"StructureVent"}},{"index":1,"ok":false,"reference_id":"2","error":{"code":"thing_not_found","message":"No thing with reference id 2."}}],"count":2,"success_count":1,"error_count":1}""",
-            reply!.ToJsonString());
+        Assert.True((bool)acted.Params()["confirm"]!);
+        Assert.Null(game.Single("remove").Params()["confirm"]);
+        Assert.True((bool)report!["report_only"]!);
     }
 
     [Fact]
-    public void NativeSendsTheListOnce()
+    public void AFileOptionIsSentAsTheTextOfTheOptionItNames()
     {
-        GameCall call = Sent("remove", "pipe", """{"id":["1","2"]}""");
+        Directory.CreateDirectory(_folder);
+        string file = Path.Combine(_folder, "chip.ic10");
+        File.WriteAllText(file, "yield");
 
-        Assert.Equal("""["1","2"]""", call.Params()["reference_ids"]!.ToJsonString());
-    }
+        GameCall call = Sent("write", "chip", $$"""{"id":"1","code_file":{{JsonValue.Create(file).ToJsonString()}}}""");
 
-    [Fact]
-    public void EveryNativeWhatTakesItsIdListInOneCall()
-    {
-        foreach (VerbEntry verb in VerbCatalogue.Embedded.Verbs)
-        {
-            foreach (WhatEntry what in verb.WhatNames.Select(name => verb.Whats[name])
-                         .Where(what => what.TakesIdList && what.ListForm is "native" or "native-shape"))
-            {
-                JsonObject options = (JsonObject)(what.Example ?? new JsonObject()).DeepClone();
-                // The example's network or room form gives way to the id list (and so does a network's kind).
-                if (options.Remove("network"))
-                {
-                    options.Remove("kind");
-                }
-
-                options.Remove("room");
-                options["id"] = new JsonArray("1", "2");
-                FakeGameLink game = new();
-                game.Answer = call => FakeGameLink.Ok(call.Method == "player_vitals"
-                    ? """{"reference_id":"77"}"""
-                    : """{"prefab_name":"StructureLocker"}""");
-                VerbReply reply = game.Pipeline().Call(verb.Name, what.Name == "-" ? null : what.Name, options.ToJsonString());
-                Assert.True(reply is VerbReply.Done, $"{what.Key}: {(reply as VerbReply.Failed)?.ToJson().ToJsonString()}");
-                Assert.True(game.Calls.Count(call => !HubReads.Contains(call.Method) || what.Key == "inspect.health") == 1,
-                    what.Key + " " + string.Join(", ", game.Calls.Select(call => call.Method)));
-                Assert.Contains("\"2\"", game.Calls.Last().Parameters.GetRawText());
-            }
-        }
-    }
-
-    [Fact]
-    public void NativeShapeSendsEveryPairToTheHandler()
-    {
-        GameCall call = Sent("read", "sample", """{"id":["1","2"],"logic":"On"}""");
-
-        Assert.Equal("""[{"reference_id":"1","logic_type":"On"},{"reference_id":"2","logic_type":"On"}]""",
-            call.Params()["targets"]!.ToJsonString());
+        Assert.Equal("yield", (string)call.Params()["code"]!);
+        Assert.Null(call.Params()["code_file"]);
     }
 
     [Theory]
@@ -189,20 +113,15 @@ public sealed class VerbPipelineTests : IDisposable
     }
 
     [Fact]
-    public void OnTheScriptFaceOneIdOfAListWhatAnswersRows()
+    public void OnTheScriptFaceOneIdOfAListWhatGoesAsAList()
     {
         FakeGameLink game = new();
-        game.Answer = _ => FakeGameLink.Ok("""{"prefab_name":"StructureVent"}""");
 
-        JsonNode? split = game.Pipeline().Call("inspect", "device", """{"id":"1"}""", Face.Script).Done();
-        game.Pipeline().Call("remove", "pipe", """{"id":"1"}""", Face.Script).Done();
-        JsonNode? direct = game.Pipeline().Call("inspect", "device", """{"id":"1"}""").Done();
+        game.Pipeline().Call("inspect", "device", """{"id":"1"}""", Face.Script).Done();
+        game.Pipeline().Call("inspect", "device", """{"id":"1"}""").Done();
 
-        Assert.Equal(1, (int)split!["count"]!);
-        Assert.Equal("1", (string)split["results"]![0]!["reference_id"]!);
-        Assert.Equal("StructureVent", (string)split["results"]![0]!["payload"]!["prefab_name"]!);
-        Assert.Equal("""["1"]""", game.Single("remove_pipes").Params()["reference_ids"]!.ToJsonString());
-        Assert.Equal("""{"prefab_name":"StructureVent"}""", direct!.ToJsonString());
+        Assert.Equal("""["1"]""", game.Calls.First().Params()["id"]!.ToJsonString());
+        Assert.Equal("\"1\"", game.Calls.Last().Params()["id"]!.ToJsonString());
     }
 
     // ---- help --------------------------------------------------------------------------------------------------
@@ -340,15 +259,15 @@ public sealed class VerbPipelineTests : IDisposable
     {
         FakeGameLink game = new();
         int polls = 0;
-        game.Answer = call => call.Params()["job_id"] == null
+        game.Answer = call => call.Method == "build"
             ? FakeGameLink.Ok("""{"job_id":"run-9","status":"queued"}""")
             : FakeGameLink.Ok(++polls < 2 ? """{"job_id":"run-9","status":"running"}""" : """{"job_id":"run-9","status":"applied"}""");
 
         JsonNode? reply = game.Pipeline().Call("build", "cable", """{"waypoints":[[0,0,0],[1,0,0]],"confirm":true}""").Done();
 
         Assert.Equal("applied", (string)reply!["status"]!);
-        Assert.Equal(3, game.CallsTo("place_cables").Count);
-        Assert.Equal("""{"job_id":"run-9"}""", game.CallsTo("place_cables")[2].Params().ToJsonString());
+        Assert.Equal(2, game.CallsTo("inspect").Count);
+        Assert.Equal("""{"what":"job","id":"run-9"}""", game.CallsTo("inspect")[1].Params().ToJsonString());
     }
 
     [Fact]

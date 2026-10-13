@@ -71,11 +71,11 @@ public sealed class StationGodClient : IAsyncDisposable
     /// Calls a method and waits for how it ended. shape goes beside params ({fields, limit, max_bytes}); deadlineMs is
     /// sent only when given, the mod then adds the method's x-duration itself. The call waits its connect timeout plus
     /// the deadline (30 s by default) plus x-duration plus 5 seconds, then answers NoAnswer and cancels the call when the
-    /// server allows. rename ({args, tools}, protocol.md Rename) is sent only when the server lists the feature rename.
+    /// server allows.
     /// </summary>
     public Task<CallOutcome> CallAsync(string method, JsonElement parameters, JsonElement? shape = null,
-        int? deadlineMs = null, CancellationToken cancellation = default, JsonElement? rename = null) =>
-        CallCoreAsync(method, parameters, shape, deadlineMs, onReply: null, cancellation, rename);
+        int? deadlineMs = null, CancellationToken cancellation = default) =>
+        CallCoreAsync(method, parameters, shape, deadlineMs, onReply: null, cancellation);
 
     /// <summary>
     /// Subscribes to device values (protocol.md, Subscriptions). Refused carries the mod's subscription_limit (poll
@@ -138,8 +138,7 @@ public sealed class StationGodClient : IAsyncDisposable
     // ---- calls ----------------------------------------------------------------------------------------------------
 
     private async Task<CallOutcome> CallCoreAsync(string method, JsonElement parameters, JsonElement? shape,
-        int? deadlineMs, Action<GameConnection, JsonElement>? onReply, CancellationToken cancellation,
-        JsonElement? rename = null)
+        int? deadlineMs, Action<GameConnection, JsonElement>? onReply, CancellationToken cancellation)
     {
         parameters = parameters.ValueKind == JsonValueKind.Object ? parameters : NoParameters;
         TimeSpan reply = (deadlineMs is { } given ? TimeSpan.FromMilliseconds(given) : DefaultDeadline) +
@@ -183,8 +182,7 @@ public sealed class StationGodClient : IAsyncDisposable
             }
 
             world = connection.WorldId;
-            Attempt attempt = await AttemptAsync(connection, method, parameters, shape, deadlineMs, onReply, expires, cancellation,
-                    rename)
+            Attempt attempt = await AttemptAsync(connection, method, parameters, shape, deadlineMs, onReply, expires, cancellation)
                 .ConfigureAwait(false);
             switch (attempt)
             {
@@ -217,7 +215,7 @@ public sealed class StationGodClient : IAsyncDisposable
     // One try on one connection: wait for a slot, write the call, wait for its end.
     private async Task<Attempt> AttemptAsync(GameConnection connection, string method, JsonElement parameters,
         JsonElement? shape, int? deadlineMs, Action<GameConnection, JsonElement>? onReply, DateTime expires,
-        CancellationToken cancellation, JsonElement? rename = null)
+        CancellationToken cancellation)
     {
         if (!await connection.Slots.WaitAsync(Remaining(expires), cancellation).ConfigureAwait(false))
         {
@@ -235,7 +233,7 @@ public sealed class StationGodClient : IAsyncDisposable
                 return new Attempt.NotWritten();
             }
 
-            string line = Wire.Call(connection.Features, id, method, parameters, shape, deadlineMs, rename);
+            string line = Wire.Call(connection.Features, id, method, parameters, shape, deadlineMs);
             if (!await connection.TrySendAsync(line).ConfigureAwait(false))
             {
                 // A write that failed part way may still have reached the game: only a safe call is sent again.

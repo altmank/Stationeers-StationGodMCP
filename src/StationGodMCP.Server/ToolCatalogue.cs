@@ -9,7 +9,7 @@ namespace StationGodMCP.Server;
 /// and description, its params as inputSchema (plus output_file, fields and omit when its x-shaping is lists, and its
 /// x-file-arguments), and annotations that call it read only exactly when its class is read and no x-class-when gives it
 /// another. The MCP surface no longer lists or calls them (tools/list answers the verbs, VerbCatalogue); they remain the
-/// handler schemas the catalogue checks and LegacyVerbMap's targets are held to.
+/// handler schemas the catalogue checks.
 /// </summary>
 internal sealed record ToolSet(
     JsonElement Tools,

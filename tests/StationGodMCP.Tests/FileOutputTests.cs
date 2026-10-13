@@ -271,8 +271,8 @@ public sealed class FileOutputTests : IDisposable
             """{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"find","arguments":{"what":"thing","prefab":"*ItemDirtyOre*","fields":["reference_id","position"],"output_file":"ore"}}}""",
             new Program.GameTransportSettings(game.Target), new OutputFolder(_folder));
 
-        FakeCall forwarded = Assert.Single(game.CallsTo("find_things"));
-        Assert.Equal("""{"prefab_contains":"ItemDirtyOre"}""", forwarded.Params.GetRawText());
+        FakeCall forwarded = Assert.Single(game.CallsTo("find"));
+        Assert.Equal("""{"what":"thing","prefab":"*ItemDirtyOre*"}""", forwarded.Params.GetRawText());
         Assert.Equal("""{"fields":["reference_id","position"]}""", forwarded.Shape!.Value.GetRawText());
         using JsonDocument reply = JsonDocument.Parse(line!);
         JsonElement pointer = reply.RootElement.GetProperty("result").GetProperty("structuredContent");

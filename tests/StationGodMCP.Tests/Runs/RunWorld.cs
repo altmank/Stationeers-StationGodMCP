@@ -98,7 +98,7 @@ internal sealed class RunWorld : IHubLink
         }
     }
 
-    /// <summary>The calls and hold_restores so far, in order: "method" or "hold_restore {change}".</summary>
+    /// <summary>The calls and hold_restores so far, in order: "verb.what" (KeyOf) or "hold_restore {change}".</summary>
     public List<string> Log
     {
         get
@@ -134,11 +134,11 @@ internal sealed class RunWorld : IHubLink
     public async Task<GameReply> CallAsync(GameCall call, CancellationToken cancellation)
     {
         JsonObject args = JsonNode.Parse(call.Parameters.GetRawText())!.AsObject();
-        bool report = args["dry_run"] is JsonValue dry && dry.GetValueKind() == JsonValueKind.True;
+        bool report = Reports(call, args);
         lock (_gate)
         {
-            // A dry run is logged apart: it reports and changes nothing.
-            _log.Add(report ? "report:" + call.Method : call.Method);
+            // A report is logged apart: it changes nothing.
+            _log.Add(report ? "report:" + KeyOf(call) : KeyOf(call));
         }
 
         if (_sessionEnd.IsCancellationRequested)
@@ -151,7 +151,7 @@ internal sealed class RunWorld : IHubLink
         {
             lock (_gate)
             {
-                _log.Add("refused_world " + call.Method);
+                _log.Add("refused_world " + KeyOf(call));
             }
 
             return FakeGameLink.Refused("world_changed", "the world changed");
@@ -189,8 +189,7 @@ internal sealed class RunWorld : IHubLink
         {
             await gate.WaitAsync(_sessionEnd.Token);
             JsonObject args = JsonNode.Parse(call.Parameters.GetRawText())!.AsObject();
-            bool report = args["dry_run"] is JsonValue dry && dry.GetValueKind() == JsonValueKind.True;
-            reply = Answer(call, args, report);
+            reply = Answer(call, args, Reports(call, args));
         }
         catch (OperationCanceledException)
         {
@@ -208,21 +207,49 @@ internal sealed class RunWorld : IHubLink
             return given;
         }
 
-        return (call.Method switch
+        return KeyOf(call) switch
         {
-            "thing_health" => Names(args),
-            "read_logic_many" => Reads(args),
-            "write_logic_many" => Writes(args["writes"]!.AsArray(), report),
-            "write_logic" => Writes(new JsonArray(args.DeepClone()), report),
-            "find_things" => FakeGameLink.Ok("""{"things":[{"reference_id":"999","display_name":"Pump"}],"count":1,"total":1}"""),
+            "inspect.health" => Names(args),
+            "read.logic" => Reads(args),
+            "write.logic" => Writes(Entries(args, "writes"), report),
+            "find.thing" => FakeGameLink.Ok("""{"things":[{"reference_id":"999","display_name":"Pump"}],"count":1,"total":1}"""),
             _ => FakeGameLink.Ok("{}")
-        });
+        };
+    }
+
+    /// <summary>A verb call's verb and what ("write.logic"); a call with no what is its method alone.</summary>
+    public static string KeyOf(GameCall call) =>
+        JsonNode.Parse(call.Parameters.GetRawText())?["what"] is JsonValue what ? call.Method + "." + what : call.Method;
+
+    // A write sent without confirm, of a what that takes confirm, is a report: the mod's, changing nothing.
+    private static bool Reports(GameCall call, JsonObject args) =>
+        args["confirm"] == null &&
+        VerbCatalogue.Embedded.Verb(call.Method)?.What((string?)args["what"]) is { Write: not null } what &&
+        what.Options.ContainsKey("confirm");
+
+    // A list option's entries, or the call's own id (one or a list) with its other options as one entry each.
+    private static JsonArray Entries(JsonObject args, string list)
+    {
+        if (args[list] is JsonArray given)
+        {
+            return given;
+        }
+
+        JsonArray entries = new();
+        foreach (JsonNode? id in args["id"] as JsonArray ?? new JsonArray(args["id"]?.DeepClone()))
+        {
+            JsonObject entry = (JsonObject)args.DeepClone();
+            entry["id"] = id?.DeepClone();
+            entries.Add(entry);
+        }
+
+        return entries;
     }
 
     private static GameReply Names(JsonObject args)
     {
         JsonArray rows = new();
-        foreach (JsonNode? id in args["reference_ids"] as JsonArray ?? new JsonArray(args["reference_id"]?.DeepClone()))
+        foreach (JsonNode? id in args["id"] as JsonArray ?? new JsonArray(args["id"]?.DeepClone()))
         {
             rows.Add(new JsonObject { ["reference_id"] = id?.DeepClone(), ["display_name"] = "Device " + Text(id) });
         }
@@ -234,10 +261,10 @@ internal sealed class RunWorld : IHubLink
     {
         JsonArray rows = new();
         int index = 0;
-        foreach (JsonNode? read in args["reads"]!.AsArray())
+        foreach (JsonNode? read in Entries(args, "reads"))
         {
-            string id = Text(read!["reference_id"] ?? read["id"]);
-            string logic = Text(read["logic_type"] ?? read["logic"]);
+            string id = Text(read!["id"]);
+            string logic = Text(read["logic"]);
             rows.Add(new JsonObject
             {
                 ["index"] = index++,
@@ -255,10 +282,11 @@ internal sealed class RunWorld : IHubLink
     {
         JsonArray rows = new();
         int index = 0;
+        JsonArray targets = new();
         foreach (JsonNode? write in writes)
         {
-            string id = Text(write!["reference_id"] ?? write["id"]);
-            string logic = Text(write["logic_type"] ?? write["logic"]);
+            string id = Text(write!["id"]);
+            string logic = Text(write["logic"]);
             double value = (double)write["value"]!.AsValue().GetValue<double>();
             double before = Value(id, logic);
             if (!report && RefusesWrite?.Invoke(id, logic, value) == true)
@@ -278,6 +306,9 @@ internal sealed class RunWorld : IHubLink
                 Set(id, logic, value);
             }
 
+            JsonObject target = VerbPipeline.Row(id, null, "Device " + id, JsonValue.Create(before), JsonValue.Create(value), "[undo]");
+            target["logic"] = logic;
+            targets.Add(target);
             rows.Add(new JsonObject
             {
                 ["index"] = index++,
@@ -290,9 +321,13 @@ internal sealed class RunWorld : IHubLink
             });
         }
 
+        if (report)
+        {
+            return FakeGameLink.Ok(new JsonObject { ["report_only"] = true, ["targets"] = targets }.ToJsonString());
+        }
+
         return FakeGameLink.Ok(new JsonObject
         {
-            ["report_only"] = report,
             ["results"] = rows,
             ["count"] = rows.Count,
             ["success_count"] = rows.Count,

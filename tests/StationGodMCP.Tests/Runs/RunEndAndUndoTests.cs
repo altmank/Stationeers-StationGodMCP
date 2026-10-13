@@ -176,7 +176,7 @@ public sealed class RunEndAndUndoTests : IDisposable
         var log = bench.World.Log;
         int sessionEnd = log.IndexOf("session_end");
         Assert.True(sessionEnd > atEof);
-        int writesAfterEof = log.Skip(atEof).Take(sessionEnd - atEof).Count(entry => entry == "write_logic_many");
+        int writesAfterEof = log.Skip(atEof).Take(sessionEnd - atEof).Count(entry => entry == "write.logic");
         Assert.Equal(2, writesAfterEof);
         Assert.Equal(0, bench.World.Value("1", "On"));
         Assert.Equal(0, bench.World.Value("7", "On"));
@@ -197,7 +197,7 @@ public sealed class RunEndAndUndoTests : IDisposable
         Task never = new TaskCompletionSource().Task;
         bench.World.Gate = call =>
         {
-            if (call.Method != "write_logic_many" || !call.Parameters.GetRawText().Contains("\"value\":0"))
+            if (RunWorld.KeyOf(call) != "write.logic" || !call.Parameters.GetRawText().Contains("\"value\":0"))
             {
                 return null;
             }
@@ -227,7 +227,7 @@ public sealed class RunEndAndUndoTests : IDisposable
         Task never = new TaskCompletionSource().Task;
         bench.World.Gate = call =>
         {
-            if (call.Method != "write_logic_many" || !call.Parameters.GetRawText().Contains("\"value\":0"))
+            if (RunWorld.KeyOf(call) != "write.logic" || !call.Parameters.GetRawText().Contains("\"value\":0"))
             {
                 return null;
             }
@@ -262,7 +262,7 @@ public sealed class RunEndAndUndoTests : IDisposable
         TaskCompletionSource release = new(TaskCreationOptions.RunContinuationsAsynchronously);
         bench.World.Gate = call =>
         {
-            if (call.Method != "read_logic_many")
+            if (RunWorld.KeyOf(call) != "read.logic")
             {
                 return null;
             }
@@ -299,7 +299,7 @@ public sealed class RunEndAndUndoTests : IDisposable
         Task never = new TaskCompletionSource().Task;
         bench.World.Gate = call =>
         {
-            if (call.Method != "read_logic_many")
+            if (RunWorld.KeyOf(call) != "read.logic")
             {
                 return null;
             }
@@ -333,7 +333,7 @@ public sealed class RunEndAndUndoTests : IDisposable
         await bench.RunAsync("sg.write('logic', id='1', logic='On', value=1)\nwhile True:\n    try:\n" +
                              "        sg.write('logic', id='1', logic='On', value=1)\n        sg.wait(0.05)\n" +
                              "    except BaseException:\n        pass", confirm: true, maxWait: 0);
-        await RunBench.UntilAsync(() => bench.World.Count("write_logic_many") >= 3, "the loop's writes");
+        await RunBench.UntilAsync(() => bench.World.Count("write.logic") >= 3, "the loop's writes");
         Stopwatch since = Stopwatch.StartNew();
         bench.Host.Stop(new JsonObject { ["id"] = "script-1" });
         await bench.EndedAsync("script-1");

@@ -119,7 +119,7 @@ public sealed class RefsAndCapTests : IDisposable
     {
         FakeGameLink game = new();
         string big = ReplyOfBytes(20000);
-        game.Answer = call => call.Method == "find_things" ? FakeGameLink.Ok(big) : FakeGameLink.Ok("{}");
+        game.Answer = call => call.Method == "find" ? FakeGameLink.Ok(big) : FakeGameLink.Ok("{}");
         VerbPipeline pipeline = game.Pipeline();
 
         JsonNode cut = pipeline.Call("find", "thing", "{}").Done()!;
@@ -128,10 +128,10 @@ public sealed class RefsAndCapTests : IDisposable
         pipeline.Call("remove", "cable", $$"""{"id":"{{reference}}"}""").Done();
         pipeline.Call("inspect", "device", $$"""{"id":"{{reference}}.things.1"}""").Done();
 
-        JsonArray removed = game.Single("remove_cables").Params()["reference_ids"]!.AsArray();
+        JsonArray removed = game.Single("remove").Params()["id"]!.AsArray();
         Assert.Equal(shown, removed.Count);
         Assert.Equal("1000", (string)removed[0]!);
-        Same("""{"reference_id":"1001"}""", game.Single("describe_device").Params());
+        Same("""{"what":"device","id":["1001"]}""", game.Single("inspect").Params());
     }
 
     [Fact]
@@ -139,7 +139,7 @@ public sealed class RefsAndCapTests : IDisposable
     {
         FakeGameLink game = new();
         string big = ReplyOfBytes(20000);
-        game.Answer = call => call.Method == "find_things" ? FakeGameLink.Ok(big) : FakeGameLink.Ok("{}");
+        game.Answer = call => call.Method == "find" ? FakeGameLink.Ok(big) : FakeGameLink.Ok("{}");
         VerbPipeline pipeline = game.Pipeline();
         string reference = (string)pipeline.Call("find", "thing", "{}").Done()!["ref"]!;
 
@@ -148,7 +148,7 @@ public sealed class RefsAndCapTests : IDisposable
         Assert.True((bool)report["report_only"]!);
         Assert.Equal(reference, (string)report["targets_from"]!["from"]!);
         Assert.True((bool)report["targets_from"]!["more_in_source"]!);
-        Assert.All(game.CallsTo("write_logic_many"), call => Assert.True((bool)call.Params()["dry_run"]!));
+        Assert.All(game.CallsTo("write"), call => Assert.Null(call.Params()["confirm"]));
     }
 
     [Fact]
@@ -163,8 +163,8 @@ public sealed class RefsAndCapTests : IDisposable
         pipeline.Call("find", null, $$"""{"repeat":"{{reference}}","offset":8}""").Done();
         JsonNode whole = pipeline.Call("find", null, $$"""{"repeat":"{{reference}}","whole":true}""").Done()!;
 
-        Assert.Equal(2, game.CallsTo("find_things").Count);
-        Same("""{"name_contains":"Light","limit":60,"offset":8}""", game.CallsTo("find_things")[1].Params());
+        Assert.Equal(2, game.CallsTo("find").Count);
+        Same("""{"what":"thing","name":"Light","limit":60,"offset":8}""", game.CallsTo("find")[1].Params());
         Assert.True((bool)whole["from_store"]!);
         Assert.Equal(60, whole["things"]!.AsArray().Count);
     }
@@ -197,7 +197,7 @@ public sealed class RefsAndCapTests : IDisposable
         string path = Path.Combine(_folder, "rec.jsonl");
         FakeGameLink game = new();
         string big = ReplyOfBytes(20000);
-        game.Answer = call => FakeGameLink.Ok(call.Method == "find_things" ? big : "{}");
+        game.Answer = call => FakeGameLink.Ok(call.Method == "find" ? big : "{}");
         using (CallRecorder recorder = new(path))
         {
             VerbPipeline pipeline = game.Pipeline(recorder: recorder);

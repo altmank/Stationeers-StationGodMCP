@@ -81,8 +81,8 @@ public sealed class ReplyCompactionTests
             """{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"find","arguments":{"what":"device","list_limits":{"devices":200}}}}""",
             new Program.GameTransportSettings(game.Target));
 
-        FakeCall forwarded = Assert.Single(game.CallsTo("list_devices"));
-        Assert.Equal("{}", forwarded.Params.GetRawText());
+        FakeCall forwarded = Assert.Single(game.CallsTo("find"));
+        Assert.Equal("""{"what":"device"}""", forwarded.Params.GetRawText());
         Assert.Equal("""{"limit":{"devices":200}}""", forwarded.Shape!.Value.GetRawText());
         Assert.True(Program.InputSchemas["list_devices"].GetProperty("properties").TryGetProperty("list_limits", out _));
     }
@@ -111,7 +111,7 @@ public sealed class ReplyCompactionTests
             """{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"plan","arguments":{"what":"flight","node":"pad","limits":true}}}""",
             new Program.GameTransportSettings(game.Target));
 
-        FakeCall forwarded = Assert.Single(game.CallsTo("rocket_forecast"));
+        FakeCall forwarded = Assert.Single(game.CallsTo("plan"));
         Assert.True(forwarded.Params.GetProperty("limits").GetBoolean());
         Assert.Null(forwarded.Shape);
     }

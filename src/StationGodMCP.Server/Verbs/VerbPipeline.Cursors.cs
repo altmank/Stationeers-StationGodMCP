@@ -1,59 +1,38 @@
-using System.Text.Json;
 using System.Text.Json.Nodes;
 using StationGodMCP.Client;
 
 namespace StationGodMCP.Server;
 
 /// <summary>
-/// Main lists on the script and program faces (hub.md Faces, D3): the first page is the handler's first page; when
-/// more remain the reply carries cursor (a hub cursor) and main (the main list's key), and MoreAsync gives the next
-/// entries, by the mod's walk cursor where the handler walks (find_things), else by offset pages.
+/// Main lists on the script and program faces (hub.md Faces, D3): the first page is the mod's first page; when more
+/// remain the reply carries cursor (a hub cursor) and main (the main list's key), and MoreAsync gives the next entries
+/// by offset pages of the same verb call.
 /// </summary>
 public sealed partial class VerbPipeline
 {
-    private const string WalkHandler = "find_things";
-
-    private async Task<VerbReply> FirstPageAsync(VerbCall call, WhatEntry what, JsonObject options, HandlerCall first,
+    private async Task<VerbReply> FirstPageAsync(VerbCall call, WhatEntry what, JsonObject options,
         CancellationToken cancellation)
     {
-        bool walks = first.Handler == WalkHandler && first.Args["offset"] == null;
-        if (walks)
-        {
-            first.Args["cursor"] = true;
-        }
-
-        VerbReply reply = await RunCallAsync(first, call, what, options, null, cancellation).ConfigureAwait(false);
-        if (reply is not VerbReply.Done { Reply: JsonObject page } || page[what.MainList!] is not JsonArray entries)
+        VerbReply reply = await ModAsync(call, what, options, cancellation).ConfigureAwait(false);
+        if (reply is not VerbReply.Done { Reply: JsonObject page } || page[what.MainList!] is not JsonArray entries ||
+            !JsonNodes.IsTrue(page["has_more"]))
         {
             return reply;
         }
 
-        HubCursor? cursor = null;
-        JsonElement? shape = Shape(options).Shape;
-        if (walks && JsonNodes.Text(page["cursor_id"]) is { } walk)
+        if (!what.Options.ContainsKey("offset"))
         {
-            cursor = _cursors.Open(call.Stream, what, first, what.MainList!, shape);
-            cursor.WalkCursor = walk;
-            page.Remove("cursor_id");
-        }
-        else if (JsonNodes.IsTrue(page["has_more"]) && _schemas.Arg(first.Handler, "offset") != null)
-        {
-            cursor = _cursors.Open(call.Stream, what, first, what.MainList!, shape);
-            cursor.NextOffset = (int)(JsonNodes.Number(page["offset"]) ?? JsonNodes.Number(first.Args["offset"]) ?? 0) +
-                                entries.Count;
-        }
-        else if (JsonNodes.IsTrue(page["has_more"]))
-        {
-            // No walk and no offset: the rest cannot be paged to.
+            // No offset: the rest cannot be paged to.
             page["rest_unreachable"] = $"{what.Label} answers one page and takes no offset; narrow the call for the rest.";
+            return reply;
         }
 
-        if (cursor != null)
-        {
-            page["cursor"] = cursor.Id;
-            page["main"] = cursor.Main;
-        }
-
+        HubCursor cursor = _cursors.Open(call.Stream, what, (JsonObject)options.DeepClone(), what.MainList!,
+            Shape(options).Shape);
+        cursor.NextOffset = (int)(JsonNodes.Number(page["offset"]) ?? JsonNodes.Number(options["offset"]) ?? 0) +
+                            entries.Count;
+        page["cursor"] = cursor.Id;
+        page["main"] = cursor.Main;
         return reply;
     }
 
@@ -71,24 +50,14 @@ public sealed partial class VerbPipeline
                 data: new JsonObject { ["cursor"] = cursorId });
         }
 
-        JsonObject args;
-        if (cursor.WalkCursor != null)
-        {
-            args = new JsonObject { ["cursor_id"] = cursor.WalkCursor };
-        }
-        else
-        {
-            args = (JsonObject)cursor.Call.Args.DeepClone();
-            args["offset"] = cursor.NextOffset;
-        }
-
+        JsonObject options = (JsonObject)cursor.Options.DeepClone();
+        options["offset"] = cursor.NextOffset;
         if (limit is { } most)
         {
-            args["limit"] = most;
+            options["limit"] = most;
         }
 
-        GameReply reply = await SendAsync(new HandlerCall(cursor.Call.Handler, args, cursor.Call.Rename), stream,
-            cursor.Shape, cancellation).ConfigureAwait(false);
+        GameReply reply = await SendAsync(cursor.What, options, stream, cursor.Shape, cancellation).ConfigureAwait(false);
         if (reply is not GameReply.Ok ok)
         {
             _cursors.Free(cursor.Id);
@@ -97,21 +66,9 @@ public sealed partial class VerbPipeline
 
         JsonNode? page = JsonNodes.FromElement(ok.Result);
         JsonArray entries = HubCursors.Entries(page, cursor.Main);
-        bool more;
-        if (cursor.WalkCursor != null)
-        {
-            string? next = JsonNodes.Text(page?["cursor_id"]);
-            more = next != null;
-            cursor.WalkCursor = next;
-        }
-        else
-        {
-            more = JsonNodes.IsTrue(page?["has_more"]) && entries.Count > 0;
-            cursor.NextOffset += entries.Count;
-        }
-
+        cursor.NextOffset += entries.Count;
         JsonObject answer = new() { ["entries"] = entries };
-        if (more)
+        if (JsonNodes.IsTrue(page?["has_more"]) && entries.Count > 0)
         {
             answer["cursor"] = cursor.Id;
         }

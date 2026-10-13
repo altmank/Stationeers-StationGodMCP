@@ -17,9 +17,9 @@ namespace StationGodMCP.Tests.Sidecar;
 
 /// <summary>
 /// MCP transcripts through the sidecar against an in-process fake game: the verb tool list and instructions (today's
-/// tools no longer listed or callable), options checked by the hub before anything is sent, verbs translated onto the
-/// handlers with fields sent as shape and never applied again, the rename envelope on the wire, output files and the
-/// inline limit, and several calls over one connection.
+/// tools no longer listed or callable), options checked by the hub before anything is sent, verbs sent to the mod as
+/// themselves with fields sent as shape and never applied again, output files and the inline limit, and several calls
+/// over one connection.
 /// </summary>
 public sealed class SidecarTranscriptTests : IDisposable
 {
@@ -71,7 +71,7 @@ public sealed class SidecarTranscriptTests : IDisposable
 
         Assert.Equal(17, tools.GetArrayLength());
         Assert.Equal(-32602, old.GetProperty("error").GetProperty("code").GetInt32());
-        Assert.Single(game.CallsTo("game_clock"));
+        Assert.Single(game.CallsTo("read"));
     }
 
     [Fact]
@@ -86,7 +86,7 @@ public sealed class SidecarTranscriptTests : IDisposable
         JsonElement problem = result.GetProperty("structuredContent").GetProperty("data").GetProperty("problems")[0];
         Assert.Equal("quantty", problem.GetProperty("path").GetString());
         Assert.Equal("quantity", problem.GetProperty("nearest")[0].GetString());
-        Assert.Empty(game.CallsTo("move_item"));
+        Assert.Empty(game.CallsTo("move"));
     }
 
     [Fact]
@@ -99,42 +99,17 @@ public sealed class SidecarTranscriptTests : IDisposable
         JsonElement result = Result(await sidecar.HandleAsync(Call(1, "find",
             """{"what":"thing","category":"structure","fields":["things.position.x"]}""")));
 
-        FakeCall call = Assert.Single(game.CallsTo("find_things"));
-        Assert.Equal("""{"kind":"structure"}""", call.Params.GetRawText());
+        FakeCall call = Assert.Single(game.CallsTo("find"));
+        Assert.Equal("""{"what":"thing","category":"structure"}""", call.Params.GetRawText());
         Assert.Equal("""{"fields":["things.position.x"]}""", call.Shape!.Value.GetRawText());
         Assert.Equal("""{"things":[{"position":{"x":1}}]}""", result.GetProperty("structuredContent").GetRawText());
-    }
-
-    [Fact]
-    public async Task TheRenameEnvelopeGoesOnTheWireWhenTheModListsIt()
-    {
-        await using FakeGame game = FakeGame.OnPipe();
-        game.Features = ["shape", "shape.paths", "shape.omit", "subscriptions", "cancel", "rename"];
-        await using McpAdapter sidecar = Sidecar(game.Target);
-
-        await sidecar.HandleAsync(Call(1, "find", """{"what":"thing","name":"Tank"}"""));
-
-        JsonElement rename = Assert.Single(game.CallsTo("find_things")).Message.GetProperty("rename");
-        Assert.Equal("name", rename.GetProperty("args").GetProperty("name_contains").GetString());
-        Assert.Equal("find {what: \"thing\"}", rename.GetProperty("tools").GetProperty("find_things").GetString());
-    }
-
-    [Fact]
-    public async Task AModWithoutTheRenameFeatureGetsNoRename()
-    {
-        await using FakeGame game = FakeGame.OnPipe();
-        await using McpAdapter sidecar = Sidecar(game.Target);
-
-        await sidecar.HandleAsync(Call(1, "find", """{"what":"thing","name":"Tank"}"""));
-
-        Assert.False(Assert.Single(game.CallsTo("find_things")).Message.TryGetProperty("rename", out _));
     }
 
     [Fact]
     public async Task OnVersionTwoASelectorTheModWouldRefuseIsReportedUnmatched()
     {
         await using FakeGame game = FakeGame.OnPipe();
-        game.Answer = call => Task.FromResult<string?>(call.Method == "find_things"
+        game.Answer = call => Task.FromResult<string?>(call.Method == "find"
             ? call.Ok("""{"things":[{"reference_id":"1"}]}""", shaped: true)
             : call.Ok("{}"));
         await using McpAdapter sidecar = Sidecar(game.Target);
@@ -142,7 +117,7 @@ public sealed class SidecarTranscriptTests : IDisposable
         JsonElement result = Result(await sidecar.HandleAsync(Call(2, "find",
             """{"what":"thing","fields":[" reference_id ","prefab-name","reference_id"]}""")));
 
-        Assert.Equal("""{"fields":["reference_id"]}""", Assert.Single(game.CallsTo("find_things")).Shape!.Value.GetRawText());
+        Assert.Equal("""{"fields":["reference_id"]}""", Assert.Single(game.CallsTo("find")).Shape!.Value.GetRawText());
         Assert.Equal("""{"things":[{"reference_id":"1"}],"fields_unmatched":["prefab-name"]}""",
             result.GetProperty("structuredContent").GetRawText());
     }
@@ -196,7 +171,7 @@ public sealed class SidecarTranscriptTests : IDisposable
     }
 
     [Fact]
-    public async Task ReadSampleGoesToSampleLogicWithEveryPair()
+    public async Task ReadSampleGoesAsReadWithItsOptions()
     {
         await using FakeGame game = FakeGame.OnPipe();
         game.Answer = call => Task.FromResult<string?>(call.Ok("""{"sample_count":3,"changes":[]}"""));
@@ -205,9 +180,7 @@ public sealed class SidecarTranscriptTests : IDisposable
         JsonElement result = Result(await sidecar.HandleAsync(Call(1, "read", """{"what":"sample","id":"1","logic":"On"}""")));
 
         Assert.Equal(3, result.GetProperty("structuredContent").GetProperty("sample_count").GetInt32());
-        Assert.Equal("""{"targets":[{"reference_id":"1","logic_type":"On"}]}""",
-            Assert.Single(game.CallsTo("sample_logic")).Params.GetRawText());
-        Assert.Empty(game.CallsTo("read_logic_many"));
+        Assert.Equal("""{"what":"sample","id":"1","logic":"On"}""", Assert.Single(game.CallsTo("read")).Params.GetRawText());
     }
 
     [Fact]
@@ -217,12 +190,12 @@ public sealed class SidecarTranscriptTests : IDisposable
         TaskCompletionSource allArrived = new(TaskCreationOptions.RunContinuationsAsynchronously);
         game.Answer = async call =>
         {
-            if (call.Method != "read_logic")
+            if (call.Method != "read")
             {
                 return call.Ok("{}");
             }
 
-            if (game.CallsTo("read_logic").Count() == 5)
+            if (game.CallsTo("read").Count() == 5)
             {
                 allArrived.TrySetResult();
             }

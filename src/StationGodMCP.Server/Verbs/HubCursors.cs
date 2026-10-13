@@ -4,10 +4,10 @@ using System.Text.Json.Nodes;
 namespace StationGodMCP.Server;
 
 /// <summary>
-/// A hub cursor over a script or program reply's main list: the handler call to page with, its stream, the main list's
-/// key, and either the mod's walk cursor (cursor_id) or the offset of the next page.
+/// A hub cursor over a script or program reply's main list: the verb call to page with (its what and options), its
+/// stream, the main list's key, and the offset of the next page.
 /// </summary>
-internal sealed class HubCursor(string id, long stream, WhatEntry what, HandlerCall call, string main)
+internal sealed class HubCursor(string id, long stream, WhatEntry what, JsonObject options, string main)
 {
     internal string Id { get; } = id;
 
@@ -15,12 +15,9 @@ internal sealed class HubCursor(string id, long stream, WhatEntry what, HandlerC
 
     internal WhatEntry What { get; } = what;
 
-    internal HandlerCall Call { get; } = call;
+    internal JsonObject Options { get; } = options;
 
     internal string Main { get; } = main;
-
-    /// <summary>The mod's walk cursor ("k12") when the handler walks; null for offset pages.</summary>
-    internal string? WalkCursor { get; set; }
 
     internal int NextOffset { get; set; }
 
@@ -35,13 +32,13 @@ internal sealed class HubCursors
     private readonly Dictionary<string, HubCursor> _cursors = new(StringComparer.Ordinal);
     private int _next;
 
-    internal HubCursor Open(long stream, WhatEntry what, HandlerCall call, string main,
+    internal HubCursor Open(long stream, WhatEntry what, JsonObject options, string main,
         System.Text.Json.JsonElement? shape = null)
     {
         lock (_gate)
         {
             _next++;
-            HubCursor cursor = new("c" + _next.ToString(CultureInfo.InvariantCulture), stream, what, call, main)
+            HubCursor cursor = new("c" + _next.ToString(CultureInfo.InvariantCulture), stream, what, options, main)
             {
                 Shape = shape
             };

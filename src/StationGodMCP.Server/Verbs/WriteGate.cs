@@ -128,7 +128,7 @@ internal sealed class PassThroughGate : IWriteGate
 /// <summary>
 /// Reads a write what's x-target paths out of the options, marking the ids a ref gave (refs: option name to ref). A
 /// spread path (role spread: a filter or selector that chooses what the write acts on) is a selector target with its
-/// value, for the handler forms its when names; network, room, near and box are spreads wherever a what takes them.
+/// value; network, room, near and box are spreads wherever a what takes them.
 /// </summary>
 internal static class WriteTargetPaths
 {
@@ -142,7 +142,7 @@ internal static class WriteTargetPaths
         {
             if (path.Role == "spread")
             {
-                if (options[path.Path] is { } chosen && WhenApplies(what, path, options))
+                if (options[path.Path] is { } chosen)
                 {
                     targets.Add(new WriteTarget(path.Path, path.Role, [], chosen.DeepClone(), TargetSource.Selector));
                 }
@@ -214,53 +214,6 @@ internal static class WriteTargetPaths
         }
 
         return false;
-    }
-
-    /// <summary>
-    /// A target with when belongs to those handler forms: it applies unless the call gives an option that only other
-    /// forms take (move item's prefab chooses items into a store; out of one, with source, it names what to take).
-    /// </summary>
-    internal static bool WhenApplies(WhatEntry what, TargetPath path, JsonObject options)
-    {
-        if (path.When.Count == 0)
-        {
-            return true;
-        }
-
-        foreach ((string name, JsonNode? value) in options)
-        {
-            if (value == null || name == path.Path)
-            {
-                continue;
-            }
-
-            bool inForms = false;
-            bool elsewhere = false;
-            foreach (HandlerEntry handler in what.Handlers)
-            {
-                bool takes = false;
-                foreach (ArgEntry entry in handler.Args)
-                {
-                    takes |= entry.Option == name;
-                }
-
-                if (takes && path.When.Contains(handler.When ?? string.Empty))
-                {
-                    inForms = true;
-                }
-                else if (takes)
-                {
-                    elsewhere = true;
-                }
-            }
-
-            if (elsewhere && !inForms)
-            {
-                return false;
-            }
-        }
-
-        return true;
     }
 
     private static bool Has(List<WriteTarget> targets, string path)

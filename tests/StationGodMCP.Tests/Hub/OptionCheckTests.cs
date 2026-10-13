@@ -143,33 +143,4 @@ public sealed class OptionCheckTests
 
         Assert.StartsWith("Logic values of devices", (string)reply.Done()!["text"]!);
     }
-
-    [Fact]
-    public void AnOptionAnotherFormTakesIsRefusedNamingThatForm()
-    {
-        VerbReply.Failed failed = new FakeGameLink().Pipeline()
-            .Call("swap", "cable", """{"network":"5","into":"heavy","spare":["1"]}""").Failed();
-
-        Assert.Equal("spare: not taken with into (it goes with tidy)", Assert.Single(failed.Problems()));
-    }
-
-    [Fact]
-    public void AnOptionNoHandlerTakesYetIsNotAvailable()
-    {
-        FakeGameLink game = new();
-
-        VerbReply.Failed failed = game.Pipeline().Call("check", "ignition", """{"id":"5"}""").Failed();
-
-        Assert.Equal("not_available", failed.Code);
-        Assert.Contains("id", failed.Message);
-        Assert.Empty(game.Calls);
-    }
-
-    [Fact]
-    public void ShapingASmallReplyIsRefused()
-    {
-        VerbReply.Failed failed = new FakeGameLink().Pipeline().Call("inspect", "player", """{"fields":["x"]}""").Failed();
-
-        Assert.Equal("fields: not taken by inspect player (its reply stays small)", Assert.Single(failed.Problems()));
-    }
 }

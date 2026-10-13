@@ -5,8 +5,8 @@ using StationGodMCP.Client;
 namespace StationGodMCP.Server;
 
 /// <summary>
-/// Writes: the one place the gate is asked (with the targets the x-target paths, refs and spreads resolve to), the
-/// report forms by report class, the act path with move item's names and undo marks, and the bulk writes (write-N).
+/// Writes: the one place the gate is asked (with the targets the x-target paths, refs and spreads resolve to), the act
+/// and report sends (confirm true acts; left out, the mod reports), and the bulk writes (write-N).
 /// </summary>
 public sealed partial class VerbPipeline
 {
@@ -25,50 +25,22 @@ public sealed partial class VerbPipeline
     private IWriteGate GateFor(VerbCall call) =>
         call.Gate ?? _gate ?? (call.Face == Face.Script ? ReportingGate.Instance : _directGate);
 
-    private async Task<VerbReply> WriteAsync(VerbCall call, WhatEntry what, JsonObject options, JsonArray? ids,
-        List<RefUse> refs, CancellationToken cancellation)
+    private async Task<VerbReply> WriteAsync(VerbCall call, WhatEntry what, JsonObject options, List<RefUse> refs,
+        CancellationToken cancellation)
     {
-        // A spread the hub expands (paint a network): the report lists every target, and acting takes their ids.
-        Dictionary<string, JsonNode?>? current = null;
-        JsonObject asked = options;
-        if (what.Key == "write.paint" && options["network"] != null)
+        if (RunsWrite(what, options) is { } runs)
         {
-            switch (await PaintedNetworkAsync(call, what, options, cancellation).ConfigureAwait(false))
-            {
-                case (VerbReply.Failed failed, _, _):
-                    return failed;
-                case (null, { } expanded, { } colors):
-                    options = expanded;
-                    current = colors;
-                    ids = null;
-                    break;
-            }
+            return runs;
         }
 
-        // A call the handlers cannot take is refused before the gate: a report of it would promise what cannot act.
-        if (!HubForm(what, options, ids))
-        {
-            JsonObject first = (JsonObject)options.DeepClone();
-            if (ids != null && what.ListForm == "split")
-            {
-                first["id"] = ids.Count > 0 ? ids[0]?.DeepClone() : null;
-            }
-
-            if (_map.Translate(what, first) is Translation.Answered { Reply: VerbReply.Failed cannot })
-            {
-                return cannot;
-            }
-        }
-
-        WriteTargets targets = WriteTargetPaths.Resolve(what, asked, refs);
+        WriteTargets targets = WriteTargetPaths.Resolve(what, options, refs);
         switch (GateFor(call).Decide(call, targets))
         {
             case WriteDecision.Act:
-                return await ActAsync(call, what, options, ids, targets, refs.Count > 0, cancellation).ConfigureAwait(false);
+                return await ActAsync(call, what, options, refs.Count > 0, cancellation).ConfigureAwait(false);
             case WriteDecision.Report:
-                VerbReply report = await ReportAsync(call, what, options, ids, targets, current, cancellation)
-                    .ConfigureAwait(false);
-                Replayable(report, what, options, targets, asked != options);
+                VerbReply report = await ReportAsync(call, what, options, targets, cancellation).ConfigureAwait(false);
+                Replayable(report, what, options, targets);
                 return report;
             case WriteDecision.Refuse refuse:
                 return Refused(refuse, targets);
@@ -80,24 +52,21 @@ public sealed partial class VerbPipeline
         }
     }
 
-    // undo of a write-N or the paste, and paint of a network, are the hub's own forms: no translation to check first.
-    private static bool HubForm(WhatEntry what, JsonObject options, JsonArray? ids)
+    // server stop and undo of a script run are the runs piece's.
+    private static VerbReply? RunsWrite(WhatEntry what, JsonObject options)
     {
-        if (what.Key != "undo")
+        if (what.Key == "server.stop")
         {
-            return false;
+            return new VerbReply.Failed(VerbFailure.NotAvailable, $"server stop {RunsPiece}.");
         }
 
-        foreach (JsonNode? id in ids ?? new JsonArray(options["id"]?.DeepClone()))
+        if (what.Key == "undo" && JsonNodes.Text(options["id"])?.Trim() is { } id &&
+            id.StartsWith("script-", StringComparison.OrdinalIgnoreCase))
         {
-            string? text = JsonNodes.Text(id)?.Trim();
-            if (BulkWrites.IsBulkId(text) || string.Equals(text, "paste", StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
+            return new VerbReply.Failed(VerbFailure.NotAvailable, $"undo of a script run {RunsPiece}.");
         }
 
-        return false;
+        return null;
     }
 
     // A refused write answers a row per target and does not raise: the rest of a run's finally goes on.
@@ -130,32 +99,16 @@ public sealed partial class VerbPipeline
 
     // ---- act -------------------------------------------------------------------------------------------------------
 
-    private async Task<VerbReply> ActAsync(VerbCall call, WhatEntry what, JsonObject options, JsonArray? ids,
-        WriteTargets targets, bool fromRef, CancellationToken cancellation)
+    private async Task<VerbReply> ActAsync(VerbCall call, WhatEntry what, JsonObject options, bool fromRef,
+        CancellationToken cancellation)
     {
-        if (what.Key == "undo" && ids == null && OneOwn(options) is { } own)
-        {
-            return await OwnUndoAsync(call, what, options, own, true, cancellation).ConfigureAwait(false);
-        }
-
-        bool moves = what.Key == "move.item";
-        Dictionary<string, (string? Display, string? Custom)>? names = moves
-            ? await NamesAsync(what, ActsOnIds(targets), call.Stream, cancellation).ConfigureAwait(false)
-            : null;
-        VerbReply reply = ids != null && what.ListForm == "split"
-            ? await SplitAsync(call, what, options, ids, true, cancellation).ConfigureAwait(false)
-            : await ExecuteAsync(_map.Translate(what, options), call, what, options, true, cancellation).ConfigureAwait(false);
+        VerbReply reply = await SentWriteAsync(call, what, options, true, cancellation).ConfigureAwait(false);
         if (reply is not VerbReply.Done done)
         {
             return reply;
         }
 
-        if (names != null)
-        {
-            MarkMoves(done.Reply, names, JsonNodes.IsTrue(options["force"]));
-        }
-
-        if (call.Face != Face.Script && IsBulk(what, options, ids, fromRef) && done.Reply is JsonObject acted)
+        if (call.Face != Face.Script && IsBulk(what, options, fromRef) && done.Reply is JsonObject acted)
         {
             BulkWrite write = _bulk.Mint(what, acted);
             acted["job_id"] = write.Id;
@@ -164,15 +117,35 @@ public sealed partial class VerbPipeline
         return done;
     }
 
-    // A bulk write: a write or move that acted on a list, a ref or a list of entries (bulk jobs are other verbs' jobs).
-    private static bool IsBulk(WhatEntry what, JsonObject options, JsonArray? ids, bool fromRef)
+    // A write sent to the mod (acting: confirm true; else a report), or the hub's own for undo of a write-N.
+    private async Task<VerbReply> SentWriteAsync(VerbCall call, WhatEntry what, JsonObject options, bool acting,
+        CancellationToken cancellation)
     {
-        if (what.Verb is not ("write" or "move") || what.ListForm == "one")
+        if (what.Key == "undo")
+        {
+            if (options["id"] is JsonArray ids && HoldsBulk(ids))
+            {
+                return await RowsAsync(call, what, options, ids, acting, cancellation).ConfigureAwait(false);
+            }
+
+            if (JsonNodes.Text(options["id"])?.Trim() is { } id && BulkWrites.IsBulkId(id))
+            {
+                return await OwnUndoAsync(call, id, options, acting, cancellation).ConfigureAwait(false);
+            }
+        }
+
+        return await ModAsync(call, what, Confirmed(what, options, acting), cancellation).ConfigureAwait(false);
+    }
+
+    // A bulk write: a write or move that acted on a list, a ref or a list of entries (bulk jobs are other verbs' jobs).
+    private static bool IsBulk(WhatEntry what, JsonObject options, bool fromRef)
+    {
+        if (what.Verb is not ("write" or "move"))
         {
             return false;
         }
 
-        if (ids != null || fromRef || options["id"] is JsonArray)
+        if (fromRef || options["id"] is JsonArray)
         {
             return true;
         }
@@ -188,102 +161,33 @@ public sealed partial class VerbPipeline
         return false;
     }
 
-    /// <summary>
-    /// Move item's rows by the handler that answered: a slot move names what moved (display_name) and can be undone
-    /// unless it merged into another stack; a store move (into or out of a vault or silo) or a forced move cannot.
-    /// </summary>
-    private static void MarkMoves(JsonNode? reply, Dictionary<string, (string? Display, string? Custom)> names, bool force)
-    {
-        bool store = BulkWrites.IsStoreReply(reply);
-        foreach (JsonObject row in BulkWrites.Rows(reply))
-        {
-            if (row["display_name"] == null && JsonNodes.Text(row["reference_id"]) is { } id &&
-                names.TryGetValue(id, out (string? Display, string? Custom) name))
-            {
-                row["display_name"] = name.Display;
-            }
-
-            if (row["ok"] is { } ok && !JsonNodes.IsTrue(ok))
-            {
-                continue;
-            }
-
-            if (store || force)
-            {
-                row["undo"] = "[cannot undo: store move]";
-            }
-            else
-            {
-                row["undo"] = JsonNodes.Text(row["merged_into"]) is { } into ? $"[cannot undo: merged into {into}]" : "[undo]";
-            }
-        }
-    }
-
     // ---- reports ---------------------------------------------------------------------------------------------------
 
     /// <summary>
-    /// The report a write gives instead of acting, one shape on every face: {report_only: true, targets: [{id or cell,
-    /// name, current, new, undo, text}], placed: [] for a build}. Report class dry_run and mod send the handler's own
-    /// report (dry_run: true) and keep its keys; hub reads the current values itself; none sends nothing.
+    /// The report a write gives instead of acting: the mod's own (the call sent without confirm), or, for a what with no
+    /// confirm (nothing it could be sent with reports), a row per target from the hub, nothing sent. Either way it is
+    /// report_only, and a ref's targets say where they came from (targets_from).
     /// </summary>
-    private async Task<VerbReply> ReportAsync(VerbCall call, WhatEntry what, JsonObject options, JsonArray? ids,
-        WriteTargets targets, Dictionary<string, JsonNode?>? current, CancellationToken cancellation)
+    private async Task<VerbReply> ReportAsync(VerbCall call, WhatEntry what, JsonObject options, WriteTargets targets,
+        CancellationToken cancellation)
     {
-        if (what.Key == "undo" && ids == null && OneOwn(options) is { } own)
-        {
-            return await OwnUndoAsync(call, what, options, own, false, cancellation).ConfigureAwait(false);
-        }
-
         JsonObject report;
-        JsonArray rows;
-
-        // A hub-class write whose handler has its own report (write logic: dry_run with the lint and driven_by) reports
-        // from it: the world's rules are in no hub read.
-        string reportClass = what.Write!.Report;
-        if (reportClass == "hub" && HandlerReports(what, options, ids))
+        if (what.Options.ContainsKey("confirm"))
         {
-            reportClass = "dry_run";
-        }
-
-        switch (reportClass)
-        {
-            case "hub":
-                report = new JsonObject();
-                rows = await HubRowsAsync(call, what, options, current, cancellation).ConfigureAwait(false);
-                break;
-            case "none":
-                report = new JsonObject();
-                rows = await TargetRowsAsync(call, what, options, targets, cancellation).ConfigureAwait(false);
-                break;
-            default:
+            VerbReply sent = await SentWriteAsync(call, what, options, false, cancellation).ConfigureAwait(false);
+            if (sent is not VerbReply.Done done)
             {
-                VerbReply sent = ids != null && what.ListForm == "split"
-                    ? await SplitAsync(call, what, options, ids, false, cancellation).ConfigureAwait(false)
-                    : await ExecuteAsync(_map.Translate(what, options), call, what, options, false, cancellation)
-                        .ConfigureAwait(false);
-                if (sent is not VerbReply.Done done)
-                {
-                    return sent;
-                }
-
-                report = done.Reply is JsonObject handlerReport
-                    ? handlerReport
-                    : new JsonObject { ["reply"] = done.Reply?.DeepClone() };
-                rows = what.Key == "write.logic"
-                    ? await LogicReportRowsAsync(call, what, options, report, cancellation).ConfigureAwait(false)
-                    : await TargetRowsAsync(call, what, options, targets, cancellation).ConfigureAwait(false);
-                WorldRules(rows, report);
-                break;
+                return sent;
             }
+
+            report = done.Reply as JsonObject ?? new JsonObject { ["reply"] = done.Reply?.DeepClone() };
+        }
+        else
+        {
+            report = new JsonObject { ["targets"] = TargetRows(what, options, targets) };
         }
 
         report["report_only"] = true;
-        report["targets"] = rows;
-        if (what.Verb == "build")
-        {
-            report["placed"] = new JsonArray();
-        }
-
         foreach (WriteTarget target in targets.Targets)
         {
             if (target.Source == TargetSource.Ref && _refs.Get(target.From!) is { } stored)
@@ -301,195 +205,11 @@ public sealed partial class VerbPipeline
         return new VerbReply.Done(report);
     }
 
-    // Every handler call the write becomes has a dry_run of its own.
-    private bool HandlerReports(WhatEntry what, JsonObject options, JsonArray? ids)
-    {
-        JsonObject first = (JsonObject)options.DeepClone();
-        if (ids != null && what.ListForm == "split")
-        {
-            first["id"] = ids.Count > 0 ? ids[0]?.DeepClone() : null;
-        }
-
-        if (_map.Translate(what, first) is not Translation.Calls calls)
-        {
-            return false;
-        }
-
-        foreach (HandlerCall handlerCall in calls.List)
-        {
-            if (_schemas.Arg(handlerCall.Handler, "dry_run") == null)
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    /// <summary>
-    /// write logic's rows from the mod's dry run: one per write, the value there now (previous_value) and the one it
-    /// would write, whether it opens the device, and its driven_by; the hub read adds only the names.
-    /// </summary>
-    private async Task<JsonArray> LogicReportRowsAsync(VerbCall call, WhatEntry what, JsonObject options, JsonObject report,
-        CancellationToken cancellation)
-    {
-        List<JsonObject> items = report["results"] is JsonArray ? BulkWrites.Rows(report) : [report];
-        List<string> ids = [];
-        foreach (JsonObject item in items)
-        {
-            if (JsonNodes.Text(item["reference_id"]) is { } id)
-            {
-                ids.Add(id);
-            }
-        }
-
-        Dictionary<string, (string? Display, string? Custom)> names =
-            await NamesAsync(what, ids, call.Stream, cancellation).ConfigureAwait(false);
-        JsonArray rows = [];
-        foreach (JsonObject item in items)
-        {
-            string? id = JsonNodes.Text(item["reference_id"]);
-            JsonNode? logic = item["logic_type"]?["name"] ?? item["logic_type"];
-            JsonObject row = Row(id, null, id == null ? null : NameOf(names, id), item["previous_value"],
-                item["requested_value"] ?? options["value"], RowMark(what, options, logic));
-            row["logic"] = logic?.DeepClone();
-            if (item["index"] is { } index)
-            {
-                row["index"] = index.DeepClone();
-            }
-
-            if (JsonNodes.IsTrue(item["opens"]))
-            {
-                row["opens"] = true;
-            }
-
-            if (item["driven_by"] is JsonArray drivers)
-            {
-                row["driven_by"] = drivers.DeepClone();
-            }
-
-            if (item["error"] is JsonObject refused)
-            {
-                Add(row, "problems", refused);
-            }
-
-            rows.Add(row);
-        }
-
-        return rows;
-    }
-
-    /// <summary>
-    /// The world's rules on each report row (PLAN: every face, every report): the handler report's warnings and
-    /// problems (lint, materials_from_player...) go to the row their index or reference_id names, or to every row when
-    /// they name none; a row a controller drives says driven_by; guards the call lifted are PASSED. The row's text
-    /// ends with them, so a run's WARNINGS and PASSED groups see them too.
-    /// </summary>
-    private static void WorldRules(JsonArray rows, JsonObject report)
-    {
-        foreach (string list in new[] { "warnings", "problems" })
-        {
-            foreach (JsonNode? issue in report[list] as JsonArray ?? [])
-            {
-                if (issue is not JsonObject entry)
-                {
-                    continue;
-                }
-
-                List<JsonObject> named = RowsNamed(rows, entry);
-                foreach (JsonObject row in named)
-                {
-                    Add(row, list, entry);
-                }
-            }
-        }
-
-        JsonArray? passed = report["passed"] as JsonArray;
-        foreach (JsonNode? node in rows)
-        {
-            if (node is not JsonObject row)
-            {
-                continue;
-            }
-
-            if (passed is { Count: > 0 })
-            {
-                row["passed"] = passed.DeepClone();
-            }
-
-            StringBuilder text = new(JsonNodes.Text(row["text"]) ?? string.Empty);
-            if (row["driven_by"] is JsonArray drivers)
-            {
-                text.Append(" WARNING driven_by");
-                foreach (JsonNode? driver in drivers)
-                {
-                    text.Append(' ').Append(JsonNodes.Text(driver?["reference_id"]) ?? "?");
-                }
-            }
-
-            foreach (string list in new[] { "problems", "warnings" })
-            {
-                foreach (JsonNode? issue in row[list] as JsonArray ?? [])
-                {
-                    text.Append(list == "problems" ? " PROBLEM " : " WARNING ").Append(JsonNodes.Text(issue?["code"]) ?? "?");
-                }
-            }
-
-            if (passed is { Count: > 0 })
-            {
-                text.Append(" PASSED");
-                foreach (JsonNode? code in passed)
-                {
-                    text.Append(' ').Append(JsonNodes.Text(code) ?? JsonNodes.Text(code?["code"]) ?? "?");
-                }
-            }
-
-            row["text"] = text.ToString();
-        }
-    }
-
-    // The rows an issue names: by reference_id, else by index (a write's place in the call), else every row.
-    private static List<JsonObject> RowsNamed(JsonArray rows, JsonObject issue)
-    {
-        List<JsonObject> named = [];
-        string? id = JsonNodes.Text(issue["reference_id"]);
-        double? index = JsonNodes.Number(issue["index"]);
-        for (int at = 0; at < rows.Count; at++)
-        {
-            if (rows[at] is not JsonObject row)
-            {
-                continue;
-            }
-
-            bool byId = id != null && JsonNodes.Text(row["id"]) == id;
-            bool byIndex = id == null && index != null &&
-                           (JsonNodes.Number(row["index"]) is { } rowIndex ? rowIndex == index : at == (int)index);
-            if (byId || byIndex || (id == null && index == null))
-            {
-                named.Add(row);
-            }
-        }
-
-        return named;
-    }
-
-    private static void Add(JsonObject row, string list, JsonObject issue)
-    {
-        if (row[list] is not JsonArray entries)
-        {
-            entries = [];
-            row[list] = entries;
-        }
-
-        entries.Add(issue.DeepClone());
-    }
-
     /// <summary>
     /// What a repeat with confirm of this report acts on, kept in the report until its ref is minted: the options with
-    /// refs as their ids and an expanded spread as its ids; a spread the handler selects itself is sent again, and the
-    /// repeat says the selection may differ.
+    /// refs as their ids; a spread is sent again, and the repeat says the selection may differ.
     /// </summary>
-    private static void Replayable(VerbReply report, WhatEntry what, JsonObject options, WriteTargets targets, bool expanded)
+    private static void Replayable(VerbReply report, WhatEntry what, JsonObject options, WriteTargets targets)
     {
         if (report is not VerbReply.Done { Reply: JsonObject shown })
         {
@@ -499,11 +219,6 @@ public sealed partial class VerbPipeline
         JsonObject replay = (JsonObject)options.DeepClone();
         replay.Remove("confirm");
         shown[ReplayKey] = replay;
-        if (expanded)
-        {
-            return;
-        }
-
         foreach (WriteTarget target in targets.Targets)
         {
             if (target.Source == TargetSource.Selector)
@@ -514,28 +229,14 @@ public sealed partial class VerbPipeline
         }
     }
 
-    // The rows of dry_run, mod and none reports: one per acts-on id (named), a build's placements by cell, each spread.
-    private async Task<JsonArray> TargetRowsAsync(VerbCall call, WhatEntry what, JsonObject options, WriteTargets targets,
-        CancellationToken cancellation)
+    // The hub's report rows: one per acts-on id, and each spread.
+    private static JsonArray TargetRows(WhatEntry what, JsonObject options, WriteTargets targets)
     {
         JsonArray rows = [];
         string mark = RowMark(what, options, null);
-        if (what.Key == "build.structure")
+        foreach (string id in ActsOnIds(targets))
         {
-            JsonArray placements = options["placements"] as JsonArray ??
-                                   new JsonArray(new JsonObject { ["prefab"] = options["prefab"]?.DeepClone(), ["at"] = options["at"]?.DeepClone() });
-            foreach (JsonNode? placement in placements)
-            {
-                rows.Add(Row(null, placement?["at"], JsonNodes.Text(placement?["prefab"]), null, "placed", mark));
-            }
-        }
-
-        List<string> ids = ActsOnIds(targets);
-        Dictionary<string, (string? Display, string? Custom)> names =
-            await NamesAsync(what, ids, call.Stream, cancellation).ConfigureAwait(false);
-        foreach (string id in ids)
-        {
-            rows.Add(Row(id, null, NameOf(names, id), null, null, mark));
+            rows.Add(Row(id, null, null, null, null, mark));
         }
 
         foreach (WriteTarget target in targets.Targets)
@@ -547,46 +248,6 @@ public sealed partial class VerbPipeline
                 spread["text"] = $"[{target.Path}: {target.Selector?.ToJsonString()}] {mark}";
                 rows.Add(spread);
             }
-        }
-
-        return rows;
-    }
-
-    // Report class hub: the hub reads what each target holds now and states what the write would make it.
-    private async Task<JsonArray> HubRowsAsync(VerbCall call, WhatEntry what, JsonObject options,
-        Dictionary<string, JsonNode?>? known, CancellationToken cancellation)
-    {
-        List<(string Id, JsonNode? New, JsonNode? Logic)> changes = Changes(what, options);
-        List<string> ids = [];
-        foreach ((string id, JsonNode? _, JsonNode? _) in changes)
-        {
-            ids.Add(id);
-        }
-
-        Dictionary<string, (string? Display, string? Custom)> names =
-            await NamesAsync(what, ids, call.Stream, cancellation).ConfigureAwait(false);
-        JsonArray? current = what.Key == "write.logic"
-            ? await CurrentLogicAsync(what, changes, call.Stream, cancellation).ConfigureAwait(false)
-            : null;
-        JsonArray rows = [];
-        for (int index = 0; index < changes.Count; index++)
-        {
-            (string id, JsonNode? next, JsonNode? logic) = changes[index];
-            JsonNode? now = what.Key switch
-            {
-                "write.logic" => current?[index]?["value"],
-                "write.label" => names.TryGetValue(id, out (string? Display, string? Custom) name)
-                    ? JsonValue.Create(name.Custom ?? name.Display)
-                    : null,
-                _ => known != null && known.TryGetValue(id, out JsonNode? held) ? held : null
-            };
-            JsonObject row = Row(id, null, NameOf(names, id), now, next, RowMark(what, options, logic));
-            if (logic != null)
-            {
-                row["logic"] = logic.DeepClone();
-            }
-
-            rows.Add(row);
         }
 
         return rows;
@@ -628,173 +289,6 @@ public sealed partial class VerbPipeline
                 string mark = what.Write!.UndoMark;
                 return mark.Contains(';') ? (what.Write.Undo == "undo" ? "[undo]" : "[cannot undo]") : mark;
         }
-    }
-
-    // What a hub-class write would change, per target: its id, the new value, and the logic type for logic writes.
-    private static List<(string Id, JsonNode? New, JsonNode? Logic)> Changes(WhatEntry what, JsonObject options)
-    {
-        List<(string, JsonNode?, JsonNode?)> changes = [];
-        string? entries = what.Key switch
-        {
-            "write.logic" => "writes",
-            "write.label" => "labels",
-            "write.paint" => "items",
-            _ => null
-        };
-        if (entries != null && options[entries] is JsonArray list)
-        {
-            foreach (JsonNode? entry in list)
-            {
-                if (JsonNodes.Text(entry?["id"]) is { } id)
-                {
-                    changes.Add((id, NewOf(what, entry!.AsObject()), entry["logic"]));
-                }
-            }
-        }
-
-        foreach (JsonNode? id in AsList(options["id"]))
-        {
-            if (JsonNodes.Text(id) is { } text)
-            {
-                changes.Add((text, NewOf(what, options), options["logic"]));
-            }
-        }
-
-        return changes;
-    }
-
-    // The new value of a hub-class write, as its row states it.
-    private static JsonNode? NewOf(WhatEntry what, JsonObject given)
-    {
-        string? text = what.Key switch
-        {
-            "write.chip" => Parts(given),
-            "write.screen" => "press " + JsonNodes.Text(given["element"]),
-            "write.flight_log" => JsonNodes.Text(given["action"]),
-            "write.uplink" => "downlink " + JsonNodes.Text(given["downlink"]),
-            _ => null
-        };
-        if (text != null)
-        {
-            return JsonValue.Create(text);
-        }
-
-        JsonNode? value = what.Key switch
-        {
-            "write.logic" => given["value"],
-            "write.label" => given["label"],
-            "write.paint" => given["color"],
-            _ => null
-        };
-        return value?.DeepClone();
-    }
-
-    private static string Parts(JsonObject given)
-    {
-        List<string> parts = [];
-        if (given["code"] is { } code)
-        {
-            parts.Add($"code ({(JsonNodes.Text(code) ?? string.Empty).Length} characters)");
-        }
-
-        if (given["code_file"] is { } file)
-        {
-            parts.Add("code from " + JsonNodes.Text(file));
-        }
-
-        if (given["pins"] is { } pins)
-        {
-            parts.Add("pins " + pins.ToJsonString());
-        }
-
-        if (given["run"] is { } run)
-        {
-            parts.Add("run " + JsonNodes.Text(run));
-        }
-
-        return string.Join(", ", parts);
-    }
-
-    // The current logic values the writes would change, in their order (read_logic_many, one row per pair).
-    private async Task<JsonArray?> CurrentLogicAsync(WhatEntry what, List<(string Id, JsonNode? New, JsonNode? Logic)> changes,
-        long stream, CancellationToken cancellation)
-    {
-        if (changes.Count == 0)
-        {
-            return null;
-        }
-
-        JsonArray reads = [];
-        foreach ((string id, JsonNode? _, JsonNode? logic) in changes)
-        {
-            reads.Add(new JsonObject { ["reference_id"] = id, ["logic_type"] = logic?.DeepClone() });
-        }
-
-        HandlerCall read = new("read_logic_many", new JsonObject { ["reads"] = reads }, _map.Rename.For(what, "read_logic_many"));
-        return await SendAsync(read, stream, null, cancellation).ConfigureAwait(false) is GameReply.Ok ok
-            ? JsonNodes.FromElement(ok.Result)?["results"] as JsonArray
-            : null;
-    }
-
-    /// <summary>
-    /// Paint of a network: its pieces (and with include: ["devices"] its devices) read page by page (connections, the
-    /// survey network handler), as ids with their current colours; the options become paint's own id list.
-    /// </summary>
-    private async Task<(VerbReply.Failed? Failed, JsonObject? Options, Dictionary<string, JsonNode?>? Colors)>
-        PaintedNetworkAsync(VerbCall call, WhatEntry what, JsonObject options, CancellationToken cancellation)
-    {
-        bool devices = JsonNodes.Holds(options["include"], "devices");
-        JsonArray ids = [];
-        Dictionary<string, JsonNode?> colors = new(StringComparer.Ordinal);
-        int offset = 0;
-        while (true)
-        {
-            JsonObject args = new() { ["network_id"] = options["network"]!.DeepClone(), ["offset"] = offset, ["limit"] = 500 };
-            if (options["kind"] is { } kind)
-            {
-                args["kind"] = kind.DeepClone();
-            }
-
-            HandlerCall read = new("connections", args, _map.Rename.For(what, "connections"));
-            GameReply reply = await SendAsync(read, call.Stream, WithWhole(null, "members", 500), cancellation)
-                .ConfigureAwait(false);
-            if (reply is not GameReply.Ok ok)
-            {
-                return (Failure(reply, read, what), null, null);
-            }
-
-            JsonNode? page = JsonNodes.FromElement(ok.Result);
-            JsonArray members = page?["members"] as JsonArray ?? [];
-            foreach (JsonNode? member in members)
-            {
-                bool device = JsonNodes.Text(member?["member"]) == "device";
-                if ((device && !devices) || JsonNodes.Text(member?["reference_id"]) is not { } id)
-                {
-                    continue;
-                }
-
-                ids.Add(id);
-                colors[id] = member!["color"]?["name"]?.DeepClone() ?? member["color"]?.DeepClone();
-            }
-
-            offset += members.Count;
-            if (!JsonNodes.IsTrue(page?["has_more"]) || members.Count == 0)
-            {
-                break;
-            }
-        }
-
-        JsonObject expanded = new();
-        foreach ((string name, JsonNode? value) in options)
-        {
-            if (name is not ("network" or "kind" or "include"))
-            {
-                expanded[name] = value?.DeepClone();
-            }
-        }
-
-        expanded["id"] = ids;
-        return (null, expanded, colors);
     }
 
     /// <summary>A report row: [id or cell, name, current -> new] with the undo mark, and that line as text.</summary>
@@ -847,60 +341,6 @@ public sealed partial class VerbPipeline
         return ids;
     }
 
-    /// <summary>
-    /// The names of the things ids name (display and custom name), read in one call (thing_health); ids that are words
-    /// ("player") and a read that fails give no name.
-    /// </summary>
-    private async Task<Dictionary<string, (string? Display, string? Custom)>> NamesAsync(WhatEntry what, List<string> ids,
-        long stream, CancellationToken cancellation)
-    {
-        Dictionary<string, (string?, string?)> names = new(StringComparer.Ordinal);
-        JsonArray asked = [];
-        foreach (string id in ids)
-        {
-            if (id.Length > 0 && IsDigits(id))
-            {
-                asked.Add(id);
-            }
-        }
-
-        if (asked.Count == 0)
-        {
-            return names;
-        }
-
-        HandlerCall read = new("thing_health", new JsonObject { ["reference_ids"] = asked }, _map.Rename.For(what, "thing_health"));
-        if (await SendAsync(read, stream, WithWhole(null, "results", asked.Count), cancellation).ConfigureAwait(false)
-            is GameReply.Ok ok)
-        {
-            foreach (JsonObject row in BulkWrites.Rows(JsonNodes.FromElement(ok.Result)))
-            {
-                if (JsonNodes.Text(row["reference_id"]) is { } id)
-                {
-                    names[id] = (JsonNodes.Text(row["display_name"]), JsonNodes.Text(row["custom_name"]));
-                }
-            }
-        }
-
-        return names;
-    }
-
-    private static string? NameOf(Dictionary<string, (string? Display, string? Custom)> names, string id) =>
-        names.TryGetValue(id, out (string? Display, string? Custom) name) ? name.Display : null;
-
-    private static bool IsDigits(string text)
-    {
-        foreach (char character in text)
-        {
-            if (!char.IsAsciiDigit(character))
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
     private static JsonArray Strings(IReadOnlyList<string> values)
     {
         JsonArray list = [];
@@ -912,63 +352,16 @@ public sealed partial class VerbPipeline
         return list;
     }
 
-    private static JsonArray AsList(JsonNode? value) => value switch
-    {
-        null => [],
-        JsonArray list => list,
-        _ => new JsonArray(value.DeepClone())
-    };
+    // ---- the hub's own undo: write-N --------------------------------------------------------------------------------
 
-    // ---- the hub's own undo forms: write-N and the paste -----------------------------------------------------------
-
-    // The one id of an undo when it is the hub's own form ("paste" or write-N); null for a job id.
-    private static string? OneOwn(JsonObject options)
-    {
-        string? id = JsonNodes.Text(options["id"])?.Trim();
-        return BulkWrites.IsBulkId(id) || string.Equals(id, "paste", StringComparison.OrdinalIgnoreCase) ? id : null;
-    }
-
-    private async Task<VerbReply> OwnUndoAsync(VerbCall call, WhatEntry what, JsonObject options, string id, bool acting,
-        CancellationToken cancellation)
-    {
-        if (!BulkWrites.IsBulkId(id))
-        {
-            return acting
-                ? await ExecuteAsync(_map.Translate(what, options), call, what, options, true, cancellation).ConfigureAwait(false)
-                : await PasteUndoReportAsync(call, what, cancellation).ConfigureAwait(false);
-        }
-
-        return _bulk.Get(id) is { } write
+    private async Task<VerbReply> OwnUndoAsync(VerbCall call, string id, JsonObject options, bool acting,
+        CancellationToken cancellation) =>
+        _bulk.Get(id) is { } write
             ? await UndoBulkAsync(call, write, options, acting, cancellation).ConfigureAwait(false)
             : NoBulk(id);
-    }
 
     private static VerbReply.Failed NoBulk(string id) =>
         new("job_not_found", $"No bulk write {id} in this session (bulk writes last until the MCP server stops).");
-
-    // The mod's paste undo acts at once and has no report: the report is the last paste's status.
-    private async Task<VerbReply> PasteUndoReportAsync(VerbCall call, WhatEntry what, CancellationToken cancellation)
-    {
-        HandlerCall status = new("paste_blueprint", new JsonObject { ["status"] = true },
-            _map.Rename.For(what, "paste_blueprint"));
-        GameReply reply = await SendAsync(status, call.Stream, null, cancellation).ConfigureAwait(false);
-        if (reply is not GameReply.Ok ok)
-        {
-            return Failure(reply, status, what);
-        }
-
-        JsonNode? paste = JsonNodes.FromElement(ok.Result);
-        string file = JsonNodes.Text(paste?["file"]) ?? "?";
-        string entries = paste?["entries"] is { } count ? count.ToJsonString() : "?";
-        JsonObject row = Row("paste", null, file, null, null, what.Write!.UndoMark);
-        row["text"] = $"would undo the newest paste ({file}, {entries} entries)";
-        return new VerbReply.Done(new JsonObject
-        {
-            ["report_only"] = true,
-            ["targets"] = new JsonArray(row),
-            ["paste"] = paste?.DeepClone()
-        });
-    }
 
     /// <summary>
     /// undo write-N. A report lists every step with its own mark (cannot-undo ones too). Acting writes the steps back
@@ -1034,7 +427,7 @@ public sealed partial class VerbPipeline
         bool stopped = false;
         foreach (BulkStep step in write.Steps)
         {
-            if (step.Handler == null || step.Number < from || write.Done.Contains(step.Number))
+            if (step.Back == null || step.Number < from || write.Done.Contains(step.Number))
             {
                 continue;
             }
@@ -1047,7 +440,7 @@ public sealed partial class VerbPipeline
 
             JsonObject row = step.RowFor(false);
             if (!overwrite && step.Check != null &&
-                await DriftAsync(call, write.What, step.Check, cancellation).ConfigureAwait(false) is { } now)
+                await DriftAsync(call, step.Check, cancellation).ConfigureAwait(false) is { } now)
             {
                 row["ok"] = false;
                 row["drifted"] = true;
@@ -1058,8 +451,8 @@ public sealed partial class VerbPipeline
                 continue;
             }
 
-            GameReply reply = await SendAsync(new HandlerCall(step.Handler, (JsonObject)step.Args.DeepClone(),
-                _map.Rename.For(write.What, step.Handler)), call.Stream, null, cancellation).ConfigureAwait(false);
+            GameReply reply = await SendAsync(write.What, Confirmed(write.What, step.Back, true), call.Stream, null, cancellation)
+                .ConfigureAwait(false);
             row["ok"] = reply is GameReply.Ok;
             if (reply is GameReply.Ok)
             {
@@ -1096,17 +489,21 @@ public sealed partial class VerbPipeline
         return new VerbReply.Done(answer);
     }
 
-    // What the target holds now when it is not what the write left; null when it is the same (or cannot be read).
-    private async Task<JsonNode?> DriftAsync(VerbCall call, WhatEntry what, BulkCheck check, CancellationToken cancellation)
+    /// <summary>
+    /// What the target holds now when it is not what the write left; null when it is the same (or cannot be read): a
+    /// logic value by read logic, a custom name by inspect health.
+    /// </summary>
+    private async Task<JsonNode?> DriftAsync(VerbCall call, BulkCheck check, CancellationToken cancellation)
     {
         JsonNode? now;
         if (check.Logic != null)
         {
-            HandlerCall read = new("read_logic_many", new JsonObject
+            WhatEntry read = _catalogue.Verb("read")!.What("logic")!;
+            JsonObject reads = new()
             {
-                ["reads"] = new JsonArray(new JsonObject { ["reference_id"] = check.Id, ["logic_type"] = check.Logic.DeepClone() })
-            }, _map.Rename.For(what, "read_logic_many"));
-            if (await SendAsync(read, call.Stream, null, cancellation).ConfigureAwait(false) is not GameReply.Ok ok)
+                ["reads"] = new JsonArray(new JsonObject { ["id"] = check.Id, ["logic"] = check.Logic.DeepClone() })
+            };
+            if (await SendAsync(read, reads, call.Stream, null, cancellation).ConfigureAwait(false) is not GameReply.Ok ok)
             {
                 return null;
             }
@@ -1115,14 +512,15 @@ public sealed partial class VerbPipeline
         }
         else
         {
-            Dictionary<string, (string? Display, string? Custom)> names =
-                await NamesAsync(what, [check.Id], call.Stream, cancellation).ConfigureAwait(false);
-            if (!names.TryGetValue(check.Id, out (string? Display, string? Custom) name))
+            WhatEntry health = _catalogue.Verb("inspect")!.What("health")!;
+            JsonObject asked = new() { ["id"] = new JsonArray(JsonValue.Create(check.Id)) };
+            if (await SendAsync(health, asked, call.Stream, null, cancellation).ConfigureAwait(false) is not GameReply.Ok ok ||
+                CustomName(JsonNodes.FromElement(ok.Result), check.Id) is not { } name)
             {
                 return null;
             }
 
-            now = JsonValue.Create(name.Custom ?? string.Empty);
+            now = JsonValue.Create(name);
         }
 
         bool same = JsonNodes.Number(now) is { } number && JsonNodes.Number(check.Left) is { } left
@@ -1130,5 +528,20 @@ public sealed partial class VerbPipeline
             : JsonNode.DeepEquals(now, check.Left) ||
               (JsonNodes.Text(now) ?? string.Empty) == (JsonNodes.Text(check.Left) ?? string.Empty);
         return same ? null : now ?? JsonValue.Create("?");
+    }
+
+    // The custom name inspect health gives the id ("" for none); null when the reply names no such thing.
+    private static string? CustomName(JsonNode? reply, string id)
+    {
+        foreach (JsonObject row in BulkWrites.Rows(reply))
+        {
+            JsonNode? thing = row["payload"] ?? row;
+            if (JsonNodes.Text(thing?["reference_id"] ?? row["reference_id"]) == id)
+            {
+                return JsonNodes.Text(thing?["custom_name"]) ?? string.Empty;
+            }
+        }
+
+        return null;
     }
 }

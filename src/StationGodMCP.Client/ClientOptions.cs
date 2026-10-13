@@ -51,7 +51,7 @@ public static class Library
     /// <summary>The features this library understands, sent in hello.</summary>
     public static IReadOnlyList<string> Features { get; } = ["shape", "shape.paths", "shape.omit", "subscriptions", "cancel"];
 
-    /// <summary>The features the hub's GameLink offers: those, plus streams, rename and resuming.</summary>
+    /// <summary>The features the hub's GameLink offers: those, plus streams and resuming.</summary>
     public static IReadOnlyList<string> LinkFeatures { get; } =
-        ["shape", "shape.paths", "shape.omit", "subscriptions", "cancel", "streams", "rename", "resume"];
+        ["shape", "shape.paths", "shape.omit", "subscriptions", "cancel", "streams", "resume"];
 }

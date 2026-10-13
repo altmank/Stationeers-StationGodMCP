@@ -66,14 +66,14 @@ public sealed class RunReviewTests
 
         Assert.StartsWith("script-1 stopped: untargeted_write", text);
         Assert.Contains("fix: server {what: \"command\"} directly: it reports until confirm (ask the user first: a cheat)", text);
-        Assert.Equal(0, bench.World.Count("run_console_command") + bench.World.Count("console_command"));
+        Assert.Equal(0, bench.World.Count("server.command"));
     }
 
     [PythonFact]
     public async Task ARefPassesOnlyWhenTheCodeNamesIt()
     {
         await using RunBench bench = new();
-        bench.World.Override = call => call.Method == "find_things"
+        bench.World.Override = call => RunWorld.KeyOf(call) == "find.thing"
             ? FakeGameLink.Ok("""{"things":[{"reference_id":"501"},{"reference_id":"502"},{"reference_id":"503"}],"count":3,"total":3}""")
             : null;
         VerbReply found = await bench.Pipeline.CallAsync(new VerbCall("find", "thing", new JsonObject(), Face.Direct),
@@ -138,7 +138,7 @@ public sealed class RunReviewTests
         await using RunBench bench = new();
         bench.World.Override = call =>
         {
-            if (call.Method == "read_logic_many")
+            if (RunWorld.KeyOf(call) == "read.logic")
             {
                 // The world changes while the run is mid-call, before the link's event reaches anyone.
                 bench.World.ChangeWorldQuietly("world-2");
@@ -150,7 +150,7 @@ public sealed class RunReviewTests
         string text = await bench.RunAsync(
             "sg.read('logic', id='2', logic='On')\nr = sg.write('logic', id='1', logic='On', value=1)\nprint(r)", confirm: true);
 
-        Assert.True(bench.World.Log.Contains("refused_world write_logic_many"), text + string.Join(",", bench.World.Log));
+        Assert.True(bench.World.Log.Contains("refused_world write.logic"), text + string.Join(",", bench.World.Log));
         Assert.Equal(0, bench.World.Value("1", "On"));
         Assert.DoesNotContain("DONE", text);
     }
@@ -162,12 +162,12 @@ public sealed class RunReviewTests
         await using GameLink link = new(new ClientOptions(game.Target));
         Assert.True(await link.ConnectAsync());
 
-        GameReply reply = await link.CallAsync(new GameCall("thing_health", FakeHubLink.Element("{}"), 0) { World = "world-0" },
+        GameReply reply = await link.CallAsync(new GameCall("inspect", FakeHubLink.Element("""{"what":"health","id":"1"}"""), 0) { World = "world-0" },
             CancellationToken.None);
 
         GameReply.Refused refused = Assert.IsType<GameReply.Refused>(reply);
         Assert.Equal("world_changed", refused.Code);
-        Assert.Empty(game.CallsTo("thing_health"));
+        Assert.Empty(game.CallsTo("inspect"));
     }
 
     [PythonFact]
@@ -186,7 +186,7 @@ public sealed class RunReviewTests
         Task never = new TaskCompletionSource().Task;
         bench.World.Gate = call =>
         {
-            if (call.Method != "write_logic_many")
+            if (RunWorld.KeyOf(call) != "write.logic")
             {
                 return null;
             }
@@ -234,7 +234,7 @@ public sealed class RunReviewTests
             "    print('acted after the stop:', sum(1 for ok in seen if ok), 'of', len(seen))\n", confirm: true);
 
         Assert.Contains("acted after the stop: 0 of 40", text);
-        Assert.Equal(0, bench.World.Count("write_logic_many"));
+        Assert.Equal(0, bench.World.Count("write.logic"));
     }
 
     [PythonFact]

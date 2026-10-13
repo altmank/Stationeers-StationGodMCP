@@ -144,7 +144,7 @@ internal static class OptionCheck
                 continue;
             }
 
-            if (name == "id" && value is JsonArray && what.ListForm == "one")
+            if (name == "id" && value is JsonArray && !what.IdTakesList)
             {
                 problems.Add(new OptionProblem(name, OneId(what)));
                 continue;
@@ -167,7 +167,7 @@ internal static class OptionCheck
             : OptionProblem.Refusal(what.Label, problems, unknownName == null ? null : Nearest.NearestFirst(unknownName, valid));
     }
 
-    /// <summary>x-list one: a write that cannot be undone takes one id; several are a script's loop.</summary>
+    /// <summary>An id that takes no list: a write that cannot be undone takes one id; several are a script's loop.</summary>
     internal static string OneId(WhatEntry what) =>
         $"takes one id: for several, use run_script (a loop of sg.{what.Verb} calls; this write cannot be undone)";
 

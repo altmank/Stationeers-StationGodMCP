@@ -26,8 +26,6 @@ internal sealed class VerbCatalogue
     private readonly Dictionary<string, string> _help;
     private readonly Dictionary<string, string> _stubs;
     private readonly Dictionary<string, OptionEntry> _shaping;
-    private readonly Dictionary<string, string> _handlerPhrases;
-    private readonly Dictionary<string, List<ArgEntry>> _handlerArgs;
 
     private VerbCatalogue(List<VerbEntry> verbs, JsonElement tools, string instructions, Dictionary<string, string> help,
         Dictionary<string, string> stubs, Dictionary<string, OptionEntry> shaping, List<string> topics)
@@ -41,28 +39,10 @@ internal sealed class VerbCatalogue
         _shaping = shaping;
         _verbs = new Dictionary<string, VerbEntry>(StringComparer.Ordinal);
         VerbNames = [];
-        _handlerPhrases = new Dictionary<string, string>(StringComparer.Ordinal);
-        _handlerArgs = new Dictionary<string, List<ArgEntry>>(StringComparer.Ordinal);
         foreach (VerbEntry verb in verbs)
         {
             _verbs.Add(verb.Name, verb);
             VerbNames.Add(verb.Name);
-            foreach (string whatName in verb.WhatNames)
-            {
-                WhatEntry what = verb.Whats[whatName];
-                foreach (HandlerEntry handler in what.Handlers)
-                {
-                    // A handler several whats call is named by the first of them in catalogue order.
-                    _handlerPhrases.TryAdd(handler.Name, what.Phrase);
-                    if (!_handlerArgs.TryGetValue(handler.Name, out List<ArgEntry>? args))
-                    {
-                        args = [];
-                        _handlerArgs.Add(handler.Name, args);
-                    }
-
-                    args.AddRange(handler.Args);
-                }
-            }
         }
     }
 
@@ -92,17 +72,6 @@ internal sealed class VerbCatalogue
 
     /// <summary>A generated Python stub by its file name without .py ("write.logic", "undo").</summary>
     internal string? Stub(string name) => _stubs.TryGetValue(name, out string? text) ? text : null;
-
-    /// <summary>How a caller says a handler: verb {what: "x"}, or the bare verb for a whatless one.</summary>
-    internal string? HandlerPhrase(string handler) =>
-        _handlerPhrases.TryGetValue(handler, out string? phrase) ? phrase : null;
-
-    /// <summary>Every handler with its phrase, for the rename envelope's tools.</summary>
-    internal IReadOnlyDictionary<string, string> HandlerPhrases => _handlerPhrases;
-
-    /// <summary>Every argument entry any what gives the handler, for options a what's own table leaves out.</summary>
-    internal IReadOnlyList<ArgEntry> HandlerArgs(string handler) =>
-        _handlerArgs.TryGetValue(handler, out List<ArgEntry>? args) ? args : [];
 
     private static VerbCatalogue Load()
     {
@@ -216,21 +185,20 @@ internal sealed class VerbEntry
 }
 
 /// <summary>
-/// One what: its options (resolved), its handlers with their argument tables, the write rules of a write what, how a
-/// list of ids is taken (x-list), the reply's main list and the example.
+/// One what: its options (resolved), the write rules of a write what, the list option an id list goes into (id_list),
+/// the reply's main list and the example.
 /// </summary>
 internal sealed class WhatEntry
 {
     private WhatEntry(string verb, string name, Dictionary<string, OptionEntry> options, List<string> optionNames,
-        List<HandlerEntry> handlers, WriteRules? write, string? listForm, string? mainList, JsonObject? example)
+        WriteRules? write, string? idList, string? mainList, JsonObject? example)
     {
         Verb = verb;
         Name = name;
         Options = options;
         OptionNames = optionNames;
-        Handlers = handlers;
         Write = write;
-        ListForm = listForm;
+        IdList = idList;
         MainList = mainList;
         Example = example;
         Phrase = name == VerbCatalogue.WhatlessKey ? verb : $"{verb} {{what: \"{name}\"}}";
@@ -256,33 +224,20 @@ internal sealed class WhatEntry
 
     internal List<string> OptionNames { get; }
 
-    internal List<HandlerEntry> Handlers { get; }
-
     internal WriteRules? Write { get; }
 
-    /// <summary>native, split, native-shape or one; null when the what takes no id list.</summary>
-    internal string? ListForm { get; }
+    /// <summary>The list option whose entries an id list becomes (move item's moves); null where it answers rows.</summary>
+    internal string? IdList { get; }
 
     internal string? MainList { get; }
 
     internal JsonObject? Example { get; }
 
-    /// <summary>True when id takes a list here (x-list native, split or native-shape).</summary>
-    internal bool TakesIdList =>
-        Options.ContainsKey("id") && ListForm is "native" or "split" or "native-shape";
+    /// <summary>True when the id option takes a list of ids.</summary>
+    internal bool IdTakesList => Options.TryGetValue("id", out OptionEntry? id) && id.Takes("array");
 
-    internal HandlerEntry? Handler(string name)
-    {
-        foreach (HandlerEntry handler in Handlers)
-        {
-            if (handler.Name == name)
-            {
-                return handler;
-            }
-        }
-
-        return null;
-    }
+    /// <summary>True when an id list answers one row per id (D13): the id takes a list and no id_list folds it.</summary>
+    internal bool TakesIdList => IdTakesList && IdList == null;
 
     internal static WhatEntry Of(string verb, string name, JsonObject source, JsonObject sharedOptions)
     {
@@ -294,15 +249,8 @@ internal sealed class WhatEntry
             optionNames.Add(optionName);
         }
 
-        List<HandlerEntry> handlers = [];
-        foreach (JsonNode? handler in source["handlers"] as JsonArray ?? [])
-        {
-            handlers.Add(HandlerEntry.Of(handler!.AsObject()));
-        }
-
         WriteRules? write = source["write"] is JsonObject rules ? WriteRules.Of(rules) : null;
-        string? listForm = write?.ListForm ?? (string?)source["x-list"];
-        return new WhatEntry(verb, name, options, optionNames, handlers, write, listForm,
+        return new WhatEntry(verb, name, options, optionNames, write, (string?)source["id_list"],
             (string?)source["reply"]?["list"], source["example"] as JsonObject);
     }
 
@@ -346,6 +294,14 @@ internal sealed class OptionEntry
 
     internal bool Required { get; }
 
+    /// <summary>True when the schema's type is this one or lists it.</summary>
+    internal bool Takes(string type) => Schema["type"] switch
+    {
+        JsonValue one => (string?)one == type,
+        JsonArray several => several.Any(listed => (string?)listed == type),
+        _ => false
+    };
+
     /// <summary>Refused on the script face.</summary>
     internal bool DroppedInScripts => XScript == "drop";
 
@@ -370,94 +326,17 @@ internal sealed class OptionEntry
             (bool?)definition["required"] ?? false);
 }
 
-/// <summary>One handler a what calls: today's method, when it is the one, and how options become its arguments.</summary>
-internal sealed class HandlerEntry
-{
-    internal const string HubPrefix = "hub:";
-
-    private HandlerEntry(string name, string? when, string? pending, List<ArgEntry> args)
-    {
-        Name = name;
-        When = when;
-        Pending = pending;
-        Args = args;
-    }
-
-    internal string Name { get; }
-
-    internal string? When { get; }
-
-    /// <summary>Set when the handler is not in the mod yet.</summary>
-    internal string? Pending { get; }
-
-    internal List<ArgEntry> Args { get; }
-
-    /// <summary>A hub:... handler, answered by the hub rather than the mod.</summary>
-    internal bool IsHub => Name.StartsWith(HubPrefix, StringComparison.Ordinal);
-
-    internal static HandlerEntry Of(JsonObject source)
-    {
-        List<ArgEntry> args = [];
-        foreach (JsonNode? arg in source["args"] as JsonArray ?? [])
-        {
-            args.Add(ArgEntry.Of(arg!.AsObject()));
-        }
-
-        return new HandlerEntry((string)source["name"]!, (string?)source["when"], (string?)source["pending"], args);
-    }
-}
-
-/// <summary>
-/// One row of a handler's argument table: the handler argument, the option it comes from ("near+radius" for two), and
-/// the change: kept, renamed, merged, moved, default-changed or dropped, with its note and the default before and now.
-/// </summary>
-internal sealed class ArgEntry
-{
-    private ArgEntry(string arg, string option, string change, string? note, string? defaultNow)
-    {
-        Arg = arg;
-        Option = option;
-        Change = change;
-        Note = note;
-        DefaultNow = defaultNow;
-    }
-
-    internal string Arg { get; }
-
-    internal string Option { get; }
-
-    internal string Change { get; }
-
-    internal string? Note { get; }
-
-    /// <summary>The default the verb states now (default-changed only).</summary>
-    internal string? DefaultNow { get; }
-
-    internal static ArgEntry Of(JsonObject source) =>
-        new((string)source["arg"]!, (string?)source["option"] ?? string.Empty, (string)source["change"]!,
-            (string?)source["note"], source["default"] is JsonArray { Count: 2 } given ? (string?)given[1] : null);
-}
-
-/// <summary>A write what's rules: report class, route, undo class, list form and the target paths.</summary>
+/// <summary>A write what's rules: route, undo class and the target paths.</summary>
 internal sealed class WriteRules
 {
-    private WriteRules(string report, string route, string undo, string listForm, List<TargetPath> targets,
-        string? undoMark, string? cheat)
+    private WriteRules(string route, string undo, List<TargetPath> targets, string? undoMark, string? cheat)
     {
-        Report = report;
         Route = route;
         Undo = undo;
-        ListForm = listForm;
         Targets = targets;
         UndoMark = undoMark ?? (undo == "undo" ? "[undo]" : "[cannot undo]");
         Cheat = cheat;
     }
-
-    /// <summary>
-    /// x-list-shape: how an id list becomes the handler's list of entries ({arg, each: {handler key: option}, fill:
-    /// {handler key: value}}); null when the what declares none.
-    /// </summary>
-    internal JsonObject? ListShape { get; init; }
 
     /// <summary>The mark a report row carries (x-undo-mark).</summary>
     internal string UndoMark { get; }
@@ -465,13 +344,9 @@ internal sealed class WriteRules
     /// <summary>"always", or the option that makes the write a cheat ("free: true", "force: true"); null for none.</summary>
     internal string? Cheat { get; }
 
-    internal string Report { get; }
-
     internal string Route { get; }
 
     internal string Undo { get; }
-
-    internal string ListForm { get; }
 
     internal List<TargetPath> Targets { get; }
 
@@ -480,31 +355,19 @@ internal sealed class WriteRules
         List<TargetPath> targets = [];
         foreach (JsonNode? target in source["x-target"] as JsonArray ?? [])
         {
-            List<string> when = [];
-            foreach (JsonNode? form in target!["when"] as JsonArray ?? [])
-            {
-                when.Add((string)form!);
-            }
-
-            targets.Add(new TargetPath((string)target["path"]!, (string)target["role"]!, when));
+            targets.Add(new TargetPath((string)target!["path"]!, (string)target["role"]!));
         }
 
-        return new WriteRules((string)source["report"]!, (string)source["route"]!, (string)source["x-undo"]!,
-            (string)source["x-list"]!, targets, (string?)source["x-undo-mark"], (string?)source["cheat"])
-        {
-            ListShape = source["x-list-shape"] as JsonObject
-        };
+        return new WriteRules((string)source["route"]!, (string)source["x-undo"]!, targets,
+            (string?)source["x-undo-mark"], (string?)source["cheat"]);
     }
 }
 
 /// <summary>An x-target path ("id", "writes[].id") and its role (acts-on or pays-from).</summary>
-internal sealed class TargetPath(string path, string role, List<string> when)
+internal sealed class TargetPath(string path, string role)
 {
     internal string Path { get; } = path;
 
     /// <summary>acts-on, pays-from, or spread (a selector: the values choose what the write acts on).</summary>
     internal string Role { get; } = role;
-
-    /// <summary>The handler forms (their when) the target belongs to; empty for every form.</summary>
-    internal List<string> When { get; } = when;
 }
