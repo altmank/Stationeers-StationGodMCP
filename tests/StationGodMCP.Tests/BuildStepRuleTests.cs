@@ -8,7 +8,7 @@ using Xunit;
 
 namespace StationGodMCP.Tests;
 
-/// <summary>advance_build_state's rule and the build_state view.</summary>
+/// <summary>build finish's step rule and the build_state view.</summary>
 public sealed class BuildStepRuleTests
 {
     private const int Kit = 1;

@@ -29,7 +29,7 @@ internal static class BuildStates
 
     /// <summary>
     /// What list replies carry: current and last only, left out (null) when the structure stands complete;
-    /// describe_device and advance_build_state give what the next state takes.
+    /// inspect device and build finish give what the next state takes.
     /// </summary>
     internal static BuildStateView? Unfinished(Thing thing) =>
         thing is Structure structure && structure.BuildStates != null && structure.BuildStates.Count > 1 &&

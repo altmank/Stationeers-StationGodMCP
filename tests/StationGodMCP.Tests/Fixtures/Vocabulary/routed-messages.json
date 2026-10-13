@@ -1,8 +1,4 @@
 {
-  "Api/AdvanceBuildState.cs": [
-    "Argument 'to_state' must be above {current} and at most {last}.",
-    "{player.Absence} Nothing to take materials from; pass from_id."
-  ],
   "Api/Highlight.cs": [
     "highlight",
     "{name}: {Names.Of(thing)} ({thing.PrefabName}) is no cable, pipe or chute piece; give a device in reference_ids, or name a network or a piece on it.",
@@ -132,10 +128,6 @@
   ],
   "Api/Shared/SourceArgs.cs": [
     "Argument '{Argument}' must name 1 to {MaximumSources} things."
-  ],
-  "Api/Shared/WriteMode.cs": [
-    "A real run needs dry_run: false and confirm: true; nothing was changed.",
-    "confirm: true needs dry_run: false; nothing was changed."
   ],
   "Api/ShowPreview.cs": [
     "Nothing to draw: pass placements (or prefab and at), cells or boxes.",

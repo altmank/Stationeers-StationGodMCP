@@ -705,9 +705,9 @@
       "options": {
         "id": {
           "use": "id",
-          "description": "One structure, a list or a ref: one job per id, in order.",
+          "description": "One structure, a list or a ref, in order.",
           "required": true,
-          "x-script": "One structure or a list: one job per id, in order."
+          "x-script": "One structure or a list, in order."
         },
         "state": {
           "schema": {"type": "integer", "minimum": 0, "maximum": 64},
@@ -729,21 +729,30 @@
       "reply": {
         "variants": [
           {
+            "label": "FinishReport",
+            "view": "FinishReport",
             "keys": {
-              "dry_run": "bool",
-              "thing": "Thing",
-              "from_state": "int",
-              "to_state": "int",
-              "last_state": "int",
-              "cost": "list[{prefab_name: str, display_name: str, quantity: int, available: int | None, paid_by: list[{reference_id: str, name: str | None, quantity: int, available: int}] | None}]",
-              "tools": "list[{prefab_name: str, display_name: str, quantity: int | None, tool: bool}]",
               "ready": "bool",
-              "problems": "list[str]",
-              "build_state": "{current: int, last: int, complete: bool, next: list[{prefab_name: str, display_name: str, quantity: int | None, tool: bool}] | None} | None"
+              "free": "bool",
+              "from": "Thing | None",
+              "materials": "list[{prefab_name: str, display_name: str, quantity: int, available: int | None}]",
+              "steps": "list[{index: int, reference_id: str, name: str, from_state: int, to_state: int, last_state: int, cost: list[{prefab_name: str, display_name: str, quantity: int, available: int | None, paid_by: list[{reference_id: str, name: str | None, quantity: int, available: int}] | None}], tools: list[{prefab_name: str, display_name: str, quantity: int | None, tool: bool}]}]",
+              "warnings": "list[{code: str, message: str, index: int | None, reference_id: str | None}]",
+              "problems": "list[{code: str, message: str, index: int | None, reference_id: str | None}]"
+            }
+          },
+          {
+            "label": "BatchResult",
+            "view": "BatchResult",
+            "keys": {
+              "results": "list[{index: int, ok: bool, reference_id: str, thing: Thing, from_state: int, to_state: int, last_state: int, cost: list[{prefab_name: str, display_name: str, quantity: int, available: int | None, paid_by: list[{reference_id: str, name: str | None, quantity: int, available: int}] | None}], tools: list[{prefab_name: str, display_name: str, quantity: int | None, tool: bool}], build_state: {current: int, last: int, complete: bool, next: list[{prefab_name: str, display_name: str, quantity: int | None, tool: bool}] | None} | None} | {index: int, ok: bool, reference_id: str | None, error: Error}]",
+              "count": "int",
+              "success_count": "int",
+              "error_count": "int"
             }
           }
         ],
-        "types": ["Thing"]
+        "types": ["Thing", "Error"]
       },
       "write": {
         "route": "confirm",

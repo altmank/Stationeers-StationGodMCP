@@ -1,7 +1,6 @@
 #nullable enable
 
 using System.Collections.Generic;
-using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
@@ -18,10 +17,6 @@ namespace StationGodMCP.Tests;
 /// </summary>
 public sealed class SiloToolsTests
 {
-    private static Args Of(string json) => new Args(JObject.Parse(json));
-
-    private static ApiException Refused(System.Action call) => Assert.Throws<ApiException>(call);
-
     private static SiloEntryFacts Stack(double quantity, bool matches = true) => new SiloEntryFacts(matches, quantity, true);
 
     private static SiloEntryFacts Whole(double quantity = 1, bool matches = true) => new SiloEntryFacts(matches, quantity, false);
@@ -161,15 +156,6 @@ public sealed class SiloToolsTests
         Assert.True(SiloRules.ShiftsDispenseSlot(4, 4));
         Assert.True(SiloRules.ShiftsDispenseSlot(4, 0));
         Assert.False(SiloRules.ShiftsDispenseSlot(4, 5));
-    }
-
-    [Fact]
-    public void AWriteModeDryRunActsOnlyWithConfirm()
-    {
-        Assert.True(WriteMode.IsDryRun(Of("{}")));
-        Assert.False(WriteMode.IsDryRun(Of("""{"dry_run": false, "confirm": true}""")));
-        Assert.Equal("confirm_required", Refused(() => WriteMode.IsDryRun(Of("""{"dry_run": false}"""))).Code);
-        Assert.Equal(ApiErrors.InvalidArgumentCode, Refused(() => WriteMode.IsDryRun(Of("""{"confirm": true}"""))).Code);
     }
 
     // ---- replies ----

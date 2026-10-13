@@ -65,12 +65,6 @@ internal static class ReplyShapes
     {
         Dictionary<string, ReplyShape[]> shapes = new Dictionary<string, ReplyShape[]>(StringComparer.Ordinal);
 
-        // One structure's step: a state or two of one or two items each, and a tool.
-        shapes["advance_build_state"] = new[]
-        {
-            S<AdvanceBuildStateView>().List("AdvanceBuildStateView.Cost", 3).List("AdvanceBuildStateView.Tools", 1)
-                .Absent("BuildCostView.PaidBy")
-        };
         shapes["highlight"] = new[]
         {
             S<HighlightView>().List("HighlightView.Targets", 3).List("HighlightTargetView.Missing", 0)

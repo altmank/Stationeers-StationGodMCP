@@ -52,53 +52,6 @@ internal sealed class BuildNeedView
     public bool Tool { get; }
 }
 
-/// <summary>advance_build_state: the step asked for, what it takes and what the sources hold, and after a real run the state.</summary>
-internal sealed class AdvanceBuildStateView
-{
-    internal AdvanceBuildStateView(bool dryRun, ThingView thing, int fromState, int toState, int lastState,
-        List<BuildCostView> cost, List<BuildNeedView> tools, List<string> problems, BuildStateView? buildState,
-        List<BuildIssueView>? warnings = null)
-    {
-        Warnings = warnings ?? new List<BuildIssueView>();
-        DryRun = dryRun;
-        Thing = thing;
-        FromState = fromState;
-        ToState = toState;
-        LastState = lastState;
-        Cost = cost;
-        Tools = tools;
-        Problems = problems;
-        Ready = problems.Count == 0;
-        BuildState = buildState;
-    }
-
-    public bool DryRun { get; }
-
-    public ThingView Thing { get; }
-
-    public int FromState { get; }
-
-    public int ToState { get; }
-
-    public int LastState { get; }
-
-    public List<BuildCostView> Cost { get; }
-
-    /// <summary>The tools those states use; not taken or checked.</summary>
-    public List<BuildNeedView> Tools { get; }
-
-    public bool Ready { get; }
-
-    public List<string> Problems { get; }
-
-    /// <summary>What the step does that is allowed but worth knowing, such as materials_from_player.</summary>
-    public List<BuildIssueView> Warnings { get; }
-
-    /// <summary>A real run: the build state read back after the step.</summary>
-    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-    public BuildStateView? BuildState { get; }
-}
-
 /// <summary>One material a build step takes, how many the sources hold (null when free) and who pays.</summary>
 internal sealed class BuildCostView
 {

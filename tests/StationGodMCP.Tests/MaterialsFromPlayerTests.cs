@@ -6,10 +6,10 @@ using Xunit;
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// materials_from_player: a build a player pays for (from_id left out, so the player's inventory, or from_id naming a
-/// player) warns; a build paid from storage, a free build and one that costs nothing do not. place_structure,
-/// place_cables, place_pipes, place_chutes, replace_walls, replace_frames, upgrade_cables, upgrade_pipes and
-/// advance_build_state ask PaySources.PlayerPays, which finds the first player among the payers and asks this rule.
+/// materials_from_player: a build a player pays for (materials left out, so the player's inventory, or materials naming
+/// a player) warns; a build paid from storage, a free build and one that costs nothing do not. build structure, build
+/// cable/pipe/chute, swap wall, swap frame, swap cable, swap pipe and build finish ask PaySources.PlayerPays, which
+/// finds the first player among the payers and asks this rule.
 /// </summary>
 public sealed class MaterialsFromPlayerTests
 {
