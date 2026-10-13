@@ -175,7 +175,7 @@ internal static class VerbOptionsCode
         name == "max_wait" || (name.EndsWith("_file", StringComparison.Ordinal) && taken.Contains(name[..^"_file".Length]));
 
     // The reader's method for an own option's catalogue default, when the default is a value of the option's type (a
-    // flag, a number, or a word its enum takes): the default of the form the call takes (x-default-when) fills the
+    // flag, a number, a word its enum takes, or a list "[a, b]" of words its items' enum takes): the default of the form the call takes (x-default-when) fills the
     // option left out. Prose defaults ("every supplier") bind nothing.
     private static string? DefaultRead(string read, JsonObject schema, JsonObject option)
     {
@@ -190,6 +190,10 @@ internal static class VerbOptionsCode
             "Integer" when long.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out _) => "DefaultInteger",
             "Number" when double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out _) => "DefaultNumber",
             "Text" when schema["enum"] is JsonArray words && words.Any(word => (string?)word == text) => "DefaultText",
+            "Words" when text.StartsWith("[", StringComparison.Ordinal) && text.EndsWith("]", StringComparison.Ordinal) &&
+                         schema["items"]?["enum"] is JsonArray allowed &&
+                         StationGodMCP.Pure.Verbs.OptionReader.WordsOf(text).All(word => allowed.Any(entry => (string?)entry == word)) =>
+                "DefaultWords",
             _ => null
         };
     }

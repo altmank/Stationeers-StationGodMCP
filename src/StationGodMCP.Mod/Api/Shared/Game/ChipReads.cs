@@ -4,33 +4,53 @@ using System;
 using System.Collections.Generic;
 using Assets.Scripts.Objects.Electrical;
 using Assets.Scripts.Objects.Pipes;
-using StationGodMCP.Api.Shared;
-using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 
-namespace StationGodMCP.Api;
+namespace StationGodMCP.Api.Shared.Game;
 
 /// <summary>
-/// resolve_ic_selectors: what a chip's pins d0..dN reach now (IcTarget.GetPins), its aliases, and the prefab and name
-/// hash a batch instruction (lb, lbn, sb, sbn) selects a device by (ILogicable.GetNameHash). Batch instructions walk
-/// only the holder's batch list (ICircuitHolder.GetBatchOutput: an IC Housing's data network; null without one, and
-/// the chip then fails with DeviceListNull), so selectors default to the devices in that list the scope shows, and
-/// uniqueness is counted over that list. A named target outside it is listed with reachable false. Read only.
+/// A circuit holder's chip as inspect chip reads it, one part at a time. Status: the chip (line, errors, language;
+/// without its source), the holder's power state, its pins (IcPins), for an IC10 chip its runtime state (IcRuntime)
+/// with a window of its stack, and for a Lua chip StationeersLua's runtime with the last lines of its print() log; a
+/// holder with no chip reports its pins only. Source: the chip's source (ICircuitHolder.GetSourceCode, decompressed
+/// for a Lua chip), its line and language. Selectors: what pins d0..dN reach now (IcTarget.GetPins), its aliases, and
+/// the prefab and name hash a batch instruction (lb, lbn, sb, sbn) selects a device by (ILogicable.GetNameHash).
+/// Batch instructions walk only the holder's batch list (ICircuitHolder.GetBatchOutput: an IC Housing's data network;
+/// null without one), so selectors default to the devices in that list the scope shows, and uniqueness is counted
+/// over that list; a named target outside it is listed with reachable false. Read only.
 /// </summary>
-internal static class ResolveIcSelectorsApi
+internal static class ChipReads
 {
-    private const int MaximumTargets = 256;
-
-    internal static IcSelectorsView Handle(Args args)
+    /// <summary>The status part: the stack window from stackStart, stackCount values, logLines of a Lua log.</summary>
+    internal static object Status(DeviceScope scope, IcTarget ic, int stackStart, int stackCount, int logLines)
     {
-        DeviceScope scope = Devices.Scope(args);
-        List<ThingId>? targetIds = args.Has("target_reference_ids")
-            ? args.ThingIds("target_reference_ids", MaximumTargets)
-            : null;
-        IcTarget ic = Devices.RequireCircuitHolder(scope, args);
-        ProgrammableChip chip = ic.RequireChip();
+        IcPlace place = IcRuntime.PlaceOf(scope, ic);
+        ProgrammableChip? chip = ic.Chip();
+        if (chip == null)
+        {
+            return new IcNoChipView(place, IcPins.Describe(ic));
+        }
 
+        ChipProgram program = ChipProgram.Of(chip);
+        IcRuntimeParts parts = new IcRuntimeParts(IcPins.Describe(ic),
+            program.Language == IcChip.Ic10 ? IcRuntime.Capture(chip, ic.HolderId, stackStart, stackCount) : null);
+        IcChip described = program.Describe(ic, chip, logLines);
+        return new IcStatusView(place, described.WithoutSource(), IcRuntime.State(chip), ic.StateView(), parts);
+    }
+
+    /// <summary>The source part; refused when the holder has no chip.</summary>
+    internal static IcSourceView Source(DeviceScope scope, IcTarget ic)
+    {
+        ProgrammableChip chip = ic.RequireChip();
+        IcChip described = ChipProgram.Of(chip).Describe(ic, chip, 0);
+        return new IcSourceView(IcRuntime.PlaceOf(scope, ic), described, chip.LineNumber);
+    }
+
+    /// <summary>The selectors part: the targets named (null: the batch list's devices the scope shows).</summary>
+    internal static IcSelectorsView Selectors(DeviceScope scope, IcTarget ic, List<ThingId>? targetIds)
+    {
+        ProgrammableChip chip = ic.RequireChip();
         List<PinTargetView> pins = new List<PinTargetView>();
         IList<ILogicable?> devices = ic.GetPins();
         for (int index = 0; index < devices.Count; index++)

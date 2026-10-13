@@ -1,5 +1,7 @@
 #nullable enable
 
+using System.Collections.Generic;
+using System.Linq;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Pure.Verbs;
 using Xunit;
@@ -97,4 +99,50 @@ public sealed class InspectVerbTests
         Assert.Equal("cursor", later.OffsetOnly()!.Path);
         Assert.Null(opened.OffsetOnly());
     }
+
+    // ---- inspect chip's parts ----
+
+    [Fact]
+    public void ChipPartsDefaultToStatus()
+    {
+        Assert.Equal(new[] { "status" }, InspectChipOptions.Bind(Reader(InspectChipOptions.Spec, """{"id": "5"}""")).Parts);
+        Assert.Equal(new[] { "source", "selectors" }, InspectChipOptions.Bind(Reader(InspectChipOptions.Spec,
+            """{"id": "5", "parts": ["source", "selectors"]}""")).Parts);
+    }
+
+    [Fact]
+    public void OnePartAnswersItsReplyAndSeveralAnswerEachByName()
+    {
+        JObject one = Answered(PartAnswers.Of("inspect chip", new[] { "status" },
+            part => new JObject { ["line_number"] = 3 }));
+        JObject several = Answered(PartAnswers.Of("inspect chip", new[] { "status", "source" },
+            part => new JObject { ["part"] = part }));
+
+        Assert.Equal(3, (int)one["line_number"]!);
+        Assert.Equal(new[] { "status", "source" }, several.Properties().Select(key => key.Name));
+        Assert.Equal("source", (string?)several["source"]!["part"]);
+    }
+
+    [Fact]
+    public void EveryPartThatCannotBeAnsweredRefusesTheCallAtOnce()
+    {
+        List<string> read = new List<string>();
+        VerbOutcome outcome = PartAnswers.Of("inspect chip", new[] { "source", "status", "selectors" }, part =>
+        {
+            read.Add(part);
+            return part == "status"
+                ? new JObject()
+                : throw new Api.Shared.ApiException("no_programmable_chip", "Holder 5 has no chip.");
+        });
+
+        VerbError error = Assert.IsType<VerbOutcome.Refused>(outcome).Error;
+        Assert.Equal(new[] { "source", "status", "selectors" }, read);
+        Assert.Equal("invalid_argument", error.Code);
+        Assert.Equal(new[] { "parts[0]", "parts[2]" },
+            ((JArray)error.Data!["problems"]!).Select(problem => (string?)problem["path"]));
+        Assert.Contains("source cannot be answered (no_programmable_chip): Holder 5 has no chip.", error.Message);
+        Assert.Contains("selectors cannot be answered", error.Message);
+    }
+
+    private static JObject Answered(VerbOutcome outcome) => Assert.IsType<VerbOutcome.Answered>(outcome).Reply;
 }

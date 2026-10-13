@@ -57,9 +57,6 @@ internal static class ReplyShapes
         ["tool_info"] =
             "Answered by the MCP server from the catalogue, never by the game; CatalogueTextTests holds every node it " +
             "answers under 1.5 KB.",
-        ["get_ic_source"] =
-            "Its reply is the chip's source, as long as the chip's program (a 60 KB Lua hub): reading it is the call's " +
-            "purpose. output_file writes it to a file and answers a pointer; get_ic_status reads everything else.",
         ["move_gas"] = "Its replies are built from JSON trees, not views; members of from/to are the request's atmospheres.",
     };
 
@@ -85,17 +82,6 @@ internal static class ReplyShapes
         {
             S<FindSpotView>().List("FindSpotView.Planes", 2).List("FindSpotView.Spots", D.FindSpots)
                 .List("SpotView.Conflicts", 1).List("FindSpotView.Reasons", 8)
-        };
-        shapes["get_ic_status"] = new[]
-        {
-            S<IcNoChipView>().List("IcNoChipView.Pins", 6),
-            // IC10: 18 registers, a stack window, the program's aliases, defines and jump tags.
-            S<IcStatusView>().List("IcStatusView.Pins", 6).Absent("IcStatusView.Source", "IcStatusView.Lua")
-                .List("IcRuntimeView.Registers", 18).List("StackWindowView.Values", D.IcStackWindow)
-                .List("IcRuntimeView.Aliases", 12).List("IcRuntimeView.Defines", 12).List("IcRuntimeView.JumpTags", 10),
-            // Lua: the hub chip, its log tail; no IC10 runtime.
-            S<IcStatusView>().List("IcStatusView.Pins", 6).Absent("IcStatusView.Source", "IcStatusView.Runtime")
-                .List("LuaLogView.Lines", D.LuaLogLines).Text("LuaLogView.Lines[]", new string('l', 80))
         };
         shapes["highlight"] = new[]
         {
@@ -216,11 +202,6 @@ internal static class ReplyShapes
             shapes[tool] = new[] { StructureSwapReport() };
         }
 
-        shapes["resolve_ic_selectors"] = new[]
-        {
-            S<IcSelectorsView>().List("IcSelectorsView.Pins", 6).List("IcSelectorsView.Aliases", 12)
-                .List("IcSelectorsView.StableSelectors", W.DataNetworkDevices)
-        };
         shapes["rocket_flight_log"] = new[]
         {
             S<FlightLogView>().List("FlightLogView.Events", 10).List("FlightLogView.Rows", D.FlightLogRows),

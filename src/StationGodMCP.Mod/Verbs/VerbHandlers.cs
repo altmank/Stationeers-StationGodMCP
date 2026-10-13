@@ -39,6 +39,7 @@ internal static class VerbHandlers
         VerbHandler.For(InspectHealthOptions.Spec, InspectHealthOptions.Bind, InspectHealth.Run),
         VerbHandler.For(InspectGenesOptions.Spec, InspectGenesOptions.Bind, InspectGenes.Run),
         VerbHandler.For(InspectScreenOptions.Spec, InspectScreenOptions.Bind, InspectScreen.Run),
+        VerbHandler.For(InspectChipOptions.Spec, InspectChipOptions.Bind, InspectChip.Run),
         VerbHandler.For(InspectPrefabOptions.Spec, InspectPrefabOptions.Bind, InspectPrefab.Run),
         VerbHandler.For(InspectLookingAtOptions.Spec, InspectLookingAtOptions.Bind, InspectLookingAt.Run),
         VerbHandler.For(InspectPlayerOptions.Spec, InspectPlayerOptions.Bind, InspectPlayer.Run),

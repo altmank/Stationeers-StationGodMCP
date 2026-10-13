@@ -96,6 +96,28 @@ internal sealed class OptionReader
         return option.Default;
     }
 
+    /// <summary>The words the catalogue gives as a list option's default ("[status]"), or null when it gives none.</summary>
+    internal IReadOnlyList<string>? DefaultWords(string name) =>
+        DefaultText(name) is { } text && text.StartsWith("[", System.StringComparison.Ordinal) &&
+        text.EndsWith("]", System.StringComparison.Ordinal)
+            ? WordsOf(text)
+            : null;
+
+    /// <summary>The words of a default written as a list, "[a, b]".</summary>
+    internal static IReadOnlyList<string> WordsOf(string text)
+    {
+        List<string> words = new List<string>();
+        foreach (string word in text.Substring(1, text.Length - 2).Split(','))
+        {
+            if (word.Trim().Length > 0)
+            {
+                words.Add(word.Trim());
+            }
+        }
+
+        return words;
+    }
+
     /// <summary>The integer the catalogue gives as an option's default for this call, or null when it gives none.</summary>
     internal long? DefaultInteger(string name) =>
         DefaultText(name) is { } text &&

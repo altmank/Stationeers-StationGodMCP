@@ -43,7 +43,7 @@ internal sealed record InspectChipOptions
         Selector = Selector.Bind(options),
         Fields = Fields.Bind(options),
         Gateway = options.Text("gateway"),
-        Parts = options.Words("parts"),
+        Parts = options.Words("parts") ?? options.DefaultWords("parts"),
         Start = options.Integer("start") ?? options.DefaultInteger("start"),
         Count = options.Integer("count") ?? options.DefaultInteger("count"),
         Log = options.Integer("log") ?? options.DefaultInteger("log"),
