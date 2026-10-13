@@ -113,6 +113,7 @@
             "label": "ItemMoved",
             "view": "ItemMoved",
             "keys": {
+              "route": "str",
               "index": "int",
               "ok": "bool",
               "reference_id": "str",
@@ -128,6 +129,7 @@
             "label": "BatchResult",
             "view": "BatchResult",
             "keys": {
+              "route": "str",
               "results": "list[{index: int, ok: bool, error: Error}]",
               "count": "int",
               "success_count": "int",
@@ -138,7 +140,7 @@
             "label": "VaultDeposit",
             "view": "VaultDeposit",
             "keys": {
-              "dry_run": "bool",
+              "route": "str",
               "vault": "Thing",
               "via": "Thing | None",
               "matched": "int | None",
@@ -152,7 +154,7 @@
             "label": "VaultWithdraw",
             "view": "VaultWithdraw",
             "keys": {
-              "dry_run": "bool",
+              "route": "str",
               "vault": "Thing",
               "via": "Thing | None",
               "to": "Thing",
@@ -165,7 +167,7 @@
             "label": "VaultTransfer",
             "view": "VaultTransfer",
             "keys": {
-              "dry_run": "bool",
+              "route": "str",
               "from_vault": "Thing",
               "from_via": "Thing | None",
               "to_vault": "Thing",
@@ -178,7 +180,7 @@
             "label": "SiloDeposit",
             "view": "SiloDeposit",
             "keys": {
-              "dry_run": "bool",
+              "route": "str",
               "silo": "Thing",
               "on_off": "bool",
               "powered": "bool",
@@ -193,7 +195,7 @@
             "label": "SiloWithdraw",
             "view": "SiloWithdraw",
             "keys": {
-              "dry_run": "bool",
+              "route": "str",
               "silo": "Thing",
               "on_off": "bool",
               "powered": "bool",

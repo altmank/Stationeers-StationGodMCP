@@ -28,6 +28,7 @@ def move(what: Literal['item'], *,
     Cheat when force: true: ask the user first.
     Reply, one of:
     (ItemMoved)
+      route: str
       index: int
       ok: bool
       reference_id: str
@@ -38,12 +39,13 @@ def move(what: Literal['item'], *,
       destination_reference_id: str
       warning: str | None
     (BatchResult)
+      route: str
       results: list[{index: int, ok: bool, error: Error}]
       count: int
       success_count: int
       error_count: int
     (VaultDeposit)
-      dry_run: bool
+      route: str
       vault: Thing
       via: Thing | None
       matched: int | None
@@ -56,7 +58,7 @@ def move(what: Literal['item'], *,
           float, after: float}} | {index: int, ok: bool, error: Error}], count: int, success_count: int, error_count: int}
       stock: list[{kind: str, prefab_name: str | None, display_name: str | None, reagent: str | None, before: float, change: float, after: float}]
     (VaultWithdraw)
-      dry_run: bool
+      route: str
       vault: Thing
       via: Thing | None
       to: Thing
@@ -64,7 +66,7 @@ def move(what: Literal['item'], *,
       placed: list[{where: str, slot: {id: str, slot: int} | None, quantity: float, reference_id: str | None}]
       stock: list[{kind: str, prefab_name: str | None, display_name: str | None, reagent: str | None, before: float, change: float, after: float}]
     (VaultTransfer)
-      dry_run: bool
+      route: str
       from_vault: Thing
       from_via: Thing | None
       to_vault: Thing
@@ -76,7 +78,7 @@ def move(what: Literal['item'], *,
           float, after: float}} | {index: int, ok: bool, error: Error}], count: int, success_count: int, error_count: int}
       partial_count: int
     (SiloDeposit)
-      dry_run: bool
+      route: str
       silo: Thing
       on_off: bool
       powered: bool
@@ -88,7 +90,7 @@ def move(what: Literal['item'], *,
           int, error_count: int}
       count: {before: int, after: int}
     (SiloWithdraw)
-      dry_run: bool
+      route: str
       silo: Thing
       on_off: bool
       powered: bool
