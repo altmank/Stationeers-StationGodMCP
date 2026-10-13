@@ -219,11 +219,7 @@
           {"path": "moves[].id", "role": "acts-on"},
           {"path": "moves[].to", "role": "acts-on"},
           {"path": "items[].id", "role": "acts-on"},
-          {
-            "path": "prefab",
-            "role": "spread",
-            "when": {"source": {"absent": true}, "slot": {"absent": true}, "moves": {"absent": true}}
-          },
+          {"path": "prefab", "role": "spread"},
           {"path": "name", "role": "spread"},
           {"path": "location", "role": "spread"},
           {"path": "within", "role": "spread"},

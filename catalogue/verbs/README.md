@@ -33,7 +33,7 @@ Per write what (`write`):
 | `route` | `acts` (typed ids act at once; refs, networks and spreads report until confirm) or `confirm` (reports until confirm) |
 | `cheat` | `always`, or the option that makes it one (`free: true`, `force: true`) |
 | `x-undo`, `x-undo-mark` | `undo`, `cannot` or `mixed`, and the footer's mark text |
-| `x-target` | option paths whose values name existing things the write acts on (`acts-on`) or pays from (`pays-from`), or pick its targets (`spread`: a network, room, box, near, rocket or a filter; decision M6); every path is under the seen rule, a spread as a selector; `when` (option matchers as in `x-class-when`: `equals`, `in`, `present: true`, `absent: true`) makes a path a target only for calls where every one holds |
+| `x-target` | option paths whose values name existing things the write acts on (`acts-on`) or pays from (`pays-from`), or pick its targets (`spread`: a network, room, box, near, rocket or a filter; decision M6); every path is under the seen rule, a spread as a selector |
 
 ## Readings for the hub (agreed with the orchestrator)
 
@@ -53,9 +53,8 @@ Per write what (`write`):
   confirm. An id list is one `moves` list, a slot per move (`auto` when left out).
 - Spreads (decision M6): move item's filters (prefab, name, location, within, near, radius,
   category), swap's room, network, box, prefab, only and older_than, paint's network and kind, battery's rocket and
-  within. Move item's prefab is a spread only into a store (catalogue C2a fix): with source it names what to take out
-  of one, and with slot or moves the move is a slot move. Whether `to` is a vault or silo is the game's to know, so a
-  call with neither counts its prefab as a spread.
+  within. A filter on a write is a spread whenever given (M6): move item's
+  prefab too, out of a store (with source) as well as into one.
 - Hand-declared reply shapes (no typed view existed): help,
   inspect job, move gas, read sample, server stop, undo.
 - Scripts (v9): two routes, no run repeat; in a script, per-id whats always answer `{results: [...]}` (note 28). The

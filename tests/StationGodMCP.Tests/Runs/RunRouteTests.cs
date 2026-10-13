@@ -284,8 +284,20 @@ public sealed class RunRouteTests
         Assert.Contains("SyntaxError", text);
     }
 
-    // The prefab comes from a reply the agent was never shown, so it is not seen; the store and "player" are.
+    // A prefab from a reply the agent was never shown is not seen; one written in the code is (a selector literal).
     private const string UnseenPrefab = "p = sg.find('thing')['things'][0]['display_name']\n";
+
+    [PythonFact]
+    public async Task AConfirmedRunMovingItemsByALiteralPrefabIntoAStoreActs()
+    {
+        await using RunBench bench = new();
+
+        string text = await bench.RunAsync("sg.move('item', to='5200100', prefab='*Ore*', location='player')",
+            confirm: true);
+
+        Assert.StartsWith("script-1 done\n", text);
+        Assert.Equal(1, bench.World.Count("move.item"));
+    }
 
     [PythonFact]
     public async Task AConfirmedRunMovingItemsByAnUnseenPrefabIntoAStoreStops()
@@ -300,15 +312,15 @@ public sealed class RunRouteTests
     }
 
     [PythonFact]
-    public async Task AConfirmedRunTakingAnUnseenPrefabOutOfAStoreToThePlayerActs()
+    public async Task AnUnseenPrefabTakenOutOfAStoreIsStillASpreadAndStops()
     {
         await using RunBench bench = new();
 
         string text = await bench.RunAsync(
             UnseenPrefab + "sg.move('item', source='5200100', prefab=p, quantity=5, to='player')", confirm: true);
 
-        Assert.StartsWith("script-1 done\n", text);
-        Assert.Equal(1, bench.World.Count("move.item"));
+        Assert.StartsWith("script-1 stopped: unseen_target (line 2: move item names targets not seen; nothing acted.)", text);
+        Assert.Equal(0, bench.World.Count("move.item"));
     }
 
     [PythonFact]

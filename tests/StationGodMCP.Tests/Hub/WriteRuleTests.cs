@@ -69,21 +69,22 @@ public sealed class WriteRuleTests
     }
 
     [Fact]
-    public void MoveItemsPrefabIsASpreadOnlyIntoAStore()
+    public void MoveItemsPrefabIsASpreadWheneverGiven()
     {
         WhatEntry move = VerbExampleTests.WhatOf("move.item");
 
-        WriteTargets into = WriteTargetPaths.Resolve(move, Options("""{"to":"5200100","prefab":"*Ore*"}"""));
-        WriteTargets outOf = WriteTargetPaths.Resolve(move,
-            Options("""{"source":"5200100","prefab":"ItemIronIngot","quantity":500,"to":"player"}"""));
-        WriteTargets slot = WriteTargetPaths.Resolve(move, Options("""{"id":"7","to":"20","slot":0,"prefab":"*Ore*"}"""));
-
-        WriteTarget spread = Assert.Single(into.Targets, target => target.Path == "prefab");
-        Assert.Equal("spread", spread.Role);
-        Assert.Equal(TargetSource.Selector, spread.Source);
-        Assert.DoesNotContain(outOf.Targets, target => target.Path == "prefab");
-        Assert.Contains(outOf.Targets, target => target.Path == "source" && target.Role == "pays-from");
-        Assert.DoesNotContain(slot.Targets, target => target.Path == "prefab");
+        foreach (string options in new[]
+                 {
+                     """{"to":"5200100","prefab":"*Ore*"}""",
+                     """{"source":"5200100","prefab":"ItemIronIngot","quantity":500,"to":"player"}""",
+                     """{"id":"7","to":"20","slot":0,"prefab":"*Ore*"}"""
+                 })
+        {
+            WriteTarget spread = Assert.Single(WriteTargetPaths.Resolve(move, Options(options)).Targets,
+                target => target.Path == "prefab");
+            Assert.Equal("spread", spread.Role);
+            Assert.Equal(TargetSource.Selector, spread.Source);
+        }
     }
 
     [Fact]
