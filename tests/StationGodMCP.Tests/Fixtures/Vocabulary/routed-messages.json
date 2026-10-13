@@ -111,48 +111,6 @@
     "refund_to names {Names.Of(thing)} {id}, which has no slot a refund could go into.",
     "refund_to names {id}, and there is no thing with that reference id."
   ],
-  "Api/Shared/Game/Runs/ChuteFlowCheck.cs": [
-    "The chute networks here have more than {ChuteSurroundings.MaximumPieces} pieces; each junction takes its first turn unchecked. Check its flow in grid_survey after building."
-  ],
-  "Api/Shared/Game/Runs/Reroutes.cs": [
-    "between names two devices or pieces.",
-    "{name}.port {port.Value} is not a {kind.Noun} port of {label}; its {kind.Noun} ports are [{string.Join(\"; \", ports)}] (connections lists them).",
-    "{name}.port: {label} is a {kind.Noun} piece, not a device.",
-    "{name}: {label} is neither a {kind.Noun} piece nor a device."
-  ],
-  "Api/Shared/Game/Runs/RunArgs.cs": [
-    "Argument 'grade' is required: one of {string.Join(\", \", kind.GradeNames)}.",
-    "Pass one of waypoints, cells, piece or pieces.",
-    "branches go with waypoints or cells, not piece.",
-    "branches go with waypoints or cells, not pieces.",
-    "branches[{index}] needs waypoints or cells (one of them).",
-    "extra_ends[{index}] must be {at: [x, y, z], toward: \"+x\"|\"-x\"|\"+y\"|\"-y\"|\"+z\"|\"-z\"}.",
-    "{name} ({found.x}, {found.y}, {found.z}) is outside the world: no coordinate may be more than {MaximumCoordinate:0} m from the origin.",
-    "{name} must be a position: [x, y, z] or {x, y, z} in metres.",
-    "{name}.ends[{index}] must be one of +x, -x, +y, -y, +z, -z.",
-    "{name}.ends[{index}] repeats {step.Name}; name each end once."
-  ],
-  "Api/Shared/Game/Runs/RunPlanner.cs": [
-    "Allowed (allow_door_keepout).",
-    "Route around the doorway, or pass allow_door_keepout.",
-    "The edit joins what is already joined another way: {forecast.Loops.Count} new link(s) close a loop ({string.Join(\", \", links.GetRange(0, System.Math.Min(links.Count, 8)))}; negative ids are new pieces). The network gets a second path between those points; clean_cables or clean_pipes remove_loops would cut it again. Keep it only if the redundancy is meant; to reach a second port of a device already on the network, route to that port from the network in one plan (several ports in from).",
-    "assume_removed: {Names.Of(thing)} ({thing.PrefabName}) does not stand on the small grid.",
-    "{Names.Of(thing)} ({thing.PrefabName}) is not a {kind.Noun} piece; remove_structure removes other structures.",
-    "{piece.PrefabName} {piece.ReferenceId} ({live.Cells.Count} cells) is split into single pieces in the same job so the run can join it (allow_split_long false refuses instead).",
-    "{plan.AssumedPresent.Count} thing(s) in assume_removed still stand (first {plan.AssumedPresent[0]}); remove them first, or pass the {plan.Request.Kind.Noun} pieces as remove_ids to remove them in this job.",
-    "{plan.AssumedPresent.Count} thing(s) in assume_removed still stand; this check treats them as gone. A real run is refused until they are removed (remove the {kind.Noun} pieces in the same job by passing them as remove_ids instead).",
-    "{player.Absence} No player {role}; pass from_id.",
-    "{player.Absence} The refund is an estimate, and a real removal takes from_id to receive it."
-  ],
-  "Api/Shared/Game/Runs/RunTaps.cs": [
-    " The nearest: the run end at {Metres(best.From)} stops {Gap(best)} {Describe(plan, best.Piece)} (tap: {TapText(best)}; join_trunk: true adds it).",
-    "The run end at {Metres(tip.Cell)} stops {Gap(miss)} {Describe(plan, miss.Piece)} without joining it (the run's own open end there points {OpenStep(plan.Layout, tip.Cell)}). If the run should join that network, add the tap ({TapText(miss)}; join_to with join_trunk: true adds it); if the networks are meant to stay apart, ignore this.",
-    "join_to: the run does not join network {target}; it would stay a network of its own or join another.{near}{along}",
-    "join_trunk needs join_to: the network the tap should reach (a network id, or {reference_id, port} of a device on it).",
-    "join_trunk: no run end is next to, or one cell short of, a piece of network {target}; route the run to it (plan with to: {network_id}) instead.",
-    "join_trunk: none of the {Math.Min(candidates.Count, MaximumTries)} taps tried towards network {target} plans ready; the run is left as given.",
-    "join_trunk: the run stopped {Gap(miss)} {Describe(plan, miss.Piece)}; the tap ({TapText(miss)}) is added, so the run joins network {target}."
-  ],
   "Api/Shared/Game/Upgrades/Clean/RemoveDeadChutes.cs": [
     "{riding.Count} chute piece(s) this run would remove or replace carry an item (see riding); let the items pass or take them out with move item, or pass riding: skip to leave those pieces."
   ],
@@ -323,9 +281,6 @@
     "Port {port.Index} of device {port.DeviceId} would lose its connection to network {port.NetworkBefore}.{cutNote} Pass allow_split if that is meant.",
     "The edit would join networks {string.Join(\", \", merge.NetworksBefore)} into one; name every one of them in allow_bridge if that is meant.",
     "The edit would put ports {string.Join(\", \", ports)} of device {bridge.Device} on one network (both sides of an APC or transformer, a battery's input and output, a pump's two sides, a device's chute output fed back into its own input); name the device in allow_bridge if that is meant."
-  ],
-  "Pure/Routing/RerouteNetworks.cs": [
-    "{a.Name} and {b.Name} share {shared.Count} {noun} networks: {string.Join(\"; \", candidates)}. Name the port of a device end: between: [{reference_id, port}, ...]."
   ],
   "Pure/Routing/RunLayout.cs": [
     " ({tool} with split_long_straights)",

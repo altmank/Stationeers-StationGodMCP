@@ -140,7 +140,7 @@ internal static class RerouteNetworks
         {
             return new RerouteNetworkChoice.Refused(NotOnOneNetwork,
                 $"{a.Name} and {b.Name} share no {noun} network: {a}, {b}. The old run must be one network " +
-                "joining both ends; connections lists each port's network.");
+                "joining both ends; inspect connections lists each port's network.");
         }
 
         List<string> candidates = new List<string>(shared.Count);
@@ -152,7 +152,6 @@ internal static class RerouteNetworks
 
         return new RerouteNetworkChoice.Refused(AmbiguousPort,
             $"{a.Name} and {b.Name} share {shared.Count} {noun} networks: {string.Join("; ", candidates)}. Name the " +
-            $"{Vocabulary.Arg("port")} of a device end: {Vocabulary.Arg("between")}: " +
-            $"[{{{Vocabulary.Arg("reference_id")}, {Vocabulary.Arg("port")}}}, ...].");
+            "port of a device end: reroute.between: [{id, port}, ...].");
     }
 }

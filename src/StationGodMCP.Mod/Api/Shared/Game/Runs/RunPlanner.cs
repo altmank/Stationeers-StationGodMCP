@@ -105,7 +105,7 @@ internal static class RunPlanner
             {
                 plan.Problem($"not_a_{kind.Noun}_piece",
                     $"{Names.Of(thing)} ({thing.PrefabName}) is not a {kind.Noun} piece; " +
-                    $"{Vocabulary.Tool("remove_structure")} removes other structures.", thing.ReferenceId);
+                    "remove structure removes other structures.", thing.ReferenceId);
             }
             else if (seen.Add(piece.ReferenceId))
             {
@@ -165,9 +165,9 @@ internal static class RunPlanner
         if (plan.AssumedPresent.Count > 0)
         {
             plan.Problem(AssumedPresentCode,
-                $"{plan.AssumedPresent.Count} thing(s) in {Vocabulary.Arg("assume_removed")} still stand (first " +
+                $"{plan.AssumedPresent.Count} thing(s) in assume_removed still stand (first " +
                 $"{plan.AssumedPresent[0]}); remove them first, or pass the {plan.Request.Kind.Noun} pieces as " +
-                $"{Vocabulary.Arg("remove_ids")} to remove them in this job.", plan.AssumedPresent[0]);
+                "remove_ids to remove them in this job.", plan.AssumedPresent[0]);
         }
     }
 
@@ -186,7 +186,7 @@ internal static class RunPlanner
             if (!(thing is SmallGrid piece))
             {
                 plan.Problem("not_a_small_grid_thing",
-                    $"{Vocabulary.Arg("assume_removed")}: {Names.Of(thing)} ({thing.PrefabName}) does not stand on " +
+                    $"assume_removed: {Names.Of(thing)} ({thing.PrefabName}) does not stand on " +
                     "the small grid.",
                     thing.ReferenceId);
                 continue;
@@ -208,9 +208,9 @@ internal static class RunPlanner
         if (plan.AssumedPresent.Count > 0)
         {
             plan.Warnings.Add(new LayoutIssue(AssumedPresentCode,
-                $"{plan.AssumedPresent.Count} thing(s) in {Vocabulary.Arg("assume_removed")} still stand; this " +
+                $"{plan.AssumedPresent.Count} thing(s) in assume_removed still stand; this " +
                 "check treats them as gone. A real run is refused until they are removed (remove the " + kind.Noun +
-                Vocabulary.Text(" pieces in the same job by passing them as {arg:remove_ids} instead)."), null,
+                " pieces in the same job by passing them as remove_ids instead).", null,
                 plan.AssumedPresent[0]));
         }
     }
@@ -385,7 +385,7 @@ internal static class RunPlanner
         string more = plan.AirCells.Count > AirListed ? $" and {plan.AirCells.Count - AirListed} more" : string.Empty;
         plan.Warnings.Add(new LayoutIssue(ThroughAir,
             $"{plan.AirCells.Count} new pieces float in air (on no frame and no wall plane): " +
-            $"{string.Join(", ", listed)}{more}. Route over frames or along walls (plan_*_route style supported, the default), or " +
+            $"{string.Join(", ", listed)}{more}. Route over frames or along walls (plan route style supported, the default), or " +
             "build a frame under them.", plan.AirCells[0]));
     }
 
@@ -440,8 +440,8 @@ internal static class RunPlanner
                 $"{door.Value.Count} new piece(s) stand in the keep-out of door {door.Key} (its face and " +
                 $"{band} m either side, inside its rectangle): {Listed(door.Value)}. " +
                 (allow
-                    ? Vocabulary.Text("Allowed ({arg:allow_door_keepout}).")
-                    : Vocabulary.Text("Route around the doorway, or pass {arg:allow_door_keepout}.")),
+                    ? "Allowed (allow door_keepout)."
+                    : "Route around the doorway, or pass allow: [\"door_keepout\"]."),
                 door.Value[0], door.Key);
             (allow ? plan.Warnings : plan.Problems).Add(issue);
         }
@@ -521,7 +521,7 @@ internal static class RunPlanner
 
             plan.Warnings.Add(new LayoutIssue(LongSplit,
                 $"{piece.PrefabName} {piece.ReferenceId} ({live.Cells.Count} cells) is split into single pieces in " +
-                $"the same job so the run can join it ({Vocabulary.Arg("allow_split_long")} false refuses " +
+                "the same job so the run can join it (split_long false refuses " +
                 "instead).", null,
                 piece.ReferenceId));
         }
@@ -714,12 +714,12 @@ internal static class RunPlanner
         if (human == null && SourceRule.NoLocalPlayer(plan.Request.Tool) == GuardLevel.Warning)
         {
             plan.Warnings.Add(new LayoutIssue("no_local_player", $"{player.Absence} The refund is an estimate, and a " +
-                $"real removal takes {Vocabulary.Arg("from_id")} to receive it.", null,
+                "real removal names who receives it in materials.", null,
                 null));
         }
         else if (human == null)
         {
-            plan.Problem("no_local_player", $"{player.Absence} No player {role}; pass {Vocabulary.Arg("from_id")}.");
+            plan.Problem("no_local_player", $"{player.Absence} No player {role}; name a holder in materials.");
         }
 
         return human;
@@ -821,11 +821,11 @@ internal static class RunPlanner
         plan.Warnings.Add(new LayoutIssue(WouldLoop,
             $"The edit joins what is already joined another way: {forecast.Loops.Count} new link(s) close a loop " +
             $"({string.Join(", ", links.GetRange(0, System.Math.Min(links.Count, 8)))}; negative ids are new " +
-            $"pieces). The network gets a second path between those points; {Vocabulary.Tool("clean_cables")} or " +
-            $"{Vocabulary.Tool("clean_pipes")} remove_loops would cut it again. Keep it only if the redundancy is " +
+            "pieces). The network gets a second path between those points; swap cable or swap pipe with tidy " +
+            "[remove_loops] would cut it again. Keep it only if the redundancy is " +
             "meant; to reach a second port of a device already on the network, route to that port from the network " +
             "in one plan (several ports in " +
-            "from).", null, first.From > 0 ? first.From : first.To > 0 ? first.To : (long?)null));
+            "start).", null, first.From > 0 ? first.From : first.To > 0 ? first.To : (long?)null));
     }
 
     // A change only adds ends: every link a changed piece has now must still be there after the edit.

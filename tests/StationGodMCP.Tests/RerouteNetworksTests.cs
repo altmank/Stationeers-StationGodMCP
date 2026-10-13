@@ -81,7 +81,7 @@ public sealed class RerouteNetworksTests
             refused.Message);
         Assert.Contains("network 2002 (StructureAreaPowerControl 11 port 1, StructureTransformer 44 port 0)",
             refused.Message);
-        Assert.Contains("{reference_id, port}", refused.Message);
+        Assert.Contains("reroute.between: [{id, port}, ...]", refused.Message);
     }
 
     [Fact]

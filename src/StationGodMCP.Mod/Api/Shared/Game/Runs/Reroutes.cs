@@ -62,7 +62,7 @@ internal static class Reroutes
     {
         if (!(GameLookup.RequireThing(from.Id) is SmallGrid a) || !(GameLookup.RequireThing(to.Id) is SmallGrid b))
         {
-            throw ApiErrors.InvalidArgument(Vocabulary.Text("{arg:between} names two devices or pieces."));
+            throw ApiErrors.InvalidArgument("reroute.between names two devices or pieces.");
         }
 
         RerouteNetworkChoice choice = RerouteNetworks.Shared(EndOf(kind, a, from.Port, "reroute.between[0]"),
@@ -127,7 +127,7 @@ internal static class Reroutes
         {
             if (port.HasValue)
             {
-                throw ApiErrors.InvalidArgument($"{Vocabulary.Path(name)}.{Vocabulary.Arg("port")}: {label} is a " +
+                throw ApiErrors.InvalidArgument($"{name}.port: {label} is a " +
                     $"{kind.Noun} piece, not a device.");
             }
 
@@ -137,7 +137,7 @@ internal static class Reroutes
 
         if (!(thing is Device device))
         {
-            throw ApiErrors.InvalidArgument($"{Vocabulary.Path(name)}: {label} is neither a {kind.Noun} piece nor a " +
+            throw ApiErrors.InvalidArgument($"{name}: {label} is neither a {kind.Noun} piece nor a " +
                 "device.");
         }
 
@@ -160,8 +160,8 @@ internal static class Reroutes
         if (named == null)
         {
             throw ApiErrors.InvalidArgument(
-                $"{Vocabulary.Path(name)}.{Vocabulary.Arg("port")} {port.Value} is not a {kind.Noun} port of " +
-                $"{label}; its {kind.Noun} ports are [{string.Join("; ", ports)}] ({Vocabulary.Tool("connections")} " +
+                $"{name}.port {port.Value} is not a {kind.Noun} port of " +
+                $"{label}; its {kind.Noun} ports are [{string.Join("; ", ports)}] (inspect connections " +
                 "lists them).");
         }
 
