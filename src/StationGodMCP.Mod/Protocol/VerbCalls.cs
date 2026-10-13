@@ -1,6 +1,7 @@
 #nullable enable
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.ExceptionServices;
 using System.Text;
@@ -41,6 +42,46 @@ internal sealed class VerbRunner
 }
 
 /// <summary>
+/// What a handler adds to its reply on the side while it runs (PLAN 2.0 cut notes): the lists it cut (Truncations,
+/// written as truncated by the shaping writer) and the gas hold its job met (GasHoldReply, added as gas_hold). Gathered
+/// around each run of the handler's code, a deferred call's slices too, and written with its answer.
+/// </summary>
+internal sealed class VerbNotes
+{
+    private readonly List<Truncation> _truncations = new List<Truncation>();
+    private GasHoldView? _gasHold;
+
+    internal IReadOnlyList<Truncation> Truncations => _truncations;
+
+    /// <summary>Starts gathering for a run of the handler's code.</summary>
+    internal static void Begin()
+    {
+        Pure.Shaping.Truncations.Begin();
+        GasHoldReply.Begin();
+    }
+
+    /// <summary>Adds what the run since Begin noted; a later gas hold replaces an earlier one.</summary>
+    internal void Take()
+    {
+        _truncations.AddRange(Pure.Shaping.Truncations.Take());
+        _gasHold = GasHoldReply.Take() ?? _gasHold;
+    }
+
+    /// <summary>The reply with gas_hold added when the run met one.</summary>
+    internal JObject Attach(JObject reply)
+    {
+        if (_gasHold == null)
+        {
+            return reply;
+        }
+
+        JObject noted = (JObject)reply.DeepClone();
+        noted["gas_hold"] = JToken.FromObject(_gasHold, ApiJson.Fresh());
+        return noted;
+    }
+}
+
+/// <summary>
 /// A verb call run on the main thread (protocol.md, Verb calls): the dispatcher binds and runs its (verb, what) handler,
 /// and the reply message is the handler's reply shaped by the call's shape, or its refusal. A reply larger than
 /// max_reply_bytes (or the shape's max_bytes) is answered reply_too_large; a handler's failure is internal_error. A
@@ -61,12 +102,16 @@ internal static class VerbCalls
         Stopwatch watch = Stopwatch.StartNew();
         EntryCost.Begin();
         CallRequest request = call.Request;
+        VerbNotes notes = new VerbNotes();
+        VerbNotes.Begin();
         VerbOutcome outcome = Handled(() =>
             runner.Verbs.Run(request.Method, request.Params, request.Shape, request.ArgumentNamesChecked));
+        notes.Take();
         double handlerMs = watch.Elapsed.TotalMilliseconds;
         return outcome is VerbOutcome.Pending pending
-            ? CallOutcome.Continued(new PendingVerbCall(runner, request, what, pending.Work, handlerMs, queueWaitMs), what)
-            : new CallOutcome(Write(runner, request, what, outcome, handlerMs, queueWaitMs), what);
+            ? CallOutcome.Continued(
+                new PendingVerbCall(runner, request, what, pending.Work, handlerMs, queueWaitMs, notes), what)
+            : new CallOutcome(Write(runner, request, what, outcome, handlerMs, queueWaitMs, notes), what);
     }
 
     /// <summary>
@@ -74,7 +119,7 @@ internal static class VerbCalls
     /// budget is reached as it is written; the serialise time is observed (EntryCost) and the call timed.
     /// </summary>
     internal static string Write(VerbRunner runner, CallRequest request, string what, VerbOutcome outcome,
-        double handlerMs, double queueWaitMs)
+        double handlerMs, double queueWaitMs, VerbNotes? notes = null)
     {
         double elapsedMs = Math.Round(handlerMs, ElapsedDecimals);
         double queueMs = Math.Round(queueWaitMs, ElapsedDecimals);
@@ -88,8 +133,9 @@ internal static class VerbCalls
             case VerbOutcome.Answered answered:
                 ShapeRequest shape = request.Shape ?? ShapeRequest.None;
                 ShapedText shaped = ApiJson.WriteReply(
-                    CallReplyView.Of(request.Id, answered.Reply, request.Shape != null, elapsedMs, queueMs, frame,
-                        budgetHit), shape, Array.Empty<Truncation>());
+                    CallReplyView.Of(request.Id, notes?.Attach(answered.Reply) ?? answered.Reply,
+                        request.Shape != null, elapsedMs, queueMs, frame, budgetHit), shape,
+                    notes?.Truncations ?? Array.Empty<Truncation>());
                 int bytes = Encoding.UTF8.GetByteCount(shaped.Json);
                 int limit = Math.Min(shape.MaxBytes ?? runner.MaxReplyBytes, runner.MaxReplyBytes);
                 ok = bytes <= limit;
@@ -153,12 +199,14 @@ internal sealed class PendingVerbCall : IDeferredWork
     private readonly CallRequest _request;
     private readonly string _what;
     private readonly double _queueWaitMs;
+    private readonly VerbNotes _notes;
     private IPendingResult _pending;
     private double _spentMs;
 
     internal PendingVerbCall(VerbRunner runner, CallRequest request, string what, IPendingResult pending,
-        double spentMs, double queueWaitMs)
+        double spentMs, double queueWaitMs, VerbNotes? notes = null)
     {
+        _notes = notes ?? new VerbNotes();
         _runner = runner;
         _request = request;
         _what = what;
@@ -170,6 +218,7 @@ internal sealed class PendingVerbCall : IDeferredWork
     public bool Step(double untilMs)
     {
         long started = Stopwatch.GetTimestamp();
+        VerbNotes.Begin();
         try
         {
             return _pending.Step(untilMs);
@@ -181,6 +230,7 @@ internal sealed class PendingVerbCall : IDeferredWork
         }
         finally
         {
+            _notes.Take();
             _spentMs += (Stopwatch.GetTimestamp() - started) * 1000.0 / Stopwatch.Frequency;
         }
     }
@@ -189,9 +239,11 @@ internal sealed class PendingVerbCall : IDeferredWork
     {
         long started = Stopwatch.GetTimestamp();
         EntryCost.Begin();
+        VerbNotes.Begin();
         VerbOutcome outcome = VerbCalls.Handled(() => VerbOutcome.Of(_pending.Result()));
+        _notes.Take();
         _spentMs += (Stopwatch.GetTimestamp() - started) * 1000.0 / Stopwatch.Frequency;
-        return VerbCalls.Write(_runner, _request, _what, outcome, _spentMs, _queueWaitMs);
+        return VerbCalls.Write(_runner, _request, _what, outcome, _spentMs, _queueWaitMs, _notes);
     }
 
     // A step's failure, raised again where the answer is built.

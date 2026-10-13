@@ -8,6 +8,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Protocol;
+using StationGodMCP.Pure;
 using StationGodMCP.Pure.Catalogue;
 using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Scheduling;
@@ -22,7 +23,7 @@ namespace StationGodMCP.Tests.Verbs;
 /// on in the slice lane and answers once, through the same writer (shape, cap, elapsed_ms its slices); it holds its
 /// stream, so a write sent after it on that stream runs only once it has answered while another stream goes on; its
 /// slices count in its stream's cost; a call is scheduled by its what's x-cost (class, per-list items, keyed
-/// find.thing); and every answer is timed under its what's key.
+/// find.thing); every answer is timed under its what's key; and a handler's notes (cut lists, gas hold) reach its reply.
 /// </summary>
 public sealed class VerbPathWireTests
 {
@@ -158,11 +159,32 @@ public sealed class VerbPathWireTests
     {
         VerbDispatcher table = Table();
 
-        Assert.Equal(new[] { "find.thing", "read.clock", "read.logic", "write.label" }, table.Keys);
+        Assert.Equal(new[] { "find.thing", "move.item", "read.clock", "read.logic", "write.label" }, table.Keys);
         Assert.True(table.AnswersKey("find.thing"));
         Assert.False(table.AnswersKey("find.item"));
         Assert.False(table.AnswersKey("find"));
         Assert.False(table.AnswersKey(null));
+    }
+
+    [Fact]
+    public async Task AHandlersNotesReachItsReply()
+    {
+        using PipeRig rig = Rig();
+        using V2Client client = await V2Client.Connect(rig);
+
+        client.Send(Call("1", "move", new JObject { ["what"] = "item", ["id"] = "5", ["to"] = "9" }, 3));
+        rig.Mod.WaitSubmitted(1);
+        JObject reply = NextAfterFrames(rig, client);
+
+        Assert.True((bool)reply["ok"]!, reply.ToString());
+        JObject result = (JObject)reply["result"]!;
+        Assert.Equal("into_vault", (string?)result["route"]);
+        Assert.Contains("upgrade-3", (string?)result["gas_hold"]!["note"]);
+        JObject cut = (JObject)Assert.Single((JArray)result["truncated"]!);
+        Assert.Equal("items.results", (string?)cut["list"]);
+        Assert.Equal(256, (int)cut["returned"]!);
+        Assert.Equal(300, (int)cut["total"]!);
+        Assert.Contains("1000", (string?)cut["more"]);
     }
 
     // Frames until a line comes; the bound only ends a hang.
@@ -215,6 +237,13 @@ public sealed class VerbPathWireTests
                 ? new VerbOutcome.Answered(new JObject { ["steps"] = 0 })
                 : new VerbOutcome.Pending(new Stepped(_clock, steps, reader.Flag("labelled") == true,
                     reader.Has("made_by")));
+        }),
+        VerbHandler.For(MoveItemOptions.Spec, reader => reader, _ =>
+        {
+            DepositLimits.NoteCut(256, 300,
+                DepositLimits.VaultMost);
+            GasHoldReply.Record(new GasHoldVerdict.Free("upgrade-3"), GasHoldStage.DryRun);
+            return new VerbOutcome.Answered(new JObject { ["route"] = "into_vault" });
         }),
         TestVerbs.Echo(ReadClockOptions.Spec),
         TestVerbs.Echo(ReadLogicOptions.Spec),
