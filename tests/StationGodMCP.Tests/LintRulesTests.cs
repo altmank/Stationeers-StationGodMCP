@@ -376,6 +376,37 @@ public sealed class LintRuleFileTests
         Assert.Equal(2, error.Column);
     }
 
+    [Fact]
+    public void AnUnknownFieldInAWholeRuleIsAnErrorAtItsKey()
+    {
+        string file = "{\"schema_version\": 1, \"rules\": [\n" +
+                      "  {\"id\": \"r\", \"level\": \"info\", \"select\": \"devices\", \"assert\": \"true\",\n" +
+                      "   \"message\": \"m\",   \"colour\" : 1}\n" +
+                      "]}";
+
+        LintRuleError error = Assert.Single(LintTestKit.Rules(file).Errors);
+        Assert.Equal("colour", error.Field);
+        Assert.Equal(3, error.Line);
+        Assert.Equal(22, error.Column);
+    }
+
+    // A bad value in a field a patch sets is the save file's error, at the value in that file.
+    [Fact]
+    public void ABadValueInAPatchIsTheSaveFilesError()
+    {
+        string save = "{\"schema_version\": 1, \"rules\": [\n" +
+                      "  {\"id\": \"not_replaceable\",\n" +
+                      "   \"level\": \"loud\"}\n" +
+                      "]}";
+
+        LintRuleError error = Assert.Single(LintTestKit.Defaults(save: save).Errors);
+        Assert.Equal("save/lint-rules.json", error.File);
+        Assert.Equal("level", error.Field);
+        Assert.Equal("level is problem, warning or info", error.Message);
+        Assert.Equal(3, error.Line);
+        Assert.Equal(18, error.Column);
+    }
+
     // The phase is report, with no alias: an old save file's "dry_run" fails and the error names report.
     [Fact]
     public void AnOldSaveFilesDryRunPhaseFailsNamingReport()

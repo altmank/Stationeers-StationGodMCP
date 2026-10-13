@@ -94,13 +94,13 @@ internal static class LintRuleLoader
         "enabled", "route"
     };
 
-    private static readonly string[] PatchFields = { "enabled", "level", "level_when", "on", "message", "description" };
+    internal static readonly string[] PatchFields = { "enabled", "level", "level_when", "on", "message", "description" };
 
     internal static LintRuleSet Load(LintLibrary library, LintRuleText mod, LintRuleText? save)
     {
         List<LintRuleError> errors = new List<LintRuleError>();
         List<string> files = new List<string> { mod.File };
-        List<(JObject Rule, LintRuleOrigin Origin, string File)> merged = new List<(JObject, LintRuleOrigin, string)>();
+        List<MergedRule> merged = new List<MergedRule>();
         Dictionary<string, int> byId = new Dictionary<string, int>(StringComparer.Ordinal);
         foreach (JObject rule in RulesOf(mod, errors))
         {
@@ -117,7 +117,7 @@ internal static class LintRuleLoader
             }
 
             byId[id] = merged.Count;
-            merged.Add((rule, LintRuleOrigin.Mod, mod.File));
+            merged.Add(new MergedRule(rule, LintRuleOrigin.Mod, mod));
         }
 
         if (save != null)
@@ -139,12 +139,12 @@ internal static class LintRuleLoader
                         PatchErrors(save, id, rule, errors);
                     }
 
-                    merged[at] = replaces ? (rule, LintRuleOrigin.Save, save.File) : (Patched(merged[at].Rule, rule), merged[at].Origin, merged[at].File);
+                    merged[at] = replaces ? new MergedRule(rule, LintRuleOrigin.Save, save) : merged[at].PatchedBy(rule, save);
                 }
                 else if (replaces)
                 {
                     byId[id] = merged.Count;
-                    merged.Add((rule, LintRuleOrigin.Save, save.File));
+                    merged.Add(new MergedRule(rule, LintRuleOrigin.Save, save));
                 }
                 else
                 {
@@ -156,8 +156,9 @@ internal static class LintRuleLoader
 
         List<LintRule> rules = new List<LintRule>(merged.Count);
         List<string> disabled = new List<string>();
-        foreach ((JObject source, LintRuleOrigin origin, string file) in merged)
+        foreach (MergedRule each in merged)
         {
+            JObject source = each.Rule;
             string id = (string)source["id"]!;
             if (source["enabled"] is JToken enabled && enabled.Type == JTokenType.Boolean && !(bool)enabled)
             {
@@ -165,7 +166,9 @@ internal static class LintRuleLoader
                 continue;
             }
 
-            LintRule? rule = Compile(library, source, origin, file, errors);
+            int before = errors.Count;
+            LintRule? rule = Compile(library, source, each.Origin, each.Source, errors);
+            each.Relocate(errors, before);
             if (rule != null)
             {
                 rules.Add(rule);
@@ -260,20 +263,6 @@ internal static class LintRuleLoader
         return slashes % 2 == 1;
     }
 
-    private static JObject Patched(JObject rule, JObject patch)
-    {
-        JObject copy = (JObject)rule.DeepClone();
-        foreach (string field in PatchFields)
-        {
-            if (patch[field] != null)
-            {
-                copy[field] = patch[field]!.DeepClone();
-            }
-        }
-
-        return copy;
-    }
-
     private static List<JObject> RulesOf(LintRuleText text, List<LintRuleError> errors)
     {
         List<JObject> rules = new List<JObject>();
@@ -337,16 +326,17 @@ internal static class LintRuleLoader
         return (string)id!;
     }
 
-    internal static LintRule? Compile(LintLibrary library, JObject source, LintRuleOrigin origin, string file,
+    internal static LintRule? Compile(LintLibrary library, JObject source, LintRuleOrigin origin, LintRuleText text,
         List<LintRuleError> errors)
     {
+        string file = text.File;
         string id = (string)source["id"]!;
         int before = errors.Count;
         foreach (JProperty property in source.Properties())
         {
             if (!Known.Contains(property.Name))
             {
-                errors.Add(ErrorAt(file, id, property.Name, property, $"unknown field {property.Name}"));
+                errors.Add(ErrorAtKey(text, id, property, $"unknown field {property.Name}"));
             }
         }
 
@@ -578,5 +568,88 @@ internal static class LintRuleLoader
         IJsonLineInfo info = token;
         return new LintRuleError(file, id, field, info.HasLineInfo() ? info.LineNumber : 0,
             info.HasLineInfo() ? info.LinePosition : 0, message);
+    }
+}
+
+/// <summary>
+/// One rule of the effective set: its JSON, where it came from, the file it was read from, and when a save's patch
+/// changed it, the patch's file and the fields it set, so an error in one of those fields names the save's file and
+/// the patch's own position.
+/// </summary>
+internal sealed class MergedRule
+{
+    private readonly Dictionary<string, JToken> _patched;
+
+    internal MergedRule(JObject rule, LintRuleOrigin origin, LintRuleText source)
+        : this(rule, origin, source, null, new Dictionary<string, JToken>(StringComparer.Ordinal))
+    {
+    }
+
+    private MergedRule(JObject rule, LintRuleOrigin origin, LintRuleText source, LintRuleText? patch,
+        Dictionary<string, JToken> patched)
+    {
+        Rule = rule;
+        Origin = origin;
+        Source = source;
+        Patch = patch;
+        _patched = patched;
+    }
+
+    internal JObject Rule { get; }
+
+    internal LintRuleOrigin Origin { get; }
+
+    internal LintRuleText Source { get; }
+
+    internal LintRuleText? Patch { get; }
+
+    /// <summary>This rule with a patch's fields (LintRuleLoader.PatchFields) set over its own.</summary>
+    internal MergedRule PatchedBy(JObject patch, LintRuleText file)
+    {
+        JObject copy = (JObject)Rule.DeepClone();
+        Dictionary<string, JToken> patched = new Dictionary<string, JToken>(_patched, StringComparer.Ordinal);
+        foreach (string field in LintRuleLoader.PatchFields)
+        {
+            if (patch[field] is JToken value)
+            {
+                copy[field] = value.DeepClone();
+                patched[field] = value;
+            }
+        }
+
+        return new MergedRule(copy, Origin, Source, file, patched);
+    }
+
+    /// <summary>
+    /// The errors from index on that are in a field the patch set, moved to the patch's file: at the line and column
+    /// the copied token carries, else at the patched value's own.
+    /// </summary>
+    internal void Relocate(List<LintRuleError> errors, int from)
+    {
+        if (Patch == null || _patched.Count == 0)
+        {
+            return;
+        }
+
+        for (int index = from; index < errors.Count; index++)
+        {
+            LintRuleError error = errors[index];
+            if (error.Field == null || !_patched.TryGetValue(Root(error.Field), out JToken? original))
+            {
+                continue;
+            }
+
+            IJsonLineInfo place = original;
+            bool kept = error.Line > 0;
+            errors[index] = new LintRuleError(Patch.File, error.RuleId, error.Field,
+                kept ? error.Line : place.LineNumber, kept ? error.Column : place.LinePosition, error.Message,
+                error.Position);
+        }
+    }
+
+    private static string Root(string field)
+    {
+        int end = field.IndexOfAny(new[] { '.', '[' });
+        return end < 0 ? field : field.Substring(0, end);
     }
 }
