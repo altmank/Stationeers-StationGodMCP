@@ -44,8 +44,6 @@ internal sealed class PlanRouteOptions
 
     internal Fields Fields { get; private set; } = Fields.None;
 
-    internal ReportConfirm Report { get; private set; } = ReportConfirm.Acting;
-
     internal MaterialsSource Materials { get; private set; } = MaterialsSource.Player;
 
     internal string? Kind { get; private set; }
@@ -96,10 +94,11 @@ internal sealed class PlanRouteOptions
 
     internal bool? Summarize { get; private set; }
 
+    internal long? Rows { get; private set; }
+
     internal static PlanRouteOptions Bind(OptionReader options) => new PlanRouteOptions
     {
         Fields = Fields.Bind(options),
-        Report = ReportConfirm.Bind(options),
         Materials = MaterialsSource.Bind(options),
         Kind = options.Text("kind"),
         Start = options.Raw("start"),
@@ -125,5 +124,6 @@ internal sealed class PlanRouteOptions
         ReservePorts = options.Raw("reserve_ports"),
         AssumeRemoved = options.Words("assume_removed"),
         Summarize = options.Flag("summarize") ?? options.DefaultFlag("summarize"),
+        Rows = options.Integer("rows") ?? options.DefaultInteger("rows"),
     };
 }

@@ -30,8 +30,6 @@ internal sealed class PlanRemovalOptions
 
     internal Fields Fields { get; private set; } = Fields.None;
 
-    internal ReportConfirm Report { get; private set; } = ReportConfirm.Acting;
-
     internal MaterialsSource Materials { get; private set; } = MaterialsSource.Player;
 
     internal string? Kind { get; private set; }
@@ -44,16 +42,18 @@ internal sealed class PlanRemovalOptions
 
     internal IReadOnlyList<string>? Allow { get; private set; }
 
+    internal long? Rows { get; private set; }
+
     internal static PlanRemovalOptions Bind(OptionReader options) => new PlanRemovalOptions
     {
         Selector = Selector.Bind(options),
         Fields = Fields.Bind(options),
-        Report = ReportConfirm.Bind(options),
         Materials = MaterialsSource.Bind(options),
         Kind = options.Text("kind") ?? options.DefaultText("kind"),
         Waypoints = options.Raw("waypoints"),
         Cells = options.Raw("cells"),
         Root = options.Text("root"),
         Allow = options.Words("allow"),
+        Rows = options.Integer("rows") ?? options.DefaultInteger("rows"),
     };
 }

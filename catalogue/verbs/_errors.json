@@ -175,7 +175,7 @@
   "logic_not_readable": {"description": "The device does not expose that logic type as readable. inspect device lists what it reads."},
   "logic_not_writable": {"description": "The device does not expose that logic type as writable. inspect device lists what it writes."},
   "long_piece": {
-    "description": "The route starts or ends on a long straight. Start from one of its cells with at, or make it the target (to), where the route may join any of its cells."
+    "description": "The route starts or ends on a long straight. Start from one of its cells with at, or make it the target (end), where the route may join any of its cells."
   },
   "lua_changed": {"description": "This StationGod build does not know the loaded StationeersLua version. Update StationGod."},
   "lua_chip_unsupported": {

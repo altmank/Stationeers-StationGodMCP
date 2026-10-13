@@ -11,9 +11,9 @@ namespace StationGodMCP.Tests.Verbs;
 
 /// <summary>
 /// The mod's typed options, generated from catalogue/verbs into src/StationGodMCP.Mod/Pure/Verbs/Generated: one class per
-/// (verb, what) in verb option names, made of the shared option kinds (Selector, Fields, Paging, ReportConfirm,
-/// MaterialsSource; the per-id list form inside Selector) and the what's own options typed by their schema, with the
-/// what's spec (options and schemas, main list, id_list, write rules) the option check reads; and
+/// (verb, what) in verb option names, made of the shared option kinds (Selector, Fields, Paging, ReportConfirm on a what
+/// that takes confirm, MaterialsSource; the per-id list form inside Selector) and the what's own options typed by their
+/// schema, with the what's spec (options and schemas, main list, id_list, write rules) the option check reads; and
 /// VerbSurface.Generated.cs, the verbs in catalogue order. run_script is the hub's own and gets none. The hub's own
 /// options (max_wait, file options) are in the spec, so the check can name them, and in no class.
 /// </summary>
@@ -125,16 +125,16 @@ internal static class VerbOptionsCode
         code.Append(");\n");
 
         List<(string Property, string Type, string Bind, string? Empty)> members = new();
+        HashSet<string> inKinds = new(StringComparer.Ordinal);
         foreach ((string kind, string kindType, string empty, string[] names) in Kinds)
         {
-            bool shaping = kind == "Fields" && verbName != "help";
-            if (shaping || names.Any(taken.Contains))
+            if (Binds(kind, names, taken, verbName))
             {
                 members.Add((kind, kindType, kindType + ".Bind(options)", kindType + "." + empty));
+                inKinds.UnionWith(names);
             }
         }
 
-        HashSet<string> inKinds = new(Kinds.SelectMany(kind => kind.Options), StringComparer.Ordinal);
         foreach ((string name, JsonObject option) in options)
         {
             if (inKinds.Contains(name) || hubOnly.Contains(name))
@@ -169,6 +169,15 @@ internal static class VerbOptionsCode
         code.Append("    };\n}\n");
         return code.ToString();
     }
+
+    // Whether a what's options take a shared kind: Fields always (the call's shape) but on help; ReportConfirm only on a
+    // what that takes confirm, so rows on a read-only what is its own option; every other kind on any of its options.
+    private static bool Binds(string kind, string[] names, HashSet<string> taken, string verbName) => kind switch
+    {
+        "Fields" => verbName != "help" || names.Any(taken.Contains),
+        "Report" => taken.Contains("confirm"),
+        _ => names.Any(taken.Contains)
+    };
 
     // max_wait and a file option (code_file: a path the hub reads into code) are the hub's: the game never gets them.
     private static bool IsHubOption(string name, HashSet<string> taken) =>

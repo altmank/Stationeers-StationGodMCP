@@ -54,6 +54,24 @@ public sealed class VerbCatalogueTests
     }
 
     [Fact]
+    public void ReportConfirmBindsOnlyAWhatThatTakesConfirm()
+    {
+        SortedDictionary<string, string> files = ModOptions.Value;
+        foreach (string readOnly in new[] { "PlanRouteOptions.cs", "PlanRemovalOptions.cs" })
+        {
+            Assert.DoesNotContain("ReportConfirm", files[readOnly], StringComparison.Ordinal);
+            Assert.Contains("Rows = options.Integer(\"rows\") ?? options.DefaultInteger(\"rows\")", files[readOnly],
+                StringComparison.Ordinal);
+        }
+
+        foreach (string write in new[] { "SwapCableOptions.cs", "RemoveCableOptions.cs", "RemoveStructureOptions.cs" })
+        {
+            Assert.Contains("Report = ReportConfirm.Bind(options)", files[write], StringComparison.Ordinal);
+            Assert.DoesNotContain("Rows = ", files[write], StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
     public void TheVerbsAreTheFifteenPlusHelpAndRunScript()
     {
         string[] expected =
