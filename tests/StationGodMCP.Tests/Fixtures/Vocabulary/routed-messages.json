@@ -564,25 +564,6 @@
   "Pure/Catalogue/Catalogue.cs": [
     "Argument '{path}' is given twice; name each key once."
   ],
-  "Pure/DeviceReads/DeviceReadRequest.cs": [
-    "Argument 'include' must be an array; it takes \"clock\".",
-    "Argument 'items' must be an array of 1 to {DeviceReadBounds.MaximumItems} entries.",
-    "{path} asks for nothing: give logic, slots, atmosphere or reagents: true.",
-    "{path} has an unknown key '{property.Name}'; it takes {string.Join(\", \", known)}.",
-    "{path} must be an array of 1 to {DeviceReadBounds.MaximumSlotsPerItem} slots, each {index, logic}.",
-    "{path} must be an array of 1 to {maximum} logic type names or numbers.",
-    "{path} must be an integer from {minimum} to {maximum}.",
-    "{path} must be an object.",
-    "{path} must be an object: {} (its own), {of: \"internal\"} or {port: n}.",
-    "{path} must be true or false.",
-    "{path} names '{key}' twice; each value comes back under the name sent.",
-    "{path} names slot {slotIndex} twice.",
-    "{path} takes of or port, not both.",
-    "{path}.of must be \"internal\".",
-    "{path}.reference_id is required.",
-    "{path}.reference_id must be a reference id as a decimal string.",
-    "{path}[{index}] must be a logic type name or number."
-  ],
   "Pure/GasHoldRule.cs": [
     "; {AcknowledgeArgument} was not used.",
     "Job {Hold!.JobId}'s gas check failed: {Hold.Summary} Poll that job with job_id for its gas_check. Pipe jobs stay refused until the world is loaded again, or until a run passes {AcknowledgeArgument}: \"{Hold.JobId}\" to accept the loss; ask the user before acknowledging it. Nothing was changed.",

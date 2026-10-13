@@ -1,12 +1,15 @@
 #nullable enable
 
 using System;
+using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Pure.DeviceReads;
 
+using StationGodMCP.Pure.Verbs;
+
 namespace StationGodMCP.Pure.Subscriptions;
 
-/// <summary>What a devices subscription reads each sample: the parsed request, and the gateway it reads through.</summary>
+/// <summary>What a devices subscription reads each sample: read logic's request as items, and the gateway it reads through.</summary>
 internal sealed class DeviceSubscriptionQuery
 {
     internal DeviceSubscriptionQuery(DeviceReadRequest request, string? gatewayId)
@@ -81,21 +84,23 @@ internal abstract class SubscribeRequest
         internal SubscriptionRefusal Refusal { get; }
     }
 
-    private static readonly string[] DeviceKeys = { "topic", "items", "include", "gateway_id", "interval_s" };
+    private static readonly string[] OwnKeys = { "topic", "interval_s" };
 
     /// <summary>
-    /// The params as protocol.md defines them. Unknown keys are refused; a world subscription takes topic alone. The
-    /// item and value bounds of one read_devices call are a subscription limit here, not an invalid argument.
+    /// The params as protocol.md defines them: topic and interval_s, and for devices read logic's options (id, logic,
+    /// reads, gateway, include). Unknown keys are refused; a world or jobs subscription takes topic alone. The item and
+    /// value bounds of one read are a subscription limit here, not an invalid argument.
     /// </summary>
     internal static SubscribeRequest Of(JObject? parameters)
     {
         JObject given = parameters ?? new JObject();
         foreach (JProperty property in given.Properties())
         {
-            if (Array.IndexOf(DeviceKeys, property.Name) < 0)
+            if (Array.IndexOf(OwnKeys, property.Name) < 0 && !ReadLogicOptions.Spec.Takes(property.Name))
             {
                 return new Invalid(
-                    $"subscribe has no argument '{property.Name}'; it takes {string.Join(", ", DeviceKeys)}.");
+                    $"subscribe has no option '{property.Name}'; it takes {string.Join(", ", OwnKeys)} and read " +
+                    $"logic's {string.Join(", ", ReadLogicOptions.Spec.OptionNames)}.");
             }
         }
 
@@ -134,67 +139,63 @@ internal abstract class SubscribeRequest
 
     private static SubscribeRequest OfDevices(JObject given)
     {
-        JToken? gateway = Present(given["gateway_id"]);
-        if (gateway != null && gateway.Type != JTokenType.String)
-        {
-            return new Invalid("Argument 'gateway_id' must be a string.");
-        }
-
         if (!TryInterval(Present(given["interval_s"]), out SamplingInterval interval))
         {
             return new Invalid(
-                $"Argument 'interval_s' must be a number from {SamplingInterval.MinimumSeconds} to " +
+                $"interval_s must be a number from {SamplingInterval.MinimumSeconds} to " +
                 $"{SamplingInterval.MaximumSeconds} (game seconds).");
         }
 
-        JToken? items = given["items"];
-        JToken? include = given["include"];
-        switch (DeviceReadParse.Of(items, include))
+        JObject read = new JObject();
+        foreach (JProperty property in given.Properties())
         {
-            case DeviceReadParse.Parsed parsed:
-                return new Devices(new DeviceSubscriptionQuery(parsed.Request, gateway?.Value<string>()), interval);
-            case DeviceReadParse.Refused refused:
-                return OverOneCall(items) is SubscriptionRefusal refusal
-                    ? new OverLimit(refusal)
-                    : new Invalid(refused.Message);
-            default:
-                throw new InvalidOperationException("Unknown read_devices parse.");
+            if (Array.IndexOf(OwnKeys, property.Name) < 0)
+            {
+                read[property.Name] = property.Value.DeepClone();
+            }
         }
+
+        List<OptionProblem> problems = new List<OptionProblem>();
+        if (OptionCheck.Check(VerbSurface.Verb("read")!, With(read), out _) is { } refused)
+        {
+            return new Invalid(refused.Message);
+        }
+
+        OptionReader reader = new OptionReader(ReadLogicOptions.Spec, read);
+        ReadLogicOptions options = ReadLogicOptions.Bind(reader);
+        problems.AddRange(reader.Problems);
+        if (problems.Count > 0 || LogicReadRequest.Of(options, problems, bounded: false) is not { } request)
+        {
+            return new Invalid(OptionProblem.Refusal("subscribe", problems).Message);
+        }
+
+        DeviceReadRequest items = request.AsItems();
+        return OverOneRead(items) is { } limit
+            ? new OverLimit(limit)
+            : new Devices(new DeviceSubscriptionQuery(items, options.Gateway), interval);
     }
 
-    // A request read_devices refused may be refused only for its size: then it is a subscription limit, which tells
-    // the client to poll. Counted leniently, as read_devices counts values.
-    private static SubscriptionRefusal? OverOneCall(JToken? items)
+    // read logic's options with its what, as the option check takes a call's params.
+    private static JObject With(JObject read)
     {
-        if (!(items is JArray array))
-        {
-            return null;
-        }
+        JObject call = (JObject)read.DeepClone();
+        call["what"] = "logic";
+        return call;
+    }
 
-        if (array.Count > DeviceReadBounds.MaximumItems)
+    // A read larger than one read logic call may make is a subscription limit, which tells the client to poll.
+    private static SubscriptionRefusal? OverOneRead(DeviceReadRequest request)
+    {
+        if (request.Items.Count > DeviceReadBounds.MaximumItems)
         {
             return new SubscriptionRefusal(SubscriptionLimitKind.ItemsPerSubscription, DeviceReadBounds.MaximumItems,
-                array.Count, 0.0);
+                request.Items.Count, 0.0);
         }
 
         int values = 0;
-        foreach (JToken item in array)
+        foreach (DeviceReadItem item in request.Items)
         {
-            if (!(item is JObject entry))
-            {
-                continue;
-            }
-
-            values += Count(entry["logic"]);
-            if (entry["slots"] is JArray slots)
-            {
-                foreach (JToken slot in slots)
-                {
-                    values += slot is JObject slotEntry && slotEntry["logic"] is JArray slotLogic
-                        ? slotLogic.Count
-                        : DeviceReadBounds.AllSlotValuesWeight;
-                }
-            }
+            values += item.Weight;
         }
 
         return values > DeviceReadBounds.MaximumValues
@@ -202,8 +203,6 @@ internal abstract class SubscribeRequest
                 values, 0.0)
             : null;
     }
-
-    private static int Count(JToken? token) => token is JArray array ? array.Count : 0;
 
     private static bool TryInterval(JToken? token, out SamplingInterval interval)
     {

@@ -1,6 +1,7 @@
 #nullable enable
 
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -107,7 +108,7 @@ public sealed class SubscriptionPartsTests
     public void DevicesIsTheDefaultTopicAndOneSecondTheDefaultInterval()
     {
         SubscribeRequest.Devices devices = Assert.IsType<SubscribeRequest.Devices>(
-            Parse("""{"items": [{"reference_id": "5", "logic": ["On"]}]}"""));
+            Parse("""{"reads": [{"id": "5", "logic": ["On"]}]}"""));
 
         Assert.Equal(1.0, devices.Interval.Seconds);
         Assert.Null(devices.Query.GatewayId);
@@ -118,12 +119,28 @@ public sealed class SubscriptionPartsTests
     public void TheQueryKeepsTheGatewayTheClockAndTheItems()
     {
         SubscribeRequest.Devices devices = Assert.IsType<SubscribeRequest.Devices>(Parse(
-            """{"topic": "devices", "gateway_id": "gw1", "interval_s": 2, "include": ["clock"], "items": [{"reference_id": "5", "logic": ["On"]}]}"""));
+            """{"topic": "devices", "gateway": "gw1", "interval_s": 2, "include": ["clock"], "reads": [{"id": "5", "logic": ["On"]}]}"""));
 
         Assert.Equal("gw1", devices.Query.GatewayId);
         Assert.Equal("5", Assert.Single(devices.Query.Request.Items).Id);
         Assert.True(devices.Query.Request.Clock);
         Assert.Equal(2.0, devices.Interval.Seconds);
+    }
+
+    [Fact]
+    public void ADevicesSubscriptionTakesReadLogicsOptionsAndReadsThemAsItems()
+    {
+        SubscribeRequest.Devices pairs = Assert.IsType<SubscribeRequest.Devices>(
+            Parse("""{"id": ["5", "6"], "logic": ["On", "Power"], "gateway": "gw2"}"""));
+        SubscribeRequest.Devices one = Assert.IsType<SubscribeRequest.Devices>(Parse("""{"id": "5", "logic": "On"}"""));
+
+        Assert.Equal(new[] { "5", "6" }, pairs.Query.Request.Items.Select(item => item.Id));
+        Assert.Equal(new[] { "On", "Power" }, pairs.Query.Request.Items[1].Logic!.Select(name => name.Key));
+        Assert.Equal("gw2", pairs.Query.GatewayId);
+        Assert.Equal("On", Assert.Single(Assert.Single(one.Query.Request.Items).Logic!).Key);
+        Assert.Contains("logic: is needed with id",
+            Assert.IsType<SubscribeRequest.Invalid>(Parse("""{"id": "5"}""")).Message);
+        Assert.Contains("items", Assert.IsType<SubscribeRequest.Invalid>(Parse("""{"items": []}""")).Message);
     }
 
     [Fact]
@@ -134,13 +151,13 @@ public sealed class SubscriptionPartsTests
     }
 
     [Theory]
-    [InlineData("""{"items": [{"reference_id": "5", "logic": ["On"]}], "interval_s": 0.4}""")]
-    [InlineData("""{"items": [{"reference_id": "5", "logic": ["On"]}], "interval_s": 3601}""")]
-    [InlineData("""{"items": [{"reference_id": "5", "logic": ["On"]}], "interval_s": "1"}""")]
-    [InlineData("""{"items": [{"reference_id": "5", "logic": ["On"]}], "gateway_id": 4}""")]
-    [InlineData("""{"items": [{"reference_id": "5", "logic": ["On"]}], "fields": ["x"]}""")]
+    [InlineData("""{"reads": [{"id": "5", "logic": ["On"]}], "interval_s": 0.4}""")]
+    [InlineData("""{"reads": [{"id": "5", "logic": ["On"]}], "interval_s": 3601}""")]
+    [InlineData("""{"reads": [{"id": "5", "logic": ["On"]}], "interval_s": "1"}""")]
+    [InlineData("""{"reads": [{"id": "5", "logic": ["On"]}], "gateway": 4}""")]
+    [InlineData("""{"reads": [{"id": "5", "logic": ["On"]}], "fields": ["x"]}""")]
     [InlineData("""{"topic": "rooms"}""")]
-    [InlineData("""{"items": [{"reference_id": "5"}]}""")]
+    [InlineData("""{"reads": [{"id": "5"}]}""")]
     [InlineData("""{}""")]
     public void BadParamsAreInvalidArguments(string json)
     {
@@ -153,11 +170,11 @@ public sealed class SubscriptionPartsTests
         StringBuilder items = new StringBuilder("[");
         for (int index = 0; index < 129; index++)
         {
-            items.Append(index == 0 ? "" : ",").Append("{\"reference_id\":\"").Append(index + 1).Append("\",\"logic\":[\"On\"]}");
+            items.Append(index == 0 ? "" : ",").Append("{\"id\":\"").Append(index + 1).Append("\",\"logic\":[\"On\"]}");
         }
 
         SubscriptionRefusal refusal = Assert.IsType<SubscribeRequest.OverLimit>(
-            SubscribeRequest.Of(new JObject { ["items"] = JArray.Parse(items.Append(']').ToString()) })).Refusal;
+            SubscribeRequest.Of(new JObject { ["reads"] = JArray.Parse(items.Append(']').ToString()) })).Refusal;
 
         Assert.Equal(SubscriptionLimitKind.ItemsPerSubscription, refusal.Kind);
         Assert.Equal(129, refusal.Requested);
@@ -171,7 +188,7 @@ public sealed class SubscriptionPartsTests
         for (int item = 0; item < 17; item++)
         {
             int count = item < 16 ? 64 : 1;
-            items.Append(item == 0 ? "" : ",").Append("{\"reference_id\":\"").Append(item + 1).Append("\",\"logic\":[");
+            items.Append(item == 0 ? "" : ",").Append("{\"id\":\"").Append(item + 1).Append("\",\"logic\":[");
             for (int logic = 0; logic < count; logic++)
             {
                 items.Append(logic == 0 ? "" : ",").Append(logic);
@@ -181,7 +198,7 @@ public sealed class SubscriptionPartsTests
         }
 
         SubscriptionRefusal refusal = Assert.IsType<SubscribeRequest.OverLimit>(
-            SubscribeRequest.Of(new JObject { ["items"] = JArray.Parse(items.Append(']').ToString()) })).Refusal;
+            SubscribeRequest.Of(new JObject { ["reads"] = JArray.Parse(items.Append(']').ToString()) })).Refusal;
 
         Assert.Equal(SubscriptionLimitKind.ValuesPerSubscription, refusal.Kind);
         Assert.Equal("max_values_per_subscription", refusal.Name);
@@ -199,7 +216,7 @@ public sealed class SubscriptionPartsTests
     public void ASlotWithoutLogicCountsThirtyTwoValues()
     {
         SubscriptionPlan plan = SubscriptionPlan.Of(Queries.Of(
-            """[{"reference_id": "5", "slots": [{"index": 0}], "atmosphere": {}, "reagents": true}]""").Request);
+            """[{"id": "5", "slots": [{"index": 0}], "atmosphere": {}, "reagents": true}]""").Request);
 
         Assert.Equal(32, plan.Values);
         Assert.Equal(32 * 0.005 + 0.08 + 0.05, plan.CostMs, 9);

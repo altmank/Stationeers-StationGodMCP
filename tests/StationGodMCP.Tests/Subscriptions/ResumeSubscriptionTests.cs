@@ -161,7 +161,7 @@ public sealed class ResumeSubscriptionTests
 
     private static JObject DeviceParams() => new JObject
     {
-        ["items"] = new JArray(new JObject { ["reference_id"] = "5", ["logic"] = new JArray("On") }),
+        ["reads"] = new JArray(new JObject { ["id"] = "5", ["logic"] = new JArray("On") }),
         ["interval_s"] = 1
     };
 

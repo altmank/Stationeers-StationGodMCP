@@ -39,8 +39,11 @@ internal abstract record LogicReadRequest
 
     internal sealed record Items(DeviceReadRequest Request) : LogicReadRequest;
 
-    /// <summary>The request the options give; null with what is wrong with them in problems.</summary>
-    internal static LogicReadRequest? Of(ReadLogicOptions options, List<OptionProblem> problems)
+    /// <summary>
+    /// The request the options give; null with what is wrong with them in problems. bounded false leaves the size bounds
+    /// to the caller (a subscription answers them as its own limits).
+    /// </summary>
+    internal static LogicReadRequest? Of(ReadLogicOptions options, List<OptionProblem> problems, bool bounded = true)
     {
         int before = problems.Count;
         PerIdList? ids = options.Selector.Ids;
@@ -66,7 +69,48 @@ internal abstract record LogicReadRequest
             request = null;
         }
 
+        if (bounded && request != null)
+        {
+            Bounds(request, ids != null ? "id" : "reads", problems);
+        }
+
         return problems.Count > before ? null : request;
+    }
+
+    // The bounds of one read: 256 pairs, or 128 items and 1,024 values.
+    private static void Bounds(LogicReadRequest request, string path, List<OptionProblem> problems)
+    {
+        if (request is Pairs pairs && pairs.Entries.Count > MaximumPairs)
+        {
+            problems.Add(new OptionProblem(path,
+                $"names {pairs.Entries.Count} (id, logic) pairs; at most {MaximumPairs} in one call"));
+        }
+
+        if (request is not Items { Request: var items })
+        {
+            return;
+        }
+
+        if (items.Items.Count > DeviceReadBounds.MaximumItems)
+        {
+            problems.Add(new OptionProblem(path,
+                $"names {items.Items.Count} things to read with slots, atmosphere, reagents, a logic list or the " +
+                $"clock; at most {DeviceReadBounds.MaximumItems} in one call"));
+            return;
+        }
+
+        int values = 0;
+        foreach (DeviceReadItem item in items.Items)
+        {
+            values += item.Weight;
+        }
+
+        if (values > DeviceReadBounds.MaximumValues)
+        {
+            problems.Add(new OptionProblem(path,
+                $"reads {values} values; at most {DeviceReadBounds.MaximumValues} in one call (a slot without logic " +
+                $"counts {DeviceReadBounds.AllSlotValuesWeight})"));
+        }
     }
 
     private static LogicReadRequest? OfIds(PerIdList ids, JToken? logic, bool clock, List<OptionProblem> problems)
@@ -90,7 +134,7 @@ internal abstract record LogicReadRequest
                 items.Add(new DeviceReadItem(id, types, null, null, false));
             }
 
-            return ItemsOf(items, true, "id", problems);
+            return new Items(new DeviceReadRequest(items, true));
         }
 
         if (!ids.GivenAsList && logic is not JArray)
@@ -107,7 +151,7 @@ internal abstract record LogicReadRequest
             }
         }
 
-        return PairsOf(pairs, "id", problems);
+        return new Pairs(pairs);
     }
 
     private static LogicReadRequest? OfReads(JArray reads, JToken? logic, bool clock, List<OptionProblem> problems)
@@ -160,47 +204,59 @@ internal abstract record LogicReadRequest
             }
         }
 
-        return allPairs ? PairsOf(pairs, "reads", problems) : ItemsOf(items, clock, "reads", problems);
+        return allPairs ? new Pairs(pairs) : new Items(new DeviceReadRequest(items, clock));
     }
 
-    private static LogicReadRequest? PairsOf(List<LogicPair> pairs, string path, List<OptionProblem> problems)
+    /// <summary>
+    /// The request as items, one per id in the order first named (a pair's logic types gathered under its id), as a
+    /// devices subscription reads it every sample.
+    /// </summary>
+    internal DeviceReadRequest AsItems()
     {
-        if (pairs.Count > MaximumPairs)
+        switch (this)
         {
-            problems.Add(new OptionProblem(path,
-                $"names {pairs.Count} (id, logic) pairs; at most {MaximumPairs} in one call"));
-            return null;
-        }
+            case Items items:
+                return items.Request;
+            case One one:
+                return new DeviceReadRequest(new[] { ItemOf(one.Pair.Id, new List<LogicPair> { one.Pair }) }, false);
+            default:
+                List<string> order = new List<string>();
+                Dictionary<string, List<LogicPair>> byId = new Dictionary<string, List<LogicPair>>(StringComparer.Ordinal);
+                foreach (LogicPair pair in ((Pairs)this).Entries)
+                {
+                    if (!byId.TryGetValue(pair.Id, out List<LogicPair>? pairs))
+                    {
+                        byId.Add(pair.Id, pairs = new List<LogicPair>());
+                        order.Add(pair.Id);
+                    }
 
-        return new Pairs(pairs);
+                    pairs.Add(pair);
+                }
+
+                List<DeviceReadItem> listed = new List<DeviceReadItem>(order.Count);
+                foreach (string id in order)
+                {
+                    listed.Add(ItemOf(id, byId[id]));
+                }
+
+                return new DeviceReadRequest(listed, false);
+        }
     }
 
-    private static LogicReadRequest? ItemsOf(List<DeviceReadItem> items, bool clock, string path,
-        List<OptionProblem> problems)
+    private static DeviceReadItem ItemOf(string id, List<LogicPair> pairs)
     {
-        if (items.Count > DeviceReadBounds.MaximumItems)
+        List<SentName> names = new List<SentName>(pairs.Count);
+        HashSet<string> keys = new HashSet<string>(StringComparer.Ordinal);
+        foreach (LogicPair pair in pairs)
         {
-            problems.Add(new OptionProblem(path,
-                $"names {items.Count} things to read with slots, atmosphere, reagents, a logic list or the clock; at " +
-                $"most {DeviceReadBounds.MaximumItems} in one call"));
-            return null;
+            string key = pair.Logic.Type == JTokenType.String ? (string)pair.Logic! : pair.Logic.ToString(Formatting.None);
+            if (keys.Add(key))
+            {
+                names.Add(new SentName(key, pair.Logic));
+            }
         }
 
-        int values = 0;
-        foreach (DeviceReadItem item in items)
-        {
-            values += item.Weight;
-        }
-
-        if (values > DeviceReadBounds.MaximumValues)
-        {
-            problems.Add(new OptionProblem(path,
-                $"reads {values} values; at most {DeviceReadBounds.MaximumValues} in one call (a slot without logic " +
-                $"counts {DeviceReadBounds.AllSlotValuesWeight})"));
-            return null;
-        }
-
-        return new Items(new DeviceReadRequest(items, clock));
+        return new DeviceReadItem(id, names, null, null, false);
     }
 
     // logic: a name or number, or a list of them, each named once.

@@ -1626,10 +1626,13 @@
     },
     {
       "name": "subscribe",
-      "description": "Ask the mod to read a set of device values every interval_s game seconds and push an update event when a value other than the clock differs from the last reading (topic devices, the default), or to be told when a world finishes loading and when the game state changes (topic world, no other params), or of every held-tick job that ends, whichever client started it (topic jobs, no other params: a job_ended event with the job's id, tool, status, error and what it built and removed). items, include and gateway_id are read_devices'; one subscription holds what one read_devices call may (128 items, 1,024 values). The reply carries the subscription id and the first reading in read_devices' reply shape. A subscription over a limit is refused with subscription_limit: poll with read_devices at the same interval instead. Subscriptions end with the connection (or, with a resume token, when its window passes without a resume), on unsubscribe, or with a subscription_ended event (world_changed, revoked, limit, read_failed).",
+      "description": "Ask the mod to read a set of device values every interval_s game seconds and push an update event when a value other than the clock differs from the last reading (topic devices, the default), or to be told when a world finishes loading and when the game state changes (topic world, no other params), or of every held-tick job that ends, whichever client started it (topic jobs, no other params: a job_ended event with the job's id, tool, status, error and what it built and removed). id, logic, reads, gateway and include are read logic's; every read is answered one row per thing (read logic's items form), and one subscription holds what one such read may (128 things, 1,024 values). The reply carries the subscription id and the first reading. A subscription over a limit is refused with subscription_limit: poll with read logic at the same interval instead. Subscriptions end with the connection (or, with a resume token, when its window passes without a resume), on unsubscribe, or with a subscription_ended event (world_changed, revoked, limit, read_failed).",
       "class": "read",
       "cost": "bounded",
-      "x-cost-when": [{"when": {"items": {"present": true}}, "cost": "bounded", "per_item": "items"}],
+      "x-cost-when": [
+        {"when": {"reads": {"present": true}}, "cost": "bounded", "per_item": "reads"},
+        {"when": {"id": {"present": true}}, "cost": "bounded", "per_item": "id"}
+      ],
       "params": {
         "type": "object",
         "properties": {
@@ -1638,80 +1641,19 @@
             "enum": ["devices", "world", "jobs"],
             "description": "devices (the default): device reads; world: world_changed and game_state events; jobs: job_ended events."
           },
-          "gateway_id": {
-            "type": "string",
-            "description": "Omit or 'world' for every device; a gateway id narrows to its data networks (see gateways)."
+          "id": {"type": ["string", "array"], "items": {"type": "string"}, "description": "read logic's id: device(s)."},
+          "logic": {"type": ["string", "integer", "array"], "description": "read logic's logic: logic type(s)."},
+          "reads": {
+            "type": "array",
+            "items": {"type": "object"},
+            "maxItems": 256,
+            "description": "read logic's reads: each {id, logic, slots, atmosphere, reagents}."
           },
+          "gateway": {"type": "string", "description": "read logic's gateway: a gateway's id, or world."},
           "include": {
             "type": "array",
             "items": {"type": "string", "enum": ["clock"]},
-            "description": "clock: add the game clock, as game_clock reads it, in the same frame."
-          },
-          "items": {
-            "type": "array",
-            "minItems": 1,
-            "maxItems": 128,
-            "description": "Things to read, up to 128, each with at least one part.",
-            "items": {
-              "type": "object",
-              "properties": {
-                "reference_id": {
-                  "type": "string",
-                  "description": "A device or thing; for atmosphere alone also a pipe network or atmosphere id."
-                },
-                "logic": {
-                  "type": "array",
-                  "minItems": 1,
-                  "maxItems": 64,
-                  "items": {
-                    "oneOf": [{"type": "string"}, {"type": "integer", "minimum": 0, "maximum": 65535}],
-                    "description": "A logic type name or number."
-                  },
-                  "description": "Logic types to read, up to 64; each value comes back under the string sent."
-                },
-                "slots": {
-                  "type": "array",
-                  "minItems": 1,
-                  "maxItems": 16,
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "index": {"type": "integer", "minimum": 0, "description": "Slot index, as inspect_slots numbers them."},
-                      "logic": {
-                        "type": "array",
-                        "minItems": 1,
-                        "maxItems": 64,
-                        "items": {
-                          "oneOf": [{"type": "string"}, {"type": "integer", "minimum": 0, "maximum": 65535}],
-                          "description": "A slot logic type name or number."
-                        },
-                        "description": "Slot logic types; left out, every one the slot reads."
-                      }
-                    },
-                    "required": ["index"],
-                    "additionalProperties": false
-                  },
-                  "description": "Slots to read, up to 16."
-                },
-                "atmosphere": {
-                  "type": "object",
-                  "properties": {
-                    "of": {"type": "string", "enum": ["internal"], "description": "internal: only its internal atmosphere."},
-                    "port": {
-                      "type": "integer",
-                      "minimum": 0,
-                      "maximum": 64,
-                      "description": "A device port index: the pipe network joined there."
-                    }
-                  },
-                  "additionalProperties": false,
-                  "description": "{} its own atmosphere, {of: \"internal\"}, or {port: n}."
-                },
-                "reagents": {"type": "boolean", "description": "true: the reagents it holds, as the reagents tool reads them."}
-              },
-              "required": ["reference_id"],
-              "additionalProperties": false
-            }
+            "description": "clock: the game clock in each reading."
           },
           "interval_s": {
             "type": "number",

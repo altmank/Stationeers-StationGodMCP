@@ -132,7 +132,7 @@ internal static class Queries
         StringBuilder json = new StringBuilder("[");
         for (int item = 0; item < items; item++)
         {
-            json.Append(item == 0 ? "" : ",").Append("{\"reference_id\":\"").Append(1000 + item).Append("\",\"logic\":[");
+            json.Append(item == 0 ? "" : ",").Append("{\"id\":\"").Append(1000 + item).Append("\",\"logic\":[");
             for (int logic = 0; logic < logicPerItem; logic++)
             {
                 json.Append(logic == 0 ? "" : ",").Append(logic);
@@ -147,7 +147,7 @@ internal static class Queries
 
     internal static DeviceSubscriptionQuery Of(string items)
     {
-        SubscribeRequest request = SubscribeRequest.Of(new JObject { ["items"] = JToken.Parse(items) });
+        SubscribeRequest request = SubscribeRequest.Of(new JObject { ["reads"] = JToken.Parse(items) });
         return Assert.IsType<SubscribeRequest.Devices>(request).Query;
     }
 
