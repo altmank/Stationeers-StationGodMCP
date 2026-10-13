@@ -16,30 +16,32 @@ internal static class UpgradeReports
     internal const string Scheduled = "scheduled";
     internal const string Refused = "refused";
 
-    internal static UpgradeReportView Of(UpgradePlan plan, string status, string? jobId)
+    /// <summary>The plan's report; limit, when given, is how many entries each list shows instead of the request's.</summary>
+    internal static UpgradeReportView Of(UpgradePlan plan, string status, string? jobId, int? limit = null)
     {
         UpgradeRequest request = plan.Request;
+        int shown = limit ?? request.ListLimit;
         SwapGoal goal = request.Goal;
         UpgradeHeader header = new UpgradeHeader(goal.Tool, goal.Target, status, jobId,
             request.IncludeNotes ? goal.Notes(request.Family) : null);
         UpgradeCounts counts = new UpgradeCounts(plan.Total, plan.Swaps.Count, plan.Kept.Count, plan.Unmatched.Count);
-        UpgradeLists lists = new UpgradeLists(plan.Problems, Pieces(plan), ByPrefab(plan),
-            Skipped(plan.Kept, request.ListLimit), Skipped(plan.Unmatched, request.ListLimit), plan.Warnings);
+        UpgradeLists lists = new UpgradeLists(plan.Problems, Pieces(plan, shown), ByPrefab(plan),
+            Skipped(plan.Kept, shown), Skipped(plan.Unmatched, shown), plan.Warnings);
         UpgradeResources resources = new UpgradeResources(
             plan.From != null ? GameLookup.ViewOf(plan.From) : null, Coils(plan), request.Refund, RefundTotals(plan),
             Networks(plan), Refunds.Forecast(plan.Refunds, RefundItems(plan)));
-        return new UpgradeReportView(header, counts, lists, resources, plan.Links?.View(), DeadEnds(plan),
-            Loops(plan), Redundant(plan), Riding(plan));
+        return new UpgradeReportView(header, counts, lists, resources, plan.Links?.View(), DeadEnds(plan, shown),
+            Loops(plan), Redundant(plan, shown), Riding(plan, shown));
     }
 
-    private static UpgradeRidingList? Riding(UpgradePlan plan)
+    private static UpgradeRidingList? Riding(UpgradePlan plan, int limit)
     {
         if (plan.Riding == null)
         {
             return null;
         }
 
-        int count = System.Math.Min(plan.Riding.Count, plan.Request.ListLimit);
+        int count = System.Math.Min(plan.Riding.Count, limit);
         List<UpgradeRidingView> views = new List<UpgradeRidingView>(count);
         for (int index = 0; index < count; index++)
         {
@@ -51,7 +53,7 @@ internal static class UpgradeReports
         return new UpgradeRidingList(plan.Riding.Count, views);
     }
 
-    private static UpgradeRedundancyView? Redundant(UpgradePlan plan)
+    private static UpgradeRedundancyView? Redundant(UpgradePlan plan, int limit)
     {
         RedundancyRecord? record = plan.Redundancy;
         if (record == null)
@@ -64,7 +66,7 @@ internal static class UpgradeReports
         foreach (KeptPiece piece in record.Result.Kept)
         {
             byReason[piece.Reason] = (byReason.TryGetValue(piece.Reason, out int count) ? count : 0) + 1;
-            if (kept.Count < plan.Request.ListLimit && record.Things.TryGetValue(piece.Id, out SmallGrid thing))
+            if (kept.Count < limit && record.Things.TryGetValue(piece.Id, out SmallGrid thing))
             {
                 kept.Add(new UpgradeRedundantKeptView(GameLookup.ViewOf(thing), GameLookup.ViewOf(thing.Position),
                     piece.Reason, piece.Devices.ConvertAll(id => Named(record, id)), piece.Pieces));
@@ -110,9 +112,9 @@ internal static class UpgradeReports
         return new RotationView(euler.x, euler.y, euler.z);
     }
 
-    private static List<UpgradePieceView> Pieces(UpgradePlan plan)
+    private static List<UpgradePieceView> Pieces(UpgradePlan plan, int limit)
     {
-        int count = System.Math.Min(plan.Swaps.Count, plan.Request.ListLimit);
+        int count = System.Math.Min(plan.Swaps.Count, limit);
         List<UpgradePieceView> pieces = new List<UpgradePieceView>(count);
         UpgradeFamily family = plan.Request.Family;
         for (int index = 0; index < count; index++)
@@ -146,14 +148,14 @@ internal static class UpgradeReports
     }
 
     // Only a goal that finds dead ends reports them; the upgrade tools' replies keep their shape.
-    private static UpgradeDeadEnds? DeadEnds(UpgradePlan plan)
+    private static UpgradeDeadEnds? DeadEnds(UpgradePlan plan, int limit)
     {
         if (!plan.Request.Goal.ReportsEnds)
         {
             return null;
         }
 
-        int count = System.Math.Min(plan.DeadEnds.Count, plan.Request.ListLimit);
+        int count = System.Math.Min(plan.DeadEnds.Count, limit);
         List<UpgradeDeadEndView> views = new List<UpgradeDeadEndView>(count);
         for (int index = 0; index < count; index++)
         {

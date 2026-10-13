@@ -74,44 +74,6 @@ internal static class CleanPipesApi
     internal static object Handle(Args args) => CleanApi.Handle(args, "clean_pipes", new PipeFamily());
 }
 
-/// <summary>
-/// clean_chutes: removes every selected chute piece no item can pass through to a consumer, and turns each junction,
-/// overflow or splitter that loses a branch into the plain piece its remaining ends need (RemoveDeadChutes,
-/// ChuteCleanup). Selected by network, by piece or by box; the rest as clean_cables. Host only.
-/// </summary>
-internal static class CleanChutesApi
-{
-    internal const string Tool = "clean_chutes";
-
-    internal static object Handle(Args args)
-    {
-        if (args.Has("job_id"))
-        {
-            args.Reject("{arg:job_id}", "keep_ids", "riding");
-        }
-
-        HashSet<long> keep = new HashSet<long>();
-        if (args.Has("keep_ids"))
-        {
-            foreach (ThingId id in args.ThingIds("keep_ids", UpgradePlanner.MaximumPieces))
-            {
-                keep.Add(id.Value);
-            }
-        }
-
-        List<ICleanOperation> operations = new List<ICleanOperation> { new RemoveDeadChutes(keep, Riding(args)) };
-        return UpgradeApi.Handle(args, new ChuteFamily(), new EndCleanupGoal(Tool, operations));
-    }
-
-    private static RidingPolicy Riding(Args args) =>
-        (args.OptionalString("riding") ?? "skip").Trim().ToLowerInvariant() switch
-        {
-            "skip" => RidingPolicy.Skip,
-            "refuse" => RidingPolicy.Refuse,
-            _ => throw ApiErrors.InvalidArgument(Vocabulary.Text("Argument '{arg:riding}' must be skip or refuse."))
-        };
-}
-
 /// <summary>The clean tools' own argument: operations, default simplify_junctions only (CleanOperationSet).</summary>
 internal static class CleanApi
 {

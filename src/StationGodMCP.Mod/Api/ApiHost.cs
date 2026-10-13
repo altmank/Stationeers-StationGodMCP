@@ -48,7 +48,6 @@ internal static class ApiHost
             ["upgrade_pipes"] = static args => UpgradePipesApi.Handle(args),
             ["clean_cables"] = static args => CleanCablesApi.Handle(args),
             ["clean_pipes"] = static args => CleanPipesApi.Handle(args),
-            ["clean_chutes"] = static args => CleanChutesApi.Handle(args),
             ["place_cables"] = static args => PlaceCablesApi.Handle(args),
             ["remove_cables"] = static args => RemoveCablesApi.Handle(args),
             ["place_pipes"] = static args => PlacePipesApi.Handle(args),

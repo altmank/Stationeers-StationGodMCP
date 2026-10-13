@@ -230,8 +230,6 @@ internal static class ReplyShapes
             shapes[tool] = new[] { UpgradeReport() };
         }
 
-        shapes["clean_chutes"] = new[] { ChuteCleanReport() };
-
         return shapes;
     }
 
@@ -303,18 +301,4 @@ internal static class ReplyShapes
     // only pieces on a path left with an open end (a piece serving a path is not listed). riding: an item rides in a
     // dead piece only on its way to the floor, and in a junction for one tick, so two at once is already rare. It
     // builds nothing, so no warning (materials_from_player) is listed.
-    private static ReplyShape ChuteCleanReport() => S<UpgradeReportView>()
-        .List("UpgradeReportView.Pieces", D.UpgradeListed).List("UpgradePieceView.MergedReferenceIds", 0)
-        .List("UpgradeReportView.ByPrefab", 3).List("UpgradeReportView.KeptPieces", 1)
-        .List("UpgradeReportView.UnmatchedPieces", 0).List("UpgradeReportView.DeadEndPieces", D.UpgradeListed)
-        .List("UpgradeReportView.Loops", 0).Absent("UpgradeReportView.Redundant")
-        .Absent("UpgradeReportView.Warnings")
-        .List("UpgradeReportView.Riding", 2).List("UpgradeReportView.Coils", 1)
-        .List("RefundPlanView.Skipped", 0).List("RefundPlanView.Destinations", 2)
-        .List("UpgradeReportView.Networks", 2).Holds("UpgradeReportView.Networks", typeof(ChuteNetworkReportView))
-        .Absent("ChuteNetworkReportView.Devices")
-        .List("UpgradeReportView.Devices", W.DataNetworkDevices).List("UpgradeDeviceView.NetworkIds", 1)
-        .List("UpgradeConnectivityView.Added", 0).List("UpgradeConnectivityView.Lost", 0)
-        .List("UpgradeConnectivityView.ModelDifferences", 0).List("UpgradeConnectivityView.Mounted", 0)
-        .List("UpgradeConnectivityView.Devices", W.DataNetworkDevices).Absent("UpgradeReportView.Notes");
 }

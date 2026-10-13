@@ -15,6 +15,7 @@ internal static class RetiredMethods
     internal static IReadOnlyCollection<string> Names { get; } = new HashSet<string>(StringComparer.Ordinal)
     {
         "atmosphere_contents",
+        "clean_chutes",
         "connections",
         "consumables",
         "control_ic_execution",

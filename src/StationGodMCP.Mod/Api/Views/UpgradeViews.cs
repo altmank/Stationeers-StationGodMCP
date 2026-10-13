@@ -142,25 +142,25 @@ internal sealed class UpgradeReportView : ITruncatingView
 
     public void NoteTruncations(string path)
     {
-        Truncations.Capped(path + "pieces", Pieces.Count, ToSwap, "limit", ReplyDefaults.ReportListMaximum);
-        Truncations.Capped(path + "kept_pieces", KeptPieces.Count, Kept, "limit", ReplyDefaults.ReportListMaximum);
-        Truncations.Capped(path + "unmatched_pieces", UnmatchedPieces.Count, Unmatched, "limit",
+        Truncations.Capped(path + "pieces", Pieces.Count, ToSwap, "rows", ReplyDefaults.ReportListMaximum);
+        Truncations.Capped(path + "kept_pieces", KeptPieces.Count, Kept, "rows", ReplyDefaults.ReportListMaximum);
+        Truncations.Capped(path + "unmatched_pieces", UnmatchedPieces.Count, Unmatched, "rows",
             ReplyDefaults.ReportListMaximum);
         if (DeadEndPieces != null && DeadEnds.HasValue)
         {
-            Truncations.Capped(path + "dead_end_pieces", DeadEndPieces.Count, DeadEnds.Value, "limit",
+            Truncations.Capped(path + "dead_end_pieces", DeadEndPieces.Count, DeadEnds.Value, "rows",
                 ReplyDefaults.ReportListMaximum);
         }
 
         if (Riding != null && RidingCount.HasValue)
         {
-            Truncations.Capped(path + "riding", Riding.Count, RidingCount.Value, "limit",
+            Truncations.Capped(path + "riding", Riding.Count, RidingCount.Value, "rows",
                 ReplyDefaults.ReportListMaximum);
         }
 
         if (Redundant != null)
         {
-            Truncations.Capped(path + "redundant.kept", Redundant.Kept.Count, Redundant.KeptCount, "limit",
+            Truncations.Capped(path + "redundant.kept", Redundant.Kept.Count, Redundant.KeptCount, "rows",
                 ReplyDefaults.ReportListMaximum);
         }
     }
