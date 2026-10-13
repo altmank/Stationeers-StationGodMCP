@@ -1712,7 +1712,8 @@ def plan(what: Literal['spot'], *,
       prefab_name: str | None
       planes: list[str]
       spots: list[{position: {x: float, y: float, z: float}, orientation: {facing: str | None, up: str | None, euler: Vec3}, distance_m: float,
-          penalty: int, plane: str, conflicts: list[{code: str, level: str, message: str, reference_id: str | None}], place_arguments: Any}]
+          penalty: int, plane: str, conflicts: list[{code: str, level: str, message: str, reference_id: str | None}], build_arguments: {what: str,
+          prefab: str, at: list[float], facing: str, up: str}}]
       tried: int
       filtered: int
       checked: int

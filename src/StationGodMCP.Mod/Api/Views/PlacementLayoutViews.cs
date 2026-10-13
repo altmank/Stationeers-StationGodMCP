@@ -710,11 +710,11 @@ internal sealed class WallMapView
     public ViewSourceView? View { get; }
 }
 
-/// <summary>One spot find_spot offers: where, turned how, how far, its layout findings and ready arguments.</summary>
+/// <summary>One spot plan spot offers: where, turned how, how far, its layout findings and build structure's options.</summary>
 internal sealed class SpotView
 {
     internal SpotView(PointView position, OrientationView orientation, double distanceM, int penalty, string plane,
-        List<ConflictView> conflicts, Newtonsoft.Json.Linq.JObject placeArguments)
+        List<ConflictView> conflicts, Newtonsoft.Json.Linq.JObject buildArguments)
     {
         Position = position;
         Orientation = orientation;
@@ -722,7 +722,7 @@ internal sealed class SpotView
         Penalty = penalty;
         Plane = plane;
         Conflicts = conflicts;
-        PlaceArguments = placeArguments;
+        BuildArguments = buildArguments;
     }
 
     /// <summary>Where it would stand, snapped as the cursor snaps it.</summary>
@@ -740,14 +740,14 @@ internal sealed class SpotView
 
     public List<ConflictView> Conflicts { get; }
 
-    /// <summary>place_structure's arguments for it (a dry run by default).</summary>
-    public Newtonsoft.Json.Linq.JObject PlaceArguments { get; }
+    /// <summary>build's options for it, {what: "structure", prefab, at, facing, up}: a report until confirm.</summary>
+    public Newtonsoft.Json.Linq.JObject BuildArguments { get; }
 }
 
-/// <summary>find_spot: the spots best first, and how many were tried, filtered and checked.</summary>
-internal sealed class FindSpotView
+/// <summary>plan spot: the spots best first, and how many were tried, filtered and checked.</summary>
+internal sealed class PlanSpotView
 {
-    internal FindSpotView(string? prefabName, List<string> planes, List<SpotView> spots, int tried, int filtered,
+    internal PlanSpotView(string? prefabName, List<string> planes, List<SpotView> spots, int tried, int filtered,
         int checkedCount, int rejected, List<SpotReasonView>? reasons = null, ViewSourceView? view = null)
     {
         View = view;
@@ -787,7 +787,7 @@ internal sealed class FindSpotView
     public ViewSourceView? View { get; }
 }
 
-/// <summary>One reason find_spot ruled spots out, as first worded, and how many spots it ruled out.</summary>
+/// <summary>One reason plan spot ruled spots out, as first worded, and how many spots it ruled out.</summary>
 internal sealed class SpotReasonView
 {
     internal SpotReasonView(string reason, int count)

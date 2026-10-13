@@ -12,5 +12,5 @@ Options:
 - require (object): {one_section, min_bottom_above_floor_m, ports_reachable, avoid_doors, front_clear_m, no_visual_overlap}.
 - limit (integer, default 5): Spots returned.
 - max_checks (integer, default 40): Spots checked with the cursor.
-Reply: prefab_name, planes, spots [{position, orientation, distance_m, penalty, plane, conflicts, place_arguments}], tried, filtered, checked, rejected, reasons [{reason, count}], view {source, age_s}
+Reply: prefab_name, planes, spots [{position, orientation, distance_m, penalty, plane, conflicts, build_arguments}], tried, filtered, checked, rejected, reasons [{reason, count}], view {source, age_s}
 Example: plan {what: "spot", prefab: "StructureWallLight", looking: true}

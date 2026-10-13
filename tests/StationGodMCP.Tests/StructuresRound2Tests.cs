@@ -89,15 +89,15 @@ public sealed class StructuresRound2Tests
     }
 
     [Fact]
-    public void FindSpotReportsItsReasons()
+    public void PlanSpotReportsItsReasons()
     {
-        FindSpotView view = new FindSpotView("StructureBattery", new List<string> { "y=228 seen from +y" },
+        PlanSpotView view = new PlanSpotView("StructureBattery", new List<string> { "y=228 seen from +y" },
             new List<SpotView>(), 31, 0, 31, 31,
             new List<SpotReasonView> { new SpotReasonView("the game refuses it: requires a Frame below", 31) });
         JObject json = JObject.Parse(WireCheck.New(view));
         Assert.Equal(31, (int)json["reasons"]![0]!["count"]!);
         Assert.Equal("the game refuses it: requires a Frame below", (string)json["reasons"]![0]!["reason"]!);
-        Assert.Empty((JArray)JObject.Parse(WireCheck.New(new FindSpotView(null, new List<string>(),
+        Assert.Empty((JArray)JObject.Parse(WireCheck.New(new PlanSpotView(null, new List<string>(),
             new List<SpotView>(), 0, 0, 0, 0)))["reasons"]!);
     }
 

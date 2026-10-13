@@ -72,11 +72,6 @@ internal static class ReplyShapes
                 .Absent("BuildCostView.PaidBy")
         };
         shapes["dish_aim"] = new[] { S<DishAimView>() };
-        shapes["find_spot"] = new[]
-        {
-            S<FindSpotView>().List("FindSpotView.Planes", 2).List("FindSpotView.Spots", D.FindSpots)
-                .List("SpotView.Conflicts", 1).List("FindSpotView.Reasons", 8)
-        };
         shapes["highlight"] = new[]
         {
             S<HighlightView>().List("HighlightView.Targets", 3).List("HighlightTargetView.Missing", 0)

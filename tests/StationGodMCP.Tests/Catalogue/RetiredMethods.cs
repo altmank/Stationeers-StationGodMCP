@@ -28,6 +28,7 @@ internal static class RetiredMethods
         "describe_prefab",
         "feed_paths",
         "find_items",
+        "find_spot",
         "find_things",
         "game_clock",
         "get_ic_source",

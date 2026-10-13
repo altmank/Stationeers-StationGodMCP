@@ -5,75 +5,63 @@ using Assets.Scripts;
 using Assets.Scripts.GridSystem;
 using Assets.Scripts.Objects;
 using Newtonsoft.Json.Linq;
-using StationGodMCP.Api.Shared;
-using StationGodMCP.Api.Shared.Game;
-using StationGodMCP.Api.Shared.Game.Build;
 using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Api.Shared.Game.Structures;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Shaping;
+using StationGodMCP.Pure.Verbs;
 using UnityEngine;
 
-using StationGodMCP.Pure.Protocol;
-using StationGodMCP.Pure.Shaping;
-
-namespace StationGodMCP.Api;
+namespace StationGodMCP.Api.Shared.Game.Build;
 
 /// <summary>
-/// find_spot: ranked places for a prefab on one face plane (plane and side, or the face looked at) or on the walls of a
-/// room, near a point. Every 0.5 m spot within radius_m is aimed as the cursor snaps it, filtered on geometry first
-/// (SpotSearch.Filter: its cells free, its mesh box clear of every other thing's, out of door keep-outs, one wall
-/// section by its mesh box, high enough above the floor, clear in front), then, nearest first and at most max_checks of them, checked with the game's own cursor and the layout
-/// preview (PlacementLayout) for the rest (no visual overlap, ports reachable). Returned best first with ready
-/// place_structure arguments. Read only.
+/// plan spot's search: ranked places for a prefab on one face plane (plane and side, or the face looked at) or on the
+/// walls of a room, near a point. Every 0.5 m spot within the radius is aimed as the cursor snaps it, filtered on
+/// geometry first (SpotSearch.Filter: its cells free, its mesh box clear of every other thing's, out of door keep-outs,
+/// one wall section by its mesh box, high enough above the floor, clear in front), then, nearest first and at most
+/// max_checks of them, checked with the game's own cursor and the layout preview (PlacementLayout) for the rest (no
+/// visual overlap, ports reachable). Returned best first with build structure's options for each. Read only.
 /// </summary>
-internal static class FindSpotApi
+internal static class SpotFinder
 {
-    private const double DefaultRadiusM = 4.0;
-    private const double MaximumRadiusM = 12.0;
-    private const int DefaultLimit = ReplyDefaults.FindSpots;
-    private const int DefaultChecks = 40;
+    private const string Label = "plan spot";
     private const int MaximumChecks = 200;
+    private const int MaximumLimit = 20;
     private const int MaximumCandidates = 4000;
     private const int MaximumBodyCells = 40000;
     private const int MaximumReasons = 8;
 
-    internal static FindSpotView Handle(Args args)
+    internal static PlanSpotView Find(SpotOrder order)
     {
         GridFacts facts = new GridFacts(new CableRunKind(), SmallGridBlock.None, new HashSet<long>());
         BuildCatalogue catalogue = BuildCatalogue.Load();
-        Structure? found = catalogue.Find(BuildArgs.PrefabOf(args.Optional("prefab"), "prefab"), out string? issue);
+        Structure? found = catalogue.Find(order.Prefab, out string? issue);
         if (found == null)
         {
-            throw ApiErrors.Refused("invalid_prefab", issue ?? "No such prefab.");
+            throw ApiErrors.Refused("invalid_prefab", $"{Label}: {issue ?? "no such prefab"}");
         }
 
         Structure prefab = found;
         Structure? cursor = catalogue.CursorOf(prefab);
         if (cursor == null)
         {
-            throw ApiErrors.Refused("no_cursor", $"The game has no placement cursor for {prefab.PrefabName}.");
+            throw ApiErrors.Refused("no_cursor", $"{Label}: the game has no placement cursor for {prefab.PrefabName}.");
         }
 
         CameraUse camera = new CameraUse();
-        Vec3 near = Near(args, camera);
-        double radius = args.OptionalPositiveDouble("radius_m") ?? DefaultRadiusM;
-        if (radius > MaximumRadiusM)
-        {
-            throw ApiErrors.InvalidArgument($"{Vocabulary.Arg("radius_m")} is at most {MaximumRadiusM}.");
-        }
+        Vec3 near = Near(order.Near, camera);
+        double radius = order.RadiusM;
+        SpotRequirements require = order.Require;
+        List<PlaneView> planes = Planes(order, facts, camera, out Room? room, out PlaneView? named);
+        int limit = order.Limit;
+        int maxChecks = order.MaxChecks;
+        GridStep? facing = order.Facing;
 
-        SpotRequirements require = Requirements(args.OptionalObject("require"));
-        List<PlaneView> planes = Planes(args, facts, camera, out Room? room, out PlaneView? named);
-        int limit = args.OptionalInt("limit", 1, 20) ?? DefaultLimit;
-        int maxChecks = args.OptionalInt("max_checks", 1, MaximumChecks) ?? DefaultChecks;
-        GridStep? facing = args.Has("facing") ? Step(args.OptionalString("facing"), "facing") : (GridStep?)null;
-
-        // Every plane's spots within the radius that face into the room (room_id), nearest first across all planes;
-        // at most MaximumCandidates of them are aimed, which bounds the frame's work without starving a plane that
-        // happens to come later in the list. The plane named with room_id is seen from side as asked: seen from the
-        // side away from the room (under its floor, over its ceiling), its spots are those with the room behind them
-        // (structures-30: that side searched nothing).
+        // Every plane's spots within the radius that face into the room, nearest first across all planes; at most
+        // MaximumCandidates of them are aimed, which bounds the frame's work without starving a plane that happens to
+        // come later in the list. The plane named with room is seen from side as asked: seen from the side away from
+        // the room (under its floor, over its ceiling), its spots are those with the room behind them.
         List<(PlaneSpots Plane, double U, double V, double Distance)> tries =
             new List<(PlaneSpots, double, double, double)>();
         foreach (PlaneView plane in planes)
@@ -143,17 +131,17 @@ internal static class FindSpotApi
         if (checkedSpots.Count + rejected < passed.Count)
         {
             Truncations.Note("spots", System.Math.Min(limit, checkedSpots.Count), checkedSpots.Count + 1,
-                $"pass {Vocabulary.Arg("max_checks")} (max {MaximumChecks}): " +
+                $"pass max_checks (max {MaximumChecks}): " +
                 $"{passed.Count - checkedSpots.Count - rejected} spots that passed the geometry filter were not " +
                 "checked", atLeast: true);
         }
         else
         {
-            Truncations.Capped("spots", System.Math.Min(limit, checkedSpots.Count), checkedSpots.Count, "limit", 20);
+            Truncations.Capped("spots", System.Math.Min(limit, checkedSpots.Count), checkedSpots.Count, "limit", MaximumLimit);
         }
 
         Truncations.Note("reasons", System.Math.Min(MaximumReasons, reasons.Distinct), reasons.Distinct,
-            "no argument lists more: the most frequent reasons are listed");
+            "no option lists more: the most frequent reasons are listed");
         List<(int, double)> scores = checkedSpots.ConvertAll(spot => (spot.Penalty, spot.Distance));
         List<SpotView> spots = new List<SpotView>();
         foreach (int index in SpotSearch.Rank(scores))
@@ -166,7 +154,7 @@ internal static class FindSpotApi
             spots.Add(checkedSpots[index].View(prefab));
         }
 
-        return new FindSpotView(prefab.PrefabName, planes.ConvertAll(plane => $"{plane.Plane} seen from {plane.Side.Name}"),
+        return new PlanSpotView(prefab.PrefabName, planes.ConvertAll(plane => $"{plane.Plane} seen from {plane.Side.Name}"),
             spots, passed.Count + filtered, filtered, checkedSpots.Count + rejected, rejected,
             reasons.Top(MaximumReasons).ConvertAll(static reason => new SpotReasonView(reason.Reason, reason.Count)),
             camera.Source);
@@ -196,64 +184,35 @@ internal static class FindSpotApi
         internal List<NearBody>? Bodies { get; set; }
     }
 
-    private static Vec3 Near(Args args, CameraUse camera)
+    private static Vec3 Near(NearPoint near, CameraUse camera) => near switch
     {
-        JToken? near = args.Optional("near");
-        if (near == null || (near.Type == JTokenType.String && near.Value<string>() == "crosshair"))
-        {
-            CameraHit hit = camera.Require(Vocabulary.Text("{arg:near} (or pass {arg:near})")).HitWithin(20.0) ??
-                            throw ApiErrors.Refused("no_crosshair_hit",
-                                Vocabulary.Text("{arg:near}: the look ray hits nothing within 20 m; pass {arg:near}."));
-            return hit.Point;
-        }
+        NearPoint.At at => at.Point,
+        NearPoint.Player => Bodies.V(PlayerOrigin.RequireHuman().Position),
+        NearPoint.Thing thing => Bodies.V(TargetIds.Thing(thing.Id, Label).Position),
+        _ => (camera.Require("near looking_at (or give near)").HitWithin(20.0) ??
+              throw ApiErrors.Refused("no_crosshair_hit",
+                  $"{Label}: near looking_at: the look ray hits nothing within 20 m; give near.")).Point
+    };
 
-        if (near.Type == JTokenType.String && near.Value<string>() == "player")
-        {
-            return Bodies.V(PlayerOrigin.RequireHuman().Position);
-        }
-
-        if (near is JObject item && item["reference_id"] != null)
-        {
-            return Bodies.V(GameLookup.RequireThing(new Args(item).ThingId("reference_id")).Position);
-        }
-
-        return PlaneView.PointOf(near);
-    }
-
-    private static SpotRequirements Requirements(JObject? spec)
-    {
-        Args require = new Args(spec ?? new JObject());
-        return new SpotRequirements(require.OptionalBool("one_section") ?? true,
-            require.OptionalDouble("min_bottom_above_floor_m"), require.OptionalBool("ports_reachable") ?? false,
-            require.OptionalBool("avoid_doors") ?? true, require.OptionalDouble("front_clear_m") ?? 0.0,
-            require.OptionalBool("no_visual_overlap") ?? true);
-    }
-
-    // One plane (plane/side or looking) or the walls of a room (room_id): every face of a room cell toward a cell
-    // outside the room that carries a wall or window, seen from inside.
-    private static List<PlaneView> Planes(Args args, GridFacts facts, CameraUse camera, out Room? room,
+    // One plane (plane and side, or looking) or the walls of a room: every face of a room cell toward a cell outside
+    // the room that carries a wall or window, seen from inside.
+    private static List<PlaneView> Planes(SpotOrder order, GridFacts facts, CameraUse camera, out Room? room,
         out PlaneView? named)
     {
         room = null;
         named = null;
-        if (!args.Has("room_id"))
+        if (order.Room is not { } id)
         {
-            return new List<PlaneView> { PlaneView.Read(args, facts, camera, out _) };
+            return new List<PlaneView> { PlaneOf(order, facts, camera) };
         }
 
-        if (!ThingId.TryRead(args.Optional("room_id"), out ThingId id))
-        {
-            throw ApiErrors.InvalidArgument(Vocabulary.Text("{arg:room_id} must be a room id as {tool:rooms} reports " +
-                "it."));
-        }
-
-        Room found = StructureAirRecord.FindRoom(id.Value) ??
-                     throw ApiErrors.Refused("room_not_found", $"No room has id {id}.");
+        Room found = StructureAirRecord.FindRoom(id) ??
+                     throw ApiErrors.Refused("room_not_found", $"{Label}: no closed room has id {id}; find room lists them.");
         room = found;
         HashSet<GridCell> cells = new HashSet<GridCell>();
         foreach (WorldGrid grid in new List<WorldGrid>(found.Grids))
         {
-            cells.Add(Shared.Game.Upgrades.PieceShapes.Cell(grid.Value));
+            cells.Add(Upgrades.PieceShapes.Cell(grid.Value));
         }
 
         List<PlaneView> planes = new List<PlaneView>();
@@ -282,9 +241,9 @@ internal static class FindSpotApi
             }
         }
 
-        if (args.Has("plane") || (args.OptionalBool("looking") ?? false))
+        if (order.NamesPlane)
         {
-            PlaneView asked = NamedPlane(args, facts, cells, id, camera);
+            PlaneView asked = NamedPlane(order, facts, cells, id, camera);
             named = planes.Find(plane => plane.Plane.Axis == asked.Plane.Axis &&
                                          plane.Plane.Coordinate == asked.Plane.Coordinate &&
                                          plane.Side.Index == asked.Side.Index);
@@ -299,17 +258,20 @@ internal static class FindSpotApi
         return planes;
     }
 
-    // plane (or looking) with room_id: that plane too, e.g. the room's floor or ceiling (structures-25: it was ignored).
-    // Seen from side when given, else from the room's side of it; a plane no room cell touches is refused.
-    private static PlaneView NamedPlane(Args args, GridFacts facts, HashSet<GridCell> cells, ThingId room,
+    private static PlaneView PlaneOf(SpotOrder order, GridFacts facts, CameraUse camera) =>
+        PlaneView.Of(order.Looking, order.Plane, order.Side, order.Around, facts, camera, out _);
+
+    // plane (or looking) with room: that plane too, e.g. the room's floor or ceiling. Seen from side when given, else
+    // from the room's side of it; a plane no room cell touches is refused.
+    private static PlaneView NamedPlane(SpotOrder order, GridFacts facts, HashSet<GridCell> cells, long room,
         CameraUse camera)
     {
-        if (args.Has("side") || (args.OptionalBool("looking") ?? false))
+        if (order.Side != null || order.Looking)
         {
-            return PlaneView.Read(args, facts, camera, out _);
+            return PlaneOf(order, facts, camera);
         }
 
-        string text = args.OptionalString("plane")!;
+        string text = order.Plane!;
         FacePlane plane = PlaneView.ParsePlane(text);
         GridStep plus = GridStep.All[plane.Axis * 2];
         foreach (GridCell cell in cells)
@@ -321,8 +283,8 @@ internal static class FindSpotApi
             }
         }
 
-        throw ApiErrors.InvalidArgument($"plane {text} does not touch room {room}: no cell of the room lies against " +
-                                        "it. Name a face plane of the room, or give side.");
+        throw ApiErrors.InvalidArgument($"{Label}: plane {text} does not touch room {room}: no cell of the room lies " +
+                                        "against it. Name a face plane of the room, or give side.");
     }
 
     // The turn a spot is tried in. A mounted piece faces out of the plane (or facing), its top up. A grid-placed piece
@@ -340,11 +302,6 @@ internal static class FindSpotApi
         GridStep front = facing ?? (plane.Side.IsVertical ? GridStep.All[4] : plane.Side);
         return CubeRotation.FromFacing(front, up) ?? CubeRotation.FromFacing(front, RotationSpec.DefaultUp(front))!;
     }
-
-    private static GridStep Step(string? text, string name) =>
-        GridStep.TryParse(text, out GridStep step)
-            ? step
-            : throw ApiErrors.InvalidArgument($"{Vocabulary.Path(name)} must be one of +x, -x, +y, -y, +z, -z.");
 
     private sealed class Candidate
     {
@@ -476,7 +433,7 @@ internal static class FindSpotApi
             if (require.PortsReachable && layout.View.PortChecks != null &&
                 layout.View.PortChecks.Exists(port => port.Blocked != null && !port.Joins))
             {
-                return Vocabulary.Text("a port's joining cell is blocked ({arg:ports_reachable})");
+                return "a port's joining cell is blocked (require.ports_reachable)";
             }
 
             return null;
@@ -484,8 +441,9 @@ internal static class FindSpotApi
 
         internal SpotView View(Structure prefab)
         {
-            JObject place = new JObject
+            JObject build = new JObject
             {
+                ["what"] = "structure",
                 ["prefab"] = prefab.PrefabName,
                 ["at"] = new JArray(Round(Position.x), Round(Position.y), Round(Position.z)),
                 ["facing"] = Turn.Forward.Name,
@@ -493,7 +451,7 @@ internal static class FindSpotApi
             };
             return new SpotView(PointView.Of(Bodies.V(Position)), OrientationView.Of(Turn),
                 System.Math.Round(Distance, 2), Penalty, $"{Plane.Plane} seen from {Plane.Side.Name}",
-                Conflicts.ConvertAll(conflict => new ConflictView(conflict)), place);
+                Conflicts.ConvertAll(conflict => new ConflictView(conflict)), build);
         }
 
         private static double Round(float value) => System.Math.Round(value * 100.0) / 100.0;

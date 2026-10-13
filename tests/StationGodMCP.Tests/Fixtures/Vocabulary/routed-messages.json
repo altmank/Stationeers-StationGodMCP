@@ -6,15 +6,6 @@
   "Api/BuildStructures.cs": [
     "Pass job_id, or placements."
   ],
-  "Api/FindSpot.cs": [
-    "a port's joining cell is blocked (ports_reachable)",
-    "near (or pass near)",
-    "near: the look ray hits nothing within 20 m; pass near.",
-    "pass max_checks (max {MaximumChecks}): {passed.Count - checkedSpots.Count - rejected} spots that passed the geometry filter were not checked",
-    "radius_m is at most {MaximumRadiusM}.",
-    "room_id must be a room id as rooms reports it.",
-    "{name} must be one of +x, -x, +y, -y, +z, -z."
-  ],
   "Api/Highlight.cs": [
     "highlight",
     "{name}: {Names.Of(thing)} ({thing.PrefabName}) is no cable, pipe or chute piece; give a device in reference_ids, or name a network or a piece on it.",

@@ -47,7 +47,6 @@ internal static class ApiHost
             ["place_pipes"] = static args => PlacePipesApi.Handle(args),
             ["place_chutes"] = static args => PlaceChutesApi.Handle(args),
             ["place_structure"] = static args => PlaceStructureApi.Handle(args),
-            ["find_spot"] = static args => FindSpotApi.Handle(args),
             ["show_preview"] = static args => ShowPreviewApi.Handle(args),
             ["highlight"] = static args => HighlightApi.Handle(args),
             ["undo_job"] = static args => UndoJobApi.Handle(args),

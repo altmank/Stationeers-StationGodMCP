@@ -81,5 +81,6 @@ internal static class VerbHandlers
         VerbHandler.For(CheckRulesOptions.Spec, CheckRulesOptions.Bind, CheckRules.Run),
         VerbHandler.For(CheckReplaceableOptions.Spec, CheckReplaceableOptions.Bind, CheckReplaceable.Run),
         VerbHandler.For(CheckIgnitionOptions.Spec, CheckIgnitionOptions.Bind, CheckIgnition.Run),
+        VerbHandler.For(PlanSpotOptions.Spec, PlanSpotOptions.Bind, PlanSpot.Run),
     });
 }

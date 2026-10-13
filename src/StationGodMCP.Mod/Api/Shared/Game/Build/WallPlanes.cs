@@ -124,14 +124,6 @@ internal sealed class PlaneView
         return new PlaneView(plane, side);
     }
 
-    /// <summary>A call's plane, side, looking and around read as Of reads them.</summary>
-    internal static PlaneView Read(Args args, GridFacts facts, CameraUse camera, out Vec3? around)
-    {
-        JToken? given = args.Optional("around");
-        return Of(args.OptionalBool("looking") ?? false, args.OptionalString("plane"), args.OptionalString("side"),
-            given != null ? PointOf(given) : null, facts, camera, out around);
-    }
-
     internal static FacePlane ParsePlane(string text)
     {
         string[] parts = text.Trim().ToLowerInvariant().Split('=');
@@ -160,12 +152,6 @@ internal sealed class PlaneView
         bool plusRoom = facts.RoomAt(LargeAt(onPlane + Vec3.Of(plus) * 1.0)) != null;
         bool minusRoom = facts.RoomAt(LargeAt(onPlane - Vec3.Of(plus) * 1.0)) != null;
         return plusRoom || !minusRoom ? plus : plus.Opposite;
-    }
-
-    internal static Vec3 PointOf(JToken token)
-    {
-        Metres point = BuildArgs.PositionOf(token, "around");
-        return new Vec3(point.X, point.Y, point.Z);
     }
 
     internal static GridCell LargeAt(Vec3 point) =>
