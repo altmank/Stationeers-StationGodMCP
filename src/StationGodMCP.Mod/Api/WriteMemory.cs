@@ -19,7 +19,7 @@ internal static class WriteMemoryApi
     {
         bool report = ReportOnly.Asked(args);
         ThingId id = args.ThingId("reference_id");
-        int start = DeviceMemory.StartAddress(args);
+        int start = args.Int("start_address", 0, int.MaxValue);
         List<double> values = DeviceMemory.Values(args);
         return WriteCheck<MemoryWritePlan>.Run(() => Check(args, id, start, values)).Answer(report, Write, Describe);
     }

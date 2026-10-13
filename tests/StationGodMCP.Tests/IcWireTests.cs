@@ -110,10 +110,10 @@ public sealed class IcWireTests
             "compile_error_line", "compile_error_type", "language", "holder", "chip", "lua");
         var old = new
         {
-            gateway_id = "world", reference_id = "300", db = DeviceWireTests.OldDevice(),
+            gateway_id = "world", reference_id = "300", db = DeviceViewFixtures.OldDevice(),
             pins = new List<object>
             {
-                new { selector = "d0", connected = true, target = DeviceWireTests.OldDevice() },
+                new { selector = "d0", connected = true, target = DeviceViewFixtures.OldDevice() },
                 new { selector = "d1", connected = false, target = (object?)null }
             },
             aliases = new List<object>(),
@@ -131,10 +131,10 @@ public sealed class IcWireTests
             note = "A prefab/name-hash selector is unique only while exactly one visible device has that pair. " +
                 "Renaming a device changes its NameHash."
         };
-        IcSelectorsView view = new IcSelectorsView(Place, DeviceWireTests.NewDevice(),
+        IcSelectorsView view = new IcSelectorsView(Place, DeviceViewFixtures.NewDevice(),
             new List<PinTargetView>
             {
-                new PinTargetView(0, true, DeviceWireTests.NewDevice()), new PinTargetView(1, false, null)
+                new PinTargetView(0, true, DeviceViewFixtures.NewDevice()), new PinTargetView(1, false, null)
             },
             new List<AliasView>(),
             new List<StableSelectorView>

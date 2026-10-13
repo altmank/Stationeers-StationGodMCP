@@ -8,53 +8,53 @@ using Assets.Scripts.Objects.Motherboards;
 using Assets.Scripts.Objects.Pipes;
 using Networks;
 using StationGodMCP.Api.Shared;
-using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure.DeviceReads;
 using StationGodMCP.Pure.Profiling;
 using StationGodMCP.Pure.Protocol;
 
-namespace StationGodMCP.Api;
+namespace StationGodMCP.Api.Shared.Game;
 
 /// <summary>
-/// read_devices: many reads of many things in one request, all in the same frame (one Update; not one atmospherics
+/// Many reads of many things in one request, as read logic's items form and a devices subscription read them, all in
+/// the same frame (one Update; not one atmospherics
 /// tick: the atmosphere thread may run between two items). Per item: logic values as read_logic reads them, slot logic
-/// as inspect_slots reads it, one atmosphere compact (its own, its internal one, or the pipe network at a device port),
-/// and reagents as the reagents tool reads them. Values come back keyed by the name the client sent. An id that names
+/// as inspect slots reads it, one atmosphere compact (its own, its internal one, or the pipe network at a device port),
+/// and reagents as inspect reagents reads them. Values come back keyed by the name the client sent. An id that names
 /// nothing fails its item; a part that cannot be read (the device out of scope) fails in the item's errors; a logic
 /// name that does not read fails in logic_errors. Read only.
 /// </summary>
-internal static class ReadDevicesApi
+internal static class DeviceReads
 {
     private static readonly PipeFamily Pipes = new PipeFamily();
 
+    /// <summary>
+    /// A parsed request in a scope (read logic's items, a subscription's sample): each item by its id ("looking_at"
+    /// the thing under the crosshair; label names the call in that refusal), failing alone.
+    /// </summary>
     [Profiled]
-    internal static ReadDevicesView Handle(Args args)
-    {
-        DeviceScope scope = Devices.Scope(args);
-        DeviceReadRequest request = DeviceReadParse.Of(args.Optional("items"), args.Optional("include")) switch
-        {
-            DeviceReadParse.Parsed parsed => parsed.Request,
-            DeviceReadParse.Refused refused => throw ApiErrors.InvalidArgument(refused.Message),
-            _ => throw ApiErrors.InvalidArgument(Vocabulary.Text("Unknown {tool:read_devices} request.")),
-        };
-
-        return Read(scope, request);
-    }
-
-    /// <summary>An already parsed request in a scope: a subscription's sample, without reading its items again.</summary>
-    internal static ReadDevicesView Read(DeviceScope scope, DeviceReadRequest request)
+    internal static ReadDevicesView Read(DeviceScope scope, DeviceReadRequest request, string label)
     {
         BatchBuilder batch = new BatchBuilder(request.Items.Count);
         for (int index = 0; index < request.Items.Count; index++)
         {
             DeviceReadItem item = request.Items[index];
-            ThingId id = new ThingId(item.ReferenceId);
+            ThingId id;
+            try
+            {
+                id = TargetIds.Of(item.Id, label);
+            }
+            catch (ApiException refused)
+            {
+                batch.Failed(new DeviceReadFailedView(index, item.Id, refused));
+                continue;
+            }
+
             Subject? subject = Subject.Find(id);
             if (subject == null)
             {
-                batch.Failed(new DeviceReadFailedView(index, id, ApiErrors.ThingNotFound(id)));
+                batch.Failed(new DeviceReadFailedView(index, id.ToString(), ApiErrors.ThingNotFound(id)));
                 continue;
             }
 
@@ -192,7 +192,7 @@ internal static class ReadDevicesApi
             : throw NoAtmosphere(subject, "has no internal atmosphere");
     }
 
-    // What atmosphere_contents lists first for the id when it is the id's own: a thing's internal atmosphere, a pipe's
+    // What inspect atmosphere lists first for the id when it is the id's own: a thing's internal atmosphere, a pipe's
     // or landing pad piece's network, a network id's, an atmosphere id's. A device's connected networks are not its
     // own: they are asked for by port.
     private static AtmosphereReadView Own(Subject subject)
@@ -250,8 +250,7 @@ internal static class ReadDevicesApi
             ? AtmosphereOwners.CompactOf(network.Atmosphere, AtmosphereOwners.SourceOf(network),
                 new ThingId(network.ReferenceId))
             : throw ApiErrors.Refused("no_atmosphere",
-                $"Network {network.ReferenceId} has no atmosphere yet ({Vocabulary.Tool("atmosphere_contents")} " +
-                "reports it as null).");
+                $"Network {network.ReferenceId} has no atmosphere yet (inspect atmosphere reports it as null).");
 
     private static ApiException NoAtmosphere(Subject subject, string why) =>
         ApiErrors.Refused("no_atmosphere", $"{subject.Name} ({subject.Id}) {why}.");
@@ -280,7 +279,7 @@ internal static class ReadDevicesApi
 
         internal string Name => Thing != null ? Names.Of(Thing) : Network != null ? "network" : "atmosphere";
 
-        // The lookups atmosphere_contents makes, in its order.
+        // The lookups inspect atmosphere makes, in its order.
         internal static Subject? Find(ThingId id)
         {
             Thing thing = Thing.Find(id.Value);

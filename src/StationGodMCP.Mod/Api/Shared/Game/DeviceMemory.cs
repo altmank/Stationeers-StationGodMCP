@@ -19,8 +19,6 @@ internal static class DeviceMemory
 {
     internal const int MaximumValues = 512;
 
-    internal static int StartAddress(Args args) => args.Int("start_address", 0, int.MaxValue);
-
     /// <summary>
     /// Refuses a call the device's memory cannot answer, before any address is touched: a circuit holder (an IC
     /// Housing, a suit) with no chip, whose ReadMemory and WriteMemory throw NullReferenceException, and a range past

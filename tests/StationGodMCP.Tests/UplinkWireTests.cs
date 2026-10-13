@@ -24,9 +24,9 @@ public sealed class UplinkWireTests
     {
         UplinkView uplink = new UplinkView(Downlink(41, Rocket), true,
             new List<DownlinkView> { Downlink(41, Rocket), Downlink(42, null) });
-        JObject described = JObject.Parse(WireCheck.New(new DescribeDeviceView(DeviceWireTests.NewDevice(),
+        JObject described = JObject.Parse(WireCheck.New(new DescribeDeviceView(DeviceViewFixtures.NewDevice(),
             new List<LogicAccessView>(), false, null, null, uplink)));
-        JObject plain = JObject.Parse(WireCheck.New(new DescribeDeviceView(DeviceWireTests.NewDevice(),
+        JObject plain = JObject.Parse(WireCheck.New(new DescribeDeviceView(DeviceViewFixtures.NewDevice(),
             new List<LogicAccessView>(), false)));
 
         Assert.Equal("41", (string?)described["uplink"]!["downlink"]!["reference_id"]);

@@ -142,19 +142,12 @@
     "Argument 'genes' must be an object of gene name to value, with at least one gene.",
     "Gene {gene}: {value} is outside the game's range {GeneView.Minimum} to {GeneView.Maximum}; pass force to write it anyway."
   ],
-  "Api/ReadDevices.cs": [
-    "Network {network.ReferenceId} has no atmosphere yet (atmosphere_contents reports it as null).",
-    "Unknown read_devices request."
-  ],
   "Api/ReplaceStructures.cs": [
     "Pass job_id, or reference_ids or room_id.",
     "a dry run (it is for a confirmed run or a job_id poll)"
   ],
   "Api/RocketFlightLog.cs": [
-    "Argument 'action' must be start, stop, read, list or clear.",
-    "Argument 'interval_s' must be from 0.1 to 600.",
-    "This rocket has no flight log: start one with action start.",
-    "pass limit (max {page.Maximum}), every, or offset {next} (offset counts samples)"
+    "Argument 'interval_s' must be from 0.1 to 600."
   ],
   "Api/RocketForecast.cs": [
     "Argument 'min_confidence' must be from 0 to 1.",

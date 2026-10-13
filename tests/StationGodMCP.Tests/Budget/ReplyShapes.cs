@@ -142,11 +142,6 @@ internal static class ReplyShapes
             S<ItemMovedView>(),
             S<BatchResultView>().List("BatchResultView.Results", W.TypicalBatch).Holds("BatchResultView.Results", typeof(ItemMovedView))
         };
-        shapes["network_snapshot"] = new[]
-        {
-            S<NetworkSnapshotView>().List("NetworkSnapshotView.Devices", Math.Min(W.DataNetworkDevices, D.SnapshotDevices))
-                .List("DeviceSnapshotView.LogicValues", 30)
-        };
         shapes["paint"] = new[]
         {
             S<PaintColorsView>().List("PaintColorsView.Colors", 20),
@@ -216,26 +211,6 @@ internal static class ReplyShapes
             S<ConsoleReadView>().List("ConsoleReadView.Lines", D.ConsoleLines)
                 .Text("ConsoleLineView.Text", new string('t', 90))
         };
-        shapes["read_devices"] = new[]
-        {
-            // A poll of the devices the caller names, six logic values each; the reply holds what was asked.
-            S<ReadDevicesView>().List("ReadDevicesView.Results", W.TypicalBatch)
-                .Holds("ReadDevicesView.Results", typeof(DeviceReadItemView)).List("DeviceReadItemView.Logic", 6)
-                .List("DeviceReadItemView.LogicErrors", 0).List("DeviceReadItemView.Errors", 0)
-                .Absent("DeviceReadItemView.Slots", "DeviceReadItemView.Atmosphere", "DeviceReadItemView.Reagents"),
-            // One device read whole: slots, its atmosphere, its reagents.
-            S<ReadDevicesView>().List("ReadDevicesView.Results", 1)
-                .Holds("ReadDevicesView.Results", typeof(DeviceReadItemView)).List("DeviceReadItemView.Logic", 6)
-                .List("DeviceReadItemView.LogicErrors", 0).List("DeviceReadItemView.Errors", 0)
-                .List("DeviceReadItemView.Slots", 2).List("SlotReadView.Logic", 3).List("SlotReadView.LogicErrors", 0)
-                .List("AtmosphereReadView.Contents", 5).List("ReagentsReadView.Reagents", 4)
-        };
-        shapes["read_logic"] = new[] { S<LogicReadView>() };
-        shapes["read_logic_many"] = new[]
-        {
-            S<LogicBatchView>().List("LogicBatchView.Results", W.TypicalBatch).Holds("LogicBatchView.Results", typeof(LogicReadItemView))
-        };
-        shapes["read_memory"] = new[] { S<MemoryReadView>().List("MemoryReadView.Values", D.IcStackWindow) };
         foreach (string tool in new[] { "replace_frames", "replace_walls" })
         {
             shapes[tool] = new[] { StructureSwapReport() };

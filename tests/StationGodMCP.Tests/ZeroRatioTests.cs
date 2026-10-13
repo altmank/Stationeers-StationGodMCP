@@ -80,8 +80,8 @@ public sealed class ZeroRatioTests(ITestOutputHelper output)
             Add(new LogicTypeView(id++, "Setting" + index), 101.325 + index);
         }
 
-        int before = WireCheck.New(new DeviceSnapshotView(DeviceWireTests.NewDevice(), all)).Length;
-        int after = WireCheck.New(new DeviceSnapshotView(DeviceWireTests.NewDevice(), kept, skipped)).Length;
+        int before = WireCheck.New(new DeviceSnapshotView(DeviceViewFixtures.NewDevice(), all)).Length;
+        int after = WireCheck.New(new DeviceSnapshotView(DeviceViewFixtures.NewDevice(), kept, skipped)).Length;
         output.WriteLine($"network_snapshot, one filtration unit: every value {before} bytes, zero ratios left out " +
                          $"{after} bytes ({skipped} left out)");
 
@@ -104,5 +104,5 @@ public sealed class ZeroRatioTests(ITestOutputHelper output)
     }
 
     private static JObject Snapshot(int? omitted) =>
-        JObject.Parse(WireCheck.New(new DeviceSnapshotView(DeviceWireTests.NewDevice(), new List<object>(), omitted)));
+        JObject.Parse(WireCheck.New(new DeviceSnapshotView(DeviceViewFixtures.NewDevice(), new List<object>(), omitted)));
 }

@@ -47,6 +47,10 @@ internal static class VerbHandlers
         VerbHandler.For(InspectRocketOptions.Spec, InspectRocketOptions.Bind, InspectRocket.Run),
         VerbHandler.For(InspectVaultOptions.Spec, InspectVaultOptions.Bind, InspectVault.Run),
         VerbHandler.For(ReadClockOptions.Spec, ReadClockOptions.Bind, ReadClock.Run),
+        VerbHandler.For(ReadLogicOptions.Spec, ReadLogicOptions.Bind, ReadLogic.Run),
+        VerbHandler.For(ReadSnapshotOptions.Spec, ReadSnapshotOptions.Bind, ReadSnapshot.Run),
+        VerbHandler.For(ReadMemoryOptions.Spec, ReadMemoryOptions.Bind, ReadMemory.Run),
+        VerbHandler.For(ReadFlightLogOptions.Spec, ReadFlightLogOptions.Bind, ReadFlightLog.Run),
         ReadSample.Handler(static () => StationGodMod.Hub),
     });
 }

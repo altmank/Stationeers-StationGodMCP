@@ -6,7 +6,7 @@ using StationGodMCP.Api.Shared;
 
 namespace StationGodMCP.Api.Views;
 
-/// <summary>read_devices: every item's reads, all made in one frame, with the clock when asked for.</summary>
+/// <summary>read logic's items: every item's reads, all made in one frame, with the clock when asked for.</summary>
 internal sealed class ReadDevicesView
 {
     internal ReadDevicesView(string gatewayId, GameClockView? clock, BatchResultView batch)
@@ -106,16 +106,16 @@ internal sealed class DeviceReadItemView : BatchItemView
     public Dictionary<string, ErrorView>? Errors { get; }
 }
 
-/// <summary>An item whose reference id names nothing: no thing, network or atmosphere has it.</summary>
+/// <summary>An item whose id names nothing: no thing, network or atmosphere has it, or nothing is under the crosshair.</summary>
 internal sealed class DeviceReadFailedView : BatchItemView
 {
-    internal DeviceReadFailedView(int index, ThingId referenceId, ApiException error) : base(index, ok: false)
+    internal DeviceReadFailedView(int index, string referenceId, ApiException error) : base(index, ok: false)
     {
         ReferenceId = referenceId;
         Error = new ErrorView(error.Code, error.Message);
     }
 
-    public ThingId ReferenceId { get; }
+    public string ReferenceId { get; }
 
     public ErrorView Error { get; }
 }

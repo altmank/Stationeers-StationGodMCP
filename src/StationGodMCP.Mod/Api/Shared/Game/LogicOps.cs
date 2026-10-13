@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using Assets.Scripts.Objects.Motherboards;
+using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared.Game.Lint;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure.Lint;
@@ -17,14 +18,15 @@ namespace StationGodMCP.Api.Shared.Game;
 /// </summary>
 internal static class LogicOps
 {
-    internal static LogicRead Read(DeviceScope scope, Args args)
+    /// <summary>One logic type of the device in the scope, as read logic reads it.</summary>
+    internal static LogicRead Read(DeviceScope scope, ThingId id, JToken logic)
     {
-        ScopedTarget device = Devices.Require(scope, args.ThingId("reference_id"));
-        LogicType type = LogicTypes.Parse(args.Optional("logic_type"));
+        ScopedTarget device = Devices.Require(scope, id);
+        LogicType type = LogicTypes.Parse(logic);
         return new LogicRead(new ThingId(device.ReferenceId), LogicTypes.ViewOf(type), ReadValue(device, type));
     }
 
-    /// <summary>One value as read_logic reads it: refused when the device does not expose the type as readable.</summary>
+    /// <summary>One value as read logic reads it: refused when the device does not expose the type as readable.</summary>
     internal static double ReadValue(ScopedTarget device, LogicType type)
     {
         LogicTypes.RequireReadable(device, type);
@@ -83,24 +85,6 @@ internal static class LogicOps
         }
     }
 
-    internal static BatchResultView ReadMany(DeviceScope scope, List<Args?> items)
-    {
-        BatchBuilder batch = new BatchBuilder(items.Count);
-        for (int index = 0; index < items.Count; index++)
-        {
-            if (TryRead(scope, items[index], index, "reads", out LogicRead? read, out ApiException? error))
-            {
-                batch.Succeeded(new LogicReadItemView(index, read!));
-            }
-            else
-            {
-                batch.Failed(Failure(items[index], index, error!));
-            }
-        }
-
-        return batch.Build();
-    }
-
     /// <summary>
     /// write_logic_many's writes in order, each failing alone: an entry's refusal (lint_refused included) fails that
     /// entry, and the rest still run. Acting, each entry is checked right before its own write, after the writes
@@ -126,28 +110,6 @@ internal static class LogicOps
         }
 
         return batch.Build();
-    }
-
-    private static bool TryRead(DeviceScope scope, Args? item, int index, string name, out LogicRead? read,
-        out ApiException? error)
-    {
-        read = null;
-        error = item == null ? NotAnObject(name, index) : null;
-        if (item == null)
-        {
-            return false;
-        }
-
-        try
-        {
-            read = Read(scope, item);
-            return true;
-        }
-        catch (ApiException refused)
-        {
-            error = refused;
-            return false;
-        }
     }
 
     private static bool TryWrite(DeviceScope scope, Args? item, int index, bool allowLint, bool report,

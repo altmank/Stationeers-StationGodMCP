@@ -38,13 +38,8 @@ internal static class RocketFlightLogApi
             case "clear":
                 RocketFlightRecorder.Clear(Id(args));
                 return new FlightLogClearedView(true);
-            case "list":
-                return List();
-            case "read":
-                return Show(RocketFlightRecorder.Require(Id(args)), args);
             default:
-                throw ApiErrors.InvalidArgument(Vocabulary.Text("Argument '{arg:action}' must be start, stop, read, " +
-                    "list or clear."));
+                throw ApiErrors.InvalidArgument("write flight_log: action is start, stop or clear.");
         }
     }
 
@@ -78,42 +73,20 @@ internal static class RocketFlightLogApi
         return Show(entry, args);
     }
 
-    private static object List()
-    {
-        List<FlightLogView> logs = new List<FlightLogView>(2);
-        foreach (RocketFlightLogEntry entry in RocketFlightRecorder.Entries)
-        {
-            logs.Add(View(entry, new List<FlightSampleView>(), 0, 1));
-        }
-
-        return new FlightLogListView(logs);
-    }
-
     private static FlightLogView Show(RocketFlightLogEntry entry, Args args)
     {
         PageRequest page = PageRequest.From(args, DefaultLimit, MaximumLimit);
         int every = args.OptionalInt("every", 1, 100000) ?? 1;
-        List<FlightSample> samples = entry.Buffer.Page(page.Offset, page.Limit, every);
-        List<FlightSampleView> rows = new List<FlightSampleView>(samples.Count);
-        for (int index = 0; index < samples.Count; index++)
-        {
-            rows.Add(new FlightSampleView(samples[index]));
-        }
-
-        int next = page.Offset + rows.Count * every;
-        int reachable = (entry.Buffer.Count + every - 1) / every;
+        FlightLogView view = FlightLogs.View(entry, page.Offset, page.Limit, every);
+        int next = page.Offset + view.Rows.Count * every;
         if (page.Offset > 0 || next < entry.Buffer.Count)
         {
-            Truncations.Note("rows", rows.Count, reachable,
-                $"pass {Vocabulary.Arg("limit")} (max {page.Maximum}), {Vocabulary.Arg("every")}, or " +
-                $"{Vocabulary.Arg("offset")} {next} ({Vocabulary.Arg("offset")} counts samples)", false);
+            Truncations.Note("rows", view.Rows.Count, (entry.Buffer.Count + every - 1) / every,
+                $"pass limit (max {page.Maximum}), every, or offset {next} (offset counts samples)", false);
         }
-        return View(entry, rows, page.Offset, every);
-    }
 
-    private static FlightLogView View(RocketFlightLogEntry entry, List<FlightSampleView> rows, int offset, int every) =>
-        new FlightLogView(new ThingId(entry.RocketId), entry.RocketName, entry.Recording, entry.IntervalS,
-            entry.CsvPath, entry.Buffer, rows, offset, every);
+        return view;
+    }
 
     private static string? SaveFolder()
     {
@@ -122,6 +95,39 @@ internal static class RocketFlightLogApi
         return string.IsNullOrEmpty(station)
             ? null
             : Path.Combine(StationSaveUtils.GetSavePathSavesSubDir().FullName, station);
+    }
+}
+
+/// <summary>
+/// The flight recordings as read flight_log reads them: one recording's rows, every n-th sample from offset (counted in
+/// samples), at most limit, or every recording without its rows. Read only.
+/// </summary>
+internal static class FlightLogs
+{
+    /// <summary>The recordings, each without its rows.</summary>
+    internal static FlightLogListView List()
+    {
+        List<FlightLogView> logs = new List<FlightLogView>(2);
+        foreach (RocketFlightLogEntry entry in RocketFlightRecorder.Entries)
+        {
+            logs.Add(View(entry, 0, 0, 1));
+        }
+
+        return new FlightLogListView(logs);
+    }
+
+    /// <summary>One recording with every n-th of its samples from offset, at most limit.</summary>
+    internal static FlightLogView View(RocketFlightLogEntry entry, int offset, int limit, int every)
+    {
+        List<FlightSample> samples = limit > 0 ? entry.Buffer.Page(offset, limit, every) : new List<FlightSample>();
+        List<FlightSampleView> rows = new List<FlightSampleView>(samples.Count);
+        for (int index = 0; index < samples.Count; index++)
+        {
+            rows.Add(new FlightSampleView(samples[index]));
+        }
+
+        return new FlightLogView(new ThingId(entry.RocketId), entry.RocketName, entry.Recording, entry.IntervalS,
+            entry.CsvPath, entry.Buffer, rows, offset, every);
     }
 }
 
@@ -180,8 +186,8 @@ internal static class RocketFlightRecorder
     internal static RocketFlightLogEntry Require(long rocketId) =>
         Logs.TryGetValue(rocketId, out RocketFlightLogEntry entry)
             ? entry
-            : throw ApiErrors.Refused("no_flight_log", Vocabulary.Text("This rocket has no flight log: start one " +
-                "with {arg:action} start."));
+            : throw ApiErrors.Refused("no_flight_log", "This rocket has no flight log: start one with write " +
+                "flight_log, action start.");
 
     internal static RocketFlightLogEntry Stop(long rocketId)
     {

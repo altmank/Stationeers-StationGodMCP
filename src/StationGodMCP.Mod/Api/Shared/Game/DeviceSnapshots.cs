@@ -5,42 +5,36 @@ using System.Collections.Generic;
 using Assets.Scripts.Objects.Motherboards;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
-using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Profiling;
 
-namespace StationGodMCP.Api;
+namespace StationGodMCP.Api.Shared.Game;
 
 /// <summary>
-/// network_snapshot: the logic values of every device in the scope that matches (prefab_hash, name_contains,
-/// reference_ids), up to max_devices by reference id: the listed logic_types, or every type the device reads less the
-/// gas and liquid ratios reading 0 (Pure/ZeroRatios; include_zero_ratios keeps them). Read only.
+/// The logic values of every device in the scope that matches, as read snapshot reads them, up to maximum by reference
+/// id: the logic types listed, or every type the device reads less the gas and liquid ratios reading 0
+/// (Pure/ZeroRatios; keepZeroRatios keeps them). Read only.
 /// </summary>
-internal static class NetworkSnapshotApi
+internal static class DeviceSnapshots
 {
-    private const int MaximumDevices = 256;
-    private const int MaximumIds = 256;
-    private const int MaximumLogicTypes = 64;
-
+    /// <summary>
+    /// The devices kept: by prefab (null: any), part of the shown name, and the ids (null: any); logic the types to
+    /// read (null: every readable one).
+    /// </summary>
     [Profiled]
-    internal static NetworkSnapshotView Handle(Args args)
+    internal static NetworkSnapshotView Read(DeviceScope scope, Pure.Verbs.PrefabFilter? prefab, string? name,
+        HashSet<long>? ids, JArray? logic, bool keepZeroRatios, int maximum)
     {
-        DeviceScope scope = Devices.Scope(args);
-        int? prefabHash = args.OptionalInt("prefab_hash", int.MinValue, int.MaxValue);
-        string? nameContains = args.OptionalString("name_contains");
-        int maximum = args.OptionalInt("max_devices", 1, MaximumDevices) ?? ReplyDefaults.SnapshotDevices;
-        HashSet<long>? ids = args.Has("reference_ids") ? IdSet(args.ThingIds("reference_ids", MaximumIds)) : null;
-        List<LogicType>? requested =
-            args.Has("logic_types") ? Types(args.Array("logic_types", MaximumLogicTypes)) : null;
-        bool skipZeroRatios = requested == null && !(args.OptionalBool("include_zero_ratios") ?? false);
+        List<LogicType>? requested = logic != null ? Types(logic) : null;
+        bool skipZeroRatios = requested == null && !keepZeroRatios;
 
         List<ScopedTarget> matches = new List<ScopedTarget>();
         foreach (ScopedTarget device in scope.SortedDevices())
         {
-            if ((!prefabHash.HasValue || device.PrefabHash == prefabHash.Value) &&
+            if ((prefab == null || prefab.Keeps(device.PrefabName, device.PrefabHash)) &&
                 (ids == null || ids.Contains(device.ReferenceId)) &&
-                ItemFilter.Contains(device.DisplayName, nameContains))
+                ItemFilter.Contains(device.DisplayName, name))
             {
                 matches.Add(device);
             }
@@ -56,19 +50,7 @@ internal static class NetworkSnapshotApi
                 skipZeroRatios ? zeroRatios : null));
         }
 
-        Pure.Shaping.Truncations.Capped("devices", snapshots.Count, matches.Count, "max_devices", MaximumDevices);
         return new NetworkSnapshotView(scope.Id, snapshots, matches.Count);
-    }
-
-    private static HashSet<long> IdSet(List<ThingId> ids)
-    {
-        HashSet<long> set = new HashSet<long>();
-        foreach (ThingId id in ids)
-        {
-            set.Add(id.Value);
-        }
-
-        return set;
     }
 
     // Each type once, in the order given.

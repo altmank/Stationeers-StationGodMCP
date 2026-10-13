@@ -1,0 +1,108 @@
+#nullable enable
+
+using System.Collections.Generic;
+using Assets.Scripts.Objects.Pipes;
+using Assets.Scripts.Objects.Motherboards;
+using Newtonsoft.Json.Linq;
+using StationGodMCP.Api;
+using StationGodMCP.Api.Shared;
+using StationGodMCP.Api.Shared.Game;
+using StationGodMCP.Api.Shared.Game.Flight;
+using StationGodMCP.Api.Views;
+using StationGodMCP.Pure.Verbs;
+
+namespace StationGodMCP.Verbs;
+
+/// <summary>
+/// read memory (catalogue read.json): consecutive values of a device's memory (IMemoryReadable.ReadMemory: a chip's
+/// stack, a Logic Sorter's, a satellite dish's) from start, count of them, as a chip's get instruction reads them
+/// (DeviceMemory). The device in the gateway's scope, by id or "looking_at"; a list of ids answers one row each. Read
+/// only.
+/// </summary>
+internal static class ReadMemory
+{
+    internal static VerbOutcome Run(ReadMemoryOptions options)
+    {
+        DeviceScope scope = Devices.Scope(options.Gateway);
+        int start = (int)System.Math.Min(options.Start!.Value, int.MaxValue);
+        int count = (int)options.Count!.Value;
+        return IdAnswers.Things(options.Selector.Ids!, ReadMemoryOptions.Spec.Label, id =>
+        {
+            ScopedTarget device = Devices.Require(scope, id);
+            if (device.Thing is not IMemoryReadable memory)
+            {
+                throw ApiErrors.Refused("memory_not_readable",
+                    $"Device {device.ReferenceId} does not expose readable memory.");
+            }
+
+            DeviceMemory.RequireRange(device, start, count);
+            return new MemoryReadView(DeviceMemory.Place(scope, device, start), DeviceMemory.Read(memory, start, count));
+        });
+    }
+}
+
+/// <summary>
+/// read snapshot (catalogue read.json): the logic values of every device in the gateway's scope kept by id, prefab and
+/// name, up to limit by reference id: the logic types listed, or every type each reads less the gas and liquid ratios
+/// reading 0 (include zero_ratios keeps them) (DeviceSnapshots); {gateway_id, devices, count, matched_count,
+/// truncated}. Read only.
+/// </summary>
+internal static class ReadSnapshot
+{
+    internal static VerbOutcome Run(ReadSnapshotOptions options)
+    {
+        Selector selector = options.Selector;
+        HashSet<long>? ids = null;
+        if (selector.Ids is { } given)
+        {
+            ids = new HashSet<long>();
+            foreach (string id in given.Ids)
+            {
+                ids.Add(TargetIds.Of(id, ReadSnapshotOptions.Spec.Label).Value);
+            }
+        }
+
+        return Answer.Of(DeviceSnapshots.Read(Devices.Scope(options.Gateway), selector.Prefab, selector.Name, ids,
+            options.Logic as JArray, options.Fields.Includes("zero_ratios"), options.Paging.Limit ?? int.MaxValue));
+    }
+}
+
+/// <summary>
+/// read flight_log (catalogue read.json): action read, one rocket's recording (FlightLogs) with every n-th of its
+/// samples from offset, at most limit (samples are no things a cursor keeps, so they page by offset only); action list,
+/// every recording without its rows. id names the rocket by its id, name, network or any part; left out, the only
+/// rocket. Read only.
+/// </summary>
+internal static class ReadFlightLog
+{
+    internal static VerbOutcome Run(ReadFlightLogOptions options)
+    {
+        if (options.Action == "list")
+        {
+            return Answer.Of(FlightLogs.List());
+        }
+
+        if (options.Paging.OffsetOnly() is { } problem)
+        {
+            return new VerbOutcome.Refused(OptionProblem.Refusal(ReadFlightLogOptions.Spec.Label, new[] { problem }));
+        }
+
+        Paging paging = options.Paging;
+        int every = (int)options.Every!.Value;
+        if (options.Selector.Ids is not { } ids)
+        {
+            return Answer.Of(Read(RocketLocator.One((string?)null), paging, every));
+        }
+
+        return IdAnswers.Of(ids, id =>
+        {
+            Objects.Rockets.Rocket rocket = RocketLocator.Find(id);
+            return (rocket.ReferenceId.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                Read(rocket, paging, every));
+        });
+    }
+
+    private static FlightLogView Read(Objects.Rockets.Rocket rocket, Paging paging, int every) =>
+        FlightLogs.View(RocketFlightRecorder.Require(rocket.ReferenceId), paging.Offset, paging.Limit ?? int.MaxValue,
+            every);
+}

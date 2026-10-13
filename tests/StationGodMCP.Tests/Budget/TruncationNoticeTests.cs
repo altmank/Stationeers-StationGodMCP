@@ -230,7 +230,7 @@ public sealed class TruncationNoticeTests
             }
         }
 
-        Assert.True(checkedFiles >= 20, $"only {checkedFiles} files set a cap: the scan found no sources");
+        Assert.True(checkedFiles >= 10, $"only {checkedFiles} files set a cap: the scan found no sources");
         Assert.True(unnoted.Count == 0, "Caps a list without noting it: " + string.Join(", ", unnoted));
     }
 }

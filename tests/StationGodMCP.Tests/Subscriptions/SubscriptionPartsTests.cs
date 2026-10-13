@@ -115,16 +115,13 @@ public sealed class SubscriptionPartsTests
     }
 
     [Fact]
-    public void TheQueryKeepsReadDevicesOwnArguments()
+    public void TheQueryKeepsTheGatewayTheClockAndTheItems()
     {
         SubscribeRequest.Devices devices = Assert.IsType<SubscribeRequest.Devices>(Parse(
             """{"topic": "devices", "gateway_id": "gw1", "interval_s": 2, "include": ["clock"], "items": [{"reference_id": "5", "logic": ["On"]}]}"""));
 
-        JObject arguments = devices.Query.ReadArguments;
-        Assert.Equal("gw1", (string?)arguments["gateway_id"]);
-        Assert.Equal("clock", (string?)arguments["include"]![0]);
-        Assert.Equal("5", (string?)arguments["items"]![0]!["reference_id"]);
-        Assert.Null(arguments["interval_s"]);
+        Assert.Equal("gw1", devices.Query.GatewayId);
+        Assert.Equal("5", Assert.Single(devices.Query.Request.Items).Id);
         Assert.True(devices.Query.Request.Clock);
         Assert.Equal(2.0, devices.Interval.Seconds);
     }

@@ -120,7 +120,7 @@ public sealed class DevicesRound2Tests
     [Fact]
     public void AHolderWithNoNetworkHasNoBatchCount()
     {
-        IcSelectorsView view = new IcSelectorsView(Place, DeviceWireTests.NewDevice(), new List<PinTargetView>(),
+        IcSelectorsView view = new IcSelectorsView(Place, DeviceViewFixtures.NewDevice(), new List<PinTargetView>(),
             new List<AliasView>(), new List<StableSelectorView>(), null);
         JObject json = JObject.Parse(WireCheck.New(view));
 

@@ -100,20 +100,20 @@ internal sealed class SlotReadRequest
     internal int Weight => Logic?.Count ?? DeviceReadBounds.AllSlotValuesWeight;
 }
 
-/// <summary>One item: a reference id and the parts to read from it (at least one).</summary>
+/// <summary>One item: an id (a reference id, or "looking_at") and the parts to read from it (at least one).</summary>
 internal sealed class DeviceReadItem
 {
-    internal DeviceReadItem(long referenceId, IReadOnlyList<SentName>? logic, IReadOnlyList<SlotReadRequest>? slots,
+    internal DeviceReadItem(string id, IReadOnlyList<SentName>? logic, IReadOnlyList<SlotReadRequest>? slots,
         AtmosphereTarget? atmosphere, bool reagents)
     {
-        ReferenceId = referenceId;
+        Id = id;
         Logic = logic;
         Slots = slots;
         Atmosphere = atmosphere;
         Reagents = reagents;
     }
 
-    internal long ReferenceId { get; }
+    internal string Id { get; }
 
     internal IReadOnlyList<SentName>? Logic { get; }
 
@@ -252,7 +252,7 @@ internal abstract class DeviceReadParse
                 Vocabulary.Text("{arg:logic}, {arg:slots}, {arg:atmosphere} or {arg:reagents}: true."));
         }
 
-        return new DeviceReadItem(id, logic, slots, atmosphere, reagents);
+        return new DeviceReadItem(id.ToString(CultureInfo.InvariantCulture), logic, slots, atmosphere, reagents);
     }
 
     private static long ReferenceId(JToken? token, string path)

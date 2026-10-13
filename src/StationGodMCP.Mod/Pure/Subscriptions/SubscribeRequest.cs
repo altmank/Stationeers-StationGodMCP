@@ -6,24 +6,18 @@ using StationGodMCP.Pure.DeviceReads;
 
 namespace StationGodMCP.Pure.Subscriptions;
 
-/// <summary>
-/// What a devices subscription reads each sample: the parsed request, and read_devices' own arguments (gateway_id,
-/// items, include) for the read path that takes them.
-/// </summary>
+/// <summary>What a devices subscription reads each sample: the parsed request, and the gateway it reads through.</summary>
 internal sealed class DeviceSubscriptionQuery
 {
-    internal DeviceSubscriptionQuery(DeviceReadRequest request, string? gatewayId, JObject readArguments)
+    internal DeviceSubscriptionQuery(DeviceReadRequest request, string? gatewayId)
     {
         Request = request;
         GatewayId = gatewayId;
-        ReadArguments = readArguments;
     }
 
     internal DeviceReadRequest Request { get; }
 
     internal string? GatewayId { get; }
-
-    internal JObject ReadArguments { get; }
 }
 
 /// <summary>
@@ -158,19 +152,7 @@ internal abstract class SubscribeRequest
         switch (DeviceReadParse.Of(items, include))
         {
             case DeviceReadParse.Parsed parsed:
-                string? gatewayId = gateway?.Value<string>();
-                JObject readArguments = new JObject { ["items"] = items!.DeepClone() };
-                if (Present(include) != null)
-                {
-                    readArguments["include"] = include!.DeepClone();
-                }
-
-                if (gatewayId != null)
-                {
-                    readArguments["gateway_id"] = gatewayId;
-                }
-
-                return new Devices(new DeviceSubscriptionQuery(parsed.Request, gatewayId, readArguments), interval);
+                return new Devices(new DeviceSubscriptionQuery(parsed.Request, gateway?.Value<string>()), interval);
             case DeviceReadParse.Refused refused:
                 return OverOneCall(items) is SubscriptionRefusal refusal
                     ? new OverLimit(refusal)

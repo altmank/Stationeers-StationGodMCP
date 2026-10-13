@@ -32,7 +32,7 @@ public sealed class ReadDevicesComparerTests
         BatchBuilder batch = new BatchBuilder(2);
         if (device.Missing)
         {
-            batch.Failed(new DeviceReadFailedView(0, new ThingId(5), new ApiException("thing_not_found", "No thing 5.")));
+            batch.Failed(new DeviceReadFailedView(0, "5", new ApiException("thing_not_found", "No thing 5.")));
         }
         else
         {

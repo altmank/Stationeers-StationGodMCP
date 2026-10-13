@@ -1,20 +1,20 @@
 #nullable enable
 
 using System.Collections.Generic;
-using StationGodMCP.Api;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using Assets.Scripts.Objects.Motherboards;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure.Sampling;
 using StationGodMCP.Pure.Subscriptions;
+using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Subscriptions;
 
 /// <summary>
-/// A devices subscription's sample through read_devices' own read path, so a subscription reads exactly what the same
-/// read_devices call would, in the calling frame, from the request parsed once at subscribe; only the gateway is looked
-/// up again, since it may be gone. Errors of the whole call (gateway_not_found) throw as they do there.
+/// A devices subscription's sample through read logic's own read path (DeviceReads), so a subscription reads exactly
+/// what the same read would, in the calling frame, from the request parsed once at subscribe; only the gateway is
+/// looked up again, since it may be gone. Errors of the whole read (gateway_not_found) throw as they do there.
 /// </summary>
 internal sealed class ReadDevicesReader : IDeviceReader<ReadDevicesView>
 {
@@ -25,7 +25,9 @@ internal sealed class ReadDevicesReader : IDeviceReader<ReadDevicesView>
     }
 
     public ReadDevicesView Read(DeviceSubscriptionQuery query) =>
-        ReadDevicesApi.Read(Devices.Scope(new Args(query.ReadArguments)), query.Request);
+        DeviceReads.Read(Devices.Scope(query.GatewayId), query.Request, Label);
+
+    private const string Label = "subscribe";
 }
 
 /// <summary>
@@ -36,8 +38,6 @@ internal sealed class ReadDevicesReader : IDeviceReader<ReadDevicesView>
 internal sealed class SampleReader : ILogicSampleReader<BatchItemView>
 {
     internal static readonly SampleReader Instance = new SampleReader();
-
-    private const string LookingAt = "looking_at";
 
     private SampleReader()
     {
@@ -61,10 +61,8 @@ internal sealed class SampleReader : ILogicSampleReader<BatchItemView>
             SampleTarget target = request.Targets[index];
             try
             {
-                ScopedTarget device = Devices.Require(scope, IdOf(target.Id));
-                LogicType type = LogicTypes.Parse(target.Logic);
-                into.Add(new LogicReadItemView(index, new LogicRead(new ThingId(device.ReferenceId),
-                    LogicTypes.ViewOf(type), LogicOps.ReadValue(device, type))));
+                into.Add(new LogicReadItemView(index,
+                    LogicOps.Read(scope, TargetIds.Of(target.Id, ReadSampleOptions.Spec.Label), target.Logic)));
             }
             catch (ApiException refused)
             {
@@ -74,21 +72,5 @@ internal sealed class SampleReader : ILogicSampleReader<BatchItemView>
         }
 
         return LogicSampleRead.Read(scope.Id, misses);
-    }
-
-    // A target's id: a thing's reference id, or the thing under the crosshair.
-    private static ThingId IdOf(string id)
-    {
-        if (string.Equals(id, LookingAt, System.StringComparison.OrdinalIgnoreCase))
-        {
-            Assets.Scripts.Objects.Thing? thing = PlayerView.Current().Require("read sample").Target;
-            return thing != null
-                ? new ThingId(thing.ReferenceId)
-                : throw ApiErrors.Refused("thing_not_found", "read sample: nothing is under the crosshair for \"looking_at\".");
-        }
-
-        return ThingId.TryRead(new Newtonsoft.Json.Linq.JValue(id), out ThingId read)
-            ? read
-            : throw ApiErrors.Refused("thing_not_found", $"read sample: '{id}' is not a thing's id.");
     }
 }
