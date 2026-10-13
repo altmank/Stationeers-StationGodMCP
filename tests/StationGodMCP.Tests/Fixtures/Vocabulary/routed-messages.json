@@ -34,11 +34,6 @@
     "explain needs rule_id.",
     "name one subject: other_id for a pair, port for one port of a device"
   ],
-  "Api/MoveItem.cs": [
-    "Argument 'to_slot' is required: a slot index, or \"auto\".",
-    "Unknown move_item form.",
-    "force needs to_slot as a slot index, not \"auto\"."
-  ],
   "Api/PasteBlueprint.cs": [
     "Argument 'anchor' is required.",
     "Argument 'rotation' must be 0, 90, 180 or 270."
@@ -201,15 +196,6 @@
     "The dry_run lint rules could not run: {error.GetType().Name}: {error.Message}",
     "{finding.Message} Refused by lint rule {finding.Code} (level problem). To allow it, set its \"level\" to \"warning\" or \"enabled\": false in the save's lint-rules.json (lint_rules lists the files)."
   ],
-  "Api/Shared/Game/MovePlanner.cs": [
-    "Slot {index} of {Names.Of(target)} only shows the vault's store; use vault_deposit to store items.",
-    "Slot {slot.SlotIndex} of {Names.Of(target)} is a plant slot: planting takes one {Names.Of(item)} off the stack, as a player plants, so pass quantity 1.",
-    "The game threw during the move ({thrown.GetType().Name}: {thrown.Message}), but the slot holds the result, so the move is done; check it with container_contents.",
-    "Unknown to_slot.",
-    "{Names.Of(item)} is growing in {SlotAccess.Label(from)}: a player never takes a plant out whole, only harvests its fruit or seeds once it is mature or seeding (see plants) or clears it.",
-    "{SlotAccess.Label(slot)} holds {Names.Of(slot.Get())}, and merge is false, so {Names.Of(item)} does not join it.",
-    "{SlotAccess.Label(slot)} is a fertiliser slot: a player adds one {Names.Of(item)} off the stack, so pass quantity 1."
-  ],
   "Api/Shared/Game/Refunds.cs": [
     "refund_to names {Names.Of(thing)} {id}, which has no slot a refund could go into.",
     "refund_to names {id}, and there is no thing with that reference id."
@@ -259,13 +245,6 @@
     "join_trunk: none of the {Math.Min(candidates.Count, MaximumTries)} taps tried towards network {target} plans ready; the run is left as given.",
     "join_trunk: the run stopped {Gap(miss)} {Describe(plan, miss.Piece)}; the tap ({TapText(miss)}) is added, so the run joins network {target}."
   ],
-  "Api/Shared/Game/SiloMoves.cs": [
-    " and {more} more kinds (container_contents lists them)",
-    "The game could not load entry {entry.Index} ({entry.PrefabName}) from its save data; it stays in the silo. Entries before it were taken (container_contents shows the silo)."
-  ],
-  "Api/Shared/Game/Silos.cs": [
-    "Nothing with reference id {id} is in the world: {Names.Of(silo)} ({silo.ReferenceId}) stores it as entry {index} ({root.PrefabName}). silo_withdraw takes it out."
-  ],
   "Api/Shared/Game/Structures/StructureSwapPlanner.cs": [
     "It is broken (the game's broken state; the game cannot repair it, only deconstruct it); remove it with remove_structure allow_broken and build a new one.",
     "No room {room.Id}; take a room_id from rooms.",
@@ -288,9 +267,6 @@
     "{members.Count} pieces; at most {MaximumPieces} per run. Name them with reference_ids in parts.",
     "{plan.Unmatched.Count} piece(s) have no replacement (see unmatched_pieces); pass skip_unmatched to leave them as they are.",
     "{player.Absence} Nothing to take coils from (or, with refund_to source, to give the refund to); pass from_id."
-  ],
-  "Api/Shared/Game/WorldItems.cs": [
-    "Argument 'location' must be any, ground, player, stored, machine_stock or silo."
   ],
   "Api/Shared/HighlightArgs.cs": [
     "{path} must be an object.",
@@ -325,14 +301,6 @@
     "{name} must be a reference id or {reference_id, port}.",
     "{name}: {problem.Message}"
   ],
-  "Api/Shared/SiloArgs.cs": [
-    "Argument 'prefab_name' must name a prefab, not be empty.",
-    "Argument 'quantity' is required: how many items to take.",
-    "Argument 'to_slot' must be a slot index, or \"auto\".",
-    "Name the things: items, reference_ids, or a filter (prefab_contains, name_contains, location, within_id, near_player_m).",
-    "Name what to take with exactly one of prefab_name and prefab_hash.",
-    "reference_ids"
-  ],
   "Api/Shared/SourceArgs.cs": [
     "Argument '{Argument}' must name 1 to {MaximumSources} things."
   ],
@@ -346,11 +314,6 @@
     "from_prefabs[{index}] must be a prefab name.",
     "job_id"
   ],
-  "Api/Shared/VaultTransferArgs.cs": [
-    "Argument 'items' must name at least one thing; leave it out to move everything.",
-    "from_vault_id and to_vault_id name the same vault; nothing to move.",
-    "items[{index}]: name what to move with exactly one of prefab_name, prefab_hash or reagent."
-  ],
   "Api/Shared/WriteMode.cs": [
     "A real run needs dry_run: false and confirm: true; nothing was changed.",
     "confirm: true needs dry_run: false; nothing was changed."
@@ -359,9 +322,6 @@
     "Nothing to draw: pass placements (or prefab and at), cells or boxes.",
     "show_preview",
     "show_preview takes placements, not a job_id."
-  ],
-  "Api/SiloWithdraw.cs": [
-    "{Names.Of(holder)} has no room for all {request.Quantity} {Names.Of(template)} ({placement.Pooled.Unplaced + placement.Whole.Unplaced} left over; a thing stored with contents or a stored food takes an empty slot of its own). Free a slot, name another holder, or pass allow_ground: true for the rest. Nothing was changed."
   ],
   "Api/TraderTrade.cs": [
     "The player ({human.DisplayName}) carries no credit card; pass credit_card_id.",
@@ -391,16 +351,6 @@
     "network_id (from connections) or reference_ids",
     "network_id (from connections), reference_ids, or min and max (a box)",
     "{name} goes with remove_redundant; ask for it too."
-  ],
-  "Api/VaultDeposit.cs": [
-    "Argument 'kind' must be any, ingot, ore or ice.",
-    "Name the items: items, reference_ids, or a filter (prefab_contains, name_contains, location, within_id, near_player_m, kind).",
-    "reference_ids"
-  ],
-  "Api/VaultWithdraw.cs": [
-    "Argument 'quantity' is required.",
-    "Name what to take with exactly one of prefab_name, prefab_hash or reagent.",
-    "{Names.Of(holder)} takes {VaultAmount.Of(plan.Placed)} of {quantity} {Names.Of(prefab)}; free a slot, name another holder, or pass allow_ground: true for the rest. Nothing was changed."
   ],
   "Api/Views/GasCheckViews.cs": [
     " Further pipe jobs are refused until the world is loaded again, or until a run acknowledges this loss (acknowledge_gas_lost with this job's id, only after the user has agreed).",

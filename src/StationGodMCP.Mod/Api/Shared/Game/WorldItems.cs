@@ -309,31 +309,6 @@ internal sealed class ItemFilter
         new ItemFilter(prefab, name, location ?? AnyLocation, Holder(within), nearPlayerM, area);
 
     /// <summary>A deposit's filter (prefab_contains, name_contains, location, within_id), anywhere.</summary>
-    internal static ItemFilter Parse(Args args)
-    {
-        string location = args.OptionalString("location") ?? AnyLocation;
-        if (location != AnyLocation && location != HolderChain.Ground && location != HolderChain.Player &&
-            location != HolderChain.Stored && location != MachineStock.Location && location != SiloStock.Location)
-        {
-            throw ApiErrors.InvalidArgument(
-                Vocabulary.Text("Argument '{arg:location}' must be any, ground, player, stored, machine_stock or " +
-                    "silo."));
-        }
-
-        string? contains = args.OptionalString("prefab_contains");
-        PrefabFilter? prefab = string.IsNullOrEmpty(contains)
-            ? null
-            : new PrefabFilter(new PrefabPattern[] { new PrefabPattern.Parts(new[] { contains! }) });
-        ThingId? within = args.OptionalThingId("within_id");
-        if (within.HasValue && (!GameLookup.TryFindThing(within.Value, out Thing holder) || holder.IsBeingDestroyed))
-        {
-            throw ApiErrors.ThingNotFound(within.Value);
-        }
-
-        return new ItemFilter(prefab, args.OptionalString("name_contains"), location, within,
-            args.OptionalPositiveDouble("near_player_m"), PointArea.Anywhere);
-    }
-
     // A within that names nothing is refused, so a mistyped id never reads as an empty holder.
     private static ThingId? Holder(string? within)
     {

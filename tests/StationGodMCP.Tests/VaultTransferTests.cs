@@ -5,6 +5,7 @@ using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Verbs;
 using Xunit;
 
 namespace StationGodMCP.Tests;
@@ -19,7 +20,6 @@ public sealed class VaultTransferTests
     private const int IronOreHash = 1758427767;
     private const int IceHash = 1217489948;
 
-    private static Args Of(string json) => new Args(JObject.Parse(json));
 
     private static TransferLine Iron(double grams, double target = 0) =>
         new TransferLine("ItemIronIngot", -1301215609, "Iron", "Iron", countsWhole: false, grams, target);
@@ -132,36 +132,50 @@ public sealed class VaultTransferTests
         Assert.Equal("0:invalid_argument 1:L1:2.5[10>7.5|0>2.5]", Describe(plan));
     }
 
-    // ---- arguments ----
+    // ---- options ----
 
     [Fact]
-    public void ItemsAreOptionalAndEachNamesExactlyOneLine()
+    public void ItemsAreAllOrLinesThatEachNameExactlyOneThing()
     {
-        Assert.Null(VaultTransferRequest.Of(Of("""{"from_vault_id": "1", "to_vault_id": "2"}"""), true).Asks);
+        List<OptionProblem> problems = new List<OptionProblem>();
+        Assert.Null(Order("""{"items": "all"}""", problems)!.Asks);
 
-        VaultTransferRequest request = VaultTransferRequest.Of(Of(
-            """{"from_vault_id": "1", "to_vault_id": "2", "items": [{"reagent": "Iron", "quantity": 5}, {"prefab_hash": 7}]}"""),
-            false);
-        Assert.False(request.DryRun);
-        Assert.Equal(2, request.Asks!.Count);
-        Assert.Equal("Iron", request.Asks[0].Asked);
-        Assert.Equal(5, request.Asks[0].Quantity);
-        Assert.Equal("7", request.Asks[1].Asked);
-        Assert.Null(request.Asks[1].Quantity);
+        VaultTransferOrder order = Order(
+            """{"items": [{"reagent": "Iron", "quantity": 5}, {"prefab": 7}, {"prefab": "ItemIce"}]}""", problems)!;
+        Assert.Empty(problems);
+        Assert.Equal(3, order.Asks!.Count);
+        Assert.Equal("Iron", order.Asks[0].Asked);
+        Assert.Equal(5, order.Asks[0].Quantity);
+        Assert.Equal("7", order.Asks[1].Asked);
+        Assert.Null(order.Asks[1].Quantity);
+        Assert.Equal("ItemIce", order.Asks[2].Asked);
 
-        Assert.Equal("invalid_argument", Assert.Throws<ApiException>(() => VaultTransferRequest.Of(Of(
-            """{"from_vault_id": "1", "to_vault_id": "2", "items": [{"reagent": "Iron", "prefab_name": "ItemIronIngot"}]}"""),
-            true)).Code);
-        Assert.Equal("invalid_argument", Assert.Throws<ApiException>(() => VaultTransferRequest.Of(Of(
-            """{"from_vault_id": "1", "to_vault_id": "2", "items": [{"quantity": 3}]}"""), true)).Code);
+        Assert.Null(Order("""{"items": [{"reagent": "Iron", "prefab": "ItemIronIngot"}]}""", problems));
+        Assert.Equal("items[0]", Assert.Single(problems).Path);
+        problems.Clear();
+        Assert.Null(Order("""{"items": [{"quantity": 3}, {"prefab": "*Ore*"}]}""", problems));
+        Assert.Equal(new[] { "items[0]", "items[1].prefab" }, problems.ConvertAll(problem => problem.Path));
     }
 
     [Fact]
-    public void OneVaultTwiceIsRefused()
+    public void ATopLevelPrefabAndQuantityAreOneLineAndNothingNamedIsMissingTarget()
     {
-        Assert.Equal("same_vault", Assert.Throws<ApiException>(() =>
-            VaultTransferRequest.Of(Of("""{"from_vault_id": "5", "to_vault_id": "5"}"""), true)).Code);
+        List<OptionProblem> problems = new List<OptionProblem>();
+        TransferAsk ask = Assert.Single(Order("""{"prefab": "ItemIronIngot", "quantity": 500}""", problems)!.Asks!);
+        Assert.Equal(("ItemIronIngot", (double?)500), (ask.Asked, ask.Quantity));
+
+        Assert.Null(Order("""{"prefab": "ItemIronIngot", "items": "all"}""", problems));
+        Assert.Equal("prefab", Assert.Single(problems).Path);
+
+        Assert.Null(VaultTransferOrder.Of(Options("{}"), new List<OptionProblem>(), out VerbError? missing));
+        Assert.Equal("missing_target", missing!.Code);
     }
+
+    private static MoveItemOptions Options(string json) =>
+        MoveItemOptions.Bind(new OptionReader(MoveItemOptions.Spec, JObject.Parse(json)));
+
+    private static VaultTransferOrder? Order(string json, List<OptionProblem> problems) =>
+        VaultTransferOrder.Of(Options(json), problems, out _);
 
     // ---- reply ----
 
@@ -176,9 +190,9 @@ public sealed class VaultTransferTests
         batch.Succeeded(new TransferredView(0, new VaultItemView("ore", "ItemIce", "Ice", null, 50), 50, 30, true,
             new TransferSideView(30, 0), new TransferSideView(5, 35)));
         batch.Failed(new NotTransferredView(1, "Gold", new ErrorView("not_in_vault", "no")));
-        VaultTransferView view = new VaultTransferView(true, from, to, batch.Build(), 1);
+        VaultTransferView view = new VaultTransferView(from, to, batch.Build(), 1);
         Assert.Equal(
-            "{\"dry_run\":true,\"from_vault\":{\"reference_id\":\"132000\",\"prefab_name\":\"StructureIngotVault\"," +
+            "{\"route\":\"vault_to_vault\",\"from_vault\":{\"reference_id\":\"132000\",\"prefab_name\":\"StructureIngotVault\"," +
             "\"display_name\":\"Ingot Vault\"},\"from_via\":null,\"to_vault\":{\"reference_id\":\"140000\"," +
             "\"prefab_name\":\"StructureIngotVault\",\"display_name\":\"Ingot Vault\"},\"to_via\":{\"reference_id\":" +
             "\"140001\",\"prefab_name\":\"StructureRemoteVault\",\"display_name\":\"Remote Vault\"},\"items\":{\"results\":" +
@@ -187,6 +201,6 @@ public sealed class VaultTransferTests
             "\"after\":0.0},\"to\":{\"before\":5.0,\"after\":35.0}},{\"index\":1,\"ok\":false,\"asked\":\"Gold\"," +
             "\"error\":{\"code\":\"not_in_vault\",\"message\":\"no\"}}],\"count\":2,\"success_count\":1," +
             "\"error_count\":1},\"partial_count\":1}",
-            WireCheck.New(view));
+            WireCheck.New(ItemMoveReplies.Routed("vault_to_vault", view)));
     }
 }

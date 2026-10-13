@@ -304,12 +304,13 @@ internal static class WithdrawStock
 }
 
 /// <summary>
-/// A deposit's filter form: every item the filter keeps that the vault takes and kind keeps, nearest the player first,
-/// at most limit; Matched counts what the filter kept and Skipped what the vault does not take.
+/// The items a vault deposit takes: named by id, or by a filter (Nearest: every item the filter keeps that the vault
+/// takes and kind keeps, nearest the player first, at most limit; Matched counts what the filter kept and Skipped what
+/// the vault does not take).
 /// </summary>
 internal sealed class DepositPicks
 {
-    internal DepositPicks(List<DepositEntry> entries, int matched, int skipped, int taken)
+    internal DepositPicks(List<DepositEntry> entries, int? matched, int skipped, int taken)
     {
         Entries = entries;
         Matched = matched;
@@ -319,13 +320,17 @@ internal sealed class DepositPicks
 
     public List<DepositEntry> Entries { get; }
 
-    public int Matched { get; }
+    /// <summary>How many items the filter named before the vault's rule; null for things named by id.</summary>
+    public int? Matched { get; }
 
     public int Skipped { get; }
 
     public int Taken { get; }
 
     internal bool Truncated => Taken > Entries.Count;
+
+    /// <summary>Things named by id, in the order given.</summary>
+    internal static DepositPicks ById(List<DepositEntry> entries) => new DepositPicks(entries, null, 0, entries.Count);
 
     internal static DepositPicks Nearest(ItemFilter filter, VaultMaterial kind, int limit)
     {

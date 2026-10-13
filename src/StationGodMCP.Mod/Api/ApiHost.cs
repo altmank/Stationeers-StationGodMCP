@@ -44,7 +44,6 @@ internal static class ApiHost
             ["ignition_risk"] = static args => IgnitionRiskApi.Handle(args),
             ["rocket_forecast"] = static args => RocketForecastApi.Handle(args),
             ["rocket_mining_options"] = static args => RocketMiningOptionsApi.Handle(args),
-            ["move_item"] = static args => MoveItemApi.Handle(args),
             ["upgrade_cables"] = static args => UpgradeCablesApi.Handle(args),
             ["upgrade_pipes"] = static args => UpgradePipesApi.Handle(args),
             ["clean_cables"] = static args => CleanCablesApi.Handle(args),
@@ -75,11 +74,6 @@ internal static class ApiHost
             ["trader_buy"] = static args => TraderBuyApi.Handle(args),
             ["trader_sell"] = static args => TraderSellApi.Handle(args),
             ["paste_blueprint"] = static args => PasteBlueprintApi.Handle(args),
-            ["vault_deposit"] = static args => VaultDepositApi.Handle(args),
-            ["vault_withdraw"] = static args => VaultWithdrawApi.Handle(args),
-            ["vault_transfer"] = static args => VaultTransferApi.Handle(args),
-            ["silo_deposit"] = static args => SiloDepositApi.Handle(args),
-            ["silo_withdraw"] = static args => SiloWithdrawApi.Handle(args),
             ["mod_info"] = static args => ModInfoApi.Handle(args),
             ["profiling"] = static args => ProfilingApi.Handle(args)
         };

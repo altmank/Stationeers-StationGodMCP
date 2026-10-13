@@ -519,7 +519,7 @@
     "description": "The client and the game share no protocol version. Update the older side.",
     "see": {"topic": "errors"}
   },
-  "vault_display_slot": {"description": "That slot only shows the vault's store. Use move item to store reads."},
+  "vault_display_slot": {"description": "That slot only shows the vault's store. Move the item into the vault with no slot to store it."},
   "vault_not_connected": {"description": "The Remote Vault reaches no vault: it needs exactly one Ingot Vault on its data network."},
   "vault_not_ready": {"description": "The vault has no store yet. Wait until it is built and powered."},
   "vault_unpowered": {"description": "The vault is off or unpowered, so it neither imports nor vends. Nothing ran; power it on."},

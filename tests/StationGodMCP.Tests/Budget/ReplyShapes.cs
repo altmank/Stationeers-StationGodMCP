@@ -116,11 +116,6 @@ internal static class ReplyShapes
                 .List("RuntimeView.Methods", D.RuntimeMethods).List("RuntimeView.CatalogueDrift", 0).List("RuntimeView.Connections", 2).List("ConnectionView.Methods", ConnectionView.MethodsShown)
                 .List("ProfilingSummaryView.Top", ProfilingSummaryView.TopShown)
         };
-        shapes["move_item"] = new[]
-        {
-            S<ItemMovedView>(),
-            S<BatchResultView>().List("BatchResultView.Results", W.TypicalBatch).Holds("BatchResultView.Results", typeof(ItemMovedView))
-        };
         shapes["paste_blueprint"] = new[]
         {
             S<BlueprintPasteStatusView>(), S<BlueprintUndoView>(), S<BlueprintPasteStartedView>()
@@ -241,32 +236,6 @@ internal static class ReplyShapes
         }
 
         shapes["clean_chutes"] = new[] { ChuteCleanReport() };
-
-        shapes["vault_deposit"] = new[]
-        {
-            S<VaultDepositView>().List("BatchResultView.Results", W.TypicalBatch)
-                .Holds("BatchResultView.Results", typeof(DepositedView)).List("VaultDepositView.Stock", 6)
-        };
-        shapes["vault_withdraw"] = new[]
-        {
-            S<VaultWithdrawView>().List("VaultWithdrawView.Placed", 2).List("VaultWithdrawView.Stock", 1)
-        };
-        shapes["vault_transfer"] = new[]
-        {
-            // Everything a well-stocked vault holds: every line moved.
-            S<VaultTransferView>().List("BatchResultView.Results", 20)
-                .Holds("BatchResultView.Results", typeof(TransferredView))
-        };
-        shapes["silo_deposit"] = new[]
-        {
-            S<SiloDepositView>().List("BatchResultView.Results", W.TypicalBatch)
-                .Holds("BatchResultView.Results", typeof(SiloDepositedView))
-        };
-        shapes["silo_withdraw"] = new[]
-        {
-            // Two stacks topped up and a new one, from three entries.
-            S<SiloWithdrawView>().List("SiloWithdrawView.Taken", 3).List("SiloWithdrawView.Placed", 3)
-        };
 
         return shapes;
     }

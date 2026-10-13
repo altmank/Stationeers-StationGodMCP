@@ -6,6 +6,7 @@ using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Shaping;
+using StationGodMCP.Pure.Verbs;
 using Xunit;
 
 namespace StationGodMCP.Tests;
@@ -162,111 +163,13 @@ public sealed class SiloToolsTests
         Assert.False(SiloRules.ShiftsDispenseSlot(4, 5));
     }
 
-    // ---- silo_withdraw's arguments ----
-
     [Fact]
-    public void AWithdrawalNamesExactlyOnePrefabAndAQuantity()
-    {
-        SiloWithdrawRequest request = SiloWithdrawRequest.Of(
-            Of("""{"silo_id": "5001", "prefab_name": " ItemIronIngot ", "quantity": 120}"""), dryRun: true);
-        Assert.Equal(new ThingId(5001), request.Silo);
-        Assert.Equal("ItemIronIngot", request.Prefab.Name);
-        Assert.Equal(120, request.Quantity);
-        Assert.Null(request.To);
-        Assert.Null(request.ToSlot);
-        Assert.False(request.AllowGround);
-        Assert.True(request.DryRun);
-
-        Assert.Equal(ApiErrors.InvalidArgumentCode, Refused(() => SiloWithdrawRequest.Of(
-            Of("""{"silo_id": "5001", "quantity": 1}"""), true)).Code);
-        Assert.Equal(ApiErrors.InvalidArgumentCode, Refused(() => SiloWithdrawRequest.Of(
-            Of("""{"silo_id": "5001", "prefab_name": "ItemIronIngot", "prefab_hash": 12, "quantity": 1}"""), true)).Code);
-        Assert.Equal(ApiErrors.InvalidArgumentCode, Refused(() => SiloWithdrawRequest.Of(
-            Of("""{"silo_id": "5001", "prefab_name": "  ", "quantity": 1}"""), true)).Code);
-        Assert.Contains("quantity", Refused(() => SiloWithdrawRequest.Of(
-            Of("""{"silo_id": "5001", "prefab_name": "ItemIronIngot"}"""), true)).Message);
-        Assert.Equal(ApiErrors.InvalidArgumentCode, Refused(() => SiloWithdrawRequest.Of(
-            Of("""{"silo_id": "5001", "prefab_name": "ItemIronIngot", "quantity": 0}"""), true)).Code);
-    }
-
-    [Fact]
-    public void AWithdrawalsSlotIsAnIndexOrAuto()
-    {
-        Assert.Equal(3, SiloWithdrawRequest.Of(
-            Of("""{"silo_id": "1", "prefab_hash": -42, "quantity": 1, "to_id": "77", "to_slot": 3, "allow_ground": true}"""),
-            false).ToSlot);
-        Assert.Null(SiloWithdrawRequest.Of(
-            Of("""{"silo_id": "1", "prefab_hash": -42, "quantity": 1, "to_slot": "auto"}"""), false).ToSlot);
-        Assert.Equal(ApiErrors.InvalidArgumentCode, Refused(() => SiloWithdrawRequest.Of(
-            Of("""{"silo_id": "1", "prefab_hash": -42, "quantity": 1, "to_slot": -1}"""), false)).Code);
-    }
-
-    [Fact]
-    public void APrefabMatchesByNameInAnyCaseOrByHash()
-    {
-        SiloPrefabChoice name = SiloWithdrawRequest.Of(Of("""{"silo_id": "1", "prefab_name": "itemironingot", "quantity": 1}"""), true).Prefab;
-        Assert.True(name.Matches("ItemIronIngot", 99));
-        Assert.False(name.Matches("ItemIronOre", 99));
-        SiloPrefabChoice hash = SiloWithdrawRequest.Of(Of("""{"silo_id": "1", "prefab_hash": 99, "quantity": 1}"""), true).Prefab;
-        Assert.True(hash.Matches("Anything", 99));
-        Assert.False(hash.Matches("ItemIronIngot", 98));
-        Assert.Equal("99", hash.Asked);
-    }
-
-    [Fact]
-    public void BothWriteToolsAreDryRunsUntilConfirmed()
+    public void AWriteModeDryRunActsOnlyWithConfirm()
     {
         Assert.True(WriteMode.IsDryRun(Of("{}")));
         Assert.False(WriteMode.IsDryRun(Of("""{"dry_run": false, "confirm": true}""")));
         Assert.Equal("confirm_required", Refused(() => WriteMode.IsDryRun(Of("""{"dry_run": false}"""))).Code);
         Assert.Equal(ApiErrors.InvalidArgumentCode, Refused(() => WriteMode.IsDryRun(Of("""{"confirm": true}"""))).Code);
-    }
-
-    // ---- silo_deposit's arguments ----
-
-    [Fact]
-    public void ADepositNamesThingsByIdOrByAFilter()
-    {
-        SiloDepositForm.ById items = Assert.IsType<SiloDepositForm.ById>(SiloDepositForm.Of(
-            Of("""{"items": [{"reference_id": "10", "quantity": 5}, {"reference_id": "11"}]}""")));
-        Assert.Equal(2, items.Picks.Count);
-        Assert.Equal(5, items.Picks[0].Quantity);
-        Assert.Null(items.Picks[1].Quantity);
-
-        SiloDepositForm.ById ids = Assert.IsType<SiloDepositForm.ById>(SiloDepositForm.Of(Of("""{"reference_ids": ["10", "11"]}""")));
-        Assert.Equal(new ThingId(11), ids.Picks[1].Id);
-
-        SiloDepositForm.ByFilter filter = Assert.IsType<SiloDepositForm.ByFilter>(SiloDepositForm.Of(Of("""{"prefab_contains": "Ore"}""")));
-        Assert.Equal(ReplyDefaults.SiloDepositItems, filter.Limit);
-        Assert.Equal(600, Assert.IsType<SiloDepositForm.ByFilter>(
-            SiloDepositForm.Of(Of("""{"location": "player", "limit": 600}"""))).Limit);
-    }
-
-    [Fact]
-    public void ADepositRefusesMixedFormsNoFilterAndPlacesThatAreNotTheWorld()
-    {
-        Assert.Equal(ApiErrors.InvalidArgumentCode, Refused(() => SiloDepositForm.Of(
-            Of("""{"items": [{"reference_id": "10"}], "reference_ids": ["11"]}"""))).Code);
-        Assert.Equal(ApiErrors.InvalidArgumentCode, Refused(() => SiloDepositForm.Of(
-            Of("""{"reference_ids": ["11"], "prefab_contains": "Ore"}"""))).Code);
-        Assert.Equal(ApiErrors.InvalidArgumentCode, Refused(() => SiloDepositForm.Of(Of("""{"limit": 5}"""))).Code);
-        Assert.Equal(ApiErrors.InvalidArgumentCode, Refused(() => SiloDepositForm.Of(Of("""{"location": "silo"}"""))).Code);
-        Assert.Equal(ApiErrors.InvalidArgumentCode, Refused(() => SiloDepositForm.Of(Of("""{"location": "machine_stock"}"""))).Code);
-        Assert.Equal(ApiErrors.InvalidArgumentCode, Refused(() => SiloDepositForm.Of(
-            Of("""{"location": "ground", "limit": 601}"""))).Code);
-    }
-
-    [Fact]
-    public void ADepositByIdTakesAtMost256()
-    {
-        List<string> ids = new List<string>();
-        for (int index = 0; index < 257; index++)
-        {
-            ids.Add($"\"{1000 + index}\"");
-        }
-
-        Assert.Equal(ApiErrors.InvalidArgumentCode, Refused(() => SiloDepositForm.Of(
-            Of("{\"reference_ids\": [" + string.Join(",", ids) + "]}"))).Code);
     }
 
     // ---- replies ----
@@ -337,8 +240,7 @@ public sealed class SiloToolsTests
     [Fact]
     public void WithdrawShape()
     {
-        SiloWithdrawView view = new SiloWithdrawView(false,
-            new SiloRefView(new ThingView(new ThingId(5001), "StructureSDBSilo", "SDB Silo"), true, true),
+        SiloWithdrawView view = new SiloWithdrawView(new SiloRefView(new ThingView(new ThingId(5001), "StructureSDBSilo", "SDB Silo"), true, true),
             new ThingView(new ThingId(273), "Human", "Player"), 60,
             new List<SiloTakenView> { new SiloTakenView(0, 50, 0, false, 0), new SiloTakenView(2, 10, 40, false, 0) },
             new List<PlacedView>
@@ -348,7 +250,7 @@ public sealed class SiloToolsTests
             },
             new SiloStockView("ItemIronIngot", "Iron Ingot", 150, -60, 90), new SiloCountView(4, 3));
         Assert.Equal(
-            "{\"dry_run\":false,\"silo\":{\"reference_id\":\"5001\",\"prefab_name\":\"StructureSDBSilo\"," +
+            "{\"route\":\"out_of_silo\",\"silo\":{\"reference_id\":\"5001\",\"prefab_name\":\"StructureSDBSilo\"," +
             "\"display_name\":\"SDB Silo\"},\"on_off\":true,\"powered\":true,\"to\":{\"reference_id\":\"273\"," +
             "\"prefab_name\":\"Human\",\"display_name\":\"Player\"},\"quantity\":60.0,\"taken\":[{\"index\":0," +
             "\"quantity\":50.0,\"left\":0.0,\"whole\":false,\"children\":0},{\"index\":2,\"quantity\":10.0," +
@@ -357,7 +259,7 @@ public sealed class SiloToolsTests
             "\"slot\":3},\"quantity\":50.0,\"reference_id\":\"302\"}],\"stock\":{\"prefab_name\":\"ItemIronIngot\"," +
             "\"display_name\":\"Iron Ingot\",\"before\":150.0,\"change\":-60.0,\"after\":90.0},\"count\":{\"before\":4," +
             "\"after\":3,\"capacity\":600}}",
-            WireCheck.New(view));
+            WireCheck.New(ItemMoveReplies.Routed("out_of_silo", view)));
     }
 
     [Fact]
@@ -367,17 +269,16 @@ public sealed class SiloToolsTests
         batch.Succeeded(new SiloDepositedView(0, new ThingView(new ThingId(10), "ItemBackpack", "Backpack"),
             new SlotRefView(new ThingId(273), 1), 1, 0, 4, 7));
         batch.Failed(new NotDepositedView(1, new ThingId(11), null, ApiErrors.Refused("silo_full", "full")));
-        SiloDepositView view = new SiloDepositView(true,
-            new SiloRefView(new ThingView(new ThingId(5001), "StructureSDBSilo", "SDB Silo"), true, false), null, 0,
+        SiloDepositView view = new SiloDepositView(new SiloRefView(new ThingView(new ThingId(5001), "StructureSDBSilo", "SDB Silo"), true, false), null, 0,
             false, batch.Build(), new SiloCountView(7, 8));
         Assert.Equal(
-            "{\"dry_run\":true,\"silo\":{\"reference_id\":\"5001\",\"prefab_name\":\"StructureSDBSilo\"," +
+            "{\"route\":\"into_silo\",\"silo\":{\"reference_id\":\"5001\",\"prefab_name\":\"StructureSDBSilo\"," +
             "\"display_name\":\"SDB Silo\"},\"on_off\":true,\"powered\":false,\"matched\":null,\"skipped\":0," +
             "\"truncated\":false,\"items\":{\"results\":[{\"index\":0,\"ok\":true,\"reference_id\":\"10\"," +
             "\"prefab_name\":\"ItemBackpack\",\"display_name\":\"Backpack\",\"from\":{\"id\":\"273\",\"slot\":1}," +
             "\"quantity\":1.0,\"left_in_source\":0.0,\"children\":4,\"entry\":7},{\"index\":1,\"ok\":false," +
             "\"reference_id\":\"11\",\"prefab_name\":null,\"error\":{\"code\":\"silo_full\",\"message\":\"full\"}}]," +
             "\"count\":2,\"success_count\":1,\"error_count\":1},\"count\":{\"before\":7,\"after\":8,\"capacity\":600}}",
-            WireCheck.New(view));
+            WireCheck.New(ItemMoveReplies.Routed("into_silo", view)));
     }
 }

@@ -22,7 +22,7 @@ internal sealed class SiloContentView
 
 /// <summary>
 /// One entry of a silo's store: a thing the silo imported, kept as save data until it is exported or withdrawn. It is
-/// not a thing in the world: reference_id is always null, so move_item cannot take it; silo_withdraw does.
+/// not a thing in the world: reference_id is always null, so a slot move cannot take it; a move out of the silo does.
 /// </summary>
 internal sealed class SiloEntryView
 {
@@ -58,7 +58,9 @@ internal sealed class SiloEntryView
 
     public List<SiloContentView> Contents { get; }
 
-    /// <summary>Food the silo's export rule spoils: it comes out rotten, by the silo's export and by silo_withdraw.</summary>
+    /// <summary>
+    /// Food the silo's export rule spoils: it comes out rotten, by the silo's export and by a move out of the silo.
+    /// </summary>
     public bool RotsWhenTaken { get; }
 }
 
@@ -201,13 +203,12 @@ internal sealed class SiloStockView
     public double After { get; }
 }
 
-/// <summary>silo_withdraw's reply.</summary>
+/// <summary>move item's out_of_silo reply, after its route.</summary>
 internal sealed class SiloWithdrawView
 {
-    internal SiloWithdrawView(bool dryRun, SiloRefView silo, ThingView to, double quantity, List<SiloTakenView> taken,
+    internal SiloWithdrawView(SiloRefView silo, ThingView to, double quantity, List<SiloTakenView> taken,
         List<PlacedView> placed, SiloStockView stock, SiloCountView count)
     {
-        DryRun = dryRun;
         Silo = silo.Silo;
         OnOff = silo.OnOff;
         Powered = silo.Powered;
@@ -218,8 +219,6 @@ internal sealed class SiloWithdrawView
         Stock = stock;
         Count = count;
     }
-
-    public bool DryRun { get; }
 
     public ThingView Silo { get; }
 
@@ -278,13 +277,12 @@ internal sealed class SiloDepositedView : BatchItemView
     public int Entry { get; }
 }
 
-/// <summary>silo_deposit's reply.</summary>
+/// <summary>move item's into_silo reply, after its route.</summary>
 internal sealed class SiloDepositView
 {
-    internal SiloDepositView(bool dryRun, SiloRefView silo, int? matched, int skipped, bool truncated,
+    internal SiloDepositView(SiloRefView silo, int? matched, int skipped, bool truncated,
         BatchResultView items, SiloCountView count)
     {
-        DryRun = dryRun;
         Silo = silo.Silo;
         OnOff = silo.OnOff;
         Powered = silo.Powered;
@@ -294,8 +292,6 @@ internal sealed class SiloDepositView
         Items = items;
         Count = count;
     }
-
-    public bool DryRun { get; }
 
     public ThingView Silo { get; }
 

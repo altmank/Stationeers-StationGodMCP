@@ -32,6 +32,7 @@ def move(what: Literal['item'], *,
       index: int
       ok: bool
       reference_id: str
+      display_name: str
       from: {id: str, slot: int} | None
       to: {id: str, slot: int}
       quantity_moved: int

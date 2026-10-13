@@ -124,7 +124,7 @@ internal static class Silos
 
     /// <summary>
     /// thing_not_found for an id nothing in the world has; when a silo stores the thing that had that id (an entry keeps
-    /// its old ReferenceId in its save data until it is loaded), the refusal names the silo and silo_withdraw.
+    /// its old ReferenceId in its save data until it is loaded), the refusal names the silo and the move that takes it out.
     /// </summary>
     internal static ApiException NotFound(ThingId id)
     {
@@ -143,8 +143,8 @@ internal static class Silos
                 {
                     return ApiErrors.Refused(ApiErrors.ThingNotFoundCode,
                         $"Nothing with reference id {id} is in the world: {Names.Of(silo)} ({silo.ReferenceId}) " +
-                        $"stores it as entry {index} ({root.PrefabName}). {Vocabulary.Tool("silo_withdraw")} takes " +
-                        "it out.");
+                        $"stores it as entry {index} ({root.PrefabName}). move item with source {silo.ReferenceId} " +
+                        "takes it out.");
                 }
             }
         }

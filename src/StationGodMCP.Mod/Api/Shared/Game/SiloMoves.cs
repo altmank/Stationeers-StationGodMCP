@@ -400,7 +400,7 @@ internal static class SiloPicks
 
         return names.Count == 0 ? "nothing"
             : string.Join(", ", names) + (more > 0 ? $" and {more} more kinds " +
-                $"({Vocabulary.Tool("container_contents")} lists them)" : string.Empty);
+                "(inspect contents lists them)" : string.Empty);
     }
 }
 
@@ -508,7 +508,7 @@ internal sealed class SiloWithdrawal : IWithdrawalSource
             _loaded.Remove(entry.Index);
             throw ApiErrors.Refused("move_failed",
                 $"The game could not load entry {entry.Index} ({entry.PrefabName}) from its save data; it stays in " +
-                $"the silo. Entries before it were taken ({Vocabulary.Tool("container_contents")} shows the silo).");
+                "the silo. Entries before it were taken (inspect contents shows the silo).");
         }
 
         if (slot != null && made.ParentSlot == slot)

@@ -229,13 +229,12 @@ internal sealed class NotDepositedView : BatchItemView
     public ErrorView Error { get; }
 }
 
-/// <summary>vault_deposit's reply.</summary>
+/// <summary>move item's into_vault reply, after its route.</summary>
 internal sealed class VaultDepositView
 {
-    internal VaultDepositView(bool dryRun, VaultRefView vault, int? matched, int skipped, bool truncated,
+    internal VaultDepositView(VaultRefView vault, int? matched, int skipped, bool truncated,
         BatchResultView items, List<StockChangeView> stock)
     {
-        DryRun = dryRun;
         Vault = vault.Vault;
         Via = vault.Via;
         Matched = matched;
@@ -244,8 +243,6 @@ internal sealed class VaultDepositView
         Items = items;
         Stock = stock;
     }
-
-    public bool DryRun { get; }
 
     public ThingView Vault { get; }
 
@@ -291,13 +288,12 @@ internal sealed class PlacedView
     public ThingId? ReferenceId { get; }
 }
 
-/// <summary>vault_withdraw's reply.</summary>
+/// <summary>move item's out_of_vault reply, after its route.</summary>
 internal sealed class VaultWithdrawView
 {
-    internal VaultWithdrawView(bool dryRun, VaultRefView vault, ThingView to, double quantity,
+    internal VaultWithdrawView(VaultRefView vault, ThingView to, double quantity,
         List<PlacedView> placed, List<StockChangeView> stock)
     {
-        DryRun = dryRun;
         Vault = vault.Vault;
         Via = vault.Via;
         To = to;
@@ -305,8 +301,6 @@ internal sealed class VaultWithdrawView
         Placed = placed;
         Stock = stock;
     }
-
-    public bool DryRun { get; }
 
     public ThingView Vault { get; }
 
@@ -388,12 +382,11 @@ internal sealed class NotTransferredView : BatchItemView
     public ErrorView Error { get; }
 }
 
-/// <summary>vault_transfer's reply.</summary>
+/// <summary>move item's vault_to_vault reply, after its route.</summary>
 internal sealed class VaultTransferView
 {
-    internal VaultTransferView(bool dryRun, VaultRefView from, VaultRefView to, BatchResultView items, int partialCount)
+    internal VaultTransferView(VaultRefView from, VaultRefView to, BatchResultView items, int partialCount)
     {
-        DryRun = dryRun;
         FromVault = from.Vault;
         FromVia = from.Via;
         ToVault = to.Vault;
@@ -401,8 +394,6 @@ internal sealed class VaultTransferView
         Items = items;
         PartialCount = partialCount;
     }
-
-    public bool DryRun { get; }
 
     public ThingView FromVault { get; }
 

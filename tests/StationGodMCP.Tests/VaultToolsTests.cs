@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Verbs;
 using Xunit;
 
 namespace StationGodMCP.Tests;
@@ -107,13 +108,13 @@ public sealed class VaultToolsTests
             new SlotRefView(new ThingId(9), 1), 30, 20));
         batch.Failed(new NotDepositedView(1, new ThingId(6), "ItemKitWall",
             ApiErrors.Refused("not_vault_material", "no")));
-        VaultDepositView view = new VaultDepositView(true, vault, 2, 1, false, batch.Build(),
+        VaultDepositView view = new VaultDepositView(vault, 2, 1, false, batch.Build(),
             new List<StockChangeView>
             {
                 new StockChangeView(new VaultItemView("ore", "ItemIronOre", "Iron Ore", null, 50), 10, 30, 40)
             });
         Assert.Equal(
-            "{\"dry_run\":true,\"vault\":{\"reference_id\":\"132000\",\"prefab_name\":\"StructureIngotVault\"," +
+            "{\"route\":\"into_vault\",\"vault\":{\"reference_id\":\"132000\",\"prefab_name\":\"StructureIngotVault\"," +
             "\"display_name\":\"Ingot Vault\"},\"via\":null,\"matched\":2,\"skipped\":1,\"truncated\":false," +
             "\"items\":{\"results\":[{\"index\":0,\"ok\":true,\"reference_id\":\"5\",\"prefab_name\":\"ItemIronOre\"," +
             "\"display_name\":\"Iron Ore\",\"kind\":\"ore\",\"from\":{\"id\":\"9\",\"slot\":1},\"quantity\":30.0," +
@@ -121,7 +122,7 @@ public sealed class VaultToolsTests
             "\"error\":{\"code\":\"not_vault_material\",\"message\":\"no\"}}],\"count\":2,\"success_count\":1," +
             "\"error_count\":1},\"stock\":[{\"kind\":\"ore\",\"prefab_name\":\"ItemIronOre\",\"display_name\":\"Iron Ore\"," +
             "\"reagent\":null,\"before\":10.0,\"change\":30.0,\"after\":40.0}]}",
-            WireCheck.New(view));
+            WireCheck.New(ItemMoveReplies.Routed("into_vault", view)));
     }
 
     [Fact]
@@ -129,7 +130,7 @@ public sealed class VaultToolsTests
     {
         VaultRefView vault = new VaultRefView(new ThingView(new ThingId(132000), "StructureIngotVault", "Ingot Vault"),
             new ThingView(new ThingId(132001), "StructureRemoteVault", "Remote Vault"), true, true);
-        VaultWithdrawView view = new VaultWithdrawView(false, vault, new ThingView(new ThingId(273), "Human", "Player"), 5,
+        VaultWithdrawView view = new VaultWithdrawView(vault, new ThingView(new ThingId(273), "Human", "Player"), 5,
             new List<PlacedView>
             {
                 new PlacedView(PlacedView.Merged, new SlotRefView(new ThingId(300), 2), 3, new ThingId(301)),
@@ -140,7 +141,7 @@ public sealed class VaultToolsTests
                 new StockChangeView(new VaultItemView("ingot", "ItemIronIngot", "Iron Ingot", "Iron", 500), 100, -5, 95)
             });
         Assert.Equal(
-            "{\"dry_run\":false,\"vault\":{\"reference_id\":\"132000\",\"prefab_name\":\"StructureIngotVault\"," +
+            "{\"route\":\"out_of_vault\",\"vault\":{\"reference_id\":\"132000\",\"prefab_name\":\"StructureIngotVault\"," +
             "\"display_name\":\"Ingot Vault\"},\"via\":{\"reference_id\":\"132001\"," +
             "\"prefab_name\":\"StructureRemoteVault\",\"display_name\":\"Remote Vault\"},\"to\":{\"reference_id\":\"273\"," +
             "\"prefab_name\":\"Human\",\"display_name\":\"Player\"},\"quantity\":5.0,\"placed\":[{\"where\":\"merged\"," +
@@ -148,6 +149,6 @@ public sealed class VaultToolsTests
             "\"slot\":{\"id\":\"300\",\"slot\":3},\"quantity\":2.0,\"reference_id\":\"302\"}],\"stock\":[{\"kind\":\"ingot\"," +
             "\"prefab_name\":\"ItemIronIngot\",\"display_name\":\"Iron Ingot\",\"reagent\":\"Iron\",\"before\":100.0," +
             "\"change\":-5.0,\"after\":95.0}]}",
-            WireCheck.New(view));
+            WireCheck.New(ItemMoveReplies.Routed("out_of_vault", view)));
     }
 }

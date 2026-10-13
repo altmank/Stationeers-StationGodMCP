@@ -285,49 +285,6 @@ public sealed class ReportOnlyTests
         Assert.NotNull(GeneOrders.Of(JObject.Parse("""{"DarkPerDay": -0.5}"""), new List<OptionProblem>()));
     }
 
-    // ---- move_item ----
-
-    [Fact]
-    public void AMoveReportGivesTheSlotsAndTheQuantityAndNoDestinationStack()
-    {
-        MoveReportView report = new MoveReportView(new MovePlannedView(0, new ThingId(110045),
-            new SlotRefView(new ThingId(57267), 2), new SlotRefView(new ThingId(273), 3), 100, new ThingId(300)));
-
-        Assert.Equal(
-            "{\"report_only\":true,\"problems\":[],\"reference_id\":\"110045\"," +
-            "\"from\":{\"id\":\"57267\",\"slot\":2},\"to\":{\"id\":\"273\",\"slot\":3},\"quantity_moved\":100," +
-            "\"merged_into\":\"300\"}",
-            WireCheck.New(report));
-    }
-
-    [Fact]
-    public void AMovesReportListsEachRefusedMoveAsAProblemWithItsIndex()
-    {
-        BatchBuilder moves = new BatchBuilder(2);
-        moves.Succeeded(new MovePlannedView(0, new ThingId(1), null, new SlotRefView(new ThingId(273), 0), 1, null));
-        moves.Failed(new ItemNotMovedView(1, new ThingId(2), ApiErrors.Refused("stack_full", "full")));
-        JObject json = JObject.Parse(WireCheck.New(new MovesReportView(moves.Build())));
-
-        Assert.Equal("report_only", ((JProperty)json.First!).Name);
-        Assert.Equal(
-            "[{\"index\":1,\"code\":\"stack_full\",\"message\":\"full\"}]",
-            json["problems"]!.ToString(Newtonsoft.Json.Formatting.None));
-        Assert.True((bool)json["results"]![0]!["ok"]!);
-        Assert.Null(json["results"]![0]!["destination_reference_id"]);
-        Assert.Equal("stack_full", (string?)json["results"]![1]!["error"]!["code"]);
-        Assert.Equal(1, (int)json["error_count"]!);
-    }
-
-    [Fact]
-    public void AMovesReportOfABatchErrorListsItToo()
-    {
-        BatchBuilder moves = new BatchBuilder(1);
-        moves.Failed(0, ApiErrors.InvalidArgument("moves[0] must be an object."));
-
-        Assert.Equal("invalid_argument",
-            (string?)JObject.Parse(WireCheck.New(new MovesReportView(moves.Build())))["problems"]![0]!["code"]);
-    }
-
     // ---- paste_blueprint ----
 
     [Fact]
