@@ -63,5 +63,6 @@ internal static class VerbHandlers
         VerbHandler.For(WriteLabelOptions.Spec, WriteLabelOptions.Bind, WriteLabel.Run),
         VerbHandler.For(WritePaintOptions.Spec, WritePaintOptions.Bind, WritePaint.Run),
         VerbHandler.For(WriteBatteryOptions.Spec, WriteBatteryOptions.Bind, WriteBattery.Run),
+        VerbHandler.For(WriteGenesOptions.Spec, WriteGenesOptions.Bind, WriteGenes.Run),
     });
 }

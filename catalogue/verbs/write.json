@@ -638,7 +638,6 @@
           "schema": {"type": "array", "items": {"type": "string", "enum": ["out_of_range"]}},
           "description": "out_of_range: write values outside -1..1 too."
         },
-        "include": {"use": "include", "schema": {"type": "array", "items": {"type": "string", "enum": ["notes"]}}},
         "confirm": {"use": "confirm"}
       },
       "example": {"id": "3311223", "genes": {"GrowthSpeedMultiplier": 1}, "confirm": true},
@@ -646,18 +645,6 @@
       "reply": {
         "list": "results",
         "variants": [
-          {
-            "label": "PlantGenes",
-            "view": "PlantGenes",
-            "keys": {
-              "thing": "Thing",
-              "holder": "str",
-              "gene_set_count": "int",
-              "unit": "int",
-              "is_top": "bool",
-              "genes": "list[{gene: str, value: float | None, stability: float | None, meaning: str | None, effect: Any | None}]"
-            }
-          },
           {
             "label": "BatchResult",
             "view": "BatchResult",

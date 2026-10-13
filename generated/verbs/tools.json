@@ -288,7 +288,7 @@
           "code_file": {"type": "string"},
           "pins": {"type": "object"},
           "run": {"enum": ["pause", "step", "resume", "restart"]},
-          "include": {"type": "array", "items": {"enum": ["code", "devices", "notes"]}},
+          "include": {"type": "array", "items": {"enum": ["code", "devices"]}},
           "surface": {"type": "string"},
           "element": {"type": "string"},
           "pixel": {"type": "array", "items": {"type": "number"}},

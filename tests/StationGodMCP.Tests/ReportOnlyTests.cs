@@ -237,38 +237,52 @@ public sealed class ReportOnlyTests
             WireCheck.New(report));
     }
 
-    // ---- plant_genes ----
+    // ---- write genes ----
 
     [Fact]
-    public void AGeneValueOutsideTheRangeIsRefusedUnlessForcedAndANonFiniteOneAlways()
+    public void AGeneValueOutsideTheRangeIsRefusedUnlessAllowedAndANonFiniteOneAlways()
     {
-        Assert.Equal(GeneValueRefusal.None, GeneArgs.ValueRefusal(1.0, force: false));
-        Assert.Equal(GeneValueRefusal.None, GeneArgs.ValueRefusal(-1.0, force: false));
-        Assert.Equal(GeneValueRefusal.OutOfRange, GeneArgs.ValueRefusal(1.5, force: false));
-        Assert.Equal(GeneValueRefusal.None, GeneArgs.ValueRefusal(1.5, force: true));
-        Assert.Equal(GeneValueRefusal.NotFinite, GeneArgs.ValueRefusal(double.NaN, force: true));
+        Assert.Equal(GeneValueRefusal.None, GeneValues.Refusal(1.0, allowOutOfRange: false));
+        Assert.Equal(GeneValueRefusal.None, GeneValues.Refusal(-1.0, allowOutOfRange: false));
+        Assert.Equal(GeneValueRefusal.OutOfRange, GeneValues.Refusal(1.5, allowOutOfRange: false));
+        Assert.Equal(GeneValueRefusal.None, GeneValues.Refusal(1.5, allowOutOfRange: true));
+        Assert.Equal(GeneValueRefusal.NotFinite, GeneValues.Refusal(double.NaN, allowOutOfRange: true));
     }
 
     [Fact]
-    public void AGenesReportListsEachRefusedGeneAsAProblemWithItsIndexAndTheOthersAsTheyWouldBeWritten()
+    public void AGenesReportListsEachRefusedGeneAsAProblemWithItsIndexAndTheOthersAsTargets()
     {
         BatchBuilder genes = new BatchBuilder(2);
-        genes.Succeeded(new GeneWrittenView(0, "WaterUsage", 0.02f, 1f));
-        genes.Failed(new GeneNotWrittenView(1, "LightPerDay", -0.03f,
+        genes.Succeeded(new GeneWrittenView(0, "WaterUsage", 0.5f, 1f));
+        genes.Failed(new GeneNotWrittenView(1, "LightPerDay", -0.25f,
             ApiErrors.Refused("out_of_range", "Gene LightPerDay: 2 is outside the game's range -1 to 1.")));
-        GenesReportView report = new GenesReportView(
+        JObject report = GeneReplies.Reported(
             new GeneSetHeader(new ThingView(new ThingId(9), "SeedBag_Corn", "Corn Seeds"), "seed", 3, true),
-            genes.Build());
-        JObject json = JObject.Parse(WireCheck.New(report));
+            genes.Build(), "[undo]");
 
-        Assert.Equal("report_only", ((JProperty)json.First!).Name);
-        Assert.Equal(1, (int)json["problems"]![0]!["index"]!);
-        Assert.Equal("out_of_range", (string?)json["problems"]![0]!["code"]);
-        Assert.Single((JArray)json["problems"]!);
-        Assert.Equal(1.0, (double)json["results"]![0]!["value"]!);
-        Assert.Equal(0.02, (double)json["results"]![0]!["previous_value"]!, 3);
-        Assert.Equal(1, (int)json["success_count"]!);
-        Assert.Equal(1, (int)json["error_count"]!);
+        Assert.Equal(new[]
+        {
+            "thing", "holder", "unit", "is_top", "count", "success_count", "error_count", "problems", "report_only",
+            "targets"
+        }, report.Properties().Select(key => key.Name));
+        Assert.Equal(1, (int)report["problems"]![0]!["index"]!);
+        Assert.Equal("9", (string?)report["problems"]![0]!["reference_id"]);
+        Assert.Equal("out_of_range", (string?)report["problems"]![0]!["code"]);
+        Assert.Equal("[9, Corn Seeds (WaterUsage), 0.5 -> 1] [undo]", (string?)Assert.Single((JArray)report["targets"]!)["text"]);
+    }
+
+    [Fact]
+    public void GenesAreANonEmptyObjectOfNumbersWithEveryOtherValueAProblem()
+    {
+        List<OptionProblem> problems = new List<OptionProblem>();
+        Assert.Null(GeneOrders.Of(JObject.Parse("""{"WaterUsage": "high", "LightPerDay": null, "DarkPerDay": 1}"""),
+            problems));
+        Assert.Equal(new[] { "genes.WaterUsage", "genes.LightPerDay" }, problems.Select(problem => problem.Path));
+
+        List<OptionProblem> none = new List<OptionProblem>();
+        Assert.Null(GeneOrders.Of(new JObject(), none));
+        Assert.Equal("genes", Assert.Single(none).Path);
+        Assert.NotNull(GeneOrders.Of(JObject.Parse("""{"DarkPerDay": -0.5}"""), new List<OptionProblem>()));
     }
 
     // ---- move_item ----

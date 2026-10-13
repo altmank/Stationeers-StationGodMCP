@@ -253,46 +253,6 @@ internal sealed class GenesWrittenView
     public int ErrorCount { get; }
 }
 
-/// <summary>
-/// plant_genes' write report (dry_run): each gene as it would be written (value) or refused, and each refusal as a
-/// problem with its index; nothing written.
-/// </summary>
-internal sealed class GenesReportView
-{
-    internal GenesReportView(GeneSetHeader header, BatchResultView results)
-    {
-        Problems = ProblemView.Of(results.Results);
-        Thing = header.Thing;
-        Holder = header.Holder;
-        Unit = header.Unit;
-        IsTop = header.IsTop;
-        Results = results.Results;
-        Count = results.Count;
-        SuccessCount = results.SuccessCount;
-        ErrorCount = results.ErrorCount;
-    }
-
-    public bool ReportOnly => true;
-
-    public List<ProblemView> Problems { get; }
-
-    public ThingView Thing { get; }
-
-    public string Holder { get; }
-
-    public int Unit { get; }
-
-    public bool IsTop { get; }
-
-    public List<BatchItemView> Results { get; }
-
-    public int Count { get; }
-
-    public int SuccessCount { get; }
-
-    public int ErrorCount { get; }
-}
-
 internal sealed class GeneWrittenView : BatchItemView
 {
     internal GeneWrittenView(int index, string gene, float? previousValue, float value) : base(index, ok: true)

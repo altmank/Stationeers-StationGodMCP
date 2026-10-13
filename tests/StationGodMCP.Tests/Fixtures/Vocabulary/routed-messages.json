@@ -122,10 +122,6 @@
     "From 'planet' only delete: true is supported.",
     "Name the gases to take out of the planet's air ('gases'); removing all of it is refused."
   ],
-  "Api/PlantGenes.cs": [
-    "Argument 'genes' must be an object of gene name to value, with at least one gene.",
-    "Gene {gene}: {value} is outside the game's range {GeneView.Minimum} to {GeneView.Maximum}; pass force to write it anyway."
-  ],
   "Api/ReplaceStructures.cs": [
     "Pass job_id, or reference_ids or room_id.",
     "a dry run (it is for a confirmed run or a job_id poll)"

@@ -1,14 +1,14 @@
 {
   "method": "pieces x 0.9055, calibrated on Claude Code all-loaded minus no-MCP runs (ENABLE_TOOL_SEARCH=false)",
-  "full_list": {"today": 89000, "verbs": 15930, "share": 0.179, "target_share": 0.25},
+  "full_list": {"today": 89000, "verbs": 15927, "share": 0.179, "target_share": 0.25},
   "per_fresh_context": {
     "today": 5147,
     "verbs_listing": 646,
-    "verbs_common_load": 3738,
-    "verbs": 4384,
+    "verbs_common_load": 3735,
+    "verbs": 4381,
     "common_verbs": ["find", "help", "inspect", "read", "write"]
   },
-  "script_task": {"run_script_load": 867, "verbs": 5251},
+  "script_task": {"run_script_load": 867, "verbs": 5248},
   "instructions": 469,
   "per_tool_max": 1500,
   "per_tool": {
@@ -16,7 +16,7 @@
     "inspect": 991,
     "survey": 1389,
     "read": 573,
-    "write": 984,
+    "write": 981,
     "plan": 1456,
     "check": 924,
     "build": 1286,

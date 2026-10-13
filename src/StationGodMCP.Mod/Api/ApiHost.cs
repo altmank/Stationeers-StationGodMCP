@@ -43,7 +43,6 @@ internal static class ApiHost
             ["advance_build_state"] = static args => AdvanceBuildStateApi.Handle(args),
             ["move_player"] = static args => MovePlayerApi.Handle(args),
             ["ignition_risk"] = static args => IgnitionRiskApi.Handle(args),
-            ["plant_genes"] = static args => PlantGenesApi.Handle(args),
             ["move_gas"] = static args => MoveGasApi.Handle(args),
             ["rocket_forecast"] = static args => RocketForecastApi.Handle(args),
             ["rocket_flight_log"] = static args => RocketFlightLogApi.Handle(args),

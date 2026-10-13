@@ -18,7 +18,6 @@ internal sealed record WriteGenesOptions
         new OptionSpec("unit", "{\"type\":\"integer\",\"minimum\":0}"),
         new OptionSpec("genes", "{\"type\":\"object\"}", true),
         new OptionSpec("allow", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"out_of_range\"]}}"),
-        new OptionSpec("include", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"notes\"]}}"),
         new OptionSpec("confirm", "{\"type\":\"boolean\"}", false, "false"));
 
     internal Selector Selector { get; private init; } = Selector.None;

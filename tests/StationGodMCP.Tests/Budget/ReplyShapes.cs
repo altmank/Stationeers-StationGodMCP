@@ -163,12 +163,6 @@ internal static class ReplyShapes
                 .Absent("RemoveReportView.Notes"),
             BuildPoll()
         };
-        shapes["plant_genes"] = new[]
-        {
-            // Every gene (19); meanings only with include_notes.
-            S<PlantGenesView>().List("PlantGenesView.Genes", 19).Absent("GeneView.Meaning"),
-            S<GenesWrittenView>().List("GenesWrittenView.Results", 12).Holds("GenesWrittenView.Results", typeof(GeneWrittenView))
-        };
         shapes["move_player"] = new[] { S<MovePlayerView>() };
         // Bounded by what exists: the scopes and timed methods, the methods called, the last 16 tick holds; scopes and
         // calls are cut by default (x-default-limits), the worst frame's pieces and calls by the view (Shown).

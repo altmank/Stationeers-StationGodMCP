@@ -1,101 +1,51 @@
 #nullable enable
 
-using System;
 using System.Collections.Generic;
 using Assets.Scripts.Genetics;
 using Assets.Scripts.Networking;
-using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Items;
 using Newtonsoft.Json.Linq;
-using StationGodMCP.Api.Shared;
-using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
-using StationGodMCP.Pure.Protocol;
 
-
-/// <summary>
-/// plant_genes' write: edits one gene set the way the game's Gene Splicer does (PlantGeneReads describes how the game
-/// keeps genes). The write follows PlantGeneticSplicer.StartSplice: set the value in the Lookup and, on a multiplayer
-/// host, set network flag 512, which Plant.BuildUpdate sends as the top gene set. A multiplayer client does not own the
-/// plant, so it is refused.
-/// </summary>
-internal static class PlantGenesApi
-{
-    internal static object Handle(Args args) =>
-        GeneWriter.Answer(GenesRequest.Parse(args), ReportOnly.Asked(args));
-}
-
-/// <summary>plant_genes' write form.</summary>
-internal static class GenesRequest
-{
-    internal static Write Parse(Args args)
-    {
-        ThingId id = args.ThingId("reference_id");
-        int? unit = args.OptionalInt("unit", 0, int.MaxValue);
-        JObject? genes = args.OptionalObject("genes");
-        if (genes == null || !genes.HasValues)
-        {
-            throw ApiErrors.InvalidArgument(
-                Vocabulary.Text("Argument '{arg:genes}' must be an object of gene name to value, with at least one " +
-                    "gene."));
-        }
-
-        return new Write(id, unit, GeneArgs.RequireNumbers(genes), args.OptionalBool("force") ?? false);
-    }
-
-    internal sealed class Write
-    {
-        internal Write(ThingId id, int? unit, JObject genes, bool force)
-        {
-            Id = id;
-            Unit = unit;
-            Genes = genes;
-            Force = force;
-        }
-
-        internal ThingId Id { get; }
-
-        internal int? Unit { get; }
-
-        internal JObject Genes { get; }
-
-        internal bool Force { get; }
-    }
-}
+namespace StationGodMCP.Api.Shared.Game;
 
 /// <summary>
-/// Writes genes into one gene set, as PlantGeneticSplicer.StartSplice does. The checks (the plant, the host, the gene
-/// set, then each gene's name and value) make a plan; the write applies it, and dry_run reports it (ReportOnly).
+/// Writes genes into one gene set the way the game's Gene Splicer does (PlantGeneReads describes how the game keeps
+/// genes), following PlantGeneticSplicer.StartSplice: set the value in the Lookup and, on a multiplayer host, set
+/// network flag 512, which Plant.BuildUpdate sends as the top gene set. A multiplayer client does not own the plant, so
+/// it is refused. The checks (the plant, the host, the gene set, then each gene's name and value) make a plan; the
+/// write applies it, and a report describes it.
 /// </summary>
 internal static class GeneWriter
 {
     // Plant.BuildUpdate sends the top gene set when this network flag is set.
     private const ushort GenesNetworkFlag = 512;
 
-    internal static object Answer(GenesRequest.Write request, bool report) =>
-        WriteCheck<GenesPlan>.Run(() => Check(request)).Answer(report, Write, Describe);
-
-    private static GenesPlan Check(GenesRequest.Write request)
+    /// <summary>
+    /// The plan for genes (gene name to a number) in the plant's gene set unit (the top when null): each gene's edit and
+    /// result, or why it is not written. allowOutOfRange writes values outside the game's range.
+    /// </summary>
+    internal static GenesPlan Check(ThingId id, int? unit, JObject genes, bool allowOutOfRange)
     {
-        Plant plant = PlantGenePlants.Require(request.Id);
+        Plant plant = PlantGenePlants.Require(id);
         if (NetworkManager.IsClient)
         {
             throw ApiErrors.Refused("not_host",
                 "This game is a multiplayer client; only the host can change genes.");
         }
 
-        if (!GeneSets.TryPick(plant, request.Unit, out GeneCollection? set, out GeneSetHeader? header,
+        if (!GeneSets.TryPick(plant, unit, out GeneCollection? set, out GeneSetHeader? header,
                 out ApiException? error))
         {
             throw error!;
         }
 
-        BatchBuilder results = new BatchBuilder(request.Genes.Count);
-        List<GeneEdit> edits = new List<GeneEdit>(request.Genes.Count);
+        BatchBuilder results = new BatchBuilder(genes.Count);
+        List<GeneEdit> edits = new List<GeneEdit>(genes.Count);
         int index = 0;
-        foreach (JProperty property in request.Genes.Properties())
+        foreach (JProperty property in genes.Properties())
         {
-            if (TryPlan(set!, property, request.Force, index, edits, out BatchItemView item))
+            if (TryPlan(set!, property, allowOutOfRange, index, edits, out BatchItemView item))
             {
                 results.Succeeded(item);
             }
@@ -110,7 +60,8 @@ internal static class GeneWriter
         return new GenesPlan(plant, set!, header!, edits, results.Build());
     }
 
-    private static object Write(GenesPlan plan)
+    /// <summary>Writes the plan's edits; answers the gene set and each gene's result.</summary>
+    internal static GenesPlan Write(GenesPlan plan)
     {
         foreach (GeneEdit edit in plan.Edits)
         {
@@ -134,13 +85,11 @@ internal static class GeneWriter
             }
         }
 
-        return new GenesWrittenView(plan.Header, plan.Results);
+        return plan;
     }
 
-    private static object Describe(GenesPlan plan) => new GenesReportView(plan.Header, plan.Results);
-
     // One gene: its edit and the result the write answers for it, or why it is not written.
-    private static bool TryPlan(GeneCollection set, JProperty property, bool force, int index, List<GeneEdit> edits,
+    private static bool TryPlan(GeneCollection set, JProperty property, bool allowOutOfRange, int index, List<GeneEdit> edits,
         out BatchItemView item)
     {
         Gene? parsed = GeneTable.Parse(property.Name);
@@ -154,9 +103,9 @@ internal static class GeneWriter
         Gene gene = parsed.Value;
         set.Lookup.TryGetValue(gene, out GeneWrapper? wrapper);
         float? previous = wrapper?.Value;
-        // GenesRequest.Parse has refused any value that is not a number.
+        // GeneOrders has refused any value that is not a number.
         double value = property.Value.Value<double>();
-        ApiException? refusal = ValueRefusal(gene, value, force);
+        ApiException? refusal = ValueRefusal(gene, value, allowOutOfRange);
         if (refusal != null)
         {
             item = new GeneNotWrittenView(index, property.Name, previous, refusal);
@@ -168,23 +117,23 @@ internal static class GeneWriter
         return true;
     }
 
-    private static ApiException? ValueRefusal(Gene gene, double value, bool force)
+    private static ApiException? ValueRefusal(Gene gene, double value, bool allowOutOfRange)
     {
-        switch (GeneArgs.ValueRefusal(value, force))
+        switch (GeneValues.Refusal(value, allowOutOfRange))
         {
             case GeneValueRefusal.NotFinite:
                 return ApiErrors.InvalidArgument($"Gene {gene}: the value must be finite.");
             case GeneValueRefusal.OutOfRange:
                 return ApiErrors.Refused("out_of_range",
-                    $"Gene {gene}: {value} is outside the game's range {GeneView.Minimum} to {GeneView.Maximum}; pass " +
-                    $"{Vocabulary.Arg("force")} to write it anyway.");
+                    $"Gene {gene}: {value} is outside the game's range {GeneView.Minimum} to {GeneView.Maximum}; " +
+                    "allow out_of_range writes it anyway.");
             default:
                 return null;
         }
     }
 
     /// <summary>One gene's new value.</summary>
-    private sealed class GeneEdit
+    internal sealed class GeneEdit
     {
         internal GeneEdit(Gene gene, float value)
         {
@@ -198,7 +147,7 @@ internal static class GeneWriter
     }
 
     /// <summary>A checked write: the plant, its gene set, the edits and each gene's result.</summary>
-    private sealed class GenesPlan
+    internal sealed class GenesPlan
     {
         internal GenesPlan(Plant plant, GeneCollection set, GeneSetHeader header, List<GeneEdit> edits,
             BatchResultView results)
