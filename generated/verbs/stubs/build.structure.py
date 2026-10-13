@@ -25,7 +25,7 @@ def build(what: Literal['structure'], *,
     A build that pays from the player's inventory (materials left out, or "player") carries the warning materials_from_player. With from_plan, what may be left out: it comes from the plan.
     Reports in a report run; acts in a confirmed run.
     Cheat when free: true: ask the user first.
-    Every build reply has placed: list[str] at the top: the new ids ([] in any report: a report run builds nothing, and writes on what it would build are not shown).
+    placed: list[str] on a job reply, the new ids (a run's log.placed, a structure job's result.placed; a brief poll counts them in log.placed_count); int on a run report, the cells it would build.
     Reply, one of:
     (JobQueued)
       JobQueued

@@ -17,7 +17,9 @@ internal static class VerbHelp
     internal const string IdListLine =
         "Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the one-id reply; a bad id is a row with error.";
 
-    internal const string PlacedLine = "Every build reply has placed: [ids] at the top: the new ids ([] in any report).";
+    internal const string PlacedLine =
+        "placed: on a job reply the new ids (a run's log.placed, a structure job's result.placed; a brief poll counts " +
+        "them in log.placed_count), on a run report a count of the cells it would build.";
 
     internal static string Index()
     {

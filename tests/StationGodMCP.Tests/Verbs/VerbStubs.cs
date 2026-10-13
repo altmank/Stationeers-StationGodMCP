@@ -22,7 +22,8 @@ internal static class VerbStubs
         "In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.";
 
     internal const string PlacedLine =
-        "Every build reply has placed: list[str] at the top: the new ids ([] in any report: a report run builds nothing, and writes on what it would build are not shown).";
+        "placed: list[str] on a job reply, the new ids (a run's log.placed, a structure job's result.placed; a brief " +
+        "poll counts them in log.placed_count); int on a run report, the cells it would build.";
 
     private static readonly Regex SimpleWord = new(@"^[A-Za-z_][\w+\-]*$");
 

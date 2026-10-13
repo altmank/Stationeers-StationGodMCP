@@ -8,7 +8,7 @@ def build(what: Literal['blueprint'], *,
     Progress: sg.inspect('job', id='paste'); take it back: sg.undo(id='paste').
     Reports in a report run; acts in a confirmed run.
     Cheat: ask the user first.
-    Every build reply has placed: list[str] at the top: the new ids ([] in any report: a report run builds nothing, and writes on what it would build are not shown).
+    placed: list[str] on a job reply, the new ids (a run's log.placed, a structure job's result.placed; a brief poll counts them in log.placed_count); int on a run report, the cells it would build.
     Reply, one of:
     (BlueprintPasteStatus)
       known: bool

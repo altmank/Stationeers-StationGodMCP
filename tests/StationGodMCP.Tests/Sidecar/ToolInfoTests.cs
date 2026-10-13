@@ -25,7 +25,7 @@ public sealed class ToolInfoTests
     {
         JsonElement reply = Found(Help.Answer(null, null, null));
 
-        Assert.Contains("tool_info", reply.GetProperty("text").GetString());
+        Assert.Contains("help {}", reply.GetProperty("text").GetString());
         Assert.Equal(Help.RootTopics, reply.GetProperty("topics").EnumerateArray().Select(entry => entry.GetProperty("topic").GetString()));
     }
 

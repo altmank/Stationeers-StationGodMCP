@@ -1,5 +1,5 @@
 {
-  "intro": "tool_info gives the long help in small steps: {tool} lists a tool's topics, {tool, topic} gives one topic, {tool, topic, subtopic} the detail, and {topic} one of the shared topics below. An argument's (see X) means tool_info {topic: \"X\"}; an error's see names the node that explains it.",
+  "intro": "help gives the long help in small steps: help {} lists verbs and topics; {verb} a verb's whats and options; {verb, what} one what in full; {topic} one of the shared topics below, {topic, subtopic} its subtopic. An argument's (see X) means help {topic: \"X\"}; an error's see names the node that explains it.",
   "topics": {
     "positions": {
       "summary": "Points: [x, y, z] in metres; crosshair and relative forms.",
@@ -100,24 +100,24 @@
       "text": "Default replies stay small: a tool lists a short page or the first entries of a long list. Every reply ends with truncated, one entry per list it held back: {list, returned, total, more (the argument that gets the rest, with its maximum)}; at_least true when total is a lower bound. truncated [] means the reply holds everything. It survives fields, omit and output_file. Read it before concluding you saw everything. list_limits {list: count} keeps more entries of a list the reply cut by default."
     },
     "report_only": {
-      "summary": "dry_run: true on the writes that act at once: every check, nothing done.",
-      "text": "move_item, write_memory, write_logic, write_logic_many, run_console_command, plant_genes edits and paste_blueprint act at once. dry_run: true runs every check the call runs, in the same order, and changes nothing. The reply starts report_only: true and problems, then what the call would do in the call's own keys: the targets, the values there before, the change. A check that would refuse the call does not refuse its report: the report answers {report_only: true, problems: [{code, message}]} with the error the call would give, so a report pass shows every write that would fail. In a list (moves, genes, writes) each refused entry is a problem with its index, and the other entries are still reported. A report is clean when problems is empty. Arguments that do not read (missing, malformed, not for that form) are refused as in a real call. Each move or write of a list is checked against the world as it stands, without the ones before it. A report is a read, on a cheat tool too: it orders and resends like one."
+      "summary": "report_only: every check, nothing done, until confirm: true.",
+      "text": "Every write reports until confirm: true: build, swap, remove, trade buy and sell, undo, every cheat, and any write whose targets you did not type out (a ref, a network, a spread). A report runs every check the acting call runs, in the same order, and changes nothing. The reply starts report_only: true and problems, then what the call would do in the call's own keys: the targets, the values there before, the change. A check that would refuse the call does not refuse its report: the report answers {report_only: true, problems: [{code, message}]} with the error the call would give, so a report pass shows every write that would fail. In a list (moves, genes, writes) each refused entry is a problem with its index, and the other entries are still reported. A report is clean when problems is empty. Arguments that do not read (missing, malformed, not for that form) are refused as in a real call. Each move or write of a list is checked against the world as it stands, without the ones before it. A report is a read, on a cheat tool too: it orders and resends like one."
     },
     "cheats": {
       "summary": "Cheat tools: the user approves each use.",
-      "text": "A cheat tool or argument changes the world in a way a player cannot: it bypasses the game's physics, rules or costs (move_gas, write_memory, run_console_command, set_battery_charge, move_player, plant_genes edits, move_item force, paste_blueprint, place_structure free). Tell the user when a call is a cheat and get their approval for that call before running it. Each tool's description says when it is one."
+      "text": "A cheat tool or argument changes the world in a way a player cannot: it bypasses the game's physics, rules or costs (move gas, move player, write memory, write battery, write genes, server command, move item with force: true, build blueprint, build structure or build finish with free: true). A cheat reports until confirm: true: tell the user when a call is a cheat and get their approval for that call before running it. help {topic: \"cheats\"} lists them."
     },
     "jobs": {
-      "summary": "Building jobs: dry run, confirm, polls, the queue.",
-      "text": "Building tools report a dry run by default and change nothing. A real run needs dry_run: false and confirm: true (confirm_required otherwise) and answers job_id, status and preflight_summary (counts and warning or problem codes); verbose: true gives the whole preflight. The job holds the game tick, runs every check again, builds in one frame, then verifies what it built. Host only.",
+      "summary": "Building jobs: report, confirm, polls, the queue.",
+      "text": "Building tools report by default and change nothing. A real run needs confirm: true (confirm_required otherwise) and answers the started job's id, status and preflight_summary (counts and warning or problem codes); verbose: true gives the whole preflight. The job holds the game tick, runs every check again, builds in one frame, then verifies what it built. Host only.",
       "subtopics": {
         "polling": {
-          "summary": "job_id: poll a running or finished job.",
-          "text": "Poll with job_id alone (verbose allowed). A poll answers status and result (placed, removed, used, refunded, verification, gas_check, error); preflight and final_check are null or left out because the real run already answered them, except that a refused job keeps final_check, which says why. verbose: true answers the whole job. job_not_found when the id is not running, queued or among the last jobs kept."
+          "summary": "The started job's id: poll a running or finished job.",
+          "text": "Poll with inspect {what: \"job\", id} (verbose allowed). A poll answers status and result (placed, removed, used, refunded, verification, gas_check, error); preflight and final_check are null or left out because the real run already answered them, except that a refused job keeps final_check, which says why. verbose: true answers the whole job. job_not_found when the id is not running, queued or among the last jobs kept."
         },
         "queue": {
-          "summary": "busy, wait and the queue of real runs.",
-          "text": "One job runs at a time. While one runs, a real run answers status busy with running_job_id and changes nothing; wait: true queues it instead (status queued, its own job_id and position; up to 8 wait). A queued run starts when the slot is free and runs its whole preflight again on the world the earlier jobs left. tick_held: an earlier job's atmosphere work is still running; try again or pass wait: true."
+          "summary": "busy, queue and the waiting runs.",
+          "text": "One job runs at a time. While one runs, a real run answers status busy with running_job_id and changes nothing; queue (default true) queues it instead (status queued, its own id and position; up to 8 wait). A queued run starts when the slot is free and runs its whole preflight again on the world the earlier jobs left. tick_held: an earlier job's atmosphere work is still running; try again or pass queue: true."
         },
         "refusals": {
           "summary": "Why a confirmed run stops: final check, tick, save.",
@@ -180,8 +180,8 @@
   },
   "families": {
     "materials": {
-      "summary": "from_id: where a build's materials come from.",
-      "text": "A build takes every build state's items up to the state it builds (state 0 is the kit or coil), from the player's inventory at any depth, or from from_id (a thing whose slots pay: a locker, a coil, a vending machine). from_id may list up to 8 things, tried in order for each material: [\"<parts locker>\", \"<materials locker>\"]; the first also takes a refund to source, and the dry run's materials give paid_by, what each pays. A part a device is using (slots/in_use) never pays, nor anything inside it. not_enough_materials, not_enough_coils and not_enough_kits name what is missing and what is held. The dry run lists the materials needed and held. A build a player pays for (from_id left out, or naming a player) warns materials_from_player."
+      "summary": "materials: where a build's materials come from.",
+      "text": "A build takes every build state's items up to the state it builds (state 0 is the kit or coil), from the player's inventory at any depth, or from materials (holders whose slots pay: a locker, a coil, a vending machine; ids or \"player\"). materials may list up to 8 holders, tried in order for each material: [\"<parts locker>\", \"<materials locker>\"]; the first also takes a refund to source, and a report's materials give paid_by, what each pays. A part a device is using (slots/in_use) never pays, nor anything inside it. not_enough_materials, not_enough_coils and not_enough_kits name what is missing and what is held. The report lists the materials needed and held. A build a player pays for (materials left out, or naming a player) warns materials_from_player."
     },
     "gas_hold": {
       "summary": "gas_check and the gas hold after a pipe job lost gas; acknowledge_gas_lost.",
@@ -199,7 +199,7 @@
     },
     "lint": {
       "summary": "Build and write lint findings (lint_<rule id>); problems refuse.",
-      "text": "The report rules of lint-rules.json (the mod's file, with the save's file over it; lint_rules lists them) run on what a building request would place, in the world around it. Each finding about a placed thing is lint_<rule id>, such as lint_floating_run: a problem when the rule's level is problem (the request is refused; the message names the rule and how to allow it: its level warning or \"enabled\": false in the save's lint-rules.json), else a warning. A rule turned off never runs. plan_chute_route also routes around a rule whose route is inside_frames while it is in effect (refusing cells outside frames at level problem, avoiding them otherwise; the ends and their neighbours excepted), whatever the style. lint_layout runs every rule over standing things. Rules with \"write\" in their on run on each write_logic that opens a vent, valve, pump or regulator, over the pipe networks it opens to (a valve's both sides and their vents), never cached: a problem refuses (lint_refused) unless allow_lint, a warning is lint_<rule id>. A check runs at the write; a network that changes after it is not watched."
+      "text": "The report rules of lint-rules.json (the mod's file, with the save's file over it; check rules lists them) run on what a building request would place, in the world around it. Each finding about a placed thing is lint_<rule id>, such as lint_floating_run: a problem when the rule's level is problem (the request is refused; the message names the rule and how to allow it: its level warning or \"enabled\": false in the save's lint-rules.json), else a warning. A rule turned off never runs. plan route for a chute also routes around a rule whose route is inside_frames while it is in effect (refusing cells outside frames at level problem, avoiding them otherwise; the ends and their neighbours excepted), whatever the style. check layout runs every rule over standing things. Rules with \"write\" in their on run on each write logic that opens a vent, valve, pump or regulator, over the pipe networks it opens to (a valve's both sides and their vents), never cached: a problem refuses (lint_refused) unless allow: [\"lint\"], a warning is lint_<rule id>. A check runs at the write; a network that changes after it is not watched."
     },
     "doors": {
       "summary": "Door keep-outs and windows: allow_door_keepout.",
@@ -301,7 +301,7 @@
     },
     "runs": {
       "summary": "Laying pipe, cable and chute runs: forms, joins, guards, reports.",
-      "text": "place_cables, place_pipes and place_chutes lay a run as a coil or kit builds it: for every 0.5 m cell the one-cell piece whose ends match that cell's connections, turned as needed; long straights are never placed. The caller gives the route (plan_*_route finds one). A dry run by default; a real run is a job that holds the tick, checks again, builds in one frame and verifies. One job at a time across every building tool. Host only.",
+      "text": "build cable, build pipe and build chute lay a run as a coil or kit builds it: for every 0.5 m cell the one-cell piece whose ends match that cell's connections, turned as needed; long straights are never placed. The caller gives the route (plan route finds one). A report by default; a real run (confirm: true) is a job that holds the tick, checks again, builds in one frame and verifies. One job at a time across every building tool. Host only.",
       "subtopics": {
         "forms": {
           "summary": "waypoints, cells, piece, pieces, branches, extra_ends.",
@@ -313,11 +313,11 @@
         },
         "long_straights": {
           "summary": "Long straights the run joins or crosses.",
-          "text": "A long straight (3, 5 or 10 cells) the run must join in its middle or cross is split into singles in the same job (same line, grade, colour and owner) and then joined: warning long_split, listed in removals with its cells as new singles. allow_split_long false refuses (long_piece). A route may also start from one of its cells with at, or end on it as to."
+          "text": "A long straight (3, 5 or 10 cells) the run must join in its middle or cross is split into singles in the same job (same line, grade, colour and owner) and then joined: warning long_split, listed in removals with its cells as new singles. split_long false refuses (long_piece). A route may also start from one of its cells with at, or end on it with end."
         },
         "assume_removed": {
           "summary": "remove_ids and assume_removed.",
-          "text": "remove_ids: pieces of the run's kind removed in the same job before building (a reroute; no power tick sees a device unpowered); a burnt cable may be named, freeing its cell. assume_removed: things checked as if already gone (cells free, links absent, pieces forecast as removed with assumed true); nothing of them is removed, and a real run is refused (assumed_present) while any still stands, so remove them first or pass the pieces as remove_ids. A run queued with wait behind another job is checked when it starts, so that job may remove them."
+          "text": "remove_ids: pieces of the run's kind removed in the same job before building (a reroute; no power tick sees a device unpowered); a burnt cable may be named, freeing its cell. assume_removed: things checked as if already gone (cells free, links absent, pieces forecast as removed with assumed true); nothing of them is removed, and a real run is refused (assumed_present) while any still stands, so remove them first or pass the pieces as remove_ids. A run queued behind another job is checked when it starts, so that job may remove them."
         },
         "placement": {
           "summary": "The cursor's placement rule, and rockets.",
@@ -329,63 +329,63 @@
         },
         "guards": {
           "summary": "would_bridge, would_split, would_loop, link_lost, through_air.",
-          "text": "Every network after the edit is forecast by the game's own connection rule (links.model_matches_game proves it). would_bridge: the run joins two networks, or two ports of one device; allowed when allow_bridge names every network of that merge or the device. would_split: removals split a network or leave a port joined to nothing (allow_split); each part lists its devices, root and cut_off. link_lost: a piece the edit touches would lose a link. would_loop (warning): a new link joins what is already joined another way. through_air (warning): new pieces on no frame and no wall plane; air_cells counts them."
+          "text": "Every network after the edit is forecast by the game's own connection rule (links.model_matches_game proves it). would_bridge: the run joins two networks, or two ports of one device; allowed when allow_bridge names every network of that merge or the device. would_split: removals split a network or leave a port joined to nothing (allow: [\"split\"]); each part lists its devices, root and cut_off. link_lost: a piece the edit touches would lose a link. would_loop (warning): a new link joins what is already joined another way. through_air (warning): new pieces on no frame and no wall plane; air_cells counts them."
         },
         "report": {
-          "summary": "The dry run report and the reply switches.",
-          "text": "cells [{at, action place, change or keep, prefab_name, rotation_deg, shape, ends, cost, refund, existing, joins, open_end}], removals, materials, networks_before, networks_after (each with its guard numbers; device_count counts each device once in both, port_count counts the device ports after), would_bridge, would_split, links {count_before, count_after, added_count, lost_count, model_matches_game}, problems, warnings, ready. limit lists 5 cells (0 none); include_links, include_network_devices and include_notes add detail. A job's log lists created_ids and created_by_part. Status applied, applied_with_differences, stopped, applied_unchecked or refused."
+          "summary": "The report and the reply switches.",
+          "text": "cells [{at, action place, change or keep, prefab_name, rotation_deg, shape, ends, cost, refund, existing, joins, open_end}], removals, materials, networks_before, networks_after (each with its guard numbers; device_count counts each device once in both, port_count counts the device ports after), would_bridge, would_split, links {count_before, count_after, added_count, lost_count, model_matches_game}, problems, warnings, ready. rows lists 5 cells (0 none); include (links, notes, network_devices) adds detail. A job's log lists created_ids and created_by_part. Status applied, applied_with_differences, stopped, applied_unchecked or refused."
         }
       }
     },
     "routing": {
       "summary": "Finding a route: ends, search rules, trees, trunks, reroutes.",
-      "text": "plan_cable_route, plan_pipe_route and plan_chute_route search the small grid (A*) for a route and dry-run it with the place tool. The search never passes through a cell holding a piece of its kind (it would join it), a device or other small-grid thing, nor along another kind's axis in a cell; frames and walls never block. Returns found, route, place_arguments (add dry_run false and confirm true to build) and dry_run, or a failure: no_route, too_long, search_limit. When to names a network, place_arguments carries join_to.",
+      "text": "plan route (kind cable, pipe or chute) searches the small grid (A*) for a route and reports it as build would. The search never passes through a cell holding a piece of its kind (it would join it), a device or other small-grid thing, nor along another kind's axis in a cell; frames and walls never block. Returns found, route, build_arguments (the build call: add confirm: true to build them) and build_report, or a failure: no_route, too_long, search_limit. When end names a network, build_arguments carries join_to.",
       "subtopics": {
         "ends": {
-          "summary": "What from and to can name.",
-          "text": "{at}: a cell; a piece there is joined. {reference_id} of a piece: its cell (leaving through an open end is free, another direction makes a junction); to on a long straight takes any of its cells. {reference_id, port} of a device: the cell a piece joining that port stands in (port may be left out with one port of the kind). {reference_id} of an in-line tank, passive vent or other thing with its own ends: the cell beyond its free end. to may be {network_id}: the nearest cell of any piece of that network. An end whose cell no piece may take is cell_blocked."
+          "summary": "What start and end can name.",
+          "text": "{at}: a cell; a piece there is joined. {id} of a piece: its cell (leaving through an open end is free, another direction makes a junction); end on a long straight takes any of its cells. {id, port} of a device: the cell a piece joining that port stands in (port may be left out with one port of the kind). {id} of an in-line tank, passive vent or other thing with its own ends: the cell beyond its free end. end may be {network}: the nearest cell of any piece of that network. An end whose cell no piece may take is cell_blocked."
         },
         "rules": {
           "summary": "style, avoid_*.",
-          "text": "style, one value for what the route keeps to. supported (default): an air cell (on no frame and no wall plane) costs as much as 50 supported cells, so a route over frames or along walls wins whenever the box holds one; else the fewest air cells, noted through_air. frame_edges: supported, preferring cells on two or three face planes of a frame cell (beam tops included). walls: supported, preferring cells on or beside a wall plane. hidden: supported, each cell costing by how much shows (inside a frame 1, frame surface 3, wall plane 5, air 9), the least visible route. inside_frames: only cells inside or on a frame (the start and end cells excepted); no_route where none. free: the shortest route, air or not. avoid_networks: never beside another network of the kind. Doors: the search never enters a keep-out unless allow_door_keepout. Windows: with a lint rule whose route is off_windows at level problem, no cell on a window's plane, seams, edges and base included; at warning it costs 6 more; with none, nothing."
+          "text": "style, one value for what the route keeps to. supported (default): an air cell (on no frame and no wall plane) costs as much as 50 supported cells, so a route over frames or along walls wins whenever the box holds one; else the fewest air cells, noted through_air. frame_edges: supported, preferring cells on two or three face planes of a frame cell (beam tops included). walls: supported, preferring cells on or beside a wall plane. hidden: supported, each cell costing by how much shows (inside a frame 1, frame surface 3, wall plane 5, air 9), the least visible route. inside_frames: only cells inside or on a frame (the start and end cells excepted); no_route where none. free: the shortest route, air or not. avoid_networks: never beside another network of the kind. Doors: the search never enters a keep-out unless allow: [\"door_keepout\"]. Windows: with a lint rule whose route is off_windows at level problem, no cell on a window's plane, seams, edges and base included; at warning it costs 6 more; with none, nothing."
         },
         "starts": {
           "summary": "Several starts grow one tree.",
-          "text": "from may be {reference_id, ports: [..]} or an array of starts, up to 16. The first start routes to the target; each other start routes to the nearest cell of the tree so far and joins it with a junction (a start the tree passes gets an extra end), never to the network a second time, so a device with separate ports gets one run and no loop. The reply adds route.branches."
+          "text": "start may be {id, ports: [..]} or an array of starts, up to 16. The first start routes to the target; each other start routes to the nearest cell of the tree so far and joins it with a junction (a start the tree passes gets an extra end), never to the network a second time, so a device with separate ports gets one run and no loop. The reply adds route.branches."
         },
         "trunk": {
           "summary": "Bus mode: a trunk and its drops in one job.",
-          "text": "trunk {waypoints or cells} instead of to: the trunk is laid as given and every start branches to the nearest cell of the tree so far, junctions included, so a trunk and its drops are one job and one guard forecast. The trunk's own ends join what they meet (join). join_to names the target network in trunk mode."
+          "text": "trunk {waypoints or cells} instead of end: the trunk is laid as given and every start branches to the nearest cell of the tree so far, junctions included, so a trunk and its drops are one job and one guard forecast. The trunk's own ends join what they meet (join). join_to names the target network in trunk mode."
         },
         "reroute": {
           "summary": "Replacing an old run.",
-          "text": "reroute {reference_ids: the old run's pieces} or {between: [end, end]} (the shortest run between two devices or pieces on one network; an end is a reference id or {reference_id, port}). The old run must meet the rest at exactly two cells (not_a_segment); the new route runs between them with the old pieces removed in the same job. A device on several networks of the kind uses the one both ends share; none or several is not_on_one_network or ambiguous_port, listing the ports. no_run_between: no run of that kind joins the ends."
+          "text": "reroute {id: the old run's pieces} or {between: [end, end]} (the shortest run between two devices or pieces on one network; an end is an id or {id, port}). The old run must meet the rest at exactly two cells (not_a_segment); the new route runs between them with the old pieces removed in the same job. A device on several networks of the kind uses the one both ends share; none or several is not_on_one_network or ambiguous_port, listing the ports. no_run_between: no run of that kind joins the ends."
         },
         "reserve": {
           "summary": "reserve_cells, reserve_ports and assume_removed.",
-          "text": "reserve_cells and reserve_ports: cells the search treats as blocked (a port's joining cell), so one run cannot take the cell another port's run needs; a reserved cell that is one of this route's ends is released, with a note. assume_removed plans as if things are gone: pieces of the kind go into place_arguments.remove_ids (built and removed together), other things into place_arguments.assume_removed (remove them first); route.assumed_removed lists pieces, others, missing and in_the_way."
+          "text": "reserve_cells and reserve_ports: cells the search treats as blocked (a port's joining cell), so one run cannot take the cell another port's run needs; a reserved cell that is one of this route's ends is released, with a note. assume_removed plans as if things are gone: pieces of the kind go into build_arguments.remove_ids (built and removed together), other things into build_arguments.assume_removed (remove them first); route.assumed_removed lists pieces, others, missing and in_the_way."
         },
         "reply": {
           "summary": "The route block.",
-          "text": "route {waypoints, length, bends, cost, expanded, removes, air_cells (0 for a clean route), air, branches, extra_ends, visibility {inside, frame_surface, wall, air}, assumed_removed, removal_refund}. would_loop in the dry run means the route joins what is already joined; with join all the planner tries once more away from the ends' own networks."
+          "text": "route {waypoints, length, bends, cost, expanded, removes, air_cells (0 for a clean route), air, branches, extra_ends, visibility {inside, frame_surface, wall, air}, assumed_removed, removal_refund}. would_loop in the report means the route joins what is already joined; with join all the planner tries once more away from the ends' own networks."
         }
       }
     },
     "removals": {
       "summary": "Removing pipe, cable and chute pieces: forms, splits, refunds.",
-      "text": "remove_cables, remove_pipes and remove_chutes remove pieces as a player's tool does: reference_ids, or the piece in each cell of waypoints or cells. would_split refuses a removal that splits a network or leaves a port joined to nothing, unless allow_split; each part lists its devices, root and cut_off (the devices no root reaches after it). A network that only loses pieces keeps its id; a split one is rebuilt by the game with new ids (chute networks always take new ids). Refunds go where refund_to says. plan_removal prices the same dry run without the power to run it."
+      "text": "remove cable, remove pipe and remove chute remove pieces as a player's tool does: id, or the piece in each cell of waypoints or cells. would_split refuses a removal that splits a network or leaves a port joined to nothing, unless allow: [\"split\"]; each part lists its devices, root and cut_off (the devices no root reaches after it). A network that only loses pieces keeps its id; a split one is rebuilt by the game with new ids (chute networks always take new ids). Refunds go where refund_to says. plan removal prices the same removal and never runs it."
     },
     "pipes": {
       "summary": "Pipe safety: content, bursts, holding contents, gas checks.",
       "text": "A pipe of other content is never joined (content_mismatch). would_burst: the pooled contents in the pooled volume would pass the weakest pipe (new pipes add volume, removed ones take it off); move_gas also checks tanks and canisters. Removals never lose or move contents: removing every pipe of a network that holds gas or liquid is holds_contents, and a removal that would split one is contents_would_move; empty it first. Placing into a network adds volume: contents stay and pressure falls. A pipe with a device mounted is cannot_change. Every pipe job checks gas before and after (see gas_hold)."
     },
     "swaps": {
-      "summary": "Swapping pieces in place: upgrade_*, clean_* and replace_*.",
-      "text": "These tools swap pieces in place within one held tick: each replacement is built first and the old piece removed after, so no network splits, no face opens and no gas moves between. A dry run reports every piece and lists every problem at once; a real run (dry_run false, confirm true) is refused unless the checks find nothing. Name a network with network_id or pieces with reference_ids (up to 4096); pieces outside them only connect. Host only.",
+      "summary": "Swapping pieces in place: wall, frame, cable, pipe, chute.",
+      "text": "These whats swap pieces in place within one held tick: each replacement is built first and the old piece removed after, so no network splits, no face opens and no gas moves between. A report lists every piece and every problem at once; a real run (confirm: true) is refused unless the checks find nothing. Name a network with network or pieces with id (up to 4096); pieces outside them only connect. Host only.",
       "subtopics": {
         "job": {
           "summary": "The swap job and its statuses.",
-          "text": "The job holds the tick as a save does, runs every check again, swaps every piece in one frame, checks the result the next frame and lets the tick go. Poll with job_id: applied; applied_with_differences (verification lists each link, mount, device or network that differs); stopped (a piece failed: swapped lists old and new ids, not_swapped the rest, stopped_at the piece and whether it is intact; run the same call again to resume); applied_unchecked; refused (final_check says why; nothing ran)."
+          "text": "The job holds the tick as a save does, runs every check again, swaps every piece in one frame, checks the result the next frame and lets the tick go. Poll with inspect {what: \"job\", id}: applied; applied_with_differences (verification lists each link, mount, device or network that differs); stopped (a piece failed: swapped lists old and new ids, not_swapped the rest, stopped_at the piece and whether it is intact; run the same call again to resume); applied_unchecked; refused (final_check says why; nothing ran)."
         },
         "connectivity": {
           "summary": "Links predicted and checked.",
@@ -393,13 +393,13 @@
         },
         "materials": {
           "summary": "Coils, kits and materials for a swap.",
-          "text": "Each swap costs the new piece's coil or kit less the old one's, by the coil's own merge rule; a shortfall is taken from from_id (default the player; a list is tried in order, see materials) and refused with not_enough_coils (or not_enough_materials) when it holds too few. Nothing is made for free. With refund (default true) the surplus and removed pieces' materials go where refund_to says. Without a player and without from_id, a swap that charges nothing and whose refund_to is not the single word source still goes ahead (the refund lands where the first piece stood); else no_local_player."
+          "text": "Each swap costs the new piece's coil or kit less the old one's, by the coil's own merge rule; a shortfall is taken from materials (default the player; a list is tried in order) and refused with not_enough_coils (or not_enough_materials) when it holds too few. Nothing is made for free. With refund (default true) the surplus and removed pieces' materials go where refund_to says. Without a player and without materials, a swap that charges nothing and whose refund_to is not the single word source still goes ahead (the refund lands where the first piece stood); else no_local_player."
         }
       }
     },
     "placing": {
       "summary": "Placing structures: the cursor rule, supports, rockets, refusals.",
-      "text": "place_structure places anything a kit builds, checked as the game's own placement cursor checks it (blocked cells and faces, small-grid collisions, each class's own rules, a face-mounted piece's support; nothing loose, no creature or player inside a piece that fills its cell), and again just before each piece is built. Every placement must be one a player's cursor would accept there; check_replaceable asks the same of standing things. A small-grid piece whose slot in a cell is taken is refused.",
+      "text": "build structure places anything a kit builds, checked as the game's own placement cursor checks it (blocked cells and faces, small-grid collisions, each class's own rules, a face-mounted piece's support; nothing loose, no creature or player inside a piece that fills its cell), and again just before each piece is built. Every placement must be one a player's cursor would accept there; check replaceable asks the same of standing things. A small-grid piece whose slot in a cell is taken is refused.",
       "subtopics": {
         "supports": {
           "summary": "Supports an earlier placement of the request puts there.",
