@@ -1,14 +1,20 @@
 #nullable enable
 
 using System.Collections.Generic;
+using System.Linq;
+using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure.Verbs;
 using Xunit;
 
 namespace StationGodMCP.Tests;
 
-/// <summary>move_gas: the old StationApi.GasMove shapes against the new views; no renames.</summary>
-public sealed class MoveGasWireTests
+/// <summary>
+/// move gas's replies in the catalogue's keys (a queued move, a deleted one, a room side, a failed or waiting move as
+/// inspect job answers them) and its report: the prediction without transfer_id and status, one target per side.
+/// </summary>
+public sealed class MoveGasReplyTests
 {
     private static object OldAtmosphere(double pressure) => new
     {
@@ -62,7 +68,7 @@ public sealed class MoveGasWireTests
         new List<ThingView> { new ThingView(new ThingId(30), "StructureGasTankStorage", "Tank Storage") }, null);
 
     [Fact]
-    public void QueuedMoveSameWire()
+    public void AQueuedMoveAnswersItsPrediction()
     {
         var old = new
         {
@@ -74,10 +80,46 @@ public sealed class MoveGasWireTests
         MoveGasView view = new MoveGasView("7", "queued", true, true, NewSide(), NewSide(),
             new List<MovedGasView> { new MovedGasView("Oxygen", 6.25, 1200.5) }, null);
         WireCheck.Same(old, view);
+        Assert.Equal(new[] { "transfer_id", "status", "predicted", "joined", "from", "to", "deleted", "moved", "error" },
+            GasReplies.Acted(view).Properties().Select(key => key.Name));
     }
 
     [Fact]
-    public void DeletedMoveSameWire()
+    public void AReportIsThePredictionWithoutTransferIdOrStatusAndASideATarget()
+    {
+        MoveGasView predicted = new MoveGasView(null, "queued", true, true, NewSide(), RoomSide(),
+            new List<MovedGasView> { new MovedGasView("Oxygen", 6.25, 1200.5) }, null);
+
+        JObject report = GasReplies.Reported(predicted, "[cannot undo: gas move]");
+
+        Assert.Equal(new[]
+        {
+            "predicted", "joined", "from", "to", "deleted", "moved", "error", "problems", "report_only", "targets"
+        }, report.Properties().Select(key => key.Name));
+        JArray targets = (JArray)report["targets"]!;
+        Assert.Equal("[10, Canister, 12.5 -> 12.5] [cannot undo: gas move]", (string?)targets[0]!["text"]);
+        Assert.Equal("123", (string?)targets[1]!["id"]);
+        Assert.Equal("room 123 (None)", (string?)targets[1]!["name"]);
+    }
+
+    [Fact]
+    public void APlanetReportNamesThePlanetsAirAsItsTarget()
+    {
+        JObject removal = new JObject { ["status"] = "queued", ["from"] = "planet", ["amount_mol"] = 5.0, ["ticks"] = 1 };
+
+        JObject report = GasReplies.ReportedPlanet(removal, 20.0, 15.0, "[cannot undo: gas move]");
+
+        Assert.Null(report["status"]);
+        Assert.Equal("[planet, the planet's air, 20 -> 15] [cannot undo: gas move]",
+            (string?)Assert.Single((JArray)report["targets"]!)["text"]);
+    }
+
+    private static GasSideView RoomSide() => new GasSideView(new List<GasMemberView>(),
+        new GasTotalView(NewAtmosphere(101.0), NewAtmosphere(95.5), null), new List<ThingView>(),
+        new GasRoomView("123", "None", 40, 38, 304000.0));
+
+    [Fact]
+    public void ADeletedMoveHasNoTo()
     {
         var old = new
         {
@@ -109,7 +151,7 @@ public sealed class MoveGasWireTests
     }
 
     [Fact]
-    public void FailedAndWaitingSameWire()
+    public void FailedAndWaitingMovesAsInspectJobAnswersThem()
     {
         var failed = new
         {
@@ -122,7 +164,7 @@ public sealed class MoveGasWireTests
     }
 
     [Fact]
-    public void RoomSideSameWire()
+    public void ARoomSideNamesItsRoom()
     {
         var old = new
         {

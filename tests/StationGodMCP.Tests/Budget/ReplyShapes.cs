@@ -57,7 +57,6 @@ internal static class ReplyShapes
         ["tool_info"] =
             "Answered by the MCP server from the catalogue, never by the game; CatalogueTextTests holds every node it " +
             "answers under 1.5 KB.",
-        ["move_gas"] = "Its replies are built from JSON trees, not views; members of from/to are the request's atmospheres.",
     };
 
     private static ReplyShape S<T>() => new ReplyShape(typeof(T));

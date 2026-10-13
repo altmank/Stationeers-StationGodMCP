@@ -252,17 +252,18 @@ public sealed class RouteEndsAndReservationTests
     }
 }
 
-/// <summary>move_gas dry_run and the label refusal for in-line tanks.</summary>
-public sealed class MoveGasDryRunAndLabelTests
+/// <summary>move gas's report and the label refusal for in-line tanks.</summary>
+public sealed class MoveGasReportAndLabelTests
 {
     [Fact]
-    public void ADryRunHasNoTransferIdAndSaysSo()
+    public void AReportHasNoTransferIdOrStatusAndSaysItIsAReport()
     {
-        MoveGasView view = new MoveGasView(null, MoveGasView.DryRun, true, true, null, null,
+        MoveGasView view = new MoveGasView(null, MoveGasView.Queued, true, true, null, null,
             new List<MovedGasView> { new MovedGasView("Oxygen", 10.0, 2000.0) }, null);
-        JObject json = JObject.Parse(WireCheck.New(view));
-        Assert.Equal(JTokenType.Null, json["transfer_id"]!.Type);
-        Assert.Equal("dry_run", (string?)json["status"]);
+        JObject json = StationGodMCP.Pure.Verbs.GasReplies.Reported(view, "[cannot undo: gas move]");
+        Assert.Null(json["transfer_id"]);
+        Assert.Null(json["status"]);
+        Assert.True((bool)json["report_only"]!);
         Assert.True((bool)json["predicted"]!);
         Assert.Equal("Oxygen", (string?)json["moved"]![0]!["gas"]);
     }

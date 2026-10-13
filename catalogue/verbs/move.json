@@ -278,7 +278,7 @@
         "Applied at the next atmospherics tick. A confirmed move waits for it (max_wait, default 30 s) and answers status applied or failed; past max_wait it answers queued and its id (inspect job)."
       ],
       "example": {"source": "2005300", "gases": ["Hydrogen"], "delete": true},
-      "x-cost": {"class": "instant"},
+      "x-cost": {"class": "job"},
       "reply": {
         "variants": [
           {

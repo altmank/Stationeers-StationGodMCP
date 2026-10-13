@@ -131,8 +131,8 @@ internal sealed class JoinedSet
             if (Members.Count >= GasJoins.MaximumMembers)
             {
                 throw ApiErrors.Refused("joined_too_large",
-                    $"More than {GasJoins.MaximumMembers} atmospheres are joined; pass {Vocabulary.Arg("joined")}: " +
-                    "false to move from the named one only.");
+                    $"More than {GasJoins.MaximumMembers} atmospheres are joined; joined: " +
+                    "false moves from the named one only.");
             }
 
             AddMember(member);

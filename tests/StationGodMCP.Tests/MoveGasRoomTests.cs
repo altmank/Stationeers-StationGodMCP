@@ -1,22 +1,32 @@
 #nullable enable
 
+using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Verbs;
 using Xunit;
 
 namespace StationGodMCP.Tests;
 
-/// <summary>move_gas rooms: the from/to argument forms and how a gas is split over a room's cells.</summary>
+/// <summary>move gas's options (the source and to forms, to or delete, named gases) and how a gas is split over a room's cells.</summary>
 public sealed class MoveGasRoomTests
 {
-    private static GasPlaceArg? Place(string json) => GasPlaceArg.Optional(new Args(JObject.Parse(json)), "from");
+    private static GasPlaceOption? Place(string json, List<OptionProblem>? problems = null) =>
+        GasPlaceOption.Of(JToken.Parse(json), "source", problems ?? new List<OptionProblem>());
 
-    [Fact]
-    public void ReferenceIdIsAnAtmosphere()
+    private static GasMoveOrder? Order(string source, string? to = null, bool delete = false, string[]? gases = null,
+        double? amountMol = null, List<OptionProblem>? problems = null) =>
+        GasMoveOrder.Of(JToken.Parse(source), to == null ? null : JToken.Parse(to), delete, gases, amountMol,
+            allowBurst: false, joined: true, problems ?? new List<OptionProblem>());
+
+    [Theory]
+    [InlineData("\"171002\"", "171002")]
+    [InlineData("\"looking_at\"", "looking_at")]
+    public void AnIdIsAnAtmosphere(string json, string id)
     {
-        GasPlaceArg.Atmosphere place = Assert.IsType<GasPlaceArg.Atmosphere>(Place("{\"from\": \"171002\"}"));
-        Assert.Equal(171002, place.Id.Value);
+        GasPlaceOption.Atmosphere place = Assert.IsType<GasPlaceOption.Atmosphere>(Place(json));
+        Assert.Equal(id, place.Id);
     }
 
     [Theory]
@@ -24,53 +34,82 @@ public sealed class MoveGasRoomTests
     [InlineData("\" Planet \"")]
     public void PlanetWord(string value)
     {
-        Assert.IsType<GasPlaceArg.Planet>(Place("{\"from\": " + value + "}"));
+        Assert.IsType<GasPlaceOption.Planet>(Place(value));
     }
 
     [Fact]
     public void RoomById()
     {
-        GasPlaceArg.Room room = Assert.IsType<GasPlaceArg.Room>(Place("{\"from\": {\"room_id\": \"77\"}}"));
+        GasPlaceOption.Room room = Assert.IsType<GasPlaceOption.Room>(Place("{\"room\": \"77\"}"));
         Assert.Equal(77, room.RoomId.Value);
     }
 
     [Fact]
     public void RoomOfAThing()
     {
-        GasPlaceArg.RoomOf room =
-            Assert.IsType<GasPlaceArg.RoomOf>(Place("{\"from\": {\"room_of\": \"5000\"}}"));
+        GasPlaceOption.RoomOf room = Assert.IsType<GasPlaceOption.RoomOf>(Place("{\"room_of\": \"5000\"}"));
         Assert.Equal(5000, room.ThingId.Value);
     }
 
-    [Fact]
-    public void AbsentIsNull()
-    {
-        Assert.Null(Place("{}"));
-        Assert.Null(Place("{\"from\": null}"));
-    }
-
     [Theory]
-    [InlineData("{\"from\": {}}")]
-    [InlineData("{\"from\": {\"room_id\": \"1\", \"room_of\": \"2\"}}")]
-    [InlineData("{\"from\": {\"room\": \"1\"}}")]
-    [InlineData("{\"from\": {\"room_id\": \"1\", \"extra\": true}}")]
-    [InlineData("{\"from\": {\"room_id\": \"abc\"}}")]
-    [InlineData("{\"from\": \"room\"}")]
-    [InlineData("{\"from\": true}")]
-    [InlineData("{\"from\": [\"1\"]}")]
-    public void MalformedIsInvalidArgument(string json)
+    [InlineData("{}")]
+    [InlineData("{\"room\": \"1\", \"room_of\": \"2\"}")]
+    [InlineData("{\"room_id\": \"1\"}")]
+    [InlineData("{\"room\": \"abc\"}")]
+    [InlineData("\"  \"")]
+    [InlineData("true")]
+    [InlineData("[\"1\"]")]
+    public void AMalformedPlaceIsAProblemUnderItsOption(string json)
     {
-        ApiException error = Assert.Throws<ApiException>(() => Place(json));
-        Assert.Equal(ApiErrors.InvalidArgumentCode, error.Code);
-        Assert.Contains("room_of", error.Message);
+        List<OptionProblem> problems = new List<OptionProblem>();
+        Assert.Null(Place(json, problems));
+        OptionProblem problem = Assert.Single(problems);
+        Assert.Equal("source", problem.Path);
+        Assert.Contains("room_of", problem.Problem);
     }
 
     [Fact]
-    public void RequiredRefusesAbsent()
+    public void AMoveNeedsToOrDeleteAndNotBoth()
     {
-        ApiException error =
-            Assert.Throws<ApiException>(() => GasPlaceArg.Required(new Args(new JObject()), "to"));
-        Assert.Equal(ApiErrors.InvalidArgumentCode, error.Code);
+        Assert.NotNull(Order("\"5\"", to: "\"6\""));
+        Assert.True(Order("\"5\"", delete: true)!.Deletes);
+
+        List<OptionProblem> neither = new List<OptionProblem>();
+        Assert.Null(Order("\"5\"", problems: neither));
+        Assert.Equal("to", Assert.Single(neither).Path);
+        List<OptionProblem> both = new List<OptionProblem>();
+        Assert.Null(Order("\"5\"", to: "\"6\"", delete: true, problems: both));
+        Assert.Contains("goes without delete", Assert.Single(both).Problem);
+    }
+
+    [Fact]
+    public void ARoomOrThePlanetAsTheSourceNeedsTheGasesNamed()
+    {
+        List<OptionProblem> room = new List<OptionProblem>();
+        Assert.Null(Order("{\"room\": \"7\"}", to: "\"6\"", problems: room));
+        Assert.Equal("gases", Assert.Single(room).Path);
+        Assert.NotNull(Order("{\"room\": \"7\"}", to: "\"6\"", gases: new[] { "Oxygen" }));
+
+        List<OptionProblem> planet = new List<OptionProblem>();
+        Assert.Null(Order("\"planet\"", delete: true, problems: planet));
+        Assert.Equal("gases", Assert.Single(planet).Path);
+    }
+
+    [Fact]
+    public void ThePlanetOnlyGivesGasUp()
+    {
+        List<OptionProblem> problems = new List<OptionProblem>();
+        Assert.Null(Order("\"planet\"", to: "\"6\"", gases: new[] { "Oxygen" }, problems: problems));
+        Assert.Equal("delete", Assert.Single(problems).Path);
+        Assert.NotNull(Order("\"planet\"", delete: true, gases: new[] { "Oxygen" }));
+    }
+
+    [Fact]
+    public void AnAmountIsMoreThanZero()
+    {
+        List<OptionProblem> problems = new List<OptionProblem>();
+        Assert.Null(Order("\"5\"", delete: true, amountMol: 0.0, problems: problems));
+        Assert.Equal("amount_mol", Assert.Single(problems).Path);
     }
 
     [Fact]

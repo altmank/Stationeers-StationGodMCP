@@ -42,7 +42,6 @@ internal static class ApiHost
             ["solar_aim"] = static args => SolarAimApi.Handle(args),
             ["advance_build_state"] = static args => AdvanceBuildStateApi.Handle(args),
             ["ignition_risk"] = static args => IgnitionRiskApi.Handle(args),
-            ["move_gas"] = static args => MoveGasApi.Handle(args),
             ["rocket_forecast"] = static args => RocketForecastApi.Handle(args),
             ["rocket_mining_options"] = static args => RocketMiningOptionsApi.Handle(args),
             ["move_item"] = static args => MoveItemApi.Handle(args),

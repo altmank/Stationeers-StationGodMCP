@@ -66,5 +66,6 @@ internal static class VerbHandlers
         VerbHandler.For(WriteGenesOptions.Spec, WriteGenesOptions.Bind, WriteGenes.Run),
         VerbHandler.For(WriteFlightLogOptions.Spec, WriteFlightLogOptions.Bind, WriteFlightLog.Run),
         VerbHandler.For(MovePlayerOptions.Spec, MovePlayerOptions.Bind, MovePlayer.Run),
+        VerbHandler.For(MoveGasOptions.Spec, MoveGasOptions.Bind, MoveGas.Run),
     });
 }

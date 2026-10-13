@@ -41,14 +41,14 @@ internal abstract class GasPlace
     /// <summary>Whether move_gas must be told which gases to take from here (a room: never empty it silently).</summary>
     internal abstract bool RequiresNamedGases { get; }
 
-    internal static GasPlace Resolve(GasPlaceArg arg, string name) => arg switch
+    internal static GasPlace Resolve(GasPlaceOption arg, string name, string label) => arg switch
     {
-        GasPlaceArg.Atmosphere atmosphere => new One(GasEnd.Resolve(atmosphere.Id, name)),
-        GasPlaceArg.Room room => RoomCells.Of(ClosedRooms.RequireRoomById(room.RoomId), name),
-        GasPlaceArg.RoomOf roomOf => RoomCells.Of(ClosedRooms.RequireRoom(roomOf.ThingId, Rooms()), name),
+        GasPlaceOption.Atmosphere atmosphere => new One(GasEnd.Resolve(TargetIds.Of(atmosphere.Id, label), name)),
+        GasPlaceOption.Room room => RoomCells.Of(ClosedRooms.RequireRoomById(room.RoomId), name),
+        GasPlaceOption.RoomOf roomOf => RoomCells.Of(ClosedRooms.RequireRoom(roomOf.ThingId, Rooms()), name),
         _ => throw ApiErrors.Refused("refused",
-            $"'{Vocabulary.Path(name)}': the planet only gives gas up ({Vocabulary.Arg("from")} \"planet\" with " +
-            $"{Vocabulary.Arg("delete")}: true); gas is not moved into it."),
+            $"'{name}': the planet only gives gas up (source \"planet\" with delete: true); gas is not moved " +
+            "into it."),
     };
 
     internal abstract bool SameAs(GasPlace other);
@@ -140,7 +140,7 @@ internal abstract class GasPlace
             if (cells.Count == 0)
             {
                 throw ApiErrors.Refused("no_atmosphere",
-                    $"'{Vocabulary.Path(name)}': none of the {grids.Count} cells of room {ClosedRooms.IdOf(room)} has " +
+                    $"'{name}': none of the {grids.Count} cells of room {ClosedRooms.IdOf(room)} has " +
                     "air of its own yet, so there is nothing to take and nowhere the game would keep it.");
             }
 

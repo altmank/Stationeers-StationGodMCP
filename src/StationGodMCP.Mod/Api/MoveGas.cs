@@ -17,11 +17,12 @@ using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Protocol;
+using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Api;
 
 /// <summary>
-/// move_gas: move gas between two atmospheres, or delete it, through the game's own gas API. Writes.
+/// move gas: gas moved between two atmospheres, or deleted, through the game's own gas API. Writes.
 ///
 /// The gas calls (CODE, Assets.Scripts.Atmospherics): Atmosphere.GasMixture is a public field holding a GasMixture
 /// struct, so calls on it change the atmosphere in place. GasMixture.Remove(GasType, MoleQuantity) calls Mole.Remove,
@@ -70,46 +71,38 @@ namespace StationGodMCP.Api;
 /// liquid there). Its burst rating is Chemistry.Limits.MAXPressureGasPipe for every piece. No device joins it to
 /// another atmosphere every tick: the pad's pumps and tank connectors move a volume per tick.
 ///
-/// Rooms (from or to {"room_id"} or {"room_of"}): every cell of a closed room with air of its own, taken from in
+/// Rooms (source or to {"room"} or {"room_of"}): every cell of a closed room with air of its own, taken from in
 /// proportion and given to by volume (MoveGasPlaces.cs). A room must be given named gases as a source, so its
 /// breathable air is never emptied by omission.
 ///
-/// dry_run (1.3.5): the same prediction and the same checks (a refusal is the same error), with nothing queued: status
-/// dry_run and no transfer_id.
+/// A report (no confirm): the same prediction and the same checks (a refusal is the same error), with nothing queued.
 ///
 /// Sync (CODE): nothing is marked by hand; Atmosphere.PrepareForWrite sets the gas network flags from the mixture's
-/// own dirty tracking. Host only. Not supported: a single world cell by its atmosphere id (refused). The planet (from
+/// own dirty tracking. Host only. Not supported: a single world cell by its atmosphere id (refused). The planet (source
 /// "planet", delete only): PlanetGasRemoval.cs.
 /// </summary>
-internal static class MoveGasApi
+internal static class GasMoveChecks
 {
-    internal static object Handle(Args args)
+    /// <summary>Refused not_host on a multiplayer client: only the host moves gas.</summary>
+    internal static void RequireHost()
     {
         if (NetworkManager.IsClient || !GameManager.RunSimulation)
         {
             throw ApiErrors.Refused("not_host", "This game is a multiplayer client; only the host moves gas.");
         }
+    }
 
-        if (args.Has("transfer_id"))
-        {
-            args.Reject("{arg:transfer_id}", "from", "to", "delete", "gases", "amount_mol", "force", "joined",
-                "dry_run");
-            return GasMoves.Outcome(args.ThingId("transfer_id").Value);
-        }
-
-        if (args.IsWord("from", "planet"))
-        {
-            return PlanetGasRemoval.Handle(args);
-        }
-
-        GasMoveRequest request = GasMoveRequest.Parse(args);
-        GasPlan plan = GasPlan.Predict(request);
-        if (!request.Force)
+    /// <summary>The predicted move, every check made (the burst checks unless the order allows burst).</summary>
+    internal static GasPlan Check(GasMoveOrder order, string label)
+    {
+        RequireHost();
+        GasPlan plan = GasPlan.Predict(GasMoveRequest.Of(order, label));
+        if (!order.AllowBurst)
         {
             plan.RefuseIfBursting();
         }
 
-        return (args.OptionalBool("dry_run") ?? false) ? plan.ToDryRunView() : plan.ToView(GasMoves.Enqueue(plan));
+        return plan;
     }
 }
 
@@ -140,19 +133,19 @@ internal abstract class GasDestination
     }
 }
 
-/// <summary>A validated move_gas request.</summary>
+/// <summary>A move gas order with its places and gases found.</summary>
 internal sealed class GasMoveRequest
 {
     private const int MaximumGasNames = 256;
 
     private GasMoveRequest(GasPlace source, GasDestination destination, Chemistry.GasType[] gases, double? amountMol,
-        bool force, bool joined)
+        bool allowBurst, bool joined)
     {
         Source = source;
         Destination = destination;
         Gases = gases;
         AmountMol = amountMol;
-        Force = force;
+        AllowBurst = allowBurst;
         Joined = joined;
     }
 
@@ -165,7 +158,7 @@ internal sealed class GasMoveRequest
     /// <summary>Moles per gas, or null for all of each.</summary>
     internal double? AmountMol { get; }
 
-    internal bool Force { get; }
+    internal bool AllowBurst { get; }
 
     /// <summary>
     /// Treat the atmospheres the game mixes every tick as one unit (the default), or only the named ones.
@@ -174,46 +167,25 @@ internal sealed class GasMoveRequest
 
     internal GasPlace? Target => (Destination as GasDestination.Into)?.Target;
 
-    internal static GasMoveRequest Parse(Args args)
+    internal static GasMoveRequest Of(GasMoveOrder order, string label)
     {
-        GasPlace source = GasPlace.Resolve(GasPlaceArg.Required(args, "from"), "from");
-        GasDestination destination = ParseDestination(args);
+        GasPlace source = GasPlace.Resolve(order.Source, "source", label);
+        GasDestination destination = order.To == null
+            ? GasDestination.Deleted.Instance
+            : new GasDestination.Into(GasPlace.Resolve(order.To, "to", label));
         if (destination is GasDestination.Into into && into.Target.SameAs(source))
         {
-            throw ApiErrors.InvalidArgument(Vocabulary.Text("'{arg:from}' and '{arg:to}' are the same atmosphere or " +
-                "room."));
+            throw ApiErrors.InvalidArgument("source and to are the same atmosphere or room.");
         }
 
-        if (source.RequiresNamedGases && !args.Has("gases"))
-        {
-            throw ApiErrors.InvalidArgument(Vocabulary.Text("Name the gases to take out of a room ('{arg:gases}'): a " +
-                "room's air is never emptied by omission."));
-        }
-
-        Chemistry.GasType[] gases = args.Has("gases") ? ParseGases(args.Array("gases", MaximumGasNames)) : GasTypes.All;
-        return new GasMoveRequest(source, destination, gases, args.OptionalPositiveDouble("amount_mol"),
-            args.OptionalBool("force") ?? false, args.OptionalBool("joined") ?? true);
+        Chemistry.GasType[] gases = order.Gases != null ? ParseGases(order.Gases) : GasTypes.All;
+        return new GasMoveRequest(source, destination, gases, order.AmountMol, order.AllowBurst, order.Joined);
     }
 
-    private static GasDestination ParseDestination(Args args)
+    internal static Chemistry.GasType[] ParseGases(IReadOnlyList<string> names)
     {
-        bool hasTarget = args.Has("to");
-        bool delete = args.OptionalBool("delete") ?? false;
-        if (hasTarget == delete)
-        {
-            throw ApiErrors.InvalidArgument(Vocabulary.Text("Pass '{arg:to}', or '{arg:delete}: true' to destroy the " +
-                "gas; not both, not neither."));
-        }
-
-        return delete
-            ? GasDestination.Deleted.Instance
-            : new GasDestination.Into(GasPlace.Resolve(GasPlaceArg.Required(args, "to"), "to"));
-    }
-
-    internal static Chemistry.GasType[] ParseGases(JArray array)
-    {
-        List<Chemistry.GasType> gases = new List<Chemistry.GasType>(array.Count);
-        foreach (JToken item in array)
+        List<Chemistry.GasType> gases = new List<Chemistry.GasType>(names.Count);
+        foreach (string item in names)
         {
             Chemistry.GasType gas = ParseGas(item);
             if (!gases.Contains(gas))
@@ -225,17 +197,16 @@ internal sealed class GasMoveRequest
         return gases.ToArray();
     }
 
-    private static Chemistry.GasType ParseGas(JToken item)
+    private static Chemistry.GasType ParseGas(string name)
     {
-        string? name = item.Type == JTokenType.String ? item.Value<string>() : null;
         if (EnumName.TryParse(name, out Chemistry.GasType gas) && GasTypes.IndexOf(gas) >= 0)
         {
             return gas;
         }
 
         throw ApiErrors.Refused("unknown_gas",
-            $"'{item}' is not a gas name as {Vocabulary.Tool("atmosphere_contents")} reports them (Oxygen, Nitrogen, " +
-            "CarbonDioxide, LiquidOxygen, Steam...).");
+            $"'{name}' is not a gas name as inspect atmosphere gives them (Oxygen, Nitrogen, CarbonDioxide, " +
+            "LiquidOxygen, Steam...).");
     }
 }
 
@@ -301,7 +272,7 @@ internal sealed class GasEnd
             return FromAtmosphere(atmosphere, name);
         }
 
-        throw ApiErrors.Refused("atmosphere_not_found", $"'{Vocabulary.Path(name)}': no thing, pipe network or " +
+        throw ApiErrors.Refused("atmosphere_not_found", $"'{name}': no thing, pipe network or " +
             $"atmosphere has id {id}.");
     }
 
@@ -323,7 +294,7 @@ internal sealed class GasEnd
         }
 
         throw ApiErrors.Refused("no_atmosphere",
-            $"'{Vocabulary.Path(name)}': {Names.Of(thing)} ({thing.ReferenceId}) has no internal atmosphere and is " +
+            $"'{name}': {Names.Of(thing)} ({thing.ReferenceId}) has no internal atmosphere and is " +
             "not a pipe or a landing pad piece. For a device's pipe network, pass the network's id.");
     }
 
@@ -332,7 +303,7 @@ internal sealed class GasEnd
         if (network.Atmosphere == null)
         {
             throw ApiErrors.Refused("no_atmosphere",
-                $"'{Vocabulary.Path(name)}': {AtmosphereOwners.SourceOf(network).Replace('_', ' ')} " +
+                $"'{name}': {AtmosphereOwners.SourceOf(network).Replace('_', ' ')} " +
                 $"{network.ReferenceId} has no atmosphere yet.");
         }
 
@@ -352,9 +323,8 @@ internal sealed class GasEnd
         }
 
         throw ApiErrors.Refused("refused",
-            $"'{Vocabulary.Path(name)}': atmosphere {atmosphere.ReferenceId} is a {atmosphere.Mode} atmosphere. A " +
-            $"single world cell is not moved to or from; name its room ({{\"{Vocabulary.Arg("room_id")}\"}} or " +
-            $"{{\"{Vocabulary.Arg("room_of")}\"}}) instead.");
+            $"'{name}': atmosphere {atmosphere.ReferenceId} is a {atmosphere.Mode} atmosphere. A " +
+            "single world cell is not moved to or from; name its room ({\"room\"} or {\"room_of\"}) instead.");
     }
 
     private static GasEnd Checked(GasEnd end, string name)
@@ -362,13 +332,13 @@ internal sealed class GasEnd
         if (end.Atmosphere.IsGlobalAtmosphere || end.Atmosphere.Mode == AtmosphereHelper.AtmosphereMode.World)
         {
             throw ApiErrors.Refused("refused",
-                $"'{Vocabulary.Path(name)}' is the planet's or a world cell's atmosphere; name a room " +
-                $"({{\"{Vocabulary.Arg("room_id")}\"}} or {{\"{Vocabulary.Arg("room_of")}\"}}) instead.");
+                $"'{name}' is the planet's or a world cell's atmosphere; name a room " +
+                "({\"room\"} or {\"room_of\"}) instead.");
         }
 
         if (end.IsGone)
         {
-            throw ApiErrors.Refused("atmosphere_not_found", $"'{Vocabulary.Path(name)}' is being destroyed.");
+            throw ApiErrors.Refused("atmosphere_not_found", $"'{name}' is being destroyed.");
         }
 
         return end;

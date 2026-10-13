@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Protocol;
 namespace StationGodMCP.Api;
 
 /// <summary>
-/// move_gas from "planet" with delete: take named gases out of the planet's own air. Writes. Needs Terraforming
+/// move gas from source "planet" with delete: named gases taken out of the planet's own air. Writes. Needs Terraforming
 /// Reloaded: without it the stock game keeps the planet read-only (PlanetaryAtmosphereSimulation.IsGlobalInteraction
 /// is false), so there is nothing a removal could change for good.
 ///
@@ -20,7 +20,7 @@ namespace StationGodMCP.Api;
 /// are three more GlobalGasMix reservoirs. GlobalGasMix holds one MoleQuantity per gas and no energy, so removing a
 /// gas is GlobalGasMix.Remove(GasMixture) with that gas's quantity (the only side effect is its debug counter
 /// _removed). The game takes PlanetaryAtmosphereSimulation.GlobalInteraction around every change to the mix, and so
-/// does this, on the atmospherics thread at the start of its tick (the move_gas postfix on HandleMainThreadEvents).
+/// does this, on the atmospherics thread at the start of its tick (the move gas postfix on HandleMainThreadEvents).
 ///
 /// Give-back (LIVE 2026-09-28, CE): outdoor cells hand a residual of the gas back to the planet for a few ticks after
 /// it is cleared. A removal of all of a gas (no amount_mol) is therefore applied again every tick for
@@ -34,23 +34,13 @@ internal static class PlanetGasRemoval
     private static readonly object Gate = new object();
     private static readonly List<PendingPlanetRemoval> Pending = new List<PendingPlanetRemoval>();
 
-    // The arguments are checked before the mod, so a malformed call answers the same with or without it.
-    internal static object Handle(Args args)
+    /// <summary>
+    /// The removal of the gases named, amountMol of each (all of each when null), checked and described; act queues it
+    /// for the next atmospherics ticks. Refused terraforming_mod_required without Terraforming Reloaded.
+    /// </summary>
+    internal static PlanetGasRemovalView Remove(IReadOnlyList<string> gasNames, double? amountMol, bool act)
     {
-        args.Reject("planet", "to", "force", "joined", "transfer_id", "dry_run");
-        if (args.OptionalBool("delete") != true)
-        {
-            throw ApiErrors.InvalidArgument(Vocabulary.Text("From 'planet' only {arg:delete}: true is supported."));
-        }
-
-        if (!args.Has("gases"))
-        {
-            throw ApiErrors.InvalidArgument(Vocabulary.Text("Name the gases to take out of the planet's air " +
-                "('{arg:gases}'); removing all of it is refused."));
-        }
-
-        Chemistry.GasType[] gases = GasMoveRequest.ParseGases(args.Array("gases", 64));
-        double? amountMol = args.OptionalPositiveDouble("amount_mol");
+        Chemistry.GasType[] gases = GasMoveRequest.ParseGases(gasNames);
         if (GameMembers.TerraformingGate.OrNull == null)
         {
             throw ApiErrors.Refused("terraforming_mod_required",
@@ -65,12 +55,16 @@ internal static class PlanetGasRemoval
             before.Add(new PlanetGasLine(gas.ToString(), planet.Get(gas).ToDouble()));
         }
 
-        lock (Gate)
+        int ticks = amountMol == null ? SweepTicks : 1;
+        if (act)
         {
-            Pending.Add(new PendingPlanetRemoval(gases, amountMol, amountMol == null ? SweepTicks : 1));
+            lock (Gate)
+            {
+                Pending.Add(new PendingPlanetRemoval(gases, amountMol, ticks));
+            }
         }
 
-        return new PlanetGasRemovalView(before, amountMol, amountMol == null ? SweepTicks : 1);
+        return new PlanetGasRemovalView(before, amountMol, ticks);
     }
 
     /// <summary>The world was left: removals still sweeping its planet stop.</summary>
@@ -82,7 +76,7 @@ internal static class PlanetGasRemoval
         }
     }
 
-    // On the atmospherics thread, from the move_gas tick postfix. Never throws into the game's tick.
+    // On the atmospherics thread, from the move gas tick postfix. Never throws into the game's tick.
     internal static void ApplyPending()
     {
         if (!ThreadedManager.IsThread)
@@ -209,6 +203,36 @@ internal sealed class PlanetGasRemovalView
 
     public string From => "planet";
 
+    /// <summary>The moles of the named gases in the planet's air before.</summary>
+    internal double BeforeMol
+    {
+        get
+        {
+            double total = 0.0;
+            foreach (PlanetGasLine line in Before)
+            {
+                total += line.AmountMol;
+            }
+
+            return total;
+        }
+    }
+
+    /// <summary>The moles of the named gases the removal leaves in the planet's air.</summary>
+    internal double AfterMol
+    {
+        get
+        {
+            double total = 0.0;
+            foreach (PlanetGasLine line in Before)
+            {
+                total += AmountMol is { } each ? System.Math.Max(0.0, line.AmountMol - each) : 0.0;
+            }
+
+            return total;
+        }
+    }
+
     public List<PlanetGasLine> Before { get; }
 
     public double? AmountMol { get; }
@@ -216,7 +240,7 @@ internal sealed class PlanetGasRemovalView
     public int Ticks { get; }
 
     public string Note =>
-        Vocabulary.Text("Applied on the next atmospherics ticks; read the {tool:planet} tool to see the result. " +
-                        "A removal of all of a gas is repeated for ") + Ticks +
+        "Applied on the next atmospherics ticks; inspect planet shows the result. " +
+        "A removal of all of a gas is repeated for " + Ticks +
         " ticks to take back what outdoor cells hand back, and also clears the clouds and ice caps.";
 }

@@ -10,9 +10,6 @@ internal sealed class MoveGasView
 {
     internal const string Queued = "queued";
 
-    /// <summary>status of a dry run: the prediction only, nothing queued.</summary>
-    internal const string DryRun = "dry_run";
-
     internal MoveGasView(string? transferId, string status, bool predicted, bool joined, GasSideView? from,
         GasSideView? to, List<MovedGasView> moved, ErrorView? error)
     {
@@ -27,10 +24,10 @@ internal sealed class MoveGasView
         Error = error;
     }
 
-    /// <summary>Null for a dry run (nothing was queued).</summary>
+    /// <summary>Null for a report (nothing was queued).</summary>
     public string? TransferId { get; }
 
-    /// <summary>queued (the reply is a prediction), dry_run (a prediction, nothing queued), applied, or failed.</summary>
+    /// <summary>queued (the reply is a prediction), applied, or failed.</summary>
     public string Status { get; }
 
     public bool Predicted { get; }

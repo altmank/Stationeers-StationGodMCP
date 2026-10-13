@@ -34,33 +34,6 @@
     "explain needs rule_id.",
     "name one subject: other_id for a pair, port for one port of a device"
   ],
-  "Api/MoveGas.cs": [
-    "'from' and 'to' are the same atmosphere or room.",
-    "'{item}' is not a gas name as atmosphere_contents reports them (Oxygen, Nitrogen, CarbonDioxide, LiquidOxygen, Steam...).",
-    "'{name}' is being destroyed.",
-    "'{name}' is the planet's or a world cell's atmosphere; name a room ({\"room_id\"} or {\"room_of\"}) instead.",
-    "'{name}': atmosphere {atmosphere.ReferenceId} is a {atmosphere.Mode} atmosphere. A single world cell is not moved to or from; name its room ({\"room_id\"} or {\"room_of\"}) instead.",
-    "'{name}': no thing, pipe network or atmosphere has id {id}.",
-    "'{name}': {AtmosphereOwners.SourceOf(network).Replace('_', ' ')} {network.ReferenceId} has no atmosphere yet.",
-    "'{name}': {Names.Of(thing)} ({thing.ReferenceId}) has no internal atmosphere and is not a pipe or a landing pad piece. For a device's pipe network, pass the network's id.",
-    "Name the gases to take out of a room ('gases'): a room's air is never emptied by omission.",
-    "Pass 'to', or 'delete: true' to destroy the gas; not both, not neither.",
-    "transfer_id"
-  ],
-  "Api/MoveGasJoins.cs": [
-    "More than {GasJoins.MaximumMembers} atmospheres are joined; pass joined: false to move from the named one only."
-  ],
-  "Api/MoveGasPlaces.cs": [
-    "'{name}': none of the {grids.Count} cells of room {ClosedRooms.IdOf(room)} has air of its own yet, so there is nothing to take and nowhere the game would keep it.",
-    "'{name}': the planet only gives gas up (from \"planet\" with delete: true); gas is not moved into it."
-  ],
-  "Api/MoveGasPlan.cs": [
-    "'to' is joined to 'from' (the game mixes them every tick), so the gas would flow straight back. Pass joined: false to move between them anyway.",
-    "'{name}' is a room: {loss} (the game spawns ice only per cell of 50 mol and holds smaller amounts out of the air). Move liquids into a tank or liquid network, or pass force to move it anyway.",
-    "'{name}' {verb} {predicted:0.#} kPa against a limit of {broken.LimitFor(predicted):0.#} kPa ({broken.Member}: {broken.MaxKpa:0.#} kPa across, {broken.OutsideKpa:0.#} kPa outside). Pass force to move it anyway.",
-    "'{name}': liquid would fill {ratio * 100.0:0.##}% of gas pipe network {gasNetwork.Network!.ReferenceId}, over the {limit * 100.0:0.#}% a gas pipe holds without bursting. Move it into a liquid network or tank, or pass force to move it anyway.",
-    "'{name}': {frozen:0.#} mol would freeze at {after.TemperatureK():0.#} K, over the {limit:0.#} mol a network of {after.VolumeL:0} L tolerates. Pass force to move it anyway."
-  ],
   "Api/MoveItem.cs": [
     "Argument 'to_slot' is required: a slot index, or \"auto\".",
     "Slot {index} of {Names.Of(target)} only shows the vault's store; use vault_deposit to store items.",
@@ -112,11 +85,6 @@
     "{name} must be {reference_id, port}.",
     "{name}.at: no {kind.Noun} piece can stand in cell {cell}: {blocked}. Name a port with {reference_id, port}, or a free cell.",
     "{name}.port is required (connections lists the ends)."
-  ],
-  "Api/PlanetGasRemoval.cs": [
-    "Applied on the next atmospherics ticks; read the planet tool to see the result. A removal of all of a gas is repeated for {Ticks} ticks to take back what outdoor cells hand back, and also clears the clouds and ice caps.",
-    "From 'planet' only delete: true is supported.",
-    "Name the gases to take out of the planet's air ('gases'); removing all of it is refused."
   ],
   "Api/ReplaceStructures.cs": [
     "Pass job_id, or reference_ids or room_id.",
@@ -317,10 +285,6 @@
   ],
   "Api/Shared/Game/WorldItems.cs": [
     "Argument 'location' must be any, ground, player, stored, machine_stock or silo."
-  ],
-  "Api/Shared/GasPlaceArg.cs": [
-    "Argument '{name}' is required.",
-    "Argument '{name}' must be a reference id as a decimal string, \"planet\", {\"room_id\": \"<id>\"} (a room as the rooms tool reports it) or {\"room_of\": \"<reference id>\"} (the room that thing is in)."
   ],
   "Api/Shared/HighlightArgs.cs": [
     "{path} must be an object.",
