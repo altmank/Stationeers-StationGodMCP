@@ -6,13 +6,14 @@
 
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Catalogue;
 
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of survey network, in verb names (catalogue/verbs/survey.json).</summary>
 internal sealed record SurveyNetworkOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("survey", "network", "members", null, null,
+    internal static WhatSpec Spec { get; } = new WhatSpec("survey", "network", "members", null, null, new WhatCost(CostClass.Bounded),
         new OptionSpec("network", "{\"type\":[\"string\",\"object\"]}"),
         new OptionSpec("box", "{\"type\":\"array\",\"minItems\":2,\"maxItems\":2}"),
         new OptionSpec("kind", "{\"type\":\"string\",\"enum\":[\"pipe\",\"cable\",\"chute\"]}"),
@@ -21,7 +22,7 @@ internal sealed record SurveyNetworkOptions
         new OptionSpec("open_ends", "{\"type\":\"boolean\"}", false, "false"),
         new OptionSpec("near", "{\"type\":[\"string\",\"array\"]}"),
         new OptionSpec("radius", "{\"type\":\"number\",\"minimum\":0,\"maximum\":1000}"),
-        new OptionSpec("limit", "{\"type\":\"integer\",\"minimum\":1,\"maximum\":1000}", false, "30; box 25; summarize 10"),
+        new OptionSpec("limit", "{\"type\":\"integer\",\"minimum\":1,\"maximum\":1000}", false, "30", "[{\"when\":{\"box\":{\"present\":true}},\"default\":\"25\"},{\"when\":{\"summarize\":true},\"default\":\"10\"}]"),
         new OptionSpec("offset", "{\"type\":\"integer\",\"minimum\":0}", false, "0"),
         new OptionSpec("cursor", "{\"type\":\"string\"}"));
 

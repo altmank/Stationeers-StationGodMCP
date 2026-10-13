@@ -6,13 +6,14 @@
 
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Catalogue;
 
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of undo, in verb names (catalogue/verbs/undo.json).</summary>
 internal sealed record UndoOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("undo", "-", "piece_runs", null, new WriteSpec("confirm", "cannot", "[cannot undo]"),
+    internal static WhatSpec Spec { get; } = new WhatSpec("undo", "-", "piece_runs", null, new WriteSpec("confirm", "cannot", "[cannot undo]"), new WhatCost(CostClass.Job),
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}", true),
         new OptionSpec("allow_bridge", "{\"type\":\"array\",\"items\":{},\"maxItems\":64}"),
         new OptionSpec("materials", "{\"type\":\"string\"}"),

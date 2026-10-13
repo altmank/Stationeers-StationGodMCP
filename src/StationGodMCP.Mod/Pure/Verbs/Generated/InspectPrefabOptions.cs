@@ -6,13 +6,14 @@
 
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Catalogue;
 
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of inspect prefab, in verb names (catalogue/verbs/inspect.json).</summary>
 internal sealed record InspectPrefabOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("inspect", "prefab", "ports", null, null,
+    internal static WhatSpec Spec { get; } = new WhatSpec("inspect", "prefab", "ports", null, null, new WhatCost(CostClass.Instant),
         new OptionSpec("prefab", "{\"type\":[\"string\",\"integer\"]}", true),
         new OptionSpec("include", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"small_cells\"]}}"));
 

@@ -6,13 +6,14 @@
 
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Catalogue;
 
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of survey area, in verb names (catalogue/verbs/survey.json).</summary>
 internal sealed record SurveyAreaOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("survey", "area", "cells", null, null,
+    internal static WhatSpec Spec { get; } = new WhatSpec("survey", "area", "cells", null, null, new WhatCost(CostClass.World),
         new OptionSpec("box", "{\"type\":\"array\",\"minItems\":2,\"maxItems\":2}"),
         new OptionSpec("room", "{\"type\":\"string\"}"),
         new OptionSpec("sections", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"cells\",\"pieces\",\"devices\",\"networks\",\"network_visibility\",\"doors\"]}}", false, "all"),

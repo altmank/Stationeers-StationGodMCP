@@ -27,6 +27,7 @@
         "A list of ids answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply below; fields name its keys."
       ],
       "example": {"id": "4820585"},
+      "x-cost": {"class": "instant"},
       "reply": {
         "list": "logic_types",
         "variants": [
@@ -63,6 +64,7 @@
         }
       },
       "example": {"prefab": "StructureWallLight"},
+      "x-cost": {"class": "instant"},
       "reply": {
         "list": "ports",
         "variants": [
@@ -118,6 +120,7 @@
         "A list of ids answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply below; fields name its keys."
       ],
       "example": {"id": "1199811"},
+      "x-cost": {"class": "instant"},
       "reply": {
         "list": "slots",
         "variants": [
@@ -172,6 +175,7 @@
         "Iteration goes over slots; a silo's stored entries are not iterated."
       ],
       "example": {"id": "player"},
+      "x-cost": {"class": "instant"},
       "reply": {
         "list": "slots",
         "variants": [
@@ -214,6 +218,7 @@
         "cursor": {"use": "cursor"}
       },
       "example": {"network": "5012345", "kind": "pipe", "damaged_only": true},
+      "x-cost": {"class": "bounded", "per": "id"},
       "reply": {
         "list": "things",
         "variants": [
@@ -275,23 +280,6 @@
               "limit": "int",
               "has_more": "bool"
             }
-          },
-          {
-            "label": "HealthScan",
-            "view": "HealthScan",
-            "keys": {
-              "things": "list[{reference_id: str, prefab_name: str | None, display_name: str | None, custom_name: str | None, build_state: {current: int, last: int, complete: bool, next: list[{prefab_name: str, display_name: str, quantity: int | None, tool: bool}] | None} | None, condition: str, kind: str, type: str, damage_state: str, damage_state_class: str | None, max_damage: float | None, total_damage: float | None, damage_ratio: float | None, health_percent: int | None, band: str | None, damage: {brute: float, burn: float, oxygen: float, hydration: float, starvation: float, toxic: float, radiation: float, decay: float, stun: float} | None, is_broken: bool, broken_build_state: bool | None, being_destroyed: bool, pipe_burst: str | None, damage_record: list[str] | None, position: Vec3, distance_m: float | None, networks: list[{kind: str, id: str}] | None}]",
-              "count": "int",
-              "total": "int",
-              "structures": "int",
-              "broken": "int",
-              "scanned": "int",
-              "min_damage_ratio": "float",
-              "offset": "int",
-              "limit": "int",
-              "has_more": "bool",
-              "local_player": "{reference_id: str, display_name: str | None, position: Vec3} | None"
-            }
           }
         ],
         "types": ["Error", "Vec3"]
@@ -315,6 +303,7 @@
         "A list of ids answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply below; fields name its keys."
       ],
       "example": {"id": ["2514519", "3575779"]},
+      "x-cost": {"class": "bounded"},
       "reply": {
         "list": "ends",
         "variants": [
@@ -329,52 +318,6 @@
               "color": "Color | None",
               "ends": "list[{index: int, type: str, type_name: str | None, role: str, role_name: str | None, position: Vec3 | None, network: {kind: str, id: str} | None, connected: list[Thing]}]",
               "count": "int"
-            }
-          },
-          {
-            "label": "NetworkMembers",
-            "view": "NetworkMembers",
-            "keys": {
-              "network": "{kind: str, id: str}",
-              "summary": "Any | None",
-              "warning": "str | None",
-              "members": "list[{reference_id: str, prefab_name: str | None, display_name: str | None, member: str, position: Vec3, color: Color | None, open_ends: list[int] | None, network_id: str | None}]",
-              "count": "int",
-              "structure_count": "int",
-              "device_count": "int",
-              "offset": "int",
-              "limit": "int",
-              "total": "int",
-              "has_more": "bool"
-            }
-          },
-          {
-            "label": "NetworkOverview",
-            "view": "NetworkOverview",
-            "keys": {
-              "network": "{kind: str, id: str}",
-              "summary": "Any | None",
-              "warning": "str | None",
-              "broken_neighbour_count": "int",
-              "broken_neighbours": "list[{reference_id: str, prefab_name: str | None, position: Vec3, pipe_burst: str | None, network: {kind: str, id: str} | None, touches: str}] | None",
-              "structure_count": "int",
-              "device_count": "int",
-              "by_prefab": "list[{prefab_name: str, display_name: str | None, member: str, count: int, colors: dict[str, int] | None}]",
-              "devices": "list[{reference_id: str, prefab_name: str | None, display_name: str | None, member: str, position: Vec3, color: Color | None, open_ends: list[int] | None, network_id: str | None}]",
-              "open_ends": "list[{reference_id: str, prefab_name: str | None, display_name: str | None, member: str, position: Vec3, color: Color | None, open_ends: list[int] | None, network_id: str | None}]",
-              "open_end_count": "int"
-            }
-          },
-          {
-            "label": "AreaOpenEnds",
-            "view": "AreaOpenEnds",
-            "keys": {
-              "members": "list[{reference_id: str, prefab_name: str | None, display_name: str | None, member: str, position: Vec3, color: Color | None, open_ends: list[int] | None, network_id: str | None}]",
-              "count": "int",
-              "offset": "int",
-              "limit": "int",
-              "total": "int",
-              "has_more": "bool"
             }
           }
         ],
@@ -394,6 +337,7 @@
         "A list of ids answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply below; fields name its keys."
       ],
       "example": {"id": "2005300"},
+      "x-cost": {"class": "instant"},
       "reply": {
         "list": "atmospheres",
         "variants": [
@@ -426,6 +370,7 @@
         "A list of ids answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply below; fields name its keys."
       ],
       "example": {"id": "4191359"},
+      "x-cost": {"class": "instant"},
       "reply": {
         "list": "reagents",
         "variants": [
@@ -458,6 +403,7 @@
         }
       },
       "example": {"id": "3311223"},
+      "x-cost": {"class": "bounded"},
       "reply": {
         "list": "genes",
         "variants": [
@@ -478,20 +424,6 @@
             "view": "BatchResult",
             "keys": {
               "results": "list[{index: int, ok: bool, error: Error}]",
-              "count": "int",
-              "success_count": "int",
-              "error_count": "int"
-            }
-          },
-          {
-            "label": "GenesWritten",
-            "view": "GenesWritten",
-            "keys": {
-              "thing": "Thing",
-              "holder": "str",
-              "unit": "int",
-              "is_top": "bool",
-              "results": "list[{index: int, ok: bool, gene: str, previous_value: float | None, error: Error} | {index: int, ok: bool, gene: str, previous_value: float | None, value: float} | {index: int, ok: bool} | {index: int, ok: bool, error: Error}]",
               "count": "int",
               "success_count": "int",
               "error_count": "int"
@@ -546,6 +478,7 @@
         "A source is often longer than the reply cap: add whole: True to read it all."
       ],
       "example": {"id": "4820585", "parts": ["status", "source"]},
+      "x-cost": {"class": "instant"},
       "reply": {
         "list": "pins",
         "variants": [
@@ -649,6 +582,7 @@
         "cursor": {"use": "cursor"}
       },
       "example": {"id": "4860097", "text": "error"},
+      "x-cost": {"class": "instant"},
       "reply": {
         "list": "elements",
         "variants": [
@@ -687,7 +621,8 @@
         "self_test": {
           "schema": {"type": "boolean"},
           "description": "Compare the forecast's formulas with the game's numbers.",
-          "default": "true (false with compact)",
+          "default": "true",
+          "x-default-when": [{"when": {"compact": true}, "default": "false"}],
           "x-script": "self_test (boolean, default True (False with compact)): Compare the forecast's formulas with the game's numbers."
         },
         "include": {
@@ -697,6 +632,7 @@
         }
       },
       "example": {"compact": true},
+      "x-cost": {"class": "world"},
       "reply": {
         "list": "rockets",
         "variants": [
@@ -716,6 +652,7 @@
       "summary": "what each Ingot Vault stores, and every Remote Vault's link",
       "options": {"id": {"use": "id", "description": "One Ingot or Remote Vault; default every vault."}},
       "example": {},
+      "x-cost": {"class": "instant"},
       "reply": {
         "list": "vaults",
         "variants": [
@@ -749,6 +686,7 @@
         }
       },
       "example": {},
+      "x-cost": {"class": "instant"},
       "reply": {
         "variants": [
           {
@@ -770,6 +708,7 @@
       "options": {},
       "text": ["No options."],
       "example": {},
+      "x-cost": {"class": "instant"},
       "reply": {
         "variants": [
           {
@@ -800,6 +739,7 @@
       "options": {},
       "text": ["No options."],
       "example": {},
+      "x-cost": {"class": "instant"},
       "reply": {
         "list": "gases",
         "variants": [
@@ -829,6 +769,7 @@
       "options": {},
       "text": ["No options."],
       "example": {},
+      "x-cost": {"class": "instant"},
       "reply": {
         "variants": [
           {
@@ -869,6 +810,7 @@
         "On a live confirmed run it answers within 30 s, whatever max_wait says."
       ],
       "example": {"id": "place-41"},
+      "x-cost": {"class": "instant"},
       "reply": {
         "variants": [
           {"label": "a build or removal job", "job_view": "BuildJob"},
@@ -887,6 +829,7 @@
       "options": {"id": {"use": "id", "description": "The device(s).", "required": true}},
       "x-script-summary": "What can write or override a device: IC chips (pins, batch writers on its data network), logic writers, Lua screen scripts, other runs.",
       "example": {"id": "4936423"},
+      "x-cost": {"class": "instant"},
       "reply": {
         "variants": [
           {

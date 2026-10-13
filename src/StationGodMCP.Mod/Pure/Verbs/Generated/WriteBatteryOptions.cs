@@ -6,13 +6,14 @@
 
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Catalogue;
 
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of write battery, in verb names (catalogue/verbs/write.json).</summary>
 internal sealed record WriteBatteryOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("write", "battery", "results", null, new WriteSpec("confirm", "undo", "[undo: restores the value, not what happened since]"),
+    internal static WhatSpec Spec { get; } = new WhatSpec("write", "battery", "results", null, new WriteSpec("confirm", "undo", "[undo: restores the value, not what happened since]"), new WhatCost(CostClass.Instant),
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}"),
         new OptionSpec("rocket", "{\"type\":\"string\"}"),
         new OptionSpec("within", "{\"type\":\"string\"}"),

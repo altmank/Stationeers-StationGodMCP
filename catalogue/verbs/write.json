@@ -37,6 +37,7 @@
         "id or writes is required (missing_target names them); gateway only narrows where ids are looked up. To write every device of a kind, find them and pass their ids as a list (in a confirmed run an id you have not seen stops the run: run it as a report first, then again with confirm: true)."
       ],
       "example": {"id": "4820585", "logic": "On", "value": 1},
+      "x-cost": {"class": "bounded", "per": ["id", "writes"]},
       "reply": {
         "list": "results",
         "variants": [
@@ -99,6 +100,7 @@
         "confirm": {"use": "confirm"}
       },
       "example": {"id": "4820585", "start": 10, "values": [1, 0, 2], "confirm": true},
+      "x-cost": {"class": "instant"},
       "reply": {
         "variants": [
           {
@@ -174,6 +176,7 @@
         "One id only: a list is refused (this write cannot be undone)."
       ],
       "example": {"id": "4820585", "code_file": "C:/work/ctl.ic10"},
+      "x-cost": {"class": "instant"},
       "reply": {
         "variants": [
           {
@@ -287,6 +290,7 @@
       "text": ["One id only: a list is refused, naming run_script (this write cannot be undone)."],
       "x-script-text": ["One id only: a list is refused (this write cannot be undone)."],
       "example": {"id": "4860097", "element": "start"},
+      "x-cost": {"class": "instant"},
       "reply": {
         "variants": [
           {
@@ -333,6 +337,7 @@
       },
       "text": ["Pipe, cable and chute pieces cannot be renamed (not_labelable, per entry)."],
       "example": {"id": "1199811", "label": "O2 Tank 1"},
+      "x-cost": {"class": "instant"},
       "reply": {
         "list": "results",
         "variants": [
@@ -402,6 +407,7 @@
         "confirm": {"use": "confirm"}
       },
       "example": {"network": "4639870", "kind": "pipe", "color": "Red"},
+      "x-cost": {"class": "instant"},
       "reply": {
         "list": "colors",
         "variants": [
@@ -472,6 +478,7 @@
       "text": ["One id only: a list is refused, naming run_script (this write cannot be undone)."],
       "x-script-text": ["One id only: a list is refused (this write cannot be undone)."],
       "example": {"action": "start", "id": "Tanker"},
+      "x-cost": {"class": "instant"},
       "reply": {
         "list": "events",
         "variants": [
@@ -533,6 +540,7 @@
       "text": ["One id only: a list is refused, naming run_script (this write cannot be undone)."],
       "x-script-text": ["One id only: a list is refused (this write cannot be undone)."],
       "example": {"id": "5100200", "downlink": "5100377"},
+      "x-cost": {"class": "instant"},
       "reply": {
         "variants": [
           {
@@ -578,6 +586,7 @@
         "confirm": {"use": "confirm"}
       },
       "example": {"within": "player", "confirm": true},
+      "x-cost": {"class": "instant"},
       "reply": {
         "list": "results",
         "variants": [
@@ -634,6 +643,7 @@
         "confirm": {"use": "confirm"}
       },
       "example": {"id": "3311223", "genes": {"GrowthSpeedMultiplier": 1}, "confirm": true},
+      "x-cost": {"class": "bounded"},
       "reply": {
         "list": "results",
         "variants": [

@@ -74,12 +74,60 @@ internal sealed class OptionReader
         }
     }
 
-    /// <summary>The integer the catalogue gives as an option's default, or null when it gives none or prose.</summary>
+    /// <summary>
+    /// The default the catalogue gives an option for this call, as text: the first x-default-when form whose conditions
+    /// these options meet, else the option's default; null when it gives none.
+    /// </summary>
+    internal string? DefaultText(string name)
+    {
+        if (What.Option(name) is not { } option)
+        {
+            return null;
+        }
+
+        foreach (DefaultForm form in option.DefaultForms)
+        {
+            if (form.Applies(Raw, BaseDefault))
+            {
+                return form.Default;
+            }
+        }
+
+        return option.Default;
+    }
+
+    /// <summary>The integer the catalogue gives as an option's default for this call, or null when it gives none.</summary>
     internal long? DefaultInteger(string name) =>
-        What.Option(name)?.Default is { } text &&
+        DefaultText(name) is { } text &&
         long.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out long number)
             ? number
             : null;
+
+    /// <summary>The flag the catalogue gives as an option's default for this call, or null when it gives none.</summary>
+    internal bool? DefaultFlag(string name) => DefaultText(name) switch
+    {
+        "true" => true,
+        "false" => false,
+        _ => null
+    };
+
+    // An option's own default as a JSON value (a flag, a number or a word), for a form's condition on it.
+    private JToken? BaseDefault(string name)
+    {
+        if (What.Option(name)?.Default is not { } text)
+        {
+            return null;
+        }
+
+        if (text is "true" or "false")
+        {
+            return text == "true";
+        }
+
+        return double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out double number)
+            ? number == System.Math.Floor(number) ? new JValue((long)number) : new JValue(number)
+            : new JValue(text);
+    }
 
     internal static double? NumberOf(JToken? token) =>
         token is { Type: JTokenType.Integer or JTokenType.Float } ? (double)token : null;

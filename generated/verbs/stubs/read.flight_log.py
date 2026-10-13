@@ -35,8 +35,6 @@ def read(what: Literal['flight_log'], *,
       offset: int
       every: int
       has_more: bool
-    (FlightLogCleared)
-      cleared: bool
     (FlightLogList)
       logs: list[{rocket_id: str, rocket_name: str, recording: bool, interval_s: float, csv_path: str | None, capacity: int, held: int, recorded: int,
           from_t: float | None, to_t: float | None, fuel_used_mol: float | None, lowest_altitude_m: float | None, fastest_descent_ms: float,

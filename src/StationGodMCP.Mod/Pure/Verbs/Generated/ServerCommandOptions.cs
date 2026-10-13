@@ -6,13 +6,14 @@
 
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Catalogue;
 
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of server command, in verb names (catalogue/verbs/server.json).</summary>
 internal sealed record ServerCommandOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("server", "command", "output", null, new WriteSpec("confirm", "cannot", "[cannot undo: console]"),
+    internal static WhatSpec Spec { get; } = new WhatSpec("server", "command", "output", null, new WriteSpec("confirm", "cannot", "[cannot undo: console]"), new WhatCost(CostClass.World),
         new OptionSpec("command", "{\"type\":\"string\"}", true),
         new OptionSpec("lines", "{\"type\":\"integer\",\"minimum\":1,\"maximum\":500}", false, "100"),
         new OptionSpec("confirm", "{\"type\":\"boolean\"}", false, "false"));

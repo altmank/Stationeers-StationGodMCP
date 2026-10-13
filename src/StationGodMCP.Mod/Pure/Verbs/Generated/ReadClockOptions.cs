@@ -6,13 +6,14 @@
 
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Catalogue;
 
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of read clock, in verb names (catalogue/verbs/read.json).</summary>
 internal sealed record ReadClockOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("read", "clock", null, null, null);
+    internal static WhatSpec Spec { get; } = new WhatSpec("read", "clock", null, null, null, new WhatCost(CostClass.Instant));
 
     internal Fields Fields { get; private init; } = Fields.None;
 

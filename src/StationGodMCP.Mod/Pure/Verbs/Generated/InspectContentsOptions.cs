@@ -6,13 +6,14 @@
 
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Catalogue;
 
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of inspect contents, in verb names (catalogue/verbs/inspect.json).</summary>
 internal sealed record InspectContentsOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("inspect", "contents", "slots", null, null,
+    internal static WhatSpec Spec { get; } = new WhatSpec("inspect", "contents", "slots", null, null, new WhatCost(CostClass.Instant),
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}", true),
         new OptionSpec("depth", "{\"type\":\"integer\",\"minimum\":1,\"maximum\":6}", false, "3"),
         new OptionSpec("include", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"empty\"]}}"),

@@ -6,13 +6,14 @@
 
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Catalogue;
 
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of find pad, in verb names (catalogue/verbs/find.json).</summary>
 internal sealed record FindPadOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("find", "pad", "pads", null, null);
+    internal static WhatSpec Spec { get; } = new WhatSpec("find", "pad", "pads", null, null, new WhatCost(CostClass.Instant));
 
     internal Fields Fields { get; private init; } = Fields.None;
 

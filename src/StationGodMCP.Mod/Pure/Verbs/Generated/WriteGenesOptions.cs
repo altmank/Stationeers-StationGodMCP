@@ -6,13 +6,14 @@
 
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Catalogue;
 
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of write genes, in verb names (catalogue/verbs/write.json).</summary>
 internal sealed record WriteGenesOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("write", "genes", "results", null, new WriteSpec("confirm", "undo", "[undo]"),
+    internal static WhatSpec Spec { get; } = new WhatSpec("write", "genes", "results", null, new WriteSpec("confirm", "undo", "[undo]"), new WhatCost(CostClass.Bounded),
         new OptionSpec("id", "{\"type\":\"string\"}", true),
         new OptionSpec("unit", "{\"type\":\"integer\",\"minimum\":0}"),
         new OptionSpec("genes", "{\"type\":\"object\"}", true),

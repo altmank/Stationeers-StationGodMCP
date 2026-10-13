@@ -18,12 +18,14 @@ Per what:
 | key | meaning |
 |---|---|
 | `summary`, `brief` | the help line; `brief` (when present) is the shorter text in the tool's what enum |
-| `options` | per option: `schema`, `description` (the help text), `default` (as help states it), `required`, `x-script` |
+| `options` | per option: `schema`, `description` (the help text), `default` (as text: `"30"`, `"true"`, `"world"`), `x-default-when` (below), `required`, `x-script` |
+| `x-default-when` | on an option: other defaults by form, in order, the first that applies: `[{"when": {"box": {"present": true}}, "default": "25"}, {"when": {"summarize": true}, "default": "10"}]`. A condition is `{"present": true}` (the option is given) or a value the option equals, as given or else by its own default. Help and the stubs state it after the default: `30; box 25; summarize 10` (a condition reads as the option's name when present or true, else as the option and its value), and for a flag `true (false with compact)`. The game's options read the default of the form a call takes |
 | `x-script` | `same` (the stub uses the description), `drop` (not in scripts: D7 and the shaping options), or the stub's own text |
 | `x-wire` | `true`: a wire option the hub and sg send to the game (`cursor`), never an agent's; the tool list, help and stubs leave it out, the game's options and option check take it |
 | `text`, `x-script-text` | the what's notes on the direct page, and on the stub when they differ |
 | `example` | arguments; rendered as `verb {what, ...}` and as `sg.verb('what', ...)` |
 | `reply` | `list` (the main list) and `variants` (typed `keys`, or a `job_view`), plus the small `types` used |
+| `x-cost` | how the game schedules a call (never shown to an agent): `class` (`instant`, `bounded`, `world`, `plan`, `job` or `stream`; world, plan and job are heavy by nature), `per` (an option, or a list of options, whose list lengths count the call's items for the cost predictor), `duration` (`{option, max_s}`: the seconds the call runs, at most max_s and max_s when left out, which its deadline adds). Every what the game answers states it; help and run_script do not |
 | `id_list` | where an id list is taken as the entries of another list option (move item's `moves`, read sample's `reads`) rather than one row per id |
 | `write` | on every write what (below) |
 

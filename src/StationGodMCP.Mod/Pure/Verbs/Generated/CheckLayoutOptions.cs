@@ -6,13 +6,14 @@
 
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Catalogue;
 
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of check layout, in verb names (catalogue/verbs/check.json).</summary>
 internal sealed record CheckLayoutOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("check", "layout", "findings", null, null,
+    internal static WhatSpec Spec { get; } = new WhatSpec("check", "layout", "findings", null, null, new WhatCost(CostClass.World),
         new OptionSpec("room", "{\"type\":\"string\"}"),
         new OptionSpec("box", "{\"type\":\"array\",\"minItems\":2,\"maxItems\":2}"),
         new OptionSpec("codes", "{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"maxItems\":64}"),

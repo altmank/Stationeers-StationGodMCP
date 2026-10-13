@@ -6,13 +6,14 @@
 
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Catalogue;
 
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of check ignition, in verb names (catalogue/verbs/check.json).</summary>
 internal sealed record CheckIgnitionOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("check", "ignition", "items", null, null,
+    internal static WhatSpec Spec { get; } = new WhatSpec("check", "ignition", "items", null, null, new WhatCost(CostClass.World),
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}"),
         new OptionSpec("include", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"prefabs\"]}}"));
 

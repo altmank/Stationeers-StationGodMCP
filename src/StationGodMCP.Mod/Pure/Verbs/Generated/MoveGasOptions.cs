@@ -6,13 +6,14 @@
 
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Catalogue;
 
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of move gas, in verb names (catalogue/verbs/move.json).</summary>
 internal sealed record MoveGasOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("move", "gas", null, null, new WriteSpec("confirm", "cannot", "[cannot undo: gas move]"),
+    internal static WhatSpec Spec { get; } = new WhatSpec("move", "gas", null, null, new WriteSpec("confirm", "cannot", "[cannot undo: gas move]"), new WhatCost(CostClass.Instant),
         new OptionSpec("source", "{\"type\":[\"string\",\"object\"]}"),
         new OptionSpec("to", "{\"type\":[\"string\",\"object\"]}"),
         new OptionSpec("delete", "{\"type\":\"boolean\"}", false, "false"),

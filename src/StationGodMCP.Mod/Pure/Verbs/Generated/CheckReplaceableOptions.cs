@@ -6,13 +6,14 @@
 
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Catalogue;
 
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of check replaceable, in verb names (catalogue/verbs/check.json).</summary>
 internal sealed record CheckReplaceableOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("check", "replaceable", "results", null, null,
+    internal static WhatSpec Spec { get; } = new WhatSpec("check", "replaceable", "results", null, null, new WhatCost(CostClass.Bounded, new[] { "id" }),
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}", true));
 
     internal Selector Selector { get; private init; } = Selector.None;

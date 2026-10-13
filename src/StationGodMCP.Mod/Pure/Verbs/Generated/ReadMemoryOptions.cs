@@ -6,13 +6,14 @@
 
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Catalogue;
 
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of read memory, in verb names (catalogue/verbs/read.json).</summary>
 internal sealed record ReadMemoryOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("read", "memory", null, null, null,
+    internal static WhatSpec Spec { get; } = new WhatSpec("read", "memory", null, null, null, new WhatCost(CostClass.Instant),
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}", true),
         new OptionSpec("gateway", "{\"type\":\"string\"}", false, "world"),
         new OptionSpec("start", "{\"type\":\"integer\",\"minimum\":0}", true),

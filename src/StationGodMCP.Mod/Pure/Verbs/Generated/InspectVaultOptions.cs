@@ -6,13 +6,14 @@
 
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Catalogue;
 
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of inspect vault, in verb names (catalogue/verbs/inspect.json).</summary>
 internal sealed record InspectVaultOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("inspect", "vault", "vaults", null, null,
+    internal static WhatSpec Spec { get; } = new WhatSpec("inspect", "vault", "vaults", null, null, new WhatCost(CostClass.Instant),
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}"));
 
     internal Selector Selector { get; private init; } = Selector.None;

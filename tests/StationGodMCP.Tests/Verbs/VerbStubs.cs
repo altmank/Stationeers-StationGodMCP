@@ -51,7 +51,7 @@ internal static class VerbStubs
             text.Append("    ").Append(option).Append(": ").Append(VerbText.PythonType(resolved["schema"]!.AsObject()));
             if ((bool?)resolved["required"] != true)
             {
-                string? fallback = (string?)resolved["default"];
+                string? fallback = VerbText.DefaultText(resolved);
                 string literal = Default(fallback);
                 if (literal == "None" && fallback != null)
                 {

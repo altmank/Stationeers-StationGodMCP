@@ -18,16 +18,6 @@ def inspect(what: Literal['genes'], *,
       count: int
       success_count: int
       error_count: int
-    (GenesWritten)
-      thing: Thing
-      holder: str
-      unit: int
-      is_top: bool
-      results: list[{index: int, ok: bool, gene: str, previous_value: float | None, error: Error} | {index: int, ok: bool, gene: str, previous_value:
-          float | None, value: float} | {index: int, ok: bool} | {index: int, ok: bool, error: Error}]
-      count: int
-      success_count: int
-      error_count: int
     Types: Error = {code: str, message: str, data: Any | None, see: {tool: str | None, topic: str, subtopic: str | None} | None}; Thing =
         {reference_id: str, prefab_name: str | None, display_name: str | None}
     Example: sg.inspect('genes', id='3311223')

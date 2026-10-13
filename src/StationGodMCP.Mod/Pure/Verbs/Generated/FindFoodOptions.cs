@@ -6,13 +6,14 @@
 
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Catalogue;
 
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of find food, in verb names (catalogue/verbs/find.json).</summary>
 internal sealed record FindFoodOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("find", "food", "food", null, null);
+    internal static WhatSpec Spec { get; } = new WhatSpec("find", "food", "food", null, null, new WhatCost(CostClass.World));
 
     internal Fields Fields { get; private init; } = Fields.None;
 

@@ -6,13 +6,14 @@
 
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Catalogue;
 
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of write chip, in verb names (catalogue/verbs/write.json).</summary>
 internal sealed record WriteChipOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("write", "chip", null, null, new WriteSpec("acts", "mixed", "source [cannot undo: chip source]; pins [undo]; run [cannot undo: run control]"),
+    internal static WhatSpec Spec { get; } = new WhatSpec("write", "chip", null, null, new WriteSpec("acts", "mixed", "source [cannot undo: chip source]; pins [undo]; run [cannot undo: run control]"), new WhatCost(CostClass.Instant),
         new OptionSpec("id", "{\"type\":\"string\"}", true),
         new OptionSpec("gateway", "{\"type\":\"string\"}", false, "world"),
         new OptionSpec("code", "{\"type\":\"string\"}"),

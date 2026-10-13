@@ -6,13 +6,14 @@
 
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Catalogue;
 
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of trade inventory, in verb names (catalogue/verbs/trade.json).</summary>
 internal sealed record TradeInventoryOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("trade", "inventory", "contacts", null, null,
+    internal static WhatSpec Spec { get; } = new WhatSpec("trade", "inventory", "contacts", null, null, new WhatCost(CostClass.Instant),
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}"),
         new OptionSpec("card", "{\"type\":\"string\"}"));
 

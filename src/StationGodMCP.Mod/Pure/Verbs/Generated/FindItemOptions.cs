@@ -6,13 +6,14 @@
 
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Catalogue;
 
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of find item, in verb names (catalogue/verbs/find.json).</summary>
 internal sealed record FindItemOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("find", "item", "items", null, null,
+    internal static WhatSpec Spec { get; } = new WhatSpec("find", "item", "items", null, null, new WhatCost(CostClass.World),
         new OptionSpec("name", "{\"type\":\"string\"}"),
         new OptionSpec("prefab", "{\"type\":[\"string\",\"integer\",\"array\"],\"items\":{\"type\":[\"string\",\"integer\"]}}"),
         new OptionSpec("location", "{\"type\":\"string\",\"enum\":[\"any\",\"ground\",\"player\",\"stored\",\"machine_stock\",\"silo\"]}", false, "any"),
@@ -23,7 +24,7 @@ internal sealed record FindItemOptions
         new OptionSpec("group_by", "{\"type\":\"string\",\"enum\":[\"holder\",\"prefab\",\"place\"]}"),
         new OptionSpec("holders", "{\"type\":\"integer\",\"minimum\":0,\"maximum\":100}", false, "1"),
         new OptionSpec("exclude_in_use", "{\"type\":\"boolean\"}", false, "false"),
-        new OptionSpec("limit", "{\"type\":\"integer\",\"minimum\":1,\"maximum\":500}", false, "10; group_by place 12"),
+        new OptionSpec("limit", "{\"type\":\"integer\",\"minimum\":1,\"maximum\":500}", false, "10", "[{\"when\":{\"group_by\":\"place\"},\"default\":\"12\"}]"),
         new OptionSpec("offset", "{\"type\":\"integer\",\"minimum\":0}", false, "0"),
         new OptionSpec("cursor", "{\"type\":\"string\"}"),
         new OptionSpec("order", "{\"type\":\"string\",\"enum\":[\"nearest\",\"id\"]}", false, "nearest"));

@@ -146,9 +146,9 @@ internal static class VerbHelp
             foreach ((string option, JsonObject resolved) in options)
             {
                 text.Append("- ").Append(option).Append(" (").Append(VerbText.DirectType(resolved["schema"]!.AsObject()));
-                if (resolved["default"] is JsonValue fallback)
+                if (VerbText.DefaultText(resolved) is { } fallback)
                 {
-                    text.Append(", default ").Append((string)fallback!);
+                    text.Append(", default ").Append(fallback);
                 }
 
                 if ((bool?)resolved["required"] == true)

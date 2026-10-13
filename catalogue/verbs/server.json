@@ -21,6 +21,7 @@
         }
       },
       "example": {},
+      "x-cost": {"class": "instant"},
       "reply": {
         "list": "methods",
         "variants": [
@@ -63,6 +64,7 @@
         }
       },
       "example": {"action": "report"},
+      "x-cost": {"class": "instant"},
       "reply": {
         "list": "scopes",
         "variants": [
@@ -98,6 +100,7 @@
         }
       },
       "example": {"lines": 80},
+      "x-cost": {"class": "instant"},
       "reply": {
         "list": "lines",
         "variants": [
@@ -131,6 +134,7 @@
         "Read-only commands (help, rocket print) also only report in a report run; the game does not mark which commands change nothing."
       ],
       "example": {"command": "help", "confirm": true},
+      "x-cost": {"class": "world"},
       "reply": {
         "list": "output",
         "variants": [
@@ -172,6 +176,7 @@
         }
       },
       "example": {"id": "script-14"},
+      "x-cost": {"class": "instant"},
       "reply": {
         "variants": [
           {

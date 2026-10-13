@@ -4,5 +4,5 @@ Options:
 - unit (integer): With one id: which gene set, 0-based; default the top.
 - include (list of notes): notes: the tool's fixed text.
 Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the one-id reply; a bad id is a row with error.
-Reply: (PlantGenes) thing {reference_id, prefab_name, display_name}, holder, gene_set_count, unit, is_top, genes [{gene, value, stability, meaning, effect}] | (BatchResult) results [{index, ok, error}], count, success_count, error_count | (GenesWritten) thing {reference_id, prefab_name, display_name}, holder, unit, is_top, results [{index, ok, gene, previous_value, error, ok, gene, previous_value, value, ok, ok, error}], count, success_count, error_count
+Reply: (PlantGenes) thing {reference_id, prefab_name, display_name}, holder, gene_set_count, unit, is_top, genes [{gene, value, stability, meaning, effect}] | (BatchResult) results [{index, ok, error}], count, success_count, error_count
 Example: inspect {what: "genes", id: "3311223"}

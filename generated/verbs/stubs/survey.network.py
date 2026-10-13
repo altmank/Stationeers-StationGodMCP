@@ -12,15 +12,6 @@ def survey(what: Literal['network'], *,
 ) -> dict:  # main list: r['members']; iterating or indexing it walks every page, in order
     """A cable, pipe or chute network's members (or the pieces in a box), with filters or a summary.
     Reply, one of:
-    (Connections)
-      thing: Thing
-      position: Vec3
-      rotation: {facing: str | None, up: str | None, euler: Vec3} | None
-      own_network: {kind: str, id: str} | None
-      color: Color | None
-      ends: list[{index: int, type: str, type_name: str | None, role: str, role_name: str | None, position: Vec3 | None, network: {kind: str, id: str}
-          | None, connected: list[Thing]}]
-      count: int
     (NetworkMembers)
       network: {kind: str, id: str}
       summary: Any | None

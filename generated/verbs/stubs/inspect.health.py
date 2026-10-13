@@ -61,24 +61,6 @@ def inspect(what: Literal['health'], *,
       offset: int
       limit: int
       has_more: bool
-    (HealthScan)
-      things: list[{reference_id: str, prefab_name: str | None, display_name: str | None, custom_name: str | None, build_state: {current: int, last:
-          int, complete: bool, next: list[{prefab_name: str, display_name: str, quantity: int | None, tool: bool}] | None} | None, condition: str,
-          kind: str, type: str, damage_state: str, damage_state_class: str | None, max_damage: float | None, total_damage: float | None, damage_ratio:
-          float | None, health_percent: int | None, band: str | None, damage: {brute: float, burn: float, oxygen: float, hydration: float, starvation:
-          float, toxic: float, radiation: float, decay: float, stun: float} | None, is_broken: bool, broken_build_state: bool | None, being_destroyed:
-          bool, pipe_burst: str | None, damage_record: list[str] | None, position: Vec3, distance_m: float | None, networks: list[{kind: str, id:
-          str}] | None}]
-      count: int
-      total: int
-      structures: int
-      broken: int
-      scanned: int
-      min_damage_ratio: float
-      offset: int
-      limit: int
-      has_more: bool
-      local_player: {reference_id: str, display_name: str | None, position: Vec3} | None
     Types: Error = {code: str, message: str, data: Any | None, see: {tool: str | None, topic: str, subtopic: str | None} | None}; Vec3 = {x: float, y:
         float, z: float}
     Example: sg.inspect('health', network='5012345', kind='pipe', damaged_only=True)

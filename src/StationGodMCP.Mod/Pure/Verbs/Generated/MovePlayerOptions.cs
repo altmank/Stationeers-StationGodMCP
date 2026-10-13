@@ -6,13 +6,14 @@
 
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Catalogue;
 
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of move player, in verb names (catalogue/verbs/move.json).</summary>
 internal sealed record MovePlayerOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("move", "player", null, null, new WriteSpec("confirm", "cannot", "[cannot undo: player move]"),
+    internal static WhatSpec Spec { get; } = new WhatSpec("move", "player", null, null, new WriteSpec("confirm", "cannot", "[cannot undo: player move]"), new WhatCost(CostClass.Instant),
         new OptionSpec("player", "{\"type\":\"string\"}"),
         new OptionSpec("at", "{\"type\":\"array\"}"),
         new OptionSpec("to", "{\"type\":\"string\"}"),

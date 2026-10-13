@@ -6,13 +6,14 @@
 
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Catalogue;
 
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of plan removal, in verb names (catalogue/verbs/plan.json).</summary>
 internal sealed record PlanRemovalOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("plan", "removal", "removals", null, null,
+    internal static WhatSpec Spec { get; } = new WhatSpec("plan", "removal", "removals", null, null, new WhatCost(CostClass.Plan),
         new OptionSpec("kind", "{\"type\":\"string\",\"enum\":[\"cable\",\"pipe\",\"chute\"]}", false, "cable"),
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}"),
         new OptionSpec("waypoints", "{\"type\":\"array\",\"items\":{\"type\":\"array\"},\"maxItems\":1024}"),

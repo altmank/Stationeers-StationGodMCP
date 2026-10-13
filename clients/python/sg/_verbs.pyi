@@ -301,61 +301,7 @@ def find(what: Literal['damaged'], *,
     limit: int = 8,  # The first n in order (entries); left out, every one.
 ) -> dict:  # main list: r['things']; iterating or indexing it walks every page, in order
     """Damaged and broken things in the world, worst first.
-    Reply, one of:
-    (Health)
-      reference_id: str
-      prefab_name: str | None
-      display_name: str | None
-      custom_name: str | None
-      build_state: {current: int, last: int, complete: bool, next: list[{prefab_name: str, display_name: str, quantity: int | None, tool: bool}] |
-          None} | None
-      condition: str
-      kind: str
-      type: str
-      damage_state: str
-      damage_state_class: str | None
-      max_damage: float | None
-      total_damage: float | None
-      damage_ratio: float | None
-      health_percent: int | None
-      band: str | None
-      damage: {brute: float, burn: float, oxygen: float, hydration: float, starvation: float, toxic: float, radiation: float, decay: float, stun:
-          float} | None
-      is_broken: bool
-      broken_build_state: bool | None
-      being_destroyed: bool
-      pipe_burst: str | None
-      damage_record: list[str] | None
-      position: Vec3
-      distance_m: float | None
-      networks: list[{kind: str, id: str}] | None
-    (BatchResult)
-      results: list[{index: int, ok: bool, error: Error}]
-      count: int
-      success_count: int
-      error_count: int
-    (HealthNetwork)
-      network_id: str
-      kind: str
-      pieces: int
-      damaged_only: bool
-      warning: str | None
-      broken_neighbour_count: int
-      broken_neighbours: list[{reference_id: str, prefab_name: str | None, position: Vec3, pipe_burst: str | None, network: {kind: str, id: str} |
-          None, touches: str}] | None
-      things: list[{reference_id: str, prefab_name: str | None, display_name: str | None, custom_name: str | None, build_state: {current: int, last:
-          int, complete: bool, next: list[{prefab_name: str, display_name: str, quantity: int | None, tool: bool}] | None} | None, condition: str,
-          kind: str, type: str, damage_state: str, damage_state_class: str | None, max_damage: float | None, total_damage: float | None, damage_ratio:
-          float | None, health_percent: int | None, band: str | None, damage: {brute: float, burn: float, oxygen: float, hydration: float, starvation:
-          float, toxic: float, radiation: float, decay: float, stun: float} | None, is_broken: bool, broken_build_state: bool | None, being_destroyed:
-          bool, pipe_burst: str | None, damage_record: list[str] | None, position: Vec3, distance_m: float | None, networks: list[{kind: str, id:
-          str}] | None}]
-      count: int
-      total: int
-      offset: int
-      limit: int
-      has_more: bool
-    (HealthScan)
+    Reply:
       things: list[{reference_id: str, prefab_name: str | None, display_name: str | None, custom_name: str | None, build_state: {current: int, last:
           int, complete: bool, next: list[{prefab_name: str, display_name: str, quantity: int | None, tool: bool}] | None} | None, condition: str,
           kind: str, type: str, damage_state: str, damage_state_class: str | None, max_damage: float | None, total_damage: float | None, damage_ratio:
@@ -561,24 +507,6 @@ def inspect(what: Literal['health'], *,
       offset: int
       limit: int
       has_more: bool
-    (HealthScan)
-      things: list[{reference_id: str, prefab_name: str | None, display_name: str | None, custom_name: str | None, build_state: {current: int, last:
-          int, complete: bool, next: list[{prefab_name: str, display_name: str, quantity: int | None, tool: bool}] | None} | None, condition: str,
-          kind: str, type: str, damage_state: str, damage_state_class: str | None, max_damage: float | None, total_damage: float | None, damage_ratio:
-          float | None, health_percent: int | None, band: str | None, damage: {brute: float, burn: float, oxygen: float, hydration: float, starvation:
-          float, toxic: float, radiation: float, decay: float, stun: float} | None, is_broken: bool, broken_build_state: bool | None, being_destroyed:
-          bool, pipe_burst: str | None, damage_record: list[str] | None, position: Vec3, distance_m: float | None, networks: list[{kind: str, id:
-          str}] | None}]
-      count: int
-      total: int
-      structures: int
-      broken: int
-      scanned: int
-      min_damage_ratio: float
-      offset: int
-      limit: int
-      has_more: bool
-      local_player: {reference_id: str, display_name: str | None, position: Vec3} | None
     Types: Error = {code: str, message: str, data: Any | None, see: {tool: str | None, topic: str, subtopic: str | None} | None}; Vec3 = {x: float, y:
         float, z: float}
     Example: sg.inspect('health', network='5012345', kind='pipe', damaged_only=True)
@@ -592,8 +520,7 @@ def inspect(what: Literal['connections'], *,
 ) -> dict:  # main list: r['ends']; iterating or indexing it walks every page, in order
     """One pipe, cable, chute or device: its ends and what each joins.
     A list of ids answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply below; fields name its keys.
-    Reply, one of:
-    (Connections)
+    Reply:
       thing: Thing
       position: Vec3
       rotation: {facing: str | None, up: str | None, euler: Vec3} | None
@@ -602,42 +529,6 @@ def inspect(what: Literal['connections'], *,
       ends: list[{index: int, type: str, type_name: str | None, role: str, role_name: str | None, position: Vec3 | None, network: {kind: str, id: str}
           | None, connected: list[Thing]}]
       count: int
-    (NetworkMembers)
-      network: {kind: str, id: str}
-      summary: Any | None
-      warning: str | None
-      members: list[{reference_id: str, prefab_name: str | None, display_name: str | None, member: str, position: Vec3, color: Color | None,
-          open_ends: list[int] | None, network_id: str | None}]
-      count: int
-      structure_count: int
-      device_count: int
-      offset: int
-      limit: int
-      total: int
-      has_more: bool
-    (NetworkOverview)
-      network: {kind: str, id: str}
-      summary: Any | None
-      warning: str | None
-      broken_neighbour_count: int
-      broken_neighbours: list[{reference_id: str, prefab_name: str | None, position: Vec3, pipe_burst: str | None, network: {kind: str, id: str} |
-          None, touches: str}] | None
-      structure_count: int
-      device_count: int
-      by_prefab: list[{prefab_name: str, display_name: str | None, member: str, count: int, colors: dict[str, int] | None}]
-      devices: list[{reference_id: str, prefab_name: str | None, display_name: str | None, member: str, position: Vec3, color: Color | None,
-          open_ends: list[int] | None, network_id: str | None}]
-      open_ends: list[{reference_id: str, prefab_name: str | None, display_name: str | None, member: str, position: Vec3, color: Color | None,
-          open_ends: list[int] | None, network_id: str | None}]
-      open_end_count: int
-    (AreaOpenEnds)
-      members: list[{reference_id: str, prefab_name: str | None, display_name: str | None, member: str, position: Vec3, color: Color | None,
-          open_ends: list[int] | None, network_id: str | None}]
-      count: int
-      offset: int
-      limit: int
-      total: int
-      has_more: bool
     Types: Color = {index: int | None, name: str | None, is_default: bool}; Thing = {reference_id: str, prefab_name: str | None, display_name: str |
         None}; Vec3 = {x: float, y: float, z: float}
     Example: sg.inspect('connections', id=['2514519', '3575779'])
@@ -698,16 +589,6 @@ def inspect(what: Literal['genes'], *,
       genes: list[{gene: str, value: float | None, stability: float | None, meaning: str | None, effect: Any | None}]
     (BatchResult)
       results: list[{index: int, ok: bool, error: Error}]
-      count: int
-      success_count: int
-      error_count: int
-    (GenesWritten)
-      thing: Thing
-      holder: str
-      unit: int
-      is_top: bool
-      results: list[{index: int, ok: bool, gene: str, previous_value: float | None, error: Error} | {index: int, ok: bool, gene: str, previous_value:
-          float | None, value: float} | {index: int, ok: bool} | {index: int, ok: bool, error: Error}]
       count: int
       success_count: int
       error_count: int
@@ -1106,15 +987,6 @@ def survey(what: Literal['network'], *,
 ) -> dict:  # main list: r['members']; iterating or indexing it walks every page, in order
     """A cable, pipe or chute network's members (or the pieces in a box), with filters or a summary.
     Reply, one of:
-    (Connections)
-      thing: Thing
-      position: Vec3
-      rotation: {facing: str | None, up: str | None, euler: Vec3} | None
-      own_network: {kind: str, id: str} | None
-      color: Color | None
-      ends: list[{index: int, type: str, type_name: str | None, role: str, role_name: str | None, position: Vec3 | None, network: {kind: str, id: str}
-          | None, connected: list[Thing]}]
-      count: int
     (NetworkMembers)
       network: {kind: str, id: str}
       summary: Any | None
@@ -1344,8 +1216,6 @@ def read(what: Literal['flight_log'], *,
       offset: int
       every: int
       has_more: bool
-    (FlightLogCleared)
-      cleared: bool
     (FlightLogList)
       logs: list[{rocket_id: str, rocket_name: str, recording: bool, interval_s: float, csv_path: str | None, capacity: int, held: int, recorded: int,
           from_t: float | None, to_t: float | None, fuel_used_mol: float | None, lowest_altitude_m: float | None, fastest_descent_ms: float,

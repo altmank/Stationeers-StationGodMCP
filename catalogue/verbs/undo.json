@@ -58,6 +58,7 @@
         "A script run (script-14) is reverted whole, newest first, each target restored to its value before the run; jobs still in flight at a stop are included once they settle, and groups that cannot be undone are named [cannot undo]. Each target is compared with the run's last written value: where it changed since (the user, a chip, another run), the target is reported and not written unless allow: [\"overwrite\"]. Undo of a running run is refused: stop it first (server {what: \"stop\", id}). Past the memory bound undo answers undo_expired, naming what it can no longer revert."
       ],
       "example": {"id": "place-41", "confirm": true},
+      "x-cost": {"class": "job"},
       "reply": {
         "list": "piece_runs",
         "variants": [

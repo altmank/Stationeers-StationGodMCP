@@ -6,13 +6,14 @@
 
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Catalogue;
 
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of inspect health, in verb names (catalogue/verbs/inspect.json).</summary>
 internal sealed record InspectHealthOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("inspect", "health", "things", null, null,
+    internal static WhatSpec Spec { get; } = new WhatSpec("inspect", "health", "things", null, null, new WhatCost(CostClass.Bounded, new[] { "id" }),
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}"),
         new OptionSpec("network", "{\"type\":[\"string\",\"object\"]}"),
         new OptionSpec("kind", "{\"type\":\"string\",\"enum\":[\"pipe\",\"cable\",\"chute\"]}", false, "pipe"),

@@ -6,13 +6,14 @@
 
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Catalogue;
 
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of server profiling, in verb names (catalogue/verbs/server.json).</summary>
 internal sealed record ServerProfilingOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("server", "profiling", "scopes", null, new WriteSpec("acts", "undo", "[undo: the other action]"),
+    internal static WhatSpec Spec { get; } = new WhatSpec("server", "profiling", "scopes", null, new WriteSpec("acts", "undo", "[undo: the other action]"), new WhatCost(CostClass.Instant),
         new OptionSpec("action", "{\"type\":\"string\",\"enum\":[\"on\",\"off\",\"reset\",\"report\"]}", true),
         new OptionSpec("slow_frame_ms", "{\"type\":\"number\",\"minimum\":1,\"maximum\":1000}", false, "8"),
         new OptionSpec("csv", "{\"type\":\"boolean\"}"));

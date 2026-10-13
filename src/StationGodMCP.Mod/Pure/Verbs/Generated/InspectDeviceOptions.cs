@@ -6,13 +6,14 @@
 
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Catalogue;
 
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of inspect device, in verb names (catalogue/verbs/inspect.json).</summary>
 internal sealed record InspectDeviceOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("inspect", "device", "logic_types", null, null,
+    internal static WhatSpec Spec { get; } = new WhatSpec("inspect", "device", "logic_types", null, null, new WhatCost(CostClass.Instant),
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}", true),
         new OptionSpec("gateway", "{\"type\":\"string\"}", false, "world"),
         new OptionSpec("include", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"logic_types\"]}}"));

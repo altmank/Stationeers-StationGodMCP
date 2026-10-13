@@ -6,13 +6,14 @@
 
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Catalogue;
 
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of survey feeds, in verb names (catalogue/verbs/survey.json).</summary>
 internal sealed record SurveyFeedsOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("survey", "feeds", "devices", null, null,
+    internal static WhatSpec Spec { get; } = new WhatSpec("survey", "feeds", "devices", null, null, new WhatCost(CostClass.Plan),
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}", true),
         new OptionSpec("network", "{\"type\":[\"string\",\"object\"]}"),
         new OptionSpec("port", "{\"type\":\"integer\",\"minimum\":0,\"maximum\":64}"),

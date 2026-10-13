@@ -6,13 +6,14 @@
 
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Catalogue;
 
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of find thing, in verb names (catalogue/verbs/find.json).</summary>
 internal sealed record FindThingOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("find", "thing", "things", null, null,
+    internal static WhatSpec Spec { get; } = new WhatSpec("find", "thing", "things", null, null, new WhatCost(CostClass.World),
         new OptionSpec("name", "{\"type\":\"string\"}"),
         new OptionSpec("prefab", "{\"type\":[\"string\",\"integer\",\"array\"],\"items\":{\"type\":[\"string\",\"integer\"]}}"),
         new OptionSpec("category", "{\"type\":\"string\",\"enum\":[\"any\",\"item\",\"dynamic\",\"structure\",\"entity\",\"other\"]}", false, "any"),

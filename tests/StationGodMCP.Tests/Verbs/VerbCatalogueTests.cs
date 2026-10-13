@@ -166,6 +166,79 @@ public sealed class VerbCatalogueTests
     }
 
     [Fact]
+    public void EveryWhatTheGameAnswersStatesItsCost()
+    {
+        string[] classes = { "instant", "bounded", "world", "plan", "job", "stream" };
+        foreach ((string verb, string what, JsonObject source) in VerbCatalogue.Whats())
+        {
+            if (verb is "help" or "run_script")
+            {
+                Assert.Null(source["x-cost"]);
+                continue;
+            }
+
+            JsonObject cost = Assert.IsType<JsonObject>(source["x-cost"]);
+            Assert.True(cost.All(key => key.Key is "class" or "per" or "duration"), $"{verb} {what}: x-cost keys");
+            Assert.Contains((string)cost["class"]!, classes);
+            IEnumerable<string> per = cost["per"] switch
+            {
+                JsonArray many => many.Select(option => (string)option!),
+                JsonValue one => new[] { (string)one! },
+                _ => Array.Empty<string>()
+            };
+            foreach (string option in per)
+            {
+                Assert.True(source["options"]?[option] != null, $"{verb} {what}: x-cost per names no option '{option}'");
+            }
+
+            if (cost["duration"] is JsonObject duration)
+            {
+                Assert.True(source["options"]?[(string)duration["option"]!] != null, $"{verb} {what}: x-cost duration option");
+                Assert.True((double)duration["max_s"]! > 0, $"{verb} {what}: x-cost duration max_s");
+            }
+        }
+
+        JsonObject sample = VerbCatalogue.Verb("read")["whats"]!["sample"]!["x-cost"]!.AsObject();
+        Assert.Equal("stream", (string)sample["class"]!);
+        Assert.Equal(30, (double)sample["duration"]!["max_s"]!);
+        Assert.Equal("world", (string)VerbCatalogue.Verb("find")["whats"]!["thing"]!["x-cost"]!["class"]!);
+    }
+
+    [Fact]
+    public void EveryDefaultFormNamesOptionsOfItsWhat()
+    {
+        int forms = 0;
+        foreach ((string verb, string what, JsonObject source) in VerbCatalogue.Whats())
+        {
+            foreach ((string name, JsonObject option) in VerbCatalogue.WireOptionsOf(source))
+            {
+                if (option["x-default-when"] is not JsonArray when)
+                {
+                    continue;
+                }
+
+                Assert.NotNull(option["default"]);
+                foreach (JsonNode? form in when)
+                {
+                    forms++;
+                    Assert.IsAssignableFrom<JsonValue>(form!["default"]);
+                    foreach ((string condition, JsonNode? _) in form["when"]!.AsObject())
+                    {
+                        Assert.True(source["options"]?[condition] != null,
+                            $"{verb} {what} {name}: x-default-when names no option '{condition}'");
+                    }
+                }
+            }
+        }
+
+        Assert.Equal(4, forms);
+        Assert.Equal("30; box 25; summarize 10",
+            VerbText.DefaultText(VerbCatalogue.Resolve(VerbCatalogue.Verb("survey")["whats"]!["network"]!["options"]!["limit"]!.AsObject())));
+        Assert.Equal("true (false with compact)",
+            VerbText.DefaultText(VerbCatalogue.Resolve(VerbCatalogue.Verb("inspect")["whats"]!["rocket"]!["options"]!["self_test"]!.AsObject())));
+    }
+
+    [Fact]
     public void TheC2aReviewFixesHold()
     {
         // move item (PLAN 2.0): typed ids act at once; an id list is one moves list with a slot per move

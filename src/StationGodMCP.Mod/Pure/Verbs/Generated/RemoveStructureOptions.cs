@@ -6,13 +6,14 @@
 
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Catalogue;
 
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of remove structure, in verb names (catalogue/verbs/remove.json).</summary>
 internal sealed record RemoveStructureOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("remove", "structure", "placements", null, new WriteSpec("confirm", "undo", "[undo]"),
+    internal static WhatSpec Spec { get; } = new WhatSpec("remove", "structure", "placements", null, new WriteSpec("confirm", "undo", "[undo]"), new WhatCost(CostClass.Job),
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}", true),
         new OptionSpec("allow", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"contents\",\"breach\",\"broken\",\"burst\",\"unsupported\"]}}"),
         new OptionSpec("refund_to", "{\"type\":[\"string\",\"integer\",\"array\"]}", false, "[inventory, source, storage, ground]"),

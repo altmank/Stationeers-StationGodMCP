@@ -6,13 +6,14 @@
 
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Catalogue;
 
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of plan route, in verb names (catalogue/verbs/plan.json).</summary>
 internal sealed record PlanRouteOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("plan", "route", null, null, null,
+    internal static WhatSpec Spec { get; } = new WhatSpec("plan", "route", null, null, null, new WhatCost(CostClass.Plan),
         new OptionSpec("kind", "{\"type\":\"string\",\"enum\":[\"cable\",\"pipe\",\"chute\"]}", true),
         new OptionSpec("start", "{\"type\":[\"object\",\"array\"]}"),
         new OptionSpec("end", "{\"type\":\"object\"}"),

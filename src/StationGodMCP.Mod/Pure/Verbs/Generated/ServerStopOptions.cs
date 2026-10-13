@@ -6,13 +6,14 @@
 
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Catalogue;
 
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of server stop, in verb names (catalogue/verbs/server.json).</summary>
 internal sealed record ServerStopOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("server", "stop", null, null, new WriteSpec("acts", "cannot", "[cannot undo: stop]"),
+    internal static WhatSpec Spec { get; } = new WhatSpec("server", "stop", null, null, new WriteSpec("acts", "cannot", "[cannot undo: stop]"), new WhatCost(CostClass.Instant),
         new OptionSpec("id", "{\"type\":\"string\"}"));
 
     internal Selector Selector { get; private init; } = Selector.None;

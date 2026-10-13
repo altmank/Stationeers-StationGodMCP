@@ -40,6 +40,42 @@ internal static class VerbText
     private static string Raw(JsonNode? value) =>
         value is JsonValue v && v.TryGetValue(out string? text) ? text : value?.ToJsonString(Compact) ?? "null";
 
+    /// <summary>
+    /// An option's default as help and the stubs state it: the default, then each x-default-when form. A boolean default
+    /// reads "true (false with compact)"; any other "30; box 25; summarize 10" (a form's condition reads as the option's
+    /// name when it is present or true, else as the option and its value). Null when the option gives no default.
+    /// </summary>
+    internal static string? DefaultText(JsonObject option)
+    {
+        if (option["default"] is not JsonValue given)
+        {
+            return null;
+        }
+
+        string text = (string)given!;
+        if (option["x-default-when"] is not JsonArray forms || forms.Count == 0)
+        {
+            return text;
+        }
+
+        List<string> others = forms.Select(form => (Condition: ConditionText(form!["when"]!.AsObject()),
+            Default: (string)form["default"]!)).Select(form => text is "true" or "false"
+            ? form.Default + " with " + form.Condition
+            : form.Condition + " " + form.Default).ToList();
+        return text is "true" or "false"
+            ? text + " (" + string.Join("; ", others) + ")"
+            : text + "; " + string.Join("; ", others);
+    }
+
+    private static string ConditionText(JsonObject when) => string.Join(" and ", when.Select(condition =>
+        condition.Value switch
+        {
+            JsonObject test when test["present"] is JsonValue present && (bool)present! => condition.Key,
+            JsonValue flag when flag.TryGetValue(out bool on) && on => condition.Key,
+            JsonNode value => condition.Key + " " + Raw(value),
+            null => condition.Key
+        }));
+
     /// <summary>The direct page's type text: an enum's values, "list of a | b", or the JSON types joined with "or".</summary>
     internal static string DirectType(JsonObject schema)
     {

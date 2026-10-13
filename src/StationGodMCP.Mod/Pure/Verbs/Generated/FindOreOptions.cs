@@ -6,13 +6,14 @@
 
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Catalogue;
 
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of find ore, in verb names (catalogue/verbs/find.json).</summary>
 internal sealed record FindOreOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("find", "ore", "spots", null, null,
+    internal static WhatSpec Spec { get; } = new WhatSpec("find", "ore", "spots", null, null, new WhatCost(CostClass.World),
         new OptionSpec("near", "{\"type\":\"array\"}"),
         new OptionSpec("ores", "{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"maxItems\":4}"),
         new OptionSpec("radius", "{\"type\":\"number\",\"minimum\":1,\"maximum\":3000}", false, "500"),

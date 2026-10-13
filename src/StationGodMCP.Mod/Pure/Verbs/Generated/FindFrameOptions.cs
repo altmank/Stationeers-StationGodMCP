@@ -6,13 +6,14 @@
 
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Catalogue;
 
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of find frame, in verb names (catalogue/verbs/find.json).</summary>
 internal sealed record FindFrameOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("find", "frame", "frames", null, null,
+    internal static WhatSpec Spec { get; } = new WhatSpec("find", "frame", "frames", null, null, new WhatCost(CostClass.World),
         new OptionSpec("near", "{\"type\":[\"string\",\"array\"]}"),
         new OptionSpec("radius", "{\"type\":\"number\"}"),
         new OptionSpec("include", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"inner\"]}}"),

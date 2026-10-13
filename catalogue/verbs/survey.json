@@ -82,6 +82,7 @@
       ],
       "x-script-text": ["A big area is many pages (125 cells each); iterating r['cells'] walks them all."],
       "example": {"room": "17", "sections": ["pieces", "devices"]},
+      "x-cost": {"class": "world"},
       "reply": {
         "list": "cells",
         "variants": [
@@ -137,6 +138,7 @@
         }
       },
       "example": {"plane": "x=716", "side": "-x", "at": [716, 202, 668]},
+      "x-cost": {"class": "world"},
       "reply": {
         "list": "things",
         "variants": [
@@ -188,29 +190,18 @@
           "use": "limit",
           "schema": {"type": "integer", "minimum": 1, "maximum": 1000},
           "description": "Members per page.",
-          "default": "30; box 25; summarize 10",
+          "default": "30",
+          "x-default-when": [{"when": {"box": {"present": true}}, "default": "25"}, {"when": {"summarize": true}, "default": "10"}],
           "x-script": "The first n in order (members); left out, every one."
         },
         "offset": {"use": "offset"},
         "cursor": {"use": "cursor"}
       },
       "example": {"network": "3768865", "kind": "cable", "summarize": true},
+      "x-cost": {"class": "bounded"},
       "reply": {
         "list": "members",
         "variants": [
-          {
-            "label": "Connections",
-            "view": "Connections",
-            "keys": {
-              "thing": "Thing",
-              "position": "Vec3",
-              "rotation": "{facing: str | None, up: str | None, euler: Vec3} | None",
-              "own_network": "{kind: str, id: str} | None",
-              "color": "Color | None",
-              "ends": "list[{index: int, type: str, type_name: str | None, role: str, role_name: str | None, position: Vec3 | None, network: {kind: str, id: str} | None, connected: list[Thing]}]",
-              "count": "int"
-            }
-          },
           {
             "label": "NetworkMembers",
             "view": "NetworkMembers",
@@ -279,6 +270,7 @@
         }
       },
       "example": {"id": "720259"},
+      "x-cost": {"class": "plan"},
       "reply": {
         "list": "devices",
         "variants": [

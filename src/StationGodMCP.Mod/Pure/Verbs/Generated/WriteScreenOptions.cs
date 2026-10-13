@@ -6,13 +6,14 @@
 
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Catalogue;
 
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of write screen, in verb names (catalogue/verbs/write.json).</summary>
 internal sealed record WriteScreenOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("write", "screen", null, null, new WriteSpec("acts", "cannot", "[cannot undo: screen press]"),
+    internal static WhatSpec Spec { get; } = new WhatSpec("write", "screen", null, null, new WriteSpec("acts", "cannot", "[cannot undo: screen press]"), new WhatCost(CostClass.Instant),
         new OptionSpec("id", "{\"type\":\"string\"}", true),
         new OptionSpec("gateway", "{\"type\":\"string\"}", false, "world"),
         new OptionSpec("surface", "{\"type\":\"string\"}"),

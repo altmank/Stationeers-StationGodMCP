@@ -66,6 +66,7 @@
         "order": {"use": "order"}
       },
       "example": {"prefab": "*Battery*", "near": "player", "radius": 30},
+      "x-cost": {"class": "world"},
       "reply": {
         "list": "things",
         "variants": [
@@ -130,7 +131,8 @@
           "use": "limit",
           "schema": {"type": "integer", "minimum": 1, "maximum": 500},
           "description": "Items (or groups) per page.",
-          "default": "10; group_by place 12",
+          "default": "10",
+          "x-default-when": [{"when": {"group_by": "place"}, "default": "12"}],
           "x-script": "The first n in order (items (or groups)); left out, every one."
         },
         "offset": {"use": "offset"},
@@ -140,6 +142,7 @@
       "text": ["group_by place takes no offset, order or exclude_in_use (the totals are not paged)."],
       "x-script-text": ["group_by place takes no order or exclude_in_use (the totals are not paged)."],
       "example": {"prefab": "ItemIronIngot", "group_by": "place"},
+      "x-cost": {"class": "world"},
       "reply": {
         "list": "items",
         "variants": [
@@ -187,6 +190,7 @@
         "Paging and prefab parts are applied by the verb layer to the handler's whole list (it walks every device either way)."
       ],
       "example": {"prefab": "*GasSensor*"},
+      "x-cost": {"class": "world"},
       "reply": {
         "list": "devices",
         "variants": [
@@ -214,6 +218,7 @@
         "order": {"use": "order"}
       },
       "example": {"prefab": "*Locker*", "near": "player", "radius": 15},
+      "x-cost": {"class": "world"},
       "reply": {
         "list": "containers",
         "variants": [
@@ -249,6 +254,7 @@
         "order": {"use": "order"}
       },
       "example": {"near": "player", "radius": 20},
+      "x-cost": {"class": "world"},
       "reply": {
         "list": "frames",
         "variants": [
@@ -276,6 +282,7 @@
       "options": {},
       "text": ["No options."],
       "example": {},
+      "x-cost": {"class": "instant"},
       "reply": {
         "list": "pads",
         "variants": [
@@ -301,6 +308,7 @@
         }
       },
       "example": {"min_mol": 50},
+      "x-cost": {"class": "world"},
       "reply": {
         "list": "sources",
         "variants": [
@@ -357,6 +365,7 @@
         }
       },
       "example": {"ores": ["Cobalt"]},
+      "x-cost": {"class": "world"},
       "reply": {
         "list": "spots",
         "variants": [
@@ -379,6 +388,7 @@
       "options": {},
       "text": ["No options."],
       "example": {},
+      "x-cost": {"class": "world"},
       "reply": {
         "list": "food",
         "variants": [
@@ -409,6 +419,7 @@
         "verbose": {"use": "verbose"}
       },
       "example": {},
+      "x-cost": {"class": "world"},
       "reply": {
         "list": "plants",
         "variants": [
@@ -436,6 +447,7 @@
         }
       },
       "example": {"id": "4820585"},
+      "x-cost": {"class": "world"},
       "reply": {
         "list": "rooms",
         "variants": [
@@ -455,6 +467,7 @@
       "options": {},
       "text": ["No options."],
       "example": {},
+      "x-cost": {"class": "instant"},
       "reply": {
         "list": "gateways",
         "variants": [
@@ -491,68 +504,10 @@
         "cursor": {"use": "cursor"}
       },
       "example": {"min_damage": 0.25, "structures_only": true},
+      "x-cost": {"class": "world"},
       "reply": {
         "list": "things",
         "variants": [
-          {
-            "label": "Health",
-            "view": "Health",
-            "keys": {
-              "reference_id": "str",
-              "prefab_name": "str | None",
-              "display_name": "str | None",
-              "custom_name": "str | None",
-              "build_state": "{current: int, last: int, complete: bool, next: list[{prefab_name: str, display_name: str, quantity: int | None, tool: bool}] | None} | None",
-              "condition": "str",
-              "kind": "str",
-              "type": "str",
-              "damage_state": "str",
-              "damage_state_class": "str | None",
-              "max_damage": "float | None",
-              "total_damage": "float | None",
-              "damage_ratio": "float | None",
-              "health_percent": "int | None",
-              "band": "str | None",
-              "damage": "{brute: float, burn: float, oxygen: float, hydration: float, starvation: float, toxic: float, radiation: float, decay: float, stun: float} | None",
-              "is_broken": "bool",
-              "broken_build_state": "bool | None",
-              "being_destroyed": "bool",
-              "pipe_burst": "str | None",
-              "damage_record": "list[str] | None",
-              "position": "Vec3",
-              "distance_m": "float | None",
-              "networks": "list[{kind: str, id: str}] | None"
-            }
-          },
-          {
-            "label": "BatchResult",
-            "view": "BatchResult",
-            "keys": {
-              "results": "list[{index: int, ok: bool, error: Error}]",
-              "count": "int",
-              "success_count": "int",
-              "error_count": "int"
-            }
-          },
-          {
-            "label": "HealthNetwork",
-            "view": "HealthNetwork",
-            "keys": {
-              "network_id": "str",
-              "kind": "str",
-              "pieces": "int",
-              "damaged_only": "bool",
-              "warning": "str | None",
-              "broken_neighbour_count": "int",
-              "broken_neighbours": "list[{reference_id: str, prefab_name: str | None, position: Vec3, pipe_burst: str | None, network: {kind: str, id: str} | None, touches: str}] | None",
-              "things": "list[{reference_id: str, prefab_name: str | None, display_name: str | None, custom_name: str | None, build_state: {current: int, last: int, complete: bool, next: list[{prefab_name: str, display_name: str, quantity: int | None, tool: bool}] | None} | None, condition: str, kind: str, type: str, damage_state: str, damage_state_class: str | None, max_damage: float | None, total_damage: float | None, damage_ratio: float | None, health_percent: int | None, band: str | None, damage: {brute: float, burn: float, oxygen: float, hydration: float, starvation: float, toxic: float, radiation: float, decay: float, stun: float} | None, is_broken: bool, broken_build_state: bool | None, being_destroyed: bool, pipe_burst: str | None, damage_record: list[str] | None, position: Vec3, distance_m: float | None, networks: list[{kind: str, id: str}] | None}]",
-              "count": "int",
-              "total": "int",
-              "offset": "int",
-              "limit": "int",
-              "has_more": "bool"
-            }
-          },
           {
             "label": "HealthScan",
             "view": "HealthScan",

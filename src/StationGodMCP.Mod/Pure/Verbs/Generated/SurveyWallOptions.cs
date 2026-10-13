@@ -6,13 +6,14 @@
 
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Catalogue;
 
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of survey wall, in verb names (catalogue/verbs/survey.json).</summary>
 internal sealed record SurveyWallOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("survey", "wall", "things", null, null,
+    internal static WhatSpec Spec { get; } = new WhatSpec("survey", "wall", "things", null, null, new WhatCost(CostClass.World),
         new OptionSpec("plane", "{\"type\":\"string\"}"),
         new OptionSpec("side", "{\"type\":\"string\",\"enum\":[\"+x\",\"-x\",\"+y\",\"-y\",\"+z\",\"-z\"]}"),
         new OptionSpec("looking", "{\"type\":\"boolean\"}"),

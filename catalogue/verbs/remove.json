@@ -47,6 +47,7 @@
         "max_wait": {"use": "max_wait"}
       },
       "example": {"id": ["1559707"], "confirm": true},
+      "x-cost": {"class": "job"},
       "reply": {
         "list": "placements",
         "variants": [
@@ -152,6 +153,7 @@
         "max_wait": {"use": "max_wait"}
       },
       "example": {"id": ["3763565"]},
+      "x-cost": {"class": "job"},
       "reply": {
         "list": "removals",
         "variants": [
@@ -252,6 +254,7 @@
         "max_wait": {"use": "max_wait"}
       },
       "example": {"id": ["3763565"]},
+      "x-cost": {"class": "job"},
       "reply": {
         "list": "removals",
         "variants": [
@@ -351,6 +354,7 @@
         "max_wait": {"use": "max_wait"}
       },
       "example": {"id": ["3763565"]},
+      "x-cost": {"class": "job"},
       "reply": {
         "list": "removals",
         "variants": [

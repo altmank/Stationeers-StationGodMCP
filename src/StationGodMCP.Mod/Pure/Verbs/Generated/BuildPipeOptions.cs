@@ -6,13 +6,14 @@
 
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Catalogue;
 
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of build pipe, in verb names (catalogue/verbs/build.json).</summary>
 internal sealed record BuildPipeOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("build", "pipe", "cells", null, new WriteSpec("confirm", "undo", "[undo]"),
+    internal static WhatSpec Spec { get; } = new WhatSpec("build", "pipe", "cells", null, new WriteSpec("confirm", "undo", "[undo]"), new WhatCost(CostClass.Job),
         new OptionSpec("grade", "{\"type\":\"string\",\"enum\":[\"gas\",\"liquid\",\"insulated_gas\",\"insulated_liquid\"]}", true),
         new OptionSpec("waypoints", "{\"type\":\"array\",\"items\":{\"type\":\"array\"},\"maxItems\":1024}"),
         new OptionSpec("cells", "{\"type\":\"array\",\"items\":{\"type\":\"array\"},\"maxItems\":1024}"),

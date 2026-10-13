@@ -6,16 +6,17 @@
 
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Catalogue;
 
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of inspect rocket, in verb names (catalogue/verbs/inspect.json).</summary>
 internal sealed record InspectRocketOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("inspect", "rocket", "rockets", null, null,
+    internal static WhatSpec Spec { get; } = new WhatSpec("inspect", "rocket", "rockets", null, null, new WhatCost(CostClass.World),
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}"),
         new OptionSpec("compact", "{\"type\":\"boolean\"}", false, "true"),
-        new OptionSpec("self_test", "{\"type\":\"boolean\"}", false, "true (false with compact)"),
+        new OptionSpec("self_test", "{\"type\":\"boolean\"}", false, "true", "[{\"when\":{\"compact\":true},\"default\":\"false\"}]"),
         new OptionSpec("include", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"parts\",\"explain\"]}}"));
 
     internal Selector Selector { get; private init; } = Selector.None;

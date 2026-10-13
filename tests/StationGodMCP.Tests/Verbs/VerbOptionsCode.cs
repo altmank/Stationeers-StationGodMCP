@@ -108,14 +108,15 @@ internal static class VerbOptionsCode
         string label = what == VerbCatalogue.WhatlessKey ? verbName : verbName + " " + what;
 
         StringBuilder code = Header();
-        code.Append("using System.Collections.Generic;\nusing Newtonsoft.Json.Linq;\n\n");
+        code.Append("using System.Collections.Generic;\nusing Newtonsoft.Json.Linq;\nusing StationGodMCP.Pure.Catalogue;\n\n");
         code.Append("namespace ").Append(Namespace).Append(";\n\n");
         code.Append("/// <summary>The options of ").Append(label).Append(", in verb names (catalogue/verbs/")
             .Append(verbName).Append(".json).</summary>\n");
         code.Append("internal sealed record ").Append(type).Append("\n{\n");
         code.Append("    internal static WhatSpec Spec { get; } = new WhatSpec(").Append(Literal(verbName)).Append(", ")
             .Append(Literal(what)).Append(", ").Append(Literal((string?)source["reply"]?["list"])).Append(", ")
-            .Append(Literal((string?)source["id_list"])).Append(", ").Append(WriteSpec(source));
+            .Append(Literal((string?)source["id_list"])).Append(", ").Append(WriteSpec(source)).Append(", ")
+            .Append(CostSpec(source));
         foreach ((string name, JsonObject option) in options)
         {
             code.Append(",\n        ").Append(OptionSpec(name, option));
@@ -217,6 +218,41 @@ internal static class VerbOptionsCode
         if (defaultText != null)
         {
             spec.Append(", ").Append(Literal(defaultText));
+        }
+
+        if (option["x-default-when"] is JsonArray forms)
+        {
+            spec.Append(", ").Append(Literal(forms.ToJsonString(VerbText.Compact)));
+        }
+
+        return spec.Append(')').ToString();
+    }
+
+    // x-cost: new WhatCost(CostClass.World), with the per options and the duration where it states them.
+    private static string CostSpec(JsonObject source)
+    {
+        if (source["x-cost"] is not JsonObject cost)
+        {
+            return "null";
+        }
+
+        StringBuilder spec = new StringBuilder("new WhatCost(CostClass.").Append(Pascal((string)cost["class"]!));
+        List<string> per = cost["per"] switch
+        {
+            JsonArray many => many.Select(option => (string)option!).ToList(),
+            JsonValue one => new List<string> { (string)one! },
+            _ => new List<string>()
+        };
+        if (per.Count > 0)
+        {
+            spec.Append(", new[] { ").Append(string.Join(", ", per.Select(option => Literal(option)))).Append(" }");
+        }
+
+        if (cost["duration"] is JsonObject duration)
+        {
+            spec.Append(per.Count > 0 ? ", " : ", null, ").Append("new CostDuration(")
+                .Append(Literal((string)duration["option"]!)).Append(", ")
+                .Append(((double)duration["max_s"]!).ToString("R", CultureInfo.InvariantCulture)).Append(')');
         }
 
         return spec.Append(')').ToString();

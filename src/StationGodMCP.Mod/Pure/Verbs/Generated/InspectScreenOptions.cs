@@ -6,13 +6,14 @@
 
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Catalogue;
 
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of inspect screen, in verb names (catalogue/verbs/inspect.json).</summary>
 internal sealed record InspectScreenOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("inspect", "screen", "elements", null, null,
+    internal static WhatSpec Spec { get; } = new WhatSpec("inspect", "screen", "elements", null, null, new WhatCost(CostClass.Instant),
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}", true),
         new OptionSpec("gateway", "{\"type\":\"string\"}", false, "world"),
         new OptionSpec("surface", "{\"type\":\"string\"}"),

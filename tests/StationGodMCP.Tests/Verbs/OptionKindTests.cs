@@ -57,6 +57,45 @@ public sealed class OptionKindTests
         Assert.Equal("id[1]", problem.Path);
     }
 
+    // ---- defaults the catalogue states per form (x-default-when) ----
+
+    [Theory]
+    [InlineData("""{}""", 30)]
+    [InlineData("""{"box": [[0, 0, 0], [4, 4, 4]]}""", 25)]
+    [InlineData("""{"summarize": true}""", 10)]
+    [InlineData("""{"summarize": false}""", 30)]
+    [InlineData("""{"limit": 7, "box": [[0, 0, 0], [4, 4, 4]]}""", 7)]
+    public void ALimitLeftOutIsTheDefaultOfTheFormTheCallTakes(string options, int limit)
+    {
+        Assert.Equal(limit, SurveyNetworkOptions.Bind(Reader(SurveyNetworkOptions.Spec, options)).Paging.Limit);
+    }
+
+    [Fact]
+    public void AFormOnAFlagReadsTheFlagsOwnDefaultWhenItIsLeftOut()
+    {
+        Assert.Equal(12, FindItemOptions.Bind(Reader(FindItemOptions.Spec, """{"group_by": "place"}""")).Paging.Limit);
+        Assert.Equal(10, FindItemOptions.Bind(Reader(FindItemOptions.Spec, """{}""")).Paging.Limit);
+        // compact's own default is true, so self_test defaults to false unless compact is false.
+        Assert.False(Reader(InspectRocketOptions.Spec, """{}""").DefaultFlag("self_test"));
+        Assert.True(Reader(InspectRocketOptions.Spec, """{"compact": false}""").DefaultFlag("self_test"));
+    }
+
+    // ---- the cost a what states (x-cost) ----
+
+    [Fact]
+    public void TheCostCountsThePerListsAndTheDurationIsTheOptionAtMostItsMaximum()
+    {
+        Assert.Equal(StationGodMCP.Pure.Catalogue.CostClass.World, FindThingOptions.Spec.Cost.Class);
+        Assert.Equal(3, ReadLogicOptions.Spec.Cost.At(JObject.Parse("""{"id": ["1", "2", "3"]}""")).Items);
+        Assert.Equal(1, ReadLogicOptions.Spec.Cost.At(JObject.Parse("""{"id": "1"}""")).Items);
+        Assert.Equal(5000, ReadSampleOptions.Spec.Cost.DurationMs(JObject.Parse("""{"seconds": 5}""")));
+        Assert.Equal(30000, ReadSampleOptions.Spec.Cost.DurationMs(JObject.Parse("""{"seconds": 300}""")));
+        Assert.Equal(30000, ReadSampleOptions.Spec.Cost.DurationMs(new JObject()));
+        Assert.Equal(0, ReadLogicOptions.Spec.Cost.DurationMs(new JObject()));
+        Assert.Equal("find.thing", FindThingOptions.Spec.Key);
+        Assert.Equal("undo", UndoOptions.Spec.Key);
+    }
+
     // ---- the selector ----
 
     [Theory]

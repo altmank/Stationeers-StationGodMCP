@@ -6,13 +6,14 @@
 
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Catalogue;
 
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of find damaged, in verb names (catalogue/verbs/find.json).</summary>
 internal sealed record FindDamagedOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("find", "damaged", "things", null, null,
+    internal static WhatSpec Spec { get; } = new WhatSpec("find", "damaged", "things", null, null, new WhatCost(CostClass.World),
         new OptionSpec("min_damage", "{\"type\":\"number\",\"minimum\":0}", false, "0"),
         new OptionSpec("broken_only", "{\"type\":\"boolean\"}", false, "false"),
         new OptionSpec("structures_only", "{\"type\":\"boolean\"}", false, "false"),

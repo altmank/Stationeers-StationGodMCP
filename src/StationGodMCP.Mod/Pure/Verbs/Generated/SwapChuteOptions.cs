@@ -6,13 +6,14 @@
 
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Catalogue;
 
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of swap chute, in verb names (catalogue/verbs/swap.json).</summary>
 internal sealed record SwapChuteOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("swap", "chute", "pieces", null, new WriteSpec("confirm", "cannot", "[cannot undo: change job]"),
+    internal static WhatSpec Spec { get; } = new WhatSpec("swap", "chute", "pieces", null, new WriteSpec("confirm", "cannot", "[cannot undo: change job]"), new WhatCost(CostClass.Job),
         new OptionSpec("network", "{\"type\":[\"string\",\"object\"]}"),
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}"),
         new OptionSpec("box", "{\"type\":\"array\",\"minItems\":2,\"maxItems\":2}"),

@@ -6,13 +6,14 @@
 
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Catalogue;
 
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of check rules, in verb names (catalogue/verbs/check.json).</summary>
 internal sealed record CheckRulesOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("check", "rules", "rules", null, null,
+    internal static WhatSpec Spec { get; } = new WhatSpec("check", "rules", "rules", null, null, new WhatCost(CostClass.Instant),
         new OptionSpec("action", "{\"type\":\"string\",\"enum\":[\"list\",\"validate\",\"fields\",\"functions\",\"test\",\"explain\"]}", false, "list"),
         new OptionSpec("rule", "{\"type\":\"string\"}"),
         new OptionSpec("full", "{\"type\":\"boolean\"}", false, "false"),

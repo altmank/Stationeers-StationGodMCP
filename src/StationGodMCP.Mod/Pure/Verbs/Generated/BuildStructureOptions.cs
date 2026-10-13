@@ -6,13 +6,14 @@
 
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Catalogue;
 
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of build structure, in verb names (catalogue/verbs/build.json).</summary>
 internal sealed record BuildStructureOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("build", "structure", "placements", null, new WriteSpec("confirm", "undo", "[undo]"),
+    internal static WhatSpec Spec { get; } = new WhatSpec("build", "structure", "placements", null, new WriteSpec("confirm", "undo", "[undo]"), new WhatCost(CostClass.Job),
         new OptionSpec("placements", "{\"type\":\"array\",\"items\":{\"type\":\"object\"},\"maxItems\":64}"),
         new OptionSpec("prefab", "{\"type\":[\"string\",\"integer\"]}"),
         new OptionSpec("at", "{\"type\":[\"array\",\"object\",\"string\"]}"),

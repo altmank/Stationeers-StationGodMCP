@@ -6,13 +6,14 @@
 
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Catalogue;
 
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>The options of server info, in verb names (catalogue/verbs/server.json).</summary>
 internal sealed record ServerInfoOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("server", "info", "methods", null, null,
+    internal static WhatSpec Spec { get; } = new WhatSpec("server", "info", "methods", null, null, new WhatCost(CostClass.Instant),
         new OptionSpec("include", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"counters\"]}}"));
 
     internal Fields Fields { get; private init; } = Fields.None;
