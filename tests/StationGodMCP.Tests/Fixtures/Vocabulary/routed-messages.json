@@ -166,16 +166,6 @@
   "Api/Shared/Game/Build/Orienter.cs": [
     "{name} must be an axis (+x .. -z), \"room\", \"player\", a point [x, y, z] or {reference_id}."
   ],
-  "Api/Shared/Game/Build/RemovePlanner.cs": [
-    "gas_to {target.Network.Value} names no pipe network and no pipe on one",
-    "{count} {kind.Noun} piece(s) are removed as {kind.RemoveTool} removes them (a network kept whole keeps its id and contents); {kind.RemoveTool} also takes cells and waypoints.",
-    "{kind.RemoveTool}'s check: {RemovalRule.AllowedContents(issue.Message)}",
-    "{kind.RemoveTool}'s check: {RemovalRule.SplitWarning(issue.Message)}",
-    "{kind.RemoveTool}'s check: {issue.Message}",
-    "{kind.RemoveTool}'s check: {issue.Message}",
-    "{message} (allow_contents)",
-    "{player.Absence} Nothing to give the refund to; pass from_id, or refund_to ground or none."
-  ],
   "Api/Shared/Game/Flight/RocketModel.cs": [
     "Argument '{name}' must be above 0.",
     "Argument '{name}' must be from {minimum} to {maximum}.",
@@ -250,9 +240,6 @@
     "{member.PrefabName} is not among from_prefabs.",
     "{plan.Unmatched.Count} piece(s) cannot be swapped (see unmatched_pieces); pass skip_unmatched to leave them as they are.",
     "{player.Absence} Nothing to take materials from (or, with refund_to source, to give the refund to); pass from_id."
-  ],
-  "Api/Shared/Game/Upgrades/Clean/CleanPass.cs": [
-    "Coils or kits are charged as the coil's or kit's own merge placement charges pieces placed over others (MultiMergeConstructor.Construct: the new pieces' entry quantity less the old ones'). A split costs more than it gives back; the shortfall is taken from the source's inventory (from_id, default the player) and the run is refused with not_enough_coils when it holds too few. Nothing is ever made for free. A merge or a removal gives back: with refund, as deconstruction gives it, made at the source."
   ],
   "Api/Shared/Game/Upgrades/Clean/RemoveDeadChutes.cs": [
     "{riding.Count} chute piece(s) this run would remove or replace carry an item (see riding); let the items pass or take them out with move item, or pass riding: skip to leave those pieces."
@@ -455,9 +442,6 @@
     "Port {port.Index} of device {port.DeviceId} would lose its connection to network {port.NetworkBefore}.{cutNote} Pass allow_split if that is meant.",
     "The edit would join networks {string.Join(\", \", merge.NetworksBefore)} into one; name every one of them in allow_bridge if that is meant.",
     "The edit would put ports {string.Join(\", \", ports)} of device {bridge.Device} on one network (both sides of an APC or transformer, a battery's input and output, a pump's two sides, a device's chute output fed back into its own input); name the device in allow_bridge if that is meant."
-  ],
-  "Pure/Routing/PortSplitSummary.cs": [
-    "{tool}'s check: {device} would lose its connection on port{(ports.Count == 1 ? \"\" : \"s\")} {string.Join(\", \", ports)}; remove_structure removes it anyway (verbose: each port in full)."
   ],
   "Pure/Routing/RerouteNetworks.cs": [
     "{a.Name} and {b.Name} share {shared.Count} {noun} networks: {string.Join(\"; \", candidates)}. Name the port of a device end: between: [{reference_id, port}, ...]."

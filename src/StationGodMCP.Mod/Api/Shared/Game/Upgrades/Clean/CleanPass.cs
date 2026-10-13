@@ -303,12 +303,11 @@ internal sealed class EndCleanupGoal : SwapGoal
         "the old line, and the link survey refuses the run otherwise. A device never loses a link.";
 
     private static string CostNote =>
-        Vocabulary.Text("Coils or kits are charged as the coil's or kit's own merge placement charges pieces placed " +
-            "over others (MultiMergeConstructor.Construct: the new pieces' entry quantity less the old ones'). A " +
-            "split costs more than it gives back; the shortfall is taken from the source's inventory ({arg:from_id}, " +
-            "default the player) and the run is refused with not_enough_coils when it holds too few. Nothing is ever " +
-            "made for free. A merge or a removal gives back: with refund, as deconstruction gives it, made at the " +
-            "source.");
+        "Coils or kits are charged as the coil's or kit's own merge placement charges pieces placed over others " +
+        "(MultiMergeConstructor.Construct: the new pieces' entry quantity less the old ones'). A split costs more " +
+        "than it gives back; the shortfall is taken from the source's inventory (materials, default the player) and " +
+        "the run is refused with not_enough_coils when it holds too few. Nothing is ever made for free. A merge or a " +
+        "removal gives back: with refund, as deconstruction gives it, made at the source.";
 
     private readonly List<ICleanOperation> _operations;
 

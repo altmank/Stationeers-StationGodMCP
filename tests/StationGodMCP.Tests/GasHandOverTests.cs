@@ -64,8 +64,8 @@ public sealed class GasHandOverTests
 
         Assert.Equal(2, devices.Count);
         Assert.Equal(new[] { "0 (network 100)", "2 (network 101)" }, devices[0].Value);
-        Assert.Equal("remove_pipes's check: Radiator would lose its connection on ports 0 (network 100), 2 (network 101); " +
-                     "remove_structure removes it anyway (verbose: each port in full).",
-            PortSplitSummary.Message("remove_pipes", "Radiator", devices[0].Value));
+        Assert.Equal("remove pipe's check: Radiator would lose its connection on ports 0 (network 100), 2 (network 101); " +
+                     "remove structure removes it anyway (verbose: each port in full).",
+            PortSplitSummary.Message("pipe", "Radiator", devices[0].Value));
     }
 }

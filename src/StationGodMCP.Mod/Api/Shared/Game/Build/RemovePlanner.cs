@@ -278,7 +278,7 @@ internal static class RemovePlanner
             PipeNetwork? named = DeviceGas.Named(target.Network.Value);
             if (named == null)
             {
-                facts.GasRefusal = $"{Vocabulary.Arg("gas_to")} {target.Network.Value} names no pipe network and no " +
+                facts.GasRefusal = $"gas_to {target.Network.Value} names no pipe network and no " +
                     "pipe on one";
                 return;
             }
@@ -976,7 +976,7 @@ internal static class RemovePlanner
                     ? $"{Names.Of(thing)} ({thing.PrefabName} {device.Key})"
                     : $"device {device.Key}";
                 plan.Warnings.Add(new BuildIssueView("would_split",
-                    PortSplitSummary.Message(kind.RemoveTool, name, device.Value), null, new ThingId(device.Key)));
+                    PortSplitSummary.Message(kind.Noun, name, device.Value), null, new ThingId(device.Key)));
             }
         }
 
@@ -990,7 +990,7 @@ internal static class RemovePlanner
 
             int? index = IndexOf(run.Pieces, issue.Id);
             ThingId? id = issue.Id.HasValue ? new ThingId(issue.Id.Value) : (ThingId?)null;
-            string message = $"{Vocabulary.Tool(kind.RemoveTool)}'s check: {issue.Message}";
+            string message = $"remove {kind.Noun}'s check: {issue.Message}";
             switch (issue.Code)
             {
                 case "would_burst" when run.GasByModel:
@@ -999,16 +999,14 @@ internal static class RemovePlanner
                     break;
                 case "would_split":
                     plan.Warnings.Add(new BuildIssueView("would_split",
-                        $"{Vocabulary.Tool(kind.RemoveTool)}'s check: " +
-                        $"{RemovalRule.SplitWarning(issue.Message)}", index, id));
+                        $"remove {kind.Noun}'s check: {RemovalRule.SplitWarning(issue.Message)}", index, id));
                     break;
                 case UpgradeFamily.HoldsContents:
                 case "contents_would_move":
                     (plan.Arguments.Allow.Contents ? plan.Warnings : plan.Problems).Add(new BuildIssueView(
                         issue.Code, plan.Arguments.Allow.Contents
-                            ? $"{Vocabulary.Tool(kind.RemoveTool)}'s check: " +
-                                $"{RemovalRule.AllowedContents(issue.Message)}"
-                            : message + Vocabulary.Text(" ({arg:allow_contents})"), index, id));
+                            ? $"remove {kind.Noun}'s check: {RemovalRule.AllowedContents(issue.Message)}"
+                            : message + " (allow: contents)", index, id));
                     break;
                 case "cannot_remove" when index.HasValue && AlreadyRefused(plan, index.Value):
                     break;
@@ -1024,8 +1022,7 @@ internal static class RemovePlanner
 
         foreach (LayoutIssue issue in run.Plan.Warnings)
         {
-            plan.Warnings.Add(new BuildIssueView(issue.Code, $"{Vocabulary.Tool(kind.RemoveTool)}'s check: " +
-                $"{issue.Message}",
+            plan.Warnings.Add(new BuildIssueView(issue.Code, $"remove {kind.Noun}'s check: {issue.Message}",
                 IndexOf(run.Pieces, issue.Id), issue.Id.HasValue ? new ThingId(issue.Id.Value) : (ThingId?)null));
         }
     }
@@ -1038,9 +1035,8 @@ internal static class RemovePlanner
             if (count > 0)
             {
                 plan.Warnings.Add(new BuildIssueView("network_piece",
-                    $"{count} {kind.Noun} piece(s) are removed as {Vocabulary.Tool(kind.RemoveTool)} removes them (a " +
-                    $"network kept whole keeps its id and contents); {Vocabulary.Tool(kind.RemoveTool)} also takes " +
-                    $"{Vocabulary.Arg("cells")} and {Vocabulary.Arg("waypoints")}."));
+                    $"{count} {kind.Noun} piece(s) are removed as remove {kind.Noun} removes them (a network kept " +
+                    $"whole keeps its id and contents); remove {kind.Noun} also takes cells and waypoints."));
             }
         }
     }
@@ -1081,8 +1077,7 @@ internal static class RemovePlanner
         if (human == null && route.NeedsHolder)
         {
             plan.Problems.Add(new BuildIssueView("no_local_player",
-                $"{player.Absence} Nothing to give the refund to; pass {Vocabulary.Arg("from_id")}, or " +
-                $"{Vocabulary.Arg("refund_to")} ground or none."));
+                $"{player.Absence} Nothing to give the refund to; pass materials, or refund_to ground or none."));
             return;
         }
 
