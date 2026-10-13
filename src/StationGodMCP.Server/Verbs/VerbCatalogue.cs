@@ -355,7 +355,13 @@ internal sealed class WriteRules
         List<TargetPath> targets = [];
         foreach (JsonNode? target in source["x-target"] as JsonArray ?? [])
         {
-            targets.Add(new TargetPath((string)target!["path"]!, (string)target["role"]!));
+            List<(string Option, OptionMatcher Matcher)> when = [];
+            foreach ((string option, JsonNode? matcher) in target!["when"] as JsonObject ?? [])
+            {
+                when.Add((option, OptionMatcher.Of(matcher!.AsObject())));
+            }
+
+            targets.Add(new TargetPath((string)target["path"]!, (string)target["role"]!, when));
         }
 
         return new WriteRules((string)source["route"]!, (string)source["x-undo"]!, targets,
@@ -363,11 +369,91 @@ internal sealed class WriteRules
     }
 }
 
-/// <summary>An x-target path ("id", "writes[].id") and its role (acts-on or pays-from).</summary>
-internal sealed class TargetPath(string path, string role)
+/// <summary>
+/// An x-target path ("id", "writes[].id"), its role (acts-on or pays-from), and when it is a target: every option
+/// matcher of its when holding for the call (move item's prefab picks items only into a store: no source, slot or
+/// moves); always when it has none.
+/// </summary>
+internal sealed class TargetPath(string path, string role, IReadOnlyList<(string Option, OptionMatcher Matcher)>? when = null)
 {
     internal string Path { get; } = path;
 
     /// <summary>acts-on, pays-from, or spread (a selector: the values choose what the write acts on).</summary>
     internal string Role { get; } = role;
+
+    internal IReadOnlyList<(string Option, OptionMatcher Matcher)> When { get; } = when ?? [];
+
+    /// <summary>True when the call's options make this path a target.</summary>
+    internal bool AppliesTo(JsonObject options)
+    {
+        foreach ((string option, OptionMatcher matcher) in When)
+        {
+            if (!matcher.Matches(options[option]))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+}
+
+/// <summary>
+/// How one option must look for an x-target's when to hold, in the catalogue's matcher form: equals, in, present: true
+/// or absent: true. JSON null is an absent option; words match trimmed, in any case.
+/// </summary>
+internal abstract class OptionMatcher
+{
+    private OptionMatcher()
+    {
+    }
+
+    internal abstract bool Matches(JsonNode? value);
+
+    internal static OptionMatcher Of(JsonObject matcher)
+    {
+        if (matcher.Count != 1)
+        {
+            throw new InvalidOperationException("An x-target matcher has exactly one of equals, in, present, absent.");
+        }
+
+        (string kind, JsonNode? given) = matcher.First();
+        return kind switch
+        {
+            "absent" => new Absent(),
+            "present" => new Present(),
+            "equals" => new OneOf([given]),
+            "in" => new OneOf([.. given!.AsArray()]),
+            _ => throw new InvalidOperationException($"Unknown x-target matcher '{kind}'.")
+        };
+    }
+
+    private sealed class Absent : OptionMatcher
+    {
+        internal override bool Matches(JsonNode? value) => value == null || value.GetValueKind() == JsonValueKind.Null;
+    }
+
+    private sealed class Present : OptionMatcher
+    {
+        internal override bool Matches(JsonNode? value) => value != null && value.GetValueKind() != JsonValueKind.Null;
+    }
+
+    private sealed class OneOf(List<JsonNode?> listed) : OptionMatcher
+    {
+        internal override bool Matches(JsonNode? value)
+        {
+            string? text = JsonNodes.Text(value)?.Trim();
+            foreach (JsonNode? entry in listed)
+            {
+                if (text != null && JsonNodes.Text(entry) is { } word
+                        ? string.Equals(word, text, StringComparison.OrdinalIgnoreCase)
+                        : JsonNode.DeepEquals(entry, value))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+    }
 }

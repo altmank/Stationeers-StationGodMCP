@@ -128,7 +128,8 @@ internal sealed class PassThroughGate : IWriteGate
 /// <summary>
 /// Reads a write what's x-target paths out of the options, marking the ids a ref gave (refs: option name to ref). A
 /// spread path (role spread: a filter or selector that chooses what the write acts on) is a selector target with its
-/// value; network, room, near and box are spreads wherever a what takes them.
+/// value; network, room, near and box are spreads wherever a what takes them. A path whose when does not hold for the
+/// call is no target of it.
 /// </summary>
 internal static class WriteTargetPaths
 {
@@ -140,6 +141,11 @@ internal static class WriteTargetPaths
         List<WriteTarget> targets = [];
         foreach (TargetPath path in rules.Targets)
         {
+            if (!path.AppliesTo(options))
+            {
+                continue;
+            }
+
             if (path.Role == "spread")
             {
                 if (options[path.Path] is { } chosen)

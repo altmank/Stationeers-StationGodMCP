@@ -114,6 +114,20 @@ public sealed class VerbCatalogueTests
                 {
                     problems.Add(at + ": x-target " + path + " role " + target["role"]);
                 }
+
+                foreach ((string option, JsonNode? matcher) in target["when"] as JsonObject ?? new JsonObject())
+                {
+                    if (!options.Contains(option))
+                    {
+                        problems.Add(at + ": x-target " + path + " when names no option " + option);
+                    }
+
+                    if (matcher is not JsonObject { Count: 1 } one ||
+                        !new[] { "equals", "in", "present", "absent" }.Contains(one.First().Key))
+                    {
+                        problems.Add(at + ": x-target " + path + " when " + option + " is no matcher");
+                    }
+                }
             }
 
             if (VerbCatalogue.IdTakesList(source) && !targets.Any(target => (string)target!["path"]! == "id"))
