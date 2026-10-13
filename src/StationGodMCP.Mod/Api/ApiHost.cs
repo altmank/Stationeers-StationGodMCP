@@ -45,7 +45,6 @@ internal static class ApiHost
             ["ignition_risk"] = static args => IgnitionRiskApi.Handle(args),
             ["move_gas"] = static args => MoveGasApi.Handle(args),
             ["rocket_forecast"] = static args => RocketForecastApi.Handle(args),
-            ["rocket_flight_log"] = static args => RocketFlightLogApi.Handle(args),
             ["rocket_mining_options"] = static args => RocketMiningOptionsApi.Handle(args),
             ["move_item"] = static args => MoveItemApi.Handle(args),
             ["upgrade_cables"] = static args => UpgradeCablesApi.Handle(args),

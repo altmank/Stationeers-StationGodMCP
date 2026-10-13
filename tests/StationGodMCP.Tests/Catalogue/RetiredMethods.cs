@@ -50,6 +50,7 @@ internal static class RetiredMethods
         "read_memory",
         "reagents",
         "resolve_ic_selectors",
+        "rocket_flight_log",
         "rocket_status",
         "rooms",
         "sample_logic",

@@ -17,72 +17,43 @@ using UnityEngine;
 namespace StationGodMCP.Api;
 
 /// <summary>
-/// rocket_flight_log: a recorder sampling a rocket's changing fields at a set interval of game time into a bounded
-/// ring (and optionally a CSV in the save's folder), read back as a summary plus a page of rows. Recording only reads.
+/// The rocket flight recorders a write flight_log starts, stops and clears: a recorder samples a rocket's changing
+/// fields at a set interval of game time into a bounded ring (and optionally a CSV in the save's folder). Recording only
+/// reads. A started or stopped recording answers its first rows, as read flight_log reads them.
 /// </summary>
-internal static class RocketFlightLogApi
+internal static class FlightLogWrites
 {
-    private const int DefaultCapacity = 3600;
-    private const int DefaultLimit = ReplyDefaults.FlightLogRows;
-    private const int MaximumLimit = 200;
+    private const int ShownRows = ReplyDefaults.FlightLogRows;
 
-    internal static object Handle(Args args)
+    internal static FlightLogView Start(Rocket rocket, double intervalS, int capacity, bool csv)
     {
-        string action = args.OptionalString("action") ?? "read";
-        switch (action)
-        {
-            case "start":
-                return Start(args);
-            case "stop":
-                return Show(RocketFlightRecorder.Stop(Id(args)), args);
-            case "clear":
-                RocketFlightRecorder.Clear(Id(args));
-                return new FlightLogClearedView(true);
-            default:
-                throw ApiErrors.InvalidArgument("write flight_log: action is start, stop or clear.");
-        }
-    }
-
-    private static long Id(Args args) => RocketLocator.One(args).ReferenceId;
-
-    private static FlightLogView Start(Args args)
-    {
-        Rocket rocket = RocketLocator.One(args);
-        double interval = args.OptionalDouble("interval_s") ?? 1.0;
-        if (interval < 0.1 || interval > 600.0)
-        {
-            throw ApiErrors.InvalidArgument(Vocabulary.Text("Argument '{arg:interval_s}' must be from 0.1 to 600."));
-        }
-
-        int capacity = args.OptionalInt("capacity", 10, 100000) ?? DefaultCapacity;
-        bool csv = args.OptionalBool("csv") ?? false;
         string? path = null;
         if (csv)
         {
-            string? folder = SaveFolder();
-            if (folder == null)
-            {
-                throw ApiErrors.Refused("no_save_folder", "No save is loaded, so there is no folder for the CSV.");
-            }
-
+            string folder = SaveFolder() ??
+                            throw ApiErrors.Refused("no_save_folder", "No save is loaded, so there is no folder for the CSV.");
             path = Path.Combine(folder,
                 $"rocket-log-{rocket.ReferenceId}-{DateTime.Now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture)}.csv");
         }
 
-        RocketFlightLogEntry entry = RocketFlightRecorder.Start(rocket, interval, capacity, path);
-        return Show(entry, args);
+        return Shown(RocketFlightRecorder.Start(rocket, intervalS, capacity, path));
     }
 
-    private static FlightLogView Show(RocketFlightLogEntry entry, Args args)
+    internal static FlightLogView Stop(Rocket rocket) => Shown(RocketFlightRecorder.Stop(rocket.ReferenceId));
+
+    internal static FlightLogClearedView Clear(Rocket rocket)
     {
-        PageRequest page = PageRequest.From(args, DefaultLimit, MaximumLimit);
-        int every = args.OptionalInt("every", 1, 100000) ?? 1;
-        FlightLogView view = FlightLogs.View(entry, page.Offset, page.Limit, every);
-        int next = page.Offset + view.Rows.Count * every;
-        if (page.Offset > 0 || next < entry.Buffer.Count)
+        RocketFlightRecorder.Clear(rocket.ReferenceId);
+        return new FlightLogClearedView(true);
+    }
+
+    private static FlightLogView Shown(RocketFlightLogEntry entry)
+    {
+        FlightLogView view = FlightLogs.View(entry, 0, ShownRows, 1);
+        if (view.Rows.Count < entry.Buffer.Count)
         {
-            Truncations.Note("rows", view.Rows.Count, (entry.Buffer.Count + every - 1) / every,
-                $"pass limit (max {page.Maximum}), every, or offset {next} (offset counts samples)", false);
+            Truncations.Note("rows", view.Rows.Count, entry.Buffer.Count,
+                "read flight_log gives the rest (limit, every, offset)", false);
         }
 
         return view;

@@ -182,13 +182,6 @@ internal static class ReplyShapes
             shapes[tool] = new[] { StructureSwapReport() };
         }
 
-        shapes["rocket_flight_log"] = new[]
-        {
-            S<FlightLogView>().List("FlightLogView.Events", 10).List("FlightLogView.Rows", D.FlightLogRows),
-            S<FlightLogClearedView>(),
-            S<FlightLogListView>().List("FlightLogListView.Logs", W.Rockets).List("FlightLogView.Events", 10)
-                .List("FlightLogView.Rows", 0)
-        };
         shapes["rocket_forecast"] = new[]
         {
             S<RocketForecastView>().List("RocketForecastView.Route", 4).List("RocketForecastView.Uncharted", 0)
