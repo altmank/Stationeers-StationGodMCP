@@ -17,11 +17,12 @@ namespace StationGodMCP.Api.Shared.Game.Build;
 /// marks PASSED (PlaceLift). The game has no such check of its own: a trading shuttle descends through the corridor
 /// its pad's waypoints define, and one that touches a structure is damaged and explodes after MaxNumberOfCollisions
 /// hits (decompile TraderShuttle.cs:198-219). The game exempts the pad's own modular pieces from that damage - a
-/// shuttle that touches a LandingPadModular returns early (:205-208), which the pad tiles, the taxi pieces, the
-/// centre and a gas storage all are (LandingPadTile.cs:3, LandingPadTaxiTile.cs:8, LandingPadCenter.cs:30) - but not
-/// the threshold piece, which is a LandingPadModularDevice (LandingPadTaxiThreshold.cs:10), and this guard exempts
-/// nothing: a placement in the approach is a problem of its own, whether it is part of a pad or not, so laying the
-/// runway on needs the same allow: ["pad"].
+/// shuttle that touches a LandingPadModular returns early (:204-208), which the pad tiles, the taxi pieces, the
+/// centre and a gas storage all are (LandingPadTile.cs:3, LandingPadTaxiTile.cs:8, LandingPadCenter.cs:30) - and this
+/// guard exempts exactly those pieces by that same type test: a placement whose prefab is a LandingPadModular is no
+/// finding, allow pad or not, so laying a runway or its taxi path on needs no allow: ["pad"]. The threshold piece is
+/// a LandingPadModularDevice (LandingPadTaxiThreshold.cs:10), which is no LandingPadModular
+/// (LandingPadModularDevice.cs:18), and the game does not exempt it either.
 ///
 /// A corridor is the widest trader the pad admits (its RequiredPadSize in 2 m cells, the same CheckPadSize probe
 /// find pad reports) at the longest DeorbitDistance over those traders (TraderContact.cs:91-102), over the path those
@@ -44,10 +45,11 @@ internal static class PadApproachGuard
     /// </summary>
     internal static void Check(PlacePlan plan, bool allowPad)
     {
+        // A call whose every resolved placement is a piece the game exempts costs no walk of the world's pads.
         bool any = false;
         for (int index = 0; index < plan.Placements.Count && !any; index++)
         {
-            any = Placeable(plan.Placements[index]);
+            any = Placeable(plan.Placements[index]) && !Exempt(plan.Placements[index]);
         }
 
         if (!any)
@@ -77,7 +79,7 @@ internal static class PadApproachGuard
                 }
             }
 
-            PadApproachVerdict verdict = PadApproachRule.Of(held > 0, allowPad);
+            PadApproachVerdict verdict = PadApproachRule.Of(held > 0, allowPad, Exempt(placement));
             if (verdict == PadApproachVerdict.Clear || first == null)
             {
                 continue;
@@ -102,6 +104,15 @@ internal static class PadApproachGuard
 
     /// <summary>A placement the cursor resolved: the prefab, the cursor, the position and the state (PlacePlanner).</summary>
     private static bool Placeable(PlannedPlacement placement) => placement.Resolved && placement.Position.HasValue;
+
+    // The game's own exemption, the one type test its shuttle check makes: a shuttle that touches a LandingPadModular
+    // returns before any damage is taken (decompile TraderShuttle.cs:204-208), so the pad's own pieces - the tiles, the
+    // taxi pieces, the centre, a gas storage (LandingPadTile.cs:3, LandingPadTaxiTile.cs:8, LandingPadCenter.cs:30,
+    // LandingPadGasStorage.cs:11) - never hurt a shuttle and never count as a collision, and a corridor holding one is
+    // no finding however the call reads (PadApproachRule.Of). The game tests that same class and the guard tests no
+    // other: the threshold piece is a LandingPadModularDevice rather than a LandingPadModular
+    // (LandingPadTaxiThreshold.cs:10, LandingPadModularDevice.cs:18), and the game exempts it no more than this does.
+    private static bool Exempt(PlannedPlacement placement) => placement.Prefab is LandingPadModular;
 
     // Every pad in the world and its corridor, read once a call: the pads are the PadCenter waypoints the game holds
     // (a pad registers itself, LandingPadCenter.cs:786-791), a small list whatever the world. A pad that admits no

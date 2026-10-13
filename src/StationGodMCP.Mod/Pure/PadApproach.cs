@@ -11,7 +11,8 @@ namespace StationGodMCP.Pure;
 /// game has no build check for a pad's approach: its traders descend through a corridor its pads define, and a
 /// shuttle that touches a structure is damaged and explodes after MaxNumberOfCollisions hits (decompile
 /// TraderShuttle.cs:198-219). StationGod makes a placement in that corridor a problem of its own, which the call's
-/// allow names the guard word for, to have as a warning the report marks PASSED.
+/// allow names the guard word for, to have as a warning the report marks PASSED; a piece the game's own shuttle check
+/// exempts from that damage is no finding at all (:204-208).
 /// </summary>
 internal enum PadApproachVerdict
 {
@@ -34,9 +35,14 @@ internal static class PadApproachRule
     /// <summary>The code a corridor placement is reported under, refused or lifted.</summary>
     internal const string Code = "pad_approach";
 
-    /// <summary>What a corridor holding a placement does to it.</summary>
-    internal static PadApproachVerdict Of(bool held, bool allowPad) =>
-        !held ? PadApproachVerdict.Clear
+    /// <summary>
+    /// What a corridor holding a placement does to it: nothing when no corridor holds it, a problem when one does, a
+    /// warning the report marks PASSED when the call allows pad, and nothing at all for a piece the game's own shuttle
+    /// check exempts, which the game counts as no collision however it came to stand there (TraderShuttle.cs:204-208).
+    /// The exemption is the game's own type test, read by the caller and passed in here with the rest of the facts.
+    /// </summary>
+    internal static PadApproachVerdict Of(bool held, bool allowPad, bool exempt) =>
+        exempt || !held ? PadApproachVerdict.Clear
         : allowPad ? PadApproachVerdict.Lifted
         : PadApproachVerdict.Refused;
 

@@ -303,10 +303,31 @@ public sealed class PadApproachTests
     {
         Assert.Equal("pad", PadApproachRule.Guard);
         Assert.Equal("pad_approach", PadApproachRule.Code);
-        Assert.Equal(PadApproachVerdict.Clear, PadApproachRule.Of(held: false, allowPad: false));
-        Assert.Equal(PadApproachVerdict.Clear, PadApproachRule.Of(held: false, allowPad: true));
-        Assert.Equal(PadApproachVerdict.Refused, PadApproachRule.Of(held: true, allowPad: false));
-        Assert.Equal(PadApproachVerdict.Lifted, PadApproachRule.Of(held: true, allowPad: true));
+        Assert.Equal(PadApproachVerdict.Clear, PadApproachRule.Of(held: false, allowPad: false, exempt: false));
+        Assert.Equal(PadApproachVerdict.Clear, PadApproachRule.Of(held: false, allowPad: true, exempt: false));
+        Assert.Equal(PadApproachVerdict.Refused, PadApproachRule.Of(held: true, allowPad: false, exempt: false));
+        Assert.Equal(PadApproachVerdict.Lifted, PadApproachRule.Of(held: true, allowPad: true, exempt: false));
+    }
+
+    [Fact]
+    public void APieceTheGameExemptsIsClearInTheSameCorridorThatRefusesAStructure()
+    {
+        // The game's own shuttle check returns before any damage for a structure that is a LandingPadModular
+        // (decompile TraderShuttle.cs:204-208), so a pad tile, a taxi piece or the centre is never a collision. The
+        // exemption is the game's own type test, which only the game side can make (the type is no part of this
+        // assembly): the guard reads it and hands the answer in here, so the same corridor, the same held placement,
+        // is a problem for a structure and clear - neither refused nor lifted - for a piece the game lets a shuttle
+        // through. The threshold piece is no LandingPadModular, so it is refused like any other structure.
+        PadCorridor corridor = Plane();
+        Vec3 onTheRunway = new Vec3(0.0, 200.0, 6.0);
+
+        bool held = corridor.Hits(onTheRunway);
+        Assert.True(held, "the corridor the pad's planes roll out along holds a structure there");
+
+        Assert.Equal(PadApproachVerdict.Refused, PadApproachRule.Of(held, allowPad: false, exempt: false));
+        Assert.Equal(PadApproachVerdict.Lifted, PadApproachRule.Of(held, allowPad: true, exempt: false));
+        Assert.Equal(PadApproachVerdict.Clear, PadApproachRule.Of(held, allowPad: false, exempt: true));
+        Assert.Equal(PadApproachVerdict.Clear, PadApproachRule.Of(held, allowPad: true, exempt: true));
     }
 
     [Fact]
