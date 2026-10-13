@@ -202,7 +202,7 @@ internal sealed class RouteOrder
             if (Start == null)
             {
                 problems.Add(new OptionProblem("start",
-                    "is required: {at}, {id} of a piece, {id, port} of a device, or a list (or give reroute)"));
+                    "is required: {at}, {id} of a piece, {id, port} or {id, ports: [...]} of a device, or a list (or give reroute)"));
             }
 
             if (End == null)

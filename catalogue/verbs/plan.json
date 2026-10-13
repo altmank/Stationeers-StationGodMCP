@@ -18,7 +18,11 @@
           "description": "(route) {at}, {id} of a piece, {id, port} or {id, ports: [...]} of a device, or a list.",
           "x-script": "same"
         },
-        "end": {"schema": {"type": "object"}, "description": "(route) As start, one, or {network}.", "x-script": "same"},
+        "end": {
+          "schema": {"type": "object"},
+          "description": "(route) One end: {at}, {id} of a piece, {id, port} of a device, or {network}.",
+          "x-script": "same"
+        },
         "reroute": {
           "schema": {"type": "object"},
           "description": "{id: [...]} or {between: [end, end]}: replace an old run; leave out start and end.",
