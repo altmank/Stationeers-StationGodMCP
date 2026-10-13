@@ -35,6 +35,13 @@ internal static class JobSnapshots
     /// leaves them gone. Returns the reply unchanged.
     /// </summary>
     internal static object Record(object reply, string tool, IEnumerable<Structure> removed, Args args,
+        IEnumerable<Structure>? burnt = null) =>
+        Record(reply, tool, removed, SourceOf(args), burnt);
+
+    /// <summary>
+    /// As the Args form, with the source the request named: where the job took its materials and put its refund.
+    /// </summary>
+    internal static object Record(object reply, string tool, IEnumerable<Structure> removed, JobSource source,
         IEnumerable<Structure>? burnt = null)
     {
         string? jobId = JobIdIn(reply);
@@ -60,7 +67,7 @@ internal static class JobSnapshots
             }
         }
 
-        RecordedJob job = new RecordedJob(tool, snapshots, SourceOf(args));
+        RecordedJob job = new RecordedJob(tool, snapshots, source);
         ByJob.Put(jobId, job, KeptJobSizes.Snapshot(job));
         return reply;
     }

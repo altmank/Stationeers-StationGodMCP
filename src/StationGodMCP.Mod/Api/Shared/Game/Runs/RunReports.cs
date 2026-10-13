@@ -17,7 +17,8 @@ internal static class RunReports
     internal const string Scheduled = "scheduled";
     internal const string Refused = "refused";
 
-    internal static RunReportView Of(RunPlan plan, string status, string? jobId)
+    /// <summary>The plan's report; limit, when given, is how many cells it lists instead of the request's.</summary>
+    internal static RunReportView Of(RunPlan plan, string status, string? jobId, int? limit = null)
     {
         RunRequest request = plan.Request;
         List<string>? notes = request.Options.Detail.Notes
@@ -25,8 +26,8 @@ internal static class RunReports
             : null;
         RunHeaderView header = new RunHeaderView(request.Tool, status, jobId,
             request.Build != null ? request.Kind.NameOf(request.Build.Grade) : null, notes);
-        return new RunReportView(header, Cells(plan), Materials(plan), Networks(plan), Issues(plan, plan.Problems),
-            Issues(plan, plan.Warnings));
+        return new RunReportView(header, Cells(plan, limit ?? request.Options.ListLimit), Materials(plan),
+            Networks(plan), Issues(plan, plan.Problems), Issues(plan, plan.Warnings));
     }
 
     private static List<RunIssueView> Issues(RunPlan plan, List<LayoutIssue> issues)
@@ -41,9 +42,8 @@ internal static class RunReports
         return views;
     }
 
-    private static RunCellsView Cells(RunPlan plan)
+    private static RunCellsView Cells(RunPlan plan, int limit)
     {
-        int limit = plan.Request.Options.ListLimit;
         List<RunCellView> listed = new List<RunCellView>();
         int placed = 0;
         int changed = 0;
