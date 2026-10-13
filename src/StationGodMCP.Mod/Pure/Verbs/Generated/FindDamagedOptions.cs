@@ -19,7 +19,8 @@ internal sealed record FindDamagedOptions
         new OptionSpec("near", "{\"type\":[\"string\",\"array\"]}"),
         new OptionSpec("radius", "{\"type\":\"number\"}"),
         new OptionSpec("limit", "{\"type\":\"integer\",\"minimum\":1,\"maximum\":500}", false, "8"),
-        new OptionSpec("offset", "{\"type\":\"integer\",\"minimum\":0}", false, "0"));
+        new OptionSpec("offset", "{\"type\":\"integer\",\"minimum\":0}", false, "0"),
+        new OptionSpec("cursor", "{\"type\":\"string\"}"));
 
     internal Selector Selector { get; private init; } = Selector.None;
 

@@ -62,6 +62,7 @@
         "box": {"use": "box"},
         "limit": {"use": "limit", "schema": {"type": "integer", "minimum": 1, "maximum": 500}, "default": "8"},
         "offset": {"use": "offset"},
+        "cursor": {"use": "cursor"},
         "order": {"use": "order"}
       },
       "example": {"prefab": "*Battery*", "near": "player", "radius": 30},
@@ -133,6 +134,7 @@
           "x-script": "The first n in order (items (or groups)); left out, every one."
         },
         "offset": {"use": "offset"},
+        "cursor": {"use": "cursor"},
         "order": {"use": "order"}
       },
       "text": ["group_by place takes no offset, order or exclude_in_use (the totals are not paged)."],
@@ -178,7 +180,8 @@
         "prefab": {"use": "prefab"},
         "name": {"use": "name"},
         "limit": {"use": "limit", "schema": {"type": "integer", "minimum": 1, "maximum": 4096}, "default": "25"},
-        "offset": {"use": "offset"}
+        "offset": {"use": "offset"},
+        "cursor": {"use": "cursor"}
       },
       "text": [
         "Paging and prefab parts are applied by the verb layer to the handler's whole list (it walks every device either way)."
@@ -207,6 +210,7 @@
         "radius": {"use": "radius"},
         "limit": {"use": "limit", "schema": {"type": "integer", "minimum": 1, "maximum": 500}, "default": "12"},
         "offset": {"use": "offset"},
+        "cursor": {"use": "cursor"},
         "order": {"use": "order"}
       },
       "example": {"prefab": "*Locker*", "near": "player", "radius": 15},
@@ -241,6 +245,7 @@
         },
         "limit": {"use": "limit", "schema": {"type": "integer", "minimum": 1, "maximum": 1000}, "default": "20"},
         "offset": {"use": "offset"},
+        "cursor": {"use": "cursor"},
         "order": {"use": "order"}
       },
       "example": {"near": "player", "radius": 20},
@@ -482,7 +487,8 @@
         "near": {"use": "near", "description": "\"player\" only."},
         "radius": {"use": "radius"},
         "limit": {"use": "limit", "schema": {"type": "integer", "minimum": 1, "maximum": 500}, "default": "8"},
-        "offset": {"use": "offset"}
+        "offset": {"use": "offset"},
+        "cursor": {"use": "cursor"}
       },
       "example": {"min_damage": 0.25, "structures_only": true},
       "reply": {

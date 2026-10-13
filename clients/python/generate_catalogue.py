@@ -60,7 +60,8 @@ def script_options(verb, shared):
     names = ["fields"]
     for what in verb["whats"].values():
         for name, option in (what.get("options") or {}).items():
-            if resolve(option, shared).get("x-script") != "drop" and name not in names:
+            resolved = resolve(option, shared)
+            if resolved.get("x-script") != "drop" and not resolved.get("x-wire") and name not in names:
                 names.append(name)
     for name in EXTRA_OPTIONS.get(verb["verb"], []):
         if name not in names:

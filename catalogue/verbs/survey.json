@@ -74,7 +74,8 @@
           "default": "8",
           "x-script": "The first n in order (2 m cells); left out, every one."
         },
-        "offset": {"use": "offset"}
+        "offset": {"use": "offset"},
+        "cursor": {"use": "cursor"}
       },
       "text": [
         "A big area is many pages (125 cells at most each), and output_file writes one page. For a whole area, page with offset (has_more) or use a smaller box per call."
@@ -190,7 +191,8 @@
           "default": "30; box 25; summarize 10",
           "x-script": "The first n in order (members); left out, every one."
         },
-        "offset": {"use": "offset"}
+        "offset": {"use": "offset"},
+        "cursor": {"use": "cursor"}
       },
       "example": {"network": "3768865", "kind": "cable", "summarize": true},
       "reply": {

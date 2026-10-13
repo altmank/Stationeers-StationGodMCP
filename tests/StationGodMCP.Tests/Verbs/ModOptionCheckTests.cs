@@ -127,6 +127,22 @@ public sealed class ModOptionCheckTests
     }
 
     [Fact]
+    public void TheGameTakesTheWireCursorWhereAWhatPagesAndNowhereElse()
+    {
+        Assert.Null(Check("find", """{"what": "thing", "cursor": "k3"}""", out _));
+        Assert.Equal("cursor", (string?)Problems(Check("read", """{"what": "logic", "cursor": "k3"}""", out _)!)[0]["path"]);
+        Assert.Equal("must be a string", (string?)Problems(Check("find", """{"what": "thing", "cursor": 3}""", out _)!)[0]["problem"]);
+    }
+
+    [Fact]
+    public void TheWireCursorIsNoAgentOption()
+    {
+        Assert.DoesNotContain("cursor", StationGodMCP.Server.VerbCatalogue.Embedded.Verb("find")!.What("thing")!.OptionNames);
+        Assert.DoesNotContain(VerbCatalogue.OptionsOf(VerbCatalogue.Verb("find")["whats"]!["thing"]!.AsObject()),
+            option => option.Name == "cursor");
+    }
+
+    [Fact]
     public void NullIsAnOmittedOption()
     {
         Assert.Null(Check("find", """{"what": "thing", "limit": null, "bogus": null}""", out _));

@@ -160,7 +160,8 @@
           "default": "10",
           "x-script": "The first n in order (a silo's stored entries listed); left out, every one."
         },
-        "offset": {"use": "offset", "schema": {"type": "integer", "minimum": 0, "maximum": 600}}
+        "offset": {"use": "offset", "schema": {"type": "integer", "minimum": 0, "maximum": 600}},
+        "cursor": {"use": "cursor"}
       },
       "text": [
         "id may be a list or a ref: the reply is {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload one reply; fields name its keys.",
@@ -209,7 +210,8 @@
           "x-script": "same"
         },
         "limit": {"use": "limit", "schema": {"type": "integer", "minimum": 1, "maximum": 500}, "default": "8"},
-        "offset": {"use": "offset"}
+        "offset": {"use": "offset"},
+        "cursor": {"use": "cursor"}
       },
       "example": {"network": "5012345", "kind": "pipe", "damaged_only": true},
       "reply": {
@@ -643,7 +645,8 @@
           "description": "style: colours and fonts; image: a PNG (not on a dedicated server)."
         },
         "limit": {"use": "limit", "schema": {"type": "integer", "minimum": 1, "maximum": 500}, "default": "25"},
-        "offset": {"use": "offset"}
+        "offset": {"use": "offset"},
+        "cursor": {"use": "cursor"}
       },
       "example": {"id": "4860097", "text": "error"},
       "reply": {

@@ -245,7 +245,14 @@ internal sealed class WhatEntry
         List<string> optionNames = [];
         foreach ((string optionName, JsonNode? node) in source["options"] as JsonObject ?? [])
         {
-            options.Add(optionName, OptionEntry.Of(optionName, Resolve(node!.AsObject(), sharedOptions)));
+            JsonObject resolved = Resolve(node!.AsObject(), sharedOptions);
+            if ((bool?)resolved["x-wire"] == true)
+            {
+                // A wire option (x-wire) is for the hub and sg to send to the game; an agent never gives it.
+                continue;
+            }
+
+            options.Add(optionName, OptionEntry.Of(optionName, resolved));
             optionNames.Add(optionName);
         }
 

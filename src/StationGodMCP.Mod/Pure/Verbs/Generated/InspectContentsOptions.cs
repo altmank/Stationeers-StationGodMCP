@@ -19,7 +19,8 @@ internal sealed record InspectContentsOptions
         new OptionSpec("prefab", "{\"type\":[\"string\",\"integer\",\"array\"],\"items\":{\"type\":[\"string\",\"integer\"]}}"),
         new OptionSpec("name", "{\"type\":\"string\"}"),
         new OptionSpec("limit", "{\"type\":\"integer\",\"minimum\":1,\"maximum\":600}", false, "10"),
-        new OptionSpec("offset", "{\"type\":\"integer\",\"minimum\":0,\"maximum\":600}", false, "0"));
+        new OptionSpec("offset", "{\"type\":\"integer\",\"minimum\":0,\"maximum\":600}", false, "0"),
+        new OptionSpec("cursor", "{\"type\":\"string\"}"));
 
     internal Selector Selector { get; private init; } = Selector.None;
 

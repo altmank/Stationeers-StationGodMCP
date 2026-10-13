@@ -61,6 +61,12 @@
       "x-script": "The first n in order (entries); left out, every one."
     },
     "offset": {"schema": {"type": "integer", "minimum": 0}, "description": "Entries to skip.", "default": "0", "x-script": "drop"},
+    "cursor": {
+      "schema": {"type": "string"},
+      "description": "The cursor a page answered: the walk's next page.",
+      "x-script": "drop",
+      "x-wire": true
+    },
     "order": {
       "schema": {"type": "string", "enum": ["nearest", "id"]},
       "description": "nearest (default) or id (stable pages).",

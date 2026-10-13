@@ -20,6 +20,7 @@ Per what:
 | `summary`, `brief` | the help line; `brief` (when present) is the shorter text in the tool's what enum |
 | `options` | per option: `schema`, `description` (the help text), `default` (as help states it), `required`, `x-script` |
 | `x-script` | `same` (the stub uses the description), `drop` (not in scripts: D7 and the shaping options), or the stub's own text |
+| `x-wire` | `true`: a wire option the hub and sg send to the game (`cursor`), never an agent's; the tool list, help and stubs leave it out, the game's options and option check take it |
 | `text`, `x-script-text` | the what's notes on the direct page, and on the stub when they differ |
 | `example` | arguments; rendered as `verb {what, ...}` and as `sg.verb('what', ...)` |
 | `reply` | `list` (the main list) and `variants` (typed `keys`, or a `job_view`), plus the small `types` used |

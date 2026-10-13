@@ -17,7 +17,8 @@ internal sealed record FindDeviceOptions
         new OptionSpec("prefab", "{\"type\":[\"string\",\"integer\",\"array\"],\"items\":{\"type\":[\"string\",\"integer\"]}}"),
         new OptionSpec("name", "{\"type\":\"string\"}"),
         new OptionSpec("limit", "{\"type\":\"integer\",\"minimum\":1,\"maximum\":4096}", false, "25"),
-        new OptionSpec("offset", "{\"type\":\"integer\",\"minimum\":0}", false, "0"));
+        new OptionSpec("offset", "{\"type\":\"integer\",\"minimum\":0}", false, "0"),
+        new OptionSpec("cursor", "{\"type\":\"string\"}"));
 
     internal Selector Selector { get; private init; } = Selector.None;
 

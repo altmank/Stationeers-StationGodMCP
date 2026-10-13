@@ -229,7 +229,8 @@
           "default": "12",
           "x-script": "The first n in order (read: rows); left out, every one."
         },
-        "offset": {"use": "offset"}
+        "offset": {"use": "offset"},
+        "cursor": {"use": "cursor"}
       },
       "example": {"limit": 20},
       "reply": {

@@ -17,7 +17,8 @@ internal sealed record ReadFlightLogOptions
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}"),
         new OptionSpec("every", "{\"type\":\"integer\",\"minimum\":1,\"maximum\":100000}", false, "1"),
         new OptionSpec("limit", "{\"type\":\"integer\",\"minimum\":1,\"maximum\":200}", false, "12"),
-        new OptionSpec("offset", "{\"type\":\"integer\",\"minimum\":0}", false, "0"));
+        new OptionSpec("offset", "{\"type\":\"integer\",\"minimum\":0}", false, "0"),
+        new OptionSpec("cursor", "{\"type\":\"string\"}"));
 
     internal Selector Selector { get; private init; } = Selector.None;
 

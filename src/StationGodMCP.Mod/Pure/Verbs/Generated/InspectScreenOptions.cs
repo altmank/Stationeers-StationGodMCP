@@ -21,7 +21,8 @@ internal sealed record InspectScreenOptions
         new OptionSpec("shown_only", "{\"type\":\"boolean\"}", false, "true"),
         new OptionSpec("include", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"style\",\"image\"]}}"),
         new OptionSpec("limit", "{\"type\":\"integer\",\"minimum\":1,\"maximum\":500}", false, "25"),
-        new OptionSpec("offset", "{\"type\":\"integer\",\"minimum\":0}", false, "0"));
+        new OptionSpec("offset", "{\"type\":\"integer\",\"minimum\":0}", false, "0"),
+        new OptionSpec("cursor", "{\"type\":\"string\"}"));
 
     internal Selector Selector { get; private init; } = Selector.None;
 

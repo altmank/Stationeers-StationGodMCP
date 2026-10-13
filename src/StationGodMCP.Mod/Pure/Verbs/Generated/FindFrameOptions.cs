@@ -18,6 +18,7 @@ internal sealed record FindFrameOptions
         new OptionSpec("include", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"inner\"]}}"),
         new OptionSpec("limit", "{\"type\":\"integer\",\"minimum\":1,\"maximum\":1000}", false, "20"),
         new OptionSpec("offset", "{\"type\":\"integer\",\"minimum\":0}", false, "0"),
+        new OptionSpec("cursor", "{\"type\":\"string\"}"),
         new OptionSpec("order", "{\"type\":\"string\",\"enum\":[\"nearest\",\"id\"]}", false, "nearest"));
 
     internal Selector Selector { get; private init; } = Selector.None;

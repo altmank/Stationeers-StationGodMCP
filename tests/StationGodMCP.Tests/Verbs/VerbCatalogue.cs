@@ -66,14 +66,24 @@ internal static class VerbCatalogue
     internal static bool HasWhats(JsonObject verb) =>
         !(verb["whats"]!.AsObject().Count == 1 && verb["whats"]!.AsObject().ContainsKey(WhatlessKey));
 
-    /// <summary>A what's options, each resolved against its shared definition.</summary>
-    internal static IEnumerable<(string Name, JsonObject Option)> OptionsOf(JsonObject what)
+    /// <summary>
+    /// A what's agent options, each resolved against its shared definition: everything the tool list, help and stubs
+    /// show. A wire option (x-wire: the hub and sg send it, an agent does not) is left out.
+    /// </summary>
+    internal static IEnumerable<(string Name, JsonObject Option)> OptionsOf(JsonObject what) =>
+        WireOptionsOf(what).Where(option => !IsWire(option.Option));
+
+    /// <summary>A what's options as the game takes them: the agent options and the wire options, in catalogue order.</summary>
+    internal static IEnumerable<(string Name, JsonObject Option)> WireOptionsOf(JsonObject what)
     {
         foreach ((string name, JsonNode? option) in what["options"]?.AsObject() ?? new JsonObject())
         {
             yield return (name, Resolve(option!.AsObject()));
         }
     }
+
+    /// <summary>An option only the hub and sg send (x-wire: true), never shown to an agent.</summary>
+    internal static bool IsWire(JsonObject resolved) => (bool?)resolved["x-wire"] ?? false;
 
     /// <summary>A shared option's definition, by name.</summary>
     internal static JsonObject SharedOption(string name) => Shared["options"]![name]!.AsObject();

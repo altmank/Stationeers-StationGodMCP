@@ -24,7 +24,8 @@ internal sealed record SurveyAreaOptions
         new OptionSpec("cell_detail", "{\"type\":\"string\",\"enum\":[\"occupancy\",\"full\"]}", false, "occupancy"),
         new OptionSpec("occupied_only", "{\"type\":\"boolean\"}", false, "false"),
         new OptionSpec("limit", "{\"type\":\"integer\",\"minimum\":1,\"maximum\":125}", false, "8"),
-        new OptionSpec("offset", "{\"type\":\"integer\",\"minimum\":0}", false, "0"));
+        new OptionSpec("offset", "{\"type\":\"integer\",\"minimum\":0}", false, "0"),
+        new OptionSpec("cursor", "{\"type\":\"string\"}"));
 
     internal Selector Selector { get; private init; } = Selector.None;
 

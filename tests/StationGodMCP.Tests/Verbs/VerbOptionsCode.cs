@@ -28,7 +28,7 @@ internal static class VerbOptionsCode
     {
         ("Selector", "Selector", "None", new[] { "id", "near", "radius", "within", "box", "room", "network", "prefab", "name" }),
         ("Fields", "Fields", "None", new[] { "include", "verbose" }),
-        ("Paging", "Paging", "All", new[] { "limit", "offset", "order" }),
+        ("Paging", "Paging", "All", new[] { "limit", "offset", "order", "cursor" }),
         ("Report", "ReportConfirm", "Acting", new[] { "confirm", "rows" }),
         ("Materials", "MaterialsSource", "Player", new[] { "materials", "refund_to" })
     };
@@ -102,7 +102,7 @@ internal static class VerbOptionsCode
 
     private static string OptionsClass(JsonObject verb, string verbName, string what, JsonObject source, string type)
     {
-        List<(string Name, JsonObject Option)> options = VerbCatalogue.OptionsOf(source).ToList();
+        List<(string Name, JsonObject Option)> options = VerbCatalogue.WireOptionsOf(source).ToList();
         HashSet<string> taken = new(options.Select(option => option.Name), StringComparer.Ordinal);
         HashSet<string> hubOnly = new(options.Where(option => IsHubOption(option.Name, taken)).Select(option => option.Name));
         string label = what == VerbCatalogue.WhatlessKey ? verbName : verbName + " " + what;

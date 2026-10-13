@@ -28,6 +28,7 @@ internal sealed record FindThingOptions
         new OptionSpec("box", "{\"type\":\"array\",\"minItems\":2,\"maxItems\":2}"),
         new OptionSpec("limit", "{\"type\":\"integer\",\"minimum\":1,\"maximum\":500}", false, "8"),
         new OptionSpec("offset", "{\"type\":\"integer\",\"minimum\":0}", false, "0"),
+        new OptionSpec("cursor", "{\"type\":\"string\"}"),
         new OptionSpec("order", "{\"type\":\"string\",\"enum\":[\"nearest\",\"id\"]}", false, "nearest"));
 
     internal Selector Selector { get; private init; } = Selector.None;

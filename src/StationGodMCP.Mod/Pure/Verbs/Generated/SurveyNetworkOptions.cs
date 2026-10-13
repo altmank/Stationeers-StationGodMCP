@@ -22,7 +22,8 @@ internal sealed record SurveyNetworkOptions
         new OptionSpec("near", "{\"type\":[\"string\",\"array\"]}"),
         new OptionSpec("radius", "{\"type\":\"number\",\"minimum\":0,\"maximum\":1000}"),
         new OptionSpec("limit", "{\"type\":\"integer\",\"minimum\":1,\"maximum\":1000}", false, "30; box 25; summarize 10"),
-        new OptionSpec("offset", "{\"type\":\"integer\",\"minimum\":0}", false, "0"));
+        new OptionSpec("offset", "{\"type\":\"integer\",\"minimum\":0}", false, "0"),
+        new OptionSpec("cursor", "{\"type\":\"string\"}"));
 
     internal Selector Selector { get; private init; } = Selector.None;
 

@@ -187,6 +187,14 @@ public sealed class OptionKindTests
         Assert.Equal(8, Pure.Verbs.Paging.Bind(Reader(FindThingOptions.Spec, """{"offset": 3}""")).Limit);
     }
 
+    [Fact]
+    public void ACursorIsCarriedAsGiven()
+    {
+        Assert.Equal("k17", Pure.Verbs.Paging.Bind(Reader(FindThingOptions.Spec, """{"cursor": " k17 "}""")).Cursor);
+        Assert.Null(Pure.Verbs.Paging.Bind(Reader(FindThingOptions.Spec, "{}")).Cursor);
+        Assert.Null(Pure.Verbs.Paging.Bind(Reader(ReadClockOptions.Spec, """{"cursor": "k17"}""")).Cursor);
+    }
+
     // ---- report and confirm ----
 
     [Fact]
@@ -262,7 +270,7 @@ public sealed class OptionKindTests
             }
 
             WhatSpec spec = VerbSurface.Verb(verb)!.What(what == VerbCatalogue.WhatlessKey ? null : what)!;
-            Assert.Equal(VerbCatalogue.OptionsOf(source).Select(option => option.Name), spec.OptionNames);
+            Assert.Equal(VerbCatalogue.WireOptionsOf(source).Select(option => option.Name), spec.OptionNames);
             Assert.Equal((string?)source["id_list"], spec.IdList);
         }
     }
