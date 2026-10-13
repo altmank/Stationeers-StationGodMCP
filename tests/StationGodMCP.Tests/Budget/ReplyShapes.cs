@@ -91,11 +91,6 @@ internal static class ReplyShapes
         {
             S<IgnitionRiskView>().List("IgnitionRiskView.Items", 20).Absent("IgnitionRiskView.Prefabs")
         };
-        shapes["label"] = new[]
-        {
-            S<LabelledView>(),
-            S<BatchResultView>().List("BatchResultView.Results", W.TypicalBatch).Holds("BatchResultView.Results", typeof(LabelledView))
-        };
         shapes["lint_layout"] = new[]
         {
             S<LintLayoutView>().List("LintLayoutView.Counts", 12).List("LintLayoutView.Findings", D.LintFindings)

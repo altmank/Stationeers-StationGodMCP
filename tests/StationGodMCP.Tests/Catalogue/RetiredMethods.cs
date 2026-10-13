@@ -31,6 +31,7 @@ internal static class RetiredMethods
         "grid_survey",
         "inspect_slots",
         "item_totals",
+        "label",
         "landing_pads",
         "list_containers",
         "list_devices",

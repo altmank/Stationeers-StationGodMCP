@@ -341,7 +341,7 @@ internal sealed class PlaceWork : BuildWork
 
             if (placement.Args.Label != null)
             {
-                Thing.RenameThing(built.ReferenceId, LabelApi.AsTheLabellerWrites(built, placement.Args.Label));
+                Thing.RenameThing(built.ReferenceId, Labels.AsTheLabellerWrites(built, placement.Args.Label));
             }
 
             log.Placed.Add(new BuiltPieceView(placement.Index, GameLookup.ViewOf(built)));

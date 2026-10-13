@@ -36,7 +36,6 @@ internal static class ApiHost
         {
             ["run_console_command"] = static args => RunConsoleCommandApi.Handle(args),
             ["read_console"] = static args => ReadConsoleApi.Handle(args),
-            ["label"] = static args => LabelApi.Handle(args),
             ["trader_contacts"] = static args => TraderContactsApi.Handle(args),
             ["dish_aim"] = static args => DishAimApi.Handle(args),
             ["trader_inventory"] = static args => TraderInventoryApi.Handle(args),
