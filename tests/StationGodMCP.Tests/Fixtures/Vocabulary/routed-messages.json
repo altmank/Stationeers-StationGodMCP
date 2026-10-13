@@ -3,15 +3,9 @@
     "Argument 'to_state' must be above {current} and at most {last}.",
     "{player.Absence} Nothing to take materials from; pass from_id."
   ],
-  "Api/ApiHost.cs": [
-    "{method} is answered by the MCP server (the sidecar) from the catalogue, not by the game; call it through MCP, or read the catalogue's help."
-  ],
   "Api/BuildStructures.cs": [
     "Pass job_id, or placements.",
     "Pass job_id, or reference_ids."
-  ],
-  "Api/ControlIcExecution.cs": [
-    "Argument 'action' must be pause, step, resume, or restart."
   ],
   "Api/FindSpot.cs": [
     "a port's joining cell is blocked (ports_reachable)",
@@ -82,16 +76,6 @@
   "Api/MovePlayer.cs": [
     "near_player is {player.DisplayName}, the player being moved.",
     "to_id {id} is {player.DisplayName} or something they carry, so it moves with them."
-  ],
-  "Api/Paint.cs": [
-    "Argument 'color' applies only to reference_ids; each item carries its own color.",
-    "Argument 'color' is required.",
-    "Argument 'color' must be a string.",
-    "Argument 'items[{index}]' must be an object.",
-    "Argument 'reference_id' must be a reference id as a decimal string.",
-    "Arguments 'reference_ids' and 'color' go together.",
-    "Pass reference_ids with color, or items, not both.",
-    "Unknown paint form."
   ],
   "Api/PasteBlueprint.cs": [
     "Argument 'anchor' is required.",
@@ -169,26 +153,11 @@
     "'{key}' finishes on a background task, so it returned before its result was printed. Whatever is in 'output' is only what had been printed by the time this call returned, and an EMPTY list is not evidence that the command printed nothing, succeeded or failed. Call read_console a second or two later to see the outcome.",
     "Argument 'command' must not be empty."
   ],
-  "Api/Screens.cs": [
-    "Argument 'at' must be [x, y]: surface pixels from the top-left corner.",
-    "Argument 'event' must be click, change or toggle.",
-    "No shown control stands at ({x}, {y}) on surface '{surface}'; screen_read gives each element's box.",
-    "Pass element_id or at (a point [x, y] on the surface), one of them.",
-    "Surface '{surface}' has no element '{id}'; screen_read lists them.",
-    "event change needs value: the control's new value as text."
-  ],
   "Api/SetBatteryCharge.cs": [
     "Pass exactly one of reference_ids, rocket_id or in_id.",
     "reference_ids[{index}] must be a reference id as a decimal string.",
     "{foundIn.DisplayName} {foundIn.ReferenceId} holds {stores.Count} batteries, over the {MaximumTargets} one call sets; name them in reference_ids calls. Nothing was changed.",
     "{name} stores no power itself; its slots hold {held.Count} battery cell(s) (first {held[0].Thing.ReferenceId}): set them with in_id {thing.ReferenceId}."
-  ],
-  "Api/SetIcPins.cs": [
-    "Argument 'pins' must be an object mapping at least one pin name (d0..d5) to a device reference ID string, or to null to clear that pin.",
-    "Pin d{index}: device {id} ({Names.Of(device)}) is not on IC Housing {_housing.ReferenceId}'s data network, so the chip would not reach it through the pin. Connect it to the housing's data network, or pass allow_off_network to store it anyway."
-  ],
-  "Api/SetUplink.cs": [
-    "{downlinkId} is no downlink this uplink can follow: a built, logic readable Logic Rocket Downlink. describe_device on the uplink lists them in uplink.choices."
   ],
   "Api/Shared/Args.cs": [
     "{_path}.{name}"
@@ -258,14 +227,6 @@
   "Api/Shared/Game/Build/Orienter.cs": [
     "{name} must be an axis (+x .. -z), \"room\", \"player\", a point [x, y, z] or {reference_id}."
   ],
-  "Api/Shared/Game/Build/PlacePlanner.cs": [
-    " (broken there: {string.Join(\", \", names)}; a broken structure still takes its place; remove it first with remove_structure allow_broken)",
-    "above_floor_m: no floor below ({0:0.##}, {1:0.##}, {2:0.##}) within {3:0} m (no floor plate on a plane down to y {4:0}, and no frame under one); give at as a point instead.",
-    "{player.Absence} Nothing to take materials from; pass from_id.",
-    "{prefab.PrefabName} is a network piece; this places exactly it and the game joins whatever its ends touch, with no would_bridge check. {tool} picks pieces by their connections and guards merges.",
-    "{prefab.PrefabName} is not placed on a cell face; use facing or rotation instead of face.",
-    "{prefab.PrefabName} moves gas the other way with Mode 1 (Left); the chosen turn meets the flow only so. Write it after building (write_logic)."
-  ],
   "Api/Shared/Game/Build/RemovePlanner.cs": [
     "gas_to {target.Network.Value} names no pipe network and no pipe on one",
     "{Names.Of(thing)} ({thing.PrefabName}) is {what} ({where}), not a structure; move_item moves items and movable things.",
@@ -276,13 +237,6 @@
     "{kind.RemoveTool}'s check: {issue.Message}",
     "{message} (allow_contents)",
     "{player.Absence} Nothing to give the refund to; pass from_id, or refund_to ground or none."
-  ],
-  "Api/Shared/Game/ChipPrograms.cs": [
-    "A Lua chip cannot {action}: it runs a whole tick(dt) per game tick, with no line to stop at. Use restart to run it again from the start, or set_ic_source to change it.",
-    "restart is for Lua chips; an IC10 chip restarts at line 0 when set_ic_source writes it."
-  ],
-  "Api/Shared/Game/DeviceMemory.cs": [
-    "Argument 'values[{index}]' must be a finite number."
   ],
   "Api/Shared/Game/Flight/RocketModel.cs": [
     "Argument '{name}' must be above 0.",
@@ -302,15 +256,6 @@
   "Api/Shared/Game/Lint/LintDryRun.cs": [
     "The dry_run lint rules could not run: {error.GetType().Name}: {error.Message}",
     "{finding.Message} Refused by lint rule {finding.Code} (level problem). To allow it, set its \"level\" to \"warning\" or \"enabled\": false in the save's lint-rules.json (lint_rules lists the files)."
-  ],
-  "Api/Shared/Game/LogicOps.cs": [
-    "Argument '{name}[{index}]' must be an object."
-  ],
-  "Api/Shared/Game/NetworkHandles.cs": [
-    "Argument '{name}' is required.",
-    "{entry}: {Names.Of(device)} ({device.PrefabName}) has no two {family.NetworkKind} ports that could share a network, so it bridges nothing; name a network, a piece of one or {reference_id, port}.",
-    "{entry}: {Names.Of(thing)} ({thing.PrefabName}) is neither a {family.NetworkKind} piece, a device nor a network.",
-    "{entry}: {handle.Id} names no thing and no {family.NetworkKind} network. A piece's id changes when an edit replaces it (a split, a junction); read it again (connections)."
   ],
   "Api/Shared/Game/Refunds.cs": [
     "refund_to names {Names.Of(thing)} {id}, which has no slot a refund could go into.",
@@ -459,10 +404,6 @@
     "from_vault_id and to_vault_id name the same vault; nothing to move.",
     "items[{index}]: name what to move with exactly one of prefab_name, prefab_hash or reagent."
   ],
-  "Api/Shared/WriteLint.cs": [
-    "The write opens device {device}, and the write lint rules find {Count(rules.Count)} on the networks it opens to:{said} Nothing is written. A rule's level is set in the save's lint-rules.json (lint_rules lists the files).",
-    "{problem.Message} Lint rule {problem.Code} (level problem) let through by allow_lint."
-  ],
   "Api/Shared/WriteMode.cs": [
     "A real run needs dry_run: false and confirm: true; nothing was changed.",
     "confirm: true needs dry_run: false; nothing was changed."
@@ -597,9 +538,6 @@
   ],
   "Pure/Lint/LintCompiler.cs": [
     "no function '{call.Name}' (lint_rules functions lists them)"
-  ],
-  "Pure/LogicTypeNumber.cs": [
-    "Numeric logic_type must be a whole number from 0 to 65535."
   ],
   "Pure/PartInUseRule.cs": [
     "{item} ({itemId}) is in slot {holder.SlotIndex} of {holder.Named}, which is using it: {Consequence(part)}. Take a spare instead, or pass allow_in_use true to take it anyway."
