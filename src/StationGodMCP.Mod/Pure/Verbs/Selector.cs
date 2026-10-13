@@ -25,16 +25,26 @@ internal sealed record Selector(
 {
     internal static Selector None { get; } = new Selector(null, null, null, null, null, null, null, null, null);
 
-    internal static Selector Bind(OptionReader options) => new Selector(
-        PerIdList.Bind(options),
-        NearPoint.Bind(options),
-        options.Number("radius"),
-        Trimmed(options.Text("within")),
-        BoxCorners.Bind(options),
-        Trimmed(options.Text("room")),
-        NetworkTarget.Bind(options),
-        PrefabFilter.Bind(options),
-        Trimmed(options.Text("name")));
+    /// <summary>
+    /// network as a list (where the what takes several, as survey area does): every network named, in order; null
+    /// when the call gives none or gives one (Network).
+    /// </summary>
+    internal IReadOnlyList<NetworkTarget>? Networks { get; private init; }
+
+    internal static Selector Bind(OptionReader options)
+    {
+        IReadOnlyList<NetworkTarget>? networks = NetworkTarget.BindList(options);
+        return new Selector(
+            PerIdList.Bind(options),
+            NearPoint.Bind(options),
+            options.Number("radius"),
+            Trimmed(options.Text("within")),
+            BoxCorners.Bind(options),
+            Trimmed(options.Text("room")),
+            networks == null ? NetworkTarget.Bind(options) : null,
+            PrefabFilter.Bind(options),
+            Trimmed(options.Text("name"))) { Networks = networks };
+    }
 
     /// <summary>True when the call picks targets by a filter or place rather than (or beside) ids.</summary>
     internal bool HasSpread =>
@@ -190,22 +200,62 @@ internal sealed record BoxCorners(Vec3 First, Vec3 Second)
 /// <summary>network: a network's id, a piece or device on it, or {id, port} (the network on one of a device's ports).</summary>
 internal sealed record NetworkTarget(string Id, string? Port)
 {
+    private const string Form = "must be a network's id, a piece or device on it, or {id, port}";
+
     internal static NetworkTarget? Bind(OptionReader options)
     {
-        switch (options.Raw("network"))
+        JToken? given = options.Raw("network");
+        if (given == null)
         {
-            case null:
-                return null;
+            return null;
+        }
+
+        NetworkTarget? target = Of(given);
+        if (target == null)
+        {
+            options.Problem("network", Form);
+        }
+
+        return target;
+    }
+
+    /// <summary>network given as a list: each entry one network (Of); null when it is not a list.</summary>
+    internal static IReadOnlyList<NetworkTarget>? BindList(OptionReader options)
+    {
+        if (options.Raw("network") is not JArray given)
+        {
+            return null;
+        }
+
+        List<NetworkTarget> targets = new List<NetworkTarget>(given.Count);
+        for (int index = 0; index < given.Count; index++)
+        {
+            if (Of(given[index]) is { } target)
+            {
+                targets.Add(target);
+            }
+            else
+            {
+                options.Problem($"network[{index}]", Form);
+            }
+        }
+
+        return targets;
+    }
+
+    private static NetworkTarget? Of(JToken given)
+    {
+        switch (given)
+        {
             case JValue { Type: JTokenType.String } text when ((string)text!).Trim().Length > 0:
                 return new NetworkTarget(((string)text!).Trim(), null);
             case JObject pair when pair["id"] is JValue { Type: JTokenType.String } id && ((string)id!).Trim().Length > 0:
                 JToken? port = pair["port"];
                 return new NetworkTarget(((string)id!).Trim(),
                     port == null || port.Type == JTokenType.Null ? null : port.ToString().Trim());
+            default:
+                return null;
         }
-
-        options.Problem("network", "must be a network's id, a piece or device on it, or {id, port}");
-        return null;
     }
 }
 

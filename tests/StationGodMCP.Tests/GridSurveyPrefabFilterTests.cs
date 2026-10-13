@@ -5,14 +5,15 @@ using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Verbs;
 using Xunit;
 using Xunit.Abstractions;
 
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// grid_survey prefab, prefabs and prefab_contains: only the pieces and devices of those prefabs, with network_ids and
-/// kinds. A room's 300-piece pieces section drops from about 64 KB to the insulated pipes alone.
+/// survey area prefab: only the pieces and devices of those prefabs (whole names or parts with *), with network and
+/// kind. A room's 300-piece pieces section drops from about 64 KB to the insulated pipes alone.
 /// </summary>
 public sealed class GridSurveyPrefabFilterTests(ITestOutputHelper output)
 {
@@ -23,52 +24,52 @@ public sealed class GridSurveyPrefabFilterTests(ITestOutputHelper output)
     };
 
     [Fact]
-    public void NoPrefabArgumentAdmitsEveryPieceAndDevice()
+    public void NoPrefabAdmitsEveryPieceAndDevice()
     {
         SurveyFilter every = Filter("{}");
 
-        Assert.True(every.AdmitsPiece(null, "pipe", "StructurePipeStraight"));
-        Assert.True(every.AdmitsDevice("StructureVolumePump", new List<ThingId?>(), new List<string?>()));
+        Assert.True(every.AdmitsPiece(null, "pipe", "StructurePipeStraight", 0));
+        Assert.True(every.AdmitsDevice("StructureVolumePump", 0, new List<ThingId?>(), new List<string?>()));
     }
 
     [Fact]
-    public void PrefabContainsKeepsMatchingPiecesAndDevicesAnyCase()
+    public void APrefabPartKeepsMatchingPiecesAndDevicesAnyCase()
     {
-        SurveyFilter insulated = Filter("""{"prefab_contains":"insulated"}""");
+        SurveyFilter insulated = Filter("""{"prefab":"*insulated*"}""");
 
-        Assert.True(insulated.AdmitsPiece(null, "pipe", "StructureInsulatedPipeStraight"));
-        Assert.False(insulated.AdmitsPiece(null, "pipe", "StructurePipeStraight"));
-        Assert.False(insulated.AdmitsDevice("StructureVolumePump", new List<ThingId?>(), new List<string?>()));
+        Assert.True(insulated.AdmitsPiece(null, "pipe", "StructureInsulatedPipeStraight", 0));
+        Assert.False(insulated.AdmitsPiece(null, "pipe", "StructurePipeStraight", 0));
+        Assert.False(insulated.AdmitsDevice("StructureVolumePump", 0, new List<ThingId?>(), new List<string?>()));
     }
 
     [Fact]
     public void PrefabsComposeWithKindsAndNetworks()
     {
         SurveyFilter filter = new SurveyFilter(SurveyNetworkFilter.Only(new HashSet<long> { 17 }), SurveyKinds.Every,
-            PrefabMatches.Parse(Args("""{"prefabs":["StructurePipeStraight","StructureVolumePump"]}""")));
+            Options("""{"prefab":["StructurePipeStraight","StructureVolumePump"]}""").Selector.Prefab);
 
-        Assert.True(filter.AdmitsPiece(new ThingId(17), "pipe", "StructurePipeStraight"));
-        Assert.False(filter.AdmitsPiece(new ThingId(18), "pipe", "StructurePipeStraight"));
-        Assert.False(filter.AdmitsPiece(new ThingId(17), "pipe", "StructurePipeCorner"));
-        Assert.True(filter.AdmitsDevice("StructureVolumePump", new List<ThingId?> { new ThingId(17) },
+        Assert.True(filter.AdmitsPiece(new ThingId(17), "pipe", "StructurePipeStraight", 0));
+        Assert.False(filter.AdmitsPiece(new ThingId(18), "pipe", "StructurePipeStraight", 0));
+        Assert.False(filter.AdmitsPiece(new ThingId(17), "pipe", "StructurePipeCorner", 0));
+        Assert.True(filter.AdmitsDevice("StructureVolumePump", 0, new List<ThingId?> { new ThingId(17) },
             new List<string?> { "Pipe" }));
     }
 
     [Fact]
-    public void TheSidecarTakesThePrefabArguments()
+    public void SurveyAreaTakesThePrefabOptions()
     {
-        Assert.Empty(Problems("""{"room_id":"28","sections":["pieces"],"prefab_contains":"Insulated"}"""));
-        Assert.Empty(Problems("""{"room_id":"28","prefabs":["StructurePipeStraight"]}"""));
+        Assert.Null(Check("""{"what":"area","room":"28","sections":["pieces"],"prefab":"*Insulated*"}"""));
+        Assert.Null(Check("""{"what":"area","room":"28","prefab":["StructurePipeStraight"]}"""));
     }
 
     /// <summary>
     /// The 2026-10-08 call: sections ["pieces"] over a plant room of 300 cable and pipe pieces, list_limits 500; with
-    /// prefab_contains Insulated the 50 insulated pipes alone.
+    /// prefab *Insulated* the 50 insulated pipes alone.
     /// </summary>
     [Fact]
     public void ARoomsPiecesSectionDropsToThePrefabsAskedFor()
     {
-        SurveyFilter insulated = Filter("""{"prefab_contains":"Insulated"}""");
+        SurveyFilter insulated = Filter("""{"prefab":"*Insulated*"}""");
         List<SurveyPieceView> all = new List<SurveyPieceView>();
         List<SurveyPieceView> kept = new List<SurveyPieceView>();
         for (int index = 0; index < 300; index++)
@@ -77,7 +78,7 @@ public sealed class GridSurveyPrefabFilterTests(ITestOutputHelper output)
             string kind = prefab.Contains("Cable") ? "cable" : "pipe";
             SurveyPieceView piece = Piece(index, prefab, kind);
             all.Add(piece);
-            if (insulated.AdmitsPiece(new ThingId(17), kind, prefab))
+            if (insulated.AdmitsPiece(new ThingId(17), kind, prefab, 0))
             {
                 kept.Add(piece);
             }
@@ -85,7 +86,7 @@ public sealed class GridSurveyPrefabFilterTests(ITestOutputHelper output)
 
         int before = Survey(all).Length;
         int after = Survey(kept).Length;
-        output.WriteLine($"grid_survey sections [pieces], 300 pieces: all {before} bytes, prefab_contains Insulated " +
+        output.WriteLine($"survey area sections [pieces], 300 pieces: all {before} bytes, prefab *Insulated* " +
                          $"{after} bytes ({kept.Count} pieces)");
 
         Assert.Equal(50, kept.Count);
@@ -100,23 +101,19 @@ public sealed class GridSurveyPrefabFilterTests(ITestOutputHelper output)
 
     private static string Survey(List<SurveyPieceView> pieces)
     {
-        Slice<SurveyCell> page = Slice<SurveyCell>.Page(new List<SurveyCell>(),
-            PageRequest.From(Args("{}"), 8, 125), 125);
+        Page<SurveyCell> page = new Page<SurveyCell>(new List<SurveyCell>(), 125, 0, 8, true);
         SurveyContents contents = new SurveyContents(pieces, new List<SurveyDeviceView>(), new List<object>(),
             new List<SurveyNetworkVisibilityView>(), new List<SurveyDoorView>());
-        return WireCheck.New(new GridSurveyView(page, contents, SurveySections.Parse(Args("""{"sections":["pieces"]}""")),
-            null));
+        return SurveyAreaReply.Of(page, contents, SurveySections.Of(new[] { "pieces" }), null)
+            .ToString(Newtonsoft.Json.Formatting.None);
     }
 
     private static SurveyFilter Filter(string json) =>
-        new SurveyFilter(SurveyNetworkFilter.Every, SurveyKinds.Every, PrefabMatches.Parse(Args(json)));
+        new SurveyFilter(SurveyNetworkFilter.Every, SurveyKinds.Every, Options(json).Selector.Prefab);
 
-    private static Args Args(string json) => new Args(JObject.Parse(json));
+    private static SurveyAreaOptions Options(string json) =>
+        SurveyAreaOptions.Bind(new OptionReader(SurveyAreaOptions.Spec, JObject.Parse(json)));
 
-    private static IReadOnlyList<string> Problems(string arguments)
-    {
-        using System.Text.Json.JsonDocument document = System.Text.Json.JsonDocument.Parse(arguments);
-        return StationGodMCP.Server.ArgumentCheck.Problems(StationGodMCP.Server.Program.InputSchemas["grid_survey"],
-            document.RootElement);
-    }
+    private static VerbError? Check(string options) =>
+        OptionCheck.Check(VerbSurface.Verb("survey")!, JObject.Parse(options), out _);
 }

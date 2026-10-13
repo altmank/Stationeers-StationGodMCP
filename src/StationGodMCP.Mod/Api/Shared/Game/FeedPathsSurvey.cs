@@ -8,42 +8,46 @@ using Assets.Scripts.Networks;
 using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Pipes;
 using StationGodMCP.Api.Shared;
-using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
-using StationGodMCP.Pure.Protocol;
+using StationGodMCP.Pure.Verbs;
 
-namespace StationGodMCP.Api;
+namespace StationGodMCP.Api.Shared.Game;
 
 /// <summary>
-/// feed_paths: from a root device on a network (an APC's output, a generator), the path the network takes to every
+/// Feed paths: from a root device on a network (an APC's output, a generator), the path the network takes to every
 /// other device on it (FeedPaths: breadth first over the model's links among the network's pieces and devices), and
 /// the rooms each path crosses. A piece is in the room of a 2 m cell it touches (its own first); a device in the room
-/// of its grid cell, as rooms reports it. A device fed through a room that is neither the root's nor its own is a
-/// daisy chain; a room its devices' feeds enter at more than one piece has several feeds. Read only.
+/// of its grid cell, as find room reports it. A device fed through a room that is neither the root's nor its own is a
+/// daisy chain; a room its devices' feeds enter at more than one piece has several feeds.
 /// </summary>
-internal static class FeedPathsApi
+internal static class FeedPathsSurvey
 {
     private const int MaximumMembers = 8192;
 
-    internal static FeedPathsView Handle(Args args)
+    /// <summary>
+    /// The feeds from the root device (its id) over the network of kind (cable, pipe or chute) that network names, or
+    /// the one its port joins, or its only one of that kind.
+    /// </summary>
+    internal static FeedPathsView Of(string rootId, string kindName, NetworkTarget? named, int? port)
     {
-        RunKind kind = (args.OptionalString("kind") ?? "cable").Trim().ToLowerInvariant() switch
+        RunKind kind = kindName switch
         {
-            "cable" => new CableRunKind(),
             "pipe" => new PipeRunKind(),
             "chute" => new ChuteRunKind(),
-            _ => throw ApiErrors.InvalidArgument("kind must be cable, pipe or chute.")
+            _ => new CableRunKind()
         };
-        Thing thing = GameLookup.RequireThing(args.ThingId("root"));
+        Thing thing = ThingId.TryRead(new Newtonsoft.Json.Linq.JValue(rootId), out ThingId id)
+            ? GameLookup.RequireThing(id)
+            : throw ApiErrors.Refused(ApiErrors.ThingNotFoundCode, $"survey feeds: {rootId} is no thing's id.");
         if (!(thing is Device root))
         {
-            throw ApiErrors.InvalidArgument($"root: {Names.Of(thing)} ({thing.PrefabName}) is not a device.");
+            throw ApiErrors.InvalidArgument($"survey feeds: {Names.Of(thing)} ({thing.PrefabName}) is no device.");
         }
 
-        long network = NetworkOf(args, kind, root);
+        long network = NetworkOf(named, port, kind, root);
         List<SmallGrid> members = kind.Family.NetworkMembers(new ThingId(network));
         members.AddRange(kind.Family.NetworkDevices(new ThingId(network)));
         if (members.Count > MaximumMembers)
@@ -113,13 +117,13 @@ internal static class FeedPathsApi
         return rooms.GetRoom(device.WorldGrid.Value)?.RoomId;
     }
 
-    // network_id, or the network the root's named port (or its only network of the kind) is on.
-    private static long NetworkOf(Args args, RunKind kind, Device root)
+    // The network named, or the one the root's port (or its only network of the kind) is on.
+    private static long NetworkOf(NetworkTarget? named, int? port, RunKind kind, Device root)
     {
         List<long> networks = kind.Family.DeviceNetworks(root);
-        if (args.Has("network_id"))
+        if (named != null)
         {
-            long wanted = NetworkHandles.Resolve(args, "network_id", kind.Family).Value;
+            long wanted = NetworkHandles.Resolve(named, "network", kind.Family).Value;
             if (!networks.Contains(wanted))
             {
                 throw ApiErrors.Refused("not_on_network",
@@ -130,7 +134,6 @@ internal static class FeedPathsApi
             return wanted;
         }
 
-        int? port = args.OptionalInt("port", 0, 64);
         if (port.HasValue)
         {
             return PortNetwork(kind, root, port.Value) ??
@@ -148,8 +151,7 @@ internal static class FeedPathsApi
         {
             throw ApiErrors.InvalidArgument(
                 $"{root.PrefabName} {root.ReferenceId} is on {networks.Count} {kind.Noun} networks " +
-                $"[{string.Join(", ", networks)}]; name one with {Vocabulary.Arg("network_id")} or " +
-                $"{Vocabulary.Arg("port")} ({Vocabulary.Tool("connections")} lists them).");
+                $"[{string.Join(", ", networks)}]; name one with network or port (inspect connections lists them).");
         }
 
         return networks[0];

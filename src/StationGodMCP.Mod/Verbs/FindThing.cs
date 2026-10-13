@@ -98,7 +98,7 @@ internal static class FindThing
     // An id's thing described as it is taken, from where the player stands then; null for a thing gone meanwhile.
     private static System.Func<long, FoundThingView?> Live(PlayerOrigin origin)
     {
-        List<ColorSwatch> swatches = PaintApi.Swatches();
+        List<ColorSwatch> swatches = ThingColors.Swatches();
         return id => ThingSearch.Live(id) is { } thing ? ThingSearch.ViewOf(thing, origin, swatches) : null;
     }
 

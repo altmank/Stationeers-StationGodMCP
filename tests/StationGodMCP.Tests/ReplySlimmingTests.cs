@@ -6,6 +6,7 @@ using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Verbs;
 using StationGodMCP.Pure.Rockets;
 using Xunit;
 
@@ -78,23 +79,22 @@ public sealed class ReplySlimmingTests
     [Fact]
     public void MemberFiltersAreOffUnlessAsked()
     {
-        NetworkMemberFilter filter = NetworkMemberFilter.Parse(new Args(new JObject()));
+        NetworkMemberFilter filter = MembersOf("{}");
 
         Assert.False(filter.OpenEndsOnly);
-        Assert.True(filter.KeepsPrefab("StructureChuteStraight"));
-        Assert.True(filter.KeepsPrefab(null));
+        Assert.True(filter.KeepsPrefab("StructureChuteStraight", 0));
+        Assert.True(filter.KeepsPrefab(null, 0));
     }
 
     [Fact]
     public void APrefabFilterMatchesAPartIgnoringCase()
     {
-        NetworkMemberFilter filter = NetworkMemberFilter.Parse(
-            new Args(JObject.Parse("""{"prefab_contains":" chutejunction ","open_ends_only":true}""")));
+        NetworkMemberFilter filter = MembersOf("""{"prefab":" *chutejunction* ","open_ends":true}""");
 
         Assert.True(filter.OpenEndsOnly);
-        Assert.True(filter.KeepsPrefab("StructureChuteJunction"));
-        Assert.False(filter.KeepsPrefab("StructureChuteStraight"));
-        Assert.False(filter.KeepsPrefab(null));
+        Assert.True(filter.KeepsPrefab("StructureChuteJunction", 0));
+        Assert.False(filter.KeepsPrefab("StructureChuteStraight", 0));
+        Assert.False(filter.KeepsPrefab(null, 0));
     }
 
     [Fact]
@@ -251,4 +251,13 @@ public sealed class ReplySlimmingTests
             new RunIssueView("open_end", "b", null, null),
             new RunIssueView("through_air", "c", null, null)
         });
+
+    // survey network's member filter as its handler reads the options (a point or box area; no player needed).
+    private static NetworkMemberFilter MembersOf(string options)
+    {
+        SurveyNetworkOptions network =
+            SurveyNetworkOptions.Bind(new OptionReader(SurveyNetworkOptions.Spec, JObject.Parse(options)));
+        return NetworkMemberFilter.Of(network.Selector.Prefab, network.OpenEnds == true,
+            network.Selector.AreaAround(null));
+    }
 }

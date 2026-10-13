@@ -78,15 +78,17 @@ internal sealed class PlaneView
     internal int RightSign => Right.Dx + Right.Dy + Right.Dz;
 
     /// <summary>
-    /// The plane as asked: plane "z=668" with side (+z or -z; default the side whose 2 m cell is in a room), or the face
-    /// the look ray hits (looking: true). Also the point the map centres on when the call gives none.
+    /// The plane as asked: plane "z=668" with side (+z or -z; default the side whose 2 m cell at around is in a room),
+    /// or the face the look ray hits (looking). Also the point the look ray hits, which the map centres on when the
+    /// call names no point.
     /// </summary>
-    internal static PlaneView Read(Args args, GridFacts facts, CameraUse camera, out Vec3? around)
+    internal static PlaneView Of(bool looking, string? planeText, string? sideText, Vec3? around, GridFacts facts,
+        CameraUse camera, out Vec3? looked)
     {
-        around = null;
-        if (args.OptionalBool("looking") ?? false)
+        looked = null;
+        if (looking)
         {
-            CameraHit hit = camera.Require(Vocabulary.Arg("looking")).HitWithin(20.0) ??
+            CameraHit hit = camera.Require("looking").HitWithin(20.0) ??
                             throw ApiErrors.Refused("no_crosshair_hit", "The look ray hits nothing within 20 m.");
             GridStep? outward = ViewBasis.Along(hit.Normal, 10.0);
             Vec3 point = hit.Point;
@@ -96,17 +98,16 @@ internal sealed class PlaneView
             }
 
             double along = point[outward.Value.Axis];
-            around = point;
+            looked = point;
             return new PlaneView(
                 FacePlane.Of(outward.Value.Axis, (int)System.Math.Round(System.Math.Round(along / 2.0) * 20.0)),
                 outward.Value);
         }
 
-        string text = args.OptionalString("plane") ??
-                      throw ApiErrors.InvalidArgument(Vocabulary.Text("Pass {arg:plane} (e.g. \"z=668\", an even " +
-                          "metre) or {arg:looking}: true."));
+        string text = planeText ??
+                      throw ApiErrors.InvalidArgument("plane (\"z=668\", an axis and an even metre) or looking: true " +
+                          "is needed.");
         FacePlane plane = ParsePlane(text);
-        string? sideText = args.OptionalString("side");
         GridStep side;
         if (sideText != null)
         {
@@ -117,10 +118,18 @@ internal sealed class PlaneView
         }
         else
         {
-            side = RoomSide(plane, args, facts);
+            side = RoomSide(plane, around, facts);
         }
 
         return new PlaneView(plane, side);
+    }
+
+    /// <summary>A call's plane, side, looking and around read as Of reads them.</summary>
+    internal static PlaneView Read(Args args, GridFacts facts, CameraUse camera, out Vec3? around)
+    {
+        JToken? given = args.Optional("around");
+        return Of(args.OptionalBool("looking") ?? false, args.OptionalString("plane"), args.OptionalString("side"),
+            given != null ? PointOf(given) : null, facts, camera, out around);
     }
 
     internal static FacePlane ParsePlane(string text)
@@ -138,13 +147,11 @@ internal sealed class PlaneView
         return FacePlane.Of(axis, (int)System.Math.Round(metres * 10.0));
     }
 
-    // The side whose neighbouring 2 m cell (at around, or anywhere along the plane near it) is in a room.
-    private static GridStep RoomSide(FacePlane plane, Args args, GridFacts facts)
+    // The side whose neighbouring 2 m cell at around is in a room; + without a point.
+    private static GridStep RoomSide(FacePlane plane, Vec3? around, GridFacts facts)
     {
         GridStep plus = GridStep.All[plane.Axis * 2];
-        JToken? token = args.Optional("around");
-        Vec3 centre = token != null ? PointOf(token) : Vec3.Zero;
-        if (token == null)
+        if (around is not { } centre)
         {
             return plus;
         }

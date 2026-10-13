@@ -60,11 +60,6 @@ internal static class ReplyShapes
         ["get_ic_source"] =
             "Its reply is the chip's source, as long as the chip's program (a 60 KB Lua hub): reading it is the call's " +
             "purpose. output_file writes it to a file and answers a pointer; get_ic_status reads everything else.",
-        ["grid_survey"] =
-            "A page lists everything in its cells, and a dense base holds 30 pieces in one 2 m cell, so a page runs past " +
-            "the budget however few cells it has. It is read a page at a time when routing; the default page is 8 " +
-            "cells with at most 40 pieces and 20 devices (truncated says what was cut), and kinds, network_ids, " +
-            "sections and compact narrow it.",
         ["rocket_status"] =
             "Every rocket in full is about 7 KB (fuel lines, engines, power devices); four rockets pass the budget. " +
             "Left to the rocket tools: compact shortens each rocket, rocket_id asks for one, and the explanations come " +
@@ -134,12 +129,6 @@ internal static class ReplyShapes
                 .List("DescribePrefabView.Ports", 4).List("PrefabEngineView.Inputs", 2)
         };
         shapes["dish_aim"] = new[] { S<DishAimView>() };
-        shapes["feed_paths"] = new[]
-        {
-            S<FeedPathsView>().List("FeedPathsView.Devices", W.DataNetworkDevices).List("FeedDeviceView.Rooms", 2)
-                .List("FeedDeviceView.Through", 1).List("FeedPathsView.Rooms", 12).List("FeedRoomView.Entries", 2)
-                .List("FeedRoomView.EntryAt", 2).List("FeedPathsView.Unreached", 2)
-        };
         shapes["find_spot"] = new[]
         {
             S<FindSpotView>().List("FindSpotView.Planes", 2).List("FindSpotView.Spots", D.FindSpots)
@@ -453,12 +442,6 @@ internal static class ReplyShapes
         {
             // Two stacks topped up and a new one, from three entries.
             S<SiloWithdrawView>().List("SiloWithdrawView.Taken", 3).List("SiloWithdrawView.Placed", 3)
-        };
-        shapes["wall_map"] = new[]
-        {
-            // radius 4 m default: a 17 x 17 character map.
-            S<WallMapView>().List("WallMapView.Rows", 18).Text("WallMapView.Rows[]", new string('W', 17))
-                .List("WallMapView.Sections", 16).List("WallMapView.Things", 8).List("WallMapView.FreeRects", 0)
         };
         shapes["weather"] = new[] { S<WeatherView>().List("WeatherView.Events", 6) };
         shapes["write_logic"] = new[] { S<LogicWriteView>() };

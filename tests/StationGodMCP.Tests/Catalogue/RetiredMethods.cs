@@ -17,8 +17,10 @@ internal static class RetiredMethods
         "consumables",
         "deep_miner_spots",
         "find_items",
+        "feed_paths",
         "find_things",
         "item_totals",
+        "grid_survey",
         "landing_pads",
         "list_containers",
         "list_devices",
@@ -27,8 +29,27 @@ internal static class RetiredMethods
         "plants",
         "rooms",
         "sample_logic",
+        "wall_map",
         "water_sources"
     };
 
     internal static bool Has(string? name) => name != null && ((HashSet<string>)Names).Contains(name);
+
+    /// <summary>
+    /// The arguments of a method catalogue entry whose form the game answers as a verb while the entry's other form
+    /// keeps its per-tool handler: connections' network and box forms (survey network). The checks that hold an
+    /// entry's arguments to its handler pass over them.
+    /// </summary>
+    internal static IReadOnlyDictionary<string, HashSet<string>> Forms { get; } =
+        new Dictionary<string, HashSet<string>>(StringComparer.Ordinal)
+        {
+            ["connections"] = new HashSet<string>(StringComparer.Ordinal)
+            {
+                "network_id", "kind", "limit", "offset", "prefab_contains", "open_ends_only", "min", "max", "near",
+                "radius_m", "summarize"
+            }
+        };
+
+    internal static bool HasArgument(string method, string argument) =>
+        Forms.TryGetValue(method, out HashSet<string>? arguments) && arguments.Contains(argument);
 }

@@ -4,13 +4,14 @@ using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Verbs;
 using Xunit;
 
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// connections' area filter (live: a 38 KB page of 200 of a cable network's 1,257 members): min and max keep the
-/// members inside a box, near with radius_m those within a radius, and the arguments that do not fit are refused.
+/// survey network's area filter (live: a 38 KB page of 200 of a cable network's 1,257 members): box keeps the members
+/// inside it, near with radius those within a radius, and the options that do not fit are problems.
 /// </summary>
 public sealed class MemberAreaTests
 {
@@ -38,18 +39,16 @@ public sealed class MemberAreaTests
     }
 
     [Fact]
-    public void NoAreaArgumentsKeepEverything()
+    public void NoAreaOptionsKeepEverything()
     {
-        NetworkMemberFilter filter = NetworkMemberFilter.Parse(new Args(new JObject()));
-
-        Assert.True(filter.KeepsPosition(new Vec3(99999, -500, 3)));
+        Assert.True(MembersOf("{}").KeepsPosition(new Vec3(99999, -500, 3)));
     }
 
     [Fact]
-    public void TheArgumentsReachTheFilter()
+    public void TheOptionsReachTheFilter()
     {
-        NetworkMemberFilter box = NetworkMemberFilter.Parse(Args("""{"min":[0,0,0],"max":{"x":2,"y":2,"z":2}}"""));
-        NetworkMemberFilter near = NetworkMemberFilter.Parse(Args("""{"near":[0,0,0],"radius_m":1}"""));
+        NetworkMemberFilter box = MembersOf("""{"box":[[0,0,0],[2,2,2]]}""");
+        NetworkMemberFilter near = MembersOf("""{"near":[0,0,0],"radius":1}""");
 
         Assert.True(box.KeepsPosition(new Vec3(1, 1, 1)));
         Assert.False(box.KeepsPosition(new Vec3(3, 1, 1)));
@@ -58,20 +57,30 @@ public sealed class MemberAreaTests
     }
 
     [Theory]
-    [InlineData("""{"min":[0,0,0]}""", "Give both min and max")]
-    [InlineData("""{"near":[0,0,0]}""", "near needs radius_m")]
-    [InlineData("""{"radius_m":3}""", "radius_m needs near")]
-    [InlineData("""{"near":[0,0,0],"radius_m":0}""", "radius_m")]
-    [InlineData("""{"near":[0,0,0],"radius_m":1001}""", "radius_m")]
-    [InlineData("""{"min":[0,0,0],"max":[1,1,1],"near":[0,0,0],"radius_m":1}""", "not both")]
-    [InlineData("""{"near":"player","radius_m":1}""", "near must be a position")]
-    public void AnAreaThatDoesNotFitIsRefused(string arguments, string message)
+    [InlineData("""{"near":[0,0,0]}""", "near", "needs radius")]
+    [InlineData("""{"radius":3}""", "radius", "needs near")]
+    [InlineData("""{"box":[[0,0,0],[1,1,1]],"near":[0,0,0],"radius":1}""", "box", "without near")]
+    public void AnAreaThatDoesNotFitIsAProblem(string options, string path, string problem)
     {
-        ApiException refused = Assert.Throws<ApiException>(() => AreaArgs.Parse(Args(arguments)));
+        OptionProblem found = Assert.Single(Options(options).Selector.AreaProblems(1000));
 
-        Assert.Equal("invalid_argument", refused.Code);
-        Assert.Contains(message, refused.Message);
+        Assert.Equal(path, found.Path);
+        Assert.Contains(problem, found.Problem);
     }
 
-    private static Args Args(string json) => new Args(JObject.Parse(json));
+    [Theory]
+    [InlineData("""{"what":"network","network":"5","near":[0,0,0],"radius":1001}""")]
+    [InlineData("""{"what":"network","network":"5","box":[[0,0,0]]}""")]
+    public void AnAreaOutsideTheCataloguesBoundsIsRefused(string options)
+    {
+        Assert.Equal("invalid_argument",
+            OptionCheck.Check(VerbSurface.Verb("survey")!, JObject.Parse(options), out _)?.Code);
+    }
+
+    private static SurveyNetworkOptions Options(string json) =>
+        SurveyNetworkOptions.Bind(new OptionReader(SurveyNetworkOptions.Spec, JObject.Parse(json)));
+
+    // survey network's member area as its handler reads it (a point or box; no player needed).
+    private static NetworkMemberFilter MembersOf(string json) =>
+        NetworkMemberFilter.Of(null, false, Options(json).Selector.AreaAround(null));
 }

@@ -5,6 +5,7 @@ using Newtonsoft.Json;
 using StationGodMCP.Api.Shared;
 
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Api.Views;
 
@@ -164,39 +165,35 @@ internal sealed class NetworkMembersView
 }
 
 /// <summary>
-/// connections' network-form filters: prefab_contains (a case-insensitive part of the prefab name) and open_ends_only
-/// (only members with an end of the network's kind that nothing is attached at: a run's loose ends, a device port left
-/// unjoined), and an area (min and max, or near with radius_m: only members whose position lies in it). All are applied
-/// before paging, so total counts the members kept.
+/// survey network's member filters: prefab (the verbs' prefab filter) and open_ends (only members with an end of the
+/// network's kind that nothing is attached at: a run's loose ends, a device port left unjoined), and an area (a box, or
+/// near with radius: only members whose position lies in it). All are applied before paging, so total counts the
+/// members kept.
 /// </summary>
 internal sealed class NetworkMemberFilter
 {
-    private NetworkMemberFilter(string? prefabContains, bool openEndsOnly, PointArea area)
+    private NetworkMemberFilter(PrefabFilter? prefab, bool openEndsOnly, PointArea area)
     {
-        PrefabContains = prefabContains;
+        Prefab = prefab;
         OpenEndsOnly = openEndsOnly;
         Area = area;
     }
 
     internal static NetworkMemberFilter None { get; } = new NetworkMemberFilter(null, false, PointArea.Anywhere);
 
-    internal string? PrefabContains { get; }
+    /// <summary>The prefabs kept; null keeps every prefab.</summary>
+    internal PrefabFilter? Prefab { get; }
 
     internal bool OpenEndsOnly { get; }
 
-    /// <summary>Where a member must stand (AreaArgs: min/max box, or near with radius_m); anywhere by default.</summary>
+    /// <summary>Where a member must stand (a box, or near with radius); anywhere by default.</summary>
     internal PointArea Area { get; }
 
-    internal static NetworkMemberFilter Parse(Args args)
-    {
-        string? prefab = args.OptionalString("prefab_contains")?.Trim();
-        return new NetworkMemberFilter(string.IsNullOrEmpty(prefab) ? null : prefab,
-            args.OptionalBool("open_ends_only") ?? false, AreaArgs.Parse(args));
-    }
+    internal static NetworkMemberFilter Of(PrefabFilter? prefab, bool openEndsOnly, PointArea area) =>
+        new NetworkMemberFilter(prefab, openEndsOnly, area);
 
-    internal bool KeepsPrefab(string? prefabName) =>
-        PrefabContains == null ||
-        (prefabName != null && prefabName.IndexOf(PrefabContains, System.StringComparison.OrdinalIgnoreCase) >= 0);
+    internal bool KeepsPrefab(string? prefabName, int prefabHash) =>
+        Prefab == null || Prefab.Keeps(prefabName, prefabHash);
 
     internal bool KeepsPosition(Vec3 position) => Area.Contains(position);
 }

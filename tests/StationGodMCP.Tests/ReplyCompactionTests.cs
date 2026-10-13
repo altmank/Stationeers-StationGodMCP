@@ -10,6 +10,7 @@ using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure.Catalogue;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Verbs;
 using StationGodMCP.Pure.Shaping;
 using StationGodMCP.Server;
 using StationGodMCP.Tests.CatalogueChecks;
@@ -163,35 +164,39 @@ public sealed class ReplyCompactionTests
     }
 
     [Theory]
-    [InlineData("""{"kinds":["chute"]}""", "chute", true)]
-    [InlineData("""{"kinds":["chute"]}""", "cable", false)]
-    [InlineData("""{"kinds":["Pipe"," cable "]}""", "pipe", true)]
+    [InlineData("""{"kind":["chute"]}""", "chute", true)]
+    [InlineData("""{"kind":["chute"]}""", "cable", false)]
+    [InlineData("""{"kind":["Pipe"," cable "]}""", "pipe", true)]
     [InlineData("""{}""", "cable", true)]
-    public void KindsKeepPiecesOfTheKindsNamed(string arguments, string kind, bool kept)
+    public void KindsKeepPiecesOfTheKindsNamed(string options, string kind, bool kept)
     {
-        Assert.Equal(kept, SurveyKinds.Parse(new Args(JObject.Parse(arguments))).AdmitsPiece(kind));
+        Assert.Equal(kept, KindsOf(options).AdmitsPiece(kind));
     }
 
     [Fact]
     public void KindsKeepDevicesWithAPortOfAKindNamed()
     {
-        SurveyKinds chutes = SurveyKinds.Parse(new Args(JObject.Parse("""{"kinds":["chute"]}""")));
+        SurveyKinds chutes = KindsOf("""{"kind":["chute"]}""");
 
         Assert.True(chutes.AdmitsDevice(new string?[] { "PowerAndData", "Chute" }));
         Assert.False(chutes.AdmitsDevice(new string?[] { "PowerAndData", "Pipe" }));
         Assert.True(SurveyKinds.Every.AdmitsDevice(new string?[0]));
-        Assert.True(SurveyKinds.Parse(new Args(JObject.Parse("""{"kinds":["cable"]}"""))).AdmitsDevice(new string?[] { "Data" }));
+        Assert.True(KindsOf("""{"kind":["cable"]}""").AdmitsDevice(new string?[] { "Data" }));
     }
 
     [Fact]
     public void AnUnknownKindIsRefused()
     {
-        ApiException refused = Assert.Throws<ApiException>(() =>
-            SurveyKinds.Parse(new Args(JObject.Parse("""{"kinds":["wire"]}"""))));
+        VerbError? refused = Pure.Verbs.OptionCheck.Check(VerbSurface.Verb("survey")!,
+            JObject.Parse("""{"what":"area","room":"28","kind":["wire"]}"""), out _);
 
-        Assert.Equal("invalid_argument", refused.Code);
-        Assert.Contains("cable, pipe, chute", refused.Message);
+        Assert.Equal("invalid_argument", refused?.Code);
+        Assert.Contains("kind", refused!.Message);
     }
+
+    // survey area's kind as its handler reads it.
+    private static SurveyKinds KindsOf(string options) =>
+        SurveyKinds.Of(SurveyAreaOptions.Bind(new OptionReader(SurveyAreaOptions.Spec, JObject.Parse(options))).Kind);
 
     [Fact]
     public void ModInfoListsTheCostliestMethodsAndCountsThemAll()

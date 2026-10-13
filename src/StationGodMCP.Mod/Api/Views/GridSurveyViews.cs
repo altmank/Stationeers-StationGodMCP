@@ -2,110 +2,92 @@
 
 using System.Collections.Generic;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Protocol;
+using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Api.Views;
 
 /// <summary>
-/// grid_survey: one page of 2 m cells of a box or a room, each by what occupies it (SurveyOccupancyView) or in full
-/// (SurveyCellView, with cell_detail full), and the pieces, devices and networks standing in the page's cells. A part
-/// sections leaves out is absent; count, offset, limit, total and has_more always describe the page of cells.
+/// survey area's reply (catalogue survey.json), in its declared shape: legend (left out without cells), cells (the
+/// page's 2 m cells, left out when sections leaves cells out), count, offset, limit, total and has_more, then each part
+/// sections keeps: pieces, devices, networks, network_visibility and doors. A part left out is absent, not empty.
 /// </summary>
-internal sealed class GridSurveyView
+internal static class SurveyAreaReply
 {
-    internal GridSurveyView(Slice<SurveyCell> page, SurveyContents contents, SurveySections sections,
-        string? legend)
+    internal static JObject Of(Page<SurveyCell> page, SurveyContents contents, SurveySections sections, string? legend)
     {
-        Legend = legend;
-        Cells = sections.Pick(SurveySection.Cells, page.Items);
-        Count = page.Items.Count;
-        Offset = page.Offset;
-        Limit = page.Limit;
-        Total = page.Total;
-        HasMore = page.HasMore;
-        Pieces = sections.Pick(SurveySection.Pieces, contents.Pieces);
-        Devices = sections.Pick(SurveySection.Devices, contents.Devices);
-        Networks = sections.Pick(SurveySection.Networks, contents.Networks);
-        NetworkVisibility = sections.Pick(SurveySection.NetworkVisibility, contents.NetworkVisibility);
-        Doors = sections.Pick(SurveySection.Doors, contents.Doors);
+        JsonSerializer serializer = ApiJson.Fresh();
+        JObject reply = new JObject();
+        if (legend != null)
+        {
+            reply["legend"] = legend;
+        }
+
+        if (sections.Includes(SurveySection.Cells))
+        {
+            reply["cells"] = JToken.FromObject(page.Entries, serializer);
+        }
+
+        reply["count"] = page.Entries.Count;
+        reply["offset"] = page.Offset;
+        if (page.Limit is { } limit)
+        {
+            reply["limit"] = limit;
+        }
+
+        reply["total"] = page.Total;
+        reply["has_more"] = page.HasMore;
+        Part(reply, "pieces", sections, SurveySection.Pieces, contents.Pieces, serializer);
+        Part(reply, "devices", sections, SurveySection.Devices, contents.Devices, serializer);
+        Part(reply, "networks", sections, SurveySection.Networks, contents.Networks, serializer);
+        Part(reply, "network_visibility", sections, SurveySection.NetworkVisibility, contents.NetworkVisibility,
+            serializer);
+        Part(reply, "doors", sections, SurveySection.Doors, contents.Doors, serializer);
+        return reply;
     }
 
-    /// <summary>How to read the cells' strings; left out when sections leaves out cells.</summary>
-    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-    public string? Legend { get; }
-
-    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-    public List<SurveyCell>? Cells { get; }
-
-    public int Count { get; }
-
-    public int Offset { get; }
-
-    public int Limit { get; }
-
-    /// <summary>2 m cells in the box or room, over all pages.</summary>
-    public int Total { get; }
-
-    public bool HasMore { get; }
-
-    /// <summary>Cables, pipes and chutes with a cell in this page's cells (with network_ids: on one of them).</summary>
-    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-    public List<SurveyPieceView>? Pieces { get; }
-
-    /// <summary>
-    /// Devices with a cell in this page's cells, with their cable and pipe ports (with network_ids: those with a port
-    /// on one of them).
-    /// </summary>
-    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-    public List<SurveyDeviceView>? Devices { get; }
-
-    /// <summary>A RunCableNetworkView or RunPipeNetworkView per network of the pieces listed.</summary>
-    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-    public List<object>? Networks { get; }
-
-    /// <summary>
-    /// Per network of the pieces listed: their cells by how visible a piece in them is, the floating ones (air) by
-    /// position, and with include_refund what removing those pieces would give back.
-    /// </summary>
-    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-    public List<SurveyNetworkVisibilityView>? NetworkVisibility { get; }
-
-    /// <summary>Doors on the faces of this page's cells, with their keep-out ('x' in support).</summary>
-    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-    public List<SurveyDoorView>? Doors { get; }
+    private static void Part<T>(JObject reply, string key, SurveySections sections, SurveySection part, List<T> list,
+        JsonSerializer serializer)
+    {
+        if (sections.Includes(part))
+        {
+            reply[key] = JToken.FromObject(list, serializer);
+        }
+    }
 }
 
-/// <summary>grid_survey's legend: how to read each cell, by cell_detail.</summary>
+/// <summary>survey area's legend: how to read each cell, by cell_detail.</summary>
 internal static class SurveyLegends
 {
-    internal static string Occupancy =>
-        Vocabulary.Text("Each cell is a 2 m cell at its centre (odd metres). empty: true when it holds nothing. " +
-            "frame_id: its frame. faces: its faces +x, -x, +y, -y, +z, -z, each '.' nothing, 'w' wall, 'g' window, " +
-            "'x' door (door over window over wall); left out when all are '.'. small: its 64 small cells (0.5 m) at " +
-            "-1, -0.5, 0 and +0.5 m from the centre along each axis, character index x + 4y + 16z: '.' empty, 'c' " +
-            "cable, 'p' pipe, 'b' cable and pipe, 'h' chute, 'd' device, 'o' another small-grid thing, 'r' a " +
-            "rocket's empty cell; left out when all are '.'. {arg:cell_detail} full adds room, frame build state, " +
-            "face structure ids and the support string.");
+    internal const string Occupancy =
+        "Each cell is a 2 m cell at its centre (odd metres). empty: true when it holds nothing. " +
+        "frame_id: its frame. faces: its faces +x, -x, +y, -y, +z, -z, each '.' nothing, 'w' wall, 'g' window, " +
+        "'x' door (door over window over wall); left out when all are '.'. small: its 64 small cells (0.5 m) at " +
+        "-1, -0.5, 0 and +0.5 m from the centre along each axis, character index x + 4y + 16z: '.' empty, 'c' " +
+        "cable, 'p' pipe, 'b' cable and pipe, 'h' chute, 'd' device, 'o' another small-grid thing, 'r' a " +
+        "rocket's empty cell; left out when all are '.'. cell_detail full adds room, frame build state, " +
+        "face structure ids and the support string.";
 
-    internal static string Full =>
-        Vocabulary.Text("Each cell is a 2 m cell at its centre (odd metres). small: its 64 small-grid cells (0.5 m) " +
-            "at -1, -0.5, 0 and +0.5 m from the centre along each axis (index 0 to 3; index 0 lies on the cell's " +
-            "minimum face plane, shared with the neighbour), character index x + 4y + 16z. '.' empty, 'c' cable, 'p' " +
-            "pipe, 'b' cable and pipe, 'h' chute, 'd' device, 'o' another small-grid thing (a mounted item, a rail), " +
-            "'r' a rocket's empty cell (its fuselage decides which kind of piece it takes). Frames and walls never " +
-            "block cables or pipes; a device, chute or 'o' blocks both; a pipe blocks a cable (and a cable a pipe) " +
-            "only along the axis its ends lie on. A chute needs a cell with no cable, pipe, device, chute or 'o'. " +
-            "support: the same 64 cells by what holds a piece there up: 'i' inside a frame (every 2 m cell the small " +
-            "cell touches holds a frame: hidden in the frame's body), 'e' a frame edge or corner, 'f' on a frame's " +
-            "face (a frame's top face is the minimum plane of the cell above it), 'w' on a wall's plane, 'a' air " +
-            "(plan_*_route style supported avoids 'a' cells); over those, 'x' a door's keep-out (its face and the " +
-            "configured band either side inside its rectangle: the planners never route there without " +
-            "{arg:allow_door_keepout}; the floor slab under a threshold is not in it) and 'g' a window's face " +
-            "(routes pay extra, crosses_window). A door's face is no wall support. network_visibility counts each " +
-            "listed network's cells the same way (inside, frame_surface, wall, air) and lists the floating (air) " +
-            "ones.");
+    internal const string Full =
+        "Each cell is a 2 m cell at its centre (odd metres). small: its 64 small-grid cells (0.5 m) " +
+        "at -1, -0.5, 0 and +0.5 m from the centre along each axis (index 0 to 3; index 0 lies on the cell's " +
+        "minimum face plane, shared with the neighbour), character index x + 4y + 16z. '.' empty, 'c' cable, 'p' " +
+        "pipe, 'b' cable and pipe, 'h' chute, 'd' device, 'o' another small-grid thing (a mounted item, a rail), " +
+        "'r' a rocket's empty cell (its fuselage decides which kind of piece it takes). Frames and walls never " +
+        "block cables or pipes; a device, chute or 'o' blocks both; a pipe blocks a cable (and a cable a pipe) " +
+        "only along the axis its ends lie on. A chute needs a cell with no cable, pipe, device, chute or 'o'. " +
+        "support: the same 64 cells by what holds a piece there up: 'i' inside a frame (every 2 m cell the small " +
+        "cell touches holds a frame: hidden in the frame's body), 'e' a frame edge or corner, 'f' on a frame's " +
+        "face (a frame's top face is the minimum plane of the cell above it), 'w' on a wall's plane, 'a' air " +
+        "(plan route with style supported avoids 'a' cells); over those, 'x' a door's keep-out (its face and the " +
+        "configured band either side inside its rectangle: the planners never route there without " +
+        "allow door_keepout; the floor slab under a threshold is not in it) and 'g' a window's face " +
+        "(routes pay extra, crosses_window). A door's face is no wall support. network_visibility counts each " +
+        "listed network's cells the same way (inside, frame_surface, wall, air) and lists the floating (air) " +
+        "ones.";
 }
 
 /// <summary>One network's listed pieces: their cells by visibility, where they float, and their removal refund.</summary>

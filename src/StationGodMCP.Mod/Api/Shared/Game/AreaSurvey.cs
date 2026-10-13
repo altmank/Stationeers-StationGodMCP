@@ -9,74 +9,100 @@ using Assets.Scripts.Networks;
 using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Electrical;
 using Assets.Scripts.Objects.Pipes;
-using Newtonsoft.Json.Linq;
 using Objects.Structures;
 using StationGodMCP.Api.Shared;
-using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Shared.Game.Build;
 using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Api.Shared.Game.Structures;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
-using StationGodMCP.Pure.Profiling;
-using StationGodMCP.Pure.Protocol;
+using StationGodMCP.Pure.Verbs;
 using UnityEngine;
 
-namespace StationGodMCP.Api;
+namespace StationGodMCP.Api.Shared.Game;
 
 /// <summary>
-/// grid_survey: the 2 m cells of a box (min and max corners in metres) or of a room (room_id), one page at a time:
-/// each cell by what occupies it (its frame, its six faces as one string (FaceCode), its 64 small cells as one string,
-/// SmallCellCode), or with cell_detail full also its room, the frame's build state, each face structure and what
-/// supports each small cell (CellSupports); then the cables, pipes, chutes and devices standing in the page's cells, device ports with the
-/// cell a piece joins them from, and the networks of the pieces listed; chute pieces with the way items move through
-/// them (ChuteFlow) and what rides in them. sections keeps only the parts named (SurveySections), network_ids only the
-/// pieces of those networks and the devices with a port on one (SurveyNetworkFilter), kinds and prefab, prefabs or
-/// prefab_contains only those pieces and devices (SurveyFilter). Read only.
+/// Area survey: the 2 m cells of a box or of a room, each by what occupies it (its frame, its six faces as one string
+/// (FaceCode), its 64 small cells as one string, SmallCellCode), or in full also its room, the frame's build state,
+/// each face structure and what supports each small cell (CellSupports); then the cables, pipes, chutes and devices
+/// standing in a page's cells, device ports with the cell a piece joins them from, and the networks of the pieces
+/// listed; chute pieces with the way items move through them (ChuteFlow) and what rides in them. A SurveyFilter keeps
+/// only the pieces and devices of the networks, kinds and prefabs named.
 /// </summary>
-internal static class GridSurveyApi
+internal static class AreaSurvey
 {
-    private const int DefaultLimit = ReplyDefaults.GridSurveyCells;
-    private const int MaximumLimit = 125;
-    private const long MaximumCells = 20000;
+    internal const long MaximumCells = 20000;
 
-    [Profiled]
-    internal static GridSurveyView Handle(Args args)
+    /// <summary>What the grid holds, as a survey reads it.</summary>
+    internal static GridFacts Facts() => new GridFacts(new CableRunKind(), SmallGridBlock.None, new HashSet<long>());
+
+    /// <summary>A page's cells as views: what occupies each, or each in full.</summary>
+    internal static List<SurveyCell> CellViews(GridFacts facts, IReadOnlyList<GridCell> cells, SurveyCellDetail detail)
     {
-        PageRequest page = PageRequest.From(args, DefaultLimit, MaximumLimit);
-        SurveySections sections = SurveySections.Parse(args);
-        SurveyCellDetail detail = SurveyCellDetails.Parse(args);
-        bool includeNetworks = args.OptionalBool("include_networks") ?? true;
-        bool includeRefund = args.OptionalBool("include_refund") ?? false;
-        bool includePieceCells = args.OptionalBool("include_piece_cells") ?? false;
-        SurveyNetworkFilter filter = NetworkFilter(args);
-        SurveyKinds kinds = SurveyKinds.Parse(args);
-        PrefabMatch prefabs = PrefabMatches.Parse(args);
-        GridFacts facts = new GridFacts(new CableRunKind(), SmallGridBlock.None, new HashSet<long>());
-        List<GridCell> cells = Cells(args);
-        if (args.OptionalBool("occupied_only") ?? false)
+        List<SurveyCell> views = new List<SurveyCell>(cells.Count);
+        foreach (GridCell cell in cells)
         {
-            cells = cells.FindAll(cell => Holds(facts, cell));
+            views.Add(detail == SurveyCellDetail.Full ? CellView(facts, cell) : OccupancyView(facts, cell));
         }
 
-        Slice<GridCell> slice = Slice<GridCell>.Of(cells, page);
-        List<SurveyCell> views = new List<SurveyCell>(slice.Items.Count);
-        if (sections.Includes(SurveySection.Cells))
+        return views;
+    }
+
+    /// <summary>The cells that hold a frame, a structure on one of their faces, or anything in their small cells.</summary>
+    internal static List<GridCell> Occupied(GridFacts facts, List<GridCell> cells) =>
+        cells.FindAll(cell => Holds(facts, cell));
+
+    /// <summary>
+    /// The networks a list names, each resolved: a network's id, or a cable, pipe or chute piece on it. path names the
+    /// option in a refusal (network[2]).
+    /// </summary>
+    internal static SurveyNetworkFilter NetworkFilter(IReadOnlyList<NetworkTarget>? networks)
+    {
+        if (networks == null)
         {
-            foreach (GridCell cell in slice.Items)
-            {
-                views.Add(detail == SurveyCellDetail.Full ? CellView(facts, cell) : OccupancyView(facts, cell));
-            }
+            return SurveyNetworkFilter.Every;
         }
 
-        SurveyContents contents = Contents(facts, slice.Items, sections, new SurveyFilter(filter, kinds, prefabs), includeNetworks,
-            includeRefund, includePieceCells);
-        string? legend = !sections.Includes(SurveySection.Cells) ? null
-            : detail == SurveyCellDetail.Full ? SurveyLegends.Full
-            : SurveyLegends.Occupancy;
-        page.Note("cells", slice.Items.Count, cells.Count);
-        return new GridSurveyView(Slice<SurveyCell>.Page(views, page, cells.Count), contents, sections, legend);
+        HashSet<long> ids = new HashSet<long>();
+        for (int index = 0; index < networks.Count; index++)
+        {
+            ids.Add(NetworkNamed(networks[index].Id, $"network[{index}]").Value);
+        }
+
+        return SurveyNetworkFilter.Only(ids);
+    }
+
+    /// <summary>The 2 m cells of a box (two corners, in metres), bottom up; refused over MaximumCells.</summary>
+    internal static List<GridCell> InBox(Vec3 first, Vec3 second)
+    {
+        GridCell min = RunArgs.CellOf(new Vector3((float)first.X, (float)first.Y, (float)first.Z));
+        GridCell max = RunArgs.CellOf(new Vector3((float)second.X, (float)second.Y, (float)second.Z));
+        long count = SmallCellCode.CountIn(min, max);
+        if (count > MaximumCells)
+        {
+            throw ApiErrors.InvalidArgument($"survey area: box holds {count} 2 m cells; at most {MaximumCells}.");
+        }
+
+        return SmallCellCode.LargeCellsIn(min, max);
+    }
+
+    /// <summary>The 2 m cells of a room by the id find room reports, bottom up; refused room_not_found.</summary>
+    internal static List<GridCell> InRoom(string roomId)
+    {
+        Room room = (long.TryParse(roomId, NumberStyles.Integer, CultureInfo.InvariantCulture, out long id)
+                        ? StructureAirRecord.FindRoom(id)
+                        : null) ??
+                    throw ApiErrors.Refused("room_not_found",
+                        $"survey area: no closed room has id {roomId}; find room lists them.");
+        List<GridCell> cells = new List<GridCell>();
+        foreach (WorldGrid grid in new List<WorldGrid>(room.Grids))
+        {
+            cells.Add(PieceShapes.Cell(grid.Value));
+        }
+
+        cells.Sort(static (a, b) => a.Y != b.Y ? a.Y.CompareTo(b.Y) : a.Z != b.Z ? a.Z.CompareTo(b.Z) : a.X.CompareTo(b.X));
+        return cells;
     }
 
     // occupied_only: a 2 m cell holding a frame, a structure on one of its faces, or anything in its small cells.
@@ -106,42 +132,22 @@ internal static class GridSurveyApi
         return false;
     }
 
-    private static SurveyNetworkFilter NetworkFilter(Args args)
+    // A cable, pipe or chute network's id, or a piece standing for its network.
+    private static ThingId NetworkNamed(string given, string name)
     {
-        if (!args.Has(SurveyNetworkFilter.Argument))
-        {
-            return SurveyNetworkFilter.Every;
-        }
-
-        JArray array = args.Array(SurveyNetworkFilter.Argument, SurveyNetworkFilter.MaximumNetworks);
-        HashSet<long> networks = new HashSet<long>();
-        for (int index = 0; index < array.Count; index++)
-        {
-            networks.Add(NetworkNamed(array[index], $"{SurveyNetworkFilter.Argument}[{index}]").Value);
-        }
-
-        return SurveyNetworkFilter.Only(networks);
-    }
-
-    // A cable, pipe or chute network's id, or a piece standing for its network (recorded in resolved_networks).
-    private static ThingId NetworkNamed(JToken token, string name)
-    {
-        if (!ThingId.TryRead(token, out ThingId id))
+        if (!ThingId.TryRead(new Newtonsoft.Json.Linq.JValue(given), out ThingId id))
         {
             throw ApiErrors.InvalidArgument(
-                $"{Vocabulary.Path(name)} must be a network id or the reference id of a cable, pipe or chute piece " +
-                "on it.");
+                $"survey area: {name} must be a network id or the id of a cable, pipe or chute piece on it.");
         }
 
         if (GameLookup.TryFindThing(id, out Thing thing))
         {
             IReferencable network = (thing is SmallGrid piece ? NetworkOf(piece) : null) ??
                                     throw ApiErrors.InvalidArgument(
-                                        $"{Vocabulary.Path(name)}: {Names.Of(thing)} ({thing.PrefabName}) is no " +
+                                        $"survey area: {name}: {Names.Of(thing)} ({thing.PrefabName}) is no " +
                                         "cable, pipe or chute piece on a network; name the network or a piece on it.");
-            ThingId resolved = new ThingId(network.ReferenceId);
-            ResolvedNetworks.Record(name, new NetworkHandle.ById(id), resolved);
-            return resolved;
+            return new ThingId(network.ReferenceId);
         }
 
         bool known = Referencable.Find<CableNetwork>(id.Value) != null ||
@@ -150,7 +156,7 @@ internal static class GridSurveyApi
         return known
             ? id
             : throw ApiErrors.Refused("network_not_found",
-                $"{Vocabulary.Path(name)}: {id} names no thing and no cable, pipe or chute network. A network's id " +
+                $"survey area: {name}: {id} names no thing and no cable, pipe or chute network. A network's id " +
                 "changes after almost every edit; name a piece on it instead.");
     }
 
@@ -164,47 +170,6 @@ internal static class GridSurveyApi
 
     private static ThingId? NetworkIdOf(SmallGrid piece) =>
         NetworkOf(piece) is IReferencable network ? new ThingId(network.ReferenceId) : null;
-
-    private static List<GridCell> Cells(Args args)
-    {
-        if (args.Has("room_id") == (args.Has("min") || args.Has("max")))
-        {
-            throw ApiErrors.InvalidArgument(Vocabulary.Text("Pass {arg:min} and {arg:max} (a box, in metres) or " +
-                "{arg:room_id} (from {tool:rooms})."));
-        }
-
-        if (args.Has("room_id"))
-        {
-            if (!ThingId.TryRead(args.Optional("room_id"), out ThingId id))
-            {
-                throw ApiErrors.InvalidArgument(Vocabulary.Text("Argument '{arg:room_id}' must be a room id as " +
-                    "{tool:rooms} reports it."));
-            }
-
-            Room room = StructureAirRecord.FindRoom(id.Value) ??
-                        throw ApiErrors.Refused("room_not_found", $"No room has id {id}.");
-            List<GridCell> cells = new List<GridCell>();
-            foreach (WorldGrid grid in new List<WorldGrid>(room.Grids))
-            {
-                cells.Add(PieceShapes.Cell(grid.Value));
-            }
-
-            cells.Sort(static (a, b) => a.Y != b.Y ? a.Y.CompareTo(b.Y) : a.Z != b.Z ? a.Z.CompareTo(b.Z) : a.X.CompareTo(b.X));
-            return cells;
-        }
-
-        GridCell min = RunArgs.CellOf(RunArgs.PositionOf(args.Optional("min")!, "min"));
-        GridCell max = RunArgs.CellOf(RunArgs.PositionOf(args.Optional("max") ??
-                                                          throw ApiErrors.InvalidArgument(
-                                                              Vocabulary.Text("Pass {arg:max} too.")), "max"));
-        long count = SmallCellCode.CountIn(min, max);
-        if (count > MaximumCells)
-        {
-            throw ApiErrors.InvalidArgument($"The box holds {count} 2 m cells; at most {MaximumCells}.");
-        }
-
-        return SmallCellCode.LargeCellsIn(min, max);
-    }
 
     private static SurveyOccupancyView OccupancyView(GridFacts facts, GridCell cell)
     {
@@ -293,7 +258,12 @@ internal static class GridSurveyApi
         return views;
     }
 
-    private static SurveyContents Contents(GridFacts facts, List<GridCell> cells, SurveySections sections,
+    /// <summary>
+    /// What stands in a page's cells, as sections asks for it: the pieces, devices, networks, network visibility and
+    /// doors; includeNetworks the networks of the pieces, includeRefund each piece's removal refund, includePieceCells
+    /// every small cell of a long piece.
+    /// </summary>
+    internal static SurveyContents Contents(GridFacts facts, List<GridCell> cells, SurveySections sections,
         SurveyFilter filter, bool includeNetworks, bool includeRefund, bool includePieceCells)
     {
         Dictionary<long, SmallGrid> pieces = new Dictionary<long, SmallGrid>();
@@ -369,7 +339,7 @@ internal static class GridSurveyApi
         foreach (long id in ids)
         {
             SurveyDeviceView view = DeviceView(devices[id]);
-            if (filter.AdmitsDevice(devices[id].PrefabName, view.Ports.ConvertAll(static port => port.NetworkId),
+            if (filter.AdmitsDevice(devices[id].PrefabName, devices[id].PrefabHash, view.Ports.ConvertAll(static port => port.NetworkId),
                     view.Ports.ConvertAll(static port => (string?)port.Type)))
             {
                 views.Add(view);
@@ -382,7 +352,7 @@ internal static class GridSurveyApi
     private static void AddPiece(Dictionary<long, SmallGrid> pieces, SmallGrid? piece, SurveyFilter filter)
     {
         if (piece != null && !piece.IsBeingDestroyed &&
-            filter.AdmitsPiece(NetworkIdOf(piece), KindOf(piece), piece.PrefabName))
+            filter.AdmitsPiece(NetworkIdOf(piece), KindOf(piece), piece.PrefabName, piece.PrefabHash))
         {
             pieces[piece.ReferenceId] = piece;
         }

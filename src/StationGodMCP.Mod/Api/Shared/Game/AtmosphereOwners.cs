@@ -200,4 +200,63 @@ internal static class AtmosphereOwners
             new WaterAmount(mixture.PollutedWater.Quantity.ToDouble(), mixture.PollutedWater.Volume.ToDouble()),
             new WaterAmount(steam, steam * Mole.MolarVolume(Chemistry.GasType.Water).ToDouble()));
     }
+
+    /// <summary>Whether a thing holds an atmosphere inspect atmosphere reports: its own, a network's, or in its slots.</summary>
+    /// <remarks>Allocation free, so a world scan (find thing has_atmosphere) can filter on it.</remarks>
+    internal static bool HoldsAtmosphere(Thing thing)
+    {
+        if (thing.InternalAtmosphere != null || (thing is INetworkedPipe pipe && pipe.PipeNetwork != null) ||
+            (thing is INetworkedLandingPad pad && pad.LandingPadNetwork != null) || MountedNetworkOf(thing) != null)
+        {
+            return true;
+        }
+
+        if (thing is Device device && device.ConnectedPipeNetworks != null)
+        {
+            List<PipeNetwork> networks = device.ConnectedPipeNetworks;
+            for (int index = 0; index < networks.Count; index++)
+            {
+                if (networks[index] != null)
+                {
+                    return true;
+                }
+            }
+        }
+
+        List<Slot>? slots = thing.Slots;
+        if (slots == null)
+        {
+            return false;
+        }
+
+        for (int index = 0; index < slots.Count; index++)
+        {
+            Slot slot = slots[index];
+            if (slot != null && slot.Type != Slot.Class.Organ)
+            {
+                DynamicThing occupant = slot.Get();
+                if (occupant != null && occupant.InternalAtmosphere != null)
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// The pipe network a pipe-mounted device reads: the network of the pipe in its small cell, when the game counts
+    /// it readable (DevicePipeMounted.HasReadableAtmosphere); null for anything else.
+    /// </summary>
+    internal static PipeNetwork? MountedNetworkOf(Thing thing)
+    {
+        if (!(thing is DevicePipeMounted mounted) || !mounted.HasReadableAtmosphere)
+        {
+            return null;
+        }
+
+        Pipe pipe = mounted.SmallCell.Pipe;
+        return pipe != null ? pipe.PipeNetwork : null;
+    }
 }

@@ -1871,8 +1871,7 @@
         }
       },
       "x-views": ["AdvanceBuildStateView"],
-      "x-shaping": "none",
-      "x-read-by": {"from_id": "Api/Shared/SourceArgs.cs"}
+      "x-shaping": "none"
     },
     {
       "name": "atmosphere_contents",

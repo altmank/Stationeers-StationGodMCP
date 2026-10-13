@@ -5,13 +5,14 @@ using System.Linq;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Verbs;
 using StationGodMCP.Pure.Shaping;
 using Xunit;
 
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// The order of a paged world list (find_things, find_items, list_containers, outer_frames). Nearest follows the
+/// The order of a paged world list (find thing, item, container, frame). Nearest follows the
 /// player, so pages taken while the player moves overlap and leave gaps; reference_id pages fit together whatever the
 /// player does.
 /// </summary>
@@ -75,21 +76,22 @@ public sealed class ListOrderTests
     [Theory]
     [InlineData(null, false)]
     [InlineData("nearest", false)]
-    [InlineData(" Reference_ID ", true)]
-    public void TheOrderArgumentTakesItsWordsAndDefaultsToNearest(string? given, bool byReferenceId)
+    [InlineData(" ID ", true)]
+    public void TheOrderOptionTakesItsWordsAndDefaultsToNearest(string? given, bool byReferenceId)
     {
-        JObject args = given == null ? new JObject() : new JObject { ["order"] = given };
+        JObject options = given == null ? new JObject() : new JObject { ["order"] = given };
 
-        Assert.Equal(byReferenceId ? ListOrder.ReferenceId : ListOrder.Nearest, ListOrderArg.From(new Args(args)));
+        Assert.Equal(byReferenceId ? ListOrder.ReferenceId : ListOrder.Nearest,
+            FindContainerOptions.Bind(new OptionReader(FindContainerOptions.Spec, options)).Paging.Order);
     }
 
     [Fact]
-    public void AnotherOrderIsAnInvalidArgument()
+    public void AnotherOrderIsAnOptionProblem()
     {
-        ApiException error = Assert.Throws<ApiException>(
-            () => ListOrderArg.From(new Args(new JObject { ["order"] = "position" })));
+        VerbError? error = OptionCheck.Check(VerbSurface.Verb("find")!,
+            new JObject { ["what"] = "container", ["order"] = "position" }, out _);
 
-        Assert.Equal(ApiErrors.InvalidArgumentCode, error.Code);
+        Assert.Equal(ApiErrors.InvalidArgumentCode, error?.Code);
     }
 
     [Fact]

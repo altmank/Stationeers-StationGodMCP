@@ -5,13 +5,14 @@ using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Verbs;
 using Xunit;
 
 namespace StationGodMCP.Tests;
 
 /// <summary>
 /// The prefab index (Pure/PrefabIndex) against a model of the game's two master lists, and the prefabs argument
-/// (PrefabMatch.OfNames, PrefabMatches.Parse). The index must answer what a walk of a list answers, whatever order
+/// (PrefabMatch.OfNames, PrefabMatch.ForIndex). The index must answer what a walk of a list answers, whatever order
 /// things arrive, leave, change name or get cleared in.
 /// </summary>
 public sealed class PrefabIndexTests
@@ -327,13 +328,12 @@ public sealed class PrefabIndexTests
         }
     }
 
-    // ---- prefabs ----
+    // ---- the verbs' prefab filter, as the index reads it ----
 
     [Fact]
-    public void PrefabsKeepsAnyOfItsNamesInAnyCase()
+    public void ListedPrefabsKeepAnyOfTheirNamesInAnyCase()
     {
-        PrefabMatch match = PrefabMatches.Parse(new Args(JObject.Parse(
-            """{"prefabs": [" ItemIronIngot ", "itemsteelingot"]}""")));
+        PrefabMatch match = PrefabMatch.ForIndex(Prefab("""{"prefab": [" ItemIronIngot ", "itemsteelingot"]}"""));
 
         Assert.True(match.Keeps("ItemIronIngot"));
         Assert.True(match.Keeps("ItemSteelIngot"));
@@ -343,33 +343,34 @@ public sealed class PrefabIndexTests
     }
 
     [Fact]
-    public void PrefabsWithPrefabContainsMustBothMatch()
+    public void AListedNameAndAPartAreWalkedNotIndexed()
     {
-        PrefabMatch match = PrefabMatches.Parse(new Args(JObject.Parse(
-            """{"prefabs": ["ItemIronIngot", "ItemIronOre"], "prefab_contains": "Ore"}""")));
+        PrefabFilter mixed = Prefab("""{"prefab": ["ItemIronIngot", "*Ore*"]}""")!;
 
-        Assert.True(match.Keeps("ItemIronOre"));
-        Assert.False(match.Keeps("ItemIronIngot"));
+        Assert.False(PrefabMatch.ForIndex(mixed).IsActive);
+        Assert.True(mixed.Keeps("ItemIronOre", 0));
+        Assert.True(mixed.Keeps("ItemIronIngot", 0));
     }
 
     [Theory]
-    [InlineData("""{"prefabs": ["ItemIronIngot"], "prefab": "ItemIronIngot"}""", "not both")]
-    [InlineData("""{"prefabs": []}""", "1 to 200")]
-    [InlineData("""{"prefabs": "ItemIronIngot"}""", "1 to 200")]
-    [InlineData("""{"prefabs": ["ItemIronIngot", ""]}""", "prefabs[1]")]
-    [InlineData("""{"prefabs": ["ItemIronIngot", 5]}""", "prefabs[1]")]
-    public void ABadPrefabsListIsRefused(string arguments, string reason)
+    [InlineData("""{"prefab": ["ItemIronIngot", ""]}""", "prefab[1]")]
+    [InlineData("""{"prefab": ["ItemIronIngot", true]}""", "prefab[1]")]
+    [InlineData("""{"prefab": "*"}""", "prefab")]
+    public void ABadPrefabIsAProblemAtItsPlace(string options, string path)
     {
-        ApiException refused = Assert.Throws<ApiException>(() => PrefabMatches.Parse(new Args(JObject.Parse(arguments))));
+        OptionReader reader = new OptionReader(FindItemOptions.Spec, JObject.Parse(options));
+        PrefabFilter.Bind(reader);
 
-        Assert.Equal(ApiErrors.InvalidArgumentCode, refused.Code);
-        Assert.Contains(reason, refused.Message);
+        Assert.Equal(path, Assert.Single(reader.Problems).Path);
     }
 
     [Fact]
     public void NoPrefabFilterIsNotIndexed()
     {
-        Assert.False(PrefabMatches.Parse(new Args(JObject.Parse("""{"name_contains": "Iron"}"""))).IsActive);
-        Assert.True(PrefabMatches.Parse(new Args(JObject.Parse("""{"prefab_contains": "Iron"}"""))).IsActive);
+        Assert.False(PrefabMatch.ForIndex(Prefab("""{"name": "Iron"}""")).IsActive);
+        Assert.True(PrefabMatch.ForIndex(Prefab("""{"prefab": "*Iron*"}""")).IsActive);
     }
+
+    private static PrefabFilter? Prefab(string options) =>
+        PrefabFilter.Bind(new OptionReader(FindItemOptions.Spec, JObject.Parse(options)));
 }

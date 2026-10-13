@@ -74,50 +74,6 @@ internal static class AtmosphereContentsApi
         return new AtmosphereContentsView(id, subject, atmospheres);
     }
 
-    /// <summary>Whether this tool has anything to report for the thing: the same checks it runs for a reply.</summary>
-    /// <remarks>Allocation free, so a world scan can filter on it: AddThing's tests without building entries.</remarks>
-    internal static bool HoldsAtmosphere(Thing thing)
-    {
-        if (thing.InternalAtmosphere != null || (thing is INetworkedPipe pipe && pipe.PipeNetwork != null) ||
-            (thing is INetworkedLandingPad pad && pad.LandingPadNetwork != null) || MountedNetworkOf(thing) != null)
-        {
-            return true;
-        }
-
-        if (thing is Device device && device.ConnectedPipeNetworks != null)
-        {
-            List<PipeNetwork> networks = device.ConnectedPipeNetworks;
-            for (int index = 0; index < networks.Count; index++)
-            {
-                if (networks[index] != null)
-                {
-                    return true;
-                }
-            }
-        }
-
-        List<Slot>? slots = thing.Slots;
-        if (slots == null)
-        {
-            return false;
-        }
-
-        for (int index = 0; index < slots.Count; index++)
-        {
-            Slot slot = slots[index];
-            if (slot != null && slot.Type != Slot.Class.Organ)
-            {
-                DynamicThing occupant = slot.Get();
-                if (occupant != null && occupant.InternalAtmosphere != null)
-                {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
     private static void AddThing(Thing thing, PlayerOrigin origin, List<HeldAtmosphereEntryView> atmospheres)
     {
         if (thing.InternalAtmosphere != null)
@@ -140,7 +96,7 @@ internal static class AtmosphereContentsApi
                 AtmosphereOwners.OwnerOf(pad.LandingPadNetwork, origin), null));
         }
 
-        PipeNetwork? mounted = MountedNetworkOf(thing);
+        PipeNetwork? mounted = AtmosphereOwners.MountedNetworkOf(thing);
         if (mounted != null && seen.Add(mounted.ReferenceId))
         {
             atmospheres.Add(Entry(AtmosphereSource.MountedPipeNetwork, mounted.Atmosphere, AtmosphereOwners.OwnerOf(mounted, origin),
@@ -161,21 +117,6 @@ internal static class AtmosphereContentsApi
         }
 
         AddSlots(thing, origin, atmospheres);
-    }
-
-    /// <summary>
-    /// The pipe network a pipe-mounted device reads: the network of the pipe in its small cell, when the game counts
-    /// it readable (DevicePipeMounted.HasReadableAtmosphere); null for anything else.
-    /// </summary>
-    private static PipeNetwork? MountedNetworkOf(Thing thing)
-    {
-        if (!(thing is DevicePipeMounted mounted) || !mounted.HasReadableAtmosphere)
-        {
-            return null;
-        }
-
-        Pipe pipe = mounted.SmallCell.Pipe;
-        return pipe != null ? pipe.PipeNetwork : null;
     }
 
     private static void AddSlots(Thing thing, PlayerOrigin origin, List<HeldAtmosphereEntryView> atmospheres)

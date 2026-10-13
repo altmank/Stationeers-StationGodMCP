@@ -2,14 +2,13 @@
 
 using System;
 using System.Collections.Generic;
-using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
-using StationGodMCP.Pure.Protocol;
+using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Api.Shared;
 
-/// <summary>A part of a grid_survey reply that sections can name.</summary>
+/// <summary>A part of a survey area reply that sections can name.</summary>
 [Flags]
 internal enum SurveySection
 {
@@ -24,13 +23,11 @@ internal enum SurveySection
 }
 
 /// <summary>
-/// The parts of a grid_survey reply a caller asked for (sections, each part once by its reply name); every part when
-/// sections is left out, so the reply stays as it was. A part left out is absent from the reply, not empty.
+/// The parts of a survey area reply a call asked for (sections, each part once by its reply name); every part when
+/// sections is left out. A part left out is absent from the reply, not empty.
 /// </summary>
 internal sealed class SurveySections
 {
-    internal const string Argument = "sections";
-
     private static readonly Dictionary<string, SurveySection> Words =
         new Dictionary<string, SurveySection>(StringComparer.OrdinalIgnoreCase)
         {
@@ -54,26 +51,21 @@ internal sealed class SurveySections
     /// <summary>The words sections takes, as the schema lists them.</summary>
     internal static IEnumerable<string> Names => Words.Keys;
 
-    internal static SurveySections Parse(Args args)
+    /// <summary>The parts the words name, in any case; every part when none is given.</summary>
+    internal static SurveySections Of(IReadOnlyList<string>? words)
     {
-        if (!args.Has(Argument))
+        if (words == null)
         {
             return All;
         }
 
-        JArray array = args.Array(Argument, Words.Count);
         SurveySection parts = SurveySection.None;
-        foreach (JToken entry in array)
+        foreach (string word in words)
         {
-            string? word = entry.Type == JTokenType.String ? entry.Value<string>()?.Trim() : null;
-            if (word == null || !Words.TryGetValue(word, out SurveySection part))
+            if (Words.TryGetValue(word.Trim(), out SurveySection part))
             {
-                throw ApiErrors.InvalidArgument(
-                    $"Argument '{Vocabulary.Arg(Argument)}' takes {string.Join(", ", Words.Keys)}; '{entry}' is not " +
-                    "one of them.");
+                parts |= part;
             }
-
-            parts |= part;
         }
 
         return new SurveySections(parts);
@@ -86,14 +78,11 @@ internal sealed class SurveySections
 }
 
 /// <summary>
-/// grid_survey network_ids: the networks whose pieces (and devices with a port on them) a reply keeps; every network
-/// when none is named.
+/// survey area network: the networks whose pieces (and devices with a port on them) a reply keeps; every network when
+/// none is named.
 /// </summary>
 internal sealed class SurveyNetworkFilter
 {
-    internal const string Argument = "network_ids";
-    internal const int MaximumNetworks = 64;
-
     private readonly HashSet<long>? _networks;
 
     private SurveyNetworkFilter(HashSet<long>? networks)
@@ -130,13 +119,11 @@ internal sealed class SurveyNetworkFilter
 }
 
 /// <summary>
-/// grid_survey kinds: which kinds of piece (cable, pipe, chute) a reply lists, with their networks, and which devices:
-/// those with a port of a kind named. Every kind when kinds is left out.
+/// survey area kind: which kinds of piece (cable, pipe, chute) a reply lists, with their networks, and which devices:
+/// those with a port of a kind named. Every kind when kind is left out.
 /// </summary>
 internal sealed class SurveyKinds
 {
-    internal const string KindsArgument = "kinds";
-
     private static readonly Dictionary<string, int> Words = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
     {
         ["cable"] = 1,
@@ -153,26 +140,21 @@ internal sealed class SurveyKinds
 
     internal static SurveyKinds Every { get; } = new SurveyKinds(7);
 
-    internal static SurveyKinds Parse(Args args)
+    /// <summary>The kinds the words name, in any case; every kind when none is given.</summary>
+    internal static SurveyKinds Of(IReadOnlyList<string>? words)
     {
-        if (!args.Has(KindsArgument))
+        if (words == null)
         {
             return Every;
         }
 
-        JArray array = args.Array(KindsArgument, Words.Count);
         int kinds = 0;
-        foreach (JToken entry in array)
+        foreach (string word in words)
         {
-            string? word = entry.Type == JTokenType.String ? entry.Value<string>()?.Trim() : null;
-            if (word == null || !Words.TryGetValue(word, out int kind))
+            if (Words.TryGetValue(word.Trim(), out int kind))
             {
-                throw ApiErrors.InvalidArgument(
-                    $"Argument '{Vocabulary.Arg(KindsArgument)}' takes {string.Join(", ", Words.Keys)}; '{entry}' is " +
-                    "not one of them.");
+                kinds |= kind;
             }
-
-            kinds |= kind;
         }
 
         return new SurveyKinds(kinds);
@@ -182,7 +164,7 @@ internal sealed class SurveyKinds
     internal bool AdmitsPiece(string kind) => Words.TryGetValue(kind, out int bit) && (_kinds & bit) != 0;
 
     /// <summary>
-    /// A device is listed when kinds is left out, or when one of its ports is of a kind named: a NetworkType name
+    /// A device is listed when kind is left out, or when one of its ports is of a kind named: a NetworkType name
     /// with Pipe is a pipe's, with Chute a chute's, with Power or Data a cable's.
     /// </summary>
     internal bool AdmitsDevice(IEnumerable<string?> portTypes)
@@ -215,13 +197,12 @@ internal sealed class SurveyKinds
 }
 
 /// <summary>
-/// network_ids, kinds and prefab, prefabs or prefab_contains together: what a grid_survey page's pieces and devices
-/// must pass. A piece passes on its network, kind and prefab; a device on a port on a named network, a port of a named
+/// network, kind and prefab together: what a survey area page's pieces and devices must pass. A piece passes on its network, kind and prefab; a device on a port on a named network, a port of a named
 /// kind, and its own prefab.
 /// </summary>
 internal sealed class SurveyFilter
 {
-    internal SurveyFilter(SurveyNetworkFilter networks, SurveyKinds kinds, PrefabMatch prefabs)
+    internal SurveyFilter(SurveyNetworkFilter networks, SurveyKinds kinds, PrefabFilter? prefabs)
     {
         Networks = networks;
         Kinds = kinds;
@@ -229,44 +210,30 @@ internal sealed class SurveyFilter
     }
 
     internal static SurveyFilter Every { get; } =
-        new SurveyFilter(SurveyNetworkFilter.Every, SurveyKinds.Every, PrefabMatch.Any);
+        new SurveyFilter(SurveyNetworkFilter.Every, SurveyKinds.Every, null);
 
     internal SurveyNetworkFilter Networks { get; }
 
     internal SurveyKinds Kinds { get; }
 
-    internal PrefabMatch Prefabs { get; }
+    /// <summary>The prefabs kept; null keeps every prefab.</summary>
+    internal PrefabFilter? Prefabs { get; }
 
-    internal bool AdmitsPiece(ThingId? network, string kind, string? prefab) =>
-        Networks.Admits(network) && Kinds.AdmitsPiece(kind) && Prefabs.Keeps(prefab);
+    internal bool AdmitsPiece(ThingId? network, string kind, string? prefab, int prefabHash) =>
+        Networks.Admits(network) && Kinds.AdmitsPiece(kind) && KeepsPrefab(prefab, prefabHash);
 
-    internal bool AdmitsDevice(string? prefab, IEnumerable<ThingId?> networks, IEnumerable<string?> portTypes) =>
-        Prefabs.Keeps(prefab) && Networks.AdmitsAny(networks) && Kinds.AdmitsDevice(portTypes);
+    internal bool AdmitsDevice(string? prefab, int prefabHash, IEnumerable<ThingId?> networks,
+        IEnumerable<string?> portTypes) =>
+        KeepsPrefab(prefab, prefabHash) && Networks.AdmitsAny(networks) && Kinds.AdmitsDevice(portTypes);
+
+    private bool KeepsPrefab(string? prefab, int prefabHash) => Prefabs == null || Prefabs.Keeps(prefab, prefabHash);
 }
 
-/// <summary>grid_survey cell_detail: occupancy (the default) or full.</summary>
+/// <summary>survey area cell_detail: occupancy (the default) or full.</summary>
 internal static class SurveyCellDetails
 {
-    internal const string CellDetailArgument = "cell_detail";
-
-    private static readonly Dictionary<string, SurveyCellDetail> Words =
-        new Dictionary<string, SurveyCellDetail>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["occupancy"] = SurveyCellDetail.Occupancy,
-            ["full"] = SurveyCellDetail.Full
-        };
-
-    internal static SurveyCellDetail Parse(Args args)
-    {
-        string? word = args.OptionalString(CellDetailArgument)?.Trim();
-        if (word == null)
-        {
-            return SurveyCellDetail.Occupancy;
-        }
-
-        return Words.TryGetValue(word, out SurveyCellDetail detail)
-            ? detail
-            : throw ApiErrors.InvalidArgument(
-                $"Argument '{Vocabulary.Arg(CellDetailArgument)}' takes occupancy or full; '{word}' is neither.");
-    }
+    internal static SurveyCellDetail Of(string? word) =>
+        string.Equals(word?.Trim(), "full", StringComparison.OrdinalIgnoreCase)
+            ? SurveyCellDetail.Full
+            : SurveyCellDetail.Occupancy;
 }

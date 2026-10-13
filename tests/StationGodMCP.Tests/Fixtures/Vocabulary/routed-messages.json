@@ -11,19 +11,11 @@
     "Pass job_id, or reference_ids."
   ],
   "Api/Connections.cs": [
-    "Argument 'kind' must be pipe, cable or chute.",
-    "Argument 'kind' must be pipe, cable or chute.",
-    "Argument 'kind' must be pipe, cable or chute.",
     "Pass reference_id, network_id with kind, or min and max (open ends in a box).",
-    "The box form lists open ends only; drop open_ends_only false, or name a network_id for all members.",
-    "broken_neighbours with summarize true",
     "reference_id"
   ],
   "Api/ControlIcExecution.cs": [
     "Argument 'action' must be pause, step, resume, or restart."
-  ],
-  "Api/FeedPathsApi.cs": [
-    "{root.PrefabName} {root.ReferenceId} is on {networks.Count} {kind.Noun} networks [{string.Join(\", \", networks)}]; name one with network_id or port (connections lists them)."
   ],
   "Api/FindSpot.cs": [
     "a port's joining cell is blocked (ports_reachable)",
@@ -33,14 +25,6 @@
     "radius_m is at most {MaximumRadiusM}.",
     "room_id must be a room id as rooms reports it.",
     "{name} must be one of +x, -x, +y, -y, +z, -z."
-  ],
-  "Api/GridSurvey.cs": [
-    "Argument 'room_id' must be a room id as rooms reports it.",
-    "Pass max too.",
-    "Pass min and max (a box, in metres) or room_id (from rooms).",
-    "{name} must be a network id or the reference id of a cable, pipe or chute piece on it.",
-    "{name}: {Names.Of(thing)} ({thing.PrefabName}) is no cable, pipe or chute piece on a network; name the network or a piece on it.",
-    "{name}: {id} names no thing and no cable, pipe or chute network. A network's id changes after almost every edit; name a piece on it instead."
   ],
   "Api/Highlight.cs": [
     "highlight",
@@ -230,13 +214,6 @@
   "Api/SetUplink.cs": [
     "{downlinkId} is no downlink this uplink can follow: a built, logic readable Logic Rocket Downlink. describe_device on the uplink lists them in uplink.choices."
   ],
-  "Api/Shared/AreaArgs.cs": [
-    "Argument 'radius_m' must be above 0 and at most {MaximumRadiusM:0} m.",
-    "Give both min and max, the corners of the box.",
-    "Give min and max, or near with radius_m, not both.",
-    "near needs radius_m, in metres.",
-    "radius_m needs near: [x, y, z] metres."
-  ],
   "Api/Shared/Args.cs": [
     "{_path}.{name}"
   ],
@@ -331,10 +308,6 @@
     "{message} (allow_contents)",
     "{player.Absence} Nothing to give the refund to; pass from_id, or refund_to ground or none."
   ],
-  "Api/Shared/Game/Build/WallPlanes.cs": [
-    "Pass plane (e.g. \"z=668\", an even metre) or looking: true.",
-    "looking"
-  ],
   "Api/Shared/Game/ChipPrograms.cs": [
     "A Lua chip cannot {action}: it runs a whole tick(dt) per game tick, with no line to stop at. Use restart to run it again from the start, or set_ic_source to change it.",
     "restart is for Lua chips; an IC10 chip restarts at line 0 when set_ic_source writes it."
@@ -378,12 +351,7 @@
     "Argument '{name}' is required.",
     "{entry}: {Names.Of(device)} ({device.PrefabName}) has no two {family.NetworkKind} ports that could share a network, so it bridges nothing; name a network, a piece of one or {reference_id, port}.",
     "{entry}: {Names.Of(thing)} ({thing.PrefabName}) is neither a {family.NetworkKind} piece, a device nor a network.",
-    "{entry}: {handle.Id} names no thing and no {family.NetworkKind} network. A piece's id changes when an edit replaces it (a split, a junction); read it again (connections).",
-    "{name}: port {port} is not a port of {device.PrefabName} {device.ReferenceId} (ports: {Ports(device, family)}).",
-    "{name}: port {port} of {device.PrefabName} {device.ReferenceId} joins no {family.NetworkKind} network (ports: {Ports(device, family)}).",
-    "{name}: {Names.Of(thing)} ({thing.PrefabName}) is neither a {family.NetworkKind} piece nor a device.",
-    "{name}: {device.PrefabName} {device.ReferenceId} is on {networks.Count} {family.NetworkKind} networks [{string.Join(\", \", networks)}]; name one with {reference_id, port} (ports: {Ports(device, family)}).",
-    "{name}: {piece.PrefabName} {piece.ReferenceId} is on no {family.NetworkKind} network."
+    "{entry}: {handle.Id} names no thing and no {family.NetworkKind} network. A piece's id changes when an edit replaces it (a split, a junction); read it again (connections)."
   ],
   "Api/Shared/Game/Refunds.cs": [
     "refund_to names {Names.Of(thing)} {id}, which has no slot a refund could go into.",
@@ -504,12 +472,6 @@
     "{name} needs reference_id (a device, with port, or a piece).",
     "{name} takes reference_id and port only; '{property.Name}' is not one of them."
   ],
-  "Api/Shared/Paging.cs": [
-    "Argument 'order' must be {Pure.ListOrders.Nearest} or {Pure.ListOrders.ReferenceId}; '{given}' is neither."
-  ],
-  "Api/Shared/PrefabMatches.cs": [
-    "Give prefab or prefabs, not both."
-  ],
   "Api/Shared/ProfilingArgs.cs": [
     "Argument 'action' must be on, off, reset or report.",
     "Argument 'slow_frame_ms' must be from {Number(SlowFrameLimits.MinimumMs)} to {Number(SlowFrameLimits.MaximumMs)}.",
@@ -550,11 +512,6 @@
     "confirm: true needs dry_run: false; nothing was changed.",
     "from_prefabs[{index}] must be a prefab name.",
     "job_id"
-  ],
-  "Api/Shared/SurveyArgs.cs": [
-    "Argument '{Argument}' takes {string.Join(\", \", Words.Keys)}; '{entry}' is not one of them.",
-    "Argument '{CellDetailArgument}' takes occupancy or full; '{word}' is neither.",
-    "Argument '{KindsArgument}' takes {string.Join(\", \", Words.Keys)}; '{entry}' is not one of them."
   ],
   "Api/Shared/VaultTransferArgs.cs": [
     "Argument 'items' must name at least one thing; leave it out to move everything.",
@@ -633,10 +590,6 @@
     " Further pipe jobs are refused until the world is loaded again, or until a run acknowledges this loss (acknowledge_gas_lost with this job's id, only after the user has agreed).",
     " Up to {Mol(release)} mol may leak out once the networks the plan leaves over their weakest pipe burst (allow_burst, will_burst); that release is expected and not put back."
   ],
-  "Api/Views/GridSurveyViews.cs": [
-    "Each cell is a 2 m cell at its centre (odd metres). empty: true when it holds nothing. frame_id: its frame. faces: its faces +x, -x, +y, -y, +z, -z, each '.' nothing, 'w' wall, 'g' window, 'x' door (door over window over wall); left out when all are '.'. small: its 64 small cells (0.5 m) at -1, -0.5, 0 and +0.5 m from the centre along each axis, character index x + 4y + 16z: '.' empty, 'c' cable, 'p' pipe, 'b' cable and pipe, 'h' chute, 'd' device, 'o' another small-grid thing, 'r' a rocket's empty cell; left out when all are '.'. cell_detail full adds room, frame build state, face structure ids and the support string.",
-    "Each cell is a 2 m cell at its centre (odd metres). small: its 64 small-grid cells (0.5 m) at -1, -0.5, 0 and +0.5 m from the centre along each axis (index 0 to 3; index 0 lies on the cell's minimum face plane, shared with the neighbour), character index x + 4y + 16z. '.' empty, 'c' cable, 'p' pipe, 'b' cable and pipe, 'h' chute, 'd' device, 'o' another small-grid thing (a mounted item, a rail), 'r' a rocket's empty cell (its fuselage decides which kind of piece it takes). Frames and walls never block cables or pipes; a device, chute or 'o' blocks both; a pipe blocks a cable (and a cable a pipe) only along the axis its ends lie on. A chute needs a cell with no cable, pipe, device, chute or 'o'. support: the same 64 cells by what holds a piece there up: 'i' inside a frame (every 2 m cell the small cell touches holds a frame: hidden in the frame's body), 'e' a frame edge or corner, 'f' on a frame's face (a frame's top face is the minimum plane of the cell above it), 'w' on a wall's plane, 'a' air (plan_*_route style supported avoids 'a' cells); over those, 'x' a door's keep-out (its face and the configured band either side inside its rectangle: the planners never route there without allow_door_keepout; the floor slab under a threshold is not in it) and 'g' a window's face (routes pay extra, crosses_window). A door's face is no wall support. network_visibility counts each listed network's cells the same way (inside, frame_surface, wall, air) and lists the floating (air) ones."
-  ],
   "Api/Views/IcViews.cs": [
     "pass stack_start (now {StartAddress}) and stack_count (max {Size})"
   ],
@@ -646,13 +599,6 @@
   "Api/Views/RunViews.cs": [
     "a network lists its first riding items only; grid_survey kinds [\"chute\"] gives each chute's carries",
     "poll with job_id and verbose: true (log.created_ids lists every id built)"
-  ],
-  "Api/WallMap.cs": [
-    "Pass around (a point on or near the plane) with plane.",
-    "free_rects.h is required (m).",
-    "free_rects.w is required (m).",
-    "pass free_rects.limit (max {MaximumRects}); the search stopped at limit, so more may fit",
-    "radius_m is at most {MaximumRadiusM}."
   ],
   "Protocol/ControllerCalls.cs": [
     "Argument '{name}' must be a reference id, such as \"4612280\".",

@@ -7,13 +7,14 @@ using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Verbs;
 using StationGodMCP.Server;
 using Xunit;
 
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// 1.7.0 smaller replies (live 2026-09-30: a 6 x 4 x 4 m grid_survey of 63 KB, a 22 KB Lua chip in every
+/// 1.7.0 smaller replies (live 2026-09-30: a 6 x 4 x 4 m survey area of 63 KB, a 22 KB Lua chip in every
 /// get_ic_status, 20 KB place_structure polls): every switch leaves the default reply as it was where that was
 /// promised, and each part left out is absent rather than empty.
 /// </summary>
@@ -24,7 +25,7 @@ public sealed class HeavyPayloadTests
     [Fact]
     public void SectionsDefaultToEveryPart()
     {
-        SurveySections sections = SurveySections.Parse(new Args(new JObject()));
+        SurveySections sections = SurveySections.Of(Area("{}").Sections);
 
         Assert.True(sections.Includes(SurveySection.All));
     }
@@ -32,7 +33,7 @@ public sealed class HeavyPayloadTests
     [Fact]
     public void SectionsKeepOnlyThePartsNamedIgnoringCase()
     {
-        SurveySections sections = SurveySections.Parse(Args("""{"sections":["Pieces"," network_visibility "]}"""));
+        SurveySections sections = SurveySections.Of(Area("""{"sections":["Pieces"," network_visibility "]}""").Sections);
 
         Assert.True(sections.Includes(SurveySection.Pieces));
         Assert.True(sections.Includes(SurveySection.NetworkVisibility));
@@ -41,20 +42,20 @@ public sealed class HeavyPayloadTests
     }
 
     [Fact]
-    public void AnUnknownSectionIsRefusedWithTheWordsItTakes()
+    public void AnUnknownSectionIsRefusedAsAnOptionProblem()
     {
-        ApiException refused =
-            Assert.Throws<ApiException>(() => SurveySections.Parse(Args("""{"sections":["walls"]}""")));
+        VerbError? refused = Pure.Verbs.OptionCheck.Check(VerbSurface.Verb("survey")!,
+            JObject.Parse("""{"what":"area","room":"28","sections":["walls"]}"""), out _);
 
-        Assert.Equal("invalid_argument", refused.Code);
-        Assert.Contains("cells, pieces, devices, networks, network_visibility, doors", refused.Message);
+        Assert.Equal("invalid_argument", refused?.Code);
+        Assert.Contains("sections", refused!.Message);
     }
 
     [Fact]
     public void ASurveyWithoutCellsLeavesCellsAndLegendOutButKeepsThePage()
     {
-        SurveySections sections = SurveySections.Parse(Args("""{"sections":["pieces"]}"""));
-        JObject json = JObject.Parse(WireCheck.New(new GridSurveyView(Page(), Contents(), sections, null)));
+        SurveySections sections = SurveySections.Of(new[] { "pieces" });
+        JObject json = SurveyAreaReply.Of(Page(), Contents(), sections, null);
 
         Assert.Null(json["cells"]);
         Assert.Null(json["legend"]);
@@ -70,8 +71,7 @@ public sealed class HeavyPayloadTests
     [Fact]
     public void TheDefaultSurveyKeepsEveryPartEvenWhenEmpty()
     {
-        JObject json = JObject.Parse(WireCheck.New(new GridSurveyView(Page(), Contents(), SurveySections.All,
-            "legend")));
+        JObject json = SurveyAreaReply.Of(Page(), Contents(), SurveySections.All, "legend");
 
         foreach (string part in new[] { "cells", "pieces", "devices", "networks", "network_visibility", "doors" })
         {
@@ -209,7 +209,6 @@ public sealed class HeavyPayloadTests
     }
 
     [Theory]
-    [InlineData("grid_survey", """{"min":[0,0,0],"max":[6,4,4],"sections":["pieces","devices"],"network_ids":["17"],"cell_detail":"full"}""")]
     [InlineData("get_ic_status", """{"reference_id":"300","include_source":false}""")]
     [InlineData("place_structure", """{"job_id":"place-3","verbose":true}""")]
     [InlineData("place_structure", """{"prefab":"StructureFrame","at":[1,1,1],"include_footprint_cells":true}""")]
@@ -223,21 +222,17 @@ public sealed class HeavyPayloadTests
         Assert.Empty(Problems(tool, arguments));
     }
 
-    [Fact]
-    public void TheSidecarRefusesAnUnknownSection()
-    {
-        Assert.Single(Problems("grid_survey", """{"min":[0,0,0],"max":[6,4,4],"sections":["walls"]}"""));
-    }
-
     private static Args Args(string json) => new Args(JObject.Parse(json));
 
-    private static Slice<SurveyCell> Page()
+    private static Page<SurveyCell> Page()
     {
         SurveyCellView cell = new SurveyCellView(new PositionView(1, 1, 1), null, null, new List<SurveyWallView>(),
             new string('.', 64), new string('a', 64));
-        return Slice<SurveyCell>.Page(new List<SurveyCell> { cell },
-            PageRequest.From(new Args(new JObject()), 27, 125), 1);
+        return new Page<SurveyCell>(new List<SurveyCell> { cell }, 1, 0, 27, false);
     }
+
+    private static SurveyAreaOptions Area(string json) =>
+        SurveyAreaOptions.Bind(new OptionReader(SurveyAreaOptions.Spec, JObject.Parse(json)));
 
     private static SurveyContents Contents() =>
         new SurveyContents(new List<SurveyPieceView>(), new List<SurveyDeviceView>(), new List<object>(),

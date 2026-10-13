@@ -58,13 +58,13 @@ internal static class ThingSearch
             GameLookup.ViewOf(position),
             origin.DistanceTo(position),
             thing is Device device && Devices.IsInAllDevices(device),
-            AtmosphereContentsApi.HoldsAtmosphere(thing),
+            AtmosphereOwners.HoldsAtmosphere(thing),
             thing is Structure ? Orientations.Of(thing) : null,
             Wrecks.IsBroken(thing),
             ConditionOf(thing),
             Prints.Log.Of(thing.ReferenceId) is PrintRecord record ? new PrintView(record) : null,
             RocketOf(thing),
-            PaintApi.ShownColorOf(thing, swatches),
+            ThingColors.ShownColorOf(thing, swatches),
             BuildStates.Unfinished(thing));
     }
 
@@ -194,7 +194,7 @@ internal sealed class ThingFilter
         (RuntimeType == null || IsOfType(thing.GetType())) &&
         (string.IsNullOrEmpty(Name) || Labels.NameContains(thing, Name!)) &&
         (Location == ThingLocations.Any || IsAt(thing)) &&
-        (!HasAtmosphere.HasValue || AtmosphereContentsApi.HoldsAtmosphere(thing) == HasAtmosphere.Value);
+        (!HasAtmosphere.HasValue || AtmosphereOwners.HoldsAtmosphere(thing) == HasAtmosphere.Value);
 
     internal bool IsNear(double? distance) =>
         !NearPlayerM.HasValue || (distance.HasValue && distance.Value <= NearPlayerM.Value);

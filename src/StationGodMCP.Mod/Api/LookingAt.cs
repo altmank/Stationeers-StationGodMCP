@@ -140,7 +140,7 @@ internal static class LookingAtApi
             GameLookup.ViewOf(thing.Position),
             origin.DistanceTo(thing.Position),
             thing is Device device && Devices.IsInAllDevices(device),
-            AtmosphereContentsApi.HoldsAtmosphere(thing),
+            AtmosphereOwners.HoldsAtmosphere(thing),
             ParentOf(thing),
             thing is Structure ? Orientations.Of(thing) : null,
             withBody && thing is Structure structure ? Bodies.ViewOf(structure) : null,

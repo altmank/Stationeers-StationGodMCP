@@ -5,13 +5,14 @@ using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Verbs;
 using Xunit;
 using Xunit.Abstractions;
 
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// grid_survey cells by default answer what occupies each 2 m cell (cell_detail occupancy): empty, the frame's id, the
+/// survey area cells by default answer what occupies each 2 m cell (cell_detail occupancy): empty, the frame's id, the
 /// kind of structure on each face and the small string while it shows anything. cell_detail full keeps the cell as it
 /// was. A 125-cell page of a framed, walled hub drops from about 99 KB to about 13 KB.
 /// </summary>
@@ -82,18 +83,18 @@ public sealed class GridSurveyOccupancyTests(ITestOutputHelper output)
     [Fact]
     public void CellDetailDefaultsToOccupancy()
     {
-        Assert.Equal(SurveyCellDetail.Occupancy, SurveyCellDetails.Parse(new Args(new JObject())));
-        Assert.Equal(SurveyCellDetail.Full, SurveyCellDetails.Parse(Args("""{"cell_detail":" Full "}""")));
+        Assert.Equal(SurveyCellDetail.Occupancy, SurveyCellDetails.Of(Area("{}").CellDetail));
+        Assert.Equal("occupancy", Area("{}").CellDetail);
+        Assert.Equal(SurveyCellDetail.Full, SurveyCellDetails.Of(Area("""{"cell_detail":" Full "}""").CellDetail));
     }
 
     [Fact]
-    public void AnUnknownCellDetailIsRefusedWithTheWordsItTakes()
+    public void AnUnknownCellDetailIsAnOptionProblem()
     {
-        ApiException refused =
-            Assert.Throws<ApiException>(() => SurveyCellDetails.Parse(Args("""{"cell_detail":"compact"}""")));
+        VerbError? refused = Check("""{"what":"area","room":"28","cell_detail":"compact"}""");
 
-        Assert.Equal("invalid_argument", refused.Code);
-        Assert.Contains("occupancy or full", refused.Message);
+        Assert.Equal("invalid_argument", refused?.Code);
+        Assert.Contains("cell_detail", refused!.Message);
     }
 
     [Fact]
@@ -105,11 +106,11 @@ public sealed class GridSurveyOccupancyTests(ITestOutputHelper output)
     }
 
     [Fact]
-    public void TheSidecarTakesCellDetailAndRefusesCompact()
+    public void SurveyAreaTakesCellDetailAndRefusesCompact()
     {
-        Assert.Empty(Problems("""{"min":[0,0,0],"max":[6,4,4],"cell_detail":"occupancy"}"""));
-        Assert.Single(Problems("""{"min":[0,0,0],"max":[6,4,4],"cell_detail":"brief"}"""));
-        Assert.Single(Problems("""{"min":[0,0,0],"max":[6,4,4],"compact":true}"""));
+        Assert.Null(Check("""{"what":"area","box":[[0,0,0],[6,4,4]],"cell_detail":"occupancy"}"""));
+        Assert.NotNull(Check("""{"what":"area","box":[[0,0,0],[6,4,4]],"cell_detail":"brief"}"""));
+        Assert.NotNull(Check("""{"what":"area","box":[[0,0,0],[6,4,4]],"compact":true}"""));
     }
 
     /// <summary>
@@ -170,10 +171,9 @@ public sealed class GridSurveyOccupancyTests(ITestOutputHelper output)
 
     private static string Survey(List<SurveyCell> cells, string legend)
     {
-        Slice<SurveyCell> page = Slice<SurveyCell>.Page(cells,
-            PageRequest.From(Args("""{"limit":125}"""), 8, PageCells), cells.Count);
-        SurveySections sections = SurveySections.Parse(Args("""{"sections":["cells"]}"""));
-        return WireCheck.New(new GridSurveyView(page, Contents(), sections, legend));
+        Page<SurveyCell> page = new Page<SurveyCell>(cells, cells.Count, 0, PageCells, false);
+        return SurveyAreaReply.Of(page, Contents(), SurveySections.Of(new[] { "cells" }), legend)
+            .ToString(Newtonsoft.Json.Formatting.None);
     }
 
     private static SurveyContents Contents() =>
@@ -195,12 +195,9 @@ public sealed class GridSurveyOccupancyTests(ITestOutputHelper output)
 
     private static PositionView At() => new PositionView(593, 211, 627);
 
-    private static Args Args(string json) => new Args(JObject.Parse(json));
+    private static SurveyAreaOptions Area(string json) =>
+        SurveyAreaOptions.Bind(new OptionReader(SurveyAreaOptions.Spec, JObject.Parse(json)));
 
-    private static IReadOnlyList<string> Problems(string arguments)
-    {
-        using System.Text.Json.JsonDocument document = System.Text.Json.JsonDocument.Parse(arguments);
-        return StationGodMCP.Server.ArgumentCheck.Problems(StationGodMCP.Server.Program.InputSchemas["grid_survey"],
-            document.RootElement);
-    }
+    private static VerbError? Check(string options) =>
+        OptionCheck.Check(VerbSurface.Verb("survey")!, JObject.Parse(options), out _);
 }

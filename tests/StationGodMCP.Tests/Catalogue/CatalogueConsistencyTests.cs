@@ -220,7 +220,7 @@ public sealed class CatalogueConsistencyTests
                         unread.Add($"{name}: x-read-by names {file} for {argument}, which does not name it");
                     }
                 }
-                else if (!read.Contains(argument))
+                else if (!read.Contains(argument) && !RetiredMethods.HasArgument(name, argument))
                 {
                     unread.Add($"{name}: {argument} is read nowhere in {string.Join(", ", handler.Files().Select(f => f.Path))}");
                 }
@@ -287,7 +287,7 @@ public sealed class CatalogueConsistencyTests
             {
                 string description = (string?)property["description"] ?? string.Empty;
                 Match stated = StatedDefault.Match(description);
-                if (!stated.Success)
+                if (!stated.Success || RetiredMethods.HasArgument(method, name))
                 {
                     continue;
                 }

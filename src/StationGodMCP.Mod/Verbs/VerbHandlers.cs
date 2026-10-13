@@ -26,6 +26,10 @@ internal static class VerbHandlers
         VerbHandler.For(FindGatewayOptions.Spec, FindGatewayOptions.Bind, FindGateway.Run),
         VerbHandler.For(FindFoodOptions.Spec, FindFoodOptions.Bind, FindFood.Run),
         VerbHandler.For(FindWaterOptions.Spec, FindWaterOptions.Bind, FindWater.Run),
+        VerbHandler.For(SurveyAreaOptions.Spec, SurveyAreaOptions.Bind, SurveyArea.Run),
+        VerbHandler.For(SurveyWallOptions.Spec, SurveyWallOptions.Bind, SurveyWall.Run),
+        VerbHandler.For(SurveyNetworkOptions.Spec, SurveyNetworkOptions.Bind, SurveyNetwork.Run),
+        VerbHandler.For(SurveyFeedsOptions.Spec, SurveyFeedsOptions.Bind, SurveyFeeds.Run),
         ReadSample.Handler(static () => StationGodMod.Hub),
     });
 }
