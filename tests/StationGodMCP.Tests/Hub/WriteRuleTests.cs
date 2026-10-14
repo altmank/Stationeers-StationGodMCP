@@ -142,18 +142,18 @@ public sealed class WriteRuleTests
     // A move item by typed ids acts at once left alone, so its report has to say so on the wire: confirm: false is
     // what stops the mod answering from its own route rule (the mod's confirm: false reports whatever the call names).
     [Fact]
-    public void ATypedIdMoveItemReportReachesTheModAsTheReportAndKeepsItsTargets()
+    public void ATypedIdMoveItemReportReachesTheModAsAReportAndKeepsTheModsReply()
     {
         FakeGameLink game = new();
-        game.Answer = _ => FakeGameLink.Ok("""{"route":"into_vault","vault":{"reference_id":"9","display_name":"Ingot Vault"},"items":{"results":[{"index":0,"ok":true,"reference_id":"5","display_name":"Iron Ore","quantity":20,"left_in_source":30},{"index":1,"ok":true,"reference_id":"6","display_name":"Iron Ore","quantity":20,"left_in_source":30}]}}""");
+        game.Answer = _ => FakeGameLink.Ok("""{"route":"into_vault","problems":[{"index":1,"reference_id":"6","code":"not_vault_material"}],"targets":[{"id":"5","name":"Iron Ore","current":50,"new":30,"undo":"[cannot undo: store move]","text":"[5, Iron Ore, 50 -> 30] [cannot undo: store move]"}],"matched":2,"skipped":0,"truncated":false}""");
 
         JsonNode? report = game.Pipeline().Call("move", "item", """{"id":["5","6"],"to":"9","confirm":false}""").Done();
 
         Same("""{"what":"item","id":["5","6"],"to":"9","confirm":false}""", game.Single("move").Params());
         Assert.True((bool)report!["report_only"]!);
         Assert.Equal("into_vault", (string)report["route"]!);
-        Assert.Equal(new[] { "5", "6" },
-            report["items"]!["results"]!.AsArray().Select(row => (string)row!["reference_id"]!).ToArray());
+        Assert.Equal("5", (string)report["targets"]![0]!["id"]!);
+        Assert.Equal("not_vault_material", (string)report["problems"]![0]!["code"]!);
 
         // The same call with no confirm of the caller's own, which the gate decides to report, is sent as a report too.
         FakeGameLink gated = new();
