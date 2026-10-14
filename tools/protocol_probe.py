@@ -1,15 +1,15 @@
-"""Probe protocol version 2 on a live mod, message by message (stages 4 to 6 of docs/architecture/stages.md).
+"""Probe protocol version 2 on a live mod, message by message (see docs/architecture/protocol.md).
 
 Raw protocol: it writes the lines itself, so it can do what a well-behaved library would not (17 calls at once, a cancel
 straight after a call). Uses the overlapped pipe module of the Python library in clients/python;
 TCP with --host and --port signs in with the shared secret from --secret-env (default STATIONGODMCP_SECRET) first. Every check prints what it saw as JSON and exits 0 when it passed.
 
     py -3.12 tools/protocol_probe.py --pipe StationGodMCP-Test hello
-    py -3.12 tools/protocol_probe.py --pipe StationGodMCP-Test burst --method game_clock --count 16
+    py -3.12 tools/protocol_probe.py --pipe StationGodMCP-Test burst --method read --params '{"what": "clock"}' --count 16
     py -3.12 tools/protocol_probe.py --pipe StationGodMCP-Test order --device <id with a writable Setting>
-    py -3.12 tools/protocol_probe.py --pipe StationGodMCP-Test cancel --survey '{"min": [x,y,z], "max": [x,y,z]}'
-    py -3.12 tools/protocol_probe.py --pipe StationGodMCP-Test strict --method connections --params '{...}'
-    py -3.12 tools/protocol_probe.py --pipe StationGodMCP-Test call read_logic '{...}'
+    py -3.12 tools/protocol_probe.py --pipe StationGodMCP-Test cancel --survey '{"box": [[x,y,z], [x,y,z]]}'
+    py -3.12 tools/protocol_probe.py --pipe StationGodMCP-Test strict --method read --params '{"what": "logic", "id": "1199811", "bogus": true}'
+    py -3.12 tools/protocol_probe.py --pipe StationGodMCP-Test call read '{"what": "logic", "id": "1199811"}'
     py -3.12 tools/protocol_probe.py --pipe StationGodMCP-Test hold --seconds 90
     py -3.12 tools/protocol_probe.py --host 127.0.0.1 --port 18765 hello
 
@@ -143,22 +143,22 @@ def check_burst(probe, args):
 
 def check_order(probe, args):
     probe.hello()
-    target = {"reference_id": args.device, "logic_type": "Setting"}
-    before = probe.call("o0", "read_logic", target)
+    target = {"id": args.device, "logic": "Setting"}
+    before = probe.call("o0", "read", dict(target, what="logic"))
     if not before.get("ok"):
-        raise SystemExit(f"read_logic failed: {before}")
+        raise SystemExit(f"read logic failed: {before}")
     old = before["result"]["value"]
     new = 7 if old != 7 else 8
     probe.send_many([
-        {"type": "call", "id": "w", "method": "write_logic", "params": dict(target, value=new)},
-        {"type": "call", "id": "r", "method": "read_logic", "params": target},
+        {"type": "call", "id": "w", "method": "write", "params": dict(target, what="logic", value=new)},
+        {"type": "call", "id": "r", "method": "read", "params": dict(target, what="logic")},
     ])
     replies = {}
     while len(replies) < 2:
         message = probe.next(30)
         if message.get("type") == "reply":
             replies[message["id"]] = message
-    restored = probe.call("o9", "write_logic", dict(target, value=old))
+    restored = probe.call("o9", "write", dict(target, what="logic", value=old))
     report = {"old": old, "written": new, "read_after_write": replies["r"].get("result", {}).get("value"),
               "write_frame": replies["w"].get("frame"), "read_frame": replies["r"].get("frame"),
               "restored": restored.get("ok")}
@@ -168,10 +168,10 @@ def check_order(probe, args):
 
 def check_cancel(probe, args):
     probe.hello()
-    survey = json.loads(args.survey) if args.survey else {}
+    survey = dict(json.loads(args.survey) if args.survey else {}, what="area")
     probe.send_many([
-        {"type": "call", "id": "survey", "method": "grid_survey", "params": survey, "shape": {"fields": ["reference_id"]}},
-        {"type": "call", "id": "clock", "method": "game_clock", "params": {}},
+        {"type": "call", "id": "survey", "method": "survey", "params": survey, "shape": {"fields": ["reference_id"]}},
+        {"type": "call", "id": "clock", "method": "read", "params": {"what": "clock"}},
         {"type": "cancel", "id": "clock"},
     ])
     replies = {}
@@ -243,8 +243,8 @@ def main():
     parser.add_argument("check", choices=sorted(CHECKS))
     parser.add_argument("method_arg", nargs="?")
     parser.add_argument("params_arg", nargs="?")
-    parser.add_argument("--method", default="game_clock")
-    parser.add_argument("--params", default="{}")
+    parser.add_argument("--method", default="read")
+    parser.add_argument("--params", default='{"what": "clock"}')
     parser.add_argument("--count", type=int, default=16)
     parser.add_argument("--device")
     parser.add_argument("--survey")
