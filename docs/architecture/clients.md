@@ -1,177 +1,121 @@
-# Clients: the libraries, the sidecar, and moving over
+# Clients
 
-[Back to the overview](README.md)
+Two client libraries speak StationGod. The **C# client** (`src/StationGodMCP.Client`) is the sidecar's own library: it
+talks to the mod over the pipe or TCP, and owns connecting, calls in flight, the catalogue, reconnecting and output
+files. The **Python library `sg`** (`clients/python/sg`) talks only to a hub, over the hub protocol ([hub.md](hub.md)),
+and is what `run_script` code, Python programs and the dashboard use. Nothing else speaks to the mod, and no other
+client keeps a second copy of the mod's rules: options, shaping and permissions are the mod's or the hub's
+(`src/StationGodMCP.Client/StationGodClient.cs:8-20`).
 
-Two official client libraries live in this repository: the C# client inside the sidecar, which speaks the protocol to
-the mod, and the Python package `sg`, which speaks the hub protocol to the sidecar in its hub role ([hub.md](hub.md))
-and is what run_script code and Python programs use. The C# client owns the things a caller should not have to get
-right on its own: connecting, sending several calls at once, reconnecting, resending only what is safe, walking pages,
-keeping subscriptions alive, and writing output files on the caller's machine. This page gives the interfaces, the
-exact rules for output files, and the steps that move each existing client over. The shared rules below were written
-for both direct libraries; `sg` leaves them to the hub.
+## The C# client
 
-## What every library does the same way
+`GameLink` is the class the sidecar and the hub use, one per process, over one connection kept for the session
+(`src/StationGodMCP.Server/Program.cs:58`, `src/StationGodMCP.Server/Hub/HubMode.cs:13`). The `IGameLink` seam is what the hub sees
+(`src/StationGodMCP.Client/GameLink.Seam.cs:6-16`). It:
 
-**Connecting.** Pipe by name (default `StationGodMCP`) or TCP by host and port (default 8765), as today's sidecar
-takes them (`src/StationGodMCP.Server/Program.cs:489-514`; `docs/configuration.md`, *Sidecar options*). The pipe is
-opened for overlapped I/O, so a pending read never blocks a write on the same connection ([protocol.md](protocol.md),
-*Transports*); today's Python clients open it synchronously (StationeersScriptDashboard `stationscript/transport.py:125`).
-Connect timeouts: 1 second for the pipe (the dashboard's today, `transport.py:56`), 3 seconds for TCP (the sidecar's
-today, `Program.cs:25`). A busy pipe is retried until the timeout and a missing one too, telling the two apart in the
-message (`transport.py:120-139`).
+- says `hello` and needs a `welcome`; over TCP the shared secret comes first, read from `STATIONGODMCP_SECRET` or the
+  variable `--secret-env` names, never from an argument (`ClientOptions.cs:10-14`, `:35-38`);
+- keeps calls in flight on streams, at most `max_in_flight` per stream and `max_in_flight_per_connection` in all,
+  admitted round robin by stream with stream 0 first (`Admission.cs:10-16`); every call carries the world id it was
+  made in (`GameLink.cs:8-19`);
+- answers every call as a `GameReply`: `Ok` (result, `shaped`, `frame`, `elapsed_ms`, `queue_ms`, `budget_hit`),
+  `Refused` (code, message, data, `maybe_ran`) or `Unreachable` (message, `maybe_ran`); none is thrown
+  (`GameLink.Seam.cs:123-186`);
+- resends only what is safe after a break: a call never written goes again; a written call with no reply is sent
+  again, once, only when it reads at its arguments and has no `x-effects`; an error reply is never resent; nothing is
+  sent into another world (`StationGodClient.cs:14-20`). The catalogue decides what reads (`GameCatalogue.cs:65-69`,
+  `:82-104`);
+- carries the catalogue it was built with and fetches the mod's when the `welcome` hash differs, then uses that for
+  effective classes (`x-effects`) and its deadline grace (`x-cost`'s duration) (`GameCatalogue.cs:50-60`, `:65-115`;
+  `GameLink.cs:141-146`, `:763-800`);
+- owns `output_file`: checked before the call is sent, written on the caller's machine, pruned (7 days, newest 200),
+  answered as a pointer `{output_file, bytes, tool, counts, summary, in_file_only, truncated}`; a write that fails
+  answers the reply with `output_file_error` added (`OutputFiles.cs:8-10`, `:76-85`, `:121-148`);
+- keeps subscriptions: after a reconnect into the same world it subscribes again with the same request; into another
+  world it closes and says why (`Subscription.cs:8-18`).
 
-**The TCP secret.** Over TCP the library sends the shared secret first ([protocol.md](protocol.md), *Signing in over
-TCP*). The secret is read from an environment variable, never from an argument, so it does not show in process lists,
-as the sidecar's today (`docs/configuration.md`): `STATIONGODMCP_SECRET` unless the caller names another. A pipe
-connection needs nothing. Optionally a client name, sent in `hello` and shown in `mod_info`.
+The sidecar adds a safety net on top: a reply larger than `--inline-limit-kb` (default 200 KB) is written to a file
+like `output_file: true`, with `auto_output_file: true` added (`SidecarOptions.cs:19`, `McpAdapter.cs:433-457`).
 
-**Negotiating.** Send `hello` with protocol `[2]` and expect a `welcome`; any other answer ends the connection
-attempt. There is no other protocol to fall back to (*As built in stage 15* below).
-
-**Calling.** One connection, several calls in flight up to the server's `max_in_flight`; more wait in the library.
-A call returns the shaped `result` or raises an error carrying `code`, `message` and `data`.
-
-**Reconnecting.** A broken connection is reopened on the next call (and at once if subscriptions are open), with
-backoff from 100 ms doubling to 5 s, as the mod's own pipe listener backs off (`src/StationGodMCP.Mod/StationGodPipeServer.cs:240-259`).
-Calls in flight when it broke are handled by today's dashboard rule (`transport.py:84-110`), with the catalogue
-deciding what is a read:
-
-- a call whose line was never written is sent again on the new connection;
-- a call that was written and not answered is sent again only if its effective class is read and its method has no
-  `x-effects` ([catalogue.md](catalogue.md), *What each part means*), so `highlight` and `show_preview`, which draw, are
-  never sent twice, as the dashboard's list leaves them out today (`transport.py:23`);
-- nothing is sent again unless the new `welcome.server.world.id` equals the last one seen;
-- any other call fails with `Unreachable(maybe_ran=True)` and a message saying it may have reached the game.
-
-The libraries never resend a call because of an error reply, whatever the code; the error goes to the caller, whom the
-catalogue's `caller_may_resend` advises.
-
-**Resuming.** The libraries send no `resume` token today, so a reconnect starts them empty, as above. A client that
-keeps runs across a break (a hub) sends the same token in every `hello` of its session and gets its walk cursors,
-subscriptions and ended streams back within the mod's window ([protocol.md](protocol.md), *Resuming*); the rules
-above for calls in flight stay as they are, since calls are never resumed. It does not subscribe again when
-`welcome.resume.resumed` is true, and takes each subscription's next update as its current state.
-
-**World changes.** Every library subscribes to the `world` topic. When `world.id` changes, or differs after a
-reconnect, it tells the caller, because reference ids may now mean other things; the dashboard already rebinds every
-card on reconnect for this reason (`stationscript/runner.py:350-360`).
-
-**Catalogue.** Each library carries the catalogue it was built with and fetches the mod's when the hash in `welcome`
-differs. It uses the catalogue for effective classes, `x-effects`, paging (`x-paging`) and `x-duration` deadlines.
-
-## Output files
-
-`output_file` writes a reply to a file on the caller's machine and returns a short pointer instead. It stays in the
-clients because the file must land where the caller can read it; with a remote game, the mod is on another machine.
-Today it lives in the sidecar (`src/StationGodMCP.Server/ReplyShaping.cs:100-151`,
-`src/StationGodMCP.Server/OutputFolder.cs:8-137`); both libraries implement exactly these rules, and the sidecar uses the
-C# one.
-
-- **Argument.** `true`: a file named `<method>-<local time yyyyMMdd-HHmmss-fff>-<4 hex characters>.json`. `false`: as if
-  absent. A string: the file name; letters, digits, `-`, `_` and `.`, 1 to 80 characters after trimming, not starting
-  with `.`, no `..`; `.json` is added unless it ends so, ignoring case. Anything else is `invalid_argument` before the
-  call is sent (`ReplyShaping.cs:108-151`).
-- **Folder.** The caller's explicit option, else the environment variable `STATIONGODMCP_OUTPUT_DIR`, else
-  `%LOCALAPPDATA%\StationGodMCP\output` (`OutputFolder.cs:9-39`). Created if missing.
-- **Order.** `fields` is sent to the mod as `shape.fields`; the file holds the reply as it comes back, shaped
-  (`ReplyShaping.cs:45-49`). `output_file` itself is never sent to the mod.
-- **Content.** The reply's `result`, as indented UTF-8 JSON without escaping of non-ASCII characters
-  (`OutputFolder.cs:24-28`). Two libraries may indent differently; files are equal as parsed JSON, not as bytes.
-- **Writing.** To a temporary file in the same folder, then renamed over the target, so a reader never sees half a file
-  and a named file is replaced whole (`OutputFolder.cs:51-54`).
-- **Pointer.** `{output_file: <full path>, bytes: <file size>, tool: <method>, counts: {<list key>: <length>},
-  summary: {<key>: <value>}, in_file_only: [<key>]}`: every top-level list's length in `counts`; every other top-level
-  value whose JSON text is at most 300 characters in `summary`; the rest named in `in_file_only`, which is left out when
-  empty (`OutputFolder.cs:75-113`). The key stays `tool` for compatibility.
-- **Pruning.** After each write, delete `*.json` files in the folder older than 7 days, then all but the newest 200,
-  never the file just written; a file that cannot be deleted is skipped silently, since another client may hold it
-  (`OutputFolder.cs:18-19`, `:116-136`).
-- **Failure.** If the file cannot be written, answer the reply itself with `output_file_error` added, because the call
-  has run and its reply must not be lost (`OutputFolder.cs:43-65`).
-- **Errors.** An error reply is never written to a file.
-
-Both libraries run the same fixtures: `clients/fixtures/output_file/*.json`, each a reply, the arguments and the
-expected pointer and file content. The C# tests (`tests/StationGodMCP.Tests/FileOutputTests.cs` today) and the Python
-tests load the same folder.
-
-**The sidecar's safety net.** An agent that forgets `output_file` on a huge reply fills its context with it, which
-the owner has flagged as a recurring cost (the CheatEngineExpert workspace's standing order on heavy StationGod
-payloads). The sidecar therefore writes any reply larger than `--inline-limit-kb` (default 200) to a file as if
-`output_file: true` had been given, and adds `auto_output_file: true` to the pointer. `--inline-limit-kb 0` turns it
-off. `sg` never writes output files: it gets replies through the hub.
+`StationGodClient` is the standalone public class in the same project with the full reconnect and subscription
+bookkeeping; its calls come back as a `CallOutcome` — `Answered`, `Refused` or `NoAnswer` (with `MaybeRan` and
+`WorldChanged`) — and the tests use it (`CallOutcome.cs:7-50`; `tests/StationGodMCP.Tests/Sidecar/ClientTests.cs`).
 
 ## The Python library: sg
 
-`sg` replaced the direct mod client `stationgod` (removed; no aliases). It never talks to the mod: it has one
-transport, the hub protocol ([hub.md](hub.md), *The hub protocol*) over a pair of byte streams, and the hub holds the
-game connection. A run_script run's worker and a program use the same package.
+### Where it is and how it is installed
 
-### Where it lives and how it is installed
-
-`clients/python/sg/` in this repository, standard library only, Python 3.10 or later.
+`clients/python/sg/`, standard library only, Python 3.10 or later (`clients/python/pyproject.toml`, *requires-python*).
 
 ```powershell
 py -3 -m pip install -e <StationGodMCP repository>\clients\python    # for programs that import sg
 ```
 
-The hub does not need it installed: it starts each worker with the folder that holds `sg` on its command line
-(below).
+A hub does not need it installed: it starts each run worker with the folder that holds `sg` on its command line.
 
 ```text
 clients/python/
-  pyproject.toml          package sg
   generate_catalogue.py   writes sg/_catalogue.py, sg/_verbs.py and sg/_verbs.pyi from catalogue/verbs
   sg/
     __init__.py           connect(), close(), the verbs and helpers, Error, Stopped
     _transport.py         hello/welcome, calls matched by id, events; the child hub (Job Object on Windows)
     _session.py           the current transport and run; params.line; error mapping
     _replies.py           Reply, Row, MainList (paging with the hub's `more`)
-    _verbs.py, _verbs.pyi generated: one function per verb; IDE stubs, one overload per what
-    _helpers.py           wait, watch, hold, ref, help
-    _analysis.py          run_analysis and compiling the code as a function body
-    _failure.py           the failed-run text (SPEC note 22)
-    worker.py             the script worker
+    _verbs.py, _verbs.pyi generated: one function per verb (not help or run_script); IDE stubs, one overload per what
+    _helpers.py           wait, watch, changes, jobs, hold, ref, script, help
+    _catalogue.py         generated tables: verbs, whats, write whats, main lists, topics
+    lib.py                saved scripts as modules (`from sg.lib import <name>`)
+    worker.py             the run_script worker
   tests/                  unittest, a fake hub in tests/fakehub.py
 ```
 
-### Interface
+### Connecting
 
 ```python
 import sg
 
-sg.connect()                         # a child hub: StationGodMCP.Server --hub (path from the argument,
-                                     # STATIONGODMCP_HUB, or PATH); extra arguments go to the hub
+sg.connect()                          # a child hub: StationGodMCP.Server --hub (the argument, STATIONGODMCP_HUB, or PATH)
 sg.connect(r"C:\...\StationGodMCP.Server.exe", "--pipe", "StationGodMCP-Test")
-
-r = sg.find('thing', prefab='*Battery*', near='player', radius=30)
-for thing in r['things']:            # the main list: a single for walks page by page
-    print(thing['reference_id'])
-sg.write('logic', id='122643', logic='On', value=1)
-sg.undo(id='script-14')
-print(sg.help('find', 'thing'))      # the what's Python stub, from the hub
-
-sg.wait(5)                                            # None; time.sleep is sg.wait inside a run
-rows, met = sg.watch([{'id': tank, 'logic': 'Pressure'}], lambda rows: rows[0]['value'] > 8000, 600)
-with sg.hold(['4612280'], 'On', value=1):             # restored on exit (normal, exception or stop)
-    ...
-sg.ref('r7')
 sg.close()
 ```
 
-- Each verb function sends `call` method `verb` with `{verb, what, args, line}`; options left as None are not sent;
-  `line` is the calling line of the run's code (None in a program).
-- A reply is `sg.Reply` (a dict). Iterating it raises TypeError naming the main list (`iterate r['things'] (the main
-  list)`). The main list is a `MainList`: while the reply has `cursor`, a single `for` pages with `more`; `len`, an
-  index, `in`, sorted, reversed, `+` or a second pass page in the rest first. Every dict in a reply is a `Row`, whose
-  KeyError carries the keys it has.
-- Errors: `sg.Error(code, message, fix, maybe_ran, call)`; `sg.Stopped` (a BaseException: the run was stopped, or the
-  write rule refused a call); a private pass-end exception for the end of a report pass.
-- Programs get the program face ([hub.md](hub.md), *Faces*): the stubs' options plus `confirm` and `list_limits`.
-- A second `sg.connect()` closes the first connection. The child hub ends with the program: its stdin is closed at
-  exit, and on Windows it is in a Job Object with kill-on-close, made before the child starts.
-- Event handlers (`transport.on_event`) run on the reader thread and must not make sg calls.
+`sg.connect` starts `<hub> --hub <the given arguments>` (a `.dll` is run with `dotnet`), says `hello` and waits up to
+10 seconds for the `welcome` (`clients/python/sg/_transport.py:23-28`, `:263-300`). The child dies with the program:
+its stdin is closed at exit, and on Windows it is in a kill-on-close Job Object made before the child starts
+(`_transport.py:310-330`). A second `sg.connect()` closes the first connection; inside a run both `connect()` and
+`close()` raise, because the run's connection belongs to the hub (`__init__.py:29-57`).
 
-### The worker
+### Calls and replies
+
+- Each verb has a generated function: `sg.find('thing', prefab='*Battery*', near='player', radius=30)`. Options left
+  as `None` are not sent; any other option the hub knows may be passed through `**options` (`_calls.py:8-17`).
+  `help` is `sg.help`, and `run_script` is not something a script calls (`generate_catalogue.py:29`).
+- Every call is the hub's `verb` method with `{verb, what, args, line}`; `line` is the calling line of the run's code,
+  `None` in a program (`_session.py:108-124`).
+- A reply is a `Reply` (a dict). Iterating one raises `TypeError` naming its main list; every dict in a reply is a
+  `Row`, whose `KeyError` carries the keys it has (`_replies.py:1-11`, `:17-38`). The main list is a `MainList`: a
+  single `for` walks it page by page with the hub's `more`; `len`, an index, `in`, `sorted`, `reversed`, `+` or a
+  second pass page in the rest first (`_replies.py:45-95`).
+- Errors raise `sg.Error(code, message, fix, maybe_ran, call)`; the run's write rule and a stop raise `sg.Stopped`
+  (a `BaseException`, so `finally` and `with sg.hold` still run); a report pass ends with a private `BaseException`
+  (`_errors.py:1-11`, `:46-53`).
+
+### Helpers
+
+`sg.wait(s)` (inside a run `time.sleep` is `sg.wait`), `sg.watch(reads, until, timeout)` → `(rows, met)`,
+`sg.changes(reads, timeout, every=1)`, `sg.jobs(timeout)`, `sg.hold(ids, logic, value=None, after=None)`,
+`sg.ref('r7')`, `sg.script(name)`, `sg.help(verb, what)` (`_helpers.py:25`, `:32`, `:69`, `:124`, `:387`, `:440`,
+`:445`, `:457`).
+
+- `watch` and `changes` subscribe to the devices topic when the hub's welcome lists `subscriptions` and every read is
+  a devices-form read; otherwise they poll `read logic`, 1 s for a light read and 5 s for one that asks atmosphere.
+  A refused, ended or world-dropped subscription falls back to polling for the rest of the timeout
+  (`_helpers.py:32-68`, `:185-202`).
+- `hold` registers the restore with the mod before it writes, so the mod also applies it at session end or after an
+  unresumed disconnect, in the same world, while the target still holds the run's last written value
+  (`_helpers.py:387-430`).
+
+### Runs: the worker
 
 The hub pre-starts workers so one is ready when a run comes:
 
@@ -180,243 +124,54 @@ python -s -P -c "<sg.worker.BOOT>" <folder that holds sg>
 environment: every PYTHON* variable removed; PYTHONHASHSEED=0, PYTHONIOENCODING=utf-8
 ```
 
-`sg.worker.BOOT` is `import sys; sys.path.insert(0, sys.argv[1]); import sg.worker; sg.worker.main()`. `-s` leaves the
-user site out and `-P` (Python 3.11+) keeps the working directory off `sys.path`. `-I` is not used: it implies `-E`,
-which ignores `PYTHONHASHSEED`, and then set and str-keyed order would differ between a report run and its confirmed
-run. A worker with hash randomisation on refuses to run (a failed `run_end` that says why).
+`sg.worker.BOOT` is `import sys; sys.path.insert(0, sys.argv[1]); import sg.worker; sg.worker.main()`
+(`worker.py:47`). `-s` leaves the user site out and `-P` keeps the working directory off `sys.path`; a worker with
+hash randomisation on refuses to run, because set and str-keyed order would differ between a report run and its
+confirmed run. A worker serves one run and exits: it moves the protocol to private descriptors numbered 100 and up
+(fd 0 becomes the null device, fd 1 stderr), says `hello` and takes `run.code` from the `welcome`, sends
+`run_analysis` before any code runs, runs the code as a function body, and always sends `run_end` — `done`, `stopped`,
+`pass_end` or `failed` — then exits at once (`worker.py:1-45`, `:57-100`). The hub keeps the run's end state itself
+and kills the worker after `run_end` ([hub.md](hub.md), *Runs*).
 
-A worker serves one run and exits, so nothing a run does reaches the next. It moves the protocol to private,
-non-inheritable descriptors numbered 100 and up (fd 0 becomes the null device, fd 1 stderr), which keeps accidental
-writes to fd 1, child processes and `input()` off the protocol; it does not stop code that sets out to find the
-descriptors, so the hub keeps the run's end state itself and kills the worker after `run_end` (C4). The worker says
-hello, takes `run.code` from the welcome, sends `run_analysis` before any code runs, runs the code as a function body
-(print of a list of row dicts prints a table), and always sends `run_end`, encoded as valid JSON in valid UTF-8, with
-state `done`, `stopped` (whenever the hub delivered a stop, even one the code swallowed; an `sg.Stopped` the code
-raises itself is a failure), `pass_end` or `failed` (the note-22 text). Inside a run `sg.connect()` and `sg.close()`
-raise `sg.Error`: the run's connection belongs to the hub. The worker exits 2 s after the hub's stream ends.
-`run_analysis.writes` and `holds` are advisory; the hub applies the confirmed run's rules from a run's first write
-call.
+A run also loads saved scripts: `from sg.lib import <name>` or `sg.script('<name>')` reads the store the welcome
+names (`run.scripts_dir`, `run.world`), runs the code below the store's header, and shares one module per worker
+(`lib.py:1-16`, `:40-60`).
 
 ### Tests
 
 `py -3 -m unittest discover -s clients/python/tests` from the repository: the transport, verb calls, replies and
-paging, errors, the helpers, the worker launched as the hub launches it, and a test that fails when the generated files
-are stale against catalogue/verbs.
+paging, errors, the helpers, the worker, and a test that fails when the generated files are stale against
+`catalogue/verbs` (`clients/python/tests/test_generated.py:23-28`).
 
-## The C# client and the sidecar
+## The hub sg talks to
 
-### The client
+`sg` speaks the hub protocol, which is the mod's wire with the hub as the server ([hub.md](hub.md), *The hub
+protocol*). The parts a client of it relies on, as the code stands:
 
-A new project, `src/StationGodMCP.Client` (net8, no dependencies), referenced by the sidecar and the tests. It holds:
+- `hello` names protocol `[2]`, the client and the `pipeline` feature; `welcome` is the mod's last welcome with the
+  hub's own `client_id` for the caller, `features` plus `pipeline`, and no `resume`/`restores`
+  (`HubSession.cs:322-360`; `_transport.py:23-25`, `:75-100`).
+- The hub answers `verb` (the pipeline, on the session's face), `ref`, `more`, `wait`, `hold`, and relays
+  `subscribe`/`unsubscribe` one for one to the mod; a read-only mod method passes through on the caller's mapped
+  stream (`HubSession.cs:8-12`, `:521-535`). A run's session may call `verb`, `ref`, `more`, `wait`, `hold`,
+  `subscribe` and `unsubscribe` (`HubSession.cs:41-49`).
+- An error is the mod's error object plus, when they apply, `fix` and `maybe_ran`; a write-rule stop carries
+  `stopped: true`, a report pass end `pass_end: true` (`_errors.py:1-6`, `:39-53`).
+- Events are `update`, `subscription_ended`, `world_changed`, `job_ended` and `game_state`
+  (`src/StationGodMCP.Mod/Pure/Subscriptions/SubscriptionViews.cs:55-69`, `:88-105`, `:135`); `on_event` handlers run on
+  the reader thread and must not make `sg` calls themselves (`_transport.py:139-158`).
 
-- `StationGodConnection`: one pipe (`NamedPipeClientStream` with `PipeOptions.Asynchronous`, as the sidecar opens it
-  today, `Program.cs:225`) or TCP connection; the TCP secret, `hello`, a reader loop that completes a `TaskCompletionSource`
-  per call id, one write lock, events to subscribers.
-- `StationGodClient`: `CallAsync(method, JsonElement parameters, Shape? shape, CancellationToken)` returning a sealed
-  result type (a reply or an error, `return-result-not-exception` in the owner's C# rules); reconnect and the resend
-  rule.
-- `Catalogue`: the catalogue as records, the class-rule evaluator, the hash.
-- `ReplyShaping`, `FieldSelection`, `OutputFolder`: moved from the sidecar (`src/StationGodMCP.Server/ReplyShaping.cs`,
-  `OutputFolder.cs`); `FieldSelection` applies only to replies not marked `shaped`.
-- `ArgumentCheck` (`src/StationGodMCP.Server/ArgumentCheck.cs`): stays in the sidecar for its own arguments
-  (*As built in stage 15*).
+## The dashboard's child hub
 
-The sidecar's own code already uses records on net8 (`ReplyShaping.cs:12`, `:60`, `:101`, `:125`); the client does
-too. The mod targets netstandard2.1 (`StationGodMCP.csproj`, `TargetFramework`) and uses no records; its new code uses
-neither records nor `init` accessors nor `required` members, all of which would need compiler shims there
-(`IsExternalInit`, `RequiredMemberAttribute`), by the owner's rule against shims, and no LINQ on per-call or per-frame
-paths (already enforced by `BannedSymbols.txt`).
+The dashboard (StationeersScriptDashboard) vendors `sg` in `stationscript/_vendor/sg`, pinned to a StationGodMCP
+commit in `_vendor/SOURCE.txt`, so the dashboard and every script that imports its transport run the same client
+whatever interpreter starts them (StationeersScriptDashboard `stationscript/transport.py:1-14`).
 
-### What stays in the sidecar
-
-The sidecar becomes MCP on one side and `StationGodClient` on the other:
-
-- `initialize`, `ping`, `tools/list`, `tools/call`, notifications, as today (`Program.cs:89-154`), with `listChanged:
-  true`.
-- `tools/list` from the catalogue ([catalogue.md](catalogue.md), *Who reads it*). `ToolDefinitions` (`Program.cs:559`
-  onward, about 2,000 lines) is deleted.
-- `tools/call`: take `fields`, `output_file` and the safety net's limit out of the arguments; send the call with the rest
-  as `params` and `fields` as `shape.fields`; apply `fields` locally only if the reply is not marked `shaped`; write the
-  file if asked; wrap the result or error in today's MCP result shape
-  (`src/StationGodMCP.Server/ToolReplies.cs:25-36`).
-- Argument checking on version 2 is the mod's: a wrong argument gets the mod's `invalid_argument`, which names the
-  nearest declared argument as both check today (`src/StationGodMCP.Mod/Api/Shared/DeclaredArguments.cs:66-76`;
-  `src/StationGodMCP.Server/ArgumentCheck.cs:6-17`).
-- `sample_logic` is a mod method from stage 12 ([stages.md](stages.md)); the sidecar forwards it like any other.
-- One connection for the life of the sidecar, opened at the first call (an agent session usually starts before the game,
-  so connecting at `initialize` would fail for nothing).
-- Options: today's `--pipe`, `--host`, `--port`, `--output-dir`, `--secret-env`; new `--client <name>` and
-  `--inline-limit-kb`.
-
-`game_unavailable` keeps its two messages, no pipe answered versus the game took the call and did not reply in time
-(`Program.cs:222-310`; README, tool errors).
-
-### As built in stage 9
-
-The owner's rule for this stage was the same as for the Python library: the client stays thin (connecting,
-negotiating, the resend rule, subscription bookkeeping, output files) and the sidecar only translates.
-Where the build differs from the text above, or the text left a choice open, this records it.
-
-**The client.**
-- `src/StationGodMCP.Client` (net8, no dependencies, warnings as errors) embeds `catalogue.json`; the sidecar no longer
-  embeds its own copy and builds its tools from the client's.
-- `StationGodClient.CallAsync(method, params, shape, deadlineMs, cancellation)` returns a `CallOutcome`: `Answered`
-  (result and the `shaped` mark), `Refused` (the error object, the mod's or the TCP secret's) or `NoAnswer` (message,
-  `MaybeRan`, `WorldChanged`). `SubscribeAsync` returns `Subscribed`, `Unsupported` (version 1, or no `subscriptions`
-  feature) or `Failed`. The client raises `CatalogueChanged`, `WorldChanged` and `EventReceived`, and keeps `Protocol`,
-  `Welcome`, `World` and `GameState`. `GameTarget` is `Pipe` or `Tcp`; `GameCatalogue` answers the hash, the
-  effective class, `ResendSafe` and `Duration`.
-- It follows the Python library's resolutions: over TCP the shared secret goes first, and without it the client answers
-  `unauthorized` naming the variable; an old mod is any first answer without a `type` key; the hash is the text
-  `sha256:<lowercase hex>`, fetched once per hash, with the built-in catalogue kept when the fetch fails and used on version 1; the world-changed event fires once per new `world.id`,
-  from the event or from a welcome after a reconnect, and closes every subscription; a `game_state` event is read from
-  its `state` key; `deadline_ms` is sent only when given; `hello` names the given client or `stationgod-cs`.
-- Each call carries its own resend rule instead of a shared requeue: a call never written is tried on the next
-  connection; a written read without `x-effects` is sent once more; a call waiting to be sent again keeps trying to
-  connect with the backoff until its time runs out, and is not sent into another world. Each try gets a fresh id. The
-  client's own reconnect loop runs only while subscriptions are open.
-- Connect timeouts are the text's: 1 second for the pipe (the old sidecar waited 3) and 3 for TCP. The "no pipe
-  answered" message keeps its wording with the new number.
-- The client never shapes a reply. `FieldSelection` did not move into it.
-
-**The sidecar.**
-- `ReplyShaping` and `OutputFolder` are gone from it. `output_file` is the client's (`OutputChoice`, `OutputTarget`,
-  `OutputFolder`), checked against the shared fixtures. A reply from the mod is passed on as it came, marked `shaped`
-  or not: the mod owns shaping, so against a mod older than stage 1 `fields` is ignored rather than applied here. This
-  replaces "fields applied locally" in stage 9's acceptance. `FieldSelection` stays in the sidecar only for the one reply
-  it builds itself, `sample_logic`, and as the reference the mod's shaping tests compare against.
-- `ArgumentCheck` stays in the sidecar, not the client, since it checks MCP schemas. It runs until a connection has said
-  version 2: on version 1 and before the first connection, so a bad argument is still refused with no game running. On
-  version 2 only the sidecar's own `fields` and `output_file` are checked here, and the arguments go to the mod as given.
-- On version 2 the sidecar sends only the `fields` selectors that follow the grammar (trimmed, each once) and adds the
-  others to the reply's `fields_unmatched` itself, so no selector accepted today is refused. If none follows the grammar,
-  no shape is sent and the reply comes whole with all of them unmatched.
-- `sample_logic` runs in the sidecar while the catalogue in use marks it `x-runs-in: sidecar`, and is forwarded once
-  the mod's catalogue does not, so stage 12 needs no sidecar change.
-- MCP messages are handled as they arrive, several at once; each response or notification is written as one line. At
-  the end of input the sidecar waits for its calls in flight, then says `bye` on version 2.
-- The inline limit compares the UTF-8 bytes of the result's JSON text. A pointer written by it carries
-  `auto_output_file: true`; a write that fails answers inline with `output_file_error` and no flag.
-
-**Tests.** `tests/StationGodMCP.Tests/Sidecar/`: `FakeGame` (an in-process game on a real overlapped pipe or loopback
-TCP, speaking the old protocol or version 2, calls answered out of order, events pushed),
-`ClientTests` and `SidecarTranscriptTests`. The output-file fixtures are the shared ones, and the
-built-in hash is checked against the one the Python generator wrote into `_methods.py`. The live checks have not run:
-the owner's game was running when this stage was built.
-
-### As built in stage 15
-
-The old protocol is gone from every client; the mod and the sidecar ship together and are updated together. What the
-stage 7, 8 and 9 notes above say about version 1, the fall back to it, `protocol="v1"` or `protocol="auto"`, and a
-sidecar or library talking to an older mod no longer holds:
-
-- The Python library and the C# client send `hello` and need a `welcome`. An answer that is not one (an older mod's
-  answer to `hello` included) is `Unreachable` / `NoAnswer` naming the answer's start; `unsupported_protocol` is
-  `TooOld` / `Refused`. The library's `protocol` option and `Client.protocol`, and the C# client's `ProtocolChoice`,
-  `ProtocolVersion` and `StationGodClient.Protocol`, are gone; `ConnectAsync` answers whether it connected. Library
-  version 0.2.0.
-- The library checks argument names and required arguments before every call while `check_arguments` is on (the
-  default); version 1's unchecked path is gone.
-- The sidecar checks only what cannot be sent as written (a key given twice at any depth, a number past a double's
-  range, `ArgumentCheck.Unsendable`) and its own `fields` and `output_file`; every other argument goes to the mod as
-  given, connected or not, so with no game running a bad argument is answered `game_unavailable`, not
-  `invalid_argument`. `ArgumentCheck.Normalised` is gone. `ArgumentCheck.Problems` remains as the check of a whole call
-  against a published tool schema, which the tests hold the schemas to.
-- The sidecar's `sample_logic` loop and the catalogue's `x-runs-in` are gone: `sample_logic` is the mod's.
-- `FieldSelection` left the sidecar for the test project, where it stays the reference the mod's single-name selectors
-  are compared against.
-- Every selector goes through the sidecar as on version 2: the ones that follow the grammar as `shape.fields`, the
-  others added to `fields_unmatched` by the sidecar.
-- The dashboard's transport drops its `PROTOCOL` constant, and `tsclient.py` proves the test pipe from
-  `welcome.server.pipe_name` only.
-
-## Moving existing clients over
-
-Order: the library first, then the clients that import it indirectly through the dashboard's transport, then the
-dashboard's own reads, then the test tools. Every step works against both an old and a new mod, so nothing waits for a
-deploy.
-
-### The dashboard
-
-(Written for the old direct library `stationgod`, which `sg` replaced; the dashboard's move to the hub is not planned
-here yet.)
-
-The dashboard is a long-running Python process (`py -m stationscript`, StationeersScriptDashboard
-`stationscript/__main__.py:19-30`). Its cards, the files in `scripts/`, are reloaded when they change on disk
-(`stationscript/runner.py:700-735`); the `stationscript` package is not, and needs a dashboard restart. A card edited in
-place can be loaded half-written and break the live card, so cards are edited in a copy outside `scripts/` and moved in
-whole, in one step (the owner's standing rule for this repository).
-
-1. **Install the library** into Python 3.12 (`py -3.12 -m pip install -e ...\clients\python`), the interpreter
-   `py -m stationscript` runs.
-2. **Transport.** Rewrite `stationscript/transport.py` as a wrapper over `stationgod.Client` with the same names:
-   `PipeTransport(name, connect_timeout, meter)` and its `call(method, params)` returning `result`; `GameError(code,
-   message)` and `GameUnreachable` as subclasses of the library's errors; `meter.record(method, ms, bytes)` fed from
-   the library's `on_call` hook, now with the mod's `elapsed_ms` and `queue_ms` as well. The hand-kept `READ_ONLY` list
-   (`transport.py:23-35`) goes: the catalogue decides. Finding the library: `import stationgod`; if that fails, the
-   wrapper adds the library's source folder to `sys.path` (from the environment variable `STATIONGOD_CLIENT_PATH`, else
-   the sibling checkout `..\StationeersMod\StationGodMCP\clients\python` relative to the dashboard's folder) and tries
-   again; if it still fails, it keeps today's pipe code, moved unchanged into `stationscript/transport_v1.py`, and logs
-   once that it did. The wrapper connects with `protocol="v1"`: today's lenient argument handling, with shaping. The pipe name comes from `PipeTransport`'s argument, else the environment variable
-   `STATIONSCRIPT_PIPE`, else `StationGodMCP`.
-   Restart the dashboard. Every card and every script that imports `PipeTransport` now runs on the library with no
-   other change.
-3. **The replay check, then version 2.** A test in this repository, `CatalogueReplayTests`, sends a committed set of
-   calls through the mod's own version-2 validator; it must refuse none. The set is written by hand from the calls the
-   cards and the scripts below make (method and the params their code builds), plus synthetic calls the validator must
-   refuse. Each refusal is fixed in the card or the catalogue first. Only then does the wrapper switch to
-   `protocol="auto"`.
-4. **Name and target.** Pass `client="dashboard"`, so the dashboard's connection is named in `mod_info`. New
-   `__main__` options `--pipe`, `--game-host`, `--game-port` (the existing `--port` is the dashboard's own web port,
-   `stationscript/__main__.py:20`) and `--client`.
-5. **Reads by subscription** (after the mod has subscriptions). The runner's `_read` (`runner.py:491-528`) makes one
-   `read_devices` call per gateway per card tick, split further when a gateway's items pass one call's bounds
-   (`runner.py:512`; `stationscript/station.py:62-74`). With subscriptions available (`"subscriptions"` in
-   `welcome.features`), the runner instead subscribes once per card, gateway and chunk when the card binds, with the
-   same items, at the card's interval, and at each tick reads `sub.state` instead of calling. A chunk refused with
-   `SubscriptionRefused`, or a server without subscriptions, keeps calling `read_devices` for that chunk. The card's
-   handle API (`h["On"]`, `h.slot(0)`) does not change. When a card rebinds (reconnect, reload, world change) its
-   subscriptions are closed and made again. This changes only the runner, which needs a restart, not the cards. The
-   cards' other calls (`atmosphere_contents`, `inspect_slots`, `thing_health` and the rest) stay polls.
-6. **Shaping in cards.** Cards that read large replies for a few keys pass `fields`, in a copy moved in whole:
-   `solar_tracker.py:185` and `smelter.py:2282` (`thing_health` by ids), `base_damage.py:28` (`thing_health` scan),
-   `locker_sort.py`'s `item_totals` and `find_items` reads, `plants.py`. Each is a separate small edit, checked against
-   the card's tests in `tests/`.
-7. **Metrics.** `stationscript/metrics.py` shows mod time and queue time beside the round trip per method.
-
-#### As built in stage 8: the library is vendored
-
-The dashboard does not find the library at run time. It carries a copy, `stationscript/_vendor/stationgod`, pinned to
-one commit of this repository, named with its branch and library version in `stationscript/_vendor/SOURCE.txt`, which
-also gives the steps to refresh it. Step 2's search is not built: there is no `STATIONGOD_CLIENT_PATH`, no sibling
-checkout fallback, no `pip install` needed, and no `stationscript/transport_v1.py`; the wrapper imports the vendored copy
-and nothing else, so the library's version is the one committed with the dashboard. The scripts below get the same copy
-through the dashboard's package, whatever interpreter starts them.
-
-### Scripts that use the dashboard's transport
-
-Thirteen CheatEngineExpert scripts under `StationeersMod/Workspace/tools` construct `PipeTransport`: `arc_smelt.py`,
-`co2_trickle.py`, `coolant_watch.py`, `feed_vault.py`, `heat_load.py`, `layout_solver/game.py`,
-`power/finish_when_printed.py`, `rocket/burn_watch.py`, `rocket/flight_log.py`, `rocket/oxidiser_watch.py`,
-`rocket_rebuild/rb.py`, `smelt_batch.py` and `sort_storage.py`. They reach the dashboard's package by adding its folder
-to `sys.path` (for example `rocket/flight_log.py:3-4`, `layout_solver/game.py:11-12`). After dashboard step 2 they run
-on the library unchanged, on version 1 with lenient checking, and are started with
-`py -3.12`. They use the dashboard's vendored copy of the library (*As built in stage 8* above). Optional
-follow-ups, each its own small change: `fields` on `burn_watch.py`'s `thing_health` scan and `oxidiser_watch.py`'s
-`find_things` pages.
-
-### The test server's tools
-
-StationeersTestServer `tsclient.py` keeps its exports, `Client(pipe_name)` with `call` and `console`, `client()`,
-`config()`, `ModError`, `Unreachable`, `ensure_running`, `wait_ready`, `process_alive` and `server_pid`, rewritten over
-the library. Its guard stays in `client()`: refuse the default pipe name, and refuse a server whose
-`welcome.server.pipe_name` (or, on a version-1 server, `mod_info.pipe_name`) is not the test pipe (`tsclient.py:90-101`).
-The leak test drives the test server through `tsclient`, using `client()`, `ensure_running` and `ModError`
-(TerraformingReloaded `tools/LeakTest/leaktest.py:67-68`, `:100-101`, `:116-126`), and needs no change.
-`livetest/lt.py` drives the real sidecar over MCP (`livetest/lt.py:1-30`) and needs no change either; `setup.ps1`
-already copies the new sidecar into the test server's `sidecar` folder. LiveCheck is a plugin inside the server, not a
-client (TerraformingReloaded `tools/LiveCheck/Watch.cs:19`), and is untouched.
-
-### Agents
-
-Nothing to do in their registrations. Agents tell the owner when a tool is a cheat and ask before using it.
+`PipeTransport` keeps **one child hub for the whole process**: on first use it calls
+`sg.connect(hub_dll, *hub_arguments(...), client="stationscript")`, where the arguments after `--hub` are
+`--pipe <name>` or `--host <host> --port <port>`; the shared secret is the hub's own `STATIONGODMCP_SECRET` from the
+environment, never an argument. A second child hub for another game is refused, since `sg` has one session and it
+would close the first behind its callers' backs (StationeersScriptDashboard `stationscript/transport.py:84-90`,
+`:132-140`, `:225-240`). Its `call(verb, params)` sends the hub's `verb` method and returns plain JSON; `subscribe`
+gives card reads the devices topic; `on_world_changed` rides the hub's `world_changed` event
+(StationeersScriptDashboard `stationscript/transport.py:154-205`).

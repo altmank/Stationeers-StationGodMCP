@@ -6,8 +6,8 @@ The hub is the sidecar binary (`StationGodMCP.Server`) in its next role: the one
 programs on one side and the mod on the other. It holds one game connection and gives every caller its own stream on
 it. This page is the contract the hub's parts are built to: the hub's wire protocol (what a script worker, a program's
 `sg.connect()` and the dashboard speak), the worker's messages, the journal file, the recording, and the C# seams
-between the parts. The design and its reasons are in PLAN v9 (sections 2.0 to 2.4) and SPEC-NOTES; where this page and
-PLAN differ, PLAN wins and this page is fixed.
+between the parts. The design and its reasons are in PLAN v9 (sections 2.0 to 2.4) and SPEC-NOTES; what this page
+describes is the built system, and the code wins where the two differ.
 
 ## Modes
 
@@ -16,7 +16,9 @@ PLAN differ, PLAN wins and this page is fixed.
 | `StationGodMCP.Server` (default) | MCP on stdio: the 15 verbs, help and run_script | yes |
 | `StationGodMCP.Server --hub` | the hub protocol on stdio (below): a child hub for one program | never |
 
-Both modes hold one `GameLink` (the mod connection), one `VerbPipeline`, one `RunHost` and one journal. Script
+Both modes hold one `GameLink` (the mod connection) and one `VerbPipeline`. MCP mode adds one `RunHost` and one
+journal (`src/StationGodMCP.Server/Program.cs:58-74`); `--hub` serves no runs and keeps none, only a pipeline with
+its script store (`Hub/HubMode.cs:11-20`). Script
 workers connect to their hub over their own stdin and stdout and speak the hub protocol too, so `sg` has one
 transport.
 
@@ -28,6 +30,8 @@ Options added to today's (`docs/configuration.md`, Sidecar options):
 - `--journal-dir <path>`: where journals live. Default `%LOCALAPPDATA%\StationGodMCP\journal` (Windows) or
   `$XDG_STATE_HOME/stationgodmcp/journal`.
 - `--python <path>`: the Python for script workers. Default `py -3` on Windows, else `python3`.
+- `--scripts-dir <path>`: where the saved scripts live (`shared/` and `world/<world id>/`); the four `script` whats
+  and `run_script {name}` need it (`SidecarOptions.cs`).
 
 ## Streams
 
@@ -42,18 +46,20 @@ Admission: the hub keeps at most `limits.max_in_flight_per_stream` calls in flig
 each round. Every call carries the world id the hub last saw (`welcome.server.world.id`, then each `world_changed`).
 
 Resume: the hub sends `resume: "hub-<16 hex>"` (one token per hub process) in every `hello`. After a break it
-reconnects with the same token. A call written but not answered across a break answers
-`unreachable` with `maybe_ran: true` (read calls with no `x-effects` may be resent by the rules of
-`protocol.md`, *Reconnecting*). `release` is sent only if the mod lists the feature (it does not yet: job-snapshot pins
-are not in the mod).
+reconnects with the same token. A call written but not answered across a break answers `unreachable` with
+`maybe_ran: true`; only calls the catalogue marks read class and free of effects are sent again
+([clients.md](clients.md)). `release` and `cursor_close` are sent only when the mod lists `release` and `cursors`,
+and this mod does: its kept jobs carry pinned snapshots and final statuses
+(`src/StationGodMCP.Client/GameLink.cs:437-457`, `src/StationGodMCP.Mod/Pure/Jobs/KeptJobs.cs:9-44`).
 
 ## The hub protocol
 
 The mod's wire protocol, version 2 (`protocol.md`), with the hub as the server. Everything there holds unless this
 section says otherwise.
 
-- `welcome` is the mod's last welcome as the hub saw it, with `client_id` the hub's own name for the caller and
-  `features` the mod's plus `pipeline`. Before the game is reachable the hub answers `hello` with a welcome whose
+- `welcome` is the mod's last welcome as the hub saw it, with `client_id` the hub's own name for the caller,
+  `features` the mod's plus `pipeline`, and the link's own `resume` and `restores` keys dropped (the token is the
+  link's, not the caller's) (`Hub/HubSession.cs:325-364`). Before the game is reachable the hub answers `hello` with a welcome whose
   `server.game_state` is `Unreachable`, and calls answer `game_unreachable` until it is. A session answered that way
   is sent the mod's welcome once the link first gets it (one extra `welcome`, before any event); `sg` keeps the
   latest welcome, so a watch started after the game answers subscribes where it would otherwise have polled.
@@ -93,13 +99,15 @@ On the script and program faces a list reply's first page is the handler's first
 entries, D3); when more remain, the reply's top level carries `"cursor": "<hub cursor>"` and the main list's key is
 named in `"main": "<key>"`. `sg`'s main list (a list subclass, note 23) walks a single `for` page by page with `more`,
 and pages in the rest on `len`, an index, `sorted` or a second pass. The hub backs a cursor with the mod's walk cursor
-where the handler has one (`find_things`), and otherwise with `offset` pages.
+where the handler has one (`find thing`), and otherwise with `offset` pages.
 
 The program face is a reading: PLAN names programs as `sg` users but gives no write rule for them; they get the
 direct rule, since nothing reviews a program's run as a whole. So a program's pass-through takes only read-class mod
 methods with no `x-effects` (plus `subscribe`, `unsubscribe`, `cursor_close`, `release`); every write goes through
 `verb`, where the write rule and the recording apply. A script worker's session takes no mod methods at all: only
-`verb`, `ref`, `more`, `wait` and `hold`, on its run's stream.
+`verb`, `ref`, `more`, `wait` and `hold`, plus `subscribe` and `unsubscribe` (a subscription only reads the mod's own
+topics and cannot take a write past the run's gate, and `sg.watch` and `sg.changes` need them), on its run's stream
+(`Hub/HubSession.cs:42-45`).
 
 ## Runs
 
@@ -129,10 +137,14 @@ The worker then, before any user code runs, sends one `run_analysis` message (no
 - `writes`, `holds`: whether the code calls a write verb (`write`, `build`, `swap`, `remove`, `move`, `trade`, `undo`,
   or `server` with a write what) or `sg.hold`. A run with neither is read-only (its reply waits as a report run's). The AST is advisory: a run's first write call
   switches its reply wait to the confirmed ceiling.
-- The hub takes only the first `run_analysis` of a session; later ones are refused `protocol_error`.
+- The worker sends `run_analysis` once for its own code and once for each saved script it loads (`sg.lib`); the
+  hub forwards each to the run, which merges them, a loaded script's literals included
+  (`Hub/HubSession.cs:866-889`, `Runs/Run.cs:880-909`). One after the run has ended is refused `protocol_error`.
 
-Each `sg` call is a `call` with `method` `verb`, `ref`, `wait` or `hold`, and `params.line` (the code line, 1-based)
-added. When the code ends the worker sends `run_end` (no reply) and exits:
+Each `sg` call is a `call` with `method` `verb`, `ref`, `more`, `wait` or `hold`, and `params.line` (the code line,
+1-based) added; `subscribe` and `unsubscribe` are sent without a line, since the mod's own protocol methods take
+their arguments alone (`clients/python/sg/_session.py:110-122`). When the code ends the worker sends `run_end` (no
+reply) and exits:
 
 ```json
 {"type":"run_end","state":"done","returned":{...},"printed":"...","error":null}
@@ -262,8 +274,9 @@ text; then the footer:
 - `WARNINGS` (with `driven_by`), `PASSED`, `CONTESTED`, `CLEANUP`;
 - `left:` after a stop (changed and not restored);
 - `undo script-N` with the classes;
-- the cost line: `cost script-N (<first line>): C calls, R calls/s, W writes, G game ms, M ms/s, F frames over budget,
-  tick held T ms, S s wall`, game numbers from `stream_costs`.
+- the cost line: `cost script-N (<first line>): C calls, R calls/s, W writes, G game ms, M ms/s, F frames over
+  budget, S samples, X ms sampling, U updates, tick held 0 ms, S s wall`, the game numbers from `stream_costs` (the
+  held-tick number is not measured per run yet, `Runs/RunText.cs:87-99`).
 
 A reply before the end: `script-N running: line L, S s in, +W <verb> <what>, R calls/s, M ms/s game`, then "follow it
 with inspect {what: \"job\", id: \"script-N\"}". Report runs and read-only runs wait up to `max_wait` (default the
