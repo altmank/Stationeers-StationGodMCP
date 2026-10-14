@@ -180,9 +180,10 @@ run does through `sg`, not what the Python language can reach (a public-release 
 
 ### Routes
 
-- **Report run** (`confirm` absent): every write is reported, never sent as an act. Report rows come from the what's
-  report class: `dry_run` (the handler's `dry_run: true`), `mod` (the handler's own report until `confirm`), `hub`
-  (the hub reads current values) or `none`. A row is `[id or cell, name, current -> new]` with the undo mark, warnings
+- **Report run** (`confirm` absent): every write is reported, never sent as an act. The mod schedules a report of a
+  confirm-route what by its `x-cost-report`, and an acting call by its `x-cost` (`VerbSurface.cs:146`,
+  `CallSession.cs:348-388`); the report's own reply is `report_only` with its `targets`, which the hub lists with the
+  what's undo mark (`Run.Gate.cs:517-528`). A row is `[id or cell, name, current -> new]` with the undo mark, warnings
   (`driven_by`, lint) and lifted guards (`PASSED`). Waits are real until the first write. After it, a `wait` with
   `in_loop` true, or any `watch`, counts: the first returns at once, the second answers `pass_end`. `sg.watch` in a
   report run returns its current rows as met.
