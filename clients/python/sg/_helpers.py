@@ -1,4 +1,5 @@
 """The sg helpers that are not verbs: wait, watch, hold, ref and help (hub.md, *The hub protocol* and *Runs*)."""
+import threading
 import time
 from collections.abc import Mapping
 
@@ -11,6 +12,10 @@ from ._verbs import read as _read
 LIGHT_POLL_S = 1.0
 HEAVY_POLL_S = 5.0
 
+# The keys read logic's reads entries take (catalogue/verbs/read.json): a watch whose every entry is a mapping of
+# those alone is the form the devices subscription covers.
+_READ_ENTRY_KEYS = frozenset({"id", "logic", "slots", "atmosphere", "reagents"})
+
 
 def wait(s):
     """Waits s seconds and returns None. Inside a run, time.sleep is this function. After a stop the hub answers at
@@ -20,35 +25,154 @@ def wait(s):
 
 
 def watch(reads, until, timeout):
-    """Reads `read logic` with reads until until(rows) is true or timeout seconds pass; returns (rows, met).
+    """Reads logic values until until(rows) is true or timeout seconds pass; returns (rows, met).
 
-    rows are the last read's rows, one per reads entry, in order. It never raises at timeout. It polls once a second,
-    or every 5 s when an entry asks for atmosphere (a heavy read). In a report run the hub answers the watch's wait
-    with {"instant": true} and the watch returns its current rows as met. After a stop it reads once and returns,
-    because waits no longer wait and polling would spin."""
+    rows are the last reading's rows, one per reads entry, in order. It never raises at timeout. A hub whose welcome
+    lists subscriptions, and reads whose every entry is a devices-form read, subscribe to the devices topic instead of
+    polling: the subscribe reply's reading is the first rows, each update event replaces them, and the watch makes no
+    read logic call after that. Anything else polls read logic, as it always has. Both sample every second, or every
+    5 s when an entry asks for atmosphere (a heavy read). In a report run the hub answers the watch's wait with
+    {"instant": true} and the watch returns its current rows as met. A stop the run has already heard of ends the
+    watch without another wait: it reads once (it does not subscribe then) and returns. A stop that arrives on the
+    watch's own wait raises sg.Stopped as it always has, and a subscription is ended first. A subscription the hub
+    refuses (a limit), ends (subscription_ended) or drops with a world change falls back to polling for the rest of
+    the timeout. The watch unsubscribes before it returns."""
     interval = HEAVY_POLL_S if any(isinstance(entry, dict) and entry.get("atmosphere") for entry in reads) \
         else LIGHT_POLL_S
     started = time.monotonic()
-    rows = _watch_rows(reads)
-    while True:
-        if until(rows):
-            return rows, True
-        run = _session.current_run()
-        if run is not None and run.stopped:
-            return rows, False
-        left = timeout - (time.monotonic() - started)
-        if left <= 0:
-            return rows, False
-        answer = _session.request("wait", {"s": min(interval, left), "kind": "watch",
-                                           "in_loop": _session.in_loop()})
-        if isinstance(answer, dict) and answer.get("instant"):
-            return rows, True
-        rows = _watch_rows(reads)
+    subscription = None if _stopped() else _subscribe(reads, interval)
+    try:
+        rows = subscription.rows() if subscription is not None else _watch_rows(reads)
+        while True:
+            if until(rows):
+                return rows, True
+            if _stopped():
+                return rows, False
+            left = timeout - (time.monotonic() - started)
+            if left <= 0:
+                return rows, False
+            answer = _session.request("wait", {"s": min(interval, left), "kind": "watch",
+                                               "in_loop": _session.in_loop()})
+            if isinstance(answer, dict) and answer.get("instant"):
+                return rows, True
+            rows = subscription.rows() if subscription is not None and subscription.live else _watch_rows(reads)
+    finally:
+        if subscription is not None:
+            subscription.end()
 
 
 def _watch_rows(reads):
     reply = _read("logic", reads=reads)
     return list(reply.get("results") or [])
+
+
+def _stopped():
+    """Whether the run's stop has already been delivered: the watch then takes one reading and returns, subscribing to
+    nothing, because waits no longer wait and polling would spin."""
+    run = _session.current_run()
+    return run is not None and run.stopped
+
+
+def _subscribe(reads, interval):
+    """A started devices subscription for the watch, or None when it polls: the hub does not advertise subscriptions,
+    a reads entry is not the devices form, or the hub refused the subscribe (a subscription limit, or too many of
+    them), which is the mod's own way of saying to poll instead."""
+    welcome = _session.current_transport().welcome or {}
+    if "subscriptions" not in (welcome.get("features") or []):
+        return None
+    if not all(_devices_form(entry) for entry in reads):
+        return None
+    subscription = _DevicesSubscription(reads, interval)
+    return subscription if subscription.start() else None
+
+
+def _devices_form(entry):
+    """Whether one read logic reads entry is the form the devices topic covers: a mapping whose keys are read logic's
+    entry keys alone (id, logic, slots, atmosphere, reagents)."""
+    return isinstance(entry, Mapping) and bool(entry) and not set(entry) - _READ_ENTRY_KEYS
+
+
+class _DevicesSubscription:
+    """One watch's devices subscription: the subscribe call, its latest reading, and the events that change it.
+
+    The handler runs on the transport's reader thread, so the reading it keeps and the flags it sets are under a lock.
+    `live` goes false when the subscription ends or a world change drops it, and the watch then polls for the rest of
+    its timeout."""
+
+    def __init__(self, reads, interval):
+        self._reads = reads
+        self._interval = interval
+        self._lock = threading.Lock()
+        self._transport = None
+        self._id = None
+        self._reading = None
+        self._live = False
+
+    @property
+    def live(self):
+        with self._lock:
+            return self._live
+
+    def start(self):
+        """Subscribes; False when the hub refused it, which leaves nothing open and the watch polling."""
+        transport = _session.current_transport()
+        transport.on_event(self._on_event)
+        try:
+            reply = _session.request("subscribe", {"reads": self._reads, "interval_s": self._interval},
+                                     line=False)
+        except (Stopped, _PassEnd):
+            transport.off_event(self._on_event)
+            raise
+        except Error:
+            transport.off_event(self._on_event)
+            return False
+        with self._lock:
+            self._id = reply.get("subscription") if isinstance(reply, dict) else None
+            self._reading = reply.get("result") if isinstance(reply, dict) else None
+            self._live = self._id is not None
+        if not self._live:
+            transport.off_event(self._on_event)
+            return False
+        self._transport = transport
+        return True
+
+    def rows(self):
+        """The latest reading's rows, in reads order; empty before a reading arrives."""
+        with self._lock:
+            reading = self._reading
+        return list(reading.get("results") or []) if isinstance(reading, Mapping) else []
+
+    def end(self):
+        """Unsubscribes when a live subscription is still known and stops listening for its events. A hub that has
+        already forgotten it (a stream end, a world change) refuses unknown_subscription; nothing the watch can act on
+        either way, since the subscription is gone with what ended it."""
+        if self._transport is None:
+            return
+        self._transport.off_event(self._on_event)
+        with self._lock:
+            live, subscription = self._live, self._id
+        if not live or subscription is None:
+            return
+        try:
+            _session.request("unsubscribe", {"subscription": subscription}, line=False)
+        except Error:
+            pass
+
+    def _on_event(self, event):
+        """On the reader thread: keeps the latest update's reading and follows the events that end a subscription.
+        An event is taken when it names this subscription, or when the reply has not named it yet (the hub replies
+        before the subscription's first update, and a session's only open subscription is this one)."""
+        kind = event.get("event")
+        with self._lock:
+            if kind == "world_changed":
+                self._live = False
+                return
+            if self._id is not None and event.get("subscription") != self._id:
+                return
+            if kind == "update":
+                self._reading = event.get("result") or self._reading
+            elif kind == "subscription_ended":
+                self._live = False
 
 
 def hold_ids(ids):

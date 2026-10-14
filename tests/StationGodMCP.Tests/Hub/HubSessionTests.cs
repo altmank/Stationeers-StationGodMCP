@@ -337,7 +337,7 @@ public sealed class HubSessionTests
         caller.Send("""{"type":"run_analysis","literals":[],"while_lines":[],"writes":true,"holds":false,"syntax_error":null}""");
 
         List<string> codes = [];
-        foreach (string method in new[] { "write", "drop_job", "hold_restore", "stream_costs", "subscribe" })
+        foreach (string method in new[] { "write", "drop_job", "hold_restore", "stream_costs" })
         {
             codes.Add((await caller.CallAsync(method, method, "{}")).GetProperty("error").GetProperty("code").GetString()!);
         }
@@ -355,6 +355,65 @@ public sealed class HubSessionTests
         Assert.False(link.SessionEnded);
         Assert.Empty(link.Calls);
     }
+
+    [Fact]
+    public async Task AScriptSessionSubscribesAndItsUpdatesReachTheRun()
+    {
+        FakeHubLink link = new()
+        {
+            Answer = (call, _) => Task.FromResult(call.Method == "subscribe"
+                ? FakeGameLink.Ok("""{"subscription":"s40","interval_s":1.0,"values":1,"frame":5,"result":{"results":[1]}}""")
+                : FakeGameLink.Ok("""{"subscription":"s40","ended":true}"""))
+        };
+        await using HubCaller caller = await ScriptSession(link);
+
+        JsonElement subscribed = await caller.CallAsync("1", "subscribe", DeviceReads);
+        link.Raise("""{"type":"event","event":"update","subscription":"s40","seq":1,"frame":9,"result":{"results":[1]}}""");
+        JsonElement update = await caller.NextAsync();
+        JsonElement unsubscribed = await caller.CallAsync("2", "unsubscribe", """{"subscription":"s1"}""");
+
+        Assert.Equal("s1", subscribed.GetProperty("result").GetProperty("subscription").GetString());
+        Assert.Equal("update", update.GetProperty("event").GetString());
+        Assert.Equal("s1", update.GetProperty("subscription").GetString());
+        Assert.Equal("s1", unsubscribed.GetProperty("result").GetProperty("subscription").GetString());
+        GameCall subscribe = Assert.Single(link.CallsTo("subscribe"));
+        Assert.Equal(7, subscribe.Stream);  // the run's own stream, not a hub stream of its own
+        Assert.Equal(DeviceReads, subscribe.Parameters.GetRawText());
+    }
+
+    [Fact]
+    public async Task ARunsEndEndsItsSubscription()
+    {
+        FakeHubLink link = new()
+        {
+            Answer = (call, _) => Task.FromResult(call.Method == "subscribe"
+                ? FakeGameLink.Ok("""{"subscription":"s40","interval_s":1.0,"values":1,"frame":5,"result":{}}""")
+                : FakeGameLink.Ok("""{"subscription":"s40","ended":true}"""))
+        };
+        await using HubCaller caller = await ScriptSession(link);
+        await caller.CallAsync("1", "subscribe", DeviceReads);
+
+        await caller.EndAsync();
+
+        GameCall unsubscribe = Assert.Single(link.CallsTo("unsubscribe"));
+        Assert.Equal("""{"subscription":"s40"}""", unsubscribe.Parameters.GetRawText());
+    }
+
+    // A run's session with its analysis sent, as Run builds it: MainStream 7, a script's Face.
+    private static async Task<HubCaller> ScriptSession(FakeHubLink link)
+    {
+        HubCaller caller = HubCaller.Start(link, new HubSessionSettings(Face.Script)
+        {
+            Run = new JsonObject { ["id"] = "script-5" },
+            RunChannel = new RecordingRun(),
+            MainStream = 7
+        });
+        await caller.HelloAsync();
+        caller.Send("""{"type":"run_analysis","literals":[],"while_lines":[],"writes":true,"holds":false,"syntax_error":null}""");
+        return caller;
+    }
+
+    private const string DeviceReads = """{"reads":[{"id":"5","logic":["On"]}],"interval_s":1}""";
 
     [Fact]
     public async Task ARunsFirstCallBeforeItsAnalysisIsAProtocolError()

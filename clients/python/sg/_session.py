@@ -1,8 +1,9 @@
 """Where sg calls go: the current transport, the current run (if any), and the one function that sends a call.
 
-Every sg call carries `params.line`, the line of the run's code that made it (hub.md, *Runs*). The worker compiles the
-code under the file name "<script>", so the line is found by walking up the stack to the innermost frame from that
-file. Outside a run (a program using sg.connect()) there is no such frame and the line is None.
+Every sg call carries `params.line`, the line of the run's code that made it (hub.md, *Runs*) - except subscribe and
+unsubscribe, which the mod answers as its own protocol methods and which take their own arguments alone. The worker
+compiles the code under the file name "<script>", so the line is found by walking up the stack to the innermost frame
+from that file. Outside a run (a program using sg.connect()) there is no such frame and the line is None.
 """
 import sys
 
@@ -87,17 +88,20 @@ def _replaces(recorded, delivered):
     return recorded is None or (isinstance(recorded, _PassEnd) and isinstance(delivered, Stopped))
 
 
-def request(method, params, call=None):
+def request(method, params, call=None, line=True):
     """Sends one hub call with params.line added and returns its result; a refusal raises Error, Stopped or
-    _PassEnd. `call` is what Error.call reports (the verb call as sent)."""
-    line = calling_line()
+    _PassEnd. `call` is what Error.call reports (the verb call as sent). `line=False` sends it without a line, for the
+    hub calls the mod answers as its own protocol methods (subscribe, unsubscribe): those take their own arguments
+    alone and refuse anything else, while verb, ref, more, wait and hold read the line."""
+    at = calling_line() if line else None
     params = dict(params)
-    params["line"] = line
+    if line:
+        params["line"] = at
     reply = current_transport().call(method, params)
     if reply.get("ok"):
         return reply.get("result")
     exception = from_error(reply.get("error"), call=call if call is not None else {"method": method, **params},
-                           line=line)
+                           line=at)
     if _run is not None and _replaces(_run.stop, exception):
         _run.stop = exception
     raise exception

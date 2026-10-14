@@ -19,8 +19,9 @@ public sealed class SubscriptionEngineTests
     private readonly FakeReader _reader = new FakeReader();
     private readonly RecordingEvents _events = new RecordingEvents();
 
-    private SubscriptionEngine<FakeReading> Engine(SubscriptionLimits? limits = null) =>
-        new SubscriptionEngine<FakeReading>(_reader, FakeComparer.Instance, limits ?? SubscriptionLimits.Default);
+    private SubscriptionEngine<FakeReading> Engine(SubscriptionLimits? limits = null, Func<double>? clockMs = null) =>
+        new SubscriptionEngine<FakeReading>(_reader, FakeComparer.Instance, limits ?? SubscriptionLimits.Default,
+            clockMs ?? (() => 0.0));
 
     private static SamplingTick At(double gameTimeS, long frame) => new SamplingTick(frame, gameTimeS);
 

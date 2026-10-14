@@ -10,8 +10,11 @@ using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Protocol;
+using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Sampling;
+using StationGodMCP.Pure.Scheduling;
 using StationGodMCP.Pure.Subscriptions;
+using StationGodMCP.Tests.Scheduling;
 using Xunit;
 
 namespace StationGodMCP.Tests.Subscriptions;
@@ -19,8 +22,8 @@ namespace StationGodMCP.Tests.Subscriptions;
 /// <summary>
 /// Subscriptions over version 2 on a real pipe, with the lane scheduler's frames run by the test: subscribe answers
 /// the first reading, updates come only on a change and carry a later frame, unsubscribe and unknown ids, the world
-/// topic's events, a new world ending devices subscriptions, limits, and a closed connection dropping its
-/// subscriptions.
+/// topic's events, a new world ending devices subscriptions, limits, a closed connection dropping its subscriptions,
+/// and each update counted for its stream with its sampling and serialisation milliseconds.
 /// </summary>
 public sealed class SubscriptionWireTests
 {
@@ -280,6 +283,30 @@ public sealed class SubscriptionWireTests
         Assert.Null(client.NextOrNull(200));
     }
 
+    [Fact]
+    public async Task AnUpdateIsCountedForItsStreamWithItsSamplingAndSerialisationMilliseconds()
+    {
+        // The reader costs the clock 0.75 ms per read, so the sample's own time is known and the writer adds its own
+        // (0, since nothing moves the clock between the two reads of the serialisation).
+        FakeClock clock = new FakeClock();
+        StreamCosts costs = new StreamCosts();
+        SubscriptionHub hub = new SubscriptionHub(new ClockedReader(_reader, clock, 0.75), NoLogic.Instance,
+            SubscriptionLimits.Default, costs, clock);
+        using PipeRig rig = new PipeRig(mainThread: false, subscriptions: hub,
+            tick: () => new SamplingTick(_frame, _gameTimeS));
+        using V2Client client = await V2Client.Connect(rig);
+
+        Call(rig, client, "1", "subscribe", DeviceParams());
+        _reader.Value = 0;
+        Frame(rig, atS: 2.0);
+        Assert.Equal("update", (string?)client.Next()["event"]);
+
+        var cost = costs.Of(new CallContext(ClientId(client), 0));
+        Assert.Equal(1, cost.Updates);
+        Assert.Equal(0.75, cost.UpdateMs, 9);
+        Assert.Equal(0, cost.Calls);  // the call itself is the lane scheduler's own store
+    }
+
     private static JObject DeviceParams() => new JObject
     {
         ["reads"] = new JArray(new JObject { ["id"] = "5", ["logic"] = new JArray("On") }),
@@ -329,6 +356,28 @@ public sealed class SubscriptionWireTests
 
         public LogicSampleRead Read(StationGodMCP.Pure.Sampling.SampleRequest arguments, List<BatchItemView> into) =>
             throw new InvalidOperationException("No read sample here.");
+    }
+
+    /// <summary>A reader whose every read costs the clock ms, so an update's sampling time is known exactly.</summary>
+    private sealed class ClockedReader : IDeviceReader<ReadDevicesView>
+    {
+        private readonly IDeviceReader<ReadDevicesView> _reader;
+        private readonly FakeClock _clock;
+        private readonly double _sampleMs;
+
+        internal ClockedReader(IDeviceReader<ReadDevicesView> reader, FakeClock clock, double sampleMs)
+        {
+            _reader = reader;
+            _clock = clock;
+            _sampleMs = sampleMs;
+        }
+
+        public ReadDevicesView Read(DeviceSubscriptionQuery query)
+        {
+            ReadDevicesView reading = _reader.Read(query);
+            _clock.Advance(_sampleMs);
+            return reading;
+        }
     }
 
     /// <summary>One device whose On value the test sets.</summary>

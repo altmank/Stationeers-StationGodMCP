@@ -12,11 +12,15 @@ from sg._transport import Transport  # noqa: E402
 
 class HubCase(unittest.TestCase):
     """Each test gets a fake hub answering through `self.answer(method, params)` (override or set self.handler) and
-    sg connected to it."""
+    sg connected to it. `features` is what the hub's welcome lists (["pipeline"] by default; add `subscriptions` for
+    the devices topic)."""
+
+    features = None
 
     def setUp(self):
         self.handler = lambda method, params: ok({})
-        self.hub, reader, writer = FakeHub.over_pipes(lambda method, params: self.handler(method, params))
+        self.hub, reader, writer = FakeHub.over_pipes(lambda method, params: self.handler(method, params),
+                                                      features=self.features)
         self.transport = Transport(reader, writer, client="sg-test")
         self.welcome = self.transport.hello(timeout=5)
         _session.use(self.transport)

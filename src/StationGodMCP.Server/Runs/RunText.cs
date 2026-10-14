@@ -83,7 +83,9 @@ internal static class RunText
                $"follow it with inspect {{what: \"job\", id: \"{run.Id}\"}}";
     }
 
-    /// <summary>cost script-N (first line): C calls, R calls/s, W writes, G game ms, M ms/s, F frames over budget, ...</summary>
+    /// <summary>
+    /// cost script-N (first line): C calls, R calls/s, W writes, G game ms, M ms/s, F frames over budget, U updates, ...
+    /// </summary>
     internal static string CostLine(RunRecord run, StreamCost? cost, int writes)
     {
         double wall = Wall(run);
@@ -92,7 +94,7 @@ internal static class RunText
         // stream_costs carries no held-tick counter, so the tick held is not measured per run yet.
         return $"cost {run.Id} ({run.FirstLine}): {calls} calls, {Number(Rate(calls, wall), 1)} calls/s, {writes} writes, " +
                $"{Number(gameMs, 1)} game ms, {Number(Rate(gameMs, wall), 1)} ms/s, {cost?.OverBudgetFrames ?? 0} frames over " +
-               $"budget, tick held 0 ms, {Number(wall, 1)} s wall";
+               $"budget, {cost?.Updates ?? 0} updates, tick held 0 ms, {Number(wall, 1)} s wall";
     }
 
     internal static string StateLine(RunRecord run) => run.State switch

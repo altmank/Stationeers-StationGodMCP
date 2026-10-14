@@ -47,14 +47,21 @@ internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, IS
     private readonly LogicSampler<BatchItemView> _sampler;
     private readonly Dictionary<SampleRun<BatchItemView>, SampleWatch> _runs =
         new Dictionary<SampleRun<BatchItemView>, SampleWatch>();
+
+    // Where each stream's update events are counted (stream_costs' updates and update_ms); null when nobody asks.
+    private readonly StreamCosts? _costs;
+    private readonly IMonotonicClock _clock;
     private SamplingTick _tick;
     private RealTimeTick _real;
 
     internal SubscriptionHub(IDeviceReader<ReadDevicesView> reader, ILogicSampleReader<BatchItemView> logicReader,
-        SubscriptionLimits limits)
+        SubscriptionLimits limits, StreamCosts? costs = null, IMonotonicClock? clock = null)
     {
-        _engine = new SubscriptionEngine<ReadDevicesView>(reader, ReadDevicesComparer.Instance, limits);
+        _clock = clock ?? StopwatchClock.Instance;
+        _engine = new SubscriptionEngine<ReadDevicesView>(reader, ReadDevicesComparer.Instance, limits,
+            () => _clock.NowMs);
         _sampler = new LogicSampler<BatchItemView>(logicReader, LogicResultComparer.Instance);
+        _costs = costs;
     }
 
     /// <summary>Sample runs in progress.</summary>
@@ -308,7 +315,7 @@ internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, IS
     {
         if (_connections.TryGetValue(slot.Connection, out Connection? connection))
         {
-            connection.Send(new UpdateLine(slot, slot.Epoch));
+            connection.Send(new UpdateLine(slot, slot.Epoch, _costs, _clock));
         }
     }
 
@@ -444,24 +451,33 @@ internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, IS
 
     /// <summary>
     /// An update in the outbound queue: written as the slot holds it when the writer reaches it, unless the slot was
-    /// requeued on another connection since (a resume), when this entry writes nothing.
+    /// requeued on another connection since (a resume), when this entry writes nothing. Writing it is where the update
+    /// is counted for its stream (stream_costs): the line's serialisation is added to the sample's own main-thread ms,
+    /// which came with the update.
     /// </summary>
     private sealed class UpdateLine : IOutboundLine
     {
         private readonly UpdateSlot<ReadDevicesView> _slot;
         private readonly int _epoch;
+        private readonly StreamCosts? _costs;
+        private readonly IMonotonicClock _clock;
 
-        internal UpdateLine(UpdateSlot<ReadDevicesView> slot, int epoch)
+        internal UpdateLine(UpdateSlot<ReadDevicesView> slot, int epoch, StreamCosts? costs, IMonotonicClock clock)
         {
             _slot = slot;
             _epoch = epoch;
+            _costs = costs;
+            _clock = clock;
         }
 
         public bool TryTake(out string line)
         {
             if (_slot.TryTake(_epoch, out SubscriptionUpdate<ReadDevicesView> update))
             {
+                double startedMs = _clock.NowMs;
                 line = EventLine(UpdateEventView.Of(update));
+                _costs?.RecordUpdate(new CallContext(_slot.Connection.Value, _slot.Stream),
+                    update.SampleMs + (_clock.NowMs - startedMs));
                 return true;
             }
 

@@ -74,6 +74,14 @@ class WatchTests(HubCase):
         sg.watch([{"id": "5", "atmosphere": {"of": "self"}}], lambda rows: False, timeout=600)
         self.assertEqual(5.0, self.params("wait")[0]["s"])
 
+    def test_a_hub_without_the_subscriptions_feature_polls(self):
+        self.handler = lambda method, params: ok({"instant": True}) if method == "wait" \
+            else ok({"results": [{"value": 1.0}]})
+        rows, met = sg.watch(self.READS, lambda rows: False, timeout=600)
+        self.assertEqual(([{"value": 1.0}], True), (rows, met))
+        self.assertEqual([], self.params("subscribe"))
+        self.assertEqual(1, len(self.params("verb")))
+
     def test_after_a_stop_watch_reads_once_and_returns(self):
         source = ("try:\n    sg.wait(1)\nexcept BaseException:\n    pass\n"
                   "rows, met = sg.watch([{'id': '5', 'logic': 'On'}], lambda rows: False, 600)\nmet")
@@ -81,6 +89,125 @@ class WatchTests(HubCase):
         self.handler = lambda method, params: next(answers) if method == "wait" else ok({"results": []})
         self.assertFalse(self.run_code(source))
         self.assertEqual(1, len(self.params("wait")))
+        self.assertEqual(1, len(self.params("verb")))
+
+
+class SubscribedWatchTests(HubCase):
+    """sg.watch on a hub that has the devices topic: the devices subscription, and what falls back to polling."""
+
+    features = ["pipeline", "subscriptions"]
+    READS = [{"id": "5", "logic": "Pressure"}]
+
+    def ended(self, event, **fields):
+        """A handler whose one wait pushes the event that ends the subscription, then polls: the reply's reading is
+        1.0 and the poll's is 2.0."""
+        def handler(method, params):
+            if method == "subscribe":
+                return ok({"subscription": "s1", "interval_s": 1.0, "result": {"results": [{"value": 1.0}]}})
+            if method == "wait":
+                self.hub.write({"type": "event", "event": event, **fields})
+                return ok({})
+            return ok({"results": [{"value": 2.0}]})
+        return handler
+
+    def test_the_replys_reading_is_the_first_rows_and_an_update_replaces_them_without_a_read(self):
+        waits = []
+
+        def handler(method, params):
+            if method == "subscribe":
+                return ok({"subscription": "s1", "interval_s": 1.0, "values": 1, "frame": 7,
+                           "result": {"results": [{"value": 1.0}]}})
+            if method == "wait":
+                waits.append(params["s"])
+                if len(waits) == 2:
+                    self.hub.write({"type": "event", "event": "update", "subscription": "s1", "seq": 1,
+                                    "frame": 9, "game_time_s": 3.0, "late_ms": 1.5,
+                                    "result": {"results": [{"value": 5.0}]}})
+                return ok({})
+            return ok({})
+
+        self.handler = handler
+        rows, met = sg.watch(self.READS, lambda rows: rows and rows[0]["value"] >= 5, timeout=60)
+        self.assertTrue(met)
+        self.assertEqual(5.0, rows[0]["value"])
+        self.assertEqual([{"reads": self.READS, "interval_s": 1.0}], self.params("subscribe"))
+        self.assertEqual([], self.params("verb"))  # a subscribed watch makes no read logic call
+        self.assertEqual([("watch", 1.0), ("watch", 1.0)], [(p["kind"], p["s"]) for p in self.params("wait")])
+        self.assertEqual([{"subscription": "s1"}], self.params("unsubscribe"))
+
+    def test_an_atmosphere_entry_subscribes_at_the_heavy_cadence(self):
+        reads = [{"id": "5", "atmosphere": {"of": "self"}}]
+
+        def handler(method, params):
+            if method == "subscribe":
+                return ok({"subscription": "s1", "interval_s": params["interval_s"], "result": {"results": []}})
+            return ok({"instant": True}) if method == "wait" else ok({})
+
+        self.handler = handler
+        sg.watch(reads, lambda rows: False, timeout=600)
+        self.assertEqual([{"reads": reads, "interval_s": 5.0}], self.params("subscribe"))
+
+    def test_a_read_that_is_not_the_devices_form_polls(self):
+        def handler(method, params):
+            return ok({"instant": True}) if method == "wait" else ok({"results": []})
+
+        self.handler = handler
+        sg.watch([{"id": "5", "logic": "On", "include": ["clock"]}], lambda rows: False, timeout=600)
+        self.assertEqual([], self.params("subscribe"))
+        self.assertEqual(1, len(self.params("verb")))
+
+    def test_the_timeout_returns_unmet_and_unsubscribes(self):
+        def handler(method, params):
+            if method == "subscribe":
+                return ok({"subscription": "s1", "interval_s": 1.0, "result": {"results": [{"value": 1.0}]}})
+            if method == "wait":
+                time.sleep(params["s"])
+                return ok({})
+            return ok({})
+
+        self.handler = handler
+        started = time.monotonic()
+        rows, met = sg.watch(self.READS, lambda rows: False, timeout=0.3)
+        self.assertEqual(([{"value": 1.0}], False), (rows, met))
+        self.assertLess(time.monotonic() - started, 5)
+        self.assertEqual([{"subscription": "s1"}], self.params("unsubscribe"))
+        self.assertEqual([], self.params("verb"))
+
+    def test_a_refused_subscribe_polls_for_the_rest_of_the_watch(self):
+        def handler(method, params):
+            if method == "subscribe":
+                return refused("subscription_limit", "1,024 values is the limit for one subscription; poll instead")
+            if method == "wait":
+                return ok({"instant": True})
+            return ok({"results": [{"value": 2.0}]})
+
+        self.handler = handler
+        rows, met = sg.watch(self.READS, lambda rows: False, timeout=600)
+        self.assertEqual(([{"value": 2.0}], True), (rows, met))
+        self.assertEqual(1, len(self.params("verb")))
+        self.assertEqual([], self.params("unsubscribe"))  # nothing was opened
+
+    def test_a_subscription_ended_event_falls_back_to_polling_without_raising(self):
+        self.handler = self.ended("subscription_ended", subscription="s1", reason="read_failed")
+        rows, met = sg.watch(self.READS, lambda rows: rows and rows[0]["value"] >= 2, timeout=60)
+        self.assertEqual((True, 2.0), (met, rows[0]["value"]))
+        self.assertEqual(1, len(self.params("verb")))
+        self.assertEqual([], self.params("unsubscribe"))  # the hub already forgot it
+
+    def test_a_world_changed_event_falls_back_to_polling_without_raising(self):
+        self.handler = self.ended("world_changed", world={"id": "w2"})
+        rows, met = sg.watch(self.READS, lambda rows: rows and rows[0]["value"] >= 2, timeout=60)
+        self.assertEqual((True, 2.0), (met, rows[0]["value"]))
+        self.assertEqual(1, len(self.params("verb")))
+
+    def test_after_a_stop_the_watch_reads_once_without_subscribing(self):
+        source = ("try:\n    sg.wait(1)\nexcept BaseException:\n    pass\n"
+                  "rows, met = sg.watch([{'id': '5', 'logic': 'On'}], lambda rows: False, 600)\nmet")
+        answers = iter([refused("stopped", "stopped", stopped=True)])
+        self.handler = lambda method, params: next(answers) if method == "wait" else ok({"results": []})
+        self.assertFalse(self.run_code(source))
+        self.assertEqual([], self.params("subscribe"))
+        self.assertEqual(1, len(self.params("verb")))
 
 
 class HoldTests(HubCase):

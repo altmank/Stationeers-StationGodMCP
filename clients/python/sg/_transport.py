@@ -142,6 +142,12 @@ class Transport:
         to another thread (a queue.Queue) for anything more."""
         self._event_handlers.append(handler)
 
+    def off_event(self, handler):
+        """Removes a handler on_event added, once what it served is over. The reader thread walks a copy of the
+        handlers for each event, so removing one never skips another, and a handler already running finishes."""
+        if handler in self._event_handlers:
+            self._event_handlers.remove(handler)
+
     # ----- closing -----
 
     @property

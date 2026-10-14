@@ -35,9 +35,10 @@ def refused(code, message="refused", **extra):
     return {"ok": False, "error": {"code": code, "message": message, **extra}}
 
 
-def welcome(run=None):
+def welcome(run=None, features=None):
     message = {"type": "welcome", "protocol": 2, "client_id": "h1", "client": "anonymous",
-               "server": {"world": {"id": "w1"}, "game_state": "Running"}, "features": ["pipeline"]}
+               "server": {"world": {"id": "w1"}, "game_state": "Running"},
+               "features": ["pipeline"] if features is None else list(features)}
     if run is not None:
         message["run"] = run
     return message
@@ -45,13 +46,15 @@ def welcome(run=None):
 
 class FakeHub:
     """handler(method, params) -> reply dict (ok(...) or refused(...)). runs: the run objects to hand out, one per
-    hello; once they are used up the hub closes its side when the next hello comes (a warm worker then exits)."""
+    hello; once they are used up the hub closes its side when the next hello comes (a warm worker then exits).
+    features: what the welcome lists (["pipeline"] by default; tests add `subscriptions` for the devices topic)."""
 
-    def __init__(self, reader, writer, handler=None, runs=None):
+    def __init__(self, reader, writer, handler=None, runs=None, features=None):
         self.reader = reader
         self.writer = writer
         self.handler = handler or (lambda method, params: ok({}))
         self.runs = list(runs) if runs is not None else None
+        self.features = features
         self.calls = []          # (method, params) in arrival order
         self.messages = []       # every message that is not a call
         self.lock = threading.RLock()  # re-entrant: wait_for predicates call of_type
@@ -63,11 +66,11 @@ class FakeHub:
     # ----- in process, over pipes -----
 
     @classmethod
-    def over_pipes(cls, handler=None, runs=None):
+    def over_pipes(cls, handler=None, runs=None, features=None):
         """(hub, client_reader, client_writer): the client's ends are binary file objects."""
         to_hub_read, to_hub_write = os.pipe()
         to_client_read, to_client_write = os.pipe()
-        hub = cls(open(to_hub_read, "rb"), open(to_client_write, "wb"), handler, runs)
+        hub = cls(open(to_hub_read, "rb"), open(to_client_write, "wb"), handler, runs, features)
         return hub, open(to_client_read, "rb"), open(to_hub_write, "wb")
 
     # ----- the real worker, as a child process -----
@@ -99,6 +102,11 @@ class FakeHub:
     def methods(self):
         with self.lock:
             return [method for method, _ in self.calls]
+
+    def write(self, message):
+        """Pushes one message to the client right now: the way a test sends what a live hub would (a subscription's
+        update, its end, a world change). The hub's own answers go through send."""
+        self.send(message)
 
     def send(self, message):
         data = (json.dumps(message, separators=(",", ":")) + "\n").encode("utf-8")
@@ -147,9 +155,9 @@ class FakeHub:
             self.changed.notify_all()
         if message.get("type") == "hello":
             if self.runs is None:
-                self.send(welcome())
+                self.send(welcome(features=self.features))
             elif self.runs:
-                self.send(welcome(self.runs.pop(0)))
+                self.send(welcome(self.runs.pop(0), self.features))
             else:
                 self.close()
 

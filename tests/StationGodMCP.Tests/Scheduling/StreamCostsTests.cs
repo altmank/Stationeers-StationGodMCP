@@ -17,7 +17,8 @@ namespace StationGodMCP.Tests.Scheduling;
 /// <summary>
 /// Per-stream cost counters (protocol.md, Protocol methods, stream_costs): calls and whole main-thread ms add up per
 /// (owner, stream), serialising included; a frame over budget counts once per stream; a stream's end clears its counts
-/// and a world change does not; the lane scheduler times each call on its clock; stream_costs answers the caller's own
+/// and a world change does not; the lane scheduler times each call on its clock; a subscription's update events are
+/// counted too (updates, update_ms), written from connection writer threads; stream_costs answers the caller's own
 /// owner only, across a resume; and a counted call allocates nothing once its stream has an entry.
 /// </summary>
 public sealed class StreamCostsTests
@@ -68,6 +69,78 @@ public sealed class StreamCostsTests
         costs.Record(CallContext.None, 4.0, true, 1);
 
         Assert.Equal(0, costs.Count);
+    }
+
+    [Fact]
+    public void UpdateEventsAndTheirMillisecondsAddUpPerStream()
+    {
+        StreamCosts costs = new StreamCosts();
+        CallContext run = new CallContext("c1", 2);
+
+        costs.Record(run, 1.5, false, 1);
+        costs.RecordUpdate(run, 0.4);
+        costs.RecordUpdate(run, 0.6);
+        costs.RecordUpdate(new CallContext("c1", 3), 9.0);
+        costs.RecordUpdate(CallContext.None, 1.0);
+
+        StreamCost cost = costs.Of(run);
+        Assert.Equal(1, cost.Calls);  // an update is not a call
+        Assert.Equal(2, cost.Updates);
+        Assert.Equal(1.0, cost.UpdateMs, 9);
+        Assert.Equal(1, costs.Of(new CallContext("c1", 3)).Updates);
+        Assert.Equal(0, costs.Of(CallContext.None).Updates);
+    }
+
+    [Fact]
+    public void AStreamWithOnlyUpdatesIsListedForItsOwner()
+    {
+        StreamCosts costs = new StreamCosts();
+        costs.RecordUpdate(new CallContext("r1", 4), 0.5);
+        List<StreamCost> listed = new List<StreamCost>();
+
+        costs.Of("r1", listed);
+
+        StreamCost only = Assert.Single(listed);
+        Assert.Equal(4, only.Stream);
+        Assert.Equal(0, only.Calls);
+        Assert.Equal(1, only.Updates);
+        Assert.Equal(0.5, only.UpdateMs, 9);
+    }
+
+    [Fact]
+    public void AStreamsEndClearsItsUpdatesAndAWorldChangeKeepsThem()
+    {
+        StreamCosts costs = new StreamCosts();
+        costs.RecordUpdate(new CallContext("c1", 2), 0.5);
+        costs.RecordUpdate(new CallContext("c2", 2), 0.5);
+
+        costs.Ended(StreamEnd.World);
+        Assert.Equal(1, costs.Of(new CallContext("c1", 2)).Updates);
+
+        costs.Ended(StreamEnd.Of("c1", 2));
+
+        Assert.Equal(0, costs.Of(new CallContext("c1", 2)).Updates);
+        Assert.Equal(1, costs.Of(new CallContext("c2", 2)).Updates);
+    }
+
+    [Fact]
+    public void UpdatesRecordedFromManyWriterThreadsAllCount()
+    {
+        // The update counts are written from connection writer threads, one lock the only thing between them.
+        StreamCosts costs = new StreamCosts();
+        CallContext run = new CallContext("c1", 2);
+
+        Parallel.For(0, 8, _ =>
+        {
+            for (int update = 0; update < 1000; update++)
+            {
+                costs.RecordUpdate(run, 0.001);
+            }
+        });
+
+        StreamCost cost = costs.Of(run);
+        Assert.Equal(8000, cost.Updates);
+        Assert.Equal(8.0, cost.UpdateMs, 9);
     }
 
     [Fact]
@@ -188,6 +261,8 @@ public sealed class StreamCostsTests
         Assert.Equal(10.0, (double)streams[0]["main_thread_ms"]!);
         Assert.Equal(0.0, (double)streams[1]["main_thread_ms"]!);
         Assert.Equal(2, (long)streams[0]["over_budget_frames"]!);
+        Assert.Equal(0, (long)streams[0]["updates"]!);       // no subscription here
+        Assert.Equal(0.0, (double)streams[0]["update_ms"]!);
         Assert.Equal(1, (long)streams[1]["calls"]!);
         Assert.Equal(0, (long)streams[1]["over_budget_frames"]!);
         JArray others = (JArray)CallOn(other, "costs", 0, new JObject(), "stream_costs")["result"]!["streams"]!;

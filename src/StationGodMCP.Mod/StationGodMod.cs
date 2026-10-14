@@ -120,10 +120,11 @@ public sealed class StationGodMod : ModBehaviour
             ProfilingControl.Load(typeof(StationGodMod).Assembly, PerformanceSettings.Profiling);
             Api.Shared.Game.ThingIndex.Verify = PerformanceSettings.VerifyPrefabIndex;
             Net.StationGodNet.Register(MultiplayerSettings.ShareViews(configuration));
-            _dispatcher = new StationGodRequestDispatcher(Deadlines,
-                new LaneScheduler(PerformanceSettings.Scheduler, world: CallWorld));
+            LaneScheduler scheduler = new LaneScheduler(PerformanceSettings.Scheduler, world: CallWorld);
+            _dispatcher = new StationGodRequestDispatcher(Deadlines, scheduler);
             _subscriptions = new SubscriptionHub(Subscriptions.ReadDevicesReader.Instance,
-                Subscriptions.SampleReader.Instance, SubscriptionLimits.From(PerformanceSettings.Scheduler.SubscriptionBudgetMs, PerformanceSettings.RequestBudgetMs));
+                Subscriptions.SampleReader.Instance, SubscriptionLimits.From(PerformanceSettings.Scheduler.SubscriptionBudgetMs, PerformanceSettings.RequestBudgetMs),
+                scheduler.Costs);
             _dispatcher.Subscriptions = _subscriptions;
             Hub = _subscriptions;
             SubscriptionHub jobsHub = _subscriptions;

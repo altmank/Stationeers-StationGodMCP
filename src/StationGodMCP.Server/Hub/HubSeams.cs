@@ -102,9 +102,9 @@ public sealed class HubSessionSettings
     public Face Face { get; }
 
     /// <summary>
-    /// True when the caller may call mod methods directly (pass-through, subscriptions, stream_end, release,
-    /// cursor_close): the --hub program only. Without it a session takes verb, ref, more, wait and hold, so a run's
-    /// writes always meet its gate.
+    /// True when the caller may call mod methods directly (pass-through, the other mod methods, stream_end, release,
+    /// cursor_close): the --hub program only. Without it a session takes verb, ref, more, wait, hold, subscribe and
+    /// unsubscribe, so a run's writes always meet its gate while its reads (a subscription included) do not.
     /// </summary>
     public bool PassThrough { get; init; }
 

@@ -78,16 +78,22 @@ internal sealed class SubscriptionEngine<TReading> where TReading : class
         new Dictionary<ConnectionId, ConnectionSubscriptions>();
 
     private readonly List<ConnectionSubscriptions> _connections = new List<ConnectionSubscriptions>();
+    private readonly Func<double> _clockMs;
     private long _lastId;
     private int _cursor;
     private string? _gameState;
 
+    /// <summary>
+    /// clockMs is the process clock in milliseconds, read before and after each sample for what one sample of a
+    /// subscription cost the main thread (stream_costs' update_ms); the host passes its own clock.
+    /// </summary>
     internal SubscriptionEngine(IDeviceReader<TReading> reader, IReadingComparer<TReading> comparer,
-        SubscriptionLimits limits)
+        SubscriptionLimits limits, Func<double> clockMs)
     {
         _reader = reader;
         _comparer = comparer;
         Limits = limits;
+        _clockMs = clockMs ?? throw new ArgumentNullException(nameof(clockMs));
     }
 
     internal SubscriptionLimits Limits { get; private set; }
@@ -132,7 +138,7 @@ internal sealed class SubscriptionEngine<TReading> where TReading : class
         TReading first = _reader.Read(query);
         SubscriptionId id = new SubscriptionId(++_lastId);
         DeviceSubscription subscription = new DeviceSubscription(id, query, plan, interval,
-            new UpdateSlot<TReading>(connection, id), first, tick.GameTimeS + interval.Seconds, stream);
+            new UpdateSlot<TReading>(connection, id, stream), first, tick.GameTimeS + interval.Seconds, stream);
         Held(connection).Add(subscription);
         return new SubscribeOutcome<TReading>.Subscribed(id, interval, plan.Values, tick.Frame, first);
     }
@@ -402,10 +408,13 @@ internal sealed class SubscriptionEngine<TReading> where TReading : class
     {
         double dueS = subscription.NextDueS;
         subscription.LastSampledFrame = tick.Frame;
+        double sampleMs = 0.0;
         TReading reading;
         try
         {
+            double startedMs = _clockMs();
             reading = _reader.Read(subscription.Query);
+            sampleMs = _clockMs() - startedMs;
         }
         catch (Exception failure)
         {
@@ -424,7 +433,7 @@ internal sealed class SubscriptionEngine<TReading> where TReading : class
         subscription.ForceNext = false;
         subscription.Baseline = reading;
         double lateMs = double.IsNegativeInfinity(dueS) ? 0.0 : Math.Max(0.0, (tick.GameTimeS - dueS) * 1000.0);
-        if (subscription.Slot.Offer(reading, tick.Frame, tick.GameTimeS, lateMs))
+        if (subscription.Slot.Offer(reading, tick.Frame, tick.GameTimeS, lateMs, sampleMs))
         {
             events.Enqueue(subscription.Slot);
         }

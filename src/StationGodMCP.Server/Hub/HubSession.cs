@@ -39,9 +39,14 @@ public sealed partial class HubSession
     private static readonly string[] VerbKeys = ["verb", "what", "args", "line"];
     private static readonly string[] AnalysisKeys = ["type", "literals", "while_lines", "writes", "holds", "syntax_error"];
     private static readonly string[] RunEndKeys = ["type", "state", "returned", "printed", "error"];
-    private static readonly string[] PipelineMethods = ["verb", "ref", "more", "wait", "hold"];
+    // A run's session calls the pipeline's own methods and, because a subscription is read-only (it reads the mod's
+    // own topics) and cannot take a write past the run's gate, subscribe and unsubscribe: a script's sg.watch and
+    // sg.changes need both.
+    private static readonly string[] RunMethods = ["verb", "ref", "more", "wait", "hold", "subscribe", "unsubscribe"];
     private const string NotAllowed = "not_allowed";
-    private const string PipelineOnly = "a run's session calls verb, ref, more, wait and hold; mod methods go through verb";
+    private const string RunCallsOnly =
+        "a run's session calls verb, ref, more, wait, hold, subscribe and unsubscribe; other mod methods go through " +
+        "verb";
     private static readonly JsonElement NoParameters = HubLines.Element("{}");
     private static readonly JsonElement SupportedVersions = HubLines.Element(HubLines.Supported);
     private static int _sessions;
@@ -230,7 +235,7 @@ public sealed partial class HubSession
             case "cancel":
                 return Cancel(message, line);
             case "stream_end" or "release" or "cursor_close" when !_settings.PassThrough:
-                Send(HubLines.Error(null, NotAllowed, PipelineOnly));
+                Send(HubLines.Error(null, NotAllowed, RunCallsOnly));
                 return null;
             case "stream_end":
                 return StreamEnd(message, line);
@@ -365,9 +370,9 @@ public sealed partial class HubSession
             parameters = given;
         }
 
-        if (!_settings.PassThrough && Array.IndexOf(PipelineMethods, method) < 0)
+        if (!_settings.PassThrough && Array.IndexOf(RunMethods, method) < 0)
         {
-            return Refuse(id, NotAllowed, PipelineOnly);
+            return Refuse(id, NotAllowed, RunCallsOnly);
         }
 
         if (!StreamOf(message, minimum: 0, out long stream))

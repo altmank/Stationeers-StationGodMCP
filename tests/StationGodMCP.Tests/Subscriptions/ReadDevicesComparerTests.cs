@@ -148,8 +148,8 @@ public sealed class ReadDevicesComparerTests
     [Fact]
     public void TheUpdateEventCarriesTheWholeReading()
     {
-        UpdateSlot<ReadDevicesView> slot = new UpdateSlot<ReadDevicesView>(new ConnectionId("c1"), new SubscriptionId(3));
-        slot.Offer(Reading(new Device()), 81312, 84211.5, 0.004);
+        UpdateSlot<ReadDevicesView> slot = new UpdateSlot<ReadDevicesView>(new ConnectionId("c1"), new SubscriptionId(3), 0);
+        slot.Offer(Reading(new Device()), 81312, 84211.5, 0.004, 0.0);
         Assert.True(slot.TryTake(out SubscriptionUpdate<ReadDevicesView> update));
 
         JObject json = JObject.Parse(ApiJson.WriteFresh(UpdateEventView.Of(update)));
