@@ -928,13 +928,13 @@ internal sealed partial class Run : IRunChannel, IPipelineExtras, IVerbCalls
     private async Task<VerbReply> SendAsync(string verb, string? what, JsonObject args, RunCallContext context,
         CancellationToken cancellation)
     {
-        if (verb == "write" && what == "logic" && Record.Confirm && context.KnownBefore == null &&
-            !StopRequested)
+        // A report run's writes never act, so only a run that acts needs the late reply's values for its write log.
+        Action<JsonNode?>? late = Record.Confirm ? answer => LateFill(context, answer) : null;
+        VerbCall gated = new(verb, what, args, Face.Script, Record.Stream, context.Line)
         {
-            context = await WithBeforeAsync(args, context, cancellation).ConfigureAwait(false);
-        }
-
-        VerbCall gated = new(verb, what, args, Face.Script, Record.Stream, context.Line) { Gate = new RunGate(this, context) };
+            Gate = new RunGate(this, context),
+            LateReply = late
+        };
         VerbReply reply;
         try
         {
@@ -960,62 +960,6 @@ internal sealed partial class Run : IRunChannel, IPipelineExtras, IVerbCalls
 
         Observe(verb, what, context, reply);
         return reply;
-    }
-
-    // A confirmed logic write knows its targets' values before it ahead of sending: the journal's call line carries them
-    // (write-ahead: a hub that dies after sending still leaves them), and a write that may or may not have run (cut off,
-    // its reply never read) can still be undone. Ids that are refs are left to the reply's previous_value.
-    private async Task<RunCallContext> WithBeforeAsync(JsonObject args, RunCallContext context, CancellationToken cancellation)
-    {
-        JsonArray reads = [];
-        List<string> ids = [];
-        if (args["writes"] is JsonArray writes)
-        {
-            foreach (JsonNode? entry in writes)
-            {
-                if (IdText(entry?["id"]) is { } id && entry!["logic"] is { } logic && LogicName(logic) is { } name &&
-                    RefStore.Parse(id) == null)
-                {
-                    reads.Add(new JsonObject { ["id"] = id, ["logic"] = logic.DeepClone() });
-                    ids.Add(Key(id, name));
-                }
-            }
-        }
-        else if (args["logic"] is { } logic && LogicName(logic) is { } name)
-        {
-            foreach (JsonNode? id in args["id"] is JsonArray list ? list : new JsonArray(args["id"]?.DeepClone()))
-            {
-                if (IdText(id) is { } text && RefStore.Parse(text) == null)
-                {
-                    reads.Add(new JsonObject { ["id"] = text, ["logic"] = logic.DeepClone() });
-                    ids.Add(Key(text, name));
-                }
-            }
-        }
-
-        if (reads.Count == 0)
-        {
-            return context;
-        }
-
-        VerbReply read = await _pipeline.CallAsync(new VerbCall("read", "logic", new JsonObject { ["reads"] = reads },
-            Face.Script, Record.Stream, context.Line), cancellation).ConfigureAwait(false);
-        if (read is not VerbReply.Done done)
-        {
-            return context;
-        }
-
-        Dictionary<string, JsonNode?> before = new(StringComparer.Ordinal);
-        List<JsonObject> rows = BulkWrites.Rows(done.Reply);
-        for (int index = 0; index < ids.Count && index < rows.Count; index++)
-        {
-            if (JsonNodes.IsTrue(rows[index]["ok"]) || rows[index]["ok"] == null)
-            {
-                before.TryAdd(ids[index], rows[index]["value"]?.DeepClone());
-            }
-        }
-
-        return new RunCallContext(context.Line, context.Group, context.HoldExit) { KnownBefore = before };
     }
 
     // ---- small helpers ----------------------------------------------------------------------------------------------

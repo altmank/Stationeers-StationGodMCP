@@ -478,6 +478,10 @@
     "description": "The screen has no surface by that name. The message lists the surfaces.",
     "see": {"verb": "inspect", "what": "screen"}
   },
+  "target_drifted": {
+    "description": "The target changed since the run wrote it (the user, a chip, another run); it is left as it is unless allow: [\"overwrite\"].",
+    "see": {"verb": "undo"}
+  },
   "terraforming_mod_required": {
     "description": "Removing gas from the inspect planet needs Terraforming Reloaded; the stock game keeps the inspect planet's air read-only.",
     "see": {"verb": "inspect", "what": "job"}
@@ -528,6 +532,10 @@
   },
   "unknown_gene": {"description": "That is not a gene; the message lists the genes.", "see": {"verb": "inspect", "what": "genes"}},
   "unknown_subscription": {"description": "This connection has no subscription with that id.", "see": {"topic": "errors"}},
+  "unseen_target": {
+    "description": "A run was stopped because a write named a target it had not seen: an id this session's replies never showed, or a selector (a network, a spread) not written out as a literal in the code. Nothing acted for that call. Find the things, or write the selector out, then send the code again with confirm: true.",
+    "see": {"verb": "run_script"}
+  },
   "unsupported_protocol": {
     "description": "The client and the game share no protocol version. Update the older side.",
     "see": {"topic": "errors"}

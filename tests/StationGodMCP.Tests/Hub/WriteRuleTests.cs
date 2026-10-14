@@ -69,6 +69,43 @@ public sealed class WriteRuleTests
     }
 
     [Fact]
+    public void EverySpreadPathResolvesAsASelectorThatTheDirectFaceReports()
+    {
+        DirectWriteGate gate = new(VerbCatalogue.Embedded);
+        List<string> spread = new();
+
+        foreach (VerbEntry verb in VerbCatalogue.Embedded.Verbs)
+        {
+            foreach (WhatEntry what in verb.Whats.Values)
+            {
+                foreach (TargetPath path in what.Write?.Targets ?? [])
+                {
+                    if (path.Role != "spread")
+                    {
+                        continue;
+                    }
+
+                    // The value is a plain word: the gate never reads it, the seen rule asks how it was written.
+                    JsonObject options = new() { [path.Path] = "chosen" };
+                    WriteTargets targets = WriteTargetPaths.Resolve(what, options);
+
+                    WriteTarget target = Assert.Single(targets.Targets, one => one.Path == path.Path);
+                    Assert.Equal((TargetSource.Selector, "spread"), (target.Source, target.Role));
+                    Assert.Empty(target.Ids);
+                    Assert.IsType<WriteDecision.Report>(gate.Decide(Call(what, options), targets));
+                    spread.Add(what.Key + "." + path.Path);
+                }
+            }
+        }
+
+        Assert.Contains("move.item.prefab", spread);
+        Assert.Contains("move.item.category", spread);
+        Assert.Contains("write.paint.network", spread);
+        Assert.Contains("swap.cable.only", spread);
+        Assert.Contains("remove.cable.cells", spread);
+    }
+
+    [Fact]
     public void MoveItemsPrefabIsASpreadWheneverGiven()
     {
         WhatEntry move = VerbExampleTests.WhatOf("move.item");
@@ -184,6 +221,37 @@ public sealed class WriteRuleTests
         Same("""{"what":"logic","writes":[{"id":"1","logic":"On","value":0}],"confirm":true}""", backs[1].Params());
         Assert.Equal(2, (int)undone!["undone"]!);
         Assert.Equal("undone", (string)pipeline.Call("inspect", "job", """{"id":"write-1"}""").Done()!["status"]!);
+    }
+
+    [Fact]
+    public void APaintUndoSendsTheColorWordWritePaintTakes()
+    {
+        foreach ((string previous, string back) in new[]
+                 {
+                     ("""{"index":3,"name":"Orange","is_default":true}""", "default"),
+                     ("""{"index":3,"name":"Orange","is_default":false}""", "3"),
+                     ("""{"name":"Orange","is_default":false}""", "Orange")
+                 })
+        {
+            FakeGameLink game = new();
+            game.Answer = call => call.Method == "write" && call.Params()["id"] is JsonArray
+                ? FakeGameLink.Ok("{\"results\":[{\"index\":0,\"ok\":true,\"reference_id\":\"11\",\"previous_color\":" + previous +
+                                  ",\"color\":{\"index\":0,\"name\":\"Blue\",\"is_default\":false}}],\"count\":1,\"success_count\":1,\"error_count\":0}")
+                : FakeGameLink.Ok("{}");
+            VerbPipeline pipeline = game.Pipeline();
+
+            pipeline.Call("write", "paint", """{"id":["11"],"color":"Blue"}""").Done();
+            JsonNode? undo = pipeline.Call("undo", null, """{"id":"write-1","confirm":true}""").Done();
+
+            JsonObject step = game.CallsTo("write")[1].Params()!;
+            Same("{\"what\":\"paint\",\"items\":[{\"id\":\"11\",\"color\":\"" + back + "\"}],\"confirm\":true}", step);
+            // The option check takes the options, not the wire params the what key rides in.
+            JsonObject options = (JsonObject)step.DeepClone();
+            options.Remove("what");
+            Assert.Null(OptionCheck.Check(VerbCatalogue.Embedded,
+                new VerbCall("write", "paint", options, Face.Direct), out _, out _));
+            Assert.Equal(1, (int)undo!["undone"]!);
+        }
     }
 
     [Fact]

@@ -182,7 +182,7 @@ public sealed class HubSessionTests
         await using HubCaller caller = HubCaller.Start(link);
         await caller.HelloAsync();
 
-        JsonElement subscribed = await caller.CallAsync("1", "subscribe", """{"items":[{"id":"5","logic":["On"]}]}""");
+        JsonElement subscribed = await caller.CallAsync("1", "subscribe", """{"id":"5","logic":["On"]}""");
         link.Raise("""{"type":"event","event":"update","subscription":"s99","seq":1,"result":{}}""");
         link.Raise("""{"type":"event","event":"update","subscription":"s40","seq":1,"frame":9,"result":{"results":[1]}}""");
         JsonElement update = await caller.NextAsync();

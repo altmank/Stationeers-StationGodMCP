@@ -17,6 +17,9 @@ public sealed partial class VerbPipeline
 {
     internal const string RunScriptPlaceholder = "run_script lands with the runs piece";
 
+    /// <summary>The code a drifted target's undo row carries (catalogue/verbs/_errors.json).</summary>
+    internal const string DriftedCode = "target_drifted";
+
     private const string RunsPiece = "lands with the runs piece";
 
     private const double DefaultMaxWaitSeconds = 30;
@@ -394,7 +397,7 @@ public sealed partial class VerbPipeline
         }
 
         (JsonElement? shape, Unparsed unparsed) = Shape(options);
-        GameReply reply = await SendAsync(what, sent, call.Stream, shape, cancellation).ConfigureAwait(false);
+        GameReply reply = await SendAsync(what, sent, call.Stream, shape, cancellation, call).ConfigureAwait(false);
         if (reply is not GameReply.Ok ok)
         {
             return Failure(reply);
@@ -603,9 +606,10 @@ public sealed partial class VerbPipeline
 
     // Every call is unsettled until the mod's reply comes (OnReply, even a late one after the caller gave up) or the
     // link answers it itself; a call the caller cancelled stays unsettled until its late reply, or until it is old
-    // enough that none will come.
+    // enough that none will come. A reply that comes after the caller gave up reaches call.LateReply first and settles
+    // the call after: what the reply tells the caller is in place before an undo may stop waiting for it.
     private async Task<GameReply> SendAsync(WhatEntry what, JsonObject options, long stream, JsonElement? shape,
-        CancellationToken cancellation)
+        CancellationToken cancellation, VerbCall? call = null)
     {
         object token = new();
         lock (_worlds)
@@ -630,12 +634,37 @@ public sealed partial class VerbPipeline
             }
         }
 
-        GameReply reply = await _link.CallAsync(new GameCall(what.Verb, JsonNodes.ToElement(WireParams(what, options)), stream)
+        bool awaited = true;
+        void Answered(GameReply answer)
         {
-            World = WorldOf(stream),
-            Shape = shape,
-            OnReply = _ => Settle()
-        }, cancellation).ConfigureAwait(false);
+            try
+            {
+                if (!awaited && call?.LateReply is { } late)
+                {
+                    late(answer is GameReply.Ok ok ? JsonNodes.FromElement(ok.Result) : null);
+                }
+            }
+            finally
+            {
+                Settle();
+            }
+        }
+
+        GameReply reply;
+        try
+        {
+            reply = await _link.CallAsync(new GameCall(what.Verb, JsonNodes.ToElement(WireParams(what, options)), stream)
+            {
+                World = WorldOf(stream),
+                Shape = shape,
+                OnReply = Answered
+            }, cancellation).ConfigureAwait(false);
+        }
+        finally
+        {
+            awaited = false;
+        }
+
         Settle();
         return reply;
     }

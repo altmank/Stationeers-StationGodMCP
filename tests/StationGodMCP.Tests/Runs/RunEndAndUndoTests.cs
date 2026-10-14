@@ -50,8 +50,12 @@ public sealed class RunEndAndUndoTests : IDisposable
         await bench.RunAsync("sg.write('logic', id='1', logic='On', value=1)", confirm: true);
         bench.World.Set("1", "On", 5);
 
+        JsonNode listed = Done(await bench.Host.UndoAsync(new JsonObject { ["id"] = "script-1" }));
         JsonNode refused = Done(await bench.Host.UndoAsync(new JsonObject { ["id"] = "script-1", ["confirm"] = true }));
+        Assert.Equal("target_drifted", (string)listed["targets"]![0]!["code"]!);
+        Assert.Contains("changed since the run", (string)listed["targets"]![0]!["note"]!);
         Assert.False((bool)refused["results"]![0]!["ok"]!);
+        Assert.Equal("target_drifted", (string)refused["results"]![0]!["code"]!);
         Assert.Contains("changed since the run", (string)refused["results"]![0]!["note"]!);
         Assert.Equal(5, bench.World.Value("1", "On"));
 

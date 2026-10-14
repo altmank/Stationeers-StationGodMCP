@@ -367,13 +367,13 @@ public sealed class ClientTests
     {
         await using FakeGame game = FakeGame.OnPipe();
         int subscriptions = 0;
-        game.Answer = call => Task.FromResult<string?>(call.Method == "subscribe" && call.Params.TryGetProperty("items", out _)
+        game.Answer = call => Task.FromResult<string?>(call.Method == "subscribe" && call.Params.TryGetProperty("id", out _)
             ? call.Ok("{\"subscription\":\"s" + Interlocked.Increment(ref subscriptions) +
                       "\",\"interval_s\":1,\"values\":1,\"frame\":5,\"result\":{\"results\":[{\"n\":0}]}}")
             : call.Ok("{}"));
         await using StationGodClient client = new(new ClientOptions(game.Target));
 
-        SubscribeOutcome outcome = await client.SubscribeAsync(Json("""{"items":[{"reference_id":"1","logic":["On"]}],"interval_s":1}"""));
+        SubscribeOutcome outcome = await client.SubscribeAsync(Json("""{"id":"1","logic":["On"],"interval_s":1}"""));
 
         Subscription subscription = Assert.IsType<SubscribeOutcome.Subscribed>(outcome).Subscription;
         Assert.Equal("s1", subscription.ServerId);
@@ -399,12 +399,12 @@ public sealed class ClientTests
     public async Task ARefusedSubscriptionCarriesTheModsCode()
     {
         await using FakeGame game = FakeGame.OnPipe();
-        game.Answer = call => Task.FromResult<string?>(call.Method == "subscribe" && call.Params.TryGetProperty("items", out _)
+        game.Answer = call => Task.FromResult<string?>(call.Method == "subscribe" && call.Params.TryGetProperty("id", out _)
             ? call.Error("subscription_limit", "Too many values.")
             : call.Ok("{}"));
         await using StationGodClient client = new(new ClientOptions(game.Target));
 
-        SubscribeOutcome outcome = await client.SubscribeAsync(Json("""{"items":[]}"""));
+        SubscribeOutcome outcome = await client.SubscribeAsync(Json("""{"id":"1","logic":["On"]}"""));
 
         Assert.Equal("subscription_limit",
             Assert.IsType<CallOutcome.Refused>(Assert.IsType<SubscribeOutcome.Failed>(outcome).Outcome).Code);
@@ -417,7 +417,7 @@ public sealed class ClientTests
         game.Features = ["shape", "cancel"];
         await using StationGodClient client = new(new ClientOptions(game.Target));
 
-        Assert.IsType<SubscribeOutcome.Unsupported>(await client.SubscribeAsync(Json("""{"items":[]}""")));
+        Assert.IsType<SubscribeOutcome.Unsupported>(await client.SubscribeAsync(Json("""{"id":"1","logic":["On"]}""")));
     }
 
     [Fact]

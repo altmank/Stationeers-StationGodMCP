@@ -21,6 +21,10 @@ internal sealed class HubCursor(string id, long stream, WhatEntry what, JsonObje
 
     internal int NextOffset { get; set; }
 
+    /// <summary>The mod's walk cursor (the reply's cursor_id), sent as cursor instead of offset; null for a list the
+    /// mod pages by offset only.</summary>
+    internal string? ModCursor { get; set; }
+
     /// <summary>The first call's shape (fields, omit, list_limits): every page keeps it.</summary>
     internal System.Text.Json.JsonElement? Shape { get; init; }
 }

@@ -191,12 +191,13 @@ internal sealed class VerbEntry
 internal sealed class WhatEntry
 {
     private WhatEntry(string verb, string name, Dictionary<string, OptionEntry> options, List<string> optionNames,
-        WriteRules? write, string? idList, string? mainList, JsonObject? example)
+        bool wireCursor, WriteRules? write, string? idList, string? mainList, JsonObject? example)
     {
         Verb = verb;
         Name = name;
         Options = options;
         OptionNames = optionNames;
+        WireCursor = wireCursor;
         Write = write;
         IdList = idList;
         MainList = mainList;
@@ -224,6 +225,10 @@ internal sealed class WhatEntry
 
     internal List<string> OptionNames { get; }
 
+    /// <summary>The what takes the wire cursor option (x-wire; it is not an agent's to give): a first page on the
+    /// script or program face may ask for the mod's walk with cursor: "open".</summary>
+    internal bool WireCursor { get; }
+
     internal WriteRules? Write { get; }
 
     /// <summary>The list option whose entries an id list becomes (move item's moves); null where it answers rows.</summary>
@@ -243,12 +248,15 @@ internal sealed class WhatEntry
     {
         Dictionary<string, OptionEntry> options = new(StringComparer.Ordinal);
         List<string> optionNames = [];
+        bool wireCursor = false;
         foreach ((string optionName, JsonNode? node) in source["options"] as JsonObject ?? [])
         {
             JsonObject resolved = Resolve(node!.AsObject(), sharedOptions);
             if ((bool?)resolved["x-wire"] == true)
             {
-                // A wire option (x-wire) is for the hub and sg to send to the game; an agent never gives it.
+                // A wire option (x-wire) is for the hub and sg to send to the game; an agent never gives it. The one
+                // the hub sends itself: cursor, to ask for the mod's walk on a first page.
+                wireCursor |= optionName == "cursor";
                 continue;
             }
 
@@ -257,7 +265,7 @@ internal sealed class WhatEntry
         }
 
         WriteRules? write = source["write"] is JsonObject rules ? WriteRules.Of(rules) : null;
-        return new WhatEntry(verb, name, options, optionNames, write, (string?)source["id_list"],
+        return new WhatEntry(verb, name, options, optionNames, wireCursor, write, (string?)source["id_list"],
             (string?)source["reply"]?["list"], source["example"] as JsonObject);
     }
 

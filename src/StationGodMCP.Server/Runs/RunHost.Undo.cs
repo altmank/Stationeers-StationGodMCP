@@ -5,7 +5,8 @@ namespace StationGodMCP.Server;
 /// <summary>
 /// undo script-N (and script-&lt;pid&gt;.N from an adopted journal): the run's logic writes reverted newest first, each
 /// (id, logic) back to its value before the run. Each target is read first: one that changed since the run is
-/// reported and left unless allow: ["overwrite"]. Writes that are not logic writes are named, not reverted. Like
+/// reported and left unless allow: ["overwrite"] (its row carries code target_drifted). Writes that are not logic
+/// writes are named, not reverted. Like
 /// every undo on the direct face it reports until confirm: true (the pipeline's gate decides). Every call of an undo
 /// goes on a stream of its own, pinned to the run's world: a save loaded mid-undo refuses the rest unsent, and the
 /// undo answers undo_expired. While a write of the run may still reach the game (unsettled), undo waits for it.
@@ -13,6 +14,13 @@ namespace StationGodMCP.Server;
 public sealed partial class RunHost
 {
     private const string UndoMark = "[undo]";
+
+    /// <summary>
+    /// How long an undo waits for a run's in-flight write to settle before answering run_unsettled: a reply that is
+    /// already on its way arrives in microseconds, and one the game never answers still answers the caller's "try
+    /// again". The wait is bounded, so a write held up in the game cannot hold the undo.
+    /// </summary>
+    private const int UnsettleGraceMs = 500;
 
     /// <summary>undo for a run; null when the id is not a run's (the pipeline's undo answers it).</summary>
     internal async Task<VerbReply?> UndoAsync(JsonObject options)
@@ -36,6 +44,11 @@ public sealed partial class RunHost
         }
 
         RunRecord record = notes.Record;
+        if (!record.Adopted && _pipeline.Unsettled(record.Stream))
+        {
+            await SettleWaitAsync(record.Stream).ConfigureAwait(false);
+        }
+
         if (Unrevertable(record) is { } why)
         {
             return why;
@@ -176,6 +189,20 @@ public sealed partial class RunHost
         return null;
     }
 
+    // A run that ended with a write in flight leaves that call unsettled until its reply comes (late: the run gave up,
+    // the mod still answered). The reply settles the call and fills the write log's before/after values (Run.LateFill),
+    // so the undo waits briefly for it; one that never comes still answers run_unsettled and the caller's "try again"
+    // stands.
+    private async Task SettleWaitAsync(long stream)
+    {
+        DateTime start = DateTime.UtcNow;
+        while (_pipeline.Unsettled(stream) &&
+               DateTime.UtcNow - start < TimeSpan.FromMilliseconds(UnsettleGraceMs))
+        {
+            await Task.Delay(10).ConfigureAwait(false);
+        }
+    }
+
     // Newest first: each logic target once, at its newest write, back to its value before the run's first write to it.
     // A newest write that may or may not have run also accepts the value before it (the last one known to have landed).
     private static (List<UndoStep> Steps, List<string> NotUndone) Plan(RunRecord record)
@@ -274,7 +301,13 @@ public sealed partial class RunHost
             JsonNode? now = current[index];
             JsonObject row = VerbPipeline.Row(step.Id, null, null, now, step.Before, UndoMark);
             row["logic"] = step.Logic;
-            string? note = Judge(step, now, overwrite) switch
+            Verdict verdict = Judge(step, now, overwrite);
+            if (verdict == Verdict.Changed)
+            {
+                row["code"] = VerbPipeline.DriftedCode;
+            }
+
+            string? note = verdict switch
             {
                 Verdict.Unknown => "its value before the run is unknown, so it cannot be reverted",
                 Verdict.Nothing => "nothing to revert: it holds its value from before the run",
@@ -312,6 +345,11 @@ public sealed partial class RunHost
         {
             row["ok"] = verdict == Verdict.Nothing;
             row["now"] = now?.DeepClone();
+            if (verdict == Verdict.Changed)
+            {
+                row["code"] = VerbPipeline.DriftedCode;
+            }
+
             row["note"] = verdict switch
             {
                 Verdict.Nothing => "nothing to revert",

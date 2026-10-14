@@ -366,8 +366,9 @@ public sealed partial class VerbPipeline
     /// <summary>
     /// undo write-N. A report lists every step with its own mark (cannot-undo ones too). Acting writes the steps back
     /// newest first, from from_step, skipping steps already done; before each it reads the target again and leaves one
-    /// that changed since the write (the user, a chip, a run) unless allow: ["overwrite"]; a refused step stops the
-    /// rest. One undo runs at a time; a write with nothing left to undo says so.
+    /// that changed since the write (the user, a chip, a run; its row carries code target_drifted) unless
+    /// allow: ["overwrite"]; a refused step stops the rest. One undo runs at a time; a write with nothing left to undo
+    /// says so.
     /// </summary>
     private async Task<VerbReply> UndoBulkAsync(VerbCall call, BulkWrite write, JsonObject options, bool acting,
         CancellationToken cancellation)
@@ -444,6 +445,7 @@ public sealed partial class VerbPipeline
             {
                 row["ok"] = false;
                 row["drifted"] = true;
+                row["code"] = DriftedCode;
                 row["current"] = now.DeepClone();
                 row["note"] = "changed since the write; left as it is (allow: [\"overwrite\"] writes it back anyway)";
                 drifted.Add(step.Number);

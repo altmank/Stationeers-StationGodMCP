@@ -22,7 +22,10 @@ internal sealed class RunCallContext
     /// <summary>A hold's restore: it acts as CLEANUP after a stop (not after a world change).</summary>
     internal bool HoldExit { get; }
 
-    /// <summary>The values read before a write, by (id, logic) key: the before of its targets.</summary>
+    /// <summary>
+    /// The values read before a hold's restore write, by (id, logic) key: the before of its targets. Every other
+    /// write's before values come from the write reply's rows (previous_value).
+    /// </summary>
     internal Dictionary<string, JsonNode?>? KnownBefore { get; init; }
 
     /// <summary>The write the gate let act, in the run's log; null when the call wrote nothing that acted.</summary>

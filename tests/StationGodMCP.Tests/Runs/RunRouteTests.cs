@@ -287,6 +287,9 @@ public sealed class RunRouteTests
     // A prefab from a reply the agent was never shown is not seen; one written in the code is (a selector literal).
     private const string UnseenPrefab = "p = sg.find('thing')['things'][0]['display_name']\n";
 
+    // A spread selector out of a reply: seen only when the run's code writes the value out.
+    private const string UnseenThing = "nw = sg.find('thing')['things'][0]['reference_id']\n";
+
     [PythonFact]
     public async Task AConfirmedRunMovingItemsByALiteralPrefabIntoAStoreActs()
     {
@@ -321,6 +324,23 @@ public sealed class RunRouteTests
 
         Assert.StartsWith("script-1 stopped: unseen_target (line 2: move item names targets not seen; nothing acted.)", text);
         Assert.Equal(0, bench.World.Count("move.item"));
+    }
+
+    [PythonFact]
+    public async Task ANetworkSelectorTakenFromAReplyStopsTheRunAndItsLiteralActs()
+    {
+        await using RunBench bench = new();
+
+        string computed = await bench.RunAsync(UnseenThing + "sg.swap('cable', network=nw, into='super_heavy')",
+            confirm: true);
+        int afterStop = bench.World.Count("swap.cable");
+        string literal = await bench.RunAsync("sg.swap('cable', network='999', into='super_heavy')", confirm: true);
+
+        Assert.StartsWith("script-1 stopped: unseen_target (line 2: swap cable names targets not seen; nothing acted.)",
+            computed);
+        Assert.Equal(0, afterStop);
+        Assert.StartsWith("script-2 done", literal);
+        Assert.Equal(1, bench.World.Count("swap.cable"));
     }
 
     [PythonFact]

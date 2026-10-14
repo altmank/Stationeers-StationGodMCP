@@ -116,8 +116,8 @@ internal sealed class BulkCheck(string id, JsonNode? logic, JsonNode? left)
 /// <summary>
 /// The hub's bulk writes (writes topic): a direct write that acts on a list, a ref or a list of entries is kept as
 /// write-N. Its undo writes previous values back newest first: logic values of held settings (previous_value), labels
-/// (the previous custom name), paint (previous_color) and slot moves (back to from). Pulse and action logic types,
-/// merged moves and store moves are listed as steps that cannot be undone.
+/// (the previous custom name), paint (previous_color as the colour write paint takes back) and slot moves (back to
+/// from). Pulse and action logic types, merged moves and store moves are listed as steps that cannot be undone.
 /// </summary>
 internal sealed class BulkWrites
 {
@@ -264,9 +264,14 @@ internal sealed class BulkWrites
             }
             case "write.paint" when row["previous_color"] is { } color:
             {
+                if (ColorWord(color) is not { } word)
+                {
+                    return Cannot(number, id, row["color"], "[cannot undo: no colour to write back]");
+                }
+
                 JsonObject back = new()
                 {
-                    ["items"] = new JsonArray(new JsonObject { ["id"] = id, ["color"] = color.DeepClone() })
+                    ["items"] = new JsonArray(new JsonObject { ["id"] = id, ["color"] = word })
                 };
                 return new BulkStep(number, back, Row(id, row["color"], color, "[undo]"), null);
             }
@@ -303,6 +308,23 @@ internal sealed class BulkWrites
 
     private static BulkStep Cannot(int number, string id, JsonNode? left, string mark) =>
         new(number, null, Row(id, left, null, mark), null);
+
+    // A previous_color as write paint's color option takes it back: 'default' for the default colour, else the index as
+    // its digits, else the name.
+    private static JsonNode? ColorWord(JsonNode? color)
+    {
+        if (JsonNodes.IsTrue(color?["is_default"]))
+        {
+            return JsonValue.Create("default");
+        }
+
+        if (JsonNodes.Number(color?["index"]) is { } index)
+        {
+            return JsonValue.Create(((long)index).ToString(CultureInfo.InvariantCulture));
+        }
+
+        return JsonNodes.Text(color?["name"]) is { } name ? JsonValue.Create(name) : null;
+    }
 
     private static JsonObject Row(string id, JsonNode? current, JsonNode? back, string mark) =>
         VerbPipeline.Row(id, null, null, current, back, mark);

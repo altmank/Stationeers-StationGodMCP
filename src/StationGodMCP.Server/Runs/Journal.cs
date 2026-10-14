@@ -9,9 +9,10 @@ namespace StationGodMCP.Server;
 /// The hub's journal (docs/architecture/hub.md, The journal): one file per hub process,
 /// <c>&lt;journal-dir&gt;/&lt;pid&gt;-&lt;start unix ms&gt;.jsonl</c>, held with FileShare.None for the hub's life so no
 /// other hub reads a live one. Each line is appended and flushed before the call it describes is sent: a write's call
-/// line (its targets with their before and new values) goes out ahead of the write, so a hub that dies mid-run leaves
-/// what the next hub needs to report and undo it. A journal that cannot be written turns itself off: the hub goes on,
-/// says so on stderr once and in its next reply.
+/// line (its targets with their new value, and the before value where the hub read it itself, as a hold's restore
+/// does) goes out ahead of the write, and its done line carries the before and after values the reply's rows gave, so
+/// a hub that dies mid-run leaves what the next hub needs to report and undo it. A journal that cannot be written
+/// turns itself off: the hub goes on, says so on stderr once and in its next reply.
 /// </summary>
 public sealed class Journal : IRunJournal, IDisposable
 {

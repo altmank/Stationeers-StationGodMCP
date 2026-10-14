@@ -46,6 +46,13 @@ public sealed class VerbCall
     /// <summary>The gate for this call's writes (a run's route); null: the face's own (the direct write rule).</summary>
     public IWriteGate? Gate { get; init; }
 
+    /// <summary>
+    /// What a reply that arrives after this call's caller gave up tells it: the reply's payload, the way the pipeline
+    /// read it (null when the link answered a refusal). Called once, on the link's reader, before the call settles, so
+    /// a run's write log can still learn the values its rows carry; null for a caller that wants nothing.
+    /// </summary>
+    internal Action<JsonNode?>? LateReply { get; init; }
+
     /// <summary>A line the reply carries (a repeat that sent a spread again says its selection may differ).</summary>
     internal string? Note { get; init; }
 

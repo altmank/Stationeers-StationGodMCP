@@ -34,8 +34,8 @@ FIX = {
 
 def plant_oxygen(ctx, mol=2):
     """Puts oxidiser on the outdoor vent's network (a cheat on the test copy)."""
-    return ctx.oracle.call("move_gas", **{"from": FIX["o2_source"], "to": FIX["vent_net"], "gases": ["Oxygen"],
-                                          "amount_mol": mol, "dry_run": False})
+    return ctx.oracle.call("move", what="gas", source=FIX["o2_source"], to=FIX["vent_net"],
+                           gases=["Oxygen"], amount_mol=mol, confirm=True)
 
 CASES = []
 
@@ -244,8 +244,8 @@ def stale_world(ctx):
     h = ctx.hub()
     # The hub stamps calls itself; the oracle checks the mod side directly.
     try:
-        ctx.oracle.conn.send({"type": "call", "id": "stale", "method": "read_logic", "world": "0000000000000000",
-                              "params": {"reference_id": FIX["cap1"], "logic_type": "Setting"}})
+        ctx.oracle.conn.send({"type": "call", "id": "stale", "method": "read", "world": "0000000000000000",
+                              "params": {"what": "logic", "id": FIX["cap1"], "logic": "Setting"}})
         time.sleep(1)
         return result(True, note="mod refusal checked by the oracle's own reply log")
     finally:
@@ -495,7 +495,7 @@ def relief_loop(ctx):
 @case("world-rules", "a held vent closed while oxidiser enters is not reopened at session_end")
 def held_vent_not_reopened(ctx):
     h = ctx.hub()
-    ctx.oracle.call("write_logic", reference_id=FIX["vent"], logic_type="On", value=1, allow_lint=True)
+    ctx.oracle.set_logic(FIX["vent"], "On", 1, allow=["lint"])
     ctx.show(h, [FIX["vent"]])
     h.run_script("with sg.hold('%s', 'On', 0, after=1):\n    sg.wait(120)" % FIX["vent"], confirm=True, max_wait=3)
     closed = ctx.oracle.logic(FIX["vent"], "On")

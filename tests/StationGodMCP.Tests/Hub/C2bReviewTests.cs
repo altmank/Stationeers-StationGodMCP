@@ -108,6 +108,8 @@ public sealed class C2bReviewTests
         Same("""{"what":"logic","writes":[{"id":"1","logic":"On","value":0}],"confirm":true}""", backs[1].Params());
         // Steps go newest first: 1 is id 3 (an action), 2 is id 2, 3 is id 1.
         Assert.Equal("[3]", first["drifted"]!.ToJsonString());
+        Assert.Equal("target_drifted", (string)Assert.Single(first["results"]!.AsArray(),
+            row => row!["drifted"] != null)!["code"]!);
         Assert.Equal(1, (int)first["undone"]!);
         Assert.Equal(1, (int)second["undone"]!);
         Assert.Equal("undone", (string)second["status"]!);

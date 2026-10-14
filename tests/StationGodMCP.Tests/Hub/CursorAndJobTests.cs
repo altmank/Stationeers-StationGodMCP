@@ -13,9 +13,10 @@ using static StationGodMCP.Tests.Hub.Verbs;
 namespace StationGodMCP.Tests.Hub;
 
 /// <summary>
-/// Script and program main lists with a hub cursor walked by MoreAsync (offset pages of the same verb call),
-/// freed at the end, with the stream and on a world change; job waits on the jobs topic with one poll after (a null
-/// after a reconnect included), finality by the mod's final states, and a refused poll answered.
+/// Script and program main lists with a hub cursor walked by MoreAsync (the mod's walk cursor where its reply carries
+/// cursor_id, offset pages of the same verb call where it does not), freed at the end, with the stream and on a world
+/// change; job waits on the jobs topic with one poll after (a null after a reconnect included), finality by the mod's
+/// final states, and a refused poll answered.
 /// </summary>
 public sealed class CursorAndJobTests
 {
@@ -37,8 +38,49 @@ public sealed class CursorAndJobTests
         string cursor = (string)pipeline.Call("find", "item", """{"prefab":"ItemIronOre"}""", Face.Script).Done()!["cursor"]!;
         JsonNode page = More(pipeline, 0, cursor).Done()!;
 
+        // This list pages by offset only (its reply carries no cursor_id), so the walk is offset pages of the call.
+        Same("""{"what":"item","prefab":"ItemIronOre","cursor":"open"}""", game.CallsTo("find")[0].Params());
         Same("""{"what":"item","prefab":"ItemIronOre","offset":2}""", game.CallsTo("find")[1].Params());
         Same("""{"entries":[{"reference_id":"3"}]}""", page);
+    }
+
+    [Fact]
+    public void AWalkOnTheModsCursorPagesWithoutOffsets()
+    {
+        FakeGameLink game = new();
+        game.Answer = call => (string?)call.Params()["cursor"] switch
+        {
+            "open" => FakeGameLink.Ok(
+                """{"things":[{"reference_id":"1"},{"reference_id":"2"}],"offset":0,"has_more":true,"cursor_id":"k7"}"""),
+            "k7" => FakeGameLink.Ok("""{"things":[{"reference_id":"3"}],"has_more":false}"""),
+            _ => FakeGameLink.Refused("invalid_argument", "unexpected page")
+        };
+        VerbPipeline pipeline = game.Pipeline();
+
+        JsonNode reply = pipeline.Call("find", "thing", "{}", Face.Script).Done()!;
+        JsonNode page = More(pipeline, 0, (string)reply["cursor"]!).Done()!;
+
+        // The first page asks for the mod's walk and passes its cursor_id on; the next page goes on mine, not offset.
+        Assert.Equal("k7", (string)reply["cursor_id"]!);
+        Same("""{"what":"thing","cursor":"open"}""", game.CallsTo("find")[0].Params());
+        Same("""{"what":"thing","cursor":"k7"}""", game.CallsTo("find")[1].Params());
+        Same("""{"entries":[{"reference_id":"3"}]}""", page);
+    }
+
+    [Fact]
+    public void AModCursorExpiryIsTheAnswerAndFreesTheHubCursor()
+    {
+        FakeGameLink game = new();
+        game.Answer = call => (string?)call.Params()["cursor"] == "open"
+            ? FakeGameLink.Ok("""{"things":[{"reference_id":"1"}],"has_more":true,"cursor_id":"k7"}""")
+            : FakeGameLink.Refused("cursor_expired", "Cursor k7 is gone.");
+        VerbPipeline pipeline = game.Pipeline();
+
+        JsonNode reply = pipeline.Call("find", "thing", "{}", Face.Script).Done()!;
+        VerbReply.Failed failed = More(pipeline, 0, (string)reply["cursor"]!).Failed();
+
+        Assert.Equal("cursor_expired", failed.Code);
+        Assert.Equal(0, pipeline.Cursors.Count);
     }
 
     [Fact]

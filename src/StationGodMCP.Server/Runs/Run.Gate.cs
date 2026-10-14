@@ -558,6 +558,40 @@ internal sealed partial class Run
         }
     }
 
+    // A reply that arrived after this call's caller gave up (a kill, a closing session): what its rows say fills the
+    // write log's targets, so an undo can still place what the write changed. A write whose reply never comes keeps
+    // the before value unknown, and its undo says so. Called on the link's reader, before the call settles.
+    private void LateFill(RunCallContext context, JsonNode? answer)
+    {
+        if (context.Pending is not { } entry)
+        {
+            return;
+        }
+
+        List<JsonObject> rows = BulkWrites.Rows(answer);
+        lock (Record.Sync)
+        {
+            for (int index = 0; index < entry.Targets.Count; index++)
+            {
+                WrittenTarget target = entry.Targets[index];
+                if (RowFor(rows, index, target.Id) is not { } row)
+                {
+                    continue;
+                }
+
+                if (row["previous_value"] is { } previous)
+                {
+                    target.Before = previous.DeepClone();
+                }
+
+                if (row["current_value"] is { } current)
+                {
+                    target.After = current.DeepClone();
+                }
+            }
+        }
+    }
+
     // Under Sync: each target's before (previous_value) and after (current_value), and whether its row acted.
     private void Complete(WriteEntry entry, JsonNode? answer)
     {

@@ -22,7 +22,7 @@ public sealed class JournalTests : IDisposable
     private readonly string _folder = Path.Combine(Path.GetTempPath(), "sg-journal-" + Guid.NewGuid().ToString("N"));
 
     [PythonFact]
-    public async Task ACallLineIsOnDiskBeforeTheWriteReachesTheGameAndTheLinesComeInOrder()
+    public async Task ACallLineIsOnDiskBeforeTheWriteReachesTheGameAndTheDoneLineCarriesTheRowValues()
     {
         Journal journal = Journal.Open(_folder, "hub-00000000000000aa", mcp: true, () => "world-1");
         await using RunBench bench = new(adjust: settings => WithJournal(settings, journal));
@@ -50,8 +50,14 @@ public sealed class JournalTests : IDisposable
         JsonNode target = call["targets"]![0]!;
         Assert.Equal("1", (string)target["id"]!);
         Assert.Equal("On", (string)target["logic"]!);
-        Assert.Equal(0, (double)target["before"]!);
+        Assert.Null(target["before"]);
         Assert.Equal(1, (double)target["new"]!);
+        // No pre-read: no read went ahead of the write, and the reply's rows gave the done line its before and after.
+        Assert.Equal(0, bench.World.Count("read.logic"));
+        JsonObject done = Line(lines[3]);
+        Assert.Equal("done", (string)done["t"]!);
+        Assert.Equal(0, (double)done["after"]![0]!["before"]!);
+        Assert.Equal(1, (double)done["after"]![0]!["value"]!);
         Assert.Equal(new[] { "hub", "run", "call", "done", "end" }, lines.Select(line => (string)Line(line)["t"]!));
         Assert.Equal("hub-00000000000000aa", (string)Line(lines[0])["token"]!);
         Assert.Equal(1, (double)Line(lines[3])["after"]![0]!["value"]!);

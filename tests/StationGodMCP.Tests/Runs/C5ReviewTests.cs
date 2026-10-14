@@ -116,6 +116,114 @@ public sealed class C5ReviewTests : IDisposable
         Assert.Equal(0, bench.World.Value("1", "On"));
     }
 
+    // ---- X3b -----------------------------------------------------------------------------------------------------------
+
+    [Fact]
+    public async Task ALateReplyReachesTheCallsHookBeforeTheCallSettles()
+    {
+        RunWorld world = new();
+        VerbPipeline pipeline = new(world, shown: new SeenSet()) { SettleBound = TimeSpan.FromMilliseconds(300) };
+        TaskCompletionSource arrived = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        world.Gate = call =>
+        {
+            if (RunWorld.KeyOf(call) != "write.logic")
+            {
+                return null;
+            }
+
+            arrived.TrySetResult();
+            return release.Task;
+        };
+        List<JsonNode?> late = new();
+        List<JsonNode?> waited = new();
+        bool settledWhenHookRan = true;
+        VerbCall held = new("write", "logic", new JsonObject { ["id"] = "1", ["logic"] = "On", ["value"] = 1 }, Face.Script)
+        {
+            Gate = PassThroughGate.Instance,
+            LateReply = answer =>
+            {
+                settledWhenHookRan = !pipeline.Unsettled(0);
+                late.Add(answer?.DeepClone());
+            }
+        };
+        VerbCall plain = new("write", "logic", new JsonObject { ["id"] = "2", ["logic"] = "On", ["value"] = 1 }, Face.Script)
+        {
+            Gate = PassThroughGate.Instance,
+            LateReply = answer => waited.Add(answer)
+        };
+
+        using CancellationTokenSource abandoned = new();
+        Task<VerbReply> sent = pipeline.CallAsync(held, abandoned.Token);
+        await arrived.Task.WaitAsync(TimeSpan.FromSeconds(30));
+        abandoned.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => sent);
+        release.TrySetResult();
+        await RunBench.UntilAsync(() => late.Count > 0, "the late reply");
+        Assert.IsType<VerbReply.Done>(await pipeline.CallAsync(plain, CancellationToken.None));
+
+        // The reply the caller gave up on is the hook's, row values and all, and it arrives before the call settles.
+        Assert.False(settledWhenHookRan);
+        Assert.False(pipeline.Unsettled(0));
+        JsonNode? answer = Assert.Single(late);
+        JsonObject result = Assert.IsType<JsonObject>(Assert.Single(answer!["results"]!.AsArray()));
+        Assert.Equal(0, (double)result["previous_value"]!);
+        Assert.Equal(1, (double)result["current_value"]!);
+        Assert.Empty(waited);
+    }
+
+    [PythonFact]
+    public async Task AWriteWhoseReplyNeverComesAnswersThatItsBeforeValueIsUnknown()
+    {
+        RunWorld world = new();
+        SeenSet seen = new();
+        VerbPipeline pipeline = new(world, shown: seen)
+        {
+            PollInterval = TimeSpan.Zero,
+            // Two minutes is the shipping bound; this bench gives the write up on quickly.
+            SettleBound = TimeSpan.FromMilliseconds(300)
+        };
+        await using RunHost host = new(world, pipeline, seen, new RunHostSettings
+        {
+            SgRoot = RunBench.SgRoot,
+            // The world never answers the write: the run gives up on it at KillLatest, so this bench is short.
+            KillAfter = TimeSpan.FromSeconds(1),
+            KillLatest = TimeSpan.FromSeconds(5)
+        });
+        TaskCompletionSource arrived = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        Task never = new TaskCompletionSource().Task;
+        world.Gate = call =>
+        {
+            if (RunWorld.KeyOf(call) != "write.logic")
+            {
+                return null;
+            }
+
+            arrived.TrySetResult();
+            return never;
+        };
+
+        await host.RunScriptAsync(
+            new JsonObject { ["code"] = "sg.write('logic', id='1', logic='On', value=1)", ["confirm"] = true, ["max_wait"] = 0 },
+            ReplyHooks.None);
+        await arrived.Task.WaitAsync(TimeSpan.FromSeconds(30));
+        host.Stop(new JsonObject { ["id"] = "script-1" });
+        await RunBench.UntilAsync(() => !host.Find("script-1")!.IsLive, "script-1 to end");
+        RunRecord record = host.Find("script-1")!;
+        await RunBench.UntilAsync(() => !pipeline.Unsettled(record.Stream), "the write to be given up on");
+
+        VerbReply? undone = await host.UndoAsync(new JsonObject { ["id"] = "script-1", ["confirm"] = true });
+
+        // The reply never came, so nothing in the log can place the value it had: the undo says so and leaves the world.
+        WriteEntry write = Assert.Single(record.Writes);
+        Assert.True(write.MaybeRan);
+        Assert.Null(write.Targets[0].Before);
+        JsonNode row = Assert.Single(Assert.IsType<VerbReply.Done>(undone).Reply!["results"]!.AsArray())!;
+        Assert.False((bool)row["ok"]!);
+        Assert.Contains("before the run is unknown", (string)row["note"]!);
+        Assert.Equal(0, world.Value("1", "On"));
+    }
+
     // ---- X4 ------------------------------------------------------------------------------------------------------------
 
     [PythonFact]
@@ -288,9 +396,14 @@ public sealed class C5ReviewTests : IDisposable
         Assert.IsType<VerbReply.Done>(undone);
         Assert.Equal(0, bench.World.Value("1", "On"));
         Assert.Equal(5, bench.World.Value("1", "Lock"));
+        // No pre-read: the call line leaves the before values to the reply, and the done line has one each.
         JsonNode targets = JournalTests.Line(journal.Lines().First(line => line.Contains("\"t\":\"call\"")))["targets"]!;
-        Assert.Equal(0, (double)targets[0]!["before"]!);
-        Assert.Equal(5, (double)targets[1]!["before"]!);
+        Assert.All(targets.AsArray(), target => Assert.Null(target!["before"]));
+        JsonNode after = JournalTests.Line(journal.Lines().First(line => line.Contains("\"t\":\"done\"")))["after"]!;
+        Assert.Equal(0, (double)after[0]!["before"]!);
+        Assert.Equal(5, (double)after[1]!["before"]!);
+        Assert.Equal(1, (double)after[0]!["value"]!);
+        Assert.Equal(1, (double)after[1]!["value"]!);
     }
 
     // ---- M4 ------------------------------------------------------------------------------------------------------------

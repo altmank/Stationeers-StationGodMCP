@@ -12,7 +12,7 @@ from modwire.connection import PipeTarget, open_connection  # noqa: E402
 
 
 class Oracle:
-    """Calls handler methods on the mod directly, one at a time, and keeps the events it hears."""
+    """Calls verb whats on the mod directly, one at a time, and keeps the events it hears."""
 
     def __init__(self, pipe):
         for attempt in range(6):
@@ -57,10 +57,15 @@ class Oracle:
         return ((self.welcome.get("server") or {}).get("world") or {}).get("id")
 
     def logic(self, reference_id, logic_type):
-        return self.call("read_logic", reference_id=str(reference_id), logic_type=logic_type).get("value")
+        # One id with a string logic answers the one-value form; the list asks for the rows form the cases read.
+        return self.call("read", what="logic", id=str(reference_id), logic=[logic_type])["results"][0]["value"]
 
-    def set_logic(self, reference_id, logic_type, value):
-        return self.call("write_logic", reference_id=str(reference_id), logic_type=logic_type, value=value)
+    def set_logic(self, reference_id, logic_type, value, allow=None):
+        """Writes one value in the world: the direct call acts (confirm), so the case sees it happen."""
+        params = {"what": "logic", "id": str(reference_id), "logic": logic_type, "value": value, "confirm": True}
+        if allow is not None:
+            params["allow"] = allow
+        return self.call("write", **params)
 
     def watch_logic(self, reference_id, logic_type, seconds, every=0.1):
         """Samples a value for a while: [(t, value)], for 'what was the last write' questions."""
