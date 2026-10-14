@@ -14,12 +14,16 @@ SCRIPT_FILENAME = "<script>"
 
 class Run:
     """What sg needs to know about the run in progress: its id, the lines inside a while body (a wait there counts
-    as a loop wait in a report run), and the stop (Stopped or _PassEnd) the hub delivered, if any. A delivered stop
-    decides the run's end state even when the code swallowed it; an sg.Stopped the code raises itself is not one."""
+    as a loop wait in a report run), the script store it may load saved scripts from (scripts_dir and world, from the
+    welcome's run key; None in a session whose hub gave it no store), and the stop (Stopped or _PassEnd) the hub
+    delivered, if any. A delivered stop decides the run's end state even when the code swallowed it; an sg.Stopped the
+    code raises itself is not one."""
 
-    def __init__(self, run_id=None, while_lines=()):
+    def __init__(self, run_id=None, while_lines=(), scripts_dir=None, world=None):
         self.id = run_id
         self.while_lines = frozenset(while_lines)
+        self.scripts_dir = scripts_dir
+        self.world = world
         self.stop = None
 
     @property

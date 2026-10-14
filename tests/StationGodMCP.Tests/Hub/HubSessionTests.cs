@@ -329,7 +329,7 @@ public sealed class HubSessionTests
     }
 
     [Fact]
-    public async Task ARunsSessionCarriesItsRunInTheWelcomeAndTakesOneAnalysisAndItsEnd()
+    public async Task ARunsSessionCarriesItsRunInTheWelcomeAndTakesItsAnalysesAndItsEnd()
     {
         FakeHubLink link = new();
         RecordingRun run = new();
@@ -342,6 +342,8 @@ public sealed class HubSessionTests
 
         JsonElement welcome = await caller.HelloAsync();
         caller.Send("""{"type":"run_analysis","literals":["122643"],"while_lines":[],"writes":true,"holds":false,"syntax_error":null}""");
+        // A saved script the run's code loads mid-run (sg.lib) sends its own analysis; the run merges it.
+        caller.Send("""{"type":"run_analysis","literals":["7"],"while_lines":[],"writes":false,"holds":false,"syntax_error":null}""");
         caller.Send("""{"type":"run_end","state":"done","returned":null,"printed":"","error":null}""");
         JsonElement afterEnd = await caller.CallAsync("1", "wait", """{"s":1,"kind":"wait","in_loop":false}""");
         caller.Send("""{"type":"run_analysis","literals":[],"while_lines":[],"writes":false,"holds":false,"syntax_error":null}""");
@@ -349,7 +351,7 @@ public sealed class HubSessionTests
         await caller.EndAsync();
 
         Assert.Equal("script-4", welcome.GetProperty("run").GetProperty("id").GetString());
-        Assert.Equal(new[] { "run_analysis", "run_end" }, run.Messages);
+        Assert.Equal(new[] { "run_analysis", "run_analysis", "run_end" }, run.Messages);
         Assert.Equal("session_ended", afterEnd.GetProperty("error").GetProperty("code").GetString());
         Assert.Equal("protocol_error", second.GetProperty("error").GetProperty("code").GetString());
         Assert.Empty(link.EndedStreams);

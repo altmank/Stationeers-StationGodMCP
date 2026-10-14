@@ -16,8 +16,9 @@ reach the next one. It:
    the protocol. It does not stop code that sets out to find the descriptors; the hub keeps the run's end state
    itself and kills the worker after run_end (hub.md, *Runs*);
 2. says hello and reads the hub's welcome, whose `run` key holds the code (hub.md, *Runs*; a run of a saved script
-   carries `call` and `args` too, and the run is that function's call); end of stdin instead means the hub no longer
-   needs this worker;
+   carries `call` and `args` too, and the run is that function's call; a hub with a script store adds `scripts_dir`
+   and `world`, which `sg.lib` loads saved scripts from); end of stdin instead means the hub no longer needs this
+   worker;
 3. sends run_analysis before any user code runs;
 4. runs the code as a function body with `sg`, `print` (tables for row lists) and `time.sleep` (sg.wait) in place,
    capturing what it prints;
@@ -151,7 +152,8 @@ def guarded_run(transport, run):
 def run_one(transport, run):
     """Analyses and runs one run's code; returns its run_end message (run_analysis is sent from here). A run the hub
     started from a saved script carries `call` (the function to call, "main") and `args`: the code's body runs as
-    usual, defining that function, and the run is its call."""
+    usual, defining that function, and the run is its call. `scripts_dir` and `world`, when the hub has a store, are
+    what `sg.lib` loads saved scripts from."""
     source = run.get("code") or ""
     call = run.get("call")
     args = run.get("args") or {}
@@ -163,7 +165,8 @@ def run_one(transport, run):
     import sg  # the package itself, as the code sees it
     namespace = {"__name__": "__script__", "__builtins__": builtins, "sg": sg, "print": run_print}
     printed = io.StringIO()
-    run_state = _session.Run(run.get("id"), analysis.while_lines)
+    run_state = _session.Run(run.get("id"), analysis.while_lines, scripts_dir=run.get("scripts_dir"),
+                             world=run.get("world"))
     _session.begin_run(run_state)
     sys.stdout = sys.__stdout__ = printed
     time.sleep = sg.wait

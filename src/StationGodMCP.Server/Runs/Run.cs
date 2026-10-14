@@ -182,6 +182,14 @@ internal sealed partial class Run : IRunChannel, IPipelineExtras, IVerbCalls
             run["args"] = script.Args?.DeepClone() ?? new JsonObject();
         }
 
+        // A hub with a store tells the run where it is and which world it is for: the worker's import hook (sg.lib)
+        // reads the store itself, so the hub is never asked to resolve a saved name mid-run (SPEC-NOTES 5b).
+        if (_pipeline.Scripts is { } store)
+        {
+            run["scripts_dir"] = store.Root;
+            run["world"] = Record.World;
+        }
+
         return run;
     }
 
@@ -892,7 +900,11 @@ internal sealed partial class Run : IRunChannel, IPipelineExtras, IVerbCalls
 
             bool writes = message.TryGetProperty("writes", out JsonElement w) && w.ValueKind == JsonValueKind.True;
             bool holds = message.TryGetProperty("holds", out JsonElement h) && h.ValueKind == JsonValueKind.True;
-            _readOnly = !writes && !holds;
+            bool readOnly = !writes && !holds;
+            // A saved script loaded mid-run (sg.lib) sends its own analysis, merged into the run's: its literals count
+            // as written, and one that writes makes the run one that writes. Once taken, the verdict only narrows, so
+            // a loaded script that neither writes nor holds cannot move a writing run back to the long read-only wait.
+            _readOnly = _analysed ? _readOnly && readOnly : readOnly;
             _analysed = true;
         }
 

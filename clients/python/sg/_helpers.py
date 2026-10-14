@@ -9,6 +9,7 @@ from ._catalogue import VERBS
 from ._errors import Error, Stopped, _PassEnd
 from ._replies import Reply, wrap
 from ._verbs import read as _read
+from .lib import load as _load
 
 LIGHT_POLL_S = 1.0
 HEAVY_POLL_S = 5.0
@@ -439,6 +440,18 @@ class hold:
 def ref(id):
     """A ref's content: for rN {ref, ids, reply}; for script-N {ref, returned, printed}."""
     return wrap(_session.request("ref", {"id": id}))
+
+
+def script(name):
+    """A saved script's main(...) as a callable: sg.script('turn_on')(id='7', level=1) runs the stored main with
+    those arguments, inside this run, and returns its value.
+
+    The module is the one `from sg.lib import turn_on` gives: loaded once per worker and shared with the import, so
+    the script's literals count as written and its writes, holds and stops are this run's. A name that is no saved
+    script, one saved in another world, a headerless file and one without main(...) each raise sg.Error before the
+    call; the arguments are not re-checked here, so a wrong call raises Python's own TypeError. Needs a hub that
+    gave this run a store (--scripts-dir)."""
+    return _load(name).main
 
 
 def help(verb=None, what=None):

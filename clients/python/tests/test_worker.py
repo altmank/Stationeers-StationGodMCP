@@ -1,4 +1,7 @@
 """The script worker as the hub runs it: a child process on stdin and stdout, against the fake hub."""
+import os
+import shutil
+import tempfile
 import time
 import unittest
 
@@ -16,6 +19,30 @@ def saved(code, args=None, run_id="script-1"):
     """A run of a saved script: the hub sends the script's source and calls its main(**args) (SPEC-NOTES 5b)."""
     return {"id": run_id, "code": code, "call": "main", "args": args or {}, "confirm": True, "face": "script",
             "limits": {"cut_bytes": 4096}}
+
+
+def composed(code, root, world="w1", run_id="script-1"):
+    """A run whose hub has a script store: the welcome's run key carries scripts_dir and world, as the hub adds them
+    for a run that may import saved scripts (sg.lib)."""
+    message = run(code, run_id)
+    message["scripts_dir"] = root
+    message["world"] = world
+    return message
+
+
+def write_script(root, name, code, scope="shared", world=None):
+    """A saved script as write script writes one: the store's header over the code."""
+    folder = os.path.join(root, "shared") if scope == "shared" else os.path.join(root, "world", world)
+    os.makedirs(folder, exist_ok=True)
+    lines = ["# stationgod script v1", f"# name: {name}", f"# scope: {scope}"]
+    if scope == "world":
+        lines.append(f"# world: {world}")
+    lines += ["# version: 1", "# saved: 2026-10-14T00:00:00Z", "# description: a test script", "# parameters: []",
+              "# ---", ""]
+    path = os.path.join(folder, name + ".py")
+    with open(path, "w", encoding="utf-8") as file:
+        file.write("\n".join(lines) + code)
+    return path
 
 
 class WorkerCase(unittest.TestCase):
@@ -280,6 +307,106 @@ class SavedScriptRunTests(WorkerCase):
         _, end = self.serve_one(code, message=saved(code, {"ids": ["7", "2"]}))
 
         self.assertEqual(("done", ["2", "7"]), (end["state"], end["returned"]))
+
+
+class SavedScriptCompositionTests(WorkerCase):
+    """A run that imports a saved script (from sg.lib) or calls one (sg.script): both are this one run (SPEC-NOTES 5b,
+    Composition). The store is a folder of the test's own, holding the hub's files."""
+
+    def setUp(self):
+        self.root = tempfile.mkdtemp(prefix="sg-store-")
+        self.addCleanup(shutil.rmtree, self.root, ignore_errors=True)
+
+    def serve_composed(self, code, handler=None, world="w1"):
+        return self.serve_one(code, handler, message=composed(code, self.root, world))
+
+    def test_from_sg_lib_imports_the_saved_script_as_a_module_with_its_main(self):
+        write_script(self.root, "greeting", "WHO = 'lu'\n\ndef main(who):\n    return 'hi ' + who\n")
+
+        _, end = self.serve_composed("from sg.lib import greeting\nreturn [greeting.WHO, greeting.main(who='x')]\n")
+
+        self.assertEqual(("done", ["lu", "hi x"]), (end["state"], end["returned"]))
+
+    def test_a_world_script_of_the_runs_world_resolves(self):
+        write_script(self.root, "mine", "def main():\n    return 'world'\n", scope="world", world="w1")
+
+        _, end = self.serve_composed("from sg.lib import mine\nreturn mine.main()\n")
+
+        self.assertEqual(("done", "world"), (end["state"], end["returned"]))
+
+    def test_sg_script_calls_a_saved_scripts_main_and_returns_its_value(self):
+        write_script(self.root, "greeting", "def main(who, times=1):\n    return 'hi ' + who * times\n")
+
+        _, end = self.serve_composed("return sg.script('greeting')('lu', times=2)\n")
+
+        self.assertEqual(("done", "hi lulu"), (end["state"], end["returned"]))
+
+    def test_the_import_and_sg_script_share_one_module_and_the_hub_hears_its_analysis_once(self):
+        write_script(self.root, "greeting", "def main():\n    return sg\n")
+
+        hub, end = self.serve_composed("from sg.lib import greeting\n"
+                                       "first = sg.script('greeting')\n"
+                                       "return [first is sg.script('greeting'), greeting.main is first]\n")
+
+        self.assertEqual(("done", [True, True]), (end["state"], end["returned"]))
+        # The run's own analysis and one for the script, whatever the number of imports.
+        self.assertEqual(2, len(hub.of_type("run_analysis")))
+
+    def test_the_hub_hears_the_loaded_scripts_literals_writes_and_holds(self):
+        write_script(self.root, "guarded", "def main():\n"
+                                           "    with sg.hold(['55'], 'Open', value=1):\n"
+                                           "        sg.write('logic', id='77', logic='On', value=2)\n")
+
+        hub, end = self.serve_composed("from sg.lib import guarded\nguarded.main()\n")
+
+        self.assertEqual("done", end["state"])
+        analyses = hub.of_type("run_analysis")
+        self.assertEqual(2, len(analyses))
+        self.assertEqual([], analyses[0]["literals"])
+        self.assertTrue(analyses[1]["writes"])
+        self.assertTrue(analyses[1]["holds"])
+        self.assertIn("77", analyses[1]["literals"])
+        self.assertIn("55", analyses[1]["literals"])
+        # The script's calls are the run's session's, and the line is the one that called into the script.
+        self.assertEqual(["hold", "verb", "hold"], [method for method, _ in hub.calls])
+        self.assertEqual([2, 2, 2], [params["line"] for _, params in hub.calls])
+        self.assertEqual("write", [params["verb"] for method, params in hub.calls if method == "verb"][0])
+
+    def test_a_wrong_call_fails_in_python_the_hub_checked_nothing(self):
+        write_script(self.root, "greeting", "def main(who):\n    return who\n")
+
+        _, end = self.serve_composed("sg.script('greeting')()\n")
+
+        self.assertEqual("failed", end["state"])
+        self.assertIn("TypeError", end["error"])
+
+    def test_an_unknown_name_another_worlds_script_and_a_headerless_file_are_refused(self):
+        write_script(self.root, "their_world", "def main():\n    return 1\n", scope="world", world="w2")
+        write_script(self.root, "nomain", "x = 1\n")
+        write_script(self.root, "broken", "def main(:\n")
+        raw = os.path.join(self.root, "shared", "raw.py")
+        with open(raw, "w", encoding="utf-8") as file:
+            file.write("def main():\n    return 1\n")
+
+        for name, code in [("nope", "script_not_found"), ("their_world", "script_world"), ("raw", "script_invalid"),
+                           ("nomain", "script_invalid"), ("broken", "script_invalid")]:
+            with self.subTest(name=name):
+                _, end = self.serve_composed(f"from sg.lib import {name}\n")
+                self.assertEqual("failed", end["state"])
+                self.assertIn(f"sg.Error: {code}", end["error"])
+
+    def test_an_attribute_lookup_of_a_name_that_names_no_script_raises_the_same_code(self):
+        _, end = self.serve_composed("import sg.lib\nreturn sg.lib.nope\n")
+
+        self.assertEqual("failed", end["state"])
+        self.assertIn("sg.Error: script_not_found", end["error"])
+
+    def test_a_session_without_a_store_refuses_the_import_with_a_clear_error(self):
+        _, end = self.serve_one("from sg.lib import anything\n")
+
+        self.assertEqual("failed", end["state"])
+        self.assertIn("sg.Error: not_available", end["error"])
+        self.assertIn("no script store here", end["error"])
 
 
 class VerbsModuleAnalysisTests(unittest.TestCase):

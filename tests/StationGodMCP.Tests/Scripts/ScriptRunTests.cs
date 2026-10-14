@@ -15,8 +15,9 @@ namespace StationGodMCP.Tests.Scripts;
 
 /// <summary>
 /// Saved scripts through the hub: run_script {name, args} (the arguments checked before the run, the current version
-/// run) and the four hub whats served by the pipeline on the direct and the script faces (write, find, inspect, remove
-/// script). The real Python worker runs the scripts.
+/// run), composition (a run imports a saved script and calls it, the whole call tree one run) and the four hub whats
+/// served by the pipeline on the direct and the script faces (write, find, inspect, remove script). The real Python
+/// worker runs the scripts.
 /// </summary>
 [Collection(PythonCollection.Name)]
 public sealed class ScriptRunTests : IDisposable
@@ -157,6 +158,64 @@ public sealed class ScriptRunTests : IDisposable
         VerbReply elsewhere = await bench.Host.RunScriptAsync(new JsonObject { ["name"] = "mine" }, ReplyHooks.None);
         Assert.Equal("script_world", Failed(elsewhere).Code);
         Assert.Null(bench.Host.Find("script-2"));
+    }
+
+    // ---- composition (B-7) ------------------------------------------------------------------------------------------
+
+    [PythonFact]
+    public async Task AnImportedSavedScriptRunsInTheSameRunAndItsLiteralsCountAsWritten()
+    {
+        await using RunBench bench = new(scripts: _store);
+        // The id is a literal of the saved script alone (and an id a shared script may not carry): were the loaded
+        // script's analysis not merged into the run, the gate would stop the run on an unseen target.
+        Done(await SaveAsync(bench, "switch_on", "def main(level: int = 1) -> int:\n" +
+                                                "    sg.write('logic', id='7', logic='On', value=level)\n" +
+                                                "    return level * 2\n", scope: "world"));
+
+        string text = RunBench.Text(await bench.Host.RunScriptAsync(new JsonObject
+        {
+            ["code"] = "from sg.lib import switch_on\nsg.script('switch_on')(level=3)",
+            ["confirm"] = true
+        }, ReplyHooks.None));
+
+        Assert.StartsWith("script-1 done", text);
+        Assert.Contains("returned: 6", text);
+        Assert.Equal(3, bench.World.Value("7", "On"));
+    }
+
+    [PythonFact]
+    public async Task ALoadedScriptThatDoesNotWriteDoesNotMakeTheRunReadOnly()
+    {
+        // The run's own analysis says it writes, but its first write comes after a long wait. The loaded script's
+        // analysis writes nothing: merged, the run stays a writing run, whose reply waits the confirmed ceiling
+        // rather than the read-only run's limit.
+        await using RunBench bench = new(settings: new RunHostSettings
+        {
+            SgRoot = RunBench.SgRoot,
+            ConfirmedCeiling = TimeSpan.FromSeconds(0.5),
+            KillAfter = TimeSpan.FromSeconds(30),
+            KillLatest = TimeSpan.FromSeconds(60)
+        }, scripts: _store);
+        await SaveAsync(bench, "quiet", "def main() -> None:\n    print('quiet')\n");
+
+        string text = await bench.RunAsync("from sg.lib import quiet\nsg.wait(3)\n" +
+                                           "sg.write('logic', id='7', logic='On', value=1)\n", confirm: true,
+            maxWait: 5);
+
+        Assert.StartsWith("script-1 running:", text);
+        await bench.EndedAsync("script-1");
+        Assert.Equal(1, bench.World.Value("7", "On"));
+    }
+
+    [PythonFact]
+    public async Task ARunFromAHubWithoutAStoreCannotImportASavedScript()
+    {
+        await using RunBench bench = new();
+
+        string text = await bench.RunAsync("from sg.lib import anything\n", confirm: true);
+
+        Assert.StartsWith("script-1 failed", text);
+        Assert.Contains("no script store here", text);
     }
 
     // ---- the four whats ---------------------------------------------------------------------------------------------

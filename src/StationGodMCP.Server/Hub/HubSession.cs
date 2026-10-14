@@ -858,6 +858,8 @@ public sealed partial class HubSession
         return null;
     }
 
+    // A run's analysis: the run's own code, and (for a saved script the code loads) one per loaded script, each merged
+    // into the run by its channel (Run.AnalysisAsync). The first one is what lets the run's calls through.
     private async Task<HubSessionEnd?> RunAnalysisAsync(JsonElement message, string line)
     {
         if (_settings.RunChannel is not { } channel)
@@ -872,9 +874,9 @@ public sealed partial class HubSession
 
         lock (_gate)
         {
-            if (_analysed)
+            if (_runEnded)
             {
-                return Broken(null, "The hub takes only the first run_analysis of a session.", line);
+                return Broken(null, "The run has ended; run_analysis belongs to a run that is still going.", line);
             }
 
             _analysed = true;
