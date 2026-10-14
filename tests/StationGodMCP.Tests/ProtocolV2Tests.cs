@@ -89,9 +89,9 @@ public sealed class ProtocolV2Tests
         Assert.Equal(16777216, (int)welcome["limits"]!["max_reply_bytes"]!);
         Assert.Contains("shape", welcome["features"]!.Values<string>());
         Assert.Contains("cancel", welcome["features"]!.Values<string>());
-        byte[] file = File.ReadAllBytes(CatalogueChecks.CatalogueFiles.AssembledPath);
-        Assert.Equal(CatalogueFile.HashOf(file), (string?)welcome["catalogue"]!["hash"]);
+        Assert.Equal(VerbDocument.Embedded.Hash, (string?)welcome["catalogue"]!["hash"]);
         Assert.Matches("^sha256:[0-9a-f]{64}$", (string?)welcome["catalogue"]!["hash"]);
+        Assert.Equal(VerbDocument.Embedded.MethodCount, (int)welcome["catalogue"]!["methods"]!);
         Assert.Equal(6, (int)welcome["catalogue"]!["protocol_methods"]!);
     }
 
@@ -294,11 +294,13 @@ public sealed class ProtocolV2Tests
     }
 
     [Fact]
-    public void ACallsProfileComesFromTheCatalogue()
+    public void ACallsProfileComesFromTheTablesTheirMethodsHave()
     {
-        Assert.False(CallProfiles.Of(TestCatalogue.File.Value, "read_logic", new JObject()).IsOrdered);
-        Assert.True(CallProfiles.Of(TestCatalogue.File.Value, "write_logic", new JObject()).IsOrdered);
-        Assert.Equal(CostClass.World, CallProfiles.Of(TestCatalogue.File.Value, "grid_survey", new JObject()).Cost);
+        Assert.False(CallProfiles.Of("stream_costs", new JObject()).IsOrdered);
+        Assert.True(CallProfiles.Of("drop_job", new JObject()).IsOrdered);
+        Assert.True(CallProfiles.Of("hold_restore", new JObject()).IsOrdered);
+        Assert.Equal(CostClass.Bounded, CallProfiles.Of("subscribe", new JObject()).Cost);
+        Assert.Equal(CostClass.Instant, CallProfiles.Of("no_such_method", new JObject()).Cost);
     }
 
     [Fact]
@@ -474,8 +476,18 @@ public sealed class ProtocolV2Tests
 
         JObject reply = client.Call("cat", "catalogue", new JObject());
 
-        JToken expected = JToken.Parse(File.ReadAllText(CatalogueChecks.CatalogueFiles.AssembledPath));
-        Assert.True(JToken.DeepEquals(expected, reply["result"]), "the catalogue differs");
+        // The reply is the assembled verb model: every file as it is on disk, under the hash the welcome announced.
+        JObject model = (JObject)reply["result"]!;
+        Assert.Equal(new[] { "shared", "errors", "verbs" }, model.Properties().Select(property => property.Name));
+        foreach (string verb in ((JArray)model["shared"]!["verbs"]!).Values<string>())
+        {
+            JToken expected = JToken.Parse(File.ReadAllText(
+                Path.Combine(CatalogueChecks.CatalogueFiles.SourceRoot, "verbs", verb + ".json")));
+            Assert.True(JToken.DeepEquals(expected, model["verbs"]![verb]), $"the {verb} file differs");
+        }
+
+        Assert.True(JToken.DeepEquals(JToken.Parse(File.ReadAllText(
+            Path.Combine(CatalogueChecks.CatalogueFiles.SourceRoot, "verbs", "_errors.json"))), model["errors"]));
         Assert.False((bool)reply["shaped"]!);
         Assert.Equal(0, rig.Mod.Ran);
     }

@@ -208,18 +208,6 @@ public sealed class HeavyPayloadTests
         Assert.NotNull(json["body"]);
     }
 
-    [Theory]
-    [InlineData("get_ic_status", """{"reference_id":"300","include_source":false}""")]
-    [InlineData("place_structure", """{"job_id":"place-3","verbose":true}""")]
-    [InlineData("place_structure", """{"prefab":"StructureFrame","at":[1,1,1],"include_footprint_cells":true}""")]
-    [InlineData("remove_structure", """{"job_id":"remove-3","verbose":true}""")]
-    [InlineData("place_pipes", """{"waypoints":[[1,1,1],[1,1,3]],"grade":"gas","include_links":true,"include_notes":true,"limit":0}""")]
-    [InlineData("place_pipes", """{"job_id":"run-3","verbose":true}""")]
-    public void TheSidecarTakesTheNewArguments(string tool, string arguments)
-    {
-        Assert.Empty(Problems(tool, arguments));
-    }
-
     private static Args Args(string json) => new Args(JObject.Parse(json));
 
     private static Page<SurveyCell> Page()
@@ -242,9 +230,4 @@ public sealed class HeavyPayloadTests
             new StackWindowView(512, 0, new List<double>()),
             new IcSymbols(new List<AliasView>(), new List<DefineView>(), new List<JumpTagView>()));
 
-    private static IReadOnlyList<string> Problems(string tool, string arguments)
-    {
-        using JsonDocument document = JsonDocument.Parse(arguments);
-        return ArgumentCheck.Problems(Program.InputSchemas[tool], document.RootElement);
-    }
 }

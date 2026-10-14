@@ -24,8 +24,8 @@ namespace StationGodMCP.Api;
 /// <summary>
 /// One call in and one reply out, on the main thread, one at a time (StationGodRequestDispatcher.RunCall). A call that
 /// reaches this host is neither a verb (VerbCalls) nor one of the protocol methods' own lanes (subscribe, drop_job,
-/// hold_restore, stream_costs), so it is refused method_not_found - naming the MCP server when the method catalogue
-/// says the sidecar answers it. A catalogue that will not load is internal_error, logged.
+/// hold_restore, stream_costs), so it is refused method_not_found. A verb document that will not load is
+/// internal_error, logged.
 /// </summary>
 internal static class ApiHost
 {
@@ -96,7 +96,7 @@ internal static class ApiHost
     /// <summary>The largest reply sent (limits.max_reply_bytes).</summary>
     internal const int MaxReplyBytes = 16777216;
 
-    // The call's answer: one the mod does not answer is a refusal, and the catalogue's own words name its answerer.
+    // The call's answer: one the mod does not answer is a refusal.
     private static Answer Run(CallRequest call, Stopwatch watch)
     {
         using ProfScope executing = Prof.Scope(ProfId.CallExecute);
@@ -104,9 +104,12 @@ internal static class ApiHost
         string? method = call.Method;
         try
         {
-            DeclaredArguments declared = Declared.Value.Arguments ??
-                                         throw ApiErrors.Refused("internal_error", Declared.Value.Problem!);
-            return Answer.Failure(requestId, method, UnknownMethod(declared, method), Elapsed(watch));
+            if (Document.Value.Problem is { } problem)
+            {
+                throw ApiErrors.Refused("internal_error", problem);
+            }
+
+            return Answer.Failure(requestId, method, UnknownMethod(method), Elapsed(watch));
         }
         catch (ApiException exception)
         {
@@ -124,60 +127,41 @@ internal static class ApiHost
         }
     }
 
-    /// <summary>
-    /// method_not_found for a call the mod does not answer: the catalogue's own entry says whether the MCP server
-    /// answers it from the catalogue, rather than the game.
-    /// </summary>
-    private static ErrorView UnknownMethod(DeclaredArguments declared, string? method) =>
-        new ErrorView("method_not_found", method != null && declared.RunsInSidecar(method)
-            ? $"{method} is answered by the MCP server (the sidecar) from the catalogue, " +
-                "not by the game; call it through MCP, or read the catalogue's help."
-            : $"Unknown StationGodMCP method '{method}'.");
+    /// <summary>method_not_found for a call the mod does not answer.</summary>
+    private static ErrorView UnknownMethod(string? method) =>
+        new ErrorView("method_not_found", $"Unknown StationGodMCP method '{method}'.");
 
-    private const string CatalogueResource = "StationGodMCP.catalogue.json";
+    // The verb document, read once from the DLL. One that does not load is fatal for requests: every call is answered
+    // internal_error naming the problem, rather than run unchecked.
+    private static readonly Lazy<LoadedDocument> Document = new Lazy<LoadedDocument>(LoadDocument);
 
-    // The method catalogue, read once from the DLL. One that does not load is fatal for requests: every call is
-    // answered internal_error naming the problem, rather than run unchecked.
-    private static readonly Lazy<LoadedCatalogue> Declared = new Lazy<LoadedCatalogue>(LoadCatalogue);
+    /// <summary>Loads the embedded verb document now (at mod start), so the log says at once whether it loaded.</summary>
+    internal static void Prepare() => _ = Document.Value;
 
-    /// <summary>Loads the embedded catalogue now (at mod start), so the log says at once whether it loaded.</summary>
-    internal static void Prepare() => _ = Declared.Value;
+    /// <summary>The embedded verb document (its text and hash for welcome); null when it did not load.</summary>
+    internal static StationGodMCP.Pure.Catalogue.VerbDocument? Catalogue => Document.Value.Document;
 
-    /// <summary>The embedded catalogue file (its text and hash for welcome); null when it did not load.</summary>
-    internal static CatalogueFile? CatalogueFile => Declared.Value.File;
-
-    private static LoadedCatalogue LoadCatalogue()
+    private static LoadedDocument LoadDocument()
     {
         try
         {
-            using Stream? stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(CatalogueResource);
-            if (stream == null)
-            {
-                return LoadedCatalogue.Failed($"The mod's DLL has no {CatalogueResource}: the build is broken.");
-            }
-
-            using MemoryStream bytes = new MemoryStream();
-            stream.CopyTo(bytes);
-            byte[] raw = bytes.ToArray();
-            Catalogue catalogue = Catalogue.Load(new System.Text.UTF8Encoding(false).GetString(raw));
-            ArgumentDrift.FirstMiss = static (method, name) =>
-                StationGodMod.LogWarning($"Catalogue drift: {method} read the argument '{name}', which its catalogue entry does not declare.");
-            ErrorGuide.Use(catalogue);
-            StationGodMod.Log($"Catalogue loaded: {catalogue.MethodCount} methods, mod version {catalogue.ModVersion}.");
-            return LoadedCatalogue.Of(new DeclaredArguments(catalogue), new CatalogueFile(raw, catalogue));
+            StationGodMCP.Pure.Catalogue.VerbDocument document = StationGodMCP.Pure.Catalogue.VerbDocument.Embedded;
+            ErrorGuide.Use(document);
+            StationGodMod.Log($"Verb catalogue loaded: {document.VerbCount} verbs, {document.MethodCount} whats, " +
+                              $"{document.Hash}.");
+            return LoadedDocument.Of(document);
         }
         catch (CatalogueException exception)
         {
-            return LoadedCatalogue.Failed($"The method catalogue did not load: {exception.Message}");
+            return LoadedDocument.Failed($"The verb catalogue did not load: {exception.Message}");
         }
     }
 
-    private sealed class LoadedCatalogue
+    private sealed class LoadedDocument
     {
-        private LoadedCatalogue(DeclaredArguments? arguments, CatalogueFile? file, string? problem)
+        private LoadedDocument(VerbDocument? document, string? problem)
         {
-            Arguments = arguments;
-            File = file;
+            Document = document;
             Problem = problem;
             if (problem != null)
             {
@@ -185,16 +169,13 @@ internal static class ApiHost
             }
         }
 
-        internal DeclaredArguments? Arguments { get; }
-
-        internal CatalogueFile? File { get; }
+        internal VerbDocument? Document { get; }
 
         internal string? Problem { get; }
 
-        internal static LoadedCatalogue Of(DeclaredArguments arguments, CatalogueFile file) =>
-            new LoadedCatalogue(arguments, file, null);
+        internal static LoadedDocument Of(VerbDocument document) => new LoadedDocument(document, null);
 
-        internal static LoadedCatalogue Failed(string problem) => new LoadedCatalogue(null, null, problem);
+        internal static LoadedDocument Failed(string problem) => new LoadedDocument(null, problem);
     }
 
     /// <summary>A reply as JSON text, through the one shared serializer: main thread only.</summary>

@@ -210,33 +210,5 @@ public sealed class GasHoldTests
         Assert.Equal("171240", hold["loss"]!["networks"]![0]!.ToString());
     }
 
-    [Theory]
-    [InlineData("place_pipes", """{"waypoints":[[1,2,3],[1,2,5]],"grade":"gas","acknowledge_gas_lost":"run-7"}""")]
-    [InlineData("remove_pipes", """{"reference_ids":["5"],"acknowledge_gas_lost":"run-7"}""")]
-    [InlineData("upgrade_pipes", """{"network_id":"5","acknowledge_gas_lost":"run-7"}""")]
-    [InlineData("clean_pipes", """{"network_id":"5","operations":["remove_dead_ends"],"acknowledge_gas_lost":"run-7"}""")]
-    [InlineData("place_structure", """{"prefab":"StructureFrameIron","at":[1,2,3],"acknowledge_gas_lost":"run-7"}""")]
-    [InlineData("remove_structure", """{"reference_ids":["5"],"acknowledge_gas_lost":"run-7"}""")]
-    [InlineData("undo_job", """{"job_id":"place-9","acknowledge_gas_lost":"run-7"}""")]
-    public void EveryHeldToolDeclaresTheAcknowledgement(string tool, string arguments)
-    {
-        using JsonDocument document = JsonDocument.Parse(arguments);
-
-        Assert.DoesNotContain(ArgumentCheck.Problems(Program.InputSchemas[tool], document.RootElement),
-            problem => problem.Contains("acknowledge_gas_lost"));
-    }
-
-    [Theory]
-    [InlineData("place_cables")]
-    [InlineData("upgrade_cables")]
-    [InlineData("replace_walls")]
-    public void AToolTheHoldNeverRefusesDoesNotTakeIt(string tool)
-    {
-        using JsonDocument document = JsonDocument.Parse("""{"acknowledge_gas_lost":"run-7"}""");
-
-        Assert.Contains(ArgumentCheck.Problems(Program.InputSchemas[tool], document.RootElement),
-            problem => problem.StartsWith("Unknown argument 'acknowledge_gas_lost'"));
-    }
-
     private static GasMix Methane(double mol) => new GasMix(new[] { mol }, new[] { mol * 10 });
 }

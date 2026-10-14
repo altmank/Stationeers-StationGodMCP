@@ -12,11 +12,14 @@ namespace StationGodMCP.Server;
 /// opened at the first call (an agent session usually starts before the game). tools/list answers the generated verb
 /// tools (generated/verbs/tools.json) and initialize their instructions; tools/call sends the verb call through the
 /// VerbPipeline on the direct face (stream 0), writes the reply to a file when output_file asks or when it is larger
-/// than the inline limit, and wraps the result or error in the one MCP result shape (ToolReplies).
+/// than the inline limit, and wraps the result or error in the one MCP result shape.
 /// </summary>
 internal sealed class McpAdapter : IAsyncDisposable
 {
     private const string McpProtocolVersion = "2025-06-18";
+
+    /// <summary>The MCP server's name, as initialize's serverInfo gives it.</summary>
+    internal const string ServerName = "StationGodMCP";
 
     private static readonly JsonElement NullId = JsonSerializer.SerializeToElement<object?>(null);
     // Plain JSON escaping: the default encoder writes every quote inside a string as a six-character \u escape, and
@@ -25,6 +28,13 @@ internal sealed class McpAdapter : IAsyncDisposable
     {
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+    };
+
+    // The text copy of a tool result, written as the adapter writes structuredContent (plain escaping), so the two
+    // read the same.
+    private static readonly JsonSerializerOptions TextOptions = new()
+    {
         Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
     };
 
@@ -163,7 +173,7 @@ internal sealed class McpAdapter : IAsyncDisposable
                 {
                     protocolVersion = RequestedProtocolVersion(root),
                     capabilities = new { tools = new { listChanged = false } },
-                    serverInfo = new { name = ToolCatalogue.ServerName, version = Program.ServerVersion },
+                    serverInfo = new { name = ServerName, version = Program.ServerVersion },
                     instructions = catalogue.Instructions
                 },
                 "ping" => new { },
@@ -207,7 +217,8 @@ internal sealed class McpAdapter : IAsyncDisposable
         }
     }
 
-    // Every tool result, the game's and the pipeline's own refusals alike, has one shape (ToolReplies).
+    // Every tool result, the game's and the pipeline's own refusals alike, has one shape: content carries the reply's
+    // JSON text (with the runs' notices after it), structuredContent the same object, isError whether it is an error.
     private async Task<object> CallToolAsync(JsonElement root, VerbCatalogue catalogue, object? requestId)
     {
         if (!root.TryGetProperty("params", out JsonElement parameters) || parameters.ValueKind != JsonValueKind.Object ||
@@ -396,7 +407,7 @@ internal sealed class McpAdapter : IAsyncDisposable
     private async Task<object> SentAsync(JsonElement body, bool isError, string verb, string? what, string? about = null,
         string? plainText = null)
     {
-        string text = plainText ?? ToolReplies.TextOf(body);
+        string text = plainText ?? JsonSerializer.Serialize(body, TextOptions);
         if (plainText == null)
         {
             _pipeline.TextShown(text);
@@ -407,7 +418,12 @@ internal sealed class McpAdapter : IAsyncDisposable
             text += "\n" + string.Join("\n", notices);
         }
 
-        return ToolReplies.Of(body, text, isError);
+        return new
+        {
+            content = new[] { new { type = "text", text } },
+            structuredContent = body,
+            isError
+        };
     }
 
     // The reply inline, or written to a file when output_file asks or when it is larger than the inline limit.

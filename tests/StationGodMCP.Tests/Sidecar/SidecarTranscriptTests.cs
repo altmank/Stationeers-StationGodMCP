@@ -62,7 +62,7 @@ public sealed class SidecarTranscriptTests : IDisposable
     {
         await using FakeGame game = FakeGame.OnPipe();
         game.CatalogueHash = "sha256:" + new string('c', 64);
-        game.CatalogueJson = ClientTests.CatalogueWithout("weather");
+        game.CatalogueJson = ClientTests.ModelWithout("read");
         await using McpAdapter sidecar = Sidecar(game.Target);
 
         await sidecar.HandleAsync(Call(1, "read", """{"what":"clock"}"""));

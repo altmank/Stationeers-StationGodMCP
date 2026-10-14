@@ -303,7 +303,7 @@ public sealed class StationGodMod : ModBehaviour
         {
             ProtocolHost host = new ProtocolHost(
                 new ProtocolSettings(_server.MaxPipeConnections, strictArguments: _server.StrictArguments), _dispatcher,
-                Deadlines, ApiHost.CatalogueFile, subscriptions: _subscriptions, holds: Holds, restores: Restores,
+                Deadlines, ApiHost.Catalogue, subscriptions: _subscriptions, holds: Holds, restores: Restores,
                 verbs: VerbHandlers.Dispatcher);
             PipeListener listener = new PipeListener(Pipe.Value, host);
             listener.Start();
@@ -375,7 +375,7 @@ public sealed class StationGodMod : ModBehaviour
         {
             ProtocolHost host = new ProtocolHost(
                 new ProtocolSettings(_server.MaxTcpConnections, strictArguments: _server.StrictArguments),
-                _dispatcher, Deadlines, ApiHost.CatalogueFile, remote.Secret, _subscriptions, Holds, Restores,
+                _dispatcher, Deadlines, ApiHost.Catalogue, remote.Secret, _subscriptions, Holds, Restores,
                 VerbHandlers.Dispatcher);
             server = new TcpAcceptor(remote.BindAddress, remote.Port, _server.MaxTcpConnections, host);
             server.Start();

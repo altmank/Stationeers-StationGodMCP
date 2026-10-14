@@ -1,13 +1,11 @@
 #nullable enable
 
 using System;
-using System.IO;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Pure.Catalogue;
 using StationGodMCP.Pure.Scheduling;
-using StationGodMCP.Tests.CatalogueChecks;
+using StationGodMCP.Pure.Verbs;
 using Xunit;
-using ModCatalogue = StationGodMCP.Pure.Catalogue.Catalogue;
 
 namespace StationGodMCP.Tests.Scheduling;
 
@@ -133,24 +131,24 @@ public sealed class CostPredictorTests
         Assert.Null(predictor.PredictMs(SchedulerRig.Read("game_clock")));
     }
 
-    // ---- the profile from the catalogue ----
+    // ---- the profile from the verb model ----
 
     [Theory]
-    [InlineData("read_devices", """{"items": [{}, {}, {}, {}, {}]}""", nameof(CostClass.Bounded), 5, false)]
-    [InlineData("thing_health", """{"reference_ids": ["1", "2", "3"]}""", nameof(CostClass.Bounded), 3, false)]
-    [InlineData("thing_health", """{"reference_id": "1"}""", nameof(CostClass.Instant), 1, false)]
-    [InlineData("thing_health", "{}", nameof(CostClass.World), 1, false)]
-    [InlineData("grid_survey", "{}", nameof(CostClass.World), 1, false)]
-    [InlineData("write_logic", "{}", nameof(CostClass.Instant), 1, true)]
-    public void TheProfileComesFromTheCatalogueAtTheCallsArguments(string method, string arguments, string costName,
-        int items, bool ordered)
+    [InlineData("find", "thing", "{}", nameof(CostClass.World), 1, false)]
+    [InlineData("read", "logic", """{"id": ["1", "2", "3"]}""", nameof(CostClass.Bounded), 3, false)]
+    [InlineData("read", "logic", """{"id": "1"}""", nameof(CostClass.Bounded), 1, false)]
+    [InlineData("read", "clock", "{}", nameof(CostClass.Instant), 1, false)]
+    [InlineData("write", "logic", """{"id": "1", "writes": [{}, {}]}""", nameof(CostClass.Bounded), 2, true)]
+    public void TheProfileComesFromTheVerbModelAtTheCallsArguments(string verbName, string whatName, string options,
+        string costName, int items, bool ordered)
     {
         CostClass cost = Enum.Parse<CostClass>(costName);
-        Assert.True(Catalogue.Value.TryGet(method, out CatalogueMethod? found));
+        VerbSpec verb = VerbSurface.Verb(verbName)!;
+        WhatSpec what = verb.What(whatName)!;
 
-        CallProfile profile = CallProfile.Of(found!, JObject.Parse(arguments));
+        CallProfile profile = CallProfile.Of(verb, what, JObject.Parse(options));
 
-        Assert.Equal(method, profile.Method);
+        Assert.Equal(what.Key, profile.Method);
         Assert.Equal(cost, profile.Cost);
         Assert.Equal(items, profile.Items);
         Assert.Equal(ordered, profile.IsOrdered);
@@ -159,9 +157,6 @@ public sealed class CostPredictorTests
     [Fact]
     public void AnEmptyPerItemListCountsAsOneItem()
     {
-        Assert.Equal(1, new CallProfile("read_devices", MethodClass.Read, new CallCost(CostClass.Bounded, 0)).Items);
+        Assert.Equal(1, new CallProfile("read.logic", MethodClass.Read, new CallCost(CostClass.Bounded, 0)).Items);
     }
-
-    private static readonly Lazy<ModCatalogue> Catalogue =
-        new Lazy<ModCatalogue>(() => ModCatalogue.Load(File.ReadAllText(CatalogueFiles.AssembledPath)));
 }

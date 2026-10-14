@@ -14,13 +14,14 @@ namespace StationGodMCP.Api.Views;
 /// <summary>
 /// server info's runtime section: what the mod costs the game since it loaded. Per method (only those called), the
 /// main-thread time of the tool and of serialising its reply, the wait in the queue for the main thread, and the reply
-/// size; per frame, the requests served and the time spent on them; the Mono garbage collector's counts and heap; and
-/// the argument names handlers read that the catalogue does not declare (catalogue_drift, which should stay empty).
+/// size; per frame, the requests served and the time spent on them; the Mono garbage collector's counts and heap.
+/// catalogue_drift stays in the reply's shape (the help text declares it) and is always empty: every call is a verb,
+/// whose options the verb model declares.
 /// </summary>
 internal sealed class RuntimeView : ITruncatingView
 {
     internal RuntimeView(double uptimeS, long worldEpoch, FrameBudget budget, DispatchSnapshot frames,
-        MemoryView memory, List<MethodTiming> methods, List<DriftCount> drift, List<ConnectionView>? connections = null,
+        MemoryView memory, List<MethodTiming> methods, List<ConnectionView>? connections = null,
         ProfilingSummaryView? profiling = null, JobSettlesView? jobSettles = null, PrefabIndexView? prefabIndex = null,
         GameCountersView? counters = null)
     {
@@ -48,7 +49,6 @@ internal sealed class RuntimeView : ITruncatingView
         }
 
         MethodCount = methods.Count;
-        CatalogueDrift = drift.ConvertAll(static count => new CatalogueDriftView(count));
     }
 
     /// <summary>Seconds since the mod loaded (real time).</summary>
@@ -72,8 +72,8 @@ internal sealed class RuntimeView : ITruncatingView
 
     public int MethodCount { get; }
 
-    /// <summary>Per method and argument name, reads of a name the method's catalogue entry does not declare.</summary>
-    public List<CatalogueDriftView> CatalogueDrift { get; }
+    /// <summary>Per method and argument name, reads of a name the method's entry does not declare; always empty.</summary>
+    public List<CatalogueDriftView> CatalogueDrift { get; } = new List<CatalogueDriftView>();
 
     /// <summary>The overlapped pipe's open connections; absent on the synchronous pipe.</summary>
     [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
@@ -213,11 +213,11 @@ internal sealed class ConnectionMethodView
 /// <summary>One undeclared argument name a method's handler read since the mod loaded, and how often.</summary>
 internal sealed class CatalogueDriftView
 {
-    internal CatalogueDriftView(DriftCount count)
+    internal CatalogueDriftView(string method, string argument, long reads)
     {
-        Method = count.Method;
-        Argument = count.Argument;
-        Reads = count.Reads;
+        Method = method;
+        Argument = argument;
+        Reads = reads;
     }
 
     public string Method { get; }

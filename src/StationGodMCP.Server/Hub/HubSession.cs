@@ -571,6 +571,9 @@ public sealed partial class HubSession
         return HubLines.Reply(id, reply);
     }
 
+    // A program's pass-through takes only read-class methods (hub.md, Faces): every write goes through verb, where
+    // the write rule and the recording apply. Read from the catalogue the mod announced, so what passes is what that
+    // mod answers ({catalogue} carries its own protocol methods).
     private string? PassProblem(string id, string method, JsonElement parameters, JsonElement message)
     {
         GameCatalogue catalogue = _link.Catalogue;

@@ -926,16 +926,4 @@ public sealed class VerbCatalogueTests
         Assert.True(fresh <= VerbSizes.TodayPerFreshContext,
             $"listing plus the common load is {fresh} tokens, over today's {VerbSizes.TodayPerFreshContext} per fresh context");
     }
-
-    [Fact]
-    public void TheTokenizerStillMatchesTodaysMeasuredList()
-    {
-        // Calibrated once: today's tools/list plus instructions measured 89,000 tokens (tools/tool_list_cost.py).
-        // A change to the tokenizer, or to today's catalogue large enough to matter, shows here.
-        JsonArray tools = StationGodMCP.Server.ToolCatalogue.ToolsOf(CatalogueFiles.ReadJson(CatalogueFiles.AssembledPath).AsObject());
-        string instructions = (string)CatalogueFiles.ReadJson(CatalogueFiles.AssembledPath)["server"]!["instructions"]!;
-        int tokens = VerbSizes.Tokens(tools.ToJsonString(VerbText.Compact) + instructions);
-        _output.WriteLine($"today's list: {tokens} tokens by the tokenizer, {VerbSizes.TodayFullTokens} measured");
-        Assert.InRange(tokens, VerbSizes.TodayFullTokens * 0.97, VerbSizes.TodayFullTokens * 1.03);
-    }
 }

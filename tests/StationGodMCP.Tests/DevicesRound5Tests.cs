@@ -75,34 +75,4 @@ public sealed class DevicesRound5Tests
         Assert.False(LogicTypeNumber.IsNumberText(text));
     }
 
-    [Fact]
-    public void EveryGatewayIdNamesBothGatewayCodes()
-    {
-        List<string> tools = Program.InputSchemas
-            .Where(tool => tool.Value.GetProperty("properties").TryGetProperty("gateway_id", out _))
-            .Select(tool => tool.Key)
-            .ToList();
-
-        Assert.True(tools.Count >= 17, $"only {tools.Count} tools take gateway_id");
-        foreach (string tool in tools)
-        {
-            // The gateway refusals are documented once, in the shared gateways topic every such tool leads to.
-            string docs = CatalogueChecks.CatalogueTextTests.DocsOf(tool);
-            Assert.Contains("gateway_not_found", docs);
-            Assert.Contains("gateway_unavailable", docs);
-            Assert.Contains("no_data_network", docs);
-        }
-    }
-
-    [Fact]
-    public void ModInfoPromisesElapsedMsOnlyInThePipeEnvelope()
-    {
-        string description = ToolDescription("mod_info");
-
-        Assert.DoesNotContain("Every reply envelope also carries elapsed_ms", description);
-        Assert.Contains("MCP tool results do not carry it", description);
-    }
-
-    // A tool's whole documentation: its description and everything tool_info leads to from it.
-    private static string ToolDescription(string name) => CatalogueChecks.CatalogueTextTests.DocsOf(name);
 }

@@ -253,9 +253,7 @@ public sealed class StreamCostsTests
     {
         Assert.Contains(StreamCostCalls.StreamCostsMethod, ProtocolMethods.Names);
         Assert.True(ProtocolMethods.RunsOnMainThread("stream_costs"));
-        Assert.True(TestCatalogue.File.Value.Catalogue.TryGet("stream_costs",
-            out CatalogueMethod? method));
-        CallProfile profile = CallProfile.Of(method!, new JObject());
+        CallProfile profile = CallProfiles.Of("stream_costs", new JObject());
         Assert.Equal(MethodClass.Read, profile.Class);
         Assert.Equal(CostClass.Instant, profile.Cost);
     }

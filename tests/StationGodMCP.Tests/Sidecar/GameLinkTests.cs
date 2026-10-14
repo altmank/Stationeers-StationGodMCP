@@ -20,7 +20,7 @@ namespace StationGodMCP.Tests.Sidecar;
 /// </summary>
 public sealed class GameLinkTests
 {
-    private const string ReadOn = """{"reference_id":"1","logic_type":"On"}""";
+    private const string ReadOn = """{"what":"logic","id":"1","logic":"On"}""";
 
     [Fact]
     public async Task NewStreamsNumberUpwardFromOne()
@@ -212,14 +212,14 @@ public sealed class GameLinkTests
     public async Task AWorldChangedRefusalIsPassedThrough()
     {
         await using FakeGame game = HubGame();
-        game.Answer = call => Task.FromResult<string?>(call.Method == "write_logic"
+        game.Answer = call => Task.FromResult<string?>(call.Method == "write"
             ? "{\"type\":\"reply\",\"id\":" + call.Id.GetRawText() +
               ",\"ok\":false,\"error\":{\"code\":\"world_changed\",\"message\":\"Another world.\",\"data\":{\"world\":{\"id\":\"w9\",\"save\":null,\"epoch\":2}}}}"
             : call.Ok("{}"));
         await using GameLink link = new(new ClientOptions(game.Target));
 
         GameReply.Refused refused = Assert.IsType<GameReply.Refused>(
-            await link.CallAsync(new GameCall("write_logic", Json("""{"reference_id":"1","logic_type":"On","value":1}""")), default));
+            await link.CallAsync(new GameCall("write", Json("""{"reference_id":"1","logic_type":"On","value":1}""")), default));
 
         Assert.Equal("world_changed", refused.Code);
         Assert.Equal("Another world.", refused.Message);
@@ -266,7 +266,7 @@ public sealed class GameLinkTests
         await using FakeGame game = HubGame();
         game.Answer = call =>
         {
-            if (call.Method != "write_logic")
+            if (call.Method != "write")
             {
                 return Task.FromResult<string?>(call.Ok("{}"));
             }
@@ -277,10 +277,10 @@ public sealed class GameLinkTests
         await using GameLink link = new(new ClientOptions(game.Target));
 
         GameReply.Unreachable unreachable = Assert.IsType<GameReply.Unreachable>(await link.CallAsync(
-            new GameCall("write_logic", Json("""{"reference_id":"1","logic_type":"On","value":1}"""), 4), default));
+            new GameCall("write", Json("""{"reference_id":"1","logic_type":"On","value":1}"""), 4), default));
 
         Assert.True(unreachable.MaybeRan);
-        Assert.Single(game.CallsTo("write_logic"));
+        Assert.Single(game.CallsTo("write"));
         await Eventually(() => game.Connections == 2);
     }
 
@@ -290,7 +290,7 @@ public sealed class GameLinkTests
         await using FakeGame game = HubGame();
         game.Answer = call =>
         {
-            if (call.Method == "read_logic" && game.CallsTo("read_logic").Count() == 1)
+            if (call.Method == "read" && game.CallsTo("read").Count() == 1)
             {
                 game.DropAll();
                 return Task.FromResult<string?>(null);
@@ -300,10 +300,10 @@ public sealed class GameLinkTests
         };
         await using GameLink link = new(new ClientOptions(game.Target));
 
-        GameReply reply = await link.CallAsync(new GameCall("read_logic", Json(ReadOn), 2), default);
+        GameReply reply = await link.CallAsync(new GameCall("read", Json(ReadOn), 2), default);
 
         Assert.Equal(7, Assert.IsType<GameReply.Ok>(reply).Result.GetProperty("value").GetInt32());
-        Assert.Equal(2, game.CallsTo("read_logic").Count());
+        Assert.Equal(2, game.CallsTo("read").Count());
     }
 
     [Fact]
@@ -497,12 +497,12 @@ public sealed class GameLinkTests
         game.WorldId = "world-2";
         game.DropAll();
         await Eventually(() => link.WorldId == null);
-        GameReply reply = await link.CallAsync(new GameCall("write_logic", Json(WriteOn)), default);
+        GameReply reply = await link.CallAsync(new GameCall("write", Json(WriteOn)), default);
 
         GameReply.Refused refused = Assert.IsType<GameReply.Refused>(reply);
         Assert.Equal("world_changed", refused.Code);
         Assert.Equal("world-2", refused.Data!.Value.GetProperty("world").GetProperty("id").GetString());
-        Assert.Empty(game.CallsTo("write_logic"));
+        Assert.Empty(game.CallsTo("write"));
     }
 
     [Fact]
@@ -512,13 +512,13 @@ public sealed class GameLinkTests
         game.WorldId = "";
         await using GameLink link = new(new ClientOptions(game.Target));
 
-        GameReply write = await link.CallAsync(new GameCall("write_logic", Json(WriteOn)), default);
-        GameReply read = await link.CallAsync(new GameCall("read_logic", Json(ReadOn)), default);
+        GameReply write = await link.CallAsync(new GameCall("write", Json(WriteOn)), default);
+        GameReply read = await link.CallAsync(new GameCall("read", Json(ReadOn)), default);
 
         Assert.Equal("world_changed", Assert.IsType<GameReply.Refused>(write).Code);
-        Assert.Empty(game.CallsTo("write_logic"));
+        Assert.Empty(game.CallsTo("write"));
         Assert.IsType<GameReply.Ok>(read);
-        Assert.False(Assert.Single(game.CallsTo("read_logic")).Message.TryGetProperty("world", out _));
+        Assert.False(Assert.Single(game.CallsTo("read")).Message.TryGetProperty("world", out _));
     }
 
     [Fact]
@@ -527,7 +527,7 @@ public sealed class GameLinkTests
         await using FakeGame game = HubGame();
         game.Answer = call =>
         {
-            if (call.Method != "read_logic")
+            if (call.Method != "read")
             {
                 return Task.FromResult<string?>(call.Ok("{}"));
             }
@@ -538,10 +538,10 @@ public sealed class GameLinkTests
         await using GameLink link = new(new ClientOptions(game.Target));
 
         GameReply.Unreachable unreachable = Assert.IsType<GameReply.Unreachable>(
-            await link.CallAsync(new GameCall("read_logic", Json(ReadOn)), default));
+            await link.CallAsync(new GameCall("read", Json(ReadOn)), default));
 
         Assert.False(unreachable.MaybeRan);
-        Assert.Equal(2, game.CallsTo("read_logic").Count());
+        Assert.Equal(2, game.CallsTo("read").Count());
     }
 
     [Fact]
@@ -565,14 +565,14 @@ public sealed class GameLinkTests
         await using GameLink link = new(new ClientOptions(game.Target));
         Assert.True(await link.ConnectAsync());
 
-        Task<GameReply> first = link.CallAsync(new GameCall("write_logic", Json("""{"reference_id":"1","logic_type":"On","value":1,"n":1}""")), default);
+        Task<GameReply> first = link.CallAsync(new GameCall("write", Json("""{"reference_id":"1","logic_type":"On","value":1,"n":1}""")), default);
         await Eventually(() => game.Calls.Count == 1);
-        Task<GameReply> second = link.CallAsync(new GameCall("write_logic", Json("""{"reference_id":"1","logic_type":"On","value":1,"n":2}""")), default);
+        Task<GameReply> second = link.CallAsync(new GameCall("write", Json("""{"reference_id":"1","logic_type":"On","value":1,"n":2}""")), default);
         secondQueued.SetResult();
 
         Assert.True(Assert.IsType<GameReply.Unreachable>(await first).MaybeRan);
         Assert.IsType<GameReply.Ok>(await second);
-        Assert.Equal(2, game.CallsTo("write_logic").Last().Connection);
+        Assert.Equal(2, game.CallsTo("write").Last().Connection);
     }
 
     [Fact]
@@ -597,7 +597,7 @@ public sealed class GameLinkTests
         };
         Assert.True(await link.ConnectAsync());
 
-        GameReply timedOut = await link.CallAsync(new GameCall("write_logic",
+        GameReply timedOut = await link.CallAsync(new GameCall("write",
             Json("""{"reference_id":"1","logic_type":"On","value":1,"n":1}"""), 5) { DeadlineMs = 100 }, default);
         Task<GameReply> next = link.CallAsync(new GameCall("weather", Json("{}"), 5), default);
         await Task.Delay(200);
@@ -629,12 +629,12 @@ public sealed class GameLinkTests
 
         Task<GameReply> holder = link.CallAsync(new GameCall("weather", Json("{}"), 1), default);
         await Eventually(() => game.Calls.Count == 1);
-        GameReply late = await link.CallAsync(new GameCall("write_logic", Json(WriteOn), 2) { DeadlineMs = 100 }, default);
+        GameReply late = await link.CallAsync(new GameCall("write", Json(WriteOn), 2) { DeadlineMs = 100 }, default);
 
         Assert.False(Assert.IsType<GameReply.Unreachable>(late).MaybeRan);
         open.SetResult();
         await holder;
-        Assert.Empty(game.CallsTo("write_logic"));
+        Assert.Empty(game.CallsTo("write"));
     }
 
     [Fact]
@@ -656,7 +656,7 @@ public sealed class GameLinkTests
 
         Task<GameReply> holder = link.CallAsync(new GameCall("weather", Json("{}"), 1), default);
         await Eventually(() => game.Calls.Count == 1);
-        GameReply reply = await link.CallAsync(new GameCall("write_logic", Json(WriteOn), 2) { DeadlineMs = 400 }, default);
+        GameReply reply = await link.CallAsync(new GameCall("write", Json(WriteOn), 2) { DeadlineMs = 400 }, default);
 
         Assert.IsType<GameReply.Ok>(reply);
         await holder;
@@ -678,13 +678,13 @@ public sealed class GameLinkTests
         Assert.True(await link.ConnectAsync());
         Task<GameReply> running = link.CallAsync(new GameCall("weather", Json("{}"), 1), default);
         await Eventually(() => game.Calls.Count == 1);
-        Task<GameReply> waiting = link.CallAsync(new GameCall("write_logic", Json(WriteOn), 2), default);
+        Task<GameReply> waiting = link.CallAsync(new GameCall("write", Json(WriteOn), 2), default);
 
         await link.SessionEndAsync();
 
         Assert.False(Assert.IsType<GameReply.Unreachable>(await waiting).MaybeRan);
         Assert.False(Assert.IsType<GameReply.Unreachable>(
-            await link.CallAsync(new GameCall("read_logic", Json(ReadOn)), default)).MaybeRan);
+            await link.CallAsync(new GameCall("read", Json(ReadOn)), default)).MaybeRan);
         open.SetResult();
         Assert.IsType<GameReply.Ok>(await running);
         Assert.Single(game.Calls);
@@ -852,13 +852,13 @@ public sealed class GameLinkTests
     {
         await using FakeGame game = HubGame();
         game.CatalogueHash = "sha256:" + new string('d', 64);
-        game.CatalogueJson = CatalogueWithout("weather");
+        game.CatalogueJson = ClientTests.ModelWithout("read");
         await using GameLink link = new(new ClientOptions(game.Target));
 
         Assert.True(await link.ConnectAsync());
 
         await Eventually(() => link.Catalogue.Hash == game.CatalogueHash);
-        Assert.Null(link.Catalogue.Method("weather"));
+        Assert.False(link.Catalogue.Has("read"));
         Assert.Single(game.CallsTo("catalogue"));
     }
 
@@ -875,7 +875,7 @@ public sealed class GameLinkTests
         Assert.Empty(game.CallsTo("hold_restore"));
     }
 
-    private const string WriteOn = """{"reference_id":"1","logic_type":"On","value":1}""";
+    private const string WriteOn = """{"what":"logic","id":"1","logic":"On","value":1,"confirm":true}""";
 
     private static FakeGame HubGame()
     {

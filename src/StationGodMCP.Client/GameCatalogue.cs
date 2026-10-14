@@ -1,255 +1,315 @@
 using System.Reflection;
 using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 
 namespace StationGodMCP.Client;
 
 /// <summary>
-/// The method catalogue as the client needs it, and nothing more. The mod owns every rule about arguments, shaping and
-/// permissions; the client reads the catalogue only to know whether a call that may have reached the game is safe to
-/// send again (its effective class is read and it has no x-effects) and how much longer than its deadline a call may
-/// take (x-duration). The whole document is kept for callers that build on it (the sidecar's tool list).
+/// The verb model as the client needs it, and nothing more. The mod owns every rule about options, shaping and
+/// permissions; the client reads the model only to know whether a call that may have reached the game is safe to
+/// send again (it only reads, or it reports and changes nothing) and how much longer than its deadline a call may
+/// take (x-cost's duration). The whole document is kept for callers that build on it.
 /// </summary>
 public sealed class GameCatalogue
 {
-    private const string Resource = "StationGodMCP.catalogue.json";
+    private const string ResourcePrefix = "catalogue/verbs/";
+    private const string SharedFile = "_shared.json";
+    private const string ErrorsFile = "_errors.json";
 
-    // Methods of the protocol itself, read class, for a catalogue that does not list them yet.
-    private static readonly string[] ProtocolMethods = ["catalogue", "subscribe", "unsubscribe"];
+    /// <summary>The catalogues of the protocol's own methods, which the verb model does not describe: their class is
+    /// fixed here. drop_job and hold_restore write, so a call of theirs is never sent again after a broken link.</summary>
+    private static readonly Dictionary<string, string> ProtocolMethods = new(StringComparer.Ordinal)
+    {
+        ["catalogue"] = "read",
+        ["subscribe"] = "read",
+        ["unsubscribe"] = "read",
+        ["stream_costs"] = "read",
+        ["drop_job"] = "write",
+        ["hold_restore"] = "write"
+    };
 
     // Subscriptions are kept by the client's own bookkeeping, which subscribes again only into the same world.
     private static readonly HashSet<string> NeverResent = new(StringComparer.Ordinal) { "subscribe", "unsubscribe" };
 
-    private static readonly Lazy<GameCatalogue> Embedded = new(() => FromBytes(ReadResource()));
+    private static readonly Lazy<GameCatalogue> Embedded = new(() => FromResources());
 
-    private readonly Dictionary<string, MethodRules> _methods;
+    private readonly Dictionary<string, VerbRules> _verbs;
 
-    private GameCatalogue(JsonElement document, string hash)
+    private GameCatalogue(JsonElement document, string hash, Dictionary<string, VerbRules> verbs)
     {
         Document = document;
         Hash = hash;
-        _methods = Rules(document);
+        _verbs = verbs;
     }
 
-    /// <summary>The catalogue this library was built with.</summary>
+    /// <summary>The verb model this library was built with.</summary>
     public static GameCatalogue BuiltIn => Embedded.Value;
 
-    /// <summary>The catalogue's identity: "sha256:" and the lowercase hex SHA-256 of the exact bytes of catalogue.json.</summary>
+    /// <summary>
+    /// The catalogue's identity: "sha256:" and the lowercase hex of SHA-256 over the verb files' raw bytes,
+    /// concatenated whole in ordinal resource-name order (catalogue/verbs/_errors.json, _shared.json, build.json,
+    /// ... write.json), with nothing between them - the hash the mod announces in welcome.catalogue.hash.
+    /// </summary>
     public string Hash { get; }
 
-    /// <summary>The whole catalogue.</summary>
+    /// <summary>The whole verb model: {shared, errors, verbs}, as the mod's `catalogue` method answers it.</summary>
     public JsonElement Document { get; }
 
-    /// <summary>A catalogue from the exact bytes of a catalogue.json; the hash is taken over those bytes.</summary>
-    public static GameCatalogue FromBytes(byte[] bytes)
-    {
-        using JsonDocument document = JsonDocument.Parse(bytes);
-        return new GameCatalogue(document.RootElement.Clone(), "sha256:" + Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant());
-    }
+    /// <summary>The verb model the mod returned for its `catalogue` method, under the hash its welcome announced.</summary>
+    public static GameCatalogue FromServer(JsonElement document, string hash) =>
+        new(document.Clone(), hash, Rules(document));
 
-    /// <summary>The catalogue the mod returned for its `catalogue` method, under the hash its welcome announced.</summary>
-    public static GameCatalogue FromServer(JsonElement document, string hash) => new(document.Clone(), hash);
+    /// <summary>True when the model has the verb, or the protocol has the method (a handler or a protocol method).</summary>
+    public bool Has(string method) => _verbs.ContainsKey(method) || ProtocolMethods.ContainsKey(method);
 
-    /// <summary>The method's catalogue entry, or null when the catalogue has no such method.</summary>
-    public JsonElement? Method(string name)
-    {
-        foreach (string section in (string[])["methods", "protocol_methods"])
-        {
-            if (Document.TryGetProperty(section, out JsonElement entries) && entries.ValueKind == JsonValueKind.Array)
-            {
-                foreach (JsonElement entry in entries.EnumerateArray())
-                {
-                    if (entry.TryGetProperty("name", out JsonElement method) && method.ValueEquals(name))
-                    {
-                        return entry;
-                    }
-                }
-            }
-        }
-
-        return null;
-    }
+    /// <summary>True when the call only reads: a read-only verb, a report call, or a protocol method that reads.</summary>
+    public bool ReadsOnly(string method, JsonElement parameters) => EffectiveClass(method, parameters) == "read";
 
     /// <summary>
-    /// True when a call that may have reached the game can be sent again: read class at these arguments and no
-    /// x-effects. False for a method the catalogue does not have.
+    /// True when a call that may have reached the game can be sent again: it only reads, and it is no method whose
+    /// own bookkeeping resends it. False for a method the model does not have.
     /// </summary>
     public bool ResendSafe(string method, JsonElement parameters) =>
-        !NeverResent.Contains(method) && _methods.TryGetValue(method, out MethodRules? rules) && !rules.HasEffects &&
-        rules.EffectiveClass(parameters) == "read";
+        !NeverResent.Contains(method) && ReadsOnly(method, parameters);
 
-    /// <summary>True when the call only reads: read class at these arguments and no x-effects. False for an unknown method.</summary>
-    public bool ReadsOnly(string method, JsonElement parameters) =>
-        _methods.TryGetValue(method, out MethodRules? rules) && !rules.HasEffects && rules.EffectiveClass(parameters) == "read";
+    /// <summary>
+    /// The read, write or cheat class of a call; null for a method the model does not have. A read-only verb reads; a
+    /// cheat what is a cheat when it says "always" or when its option is set; a confirm what without confirm: true
+    /// reports and changes nothing, so it reads; anything else writes.
+    /// </summary>
+    public string? EffectiveClass(string method, JsonElement parameters)
+    {
+        if (ProtocolMethods.TryGetValue(method, out string? protocol))
+        {
+            return protocol;
+        }
 
-    /// <summary>True when the catalogue has the method (a handler or a protocol method).</summary>
-    public bool Has(string method) => _methods.ContainsKey(method);
+        if (!_verbs.TryGetValue(method, out VerbRules? verb))
+        {
+            return null;
+        }
 
-    /// <summary>The read, write or cheat class of a call at these arguments; null for an unknown method.</summary>
-    public string? EffectiveClass(string method, JsonElement parameters) =>
-        _methods.TryGetValue(method, out MethodRules? rules) ? rules.EffectiveClass(parameters) : null;
+        if (verb.ReadOnly)
+        {
+            return "read";
+        }
 
-    /// <summary>The time x-duration adds to the call's deadline: the argument given, else the method's maximum.</summary>
+        if (verb.What(parameters) is not WhatRules what)
+        {
+            return "write";
+        }
+
+        if (what.Cheat == "always" || (what.CheatOption is { } option && Flag(parameters, option)))
+        {
+            return "cheat";
+        }
+
+        return what.Route == "confirm" && !Flag(parameters, "confirm") ? "read" : "write";
+    }
+
+    /// <summary>The time x-cost adds to the call's deadline: the seconds the option gives, else the what's maximum.</summary>
     public TimeSpan Duration(string method, JsonElement parameters) =>
-        _methods.TryGetValue(method, out MethodRules? rules) && rules.Duration is { } duration
+        _verbs.TryGetValue(method, out VerbRules? verb) && verb.What(parameters)?.Duration is { } duration
             ? duration.At(parameters)
             : TimeSpan.Zero;
 
-    private static byte[] ReadResource()
+    private static bool Flag(JsonElement parameters, string name) =>
+        parameters.ValueKind == JsonValueKind.Object && parameters.TryGetProperty(name, out JsonElement value) &&
+        value.ValueKind == JsonValueKind.True;
+
+    // The built-in model: the files this assembly embeds, hashed and assembled as the mod does.
+    private static GameCatalogue FromResources()
     {
-        using Stream stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(Resource) ??
-                              throw new InvalidOperationException($"The client was built without {Resource}.");
+        SortedDictionary<string, byte[]> files = new(StringComparer.Ordinal);
+        Assembly assembly = Assembly.GetExecutingAssembly();
+        foreach (string resource in assembly.GetManifestResourceNames())
+        {
+            string name = resource.Replace('\\', '/');
+            if (name.StartsWith(ResourcePrefix, StringComparison.Ordinal) &&
+                name.EndsWith(".json", StringComparison.Ordinal))
+            {
+                files.Add(name.Substring(ResourcePrefix.Length), Bytes(assembly, resource));
+            }
+        }
+
+        if (!files.ContainsKey(SharedFile) || !files.ContainsKey(ErrorsFile))
+        {
+            throw new InvalidOperationException("The client was built without the verb catalogue.");
+        }
+
+        StringBuilder document = new();
+        document.Append("{\"shared\":").Append(OneLine(Text(files[SharedFile])))
+            .Append(",\"errors\":").Append(OneLine(Text(files[ErrorsFile]))).Append(",\"verbs\":{");
+        bool first = true;
+        using IncrementalHash sha = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        foreach ((string file, byte[] raw) in files)
+        {
+            sha.AppendData(raw);
+            if (file == SharedFile || file == ErrorsFile)
+            {
+                continue;
+            }
+
+            document.Append(first ? string.Empty : ",").Append(JsonSerializer.Serialize(Verb(file))).Append(':')
+                .Append(OneLine(Text(raw)));
+            first = false;
+        }
+
+        document.Append("}}");
+        JsonElement model = JsonDocument.Parse(document.ToString()).RootElement.Clone();
+        return new GameCatalogue(model, "sha256:" + Convert.ToHexString(sha.GetHashAndReset()).ToLowerInvariant(),
+            Rules(model));
+    }
+
+    private static byte[] Bytes(Assembly assembly, string resource)
+    {
+        using Stream stream = assembly.GetManifestResourceStream(resource) ??
+                              throw new InvalidOperationException($"The client was built without {resource}.");
         using MemoryStream bytes = new();
         stream.CopyTo(bytes);
         return bytes.ToArray();
     }
 
-    private static Dictionary<string, MethodRules> Rules(JsonElement document)
+    private static string Text(byte[] raw) => new UTF8Encoding(false).GetString(raw);
+
+    private static string Verb(string file) => file.Substring(0, file.Length - ".json".Length);
+
+    /// <summary>
+    /// The file's JSON on one line, whitespace outside strings dropped: the document the mod answers is one wire line,
+    /// and a file's own text is what it carries - nothing is re-serialised, so no number or word changes shape.
+    /// </summary>
+    private static string OneLine(string json)
     {
-        Dictionary<string, MethodRules> rules = new(StringComparer.Ordinal);
-        foreach (string section in (string[])["protocol_methods", "methods"])
+        StringBuilder text = new(json.Length);
+        bool quoted = false;
+        bool escaped = false;
+        foreach (char letter in json)
         {
-            if (!document.TryGetProperty(section, out JsonElement entries) || entries.ValueKind != JsonValueKind.Array)
+            if (quoted)
             {
+                text.Append(letter);
+                if (escaped)
+                {
+                    escaped = false;
+                }
+                else if (letter == '\\')
+                {
+                    escaped = true;
+                }
+                else if (letter == '"')
+                {
+                    quoted = false;
+                }
+
                 continue;
             }
 
-            foreach (JsonElement entry in entries.EnumerateArray())
+            if (letter == '"')
             {
-                if (entry.TryGetProperty("name", out JsonElement name) && name.ValueKind == JsonValueKind.String)
-                {
-                    rules[name.GetString()!] = MethodRules.Of(entry);
-                }
+                quoted = true;
+                text.Append(letter);
+            }
+            else if (letter is not (' ' or '\t' or '\n' or '\r'))
+            {
+                text.Append(letter);
             }
         }
 
-        foreach (string method in ProtocolMethods)
+        return text.ToString();
+    }
+
+    private static Dictionary<string, VerbRules> Rules(JsonElement document)
+    {
+        Dictionary<string, VerbRules> verbs = new(StringComparer.Ordinal);
+        if (document.ValueKind == JsonValueKind.Object && document.TryGetProperty("verbs", out JsonElement listed) &&
+            listed.ValueKind == JsonValueKind.Object)
         {
-            rules.TryAdd(method, MethodRules.ProtocolMethod);
+            foreach (JsonProperty verb in listed.EnumerateObject())
+            {
+                verbs[verb.Name] = VerbRules.Of(verb.Value);
+            }
         }
 
-        return rules;
+        return verbs;
     }
 }
 
-/// <summary>One method's class, its class rules (x-class-when), whether it has x-effects, and its x-duration.</summary>
-internal sealed record MethodRules(string Class, IReadOnlyList<ClassRule> ClassWhen, bool HasEffects, DurationRule? Duration)
+/// <summary>One verb's rules: whether it only reads, and its whats by name ("-" for a whatless verb).</summary>
+internal sealed record VerbRules(bool ReadOnly, bool HasWhats, IReadOnlyDictionary<string, WhatRules> Whats)
 {
-    internal static readonly MethodRules ProtocolMethod = new("read", [], false, null);
-
-    internal static MethodRules Of(JsonElement entry)
+    internal static VerbRules Of(JsonElement verb)
     {
-        string type = entry.TryGetProperty("class", out JsonElement value) && value.ValueKind == JsonValueKind.String
-            ? value.GetString()!
-            : "write";
-        List<ClassRule> rules = [];
-        if (entry.TryGetProperty("x-class-when", out JsonElement when) && when.ValueKind == JsonValueKind.Array)
+        Dictionary<string, WhatRules> whats = new(StringComparer.Ordinal);
+        if (verb.ValueKind == JsonValueKind.Object && verb.TryGetProperty("whats", out JsonElement listed) &&
+            listed.ValueKind == JsonValueKind.Object)
         {
-            foreach (JsonElement rule in when.EnumerateArray())
+            foreach (JsonProperty what in listed.EnumerateObject())
             {
-                if (ClassRule.Of(rule) is { } parsed)
-                {
-                    rules.Add(parsed);
-                }
+                whats[what.Name] = WhatRules.Of(what.Value);
             }
         }
 
-        bool effects = entry.TryGetProperty("x-effects", out JsonElement listed) && listed.ValueKind == JsonValueKind.Array &&
-                       listed.GetArrayLength() > 0;
-        return new MethodRules(type, rules, effects, DurationRule.Of(entry));
+        bool hasWhats = !(whats.Count == 1 && whats.ContainsKey("-"));
+        return new VerbRules(verb.ValueKind == JsonValueKind.Object && verb.TryGetProperty("read_only", out JsonElement readOnly) &&
+                             readOnly.ValueKind == JsonValueKind.True, hasWhats, whats);
     }
 
-    /// <summary>The class of the first rule that matches the arguments, else the method's own.</summary>
-    internal string EffectiveClass(JsonElement parameters)
+    /// <summary>The what the call names: by name, or the one what of a whatless verb; null when there is none.</summary>
+    internal WhatRules? What(JsonElement parameters)
     {
-        foreach (ClassRule rule in ClassWhen)
-        {
-            if (rule.Matches(parameters))
-            {
-                return rule.Class;
-            }
-        }
-
-        return Class;
+        string? name = HasWhats ? WhatName(parameters) : "-";
+        return name != null && Whats.TryGetValue(name, out WhatRules? what) ? what : null;
     }
+
+    private static string? WhatName(JsonElement parameters) =>
+        parameters.ValueKind == JsonValueKind.Object && parameters.TryGetProperty("what", out JsonElement what) &&
+        what.ValueKind == JsonValueKind.String
+            ? what.GetString()
+            : null;
 }
 
 /// <summary>
-/// One x-class-when rule: every condition in when holds (and one of any_of, when given). A condition is present, absent,
-/// equals or in; JSON null is an omitted argument; words compare trimmed and ignoring case, numbers by value.
+/// One what's write rules and its duration: Writes is false for a read what; Cheat is "always", or the option that
+/// makes the write a cheat; Route is "acts" or "confirm"; Duration is x-cost's duration, when the what has one.
 /// </summary>
-internal sealed record ClassRule(string Class, JsonElement When, JsonElement? AnyOf)
+internal sealed record WhatRules(bool Writes, string? Route, string? Cheat, string? CheatOption, DurationRule? Duration)
 {
-    internal static ClassRule? Of(JsonElement rule) =>
-        rule.ValueKind == JsonValueKind.Object && rule.TryGetProperty("class", out JsonElement type) &&
-        type.ValueKind == JsonValueKind.String && rule.TryGetProperty("when", out JsonElement when) &&
-        when.ValueKind == JsonValueKind.Object
-            ? new ClassRule(type.GetString()!, when.Clone(),
-                rule.TryGetProperty("any_of", out JsonElement anyOf) && anyOf.ValueKind == JsonValueKind.Array ? anyOf.Clone() : null)
-            : null;
-
-    internal bool Matches(JsonElement parameters) =>
-        Holds(When, parameters) && (AnyOf is not { } alternatives || alternatives.EnumerateArray().Any(when => Holds(when, parameters)));
-
-    private static bool Holds(JsonElement when, JsonElement parameters) =>
-        when.ValueKind == JsonValueKind.Object &&
-        when.EnumerateObject().All(condition => Satisfies(condition.Value, Argument(parameters, condition.Name)));
-
-    private static JsonElement? Argument(JsonElement parameters, string name) =>
-        parameters.ValueKind == JsonValueKind.Object && parameters.TryGetProperty(name, out JsonElement value) &&
-        value.ValueKind != JsonValueKind.Null
-            ? value
-            : null;
-
-    private static bool Satisfies(JsonElement matcher, JsonElement? value)
+    internal static WhatRules Of(JsonElement what)
     {
-        if (matcher.ValueKind != JsonValueKind.Object)
+        if (what.ValueKind != JsonValueKind.Object || what.TryGetProperty("write", out JsonElement write) is false ||
+            write.ValueKind != JsonValueKind.Object)
         {
-            return false;
+            return new WhatRules(false, null, null, null, DurationOf(what));
         }
 
-        if (matcher.TryGetProperty("present", out _))
-        {
-            return value != null;
-        }
-
-        if (matcher.TryGetProperty("absent", out _))
-        {
-            return value == null;
-        }
-
-        if (matcher.TryGetProperty("equals", out JsonElement expected))
-        {
-            return value is { } given && Same(expected, given);
-        }
-
-        return matcher.TryGetProperty("in", out JsonElement listed) && listed.ValueKind == JsonValueKind.Array &&
-               value is { } candidate && listed.EnumerateArray().Any(allowed => Same(allowed, candidate));
+        string? cheat = write.TryGetProperty("cheat", out JsonElement mark) && mark.ValueKind == JsonValueKind.String
+            ? mark.GetString()
+            : null;
+        bool always = cheat == "always";
+        return new WhatRules(true, write.TryGetProperty("route", out JsonElement route) ? route.GetString() : null,
+            always ? "always" : null, always || cheat == null ? null : cheat.Split(':')[0].Trim(), DurationOf(what));
     }
 
-    private static bool Same(JsonElement expected, JsonElement value) => (expected.ValueKind, value.ValueKind) switch
-    {
-        (JsonValueKind.String, JsonValueKind.String) =>
-            string.Equals(expected.GetString()!.Trim(), value.GetString()!.Trim(), StringComparison.OrdinalIgnoreCase),
-        (JsonValueKind.Number, JsonValueKind.Number) =>
-            expected.TryGetDouble(out double first) && value.TryGetDouble(out double second) && first == second,
-        _ => expected.ValueKind == value.ValueKind && expected.GetRawText() == value.GetRawText()
-    };
+    private static DurationRule? DurationOf(JsonElement what) =>
+        what.TryGetProperty("x-cost", out JsonElement cost) && cost.TryGetProperty("duration", out JsonElement duration)
+            ? DurationRule.Of(duration)
+            : null;
 }
 
-/// <summary>x-duration: the argument naming a call's own duration in seconds, and its maximum.</summary>
-internal sealed record DurationRule(string Parameter, double MaximumSeconds)
+/// <summary>x-cost's duration: the option naming a call's own duration in seconds, and its maximum.</summary>
+internal sealed record DurationRule(string Option, double MaximumSeconds)
 {
-    internal static DurationRule? Of(JsonElement entry) =>
-        entry.TryGetProperty("x-duration", out JsonElement duration) && duration.ValueKind == JsonValueKind.Object &&
-        duration.TryGetProperty("param", out JsonElement parameter) && parameter.ValueKind == JsonValueKind.String &&
+    internal static DurationRule? Of(JsonElement duration) =>
+        duration.ValueKind == JsonValueKind.Object &&
+        duration.TryGetProperty("option", out JsonElement option) && option.ValueKind == JsonValueKind.String &&
         duration.TryGetProperty("max_s", out JsonElement maximum) && maximum.TryGetDouble(out double seconds)
-            ? new DurationRule(parameter.GetString()!, seconds)
+            ? new DurationRule(option.GetString()!, seconds)
             : null;
 
     internal TimeSpan At(JsonElement parameters) =>
         TimeSpan.FromSeconds(
-            parameters.ValueKind == JsonValueKind.Object && parameters.TryGetProperty(Parameter, out JsonElement given) &&
+            parameters.ValueKind == JsonValueKind.Object && parameters.TryGetProperty(Option, out JsonElement given) &&
             given.ValueKind == JsonValueKind.Number && given.TryGetDouble(out double seconds) && seconds > 0
                 ? Math.Min(seconds, MaximumSeconds)
                 : MaximumSeconds);

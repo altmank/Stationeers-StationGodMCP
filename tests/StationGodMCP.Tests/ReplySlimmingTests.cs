@@ -13,52 +13,11 @@ using Xunit;
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// 1.9.0 slimmer replies on the mod's side: pipe clients held to each tool's argument names (a find_things with
-/// prefab for prefab_contains answered 277 KB of everything), find_things location, connections' member filters,
-/// brief confirmed runs (6-10 KB of preflight again) and network device lists as counts (~10 KB).
+/// 1.9.0 slimmer replies on the mod's side: find_things location, connections' member filters, brief confirmed runs
+/// (6-10 KB of preflight again) and network device lists as counts (~10 KB).
 /// </summary>
 public sealed class ReplySlimmingTests
 {
-    private static readonly DeclaredArguments Declared = new DeclaredArguments(Pure.Catalogue.Catalogue.Load(
-        File.ReadAllText(CatalogueChecks.CatalogueFiles.AssembledPath)));
-
-    [Fact]
-    public void AnUnknownArgumentFromAPipeClientIsRefusedNamingTheOneMeant()
-    {
-        ApiException refused = Assert.Throws<ApiException>(() =>
-            Declared.Check("list_containers", JObject.Parse("""{"prefab":"ItemDirtyOre"}""")));
-
-        Assert.Equal("invalid_argument", refused.Code);
-        Assert.StartsWith("Unknown argument 'prefab'; did you mean 'prefab_contains'?", refused.Message);
-        Assert.Contains("list_containers takes: ", refused.Message);
-        Assert.Contains("prefab_contains", refused.Message);
-        Assert.EndsWith("Nothing was run.", refused.Message);
-    }
-
-    [Fact]
-    public void EveryUnknownArgumentIsNamed()
-    {
-        ApiException refused = Assert.Throws<ApiException>(() =>
-            Declared.Check("connections", JObject.Parse("""{"network_id":"5","kind":"chute","bogus":1,"prefab":"x"}""")));
-
-        Assert.Contains("Unknown argument 'bogus'.", refused.Message);
-        Assert.Contains("Unknown argument 'prefab'; did you mean 'prefab_contains'?", refused.Message);
-    }
-
-    [Fact]
-    public void DeclaredAndNullArgumentsPass()
-    {
-        Declared.Check("find_things", JObject.Parse("""{"prefab_contains":"Ore","location":"ground","kind":null}"""));
-        Declared.Check("game_clock", null);
-        Declared.Check("not_a_listed_tool", JObject.Parse("""{"anything":1}"""));
-    }
-
-    [Fact]
-    public void EveryToolOfTheSidecarIsListed()
-    {
-        Assert.Equal(Server.Program.InputSchemas.Count, Declared.ToolCount);
-    }
-
     [Theory]
     [InlineData("prefab", "prefab_contains")]
     [InlineData("prefab_contain", "prefab_contains")]

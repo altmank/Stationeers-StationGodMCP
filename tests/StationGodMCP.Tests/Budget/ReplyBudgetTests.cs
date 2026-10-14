@@ -22,81 +22,12 @@ public sealed class ReplyBudgetTests
     internal const int BudgetBytes = 8192;
 
     [Fact]
-    public void EveryMethodHasAShapeOrAnExemption()
-    {
-        HashSet<string> methods = new HashSet<string>(StringComparer.Ordinal);
-        foreach (JsonElement method in StationGodMCP.Client.GameCatalogue.BuiltIn.Document.GetProperty("methods").EnumerateArray())
-        {
-            string name = method.GetProperty("name").GetString()!;
-            if ((!method.TryGetProperty("x-mcp", out JsonElement mcp) || mcp.GetString() != "hidden") &&
-                !CatalogueChecks.RetiredMethods.Has(name))
-            {
-                methods.Add(name);
-            }
-        }
-
-        List<string> unplaced = methods.Where(name => !ReplyShapes.ByMethod.ContainsKey(name) &&
-                                                      !ReplyShapes.Exemptions.ContainsKey(name)).ToList();
-        List<string> both = ReplyShapes.ByMethod.Keys.Where(ReplyShapes.Exemptions.ContainsKey).ToList();
-        List<string> unknown = ReplyShapes.ByMethod.Keys.Concat(ReplyShapes.Exemptions.Keys).Where(name => !methods.Contains(name)).ToList();
-
-        Assert.True(unplaced.Count == 0, "No reply shape or exemption: " + string.Join(", ", unplaced));
-        Assert.True(both.Count == 0, "Both shaped and exempt: " + string.Join(", ", both));
-        Assert.True(unknown.Count == 0, "Not a catalogue method: " + string.Join(", ", unknown));
-    }
-
-    [Fact]
     public void EveryExemptionSaysWhy()
     {
         foreach (KeyValuePair<string, string> exemption in ReplyShapes.Exemptions)
         {
             Assert.True(exemption.Value.Length >= 40, $"{exemption.Key}: give the reason in a sentence.");
         }
-    }
-
-    /// <summary>
-    /// Every shaped method's default reply on the large world: no list without a declared bound, and the reply under
-    /// the budget. Every shaped method, one by one: the table holds none while every per-tool method is retired.
-    /// </summary>
-    [Fact]
-    public void EveryShapedMethodsDefaultReplyFitsTheBudget()
-    {
-        List<string> failures = new List<string>();
-        foreach (string method in ReplyShapes.ByMethod.Keys)
-        {
-            foreach (ReplyShape shape in ReplyShapes.ByMethod[method])
-            {
-                Measured measured = Measure(shape.WithTopLimits(DefaultLimitsOf(method)));
-                if (measured.Undeclared.Count > 0)
-                {
-                    failures.Add($"{method} {shape.View.Name}: lists with no declared bound: {string.Join(", ", measured.Undeclared)}");
-                }
-                else if (measured.Bytes > BudgetBytes)
-                {
-                    failures.Add($"{method} {shape.View.Name}: {measured.Bytes} bytes, over the {BudgetBytes} budget");
-                }
-            }
-        }
-
-        Assert.True(failures.Count == 0, string.Join("\n", failures));
-    }
-
-    /// <summary>The method's x-default-limits from the built-in catalogue.</summary>
-    internal static IReadOnlyDictionary<string, int> DefaultLimitsOf(string name)
-    {
-        Dictionary<string, int> limits = new Dictionary<string, int>(StringComparer.Ordinal);
-        foreach (JsonElement method in StationGodMCP.Client.GameCatalogue.BuiltIn.Document.GetProperty("methods").EnumerateArray())
-        {
-            if (method.GetProperty("name").GetString() == name && method.TryGetProperty("x-default-limits", out JsonElement given))
-            {
-                foreach (JsonProperty limit in given.EnumerateObject())
-                {
-                    limits[limit.Name] = limit.Value.GetInt32();
-                }
-            }
-        }
-
-        return limits;
     }
 
     internal static Measured Measure(ReplyShape shape)

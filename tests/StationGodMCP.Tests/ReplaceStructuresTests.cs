@@ -3,10 +3,6 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Runtime.CompilerServices;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
@@ -438,41 +434,4 @@ public sealed class StructureSwapWireTests
             Report(new List<UpgradeProblemView>()), null));
         Assert.Contains("\"held_check\":null,\"room_check\":null,\"error\":null}", json);
     }
-}
-
-/// <summary>Every tool the sidecar lists is a method the mod has retired or one the sidecar answers itself; the mod
-/// handles no per-tool method.</summary>
-public sealed class ToolRegistrationTests
-{
-    // Answered outside the verb dispatcher: sample_logic in the mod's subscription lane, tool_info by the sidecar
-    // from the catalogue.
-    private static readonly string[] SidecarOnly = { "sample_logic", "tool_info" };
-
-    [Fact]
-    public void TheToolListAndTheModsHandlersAgree()
-    {
-        HashSet<string> names = new HashSet<string>(Server.ToolCatalogue.Names);
-        SyntaxNode host = Parse("src", "StationGodMCP.Mod", "Api", "ApiHost.cs");
-        HashSet<string> handled = new HashSet<string>(host.DescendantNodes().OfType<ImplicitElementAccessSyntax>()
-            .Select(access => access.ArgumentList.Arguments[0].Expression)
-            .OfType<LiteralExpressionSyntax>()
-            .Select(literal => literal.Token.ValueText));
-
-        // ApiHost holds no per-tool method: every name the sidecar's method catalogue lists that the mod does not
-        // answer is a retired method (RetiredMethods) or one the sidecar answers itself (SidecarOnly).
-        Assert.Empty(names.Except(handled).Except(SidecarOnly).Except(CatalogueChecks.RetiredMethods.Names));
-        Assert.Empty(handled);
-    }
-
-    private static HashSet<string> StringsIn(SyntaxNode node) =>
-        new HashSet<string>(node.DescendantNodes().OfType<LiteralExpressionSyntax>()
-            .Where(literal => literal.IsKind(SyntaxKind.StringLiteralExpression))
-            .Select(literal => literal.Token.ValueText));
-
-    private static SyntaxNode Parse(params string[] path) =>
-        CSharpSyntaxTree.ParseText(File.ReadAllText(Path.Combine(new[] { Root() }.Concat(path).ToArray())))
-            .GetRoot();
-
-    private static string Root([CallerFilePath] string here = "") =>
-        Path.GetFullPath(Path.Combine(Path.GetDirectoryName(here)!, "..", ".."));
 }

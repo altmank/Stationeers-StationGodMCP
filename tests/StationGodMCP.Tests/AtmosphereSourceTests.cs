@@ -16,24 +16,6 @@ namespace StationGodMCP.Tests;
 /// </summary>
 public sealed class AtmosphereSourceTests
 {
-    [Fact]
-    public void TheCatalogueDescribesEverySource()
-    {
-        using JsonDocument catalogue = JsonDocument.Parse(GameCatalogueText());
-        string description = string.Empty;
-        foreach (JsonElement method in catalogue.RootElement.GetProperty("methods").EnumerateArray())
-        {
-            if (method.GetProperty("name").GetString() == "atmosphere_contents")
-            {
-                description = CatalogueChecks.CatalogueTextTests.DocsOf("atmosphere_contents");
-            }
-        }
-
-        foreach (string source in AtmosphereSource.All)
-        {
-            Assert.Contains(source, description);
-        }
-    }
 
     [Fact]
     public void AMountedEntryCarriesItsSource()

@@ -240,11 +240,11 @@ internal sealed class CallSession : Session
             resume = new WelcomeResumeView(hello.Resume, resumed, _host.Holds.WindowSeconds);
         }
 
-        CatalogueFile? file = _host.Catalogue;
+        VerbDocument? document = _host.Catalogue;
         WelcomeView welcome = new WelcomeView(_connection.ClientId, Client,
             new WelcomeServerView(ServerFacts.Current, _connection.Transport),
-            new WelcomeCatalogueView(file?.Hash ?? string.Empty, file?.Catalogue.MethodCount ?? 0,
-                file?.Catalogue.ProtocolMethodCount ?? 0),
+            new WelcomeCatalogueView(document?.Hash ?? string.Empty, document?.MethodCount ?? 0,
+                ProtocolMethods.Names.Length),
             new WelcomeLimitsView(MaxInFlight, MaxInFlightPerConnection, MaxRequestBytes, _host.Settings.MaxReplyBytes,
                 _host.Subscriptions?.Limits),
             FeaturesFor(_host.Subscriptions != null, _host.Holds.Enabled), resume, restores);
@@ -321,35 +321,22 @@ internal sealed class CallSession : Session
             return;
         }
 
-        CatalogueMethod? method = null;
-        _host.Catalogue?.Catalogue.TryGet(call.Method, out method);
         ShapeRequest? shape;
-        bool namesChecked = false;
         if (_host.Settings.StrictArguments)
         {
-            if (!Checked(call, method, out shape))
+            if (!Checked(call, out shape))
             {
                 return;
             }
-
-            namesChecked = method != null && method.RefusesUnknownArguments;
         }
         else
         {
             shape = ShapeRequest.Lenient(call.Shape);
         }
 
-        if (method != null)
-        {
-            shape = ShapeRequest.WithDefaultLimits(shape, method.DefaultLimits);
-        }
-
-        CallRequest request = new CallRequest(call.Id, call.Method, call.Params, shape, namesChecked,
-            call.World);
-        CallProfile profile = method != null
-            ? new CallProfile(method.Name, method.ClassAt(call.Params), method.CostAt(call.Params))
-            : CallProfiles.Of(null, call.Method, call.Params);
-        Queue(call, request, profile, call.DeadlineMs);
+        // The protocol methods' arguments are their handlers' own business: each reads and checks its own as it runs.
+        CallRequest request = new CallRequest(call.Id, call.Method, call.Params, shape, false, call.World);
+        Queue(call, request, CallProfiles.Of(call.Method, call.Params), call.DeadlineMs);
     }
 
     // A verb call (protocol.md, Verb calls): admitted only when a handler answers its verb; with StrictArguments its
@@ -391,11 +378,11 @@ internal sealed class CallSession : Session
         what ??= verb.What(call.Params?[OptionCheck.WhatKey]?.Type == JTokenType.String
             ? (string)call.Params[OptionCheck.WhatKey]!
             : null);
-        MethodClass callClass = what?.Write != null || !verb.ReadOnly ? MethodClass.Write : MethodClass.Read;
-        WhatCost cost = what?.CostFor(call.Params) ?? WhatCost.Unstated;
-        Queue(call, new CallRequest(call.Id, call.Method, call.Params, shape, strict, call.World),
-            new CallProfile(what?.Key ?? call.Method, callClass, cost.At(call.Params)),
-            call.DeadlineMs + cost.DurationMs(call.Params));
+        CallProfile profile = what != null
+            ? CallProfile.Of(verb, what, call.Params)
+            : new CallProfile(call.Method, verb.ReadOnly ? MethodClass.Read : MethodClass.Write, WhatCost.Unstated.At(call.Params));
+        Queue(call, new CallRequest(call.Id, call.Method, call.Params, shape, strict, call.World), profile,
+            call.DeadlineMs + (what?.CostFor(call.Params).DurationMs(call.Params) ?? 0));
     }
 
     private void Queue(ClientMessage.Call call, CallRequest request, CallProfile profile, int deadlineMs)
@@ -433,42 +420,17 @@ internal sealed class CallSession : Session
         _host.Submit(queued);
     }
 
-    // A protocol method's full check, before anything is queued: the shape (invalid_shape), then the params against
-    // the method's schema (invalid_argument with every problem and its path).
-    private bool Checked(ClientMessage.Call call, CatalogueMethod? method, out ShapeRequest? shape)
+    // A protocol method's shape, before anything is queued: a shape path the writer does not know is invalid_shape.
+    private bool Checked(ClientMessage.Call call, out ShapeRequest? shape)
     {
         List<string> shapeProblems = new List<string>();
-        shape = ShapeRequest.Strict(call.Shape, method?.ReplyLists, shapeProblems);
-        if (shapeProblems.Count > 0)
-        {
-            RefuseShape(call.Id, shapeProblems);
-            return false;
-        }
-
-        if (method == null)
+        shape = ShapeRequest.Strict(call.Shape, null, shapeProblems);
+        if (shapeProblems.Count == 0)
         {
             return true;
         }
 
-        List<SchemaProblem> problems = method.Check(call.Params);
-        if (problems.Count == 0)
-        {
-            return true;
-        }
-
-        List<Dictionary<string, string>> found = new List<Dictionary<string, string>>(problems.Count);
-        List<string> sentences = new List<string>(problems.Count);
-        foreach (SchemaProblem problem in problems)
-        {
-            found.Add(new Dictionary<string, string>
-            {
-                ["path"] = problem.Path, ["problem"] = problem.Problem
-            });
-            sentences.Add(problem.Problem);
-        }
-
-        _connection.Send(Wire.Refusal(call.Id, "invalid_argument", string.Join(" ", sentences),
-            new Dictionary<string, object> { ["problems"] = found }));
+        RefuseShape(call.Id, shapeProblems);
         return false;
     }
 
@@ -484,17 +446,17 @@ internal sealed class CallSession : Session
             new Dictionary<string, object> { ["problems"] = listed }));
     }
 
-    // The protocol method catalogue: the embedded file itself, answered here without the main thread.
+    // The verb catalogue: the assembled verb model itself, answered here without the main thread.
     private void AnswerCatalogue(string id)
     {
-        CatalogueFile? file = _host.Catalogue;
-        if (file == null)
+        VerbDocument? document = _host.Catalogue;
+        if (document == null)
         {
-            _connection.Send(Wire.Refusal(id, "internal_error", "The method catalogue did not load."));
+            _connection.Send(Wire.Refusal(id, "internal_error", "The verb catalogue did not load."));
             return;
         }
 
-        _connection.Send(Wire.Line(new CatalogueReplyView(id, new JRaw(file.CompactText))));
+        _connection.Send(Wire.Line(new CatalogueReplyView(id, new JRaw(document.Text))));
     }
 
     private void Cancel(string id)

@@ -152,19 +152,10 @@ public sealed class GameCountersTests
     public void WithoutIncludeCountersNoCounterIsWritten()
     {
         string wire = WireCheck.New(new RuntimeView(0.0, 0, FrameBudget.For(4.0, false), new DispatchStats().Snapshot(),
-            new MemoryView(0, 0, 0, null, null), new List<MethodTiming>(), new List<DriftCount>(),
+            new MemoryView(0, 0, 0, null, null), new List<MethodTiming>(),
             prefabIndex: new PrefabIndexView(true, false, 10, 3, 0, 0)));
 
         Assert.EndsWith("\"differences\":0}}", wire);
-    }
-
-    [Fact]
-    public void TheSidecarTakesIncludeCounters()
-    {
-        using System.Text.Json.JsonDocument document =
-            System.Text.Json.JsonDocument.Parse("""{"include_counters":true}""");
-        Assert.Empty(StationGodMCP.Server.ArgumentCheck.Problems(
-            StationGodMCP.Server.Program.InputSchemas["mod_info"], document.RootElement));
     }
 
     [Fact]
@@ -173,7 +164,7 @@ public sealed class GameCountersTests
         GameCountersView counters = new GameCountersView(new JobHoldsView(new long[] { 7, 3, 2, 1, 0 }),
             new PrintLogView(120, PrintLog.DefaultCapacity), 4, new BatchConsoleView(250, 12.345));
         RuntimeView view = new RuntimeView(0.0, 0, FrameBudget.For(4.0, false), new DispatchStats().Snapshot(),
-            new MemoryView(0, 0, 0, null, null), new List<MethodTiming>(), new List<DriftCount>(),
+            new MemoryView(0, 0, 0, null, null), new List<MethodTiming>(),
             prefabIndex: new PrefabIndexView(true, false, 10, 3, 0, 0, 40, 30), counters: counters);
 
         Assert.EndsWith(
@@ -193,7 +184,7 @@ public sealed class GameCountersTests
         GameCountersView counters = new GameCountersView(new JobHoldsView(new long[5]), new PrintLogView(0, 0), 0,
             new BatchConsoleView(0, 0), new RestoreCountsView(4, 1, 2));
         RuntimeView view = new RuntimeView(0.0, 0, FrameBudget.For(4.0, false), new DispatchStats().Snapshot(),
-            new MemoryView(0, 0, 0, null, null), new List<MethodTiming>(), new List<DriftCount>(),
+            new MemoryView(0, 0, 0, null, null), new List<MethodTiming>(),
             prefabIndex: new PrefabIndexView(true, false, 10, 3, 0, 0), counters: counters);
 
         Assert.EndsWith("\"buckets\":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}," +
@@ -212,7 +203,7 @@ public sealed class GameCountersTests
         GameCountersView counters = new GameCountersView(new JobHoldsView(new long[5]), new PrintLogView(0, 0), 0,
             new BatchConsoleView(0, 0), new RestoreCountsView(0, 0, 0), JobStoresView.Of(kept));
         RuntimeView view = new RuntimeView(0.0, 0, FrameBudget.For(4.0, false), new DispatchStats().Snapshot(),
-            new MemoryView(0, 0, 0, null, null), new List<MethodTiming>(), new List<DriftCount>(),
+            new MemoryView(0, 0, 0, null, null), new List<MethodTiming>(),
             prefabIndex: new PrefabIndexView(true, false, 10, 3, 0, 0), counters: counters);
 
         Assert.EndsWith("\"restores\":{\"applied\":0,\"skipped\":0,\"dropped\":0}," +

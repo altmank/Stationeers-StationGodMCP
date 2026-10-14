@@ -18,7 +18,7 @@ public sealed class RuntimeWireTests
 {
     internal static RuntimeView EmptyRuntime() =>
         new RuntimeView(0.0, 0, FrameBudget.For(4.0, false), new DispatchStats().Snapshot(),
-            new MemoryView(0, 0, 0, null, null), new List<MethodTiming>(), new List<DriftCount>());
+            new MemoryView(0, 0, 0, null, null), new List<MethodTiming>());
 
     [Fact]
     public void RuntimeWire()
@@ -33,7 +33,7 @@ public sealed class RuntimeWireTests
         frames.Frame(1, 4.5, true);
         frames.Expired();
         RuntimeView view = new RuntimeView(125.04, 2, FrameBudget.For(4.0, false), frames.Snapshot(),
-            new MemoryView(31, 0, 123456789, 100000000, null), timings.Called(), new List<DriftCount>());
+            new MemoryView(31, 0, 123456789, 100000000, null), timings.Called());
 
         Assert.Equal(
             "{\"uptime_s\":125.0,\"world_epoch\":2,\"request_budget_ms\":4.0," +
@@ -58,7 +58,7 @@ public sealed class RuntimeWireTests
     {
         Assert.Contains("\"request_budget_ms\":null",
             WireCheck.New(new RuntimeView(0.0, 0, FrameBudget.For(0.0, false), new DispatchStats().Snapshot(),
-                new MemoryView(0, 0, 0, null, null), new List<MethodTiming>(), new List<DriftCount>())));
+                new MemoryView(0, 0, 0, null, null), new List<MethodTiming>())));
     }
 
     [Fact]
@@ -154,29 +154,10 @@ public sealed class RuntimeWireTests
     }
 
     [Fact]
-    public void CatalogueDriftCountsMissesByMethodAndName()
-    {
-        CatalogueDrift drift = new CatalogueDrift();
-        Assert.True(drift.Miss("thing_health", "prefab"));
-        Assert.False(drift.Miss("thing_health", "prefab"));
-        Assert.True(drift.Miss("find_things", "zzz"));
-        RuntimeView view = new RuntimeView(0.0, 0, FrameBudget.For(4.0, false), new DispatchStats().Snapshot(),
-            new MemoryView(0, 0, 0, null, null), new List<MethodTiming>(), drift.Snapshot());
-
-        Assert.EndsWith(
-            "\"catalogue_drift\":[{\"method\":\"find_things\",\"argument\":\"zzz\",\"reads\":1}," +
-            "{\"method\":\"thing_health\",\"argument\":\"prefab\",\"reads\":2}]," +
-            "\"job_settles\":{\"run\":0,\"skipped\":0,\"unchecked\":0}," +
-            "\"prefab_index\":{\"ready\":false,\"verify\":false,\"things\":0,\"names\":0,\"verified\":0," +
-            "\"differences\":0}}",
-            WireCheck.New(view));
-    }
-
-    [Fact]
     public void ThePrefabIndexReportsItsState()
     {
         RuntimeView view = new RuntimeView(0.0, 0, FrameBudget.For(4.0, false), new DispatchStats().Snapshot(),
-            new MemoryView(0, 0, 0, null, null), new List<MethodTiming>(), new List<DriftCount>(),
+            new MemoryView(0, 0, 0, null, null), new List<MethodTiming>(),
             prefabIndex: new PrefabIndexView(true, true, 34012, 811, 40, 0));
 
         Assert.EndsWith(

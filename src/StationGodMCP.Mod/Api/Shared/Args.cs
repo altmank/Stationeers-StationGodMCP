@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Globalization;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using StationGodMCP.Pure.Catalogue;
 using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Shaping;
 
@@ -12,16 +11,13 @@ namespace StationGodMCP.Api.Shared;
 
 /// <summary>
 /// A request's parameters with typed getters. JSON null means absent everywhere. A value of the wrong type is
-/// invalid_argument, naming the argument; a getter never guesses. A request's own parameters know their method's
-/// declared names (the catalogue), and a name read that is not one of them counts in ArgumentDrift. Shape is the
-/// call's shape, which a handler asks before building a reply part it declares costly. Every message names arguments
-/// as the call names them.
+/// invalid_argument, naming the argument; a getter never guesses. Shape is the call's shape, which a handler asks
+/// before building a reply part it declares costly. Every message names arguments as the call names them.
 /// </summary>
 internal sealed class Args
 {
     private readonly JObject _parameters;
     private readonly string _path;
-    private readonly ArgumentNames? _declared;
 
     internal Args(JObject? parameters)
         : this(parameters, string.Empty)
@@ -30,7 +26,7 @@ internal sealed class Args
 
     /// <summary>A request's parameters with the shape its reply is written through.</summary>
     internal Args(JObject? parameters, ShapeRequest shape)
-        : this(parameters, string.Empty, null, shape)
+        : this(parameters, string.Empty, shape)
     {
     }
 
@@ -40,17 +36,10 @@ internal sealed class Args
     {
     }
 
-    /// <summary>A request's parameters, held to its method's declared argument names, with its reply's shape.</summary>
-    internal Args(JObject? parameters, ArgumentNames declared, ShapeRequest shape)
-        : this(parameters, string.Empty, declared, shape)
-    {
-    }
-
-    private Args(JObject? parameters, string path, ArgumentNames? declared = null, ShapeRequest? shape = null)
+    private Args(JObject? parameters, string path, ShapeRequest? shape = null)
     {
         _parameters = parameters ?? new JObject();
         _path = path;
-        _declared = declared;
         Shape = shape ?? ShapeRequest.None;
     }
 
@@ -218,8 +207,6 @@ internal sealed class Args
     /// Whether the method declares the argument (always, for parameters held to no catalogue entry). A reader several
     /// methods share asks first before reading an argument only some of them take, so the read is never drift.
     /// </summary>
-    internal bool Declares(string name) => _declared == null || _declared.Contains(name);
-
     /// <summary>
     /// The raw value of an argument that takes more than one JSON type (a logic type by name or number, a scope by id
     /// or "world"), for a parser that knows them; null when absent.
@@ -247,7 +234,7 @@ internal sealed class Args
     {
         JObject copy = (JObject)_parameters.DeepClone();
         copy[name] = value.DeepClone();
-        return new Args(copy, _path, _declared, Shape);
+        return new Args(copy, _path, Shape);
     }
 
     // The name as an error message gives it: with the nested object's path in front, both as the caller says them.
@@ -256,34 +243,9 @@ internal sealed class Args
 
     private JToken? Token(string name)
     {
-        if (_declared != null && !_declared.Contains(name))
-        {
-            ArgumentDrift.Record(_declared.Method, name);
-        }
-
         JToken? token = _parameters[name];
         return token == null || token.Type == JTokenType.Null ? null : token;
     }
 
     private static bool IsFinite(double value) => !double.IsNaN(value) && !double.IsInfinity(value);
-}
-
-/// <summary>
-/// The names handlers read that their method's catalogue entry does not declare (server info.runtime.catalogue_drift),
-/// and where the first read of each is reported (the mod's log).
-/// </summary>
-internal static class ArgumentDrift
-{
-    internal static CatalogueDrift Counts { get; } = new CatalogueDrift();
-
-    /// <summary>Told the first undeclared read of each name by each method; null reports nothing.</summary>
-    internal static System.Action<string, string>? FirstMiss { get; set; }
-
-    internal static void Record(string method, string name)
-    {
-        if (Counts.Miss(method, name))
-        {
-            FirstMiss?.Invoke(method, name);
-        }
-    }
 }

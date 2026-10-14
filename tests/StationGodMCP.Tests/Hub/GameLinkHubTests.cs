@@ -22,15 +22,15 @@ public sealed class GameLinkHubTests
         await using GameLink link = new(new ClientOptions(game.Target));
         await link.ConnectAsync();
 
-        GameReply big = await link.CallAsync(new GameCall("thing_health",
+        GameReply big = await link.CallAsync(new GameCall("find",
             Json("""{"reference_ids":[""" + "\"" + new string('5', 2000) + "\"]}")), default);
-        GameReply small = await link.CallAsync(new GameCall("thing_health", Json("""{"reference_ids":["5"]}""")), default);
+        GameReply small = await link.CallAsync(new GameCall("find", Json("""{"what":"thing","name":"5"}""")), default);
 
         GameReply.Refused refused = Assert.IsType<GameReply.Refused>(big);
         Assert.Equal("request_too_large", refused.Code);
         Assert.Equal(1024, refused.Data!.Value.GetProperty("limit").GetInt32());
         Assert.IsType<GameReply.Ok>(small);
-        Assert.Single(game.CallsTo("thing_health"));
+        Assert.Single(game.CallsTo("find"));
         Assert.Equal(1, game.Connections);
         Assert.Equal(1024, link.MaxRequestBytes);
     }
@@ -57,13 +57,13 @@ public sealed class GameLinkHubTests
     public async Task ARepliesShapedAndQueueMsAndAnErrorsMaybeRanAreKept()
     {
         await using FakeGame game = HubGame();
-        game.Answer = call => Task.FromResult<string?>(call.Method == "thing_health"
+        game.Answer = call => Task.FromResult<string?>(call.Method == "find"
             ? call.Ok("{}", shaped: true)
             : "{\"type\":\"reply\",\"id\":" + call.Id.GetRawText() +
               ",\"ok\":false,\"error\":{\"code\":\"internal_error\",\"message\":\"Partly ran.\",\"maybe_ran\":true}}");
         await using GameLink link = new(new ClientOptions(game.Target));
 
-        GameReply.Ok ok = Assert.IsType<GameReply.Ok>(await link.CallAsync(new GameCall("thing_health", Json("{}")), default));
+        GameReply.Ok ok = Assert.IsType<GameReply.Ok>(await link.CallAsync(new GameCall("find", Json("""{"what":"thing"}""")), default));
         GameReply.Refused refused = Assert.IsType<GameReply.Refused>(
             await link.CallAsync(new GameCall("game_clock", Json("{}")), default));
 

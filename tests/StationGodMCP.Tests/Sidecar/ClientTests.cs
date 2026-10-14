@@ -22,23 +22,29 @@ public sealed class ClientTests
 {
     private static readonly string Root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
 
-    // The Python library's generated table carries the hash of the same file, computed by another language.
+    // The hash the mod announces in welcome.catalogue.hash: SHA-256 over the verb files' raw bytes, concatenated
+    // whole in ordinal file-name order, with nothing between them.
     [Fact]
-    public void TheBuiltInHashIsTheHashOfTheCatalogueBytes()
+    public void TheBuiltInHashIsTheHashOfTheVerbFiles()
     {
         Assert.Matches("^sha256:[0-9a-f]{64}$", GameCatalogue.BuiltIn.Hash);
-        Assert.Equal("sha256:" + Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(Path.Combine(Root, "catalogue.json")))).ToLowerInvariant(),
-            GameCatalogue.BuiltIn.Hash);
+        using IncrementalHash sha = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        foreach (string file in Directory.GetFiles(Path.Combine(Root, "catalogue", "verbs"), "*.json")
+                     .OrderBy(path => "catalogue/verbs/" + Path.GetFileName(path), StringComparer.Ordinal))
+        {
+            sha.AppendData(File.ReadAllBytes(file));
+        }
+
+        Assert.Equal("sha256:" + Convert.ToHexString(sha.GetHashAndReset()).ToLowerInvariant(), GameCatalogue.BuiltIn.Hash);
     }
 
     [Theory]
-    [InlineData("read_logic", """{"reference_id":"1","logic_type":"On"}""", true)]
-    [InlineData("write_logic", """{"reference_id":"1","logic_type":"On","value":1}""", false)]
-    [InlineData("highlight", """{"reference_ids":["1"]}""", false)]
-    [InlineData("show_preview", "{}", false)]
-    [InlineData("place_cables", "{}", true)]
-    [InlineData("place_cables", """{"dry_run":true}""", true)]
-    [InlineData("place_cables", """{"dry_run":false,"confirm":true}""", false)]
+    [InlineData("read", """{"what":"logic","id":"1","logic":"On"}""", true)]
+    [InlineData("write", """{"what":"logic","id":"1","logic":"On","value":1,"confirm":true}""", false)]
+    [InlineData("show", """{"what":"preview","cells":[[1,1,1]]}""", true)]
+    [InlineData("build", """{"what":"cable","waypoints":[[1,2,3],[1,2,5]]}""", true)]
+    [InlineData("build", """{"what":"cable","waypoints":[[1,2,3],[1,2,5]],"confirm":true}""", false)]
+    [InlineData("write", """{"what":"memory","id":"5","start_address":0,"values":[1],"confirm":true}""", false)]
     [InlineData("subscribe", """{"topic":"world"}""", false)]
     [InlineData("no_such_method", "{}", false)]
     public void OnlyReadsWithoutEffectsAreSafeToSendAgain(string method, string parameters, bool safe)
@@ -49,9 +55,11 @@ public sealed class ClientTests
     [Fact]
     public void ADurationArgumentLengthensTheWait()
     {
-        Assert.Equal(TimeSpan.FromSeconds(12), GameCatalogue.BuiltIn.Duration("sample_logic", Json("""{"duration_seconds":12}""")));
-        Assert.Equal(TimeSpan.FromSeconds(30), GameCatalogue.BuiltIn.Duration("sample_logic", Json("{}")));
-        Assert.Equal(TimeSpan.Zero, GameCatalogue.BuiltIn.Duration("game_clock", Json("{}")));
+        Assert.Equal(TimeSpan.FromSeconds(12),
+            GameCatalogue.BuiltIn.Duration("read", Json("""{"what":"sample","id":"1","logic":"On","seconds":12}""")));
+        Assert.Equal(TimeSpan.FromSeconds(30),
+            GameCatalogue.BuiltIn.Duration("read", Json("""{"what":"sample","id":"1","logic":"On"}""")));
+        Assert.Equal(TimeSpan.Zero, GameCatalogue.BuiltIn.Duration("read", Json("""{"what":"clock"}""")));
     }
 
     [Fact]
@@ -142,7 +150,7 @@ public sealed class ClientTests
         await using FakeGame game = FakeGame.OnPipe();
         game.Answer = call =>
         {
-            if (call.Method == "read_logic" && game.CallsTo("read_logic").Count() == 1)
+            if (call.Method == "read" && game.CallsTo("read").Count() == 1)
             {
                 game.DropAll();
                 return Task.FromResult<string?>(null);
@@ -152,10 +160,10 @@ public sealed class ClientTests
         };
         await using StationGodClient client = new(new ClientOptions(game.Target));
 
-        CallOutcome outcome = await client.CallAsync("read_logic", Json("""{"reference_id":"1","logic_type":"On"}"""));
+        CallOutcome outcome = await client.CallAsync("read", Json("""{"what":"logic","id":"1","logic":"On"}"""));
 
         Assert.Equal(7, Assert.IsType<CallOutcome.Answered>(outcome).Result.GetProperty("value").GetInt32());
-        Assert.Equal(2, game.CallsTo("read_logic").Count());
+        Assert.Equal(2, game.CallsTo("read").Count());
         Assert.Equal(2, game.Connections);
     }
 
@@ -165,7 +173,7 @@ public sealed class ClientTests
         await using FakeGame game = FakeGame.OnPipe();
         game.Answer = call =>
         {
-            if (call.Method != "read_logic")
+            if (call.Method != "read")
             {
                 return Task.FromResult<string?>(call.Ok("{}"));
             }
@@ -176,16 +184,16 @@ public sealed class ClientTests
         await using StationGodClient client = new(new ClientOptions(game.Target));
 
         CallOutcome.NoAnswer noAnswer = Assert.IsType<CallOutcome.NoAnswer>(
-            await client.CallAsync("read_logic", Json("""{"reference_id":"1","logic_type":"On"}""")));
+            await client.CallAsync("read", Json("""{"what":"logic","id":"1","logic":"On"}""")));
 
         Assert.False(noAnswer.MaybeRan);
-        Assert.Equal(2, game.CallsTo("read_logic").Count());
+        Assert.Equal(2, game.CallsTo("read").Count());
     }
 
     [Theory]
-    [InlineData("write_logic", """{"reference_id":"1","logic_type":"On","value":1}""")]
-    [InlineData("highlight", """{"reference_ids":["1"]}""")]
-    [InlineData("place_cables", """{"dry_run":false,"confirm":true}""")]
+    [InlineData("write", """{"what":"logic","id":"1","logic":"On","value":1,"confirm":true}""")]
+    [InlineData("move", """{"what":"player","id":"1","to":"2","confirm":true}""")]
+    [InlineData("build", """{"what":"cable","waypoints":[[1,2,3],[1,2,5]],"confirm":true}""")]
     public async Task AWrittenCallThatMayChangeTheGameIsNotSentAgain(string method, string parameters)
     {
         await using FakeGame game = FakeGame.OnPipe();
@@ -213,7 +221,7 @@ public sealed class ClientTests
         await using FakeGame game = FakeGame.OnPipe();
         game.Answer = call =>
         {
-            if (call.Method != "read_logic")
+            if (call.Method != "read")
             {
                 return Task.FromResult<string?>(call.Ok("{}"));
             }
@@ -227,10 +235,10 @@ public sealed class ClientTests
         client.WorldChanged += world => worlds.Add(world.GetProperty("id").GetString()!);
 
         CallOutcome.NoAnswer noAnswer = Assert.IsType<CallOutcome.NoAnswer>(
-            await client.CallAsync("read_logic", Json("""{"reference_id":"1","logic_type":"On"}""")));
+            await client.CallAsync("read", Json("""{"what":"logic","id":"1","logic":"On"}""")));
 
         Assert.True(noAnswer.WorldChanged);
-        Assert.Single(game.CallsTo("read_logic"));
+        Assert.Single(game.CallsTo("read"));
         Assert.Equal(["world-2"], worlds);
     }
 
@@ -296,7 +304,7 @@ public sealed class ClientTests
     {
         await using FakeGame game = FakeGame.OnPipe();
         game.CatalogueHash = "sha256:" + new string('a', 64);
-        game.CatalogueJson = CatalogueWithout("weather");
+        game.CatalogueJson = ModelWithout("read");
         await using StationGodClient client = new(new ClientOptions(game.Target));
         List<string> changes = [];
         client.CatalogueChanged += catalogue => changes.Add(catalogue.Hash);
@@ -308,7 +316,7 @@ public sealed class ClientTests
 
         Assert.Equal([game.CatalogueHash], changes);
         Assert.Equal(game.CatalogueHash, client.Catalogue.Hash);
-        Assert.Null(client.Catalogue.Method("weather"));
+        Assert.False(client.Catalogue.Has("read"));
         Assert.Single(game.CallsTo("catalogue"));
     }
 
@@ -425,15 +433,20 @@ public sealed class ClientTests
             message.TryGetProperty("type", out JsonElement type) && type.ValueEquals("bye")));
     }
 
-    internal static string CatalogueWithout(params string[] methods)
+    internal static string ModelWithout(params string[] verbs)
     {
-        JsonObject catalogue = JsonNode.Parse(GameCatalogue.BuiltIn.Document.GetRawText())!.AsObject();
-        JsonArray kept = new(catalogue["methods"]!.AsArray()
-            .Where(method => !methods.Contains((string)method!["name"]!))
-            .Select(method => method!.DeepClone())
-            .ToArray());
-        catalogue["methods"] = kept;
-        return catalogue.ToJsonString();
+        JsonObject model = JsonNode.Parse(GameCatalogue.BuiltIn.Document.GetRawText())!.AsObject();
+        JsonObject kept = new();
+        foreach ((string name, JsonNode? verb) in model["verbs"]!.AsObject())
+        {
+            if (!verbs.Contains(name))
+            {
+                kept[name] = verb?.DeepClone();
+            }
+        }
+
+        model["verbs"] = kept;
+        return model.ToJsonString();
     }
 
     internal static async Task Eventually(Func<bool> condition)

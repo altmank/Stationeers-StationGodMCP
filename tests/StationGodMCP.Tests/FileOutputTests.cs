@@ -32,55 +32,6 @@ public sealed class FileOutputTests : IDisposable
         }
     }
 
-    [Theory]
-    [InlineData("find_things")]
-    [InlineData("find_items")]
-    [InlineData("item_totals")]
-    [InlineData("connections")]
-    [InlineData("grid_survey")]
-    [InlineData("list_devices")]
-    [InlineData("vault_contents")]
-    [InlineData("network_snapshot")]
-    [InlineData("plan_cable_route")]
-    [InlineData("plan_pipe_route")]
-    [InlineData("plan_chute_route")]
-    [InlineData("place_cables")]
-    [InlineData("place_structure")]
-    [InlineData("remove_structure")]
-    [InlineData("remove_pipes")]
-    [InlineData("upgrade_cables")]
-    [InlineData("rocket_status")]
-    [InlineData("rocket_flight_log")]
-    [InlineData("get_ic_source")]
-    [InlineData("sample_logic")]
-    public void EveryLargeReplyToolTakesBoth(string tool)
-    {
-        JsonElement properties = Program.InputSchemas[tool].GetProperty("properties");
-
-        Assert.True(properties.TryGetProperty("output_file", out _), tool);
-        Assert.True(properties.TryGetProperty("fields", out _), tool);
-    }
-
-    [Fact]
-    public void EveryToolButTheSmallOnesTakesBoth()
-    {
-        foreach ((string tool, JsonElement schema) in Program.InputSchemas)
-        {
-            bool takes = schema.GetProperty("properties").TryGetProperty("output_file", out _);
-            Assert.True(takes != ToolCatalogue.SmallReplies.Contains(tool), tool);
-        }
-    }
-
-    [Theory]
-    [InlineData("""{"output_file":true}""")]
-    [InlineData("""{"output_file":"ores"}""")]
-    [InlineData("""{"output_file":false,"fields":["reference_id"]}""")]
-    public void TheSchemaTakesEveryForm(string arguments)
-    {
-        using JsonDocument document = JsonDocument.Parse(arguments);
-        Assert.Empty(ArgumentCheck.Problems(Program.InputSchemas["find_things"], document.RootElement));
-    }
-
     [Fact]
     public void NeitherArgumentIsSentToTheGame()
     {
@@ -278,15 +229,6 @@ public sealed class FileOutputTests : IDisposable
         using JsonDocument file = JsonDocument.Parse(File.ReadAllText(Path.Combine(_folder, "ore.json")));
         Assert.Equal("""{"reference_id":"2","position":{"x":2}}""",
             JsonSerializer.Serialize(file.RootElement.GetProperty("things")[1]));
-    }
-
-    [Fact]
-    public void TheSidecarSuggestsTheNameAWordShort()
-    {
-        using JsonDocument document = JsonDocument.Parse("""{"prefab":"ItemDirtyOre"}""");
-
-        Assert.StartsWith("Unknown argument 'prefab'; did you mean 'prefab_contains'?",
-            Assert.Single(ArgumentCheck.Problems(Program.InputSchemas["list_containers"], document.RootElement)));
     }
 
     private static string SharedFixtures =>

@@ -114,8 +114,7 @@ public sealed class JobDropTests
         Assert.False(ProtocolMethods.RunsOnMainThread("game_clock"));
         Assert.False(ProtocolMethods.RunsOnMainThread(null));
 
-        Assert.True(TestCatalogue.File.Value.Catalogue.TryGet("drop_job", out CatalogueMethod? method));
-        CallProfile profile = CallProfile.Of(method!, new JObject { ["job_id"] = "upgrade-3" });
+        CallProfile profile = CallProfiles.Of("drop_job", new JObject { ["job_id"] = "upgrade-3" });
         Assert.Equal(MethodClass.Write, profile.Class);
         Assert.True(profile.IsOrdered);
         Assert.Equal(CostClass.Instant, profile.Cost);

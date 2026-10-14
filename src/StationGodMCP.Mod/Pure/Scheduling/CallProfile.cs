@@ -3,6 +3,7 @@
 using System;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Pure.Catalogue;
+using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Pure.Scheduling;
 
@@ -42,7 +43,9 @@ internal readonly struct CallProfile
     /// </summary>
     internal bool IsOrdered => Class != MethodClass.Read;
 
-    /// <summary>The profile the catalogue gives a call with these arguments.</summary>
-    internal static CallProfile Of(CatalogueMethod method, JObject? arguments) =>
-        new CallProfile(method.Name, method.ClassAt(arguments), method.CostAt(arguments));
+    /// <summary>The profile of a verb call of this what: write class for a write what or a write verb's read what,
+    /// read for the rest; the cost is the what's at these arguments (x-cost for an act, x-cost-report for a report).</summary>
+    internal static CallProfile Of(VerbSpec verb, WhatSpec what, JObject? arguments) =>
+        new CallProfile(what.Key, what.Write != null || !verb.ReadOnly ? MethodClass.Write : MethodClass.Read,
+            what.CostFor(arguments).At(arguments));
 }

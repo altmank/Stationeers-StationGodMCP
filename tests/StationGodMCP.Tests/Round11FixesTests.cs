@@ -139,18 +139,4 @@ public sealed class Round11FixesTests
         Assert.Equal(0.0, chain.LostMol, 6);
     }
 
-    [Fact]
-    public void TheDescriptionsSayWhatRound11Found()
-    {
-        string all = CatalogueChecks.CatalogueTextTests.AllText();
-
-        Assert.Contains("not capped by wanted", all);
-        Assert.Contains("pipe pieces alone, which remove_pipes refuses outright", all);
-        Assert.Contains("an in-line tank or passive vent removed alone too", all);
-        Assert.Contains("as does every poll of that job with job_id", all);
-        Assert.Contains("credits_spent (signed", all);
-        Assert.Contains("compile_error_line is an integer", all);
-        Assert.Contains("a swap that charges nothing", all);
-        Assert.Contains("refund_holder_removed) when refund_to gives into it", all);
-    }
 }

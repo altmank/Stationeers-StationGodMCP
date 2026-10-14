@@ -125,24 +125,4 @@ public sealed class HighlightTests
         Assert.Equal(JTokenType.Null, json["distance_m"]!.Type);
     }
 
-    [Theory]
-    [InlineData("""{"targets":[{"at":[700,200,650],"label":"Cobalt","color":"orange","pulse":true}],"seconds":300}""")]
-    [InlineData("""{"targets":[{"network_id":"77","color":[1,0.5,0]},{"reference_ids":["5"]}],"keep":true}""")]
-    [InlineData("""{"clear":true}""")]
-    public void TheSidecarTakesHighlightArguments(string arguments)
-    {
-        Assert.Empty(Problems("highlight", arguments));
-    }
-
-    [Fact]
-    public void ShowPreviewTakesXray()
-    {
-        Assert.Empty(Problems("show_preview", """{"cells":[[1,1,1]],"xray":true}"""));
-    }
-
-    private static IReadOnlyList<string> Problems(string tool, string arguments)
-    {
-        using JsonDocument document = JsonDocument.Parse(arguments);
-        return ArgumentCheck.Problems(Program.InputSchemas[tool], document.RootElement);
-    }
 }

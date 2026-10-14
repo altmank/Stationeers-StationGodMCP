@@ -18,15 +18,6 @@ namespace StationGodMCP.Tests;
 /// </summary>
 public sealed class PaintShapingTests
 {
-    [Fact]
-    public void PaintTakesTheShapingArguments()
-    {
-        JsonElement properties = Program.InputSchemas["paint"].GetProperty("properties");
-
-        Assert.True(properties.TryGetProperty("fields", out _));
-        Assert.True(properties.TryGetProperty("omit", out _));
-        Assert.True(properties.TryGetProperty("output_file", out _));
-    }
 
     [Fact]
     public async Task PaintFieldsReachTheGameAsShape()

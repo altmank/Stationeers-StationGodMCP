@@ -145,37 +145,7 @@ public sealed class RefundRouteTests
 /// <summary>The sidecar takes refund_to in every form on every tool that refunds.</summary>
 public sealed class RefundToSchemaTests
 {
-    private static IReadOnlyList<string> Problems(string tool, string arguments)
-    {
-        using JsonDocument document = JsonDocument.Parse(arguments);
-        return ArgumentCheck.Problems(Program.InputSchemas[tool], document.RootElement);
-    }
 
-    [Theory]
-    [InlineData("remove_structure")]
-    [InlineData("undo_job")]
-    [InlineData("place_cables")]
-    [InlineData("place_pipes")]
-    [InlineData("place_chutes")]
-    [InlineData("remove_cables")]
-    [InlineData("remove_pipes")]
-    [InlineData("remove_chutes")]
-    [InlineData("upgrade_cables")]
-    [InlineData("upgrade_pipes")]
-    [InlineData("clean_cables")]
-    [InlineData("clean_pipes")]
-    [InlineData("replace_walls")]
-    [InlineData("replace_frames")]
-    public void EveryRefundingToolTakesEveryForm(string tool)
-    {
-        string job = tool == "undo_job" ? "\"job_id\":\"remove-1\"," : string.Empty;
-        foreach (string refundTo in new[] { "\"none\"", "\"source\"", "2047", "[\"inventory\",\"2047\",99,\"ground\"]" })
-        {
-            Assert.Empty(Problems(tool, "{" + job + "\"refund_to\":" + refundTo + "}"));
-        }
-
-        Assert.NotEmpty(Problems(tool, "{" + job + "\"refund_to\":true}"));
-    }
 }
 
 /// <summary>RefundLedger: a refund planned along a chain of targets, item after item.</summary>

@@ -85,9 +85,4 @@ public sealed class FindFiltersAndSlimRepliesTests
             new RunIssueView("through_air", "c", null, null)
         });
 
-    private static IReadOnlyList<string> Problems(string tool, string arguments)
-    {
-        using JsonDocument document = JsonDocument.Parse(arguments);
-        return ArgumentCheck.Problems(Program.InputSchemas[tool], document.RootElement);
-    }
 }

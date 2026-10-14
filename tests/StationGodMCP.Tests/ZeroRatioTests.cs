@@ -46,15 +46,6 @@ public sealed class ZeroRatioTests(ITestOutputHelper output)
         Assert.Equal(12, (int)Snapshot(12)["zero_ratios_omitted"]!);
     }
 
-    [Fact]
-    public void TheSidecarTakesIncludeZeroRatios()
-    {
-        using System.Text.Json.JsonDocument document = System.Text.Json.JsonDocument.Parse(
-            """{"reference_ids":["101"],"include_zero_ratios":true}""");
-        Assert.Empty(StationGodMCP.Server.ArgumentCheck.Problems(
-            StationGodMCP.Server.Program.InputSchemas["network_snapshot"], document.RootElement));
-    }
-
     /// <summary>
     /// A filtration unit reads a ratio per gas for its input, its two outputs and its own atmosphere (28 gases, 112
     /// ratios), four of them non-zero, and 20 other logic types.

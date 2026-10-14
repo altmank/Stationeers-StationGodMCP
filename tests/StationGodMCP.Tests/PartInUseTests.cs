@@ -100,20 +100,6 @@ public sealed class PartInUseTests
         Assert.Contains("switched on", message);
     }
 
-    [Fact]
-    public void InUseIsRegisteredWithASeeThatToolInfoAnswers()
-    {
-        ErrorSee see = Assert.IsType<ErrorSee>(ErrorGuide.SeeOf("in_use"));
-        Assert.Null(see.Tool);
-        Assert.Equal("slots", see.Topic);
-        Assert.Equal("in_use", see.Subtopic);
-
-        JObject catalogue = JObject.Parse(File.ReadAllText(CatalogueFiles.AssembledPath));
-        JToken? node = catalogue["help"]?["families"]?["slots"]?["subtopics"]?["in_use"];
-        Assert.NotNull(node);
-        Assert.Contains("allow_in_use", node!["text"]!.ToString());
-    }
-
     [Theory]
     [InlineData("move_item")]
     [InlineData("silo_deposit")]

@@ -3,20 +3,16 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
-using StationGodMCP.Pure.Catalogue;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Verbs;
 using StationGodMCP.Pure.Shaping;
 using StationGodMCP.Server;
-using StationGodMCP.Tests.CatalogueChecks;
 using StationGodMCP.Tests.Sidecar;
 using Xunit;
-using ModCatalogue = StationGodMCP.Pure.Catalogue.Catalogue;
 
 namespace StationGodMCP.Tests;
 
@@ -58,21 +54,6 @@ public sealed class ReplyCompactionTests
     }
 
     [Fact]
-    public void TheCatalogueCarriesDefaultLimitsAndRefusesOneThatNamesNoList()
-    {
-        ModCatalogue catalogue = ModCatalogue.Load(System.IO.File.ReadAllText(CatalogueFiles.AssembledPath));
-        Assert.True(catalogue.TryGet("list_devices", out CatalogueMethod? devices));
-        Assert.Equal(25, devices!.DefaultLimits["devices"]);
-
-        JsonObject broken = CatalogueFiles.ReadJson(CatalogueFiles.AssembledPath).AsObject();
-        JsonObject method = broken["methods"]!.AsArray().First(entry => (string?)entry!["name"] == "list_devices")!.AsObject();
-        method["x-default-limits"] = new JsonObject { ["gateway_id"] = 1 };
-
-        CatalogueException refused = Assert.Throws<CatalogueException>(() => ModCatalogue.Load(broken.ToJsonString()));
-        Assert.Contains("x-default-limits.gateway_id", refused.Message);
-    }
-
-    [Fact]
     public async Task ListLimitsIsSentAsShapeLimit()
     {
         await using FakeGame game = FakeGame.OnPipe();
@@ -85,19 +66,25 @@ public sealed class ReplyCompactionTests
         FakeCall forwarded = Assert.Single(game.CallsTo("find"));
         Assert.Equal("""{"what":"device"}""", forwarded.Params.GetRawText());
         Assert.Equal("""{"limit":{"devices":200}}""", forwarded.Shape!.Value.GetRawText());
-        Assert.True(Program.InputSchemas["list_devices"].GetProperty("properties").TryGetProperty("list_limits", out _));
     }
 
     [Fact]
-    public void NoMethodTakesAnArgumentTheSidecarTakesForItself()
+    public void NoWhatTakesAnOptionTheSidecarTakesForItself()
     {
-        foreach (JsonElement method in StationGodMCP.Client.GameCatalogue.BuiltIn.Document.GetProperty("methods").EnumerateArray())
+        foreach (JsonProperty verb in StationGodMCP.Client.GameCatalogue.BuiltIn.Document.GetProperty("verbs").EnumerateObject())
         {
-            JsonElement properties = method.GetProperty("params").GetProperty("properties");
-            foreach (string name in SidecarArguments.Names)
+            foreach (JsonProperty what in verb.Value.GetProperty("whats").EnumerateObject())
             {
-                Assert.False(properties.TryGetProperty(name, out _),
-                    $"{method.GetProperty("name").GetString()} takes '{name}', which the sidecar would take out.");
+                if (!what.Value.TryGetProperty("options", out JsonElement options))
+                {
+                    continue;
+                }
+
+                foreach (string name in SidecarArguments.Names)
+                {
+                    Assert.False(options.TryGetProperty(name, out _),
+                        $"{verb.Name} {what.Name} takes '{name}', which the sidecar would take out.");
+                }
             }
         }
     }
@@ -208,8 +195,7 @@ public sealed class ReplyCompactionTests
         }
 
         JObject runtime = JObject.Parse(WireCheck.New(new RuntimeView(0.0, 0, FrameBudget.For(4.0, false),
-            new DispatchStats().Snapshot(), new MemoryView(0, 0, 0, null, null), timings.Called(),
-            new List<DriftCount>())));
+            new DispatchStats().Snapshot(), new MemoryView(0, 0, 0, null, null), timings.Called())));
 
         Assert.Equal(ReplyDefaults.RuntimeMethods, ((JArray)runtime["methods"]!).Count);
         Assert.Equal(ReplyDefaults.RuntimeMethods + 5, (int)runtime["method_count"]!);

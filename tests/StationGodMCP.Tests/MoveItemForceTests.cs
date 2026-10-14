@@ -5,11 +5,7 @@ using System.IO;
 using System.Text.Json;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Pure;
-using StationGodMCP.Pure.Catalogue;
-using StationGodMCP.Server;
-using StationGodMCP.Tests.CatalogueChecks;
 using Xunit;
-using ModCatalogue = StationGodMCP.Pure.Catalogue.Catalogue;
 
 namespace StationGodMCP.Tests;
 
@@ -19,8 +15,6 @@ namespace StationGodMCP.Tests;
 /// </summary>
 public sealed class MoveItemForceTests
 {
-    private static readonly ModCatalogue Catalogue = ModCatalogue.Load(File.ReadAllText(CatalogueFiles.AssembledPath));
-
     [Fact]
     public void AnEmptySlotWhoseClassTakesTheWholeItemIsFilled()
     {
@@ -67,33 +61,4 @@ public sealed class MoveItemForceTests
         Assert.Contains("force true (a cheat", ForcedSlotRule.HiddenSlotHint);
     }
 
-    [Fact]
-    public void ForceIsAnArgumentOfOneMove()
-    {
-        Assert.Empty(Problems("""{"reference_id":"3698314","to_id":"3622964","to_slot":0,"force":true}"""));
-        Assert.Single(Problems("""{"reference_id":"1","to_id":"2","to_slot":0,"force":"yes"}"""));
-    }
-
-    [Fact]
-    public void ForceIsNotAnArgumentOfAMovesEntry()
-    {
-        string problem = Assert.Single(Problems("""{"moves":[{"reference_id":"1","to_id":"2","to_slot":0,"force":true}]}"""));
-
-        Assert.StartsWith("Unknown argument 'moves[0].force'", problem);
-    }
-
-    [Fact]
-    public void ForceMakesTheCallACheat()
-    {
-        Assert.True(Catalogue.TryGet("move_item", out CatalogueMethod? move));
-        Assert.Equal(MethodClass.Cheat, move!.ClassAt(JObject.Parse("""{"to_slot":0,"force":true}""")));
-        Assert.Equal(MethodClass.Write, move.ClassAt(JObject.Parse("""{"to_slot":0,"force":false}""")));
-        Assert.Equal(MethodClass.Write, move.ClassAt(JObject.Parse("""{"to_slot":0}""")));
-    }
-
-    private static IReadOnlyList<string> Problems(string arguments)
-    {
-        using JsonDocument document = JsonDocument.Parse(arguments);
-        return ArgumentCheck.Problems(Program.InputSchemas["move_item"], document.RootElement);
-    }
 }

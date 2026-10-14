@@ -147,43 +147,4 @@ public sealed class ReadDevicesTests
 
     // ---- the sidecar's schema ----
 
-    private static IReadOnlyList<string> SidecarProblems(string tool, string arguments)
-    {
-        using JsonDocument document = JsonDocument.Parse(arguments);
-        return ArgumentCheck.Problems(Program.InputSchemas[tool], document.RootElement);
-    }
-
-    [Fact]
-    public void TheSidecarTakesTheSmeltersRequest()
-    {
-        Assert.Empty(SidecarProblems("read_devices", """
-            {"include": ["clock"], "items": [
-              {"reference_id": "811234", "logic": ["Temperature", 280], "reagents": true,
-               "slots": [{"index": 0, "logic": ["Occupied", "OccupantHash", "Quantity"]}], "atmosphere": {"of": "internal"}},
-              {"reference_id": "811410", "atmosphere": {"port": 1}},
-              {"reference_id": "900077", "atmosphere": {}}]}
-            """));
-    }
-
-    [Fact]
-    public void TheSidecarRefusesUnknownKeysInsideItems()
-    {
-        Assert.NotEmpty(SidecarProblems("read_devices", """{"items": [{"reference_id": "1", "health": true}]}"""));
-        Assert.NotEmpty(SidecarProblems("read_devices", """{"items": [{"reference_id": "1", "atmosphere": {"detail": true}}]}"""));
-        Assert.NotEmpty(SidecarProblems("read_devices", """{"items": [{"reference_id": "1", "logic": ["On"]}], "include": ["weather"]}"""));
-    }
-
-    [Fact]
-    public void ReadDevicesIsALargeReplyTool()
-    {
-        Assert.DoesNotContain("read_devices", ToolCatalogue.SmallReplies);
-        Assert.Contains("read_devices", ToolCatalogue.Names);
-    }
-
-    [Fact]
-    public void ThingHealthTakesANetwork()
-    {
-        Assert.Empty(SidecarProblems("thing_health", """{"network_id": {"reference_id": "811410", "port": 1}, "damaged_only": true}"""));
-        Assert.Empty(SidecarProblems("thing_health", """{"network_id": "900120", "kind": "cable", "limit": 50}"""));
-    }
 }

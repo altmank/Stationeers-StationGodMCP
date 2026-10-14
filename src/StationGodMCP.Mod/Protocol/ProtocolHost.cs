@@ -57,7 +57,7 @@ internal sealed class ProtocolSettings
 }
 
 /// <summary>
-/// What every connection shares: the settings, the queue to the main thread, the deadline watch, the catalogue, the
+/// What every connection shares: the settings, the queue to the main thread, the deadline watch, the verb document, the
 /// verb handlers, the resume tokens, the session for a new connection, and the list of open connections.
 /// </summary>
 internal sealed class ProtocolHost
@@ -65,7 +65,7 @@ internal sealed class ProtocolHost
     private readonly ICallQueue _calls;
     private readonly ConcurrentDictionary<Connection, byte> _open = new ConcurrentDictionary<Connection, byte>();
 
-    internal ProtocolHost(ProtocolSettings settings, ICallQueue calls, DeadlineWatch deadlines, CatalogueFile? catalogue,
+    internal ProtocolHost(ProtocolSettings settings, ICallQueue calls, DeadlineWatch deadlines, VerbDocument? catalogue,
         string? legacySecret = null, SubscriptionHub? subscriptions = null, ResumeHolds? holds = null,
         HeldRestores? restores = null, VerbDispatcher? verbs = null)
     {
@@ -103,8 +103,8 @@ internal sealed class ProtocolHost
     /// <summary>The mod's one deadline timer, shared by the pipe and TCP.</summary>
     internal DeadlineWatch Deadlines { get; }
 
-    /// <summary>The embedded catalogue; null when it did not load (every call is then answered internal_error).</summary>
-    internal CatalogueFile? Catalogue { get; }
+    /// <summary>The embedded verb document; null when it did not load (every call is then answered internal_error).</summary>
+    internal VerbDocument? Catalogue { get; }
 
     /// <summary>The (verb, what) handlers: a verb call is admitted on the reader thread only when one answers it.</summary>
     internal VerbDispatcher Verbs { get; }

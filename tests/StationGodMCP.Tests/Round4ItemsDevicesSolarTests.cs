@@ -50,20 +50,6 @@ public sealed class Round4ItemsDevicesSolarTests
     }
 
     [Fact]
-    public void AnExactLengthArraySaysExactly()
-    {
-        Assert.Equal("Argument 'anchor' must be an array of exactly 3 entries; it has 2.",
-            Assert.Single(Problems("paste_blueprint", """{"anchor":[1,2]}""")));
-    }
-
-    [Fact]
-    public void AnEmptyLabelListIsRefusedByTheSidecar()
-    {
-        Assert.Equal("Argument 'labels' must be an array of 1 to 64 entries; it has 0.",
-            Assert.Single(Problems("label", """{"labels":[]}""")));
-    }
-
-    [Fact]
     public void ASmallMissBetweenTwoDirectionsIsNotRoundedToZero()
     {
         // solar-18: dish 852's pointing and target, 0.0254 degrees apart; float Vector3.Angle read 0.
@@ -82,9 +68,4 @@ public sealed class Round4ItemsDevicesSolarTests
         Assert.Equal(expected, VectorAngle.Degrees(ax, ay, az, bx, by, bz), 9);
     }
 
-    private static IReadOnlyList<string> Problems(string tool, string arguments)
-    {
-        using JsonDocument document = JsonDocument.Parse(arguments);
-        return ArgumentCheck.Problems(Program.InputSchemas[tool], document.RootElement);
-    }
 }

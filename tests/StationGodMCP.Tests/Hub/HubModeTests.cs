@@ -25,7 +25,7 @@ public sealed class HubModeTests
         game.Features = ["shape", "subscriptions", "cancel", "streams"];
         game.Answer = call => Task.FromResult<string?>(call.Method switch
         {
-            "thing_health" => call.Ok("""{"results":[{"reference_id":"5","damage_ratio":0.0}]}"""),
+            "find" => call.Ok("""{"results":[{"reference_id":"5","damage_ratio":0.0}]}"""),
             _ => call.Ok("""{"value":1}""")
         });
         StringBuilder errors = new();
@@ -40,7 +40,7 @@ public sealed class HubModeTests
             JsonElement welcome = await NextAsync(hub, errors);
             await input.WriteLineAsync(HubCaller.Call("1", "verb", """{"verb":"read","what":"logic","args":{"id":"5","logic":"On"}}"""));
             JsonElement verb = await NextAsync(hub, errors);
-            await input.WriteLineAsync(HubCaller.Call("2", "thing_health", """{"reference_ids":["5"]}"""));
+            await input.WriteLineAsync(HubCaller.Call("2", "find", """{"what":"thing","name":"5"}"""));
             JsonElement passed = await NextAsync(hub, errors);
             input.Close();
 
@@ -52,7 +52,7 @@ public sealed class HubModeTests
             Assert.True(verb.GetProperty("ok").GetBoolean(), verb.GetRawText());
             Assert.Equal("2", passed.GetProperty("id").GetString());
             Assert.Equal("5", passed.GetProperty("result").GetProperty("results")[0].GetProperty("reference_id").GetString());
-            FakeCall health = Assert.Single(game.CallsTo("thing_health"));
+            FakeCall health = Assert.Single(game.CallsTo("find"));
             Assert.True(health.Message.GetProperty("stream").GetInt64() > 0);
             // stdin's end is the session's end (hub.md, Session end): session_end goes after the last call.
             var types = game.Received.Select(message =>
@@ -81,7 +81,7 @@ public sealed class HubModeTests
             input.NewLine = "\n";
             await input.WriteLineAsync(HubCaller.Hello);
             JsonElement welcome = await NextAsync(hub, errors);
-            await input.WriteLineAsync(HubCaller.Call("1", "thing_health", """{"reference_ids":["5"]}"""));
+            await input.WriteLineAsync(HubCaller.Call("1", "find", """{"what":"thing","name":"5"}"""));
             JsonElement unreachable = await NextAsync(hub, errors);
 
             Stopwatch exiting = Stopwatch.StartNew();

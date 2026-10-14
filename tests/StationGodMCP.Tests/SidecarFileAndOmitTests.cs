@@ -70,16 +70,6 @@ public sealed class SidecarFileAndOmitTests : IDisposable
     }
 
     [Fact]
-    public void TheSchemaTakesSourceOrSourceFile()
-    {
-        JsonElement schema = Program.InputSchemas["set_ic_source"];
-
-        Assert.True(schema.GetProperty("properties").TryGetProperty("source_file", out _));
-        Assert.DoesNotContain("source", schema.GetProperty("required").EnumerateArray().Select(name => name.GetString()));
-        Assert.Contains("reference_id", schema.GetProperty("required").EnumerateArray().Select(name => name.GetString()));
-    }
-
-    [Fact]
     public async Task OmitIsSentAsShapeOmitAndAnUnparsedOneIsReported()
     {
         (FakeCall forwarded, JsonElement result) = await Call("inspect",
@@ -89,16 +79,6 @@ public sealed class SidecarFileAndOmitTests : IDisposable
         Assert.Equal("""{"what":"chip","id":"300"}""", forwarded.Params.GetRawText());
         Assert.Equal("""{"fields":["index"],"omit":["source","runtime.registers"]}""", forwarded.Shape!.Value.GetRawText());
         Assert.Equal("""["a-b"]""", result.GetProperty("omit_unmatched").GetRawText());
-    }
-
-    [Fact]
-    public void EveryShapedToolTakesOmit()
-    {
-        foreach (string tool in Program.InputSchemas.Keys)
-        {
-            bool shaped = !ToolCatalogue.SmallReplies.Contains(tool);
-            Assert.Equal(shaped, Program.InputSchemas[tool].GetProperty("properties").TryGetProperty("omit", out _));
-        }
     }
 
     [Fact]

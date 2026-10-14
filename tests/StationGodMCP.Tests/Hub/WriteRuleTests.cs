@@ -201,7 +201,7 @@ public sealed class WriteRuleTests
     {
         ScriptedGate gate = new(new WriteDecision.Act());
         FakeGameLink game = new();
-        game.Answer = call => call.Method == "thing_health" && call.Params()["reference_id"] != null
+        game.Answer = call => call.Method == "find" && call.Params()["reference_id"] != null
             ? FakeGameLink.Ok("""{"prefab_name":"StructureIngotVault"}""")
             : FakeGameLink.Ok("{}");
         VerbPipeline pipeline = game.Pipeline();

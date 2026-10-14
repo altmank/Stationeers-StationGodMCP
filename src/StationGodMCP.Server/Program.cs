@@ -100,9 +100,6 @@ internal static class Program
     // How long replies still in flight at EOF may take to be written after session_end; nobody may be reading.
     private static readonly TimeSpan SessionEndGrace = TimeSpan.FromSeconds(1);
 
-    /// <summary>Every mod method's input schema (the handlers the verbs map onto), by method name.</summary>
-    internal static IReadOnlyDictionary<string, JsonElement> InputSchemas => ToolCatalogue.InputSchemas;
-
     /// <summary>One message through a sidecar of its own, closed afterwards.</summary>
     internal static async Task<string?> HandleMcpMessageAsync(string line, GameTransportSettings transport,
         OutputFolder? output = null)

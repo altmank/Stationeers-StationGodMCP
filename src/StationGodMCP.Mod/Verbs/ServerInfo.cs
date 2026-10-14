@@ -52,7 +52,7 @@ internal static class ServerInfo
     private static RuntimeView Runtime(bool counters) =>
         new RuntimeView(StationGodMod.SinceLoad.Elapsed.TotalSeconds, WorldStores.Epoch,
             FrameBudget.For(PerformanceSettings.RequestBudgetMs, false), StationGodRequestDispatcher.Stats.Snapshot(),
-            Memory(), MethodStats.Called(), ArgumentDrift.Counts.Snapshot(), Connections(), ProfilingControl.Summary(),
+            Memory(), MethodStats.Called(), Connections(), ProfilingControl.Summary(),
             new JobSettlesView(SettleGate.Run, SettleGate.Skipped, SettleGate.Unchecked), ThingIndex.View(counters),
             counters ? Counters() : null);
 

@@ -27,7 +27,7 @@ public sealed class HubSessionBoundsTests
         await using HubCaller caller = HubCaller.Start(link);
         await caller.HelloAsync();
 
-        caller.Send(HubCaller.Call("1", "thing_health", """{"reference_ids":[""" + "\"" + new string('5', 3000) + "\"]}"));
+        caller.Send(HubCaller.Call("1", "find", """{"reference_ids":[""" + "\"" + new string('5', 3000) + "\"]}"));
         JsonElement refused = await caller.NextAsync();
 
         Assert.Equal(JsonValueKind.Null, refused.GetProperty("id").ValueKind);
@@ -43,7 +43,7 @@ public sealed class HubSessionBoundsTests
         FakeHubLink link = new() { Answer = (_, _) => new TaskCompletionSource<GameReply>().Task };
         await using HubCaller caller = HubCaller.Start(link);
         await caller.HelloAsync();
-        caller.Send(HubCaller.Call("1", "thing_health"));
+        caller.Send(HubCaller.Call("1", "find"));
         await WaitUntil(() => link.Calls.Count == 1);
         link.Reachable = false;
 
@@ -60,8 +60,8 @@ public sealed class HubSessionBoundsTests
         FakeHubLink link = new();
         await using HubCaller caller = HubCaller.Start(link);
         await caller.HelloAsync();
-        await caller.CallAsync("1", "thing_health", "{}", stream: 5);
-        long five = link.CallsTo("thing_health")[0].Stream;
+        await caller.CallAsync("1", "find", """{"what":"thing"}""", stream: 5);
+        long five = link.CallsTo("find")[0].Stream;
 
         await caller.EndAsync();
 
@@ -79,7 +79,7 @@ public sealed class HubSessionBoundsTests
 
         for (int index = 0; index < 40; index++)
         {
-            caller.Send(HubCaller.Call("c" + index, "thing_health"));
+            caller.Send(HubCaller.Call("c" + index, "find"));
         }
 
         HubSessionEnd end = await caller.Running.WaitAsync(Patience);
@@ -111,7 +111,7 @@ public sealed class HubSessionBoundsTests
 
         JsonElement reply = await caller.CallAsync("1", "subscribe", "{}");
         JsonElement first = await caller.NextAsync();
-        JsonElement next = await caller.CallAsync("2", "thing_health");
+        JsonElement next = await caller.CallAsync("2", "find");
 
         Assert.Equal("s1", reply.GetProperty("result").GetProperty("subscription").GetString());
         Assert.Equal("event", first.GetProperty("type").GetString());
@@ -130,12 +130,12 @@ public sealed class HubSessionBoundsTests
         // Stream 0 is open from the start, so 63 more reach the bound.
         for (int stream = 1; stream < HubSession.MaxStreams; stream++)
         {
-            Assert.True((await caller.CallAsync("s" + stream, "thing_health", "{}", stream)).GetProperty("ok").GetBoolean());
+            Assert.True((await caller.CallAsync("s" + stream, "find", """{"what":"thing"}""", stream)).GetProperty("ok").GetBoolean());
         }
 
-        JsonElement refused = await caller.CallAsync("over", "thing_health", "{}", stream: 100);
+        JsonElement refused = await caller.CallAsync("over", "find", """{"what":"thing"}""", stream: 100);
         caller.Send("""{"type":"stream_end","stream":1}""");
-        JsonElement afterEnd = await caller.CallAsync("again", "thing_health", "{}", stream: 100);
+        JsonElement afterEnd = await caller.CallAsync("again", "find", """{"what":"thing"}""", stream: 100);
 
         Assert.Equal("too_many_streams", refused.GetProperty("error").GetProperty("code").GetString());
         Assert.Equal(64, refused.GetProperty("error").GetProperty("data").GetProperty("limit").GetInt32());
@@ -160,10 +160,10 @@ public sealed class HubSessionBoundsTests
 
         for (int index = 0; index < 64; index++)
         {
-            caller.Send(HubCaller.Call("c" + index, "thing_health"));
+            caller.Send(HubCaller.Call("c" + index, "find"));
         }
 
-        JsonElement refused = await caller.CallAsync("over", "thing_health");
+        JsonElement refused = await caller.CallAsync("over", "find");
         release.SetResult();
 
         Assert.Equal("over", refused.GetProperty("id").GetString());
@@ -179,17 +179,17 @@ public sealed class HubSessionBoundsTests
         await using HubCaller caller = HubCaller.Start(link);
         await caller.HelloAsync();
 
-        JsonElement write = await caller.CallAsync("1", "write_logic", """{"reference_id":"5","logic_type":"On","value":1}""");
+        JsonElement write = await caller.CallAsync("1", "write", """{"what":"logic","id":"5","logic":"On","value":1}""");
         JsonElement hold = await caller.CallAsync("2", "hold_restore", """{"clear_all":true}""");
         JsonElement unknown = await caller.CallAsync("3", "no_such_method");
-        JsonElement read = await caller.CallAsync("4", "thing_health", """{"reference_ids":["5"]}""");
+        JsonElement read = await caller.CallAsync("4", "find", """{"what":"thing","name":"5"}""");
 
         Assert.Equal("not_allowed", write.GetProperty("error").GetProperty("code").GetString());
         Assert.Contains("verb", write.GetProperty("error").GetProperty("message").GetString());
         Assert.Equal("not_allowed", hold.GetProperty("error").GetProperty("code").GetString());
         Assert.Equal("method_not_found", unknown.GetProperty("error").GetProperty("code").GetString());
         Assert.True(read.GetProperty("ok").GetBoolean());
-        Assert.Equal(new[] { "thing_health" }, link.Calls.Select(call => call.Method));
+        Assert.Equal(new[] { "find" }, link.Calls.Select(call => call.Method));
     }
 
     [Fact]
@@ -215,15 +215,15 @@ public sealed class HubSessionBoundsTests
     {
         FakeHubLink link = new()
         {
-            Answer = (call, _) => Task.FromResult<GameReply>(call.Method == "thing_health"
+            Answer = (call, _) => Task.FromResult<GameReply>(call.Method == "find"
                 ? new GameReply.Ok(FakeHubLink.Element("{}"), 3, 0.5, false) { Shaped = true, QueueMs = 2.5 }
                 : new GameReply.Refused("internal_error", "Partly ran.", null) { MaybeRan = true })
         };
         await using HubCaller caller = HubCaller.Start(link);
         await caller.HelloAsync();
 
-        JsonElement shaped = await caller.CallAsync("1", "thing_health", "{}");
-        JsonElement refused = await caller.CallAsync("2", "read_logic", """{"reference_id":"5","logic_type":"On"}""");
+        JsonElement shaped = await caller.CallAsync("1", "find", """{"what":"thing"}""");
+        JsonElement refused = await caller.CallAsync("2", "read", """{"reference_id":"5","logic_type":"On"}""");
 
         Assert.True(shaped.GetProperty("shaped").GetBoolean());
         Assert.Equal(2.5, shaped.GetProperty("queue_ms").GetDouble());
@@ -257,7 +257,7 @@ public sealed class HubSessionBoundsTests
         link.World = FakeHubLink.Element("""{"id":"world-2","save":"other","epoch":1}""");
         link.ChangeWorld("world-2");
         JsonElement changed = await caller.NextAsync();
-        JsonElement next = await caller.CallAsync("1", "thing_health");
+        JsonElement next = await caller.CallAsync("1", "find");
 
         Assert.Equal("world_changed", changed.GetProperty("event").GetString());
         Assert.Equal("world-2", changed.GetProperty("world").GetProperty("id").GetString());
@@ -272,9 +272,9 @@ public sealed class HubSessionBoundsTests
         await using HubCaller caller = HubCaller.Start(link);
         await caller.HelloAsync();
 
-        caller.Send("""{"type":"call","id":"1","method":"thing_health","world":""" + "\"" + new string('w', 65) + "\"}");
+        caller.Send("""{"type":"call","id":"1","method":"find","world":""" + "\"" + new string('w', 65) + "\"}");
         JsonElement world = await caller.NextAsync();
-        caller.Send("""{"type":"call","id":"2","method":"thing_health","shape":"fields"}""");
+        caller.Send("""{"type":"call","id":"2","method":"find","shape":"fields"}""");
         JsonElement shape = await caller.NextAsync();
 
         Assert.Equal("invalid_argument", world.GetProperty("error").GetProperty("code").GetString());
@@ -293,16 +293,16 @@ public sealed class HubSessionBoundsTests
         };
         await using HubCaller caller = HubCaller.Start(link);
         await caller.HelloAsync();
-        JsonElement walk = await caller.CallAsync("1", "find_things", """{"cursor":true}""");
+        JsonElement walk = await caller.CallAsync("1", "find", """{"what":"thing","cursor":true}""");
         string first = walk.GetProperty("result").GetProperty("cursor_id").GetString()!;
-        await caller.CallAsync("2", "find_things", "{\"cursor_id\":\"" + first + "\"}");
-        JsonElement other = await caller.CallAsync("3", "find_things", """{"cursor":true}""", stream: 4);
+        await caller.CallAsync("2", "find", "{\"cursor_id\":\"" + first + "\"}");
+        JsonElement other = await caller.CallAsync("3", "find", """{"what":"thing","cursor":true}""", stream: 4);
         string second = other.GetProperty("result").GetProperty("cursor_id").GetString()!;
         caller.Send("""{"type":"stream_end","stream":4}""");
 
         caller.Send("{\"type\":\"cursor_close\",\"cursor_id\":\"" + first + "\"}");
         caller.Send("{\"type\":\"cursor_close\",\"cursor_id\":\"" + second + "\"}");
-        await caller.CallAsync("4", "thing_health");
+        await caller.CallAsync("4", "find");
 
         Assert.Empty(link.ClosedCursors);
     }
@@ -331,8 +331,8 @@ public sealed class HubSessionBoundsTests
         await using HubCaller caller = HubCaller.Start(link);
         await caller.HelloAsync();
         await caller.CallAsync("1", "subscribe", "{}");
-        caller.Send(HubCaller.Call("2", "sample_logic"));
-        await WaitUntil(() => link.CallsTo("sample_logic").Count == 1);
+        caller.Send(HubCaller.Call("2", "read", """{"what":"sample","id":"5","logic":"On"}"""));
+        await WaitUntil(() => link.CallsTo("read").Count == 1);
 
         await caller.EndAsync();
 
@@ -357,7 +357,7 @@ public sealed class HubSessionBoundsTests
         caller.Send("""{"type":"stream_end","stream":3}""");
         JsonElement unknown = await caller.CallAsync("2", "unsubscribe", """{"subscription":"s1"}""");
         link.Raise("""{"type":"event","event":"update","subscription":"s40","seq":2,"result":{}}""");
-        JsonElement next = await caller.CallAsync("3", "thing_health");
+        JsonElement next = await caller.CallAsync("3", "find");
         await caller.EndAsync();
 
         Assert.Equal("unknown_subscription", unknown.GetProperty("error").GetProperty("code").GetString());

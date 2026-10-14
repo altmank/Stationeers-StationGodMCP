@@ -11,6 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Protocol;
+using StationGodMCP.Pure.Catalogue;
 using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Sampling;
 using StationGodMCP.Pure.Scheduling;
@@ -296,7 +297,7 @@ internal sealed class PipeRig : IDisposable
         Holds = new ResumeHolds(resumeWindowMs, Mod, resumeClock);
         Mod.Holds = Holds;
         Host = new ProtocolHost(settings ?? new ProtocolSettings(maxConnections, firstLineMs), Mod, _deadlines,
-            TestCatalogue.File.Value, subscriptions: subscriptions, holds: Holds, restores: restores,
+            VerbDocument.Embedded, subscriptions: subscriptions, holds: Holds, restores: restores,
             verbs: verbs ?? Verbs.TestVerbs.Every);
         _listener = new PipeListener(Name, Host);
         _listener.Connected += connection => _connected.Add(connection);
@@ -635,15 +636,4 @@ internal sealed class FakeMod : ICallQueue, ICallRunner, IDisposable
             Thread.Sleep(ms);
         }
     }
-}
-
-/// <summary>The repository's catalogue.json, loaded as the mod loads it.</summary>
-internal static class TestCatalogue
-{
-    internal static readonly Lazy<StationGodMCP.Pure.Catalogue.CatalogueFile> File = new Lazy<StationGodMCP.Pure.Catalogue.CatalogueFile>(() =>
-    {
-        byte[] bytes = System.IO.File.ReadAllBytes(CatalogueChecks.CatalogueFiles.AssembledPath);
-        return new StationGodMCP.Pure.Catalogue.CatalogueFile(bytes,
-            StationGodMCP.Pure.Catalogue.Catalogue.Load(new UTF8Encoding(false).GetString(bytes)));
-    });
 }

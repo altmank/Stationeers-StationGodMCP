@@ -359,16 +359,40 @@ internal static class InFlightLimits
 }
 
 /// <summary>
-/// A call's profile from the catalogue, worked out on the thread that received it. A method the catalogue does not
-/// know (answered method_not_found on the main thread) is an instant read.
+/// A call's profile for the methods the verb document does not describe: the protocol's own (catalogue, subscribe,
+/// unsubscribe, drop_job, stream_costs, hold_restore), whose class and cost are fixed here - catalogue, subscribe,
+/// unsubscribe and stream_costs read; drop_job and hold_restore write, so they keep their order on their stream. A
+/// method the mod does not answer (refused on the main thread) is an instant read.
 /// </summary>
 internal static class CallProfiles
 {
-    internal static CallProfile Of(CatalogueFile? catalogue, string method, JObject? parameters)
+    private static readonly CallProfile Catalogue = new CallProfile(CallSession.CatalogueMethod, MethodClass.Read,
+        new CallCost(CostClass.Instant, 1));
+
+    private static readonly CallProfile Subscribe = new CallProfile(SubscriptionHub.SubscribeMethod, MethodClass.Read,
+        new CallCost(CostClass.Bounded, 1));
+
+    private static readonly CallProfile Unsubscribe = new CallProfile(SubscriptionHub.UnsubscribeMethod, MethodClass.Read,
+        new CallCost(CostClass.Instant, 1));
+
+    private static readonly CallProfile DropJob = new CallProfile(JobDropCalls.DropJobMethod, MethodClass.Write,
+        new CallCost(CostClass.Instant, 1));
+
+    private static readonly CallProfile StreamCosts = new CallProfile(StreamCostCalls.StreamCostsMethod, MethodClass.Read,
+        new CallCost(CostClass.Instant, 1));
+
+    private static readonly CallProfile HoldRestore = new CallProfile(HoldRestoreCalls.HoldRestoreMethod, MethodClass.Write,
+        new CallCost(CostClass.Instant, 1));
+
+    /// <summary>The profile of the protocol method; an instant read for any other name.</summary>
+    internal static CallProfile Of(string method, JObject? parameters) => method switch
     {
-        CatalogueMethod? entry = null;
-        return catalogue?.Catalogue.TryGet(method, out entry) == true && entry != null
-            ? CallProfile.Of(entry, parameters)
-            : new CallProfile(method, MethodClass.Read, new CallCost(CostClass.Instant, 1));
-    }
+        CallSession.CatalogueMethod => Catalogue,
+        SubscriptionHub.SubscribeMethod => Subscribe,
+        SubscriptionHub.UnsubscribeMethod => Unsubscribe,
+        JobDropCalls.DropJobMethod => DropJob,
+        StreamCostCalls.StreamCostsMethod => StreamCosts,
+        HoldRestoreCalls.HoldRestoreMethod => HoldRestore,
+        _ => new CallProfile(method, MethodClass.Read, new CallCost(CostClass.Instant, 1))
+    };
 }

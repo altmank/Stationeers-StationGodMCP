@@ -8,7 +8,7 @@ using StationGodMCP.Api.Views;
 namespace StationGodMCP.Tests.Budget;
 
 /// <summary>
-/// Every method's default reply on the large world (LargeWorld), as ReplySynth builds it: which view, how long each
+/// Every what's default reply on the large world (LargeWorld), as ReplySynth builds it: which view, how long each
 /// list is and why, which parts a default reply leaves out. This table is the heavy-payload inventory: a list that
 /// grows with the world, a page or a request says so here, with the bound that keeps it in the budget. A method the
 /// table does not cover must be in Exemptions with its reason, so a new tool fails ReplyBudgetTests until it is placed.
@@ -48,13 +48,8 @@ internal static class ReplyShapes
 
     internal static IReadOnlyDictionary<string, ReplyShape[]> ByMethod { get; } = Build();
 
-    /// <summary>Methods held to no budget, each with why.</summary>
-    internal static IReadOnlyDictionary<string, string> Exemptions { get; } = new Dictionary<string, string>
-    {
-        ["tool_info"] =
-            "Answered by the MCP server from the catalogue, never by the game; CatalogueTextTests holds every node it " +
-            "answers under 1.5 KB.",
-    };
+    /// <summary>Whats held to no budget, each with why: none while every what's reply is still to be shaped here.</summary>
+    internal static IReadOnlyDictionary<string, string> Exemptions { get; } = new Dictionary<string, string>(StringComparer.Ordinal);
 
     private static ReplyShape S<T>() => new ReplyShape(typeof(T));
 
