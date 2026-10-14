@@ -59,12 +59,12 @@ internal sealed class PlannedTakedown
 /// <summary>A remove_structure run as planned.</summary>
 internal sealed class RemovePlan
 {
-    internal RemovePlan(RemoveArguments arguments)
+    internal RemovePlan(RemoveRequest arguments)
     {
         Arguments = arguments;
     }
 
-    internal RemoveArguments Arguments { get; }
+    internal RemoveRequest Arguments { get; }
 
     internal List<PlannedTakedown> Takedowns { get; } = new List<PlannedTakedown>();
 
@@ -128,7 +128,7 @@ internal static class RemovePlanner
 {
     private static readonly RunKind[] Kinds = { new CableRunKind(), new PipeRunKind(), new ChuteRunKind() };
 
-    internal static RemovePlan Plan(RemoveArguments arguments)
+    internal static RemovePlan Plan(RemoveRequest arguments)
     {
         if (NetworkManager.IsClient || !GameManager.RunSimulation)
         {

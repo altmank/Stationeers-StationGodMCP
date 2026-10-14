@@ -5,6 +5,7 @@ using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Verbs;
 using Xunit;
 
 namespace StationGodMCP.Tests;
@@ -31,9 +32,10 @@ public sealed class AllowBurstTests
                 : new List<ReleasedGas>());
     }
 
-    private static Args Of(string json) => new Args(JObject.Parse(json));
-
-    private static string CodeOf(System.Action action) => Assert.Throws<ApiException>(action).Code;
+    // The order remove structure's options give, with 2681 read as its one reference id.
+    private static RemoveStructureOrder? Order(string json, List<OptionProblem> problems) =>
+        RemoveStructureOrder.Of(RemoveStructureOptions.Bind(new OptionReader(RemoveStructureOptions.Spec,
+            JObject.Parse(json))), new List<ThingId?> { new ThingId(2681) }, new List<ReportProblem>(), problems);
 
     [Fact]
     public void WithoutAllowBurstTheSqueezeIsStillRefusedAndNamesTheOverride()
@@ -125,16 +127,16 @@ public sealed class AllowBurstTests
     [Fact]
     public void RemovalsReadAllowBurst()
     {
-        BuildForm<RemoveArguments>.Run run = Assert.IsType<BuildForm<RemoveArguments>.Run>(
-            BuildArgs.ParseRemove(Of("{\"reference_ids\":[\"2681\"],\"allow_burst\":true}")));
-        Assert.True(run.Arguments.Allow.Burst);
-        Assert.False(run.Arguments.Allow.Contents);
+        List<OptionProblem> problems = new List<OptionProblem>();
+        RemoveStructureOrder lifted = Order("{\"id\": \"2681\", \"allow\": [\"burst\"]}", problems)!;
 
-        BuildForm<RemoveArguments>.Run plain = Assert.IsType<BuildForm<RemoveArguments>.Run>(
-            BuildArgs.ParseRemove(Of("{\"reference_ids\":[\"2681\"]}")));
-        Assert.False(plain.Arguments.Allow.Burst);
-        Assert.Equal(ApiErrors.InvalidArgumentCode,
-            CodeOf(() => BuildArgs.ParseRemove(Of("{\"job_id\":\"remove-3\",\"allow_burst\":true}"))));
+        Assert.Empty(problems);
+        Assert.True(lifted.Allow.Burst);
+        Assert.False(lifted.Allow.Contents);
+
+        problems.Clear();
+        RemoveStructureOrder plain = Order("{\"id\": \"2681\"}", problems)!;
+        Assert.False(plain.Allow.Burst);
     }
 }
 

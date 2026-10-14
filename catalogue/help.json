@@ -109,7 +109,7 @@
     },
     "jobs": {
       "summary": "Building jobs: report, confirm, polls, the queue.",
-      "text": "Building tools report by default and change nothing. A real run needs confirm: true (confirm_required otherwise) and answers the started job's id, status and preflight_summary (counts and warning or problem codes); verbose: true gives the whole preflight. The job holds the game tick, runs every check again, builds in one frame, then verifies what it built. Host only.",
+      "text": "Building tools report by default and change nothing. A real run needs confirm: true and answers the started job's id, status and preflight_summary (counts and warning or problem codes); verbose: true gives the whole preflight. The job holds the game tick, runs every check again, builds in one frame, then verifies what it built. Host only.",
       "subtopics": {
         "polling": {
           "summary": "The started job's id: poll a running or finished job.",

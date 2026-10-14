@@ -9,26 +9,6 @@ using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Api.Shared;
 
-/// <summary>A world position in metres as given.</summary>
-internal readonly struct Metres
-{
-    internal Metres(double x, double y, double z)
-    {
-        X = x;
-        Y = y;
-        Z = z;
-    }
-
-    internal double X { get; }
-
-    internal double Y { get; }
-
-    internal double Z { get; }
-
-    public override string ToString() =>
-        string.Format(CultureInfo.InvariantCulture, "({0:0.##}, {1:0.##}, {2:0.##})", X, Y, Z);
-}
-
 /// <summary>A prefab as named in a request: by its prefab name, or by its prefab hash.</summary>
 internal abstract class PrefabRef
 {
@@ -65,13 +45,13 @@ internal abstract class PrefabRef
 /// Where a placement goes as given: a point in metres, or a position the world resolves (the crosshair, an offset from
 /// a thing, the player or the crosshair, a spot on the face looked at).
 /// </summary>
-internal abstract class AtArg
+internal abstract class AtForm
 {
-    private AtArg()
+    private AtForm()
     {
     }
 
-    internal sealed class Absolute : AtArg
+    internal sealed class Absolute : AtForm
     {
         internal Absolute(Metres point)
         {
@@ -81,7 +61,7 @@ internal abstract class AtArg
         internal Metres Point { get; }
     }
 
-    internal sealed class Relative : AtArg
+    internal sealed class Relative : AtForm
     {
         internal Relative(JObject spec)
         {
@@ -109,10 +89,10 @@ internal sealed class NamedFacing
     internal GridStep? Up { get; }
 }
 
-/// <summary>One placement of place_structure as parsed.</summary>
-internal sealed class PlacementArgs
+/// <summary>One placement as a call gives it.</summary>
+internal sealed class PlacementRequest
 {
-    internal PlacementArgs(int index, PrefabRef prefab, AtArg at, RotationSpec rotation, BuildStatePick state,
+    internal PlacementRequest(int index, PrefabRef prefab, AtForm at, RotationSpec rotation, BuildStatePick state,
         string? label, string? color, JObject? orient = null, NamedFacing? namedFacing = null,
         double? aboveFloorM = null)
     {
@@ -132,7 +112,7 @@ internal sealed class PlacementArgs
 
     internal PrefabRef Prefab { get; }
 
-    internal AtArg At { get; }
+    internal AtForm At { get; }
 
     /// <summary>facing as a word to resolve; null when facing is an axis or not given.</summary>
     internal NamedFacing? NamedFacing { get; }
@@ -171,9 +151,12 @@ internal sealed class ReportDetail
     internal bool LayoutsWhenRefused { get; }
 }
 
-internal sealed class PlaceArguments
+internal sealed class PlaceRequest
 {
-    internal PlaceArguments(List<PlacementArgs> placements, ThingId? from, bool free, bool allowDoorKeepOut = false,
+    /// <summary>The most placements one call gives (the options' maxItems).</summary>
+    internal const int MaximumPlacements = 64;
+
+    internal PlaceRequest(List<PlacementRequest> placements, ThingId? from, bool free, bool allowDoorKeepOut = false,
         bool footprintCells = false, ReportDetail? detail = null, List<ThingId>? moreFrom = null,
         bool allowLint = false, bool allowPad = false)
     {
@@ -188,7 +171,7 @@ internal sealed class PlaceArguments
         Free = free;
     }
 
-    internal List<PlacementArgs> Placements { get; }
+    internal List<PlacementRequest> Placements { get; }
 
     /// <summary>The thing materials come from; null for the player.</summary>
     internal ThingId? From { get; }
@@ -214,9 +197,12 @@ internal sealed class PlaceArguments
     internal ReportDetail Detail { get; }
 }
 
-internal sealed class RemoveArguments
+internal sealed class RemoveRequest
 {
-    internal RemoveArguments(List<ThingId> ids, RemovalAllowance allow, RefundRoute refundTo, ThingId? from,
+    /// <summary>The most ids one remove call gives.</summary>
+    internal const int MaximumRemovals = 256;
+
+    internal RemoveRequest(List<ThingId> ids, RemovalAllowance allow, RefundRoute refundTo, ThingId? from,
         bool includeNotes = false, GasTarget? gasTo = null, bool splitDetail = false)
     {
         SplitDetail = splitDetail;
@@ -281,167 +267,18 @@ internal sealed class GasTarget
         problems.Add(new OptionProblem("gas_to", "is connected, or a pipe network's id or a pipe on it"));
         return null;
     }
-
-    internal static GasTarget? Parse(Args args)
-    {
-        if (!args.Has("gas_to"))
-        {
-            return null;
-        }
-
-        if (args.IsWord("gas_to", "connected"))
-        {
-            return AnyConnected;
-        }
-
-        return new GasTarget(args.OptionalThingId("gas_to"));
-    }
-}
-
-/// <summary>A request of place_structure or remove_structure: a job to poll, or a run (dry or confirmed).</summary>
-internal abstract class BuildForm<T>
-{
-    private BuildForm()
-    {
-    }
-
-    internal sealed class Poll : BuildForm<T>
-    {
-        internal Poll(string jobId, bool verbose)
-        {
-            JobId = jobId;
-            Verbose = verbose;
-        }
-
-        internal string JobId { get; }
-
-        /// <summary>verbose: the job with its preflight and final check, as the run reported them.</summary>
-        internal bool Verbose { get; }
-    }
-
-    internal sealed class Run : BuildForm<T>
-    {
-        internal Run(T arguments, bool confirmed, bool verbose = false)
-        {
-            Arguments = arguments;
-            Confirmed = confirmed;
-            Verbose = verbose;
-        }
-
-        internal T Arguments { get; }
-
-        /// <summary>dry_run false and confirm true: start a job. Otherwise a dry run.</summary>
-        internal bool Confirmed { get; }
-
-        /// <summary>A confirmed run's reply with the whole preflight; else the started job and the preflight in short.</summary>
-        internal bool Verbose { get; }
-    }
 }
 
 /// <summary>
-/// place_structure's and remove_structure's arguments. place_structure takes placements (a list), or one placement's
-/// fields at the top level. A placement: prefab (a name, or a prefab hash as a number), at ([x, y, z] or {x, y, z} in
-/// metres, a point in the cell), at most one of rotation ([x, y, z] degrees, multiples of 90, Quaternion.Euler order),
-/// facing (+x, -x, +y, -y, +z, -z, with an optional up) and face (for pieces placed on a cell face, with an optional
-/// up), build_state ("finished", "first" or an index), label, color.
+/// The readers of one placement as a call gives it: prefab (a name, or a prefab hash as a number), at ([x, y, z] or
+/// {x, y, z} in metres, a point in the cell), at most one of rotation ([x, y, z] degrees, multiples of 90,
+/// Quaternion.Euler order), facing (+x, -x, +y, -y, +z, -z, or a word the world resolves, with an optional up) and
+/// face (for pieces placed on a cell face, with an optional up), build_state ("finished", "first" or an index), label,
+/// color, orient and above_floor_m.
 /// </summary>
-internal static class BuildArgs
+internal static class PlacementReader
 {
-    internal const int MaximumPlacements = 64;
-
-    /// <summary>
-    /// The switch for the whole job view: a poll's preflight and final check, and a confirmed run's preflight.
-    /// </summary>
-    private const string VerboseArgument = "verbose";
-
-    /// <summary>place_structure's switch for the footprint's cell lists in each layout preview.</summary>
-    private const string FootprintCellsArgument = "include_footprint_cells";
-
-    /// <summary>The switch for the tool's fixed explanations in a report.</summary>
-    private const string NotesArgument = "include_notes";
-    internal const int MaximumRemovals = 256;
-
-    private static readonly string[] PlacementFields =
-        { "prefab", "at", "rotation", "facing", "up", "face", "build_state", "label", "color", "orient", "above_floor_m" };
-
-    internal static BuildForm<PlaceArguments> ParsePlace(Args args)
-    {
-        if (args.Has("job_id"))
-        {
-            return Poll<PlaceArguments>(args, "placements", "from_id", "free", "prefab", "at", "rotation", "facing",
-                "up", "face", "build_state", "label", "color", "allow_door_keepout", "orient", "above_floor_m",
-                FootprintCellsArgument, NotesArgument);
-        }
-
-        List<PlacementArgs> placements = new List<PlacementArgs>();
-        if (args.Has("placements"))
-        {
-            foreach (string field in PlacementFields)
-            {
-                if (args.Declares(field) && args.Has(field))
-                {
-                    throw ApiErrors.InvalidArgument(
-                        $"Argument '{Vocabulary.Arg(field)}' does not go with {Vocabulary.Arg("placements")}: give " +
-                        $"it in each placement ({Vocabulary.Arg("placements")}[0].{Vocabulary.Arg(field)}).");
-                }
-            }
-            List<Args?> items = args.Objects("placements", MaximumPlacements);
-            for (int index = 0; index < items.Count; index++)
-            {
-                placements.Add(Placement(items[index] ??
-                                         throw ApiErrors.InvalidArgument($"placements[{index}] must be an object."),
-                    index, $"placements[{index}]."));
-            }
-        }
-        else if (args.Has("prefab"))
-        {
-            placements.Add(Placement(args, 0, string.Empty));
-        }
-        else
-        {
-            throw ApiErrors.InvalidArgument(Vocabulary.Text("Pass {arg:placements}, or {arg:prefab} and {arg:at} for " +
-                "one placement."));
-        }
-
-        bool confirmed = Confirmed(args);
-        bool verbose = args.OptionalBool(VerboseArgument) ?? false;
-        return new BuildForm<PlaceArguments>.Run(
-            new PlaceArguments(placements, SourceArgs.First(SourceArgs.Of(args)), args.OptionalBool("free") ?? false,
-                args.OptionalBool("allow_door_keepout") ?? false,
-                args.OptionalBool(FootprintCellsArgument) ?? false,
-                new ReportDetail(args.OptionalBool(NotesArgument) ?? false, verbose),
-                SourceArgs.Rest(SourceArgs.Of(args))),
-            confirmed, confirmed && verbose);
-    }
-
-    internal static BuildForm<RemoveArguments> ParseRemove(Args args)
-    {
-        if (args.Has("job_id"))
-        {
-            return Poll<RemoveArguments>(args, "reference_ids", "allow_contents", "allow_breach", "allow_broken",
-                "allow_burst", "allow_unsupported", "refund_to", "from_id", "gas_to", NotesArgument);
-        }
-
-        if (!args.Has("reference_ids"))
-        {
-            throw ApiErrors.InvalidArgument(Vocabulary.Text("Pass {arg:reference_ids}."));
-        }
-
-        List<ThingId> ids = args.ThingIds("reference_ids", MaximumRemovals);
-        RemovalAllowance allow = new RemovalAllowance(args.OptionalBool("allow_contents") ?? false,
-            args.OptionalBool("allow_breach") ?? false, args.OptionalBool("allow_broken") ?? false,
-            args.OptionalBool("allow_burst") ?? false, args.OptionalBool("allow_unsupported") ?? false);
-        RefundRoute refundTo = RefundArgs.Route(args);
-        bool confirmed = Confirmed(args);
-        // remove_structure takes verbose on a dry run too: every port a split cuts in full.
-        bool verbose = args.OptionalBool(VerboseArgument) ?? false;
-        return new BuildForm<RemoveArguments>.Run(
-            new RemoveArguments(ids, allow, refundTo, args.OptionalThingId("from_id"),
-                args.OptionalBool(NotesArgument) ?? false, GasTarget.Parse(args), verbose), confirmed,
-            confirmed && verbose);
-    }
-
-    internal static PlacementArgs Placement(Args item, int index, string prefix)
+    internal static PlacementRequest Placement(Args item, int index, string prefix)
     {
         PrefabRef prefab = PrefabOf(item.Optional("prefab"), prefix + "prefab");
         JToken at = item.Optional("at") ??
@@ -467,7 +304,7 @@ internal static class BuildArgs
                 "to 20.");
         }
 
-        return new PlacementArgs(index, prefab, AtOf(at, prefix + "at"),
+        return new PlacementRequest(index, prefab, AtOf(at, prefix + "at"),
             named != null ? RotationSpec.Default : RotationOf(item, prefix),
             StateOf(item.Optional("build_state"), prefix + "build_state"), Text(item, "label", prefix),
             ColorOf(item.Optional("color"), prefix + "color"), orient, named, above);
@@ -486,17 +323,17 @@ internal static class BuildArgs
         }
     }
 
-    /// <summary>at: a point ([x, y, z] or {x, y, z}), or an object the world resolves (AtArg.Relative).</summary>
-    internal static AtArg AtOf(JToken token, string name)
+    /// <summary>at: a point ([x, y, z] or {x, y, z}), or an object the world resolves (AtForm.Relative).</summary>
+    internal static AtForm AtOf(JToken token, string name)
     {
         if (token is JObject item && (item["crosshair"] != null || item["relative_to"] != null ||
                                       item["on_face_i_look_at"] != null))
         {
             RelativeWordsOf(new Args(item), name);
-            return new AtArg.Relative(item);
+            return new AtForm.Relative(item);
         }
 
-        return new AtArg.Absolute(PositionOf(token, name));
+        return new AtForm.Absolute(PositionOf(token, name));
     }
 
     // A relative at's words, checked with the other arguments (structures-28: a bad from was a placement's problem
@@ -696,33 +533,6 @@ internal static class BuildArgs
         return token.Type == JTokenType.String
             ? token.Value<string>()
             : throw ApiErrors.InvalidArgument($"{Vocabulary.Path(prefix)}{Vocabulary.Arg(field)} must be a string.");
-    }
-
-    private static BuildForm<T> Poll<T>(Args args, params string[] others)
-    {
-        args.Reject("{arg:job_id}", others);
-        args.Reject("{arg:job_id}", "dry_run", "confirm", GasHoldVerdict.AcknowledgeArgument);
-        return new BuildForm<T>.Poll(args.String("job_id").Trim(), args.OptionalBool(VerboseArgument) ?? false);
-    }
-
-    // A real run needs dry_run false and confirm true; confirm with a dry run is a contradiction.
-    private static bool Confirmed(Args args)
-    {
-        bool dryRun = args.OptionalBool("dry_run") ?? true;
-        bool confirm = args.OptionalBool("confirm") ?? false;
-        if (dryRun && confirm)
-        {
-            throw ApiErrors.InvalidArgument(Vocabulary.Text("{arg:confirm}: true needs {arg:dry_run}: false; nothing " +
-                "was changed."));
-        }
-
-        if (!dryRun && !confirm)
-        {
-            throw ApiErrors.Refused("confirm_required",
-                Vocabulary.Text("A real run needs {arg:dry_run}: false and {arg:confirm}: true; nothing was changed."));
-        }
-
-        return !dryRun;
     }
 
     private static bool Number(JToken token, out double value)

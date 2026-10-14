@@ -85,7 +85,7 @@ internal static class Orienter
 
         if (token is JArray || token is JObject)
         {
-            Metres point = BuildArgs.PositionOf(token, name);
+            Metres point = PlacementReader.PositionOf(token, name);
             return new OrientTarget.At(new Vec3(point.X, point.Y, point.Z), point.ToString());
         }
 

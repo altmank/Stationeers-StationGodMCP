@@ -43,7 +43,7 @@ public sealed class PreviewOrderTests
         Assert.True(order.HasPlacements);
 
         // The request the game plans: nobody pays, it is not free, no lint, no pad, a brief report.
-        PlaceArguments arguments = order.Arguments;
+        PlaceRequest arguments = order.Arguments;
         Assert.True(arguments.AllowDoorKeepOut);
         Assert.Null(arguments.From);
         Assert.False(arguments.Free);
@@ -54,12 +54,12 @@ public sealed class PreviewOrderTests
         Assert.False(arguments.Detail.LayoutsWhenRefused);
         Assert.Empty(arguments.MoreFrom);
         Assert.Equal(2, arguments.Placements.Count);
-        PlacementArgs first = arguments.Placements[0];
+        PlacementRequest first = arguments.Placements[0];
         Assert.Equal(0, first.Index);
         Assert.Equal("StructureWallLight", Assert.IsType<PrefabRef.Named>(first.Prefab).Name);
-        Assert.Equal(2.5, Assert.IsType<AtArg.Absolute>(first.At).Point.Y);
+        Assert.Equal(2.5, Assert.IsType<AtForm.Absolute>(first.At).Point.Y);
         Assert.Equal("-x", Assert.IsType<RotationSpec.Facing>(first.Rotation).Forward.Name);
-        PlacementArgs second = arguments.Placements[1];
+        PlacementRequest second = arguments.Placements[1];
         Assert.Equal(1, second.Index);
         Assert.Equal(-1234, Assert.IsType<PrefabRef.Hashed>(second.Prefab).Hash);
         Assert.Equal(0, Assert.IsType<BuildStatePick.Index>(second.State).Value);
@@ -74,9 +74,9 @@ public sealed class PreviewOrderTests
             """);
 
         Assert.True(order.HasPlacements);
-        PlacementArgs placement = Assert.Single(order.Arguments.Placements);
+        PlacementRequest placement = Assert.Single(order.Arguments.Placements);
         Assert.Equal(0, placement.Index);
-        Assert.Equal(3, Assert.IsType<AtArg.Absolute>(placement.At).Point.Z);
+        Assert.Equal(3, Assert.IsType<AtForm.Absolute>(placement.At).Point.Z);
         Assert.Equal(1, Assert.IsType<RotationSpec.Euler>(placement.Rotation).YTurns);
         Assert.Equal(1.5, placement.AboveFloorM);
         Assert.Equal(30, order.Seconds);
@@ -181,7 +181,7 @@ public sealed class PreviewOrderTests
             problems)!;
 
         Assert.Empty(problems);
-        PlacementArgs placement = Assert.Single(order.Arguments.Placements);
+        PlacementRequest placement = Assert.Single(order.Arguments.Placements);
         Assert.Equal("A", Assert.IsType<PrefabRef.Named>(placement.Prefab).Name);
     }
 

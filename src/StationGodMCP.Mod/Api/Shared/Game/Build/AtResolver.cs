@@ -53,13 +53,13 @@ internal static class AtResolver
 {
     private const double ReachM = 10.0;
 
-    internal static ResolvedAt Resolve(AtArg at, GridFacts facts, string name, CameraUse camera)
+    internal static ResolvedAt Resolve(AtForm at, GridFacts facts, string name, CameraUse camera)
     {
         switch (at)
         {
-            case AtArg.Absolute absolute:
+            case AtForm.Absolute absolute:
                 return new ResolvedAt(absolute.Point, "as given", null);
-            case AtArg.Relative relative:
+            case AtForm.Relative relative:
                 return Relative(new Args(relative.Spec), facts, name, camera).Seen(camera.Source);
             default:
                 throw ApiErrors.InvalidArgument($"{Vocabulary.Path(name)} cannot be read.");

@@ -205,9 +205,9 @@ public sealed class StructuresLiveTestTests
     public void APositionOutsideTheWorldIsRefused()
     {
         ApiException error = Assert.Throws<ApiException>(() =>
-            BuildArgs.PositionOf(JArray.Parse("[-1053, 1e9, -701]"), "at"));
+            PlacementReader.PositionOf(JArray.Parse("[-1053, 1e9, -701]"), "at"));
         Assert.Equal("invalid_argument", error.Code);
-        Assert.Equal(-1053.0, BuildArgs.PositionOf(JArray.Parse("[-1053, 225, -701]"), "at").X);
+        Assert.Equal(-1053.0, PlacementReader.PositionOf(JArray.Parse("[-1053, 225, -701]"), "at").X);
     }
 
     [Fact]
@@ -215,10 +215,10 @@ public sealed class StructuresLiveTestTests
     {
         Args args = new Args(JObject.Parse(
             "{\"prefab\": \"StructureGasSensor\", \"at\": [1, 2, 3], \"orient\": {\"mount\": \"sideways\"}}"));
-        ApiException error = Assert.Throws<ApiException>(() => BuildArgs.Placement(args, 0, string.Empty));
+        ApiException error = Assert.Throws<ApiException>(() => PlacementReader.Placement(args, 0, string.Empty));
         Assert.Equal("invalid_argument", error.Code);
         Assert.Contains("orient.mount", error.Message);
-        BuildArgs.Placement(new Args(JObject.Parse(
+        PlacementReader.Placement(new Args(JObject.Parse(
             "{\"prefab\": \"StructureGasSensor\", \"at\": [1, 2, 3], \"orient\": {\"mount\": \"-z\"}}")), 0,
             string.Empty);
     }

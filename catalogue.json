@@ -116,7 +116,7 @@
       },
       "jobs": {
         "summary": "Building jobs: report, confirm, polls, the queue.",
-        "text": "Building tools report by default and change nothing. A real run needs confirm: true (confirm_required otherwise) and answers the started job's id, status and preflight_summary (counts and warning or problem codes); verbose: true gives the whole preflight. The job holds the game tick, runs every check again, builds in one frame, then verifies what it built. Host only.",
+        "text": "Building tools report by default and change nothing. A real run needs confirm: true and answers the started job's id, status and preflight_summary (counts and warning or problem codes); verbose: true gives the whole preflight. The job holds the game tick, runs every check again, builds in one frame, then verifies what it built. Host only.",
         "subtopics": {
           "polling": {
             "summary": "The started job's id: poll a running or finished job.",
@@ -530,11 +530,6 @@
       "description": "The game has not finished loading, so the console would not run the command yet. Try again once the world is loaded.",
       "origin": "tool",
       "see": {"tool": "run_console_command", "topic": "refusals"}
-    },
-    "confirm_required": {
-      "description": "A real run needs dry_run: false and confirm: true together. Nothing ran.",
-      "origin": "tool",
-      "see": {"topic": "jobs"}
     },
     "contact_not_found": {
       "description": "No trader contact has that reference id. trader_contacts lists them.",
@@ -8913,7 +8908,7 @@
           },
           "refusals": {
             "summary": "Why a battery is not set.",
-            "text": "Per id: not_a_battery (the message names what the thing is, and points at in_id when its slots hold cells), thing_not_found, invalid_argument. For the whole call: no_batteries (the rocket or holder has none), too_many_batteries (over 256 found; name them in reference_ids calls), rocket_not_found, not_host, confirm_required."
+            "text": "Per id: not_a_battery (the message names what the thing is, and points at in_id when its slots hold cells), thing_not_found, invalid_argument. For the whole call: no_batteries (the rocket or holder has none), too_many_batteries (over 256 found; name them in reference_ids calls), rocket_not_found, not_host."
           }
         },
         "shared": ["cheats"]

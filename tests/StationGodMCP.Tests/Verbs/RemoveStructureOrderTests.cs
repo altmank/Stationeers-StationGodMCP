@@ -47,7 +47,7 @@ public sealed class RemoveStructureOrderTests
     {
         RemoveStructureOrder order = Order("""{"id": "5", "refund_to": "none"}""", new List<OptionProblem>())!;
 
-        RemoveArguments arguments = order.Arguments(new ThingId(4936423), new List<ThingId> { new ThingId(7) });
+        RemoveRequest arguments = order.Arguments(new ThingId(4936423), new List<ThingId> { new ThingId(7) });
 
         Assert.Equal(new[] { 5L }, Ids(order));
         Assert.Same(RefundRoute.Nothing, arguments.RefundTo);
@@ -108,7 +108,7 @@ public sealed class RemoveStructureOrderTests
         Assert.False(order.IncludeNotes || order.SplitDetail);
         Assert.Null(order.GasTo);
 
-        RemoveArguments arguments = order.Arguments(null, new List<ThingId>());
+        RemoveRequest arguments = order.Arguments(null, new List<ThingId>());
         Assert.Equal(new[] { 12L, 13L }, arguments.Ids.ConvertAll(id => id.Value).ToArray());
         Assert.Null(arguments.From);
     }

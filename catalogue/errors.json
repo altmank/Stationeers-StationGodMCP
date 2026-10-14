@@ -105,11 +105,6 @@
     "origin": "tool",
     "see": {"tool": "run_console_command", "topic": "refusals"}
   },
-  "confirm_required": {
-    "description": "A real run needs dry_run: false and confirm: true together. Nothing ran.",
-    "origin": "tool",
-    "see": {"topic": "jobs"}
-  },
   "contact_not_found": {
     "description": "No trader contact has that reference id. trader_contacts lists them.",
     "origin": "tool",

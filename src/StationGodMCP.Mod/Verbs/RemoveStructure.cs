@@ -56,7 +56,7 @@ internal static class RemoveStructureRun
     {
         List<ThingId> more = new List<ThingId>();
         ThingId? from = JobTargets.Payers(order.Materials, order.Label, more);
-        RemoveArguments arguments = order.Arguments(from, more);
+        RemoveRequest arguments = order.Arguments(from, more);
         JobSource source = new JobSource(from?.Value, false, order.Materials.RefundTo, null);
         return WriteCheck<RemovePlan>.Run(() => RemovePlanner.Plan(arguments))
             .Outcome(order.Report, plan => Act(plan, arguments, order, source), plan => Described(plan, order));
@@ -73,7 +73,7 @@ internal static class RemoveStructureRun
         _ => throw new System.InvalidOperationException("A removal call answers in the call that reads it.")
     };
 
-    private static VerbOutcome Act(RemovePlan plan, RemoveArguments arguments, RemoveStructureOrder order,
+    private static VerbOutcome Act(RemovePlan plan, RemoveRequest arguments, RemoveStructureOrder order,
         JobSource source)
     {
         if (order.Unread.Count > 0 || !plan.Ready ||

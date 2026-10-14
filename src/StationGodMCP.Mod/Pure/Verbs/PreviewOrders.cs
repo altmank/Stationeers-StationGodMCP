@@ -76,7 +76,7 @@ internal static class PreviewColours
 internal sealed class PreviewOrder
 {
     /// <summary>The most placements one call draws (the option's maxItems).</summary>
-    internal const int MaximumPlacements = BuildArgs.MaximumPlacements;
+    internal const int MaximumPlacements = PlaceRequest.MaximumPlacements;
 
     /// <summary>The most cells one call draws (the option's maxItems).</summary>
     internal const int MaximumCells = 512;
@@ -101,7 +101,7 @@ internal sealed class PreviewOrder
         "prefab", "at", "rotation", "facing", "up", "face", "orient", "above_floor", "build_state"
     };
 
-    private PreviewOrder(PlaceArguments arguments, List<PreviewBox> cells, List<PreviewBox> boxes, double seconds,
+    private PreviewOrder(PlaceRequest arguments, List<PreviewBox> cells, List<PreviewBox> boxes, double seconds,
         bool keep, bool clear, bool xray)
     {
         Arguments = arguments;
@@ -114,7 +114,7 @@ internal sealed class PreviewOrder
     }
 
     /// <summary>The request the game plans: the placements, from nobody, not free, no lint, no pad, a brief report.</summary>
-    public PlaceArguments Arguments { get; }
+    public PlaceRequest Arguments { get; }
 
     /// <summary>The yellow 0.5 m cubes the call draws.</summary>
     public List<PreviewBox> Cells { get; }
@@ -143,7 +143,7 @@ internal sealed class PreviewOrder
         if (options.Clear ?? false)
         {
             // Only what is drawn goes: the old surface read nothing else with clear.
-            return new PreviewOrder(new PlaceArguments(new List<PlacementArgs>(), null, false),
+            return new PreviewOrder(new PlaceRequest(new List<PlacementRequest>(), null, false),
                 new List<PreviewBox>(), new List<PreviewBox>(), 0.0, false, true, false);
         }
 
@@ -154,21 +154,21 @@ internal sealed class PreviewOrder
             problems.Add(new OptionProblem("seconds", $"is at most {MaximumSeconds}"));
         }
 
-        List<PlacementArgs> placements = Placements(options, problems);
+        List<PlacementRequest> placements = Placements(options, problems);
         List<PreviewBox> cells = CellsOf(options.Cells, seconds, xray, problems);
         List<PreviewBox> boxes = BoxesOf(options.Boxes, seconds, xray, problems);
         return problems.Count == before
             ? new PreviewOrder(
-                new PlaceArguments(placements, null, false, Allow.Lifts(options.Allow, "door_keepout")), cells, boxes,
+                new PlaceRequest(placements, null, false, Allow.Lifts(options.Allow, "door_keepout")), cells, boxes,
                 seconds, options.Keep ?? false, false, xray)
             : null;
     }
 
     // The placements the call names: the list read item by item, or the one placement's own fields at the top level.
     // Nothing at all is no problem: the call may draw only cells and boxes.
-    private static List<PlacementArgs> Placements(ShowPreviewOptions options, List<OptionProblem> problems)
+    private static List<PlacementRequest> Placements(ShowPreviewOptions options, List<OptionProblem> problems)
     {
-        List<PlacementArgs> placements = new List<PlacementArgs>();
+        List<PlacementRequest> placements = new List<PlacementRequest>();
         if (options.Placements != null)
         {
             BesideTheList(options, problems);
@@ -209,7 +209,7 @@ internal sealed class PreviewOrder
     };
 
     // The placements list: each item read as a placement, the what's 1 to 64 of them.
-    private static void Items(JToken given, List<PlacementArgs> placements, List<OptionProblem> problems)
+    private static void Items(JToken given, List<PlacementRequest> placements, List<OptionProblem> problems)
     {
         if (!(given is JArray items) || items.Count == 0 || items.Count > MaximumPlacements)
         {
@@ -234,7 +234,7 @@ internal sealed class PreviewOrder
 
     // The one placement's own fields at the top level; a call that gives none is no problem (it may draw only cells
     // and boxes). The prefab first: a * pattern is no placement, and reading one would only repeat that it is missing.
-    private static void One(ShowPreviewOptions options, List<PlacementArgs> placements, List<OptionProblem> problems)
+    private static void One(ShowPreviewOptions options, List<PlacementRequest> placements, List<OptionProblem> problems)
     {
         JObject item = new JObject();
         if (!PlacementOrders.Prefab(options.Selector.Prefab, ByPrefab, item, problems))

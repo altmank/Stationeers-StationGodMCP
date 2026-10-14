@@ -12,12 +12,12 @@ namespace StationGodMCP.Pure.Verbs;
 /// at, rotation, facing, up, face, orient, above_floor, build_state, label, color); spread ({from, to, step} or a list
 /// of them) standing in for at; who pays (materials) and whether the build is free; allow door_keepout, lint and pad;
 /// include notes and footprint_cells; verbose, acknowledge_gas_lost (checked), confirm and queue. Every placement's
-/// fields are read by the shared place readers (BuildArgs), so the checks are the ones the old place surface made; the
+/// fields are read by the shared place readers (PlacementReader), so the checks are the ones the old place surface made; the
 /// what's label prefixes every refusal ("build structure: ...").
 /// </summary>
 internal sealed class StructureBuildOrder
 {
-    internal const int MaximumPlacements = BuildArgs.MaximumPlacements;
+    internal const int MaximumPlacements = PlaceRequest.MaximumPlacements;
 
     /// <summary>The two ways the call names its placements: the list, or one at the top level.</summary>
     internal const string ByPlacements = "placements";
@@ -44,7 +44,7 @@ internal sealed class StructureBuildOrder
     public string Mark { get; }
 
     /// <summary>Every placement, in order: the list's items, the one at the top level, or spread's points.</summary>
-    public List<PlacementArgs> Placements { get; } = new List<PlacementArgs>();
+    public List<PlacementRequest> Placements { get; } = new List<PlacementRequest>();
 
     /// <summary>Who pays; a placement refunds nothing, so the refund route is the default.</summary>
     public MaterialsSource Materials { get; private set; } = MaterialsSource.Player;
@@ -122,8 +122,8 @@ internal sealed class StructureBuildOrder
     }
 
     /// <summary>The request the game plans: the placements, who pays, and what the call includes.</summary>
-    internal PlaceArguments Arguments(ThingId? from, List<ThingId> moreFrom) =>
-        new PlaceArguments(Placements, from, Free, AllowDoorKeepOut, FootprintCells,
+    internal PlaceRequest Arguments(ThingId? from, List<ThingId> moreFrom) =>
+        new PlaceRequest(Placements, from, Free, AllowDoorKeepOut, FootprintCells,
             new ReportDetail(Fields.Includes("notes"), Fields.Verbose), moreFrom, AllowLint, AllowPad);
 
     // The placements the call names: the list, or the one placement's own fields at the top level (spread standing in

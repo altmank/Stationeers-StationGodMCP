@@ -49,7 +49,7 @@ internal static class StructureBuild
     {
         List<ThingId> more = new List<ThingId>();
         ThingId? from = JobTargets.Payers(order.Materials, order.Label, more);
-        PlaceArguments arguments = order.Arguments(from, more);
+        PlaceRequest arguments = order.Arguments(from, more);
         JobSource source = new JobSource(from?.Value, order.Free, null, null);
         return WriteCheck<PlacePlan>.Run(() => PlacePlanner.Plan(arguments))
             .Outcome(order.Report, plan => Act(plan, arguments, order, source), plan => Described(plan, order));
@@ -66,7 +66,7 @@ internal static class StructureBuild
         _ => throw new InvalidOperationException("A build call answers in the call that reads it.")
     };
 
-    private static VerbOutcome Act(PlacePlan plan, PlaceArguments arguments, StructureBuildOrder order,
+    private static VerbOutcome Act(PlacePlan plan, PlaceRequest arguments, StructureBuildOrder order,
         JobSource source)
     {
         if (!plan.Ready)
@@ -136,7 +136,7 @@ internal static class StructureBuild
             return Point(at.X, at.Y, at.Z);
         }
 
-        return placement.Args.At is AtArg.Absolute absolute
+        return placement.Args.At is AtForm.Absolute absolute
             ? Point(absolute.Point.X, absolute.Point.Y, absolute.Point.Z)
             : null;
     }

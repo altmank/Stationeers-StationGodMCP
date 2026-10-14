@@ -1,8 +1,10 @@
 #nullable enable
 
+using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Verbs;
 using Xunit;
 
 namespace StationGodMCP.Tests;
@@ -77,21 +79,26 @@ public sealed class RelativeAtTests
     [Fact]
     public void AtIsAPointOrARelativeSpec()
     {
-        Assert.IsType<AtArg.Absolute>(BuildArgs.AtOf(new JArray(719, 200.5, 668), "at"));
-        Assert.IsType<AtArg.Absolute>(BuildArgs.AtOf(JObject.Parse("{\"x\":1,\"y\":2,\"z\":3}"), "at"));
-        Assert.IsType<AtArg.Relative>(BuildArgs.AtOf(JObject.Parse("{\"crosshair\":true}"), "at"));
-        Assert.IsType<AtArg.Relative>(BuildArgs.AtOf(
+        Assert.IsType<AtForm.Absolute>(PlacementReader.AtOf(new JArray(719, 200.5, 668), "at"));
+        Assert.IsType<AtForm.Absolute>(PlacementReader.AtOf(JObject.Parse("{\"x\":1,\"y\":2,\"z\":3}"), "at"));
+        Assert.IsType<AtForm.Relative>(PlacementReader.AtOf(JObject.Parse("{\"crosshair\":true}"), "at"));
+        Assert.IsType<AtForm.Relative>(PlacementReader.AtOf(
             JObject.Parse("{\"relative_to\":\"player\",\"forward_m\":2}"), "at"));
-        Assert.IsType<AtArg.Relative>(BuildArgs.AtOf(JObject.Parse("{\"on_face_i_look_at\":true}"), "at"));
+        Assert.IsType<AtForm.Relative>(PlacementReader.AtOf(JObject.Parse("{\"on_face_i_look_at\":true}"), "at"));
     }
 
     [Fact]
     public void NamedFacingsAreKeptForTheWorldToResolve()
     {
-        BuildForm<PlaceArguments> form = BuildArgs.ParsePlace(new Args(JObject.Parse(
-            "{\"prefab\":\"StructureConsole3x3\",\"at\":{\"crosshair\":true},\"facing\":\"toward_player\"," +
-            "\"above_floor_m\":1.0}")));
-        PlacementArgs placement = Assert.IsType<BuildForm<PlaceArguments>.Run>(form).Arguments.Placements[0];
+        List<OptionProblem> problems = new List<OptionProblem>();
+        StructureBuildOrder order = StructureBuildOrder.Of(BuildStructureOptions.Bind(new OptionReader(
+            BuildStructureOptions.Spec, JObject.Parse("{\"prefab\":\"StructureConsole3x3\"," +
+                "\"at\":{\"crosshair\":true},\"facing\":\"toward_player\",\"above_floor\":1.0}"))), problems,
+            out VerbError? missing)!;
+
+        Assert.Empty(problems);
+        Assert.Null(missing);
+        PlacementRequest placement = Assert.Single(order.Placements);
         Assert.Equal("toward_player", placement.NamedFacing?.Word);
         Assert.Equal(1.0, placement.AboveFloorM);
         Assert.IsType<RotationSpec.None>(placement.Rotation);
@@ -100,7 +107,11 @@ public sealed class RelativeAtTests
     [Fact]
     public void OrientExcludesAGivenTurn()
     {
-        Assert.Throws<ApiException>(() => BuildArgs.ParsePlace(new Args(JObject.Parse(
-            "{\"prefab\":\"StructureConsole3x3\",\"at\":[1,2,3],\"facing\":\"+z\",\"orient\":{\"mount\":\"wall\"}}"))));
+        List<OptionProblem> problems = new List<OptionProblem>();
+
+        Assert.Null(StructureBuildOrder.Of(BuildStructureOptions.Bind(new OptionReader(BuildStructureOptions.Spec,
+            JObject.Parse("{\"prefab\":\"StructureConsole3x3\",\"at\":[1,2,3],\"facing\":\"+z\"," +
+                "\"orient\":{\"mount\":\"wall\"}}"))), problems, out _));
+        Assert.Equal("orient", Assert.Single(problems).Path);
     }
 }

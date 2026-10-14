@@ -36,10 +36,10 @@ public sealed class StructureBuildOrderTests
         Assert.Null(missing);
         Assert.Equal("build structure", order.Label);
         Assert.Equal("[undo]", order.Mark);
-        PlacementArgs placement = Assert.Single(order.Placements);
+        PlacementRequest placement = Assert.Single(order.Placements);
         Assert.Equal(0, placement.Index);
         Assert.Equal("StructureWallLight", Assert.IsType<PrefabRef.Named>(placement.Prefab).Name);
-        Assert.Equal(2.5, Assert.IsType<AtArg.Absolute>(placement.At).Point.Y);
+        Assert.Equal(2.5, Assert.IsType<AtForm.Absolute>(placement.At).Point.Y);
         Assert.Equal("-x", Assert.IsType<RotationSpec.Facing>(placement.Rotation).Forward.Name);
         Assert.IsType<BuildStatePick.Last>(placement.State);
         Assert.Null(placement.Label);
@@ -70,13 +70,13 @@ public sealed class StructureBuildOrderTests
         Assert.Null(missing);
         Assert.Equal(2, order.Placements.Count);
         Assert.True(order.Free);
-        PlacementArgs first = order.Placements[0];
+        PlacementRequest first = order.Placements[0];
         Assert.Equal(-1234, Assert.IsType<PrefabRef.Hashed>(first.Prefab).Hash);
         Assert.Equal(3, Assert.IsType<RotationSpec.Euler>(first.Rotation).YTurns);
         Assert.Equal(0, Assert.IsType<BuildStatePick.Index>(first.State).Value);
         Assert.Equal("Hall", first.Label);
         Assert.Equal("Blue", first.Color);
-        PlacementArgs second = order.Placements[1];
+        PlacementRequest second = order.Placements[1];
         Assert.Equal(1, second.Index);
         Assert.Equal(42, Assert.IsType<PrefabRef.Hashed>(second.Prefab).Hash);
         Assert.Equal("+z", Assert.IsType<RotationSpec.OnFace>(second.Rotation).Face.Name);
@@ -206,9 +206,9 @@ public sealed class StructureBuildOrderTests
         Assert.Null(missing);
         Assert.Equal(7, order.Placements.Count);
         Assert.Equal(new[] { 700.0, 704.0, 708.0, 712.0, 716.0, 720.0, 724.0 },
-            order.Placements.Select(placement => ((AtArg.Absolute)placement.At).Point.X));
+            order.Placements.Select(placement => ((AtForm.Absolute)placement.At).Point.X));
         Assert.Equal(new[] { 0, 1, 2, 3, 4, 5, 6 }, order.Placements.Select(placement => placement.Index));
-        foreach (PlacementArgs placement in order.Placements)
+        foreach (PlacementRequest placement in order.Placements)
         {
             Assert.Equal("-z", Assert.IsType<RotationSpec.Facing>(placement.Rotation).Forward.Name);
             Assert.Equal("Hangar", placement.Label);
@@ -227,8 +227,8 @@ public sealed class StructureBuildOrderTests
 
         Assert.Empty(problems);
         Assert.Equal(new[] { 0.0, 4.0, 8.0, 12.0 },
-            order.Placements.Select(placement => ((AtArg.Absolute)placement.At).Point.X));
-        Assert.Equal(new[] { 3.0 }, still.Placements.Select(placement => ((AtArg.Absolute)placement.At).Point.X));
+            order.Placements.Select(placement => ((AtForm.Absolute)placement.At).Point.X));
+        Assert.Equal(new[] { 3.0 }, still.Placements.Select(placement => ((AtForm.Absolute)placement.At).Point.X));
     }
 
     [Fact]
@@ -245,9 +245,9 @@ public sealed class StructureBuildOrderTests
         Assert.Empty(problems);
         Assert.Null(missing);
         Assert.Equal(new[] { 0.0, 1.0, 2.0, 0.0, 0.0, 0.0 },
-            order.Placements.Select(placement => ((AtArg.Absolute)placement.At).Point.X));
+            order.Placements.Select(placement => ((AtForm.Absolute)placement.At).Point.X));
         Assert.Equal(new[] { 0.0, 0.0, 0.0, 5.0, 6.0, 7.0 },
-            order.Placements.Select(placement => ((AtArg.Absolute)placement.At).Point.Z));
+            order.Placements.Select(placement => ((AtForm.Absolute)placement.At).Point.Z));
     }
 
     [Fact]
@@ -296,7 +296,7 @@ public sealed class StructureBuildOrderTests
 
         Assert.Empty(problems);
         Assert.Null(missing);
-        PlacementArgs placement = Assert.Single(order.Placements);
+        PlacementRequest placement = Assert.Single(order.Placements);
         Assert.Equal("StructureWallLight", Assert.IsType<PrefabRef.Named>(placement.Prefab).Name);
         Assert.Equal("-x", Assert.IsType<RotationSpec.Facing>(placement.Rotation).Forward.Name);
         Assert.Equal("+y", ((RotationSpec.Facing)placement.Rotation).Up!.Value.Name);
@@ -326,7 +326,7 @@ public sealed class StructureBuildOrderTests
         Assert.True(order.Report.Acts);
         Assert.True(order.Queue);
         Assert.Equal("run-7", order.AcknowledgeGasLost);
-        PlacementArgs placement = Assert.Single(order.Placements);
+        PlacementRequest placement = Assert.Single(order.Placements);
         Assert.Equal("StructureWallIron", Assert.IsType<PrefabRef.Named>(placement.Prefab).Name);
         Assert.Equal(1, Assert.IsType<BuildStatePick.Index>(placement.State).Value);
         Assert.Equal("Hall", placement.Label);

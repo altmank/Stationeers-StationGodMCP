@@ -15,7 +15,7 @@
       },
       "refusals": {
         "summary": "Why a battery is not set.",
-        "text": "Per id: not_a_battery (the message names what the thing is, and points at in_id when its slots hold cells), thing_not_found, invalid_argument. For the whole call: no_batteries (the rocket or holder has none), too_many_batteries (over 256 found; name them in reference_ids calls), rocket_not_found, not_host, confirm_required."
+        "text": "Per id: not_a_battery (the message names what the thing is, and points at in_id when its slots hold cells), thing_not_found, invalid_argument. For the whole call: no_batteries (the rocket or holder has none), too_many_batteries (over 256 found; name them in reference_ids calls), rocket_not_found, not_host."
       }
     },
     "shared": ["cheats"]

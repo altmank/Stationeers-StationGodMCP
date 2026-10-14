@@ -149,7 +149,7 @@ internal static class BuildReports
             return how;
         }
 
-        return placement.Args.At is AtArg.Absolute ? setDown.TrimStart(';', ' ') : how + setDown;
+        return placement.Args.At is AtForm.Absolute ? setDown.TrimStart(';', ' ') : how + setDown;
     }
 
     internal static RotationView Euler(Quaternion rotation)

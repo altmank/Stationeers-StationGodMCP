@@ -108,7 +108,7 @@ public sealed class StructuresRound2Tests
     [InlineData("{\"crosshair\":true,\"from\":\"up\"}")]
     public void BadRelativeWordsAreRefusedWithTheArguments(string at)
     {
-        ApiException error = Assert.Throws<ApiException>(() => BuildArgs.AtOf(JObject.Parse(at), "at"));
+        ApiException error = Assert.Throws<ApiException>(() => PlacementReader.AtOf(JObject.Parse(at), "at"));
         Assert.Equal(ApiErrors.InvalidArgumentCode, error.Code);
         Assert.StartsWith("at.", error.Message);
     }
@@ -116,7 +116,7 @@ public sealed class StructuresRound2Tests
     [Fact]
     public void GoodRelativeWordsStillPass()
     {
-        Assert.IsType<AtArg.Relative>(BuildArgs.AtOf(
+        Assert.IsType<AtForm.Relative>(PlacementReader.AtOf(
             JObject.Parse("{\"relative_to\":\"1412\",\"frame\":\"World\",\"from\":\"Top\"}"), "at"));
     }
 }

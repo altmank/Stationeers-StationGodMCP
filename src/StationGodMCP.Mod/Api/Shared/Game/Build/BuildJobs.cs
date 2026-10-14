@@ -213,12 +213,12 @@ internal sealed class BuildSettling : HeldTickJob
 /// </summary>
 internal sealed class PlaceWork : BuildWork
 {
-    private readonly PlaceArguments _arguments;
+    private readonly PlaceRequest _arguments;
     private readonly PlaceReportView _preflight;
     private readonly Dictionary<int, Structure> _built = new Dictionary<int, Structure>();
     private PlacePlan? _plan;
 
-    internal PlaceWork(PlaceArguments arguments, PlaceReportView preflight, bool touchesPipes)
+    internal PlaceWork(PlaceRequest arguments, PlaceReportView preflight, bool touchesPipes)
     {
         _arguments = arguments;
         _preflight = preflight;
@@ -453,13 +453,13 @@ internal sealed class RemoveWork : BuildWork
 {
     private static readonly PipeFamily Pipes = new PipeFamily();
 
-    private readonly RemoveArguments _arguments;
+    private readonly RemoveRequest _arguments;
     private readonly RemoveReportView _preflight;
     private readonly Dictionary<int, long> _removed = new Dictionary<int, long>();
     private RemovePlan? _plan;
     private JobGas _gas = JobGas.Untracked;
 
-    internal RemoveWork(RemoveArguments arguments, RemoveReportView preflight, bool touchesPipes)
+    internal RemoveWork(RemoveRequest arguments, RemoveReportView preflight, bool touchesPipes)
     {
         _arguments = arguments;
         _preflight = preflight;

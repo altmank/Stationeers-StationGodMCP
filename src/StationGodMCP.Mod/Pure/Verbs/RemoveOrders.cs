@@ -62,8 +62,8 @@ internal sealed class RemoveStructureOrder
     public string? AcknowledgeGasLost { get; private set; }
 
     /// <summary>The request the game plans: the ids, the guards, refund_to, who pays and what the call includes.</summary>
-    internal RemoveArguments Arguments(ThingId? from, List<ThingId> moreFrom) =>
-        new RemoveArguments(Ids, Allow, Materials.RefundTo, from, IncludeNotes, GasTo, SplitDetail);
+    internal RemoveRequest Arguments(ThingId? from, List<ThingId> moreFrom) =>
+        new RemoveRequest(Ids, Allow, Materials.RefundTo, from, IncludeNotes, GasTo, SplitDetail);
 
     /// <summary>
     /// The order remove structure's options give, over the ids already read against the world (named, with unread

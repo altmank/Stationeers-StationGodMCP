@@ -10,7 +10,7 @@ namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>
 /// The placement readers the build orders share (build structure, show preview): one placement through the shared place
-/// reader (BuildArgs.Placement, so the refusals are the ones the old place surface made), a placement's fields with
+/// reader (PlacementReader.Placement, so the refusals are the ones the old place surface made), a placement's fields with
 /// above_floor as this catalogue's name for the reader's above_floor_m, the one prefab a top-level prefab option may
 /// name, and a position. Every refusal the shared readers throw becomes an OptionProblem at the option's path, so a
 /// call answers with every problem at once.
@@ -21,15 +21,15 @@ internal static class PlacementOrders
     internal const string PrefabOption = "prefab";
 
     /// <summary>
-    /// One placement read by the shared reader (BuildArgs.Placement): a placements list reads it with the index it has
+    /// One placement read by the shared reader (PlacementReader.Placement): a placements list reads it with the index it has
     /// there, the one placement at the top level with index 0 and no prefix.
     /// </summary>
-    internal static void Add(List<PlacementArgs> placements, JObject item, int index, string prefix, WhatSpec what,
+    internal static void Add(List<PlacementRequest> placements, JObject item, int index, string prefix, WhatSpec what,
         List<OptionProblem> problems)
     {
         try
         {
-            placements.Add(BuildArgs.Placement(new Args(item), index, prefix));
+            placements.Add(PlacementReader.Placement(new Args(item), index, prefix));
         }
         catch (ApiException refused)
         {
@@ -106,12 +106,12 @@ internal static class PlacementOrders
         return false;
     }
 
-    /// <summary>A position in metres through the shared reader (BuildArgs.PositionOf); false with its problem added.</summary>
+    /// <summary>A position in metres through the shared reader (PlacementReader.PositionOf); false with its problem added.</summary>
     internal static bool Position(JToken token, string path, List<OptionProblem> problems, out Metres point)
     {
         try
         {
-            point = BuildArgs.PositionOf(token, path);
+            point = PlacementReader.PositionOf(token, path);
             return true;
         }
         catch (ApiException refused)

@@ -23,12 +23,12 @@ namespace StationGodMCP.Api.Shared.Game.Build;
 /// <summary>One placement as planned: the prefab, where and how it stands, its state, look and cost.</summary>
 internal sealed class PlannedPlacement
 {
-    internal PlannedPlacement(PlacementArgs args)
+    internal PlannedPlacement(PlacementRequest args)
     {
         Args = args;
     }
 
-    internal PlacementArgs Args { get; }
+    internal PlacementRequest Args { get; }
 
     internal int Index => Args.Index;
 
@@ -122,12 +122,12 @@ internal sealed class PlaceLift
 /// <summary>A structure placement call as planned: every placement, the source, the stocks, problems and warnings.</summary>
 internal sealed class PlacePlan
 {
-    internal PlacePlan(PlaceArguments arguments)
+    internal PlacePlan(PlaceRequest arguments)
     {
         Arguments = arguments;
     }
 
-    internal PlaceArguments Arguments { get; }
+    internal PlaceRequest Arguments { get; }
 
     internal List<PlannedPlacement> Placements { get; } = new List<PlannedPlacement>();
 
@@ -189,7 +189,7 @@ internal static class PlacePlanner
                                         NetworkType.Chute);
 
     /// <summary>The preflight. lint: the report lint rules add their warnings (not in the held tick's final check).</summary>
-    internal static PlacePlan Plan(PlaceArguments arguments, bool lint = true)
+    internal static PlacePlan Plan(PlaceRequest arguments, bool lint = true)
     {
         if (NetworkManager.IsClient || !GameManager.RunSimulation)
         {
@@ -213,7 +213,7 @@ internal static class PlacePlanner
         List<ColorSwatch> swatches = Singleton<GameManager>.Instance != null
             ? Singleton<GameManager>.Instance.CustomColors
             : new List<ColorSwatch>();
-        foreach (PlacementArgs args in arguments.Placements)
+        foreach (PlacementRequest args in arguments.Placements)
         {
             PlannedPlacement placement = new PlannedPlacement(args);
             plan.Placements.Add(placement);

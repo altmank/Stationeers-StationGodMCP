@@ -5,6 +5,7 @@ using System.Linq;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Verbs;
 using Xunit;
 
 namespace StationGodMCP.Tests;
@@ -26,7 +27,10 @@ public sealed class AllowUnsupportedTests
 
     private static readonly RemovalAllowance EveryOther = new(true, true, broken: true, burst: true);
 
-    private static Args Of(string json) => new(JObject.Parse(json));
+    // The order remove structure's options give, with 4100 read as its one reference id.
+    private static RemoveStructureOrder? Order(string json, List<OptionProblem> problems) =>
+        RemoveStructureOrder.Of(RemoveStructureOptions.Bind(new OptionReader(RemoveStructureOptions.Spec,
+            JObject.Parse(json))), new List<ThingId?> { new ThingId(4100) }, new List<ReportProblem>(), problems);
 
     [Fact]
     public void ByDefaultAnUnsupportedDeviceRefusesAndNamesTheOverride()
@@ -95,15 +99,15 @@ public sealed class AllowUnsupportedTests
     [Fact]
     public void RemovalsReadAllowUnsupported()
     {
-        BuildForm<RemoveArguments>.Run run = Assert.IsType<BuildForm<RemoveArguments>.Run>(
-            BuildArgs.ParseRemove(Of("{\"reference_ids\":[\"4100\"],\"allow_unsupported\":true}")));
-        Assert.True(run.Arguments.Allow.Unsupported);
-        Assert.False(run.Arguments.Allow.Broken);
+        List<OptionProblem> problems = new List<OptionProblem>();
+        RemoveStructureOrder lifted = Order("{\"id\": \"4100\", \"allow\": [\"unsupported\"]}", problems)!;
 
-        BuildForm<RemoveArguments>.Run plain = Assert.IsType<BuildForm<RemoveArguments>.Run>(
-            BuildArgs.ParseRemove(Of("{\"reference_ids\":[\"4100\"]}")));
-        Assert.False(plain.Arguments.Allow.Unsupported);
-        Assert.Equal(ApiErrors.InvalidArgumentCode, Assert.Throws<ApiException>(
-            () => BuildArgs.ParseRemove(Of("{\"job_id\":\"remove-3\",\"allow_unsupported\":true}"))).Code);
+        Assert.Empty(problems);
+        Assert.True(lifted.Allow.Unsupported);
+        Assert.False(lifted.Allow.Broken);
+
+        problems.Clear();
+        RemoveStructureOrder plain = Order("{\"id\": \"4100\"}", problems)!;
+        Assert.False(plain.Allow.Unsupported);
     }
 }
