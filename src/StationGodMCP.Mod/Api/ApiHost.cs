@@ -6,7 +6,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Text;
-using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Api.Views;
@@ -23,22 +22,18 @@ using StationGodMCP.Verbs;
 namespace StationGodMCP.Api;
 
 /// <summary>
-/// Every method by name, and one call in and one reply out. Calls run on the main thread, one at a time
-/// (StationGodRequestDispatcher.RunCall). A refusal is the tool's ApiException; a game member this
-/// build no longer has is game_changed; anything else is internal_error, logged.
+/// One call in and one reply out, on the main thread, one at a time (StationGodRequestDispatcher.RunCall). A call that
+/// reaches this host is neither a verb (VerbCalls) nor one of the protocol methods' own lanes (subscribe, drop_job,
+/// hold_restore, stream_costs), so it is refused method_not_found - naming the MCP server when the method catalogue
+/// says the sidecar answers it. A catalogue that will not load is internal_error, logged.
 /// </summary>
 internal static class ApiHost
 {
     private const int ElapsedDecimals = 2;
 
-    internal static readonly Dictionary<string, Func<Args, object>> Methods =
-        new Dictionary<string, Func<Args, object>>(StringComparer.Ordinal);
-
     /// <summary>
-    /// One call: its reply message as JSON text (type reply, shaped, elapsed_ms, queue_ms, frame, budget_hit when the
-    /// frame's request budget was reached as the handler finished). Top-level argument names are checked here unless the connection's reader
-    /// thread already refused unknown ones (StrictArguments: the full check); the result is shaped by the call's shape, and a reply larger than max_reply_bytes (or the shape's
-    /// max_bytes) is answered reply_too_large.
+    /// One call: its reply message as JSON text (type reply, elapsed_ms, queue_ms, frame, budget_hit when the frame's
+    /// request budget was reached as the refusal was built).
     /// </summary>
     internal static HandledRequest HandleCall(CallRequest call, double queueWaitMs, long frame)
     {
@@ -59,7 +54,7 @@ internal static class ApiHost
         }
         catch (Exception exception)
         {
-            // The serializer failing on a tool's reply object: answered internal_error, as any tool failure is.
+            // A reply that will not serialise is answered internal_error, like any other failure of the answer.
             StationGodMod.LogWarning($"API reply could not be serialised: {exception}");
             answer = answer.Failed(new ErrorView("internal_error", exception.Message));
             json = SerializeCall(ref answer, queueMs, frame, budgetHit);
@@ -101,38 +96,17 @@ internal static class ApiHost
     /// <summary>The largest reply sent (limits.max_reply_bytes).</summary>
     internal const int MaxReplyBytes = 16777216;
 
-    // The handler to its answer.
+    // The call's answer: one the mod does not answer is a refusal, and the catalogue's own words name its answerer.
     private static Answer Run(CallRequest call, Stopwatch watch)
     {
         using ProfScope executing = Prof.Scope(ProfId.CallExecute);
         string? requestId = call.Id;
         string? method = call.Method;
-        JObject? parameters = call.Params;
-        ShapeRequest? shape = call.Shape;
         try
         {
             DeclaredArguments declared = Declared.Value.Arguments ??
                                          throw ApiErrors.Refused("internal_error", Declared.Value.Problem!);
-            if (method == null || !Methods.TryGetValue(method, out Func<Args, object> handler))
-            {
-                throw ApiErrors.Refused("method_not_found", method != null && declared.RunsInSidecar(method)
-                    ? $"{method} is answered by the MCP server (the sidecar) from the catalogue, " +
-                        "not by the game; call it through MCP, or read the catalogue's help."
-                    : $"Unknown StationGodMCP method '{method}'.");
-            }
-
-            declared.Check(call);
-            ArgumentNames? names = declared.NamesOf(method);
-            BeginReply();
-            ShapeRequest replyShape = shape ?? ShapeRequest.None;
-            object handled =
-                handler(names != null ? new Args(parameters, names, replyShape) : new Args(parameters, replyShape));
-
-            TruncatingViews.Note(handled);
-            object result = ResolvedNetworks.Attach(handled, ResolvedNetworks.Take());
-            result = GasHoldReply.Attach(result, GasHoldReply.Take());
-            return Answer.Success(requestId, method, result, Elapsed(watch), shape,
-                Pure.Shaping.Truncations.Take());
+            return Answer.Failure(requestId, method, UnknownMethod(declared, method), Elapsed(watch));
         }
         catch (ApiException exception)
         {
@@ -144,19 +118,21 @@ internal static class ApiHost
         }
         catch (Exception exception)
         {
-            // The request boundary: a bug in any tool's game calls must answer the client, not break the pipe.
+            // The request boundary: a catalogue that will not load must answer the client, not break the pipe.
             StationGodMod.LogWarning($"API request failed: {exception}");
             return Answer.Failure(requestId, method, new ErrorView("internal_error", exception.Message), Elapsed(watch));
         }
     }
 
-    // What a handler adds to its reply on the side is collected from here.
-    private static void BeginReply()
-    {
-        ResolvedNetworks.Begin();
-        GasHoldReply.Begin();
-        Pure.Shaping.Truncations.Begin();
-    }
+    /// <summary>
+    /// method_not_found for a call the mod does not answer: the catalogue's own entry says whether the MCP server
+    /// answers it from the catalogue, rather than the game.
+    /// </summary>
+    private static ErrorView UnknownMethod(DeclaredArguments declared, string? method) =>
+        new ErrorView("method_not_found", method != null && declared.RunsInSidecar(method)
+            ? $"{method} is answered by the MCP server (the sidecar) from the catalogue, " +
+                "not by the game; call it through MCP, or read the catalogue's help."
+            : $"Unknown StationGodMCP method '{method}'.");
 
     private const string CatalogueResource = "StationGodMCP.catalogue.json";
 
@@ -303,18 +279,19 @@ internal sealed class HandledRequest
 
 /// <summary>
 /// Per-method counters since the mod loaded, for mod_info (methods and runtime). In memory only; nothing is logged.
-/// Counted for a known method only, so a client sending made-up names cannot grow the table. Thread-safe
+/// Counted for a method the dispatcher answers only, so a client sending made-up names cannot grow the table. Thread-safe
 /// (MethodTimings): the main thread records times, the listener thread the reply size.
 /// </summary>
 internal static class MethodStats
 {
     private static readonly MethodTimings Timings = new MethodTimings();
 
-    /// <summary>The method when it is one ApiHost knows or a what with a verb handler (find.thing), else null.</summary>
+    /// <summary>
+    /// The method when the dispatcher answers it (a verb's what, find.thing), else null: the verb handlers are the one
+    /// method table left.
+    /// </summary>
     internal static string? Counted(string? method) =>
-        method != null && (ApiHost.Methods.ContainsKey(method) || VerbHandlers.Dispatcher.AnswersKey(method))
-            ? method
-            : null;
+        method != null && VerbHandlers.Dispatcher.AnswersKey(method) ? method : null;
 
     internal static void Record(string? method, bool ok, double handlerMs, double serializeMs, double queueWaitMs)
     {

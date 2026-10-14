@@ -440,16 +440,13 @@ public sealed class StructureSwapWireTests
     }
 }
 
-/// <summary>Every tool the sidecar lists has a definition and a handler in the mod, and the other way round.</summary>
+/// <summary>Every tool the sidecar lists is a method the mod has retired or one the sidecar answers itself; the mod
+/// handles no per-tool method.</summary>
 public sealed class ToolRegistrationTests
 {
-    // Answered without an ApiHost handler: sample_logic in the mod's subscription lane, tool_info by the sidecar from
-    // the catalogue.
+    // Answered outside the verb dispatcher: sample_logic in the mod's subscription lane, tool_info by the sidecar
+    // from the catalogue.
     private static readonly string[] SidecarOnly = { "sample_logic", "tool_info" };
-
-    /// <summary>The methods the mod still handles per tool: every one A5 retires with the verbs. Empty: A5's last
-    /// per-tool method (undo_job) is gone.</summary>
-    private static readonly HashSet<string> LaterMethods = new HashSet<string>(System.StringComparer.Ordinal);
 
     [Fact]
     public void TheToolListAndTheModsHandlersAgree()
@@ -461,12 +458,10 @@ public sealed class ToolRegistrationTests
             .OfType<LiteralExpressionSyntax>()
             .Select(literal => literal.Token.ValueText));
 
+        // ApiHost holds no per-tool method: every name the sidecar's method catalogue lists that the mod does not
+        // answer is a retired method (RetiredMethods) or one the sidecar answers itself (SidecarOnly).
         Assert.Empty(names.Except(handled).Except(SidecarOnly).Except(CatalogueChecks.RetiredMethods.Names));
-        Assert.Empty(handled.Except(names));
-        // The methods A5 has still to retire: none left, so the sidecar's whole list is RetiredMethods until the
-        // method catalogue goes in B.
-        Assert.Subset(names, LaterMethods);
-        Assert.Subset(handled, LaterMethods);
+        Assert.Empty(handled);
     }
 
     private static HashSet<string> StringsIn(SyntaxNode node) =>
