@@ -1,4 +1,4 @@
 The device scopes: 'world' and each StationGod Gateway with its status.
 No options.
-Reply: gateways [{gateway_id, display_name, prefab_name, available, status, data_network_count, visible_device_count, worn_item_count}], count
+Reply: gateways [{gateway_id, display_name, prefab_name, available, status, data_network_count, visible_device_count, worn_item_count}], count, total, offset, has_more
 Example: find {what: "gateway"}

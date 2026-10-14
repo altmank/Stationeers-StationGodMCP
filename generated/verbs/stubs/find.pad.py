@@ -9,6 +9,9 @@ def find(what: Literal['pad'], *,
           list[{shuttle_type: str, pad_size_tiles: list[int], runway_tiles: int, needs_threshold: bool, fits: bool}], contacts: list[{reference_id:
           str, name: str | None, shuttle_type: str, pad_size_tiles: list[int], fits: bool, can_land: bool, reason: str}]}]
       count: int
+      total: int
+      offset: int
+      has_more: bool
     Types: Vec3 = {x: float, y: float, z: float}
     Example: sg.find('pad')
     """

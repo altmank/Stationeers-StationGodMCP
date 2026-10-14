@@ -13,8 +13,10 @@ namespace StationGodMCP.Verbs;
 
 /// <summary>
 /// find plant (catalogue find.json): every plant in a tray, planter or station (Plants), by reference id, each in short
-/// unless verbose, with include unplanted the crops and seeds not planted too; one id is that plant in full. A list of
-/// ids answers one row per id (Rows), each the plant in full or why it is none, under the game's clock. Read only.
+/// unless verbose, with include unplanted the crops and seeds not planted too; one id is that plant in full;
+/// {plants, count, total, offset, has_more, game_time_s, day_length_s, debug_fast_growth} (ListReply: count the plants
+/// list, the plants whole, so offset 0, no limit and has_more false). A list of ids answers one row per id (Rows), each
+/// the plant in full or why it is none, under the game's clock. Read only.
 /// </summary>
 internal static class FindPlant
 {
@@ -48,8 +50,9 @@ internal static class FindPlant
             views.Add(whole ? view : new PlantBriefView(view));
         }
 
-        return new VerbOutcome.Answered(ReplyFields.Of(("game_time_s", clock.GameTimeS),
-            ("day_length_s", clock.DayLengthS), ("debug_fast_growth", clock.DebugFastGrowth), ("plants", views),
-            ("count", views.Count)));
+        return new VerbOutcome.Answered(ListReply.Of("plants", views, Paging.All,
+            plant => JToken.FromObject(plant, serializer),
+            ReplyFields.Of(("game_time_s", clock.GameTimeS), ("day_length_s", clock.DayLengthS),
+                ("debug_fast_growth", clock.DebugFastGrowth))));
     }
 }

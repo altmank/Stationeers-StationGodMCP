@@ -8,6 +8,10 @@ def find(what: Literal['room'], *,
       rooms: list[{room_id: str, room_type: str, cell_count: int, volume_l: float, pressure_kpa: float, temperature_k: float, total_mol: float,
           heat_capacity_j_per_k: float, thermal_energy_j: float, gases: list[{gas: str, amount_mol: float, ratio: float}], bounds: {min: Vec3, max:
           Vec3}, contains_local_player: bool, devices: list[Thing] | None, cells: list[Vec3] | None}]
+      count: int
+      total: int
+      offset: int
+      has_more: bool
       local_player_room_id: str | None
     Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}; Vec3 = {x: float, y: float, z: float}
     Example: sg.find('room', id='4820585')

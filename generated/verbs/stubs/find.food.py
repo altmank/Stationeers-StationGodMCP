@@ -8,6 +8,10 @@ def find(what: Literal['food'], *,
           carried_by: str | None, held_in: list[{reference_id: str, prefab_name: str | None, display_name: str | None, slot_index: int, slot_name: str
           | None}], position: Vec3, distance_m: float | None, nutrition_each: float, nutrition: float, food_quality: str, decay_time_left_s: int |
           None, in_package: str | None, package_name: str | None}]
+      count: int
+      total: int
+      offset: int
+      has_more: bool
       drinks: list[{reference_id: str, prefab_name: str | None, display_name: str | None, quantity: float, max_quantity: float | None, location: str,
           carried_by: str | None, held_in: list[{reference_id: str, prefab_name: str | None, display_name: str | None, slot_index: int, slot_name: str
           | None}], position: Vec3, distance_m: float | None, liquid_l: float, hydration: float, in_package: str | None, package_name: str | None}]

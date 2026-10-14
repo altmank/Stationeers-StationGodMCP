@@ -12,8 +12,10 @@ namespace StationGodMCP.Verbs;
 
 /// <summary>
 /// find room (catalogue find.json): every closed room measured cell by cell, largest first (ClosedRooms), with include
-/// cells every cell centre and include devices the devices in each; one id is the room that thing is in. A list of ids
-/// answers one row per id (Rows), each that thing's room or why it is in none. Read only.
+/// cells every cell centre and include devices the devices in each; one id is the room that thing is in;
+/// {rooms, count, total, offset, has_more, local_player_room_id} (ListReply: the rooms whole, so offset 0, no limit
+/// and has_more false). A list of ids answers one row per id (Rows), each that thing's room or why it is in none. Read
+/// only.
 /// </summary>
 internal static class FindRoom
 {
@@ -38,7 +40,15 @@ internal static class FindRoom
         List<RoomView> rooms = ids != null
             ? new List<RoomView> { RoomOf(ids.Ids[0], measure) }
             : ClosedRooms.All(measure);
-        return new VerbOutcome.Answered(ReplyFields.Of(("rooms", rooms), (PlayerRoom, measure.PlayerRoomId)));
+        return new VerbOutcome.Answered(RoomsReply(rooms, measure));
+    }
+
+    // The rooms, whole, as one page.
+    private static JObject RoomsReply(List<RoomView> rooms, RoomMeasure measure)
+    {
+        JsonSerializer serializer = ApiJson.Fresh();
+        return ListReply.Of("rooms", rooms, Paging.All, room => JToken.FromObject(room, serializer),
+            ReplyFields.Of((PlayerRoom, measure.PlayerRoomId)));
     }
 
     // The room the thing is in: refused thing_not_found or not_in_room.

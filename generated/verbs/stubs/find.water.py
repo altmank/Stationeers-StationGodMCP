@@ -7,6 +7,9 @@ def find(what: Literal['water'], *,
       sources: list[{kind: str, owner: Any, atmosphere_id: str, volume_l: float, pressure_kpa: float, temperature_k: float, water: {liquid_mol: float,
           liquid_l: float, hydration: float, polluted_mol: float, polluted_l: float, steam_mol: float, steam_if_condensed_l: float}}]
       count: int
+      total: int
+      offset: int
+      has_more: bool
       totals: {liquid_mol: float, liquid_l: float, hydration: float, polluted_mol: float, polluted_l: float, steam_mol: float, steam_if_condensed_l:
           float}
       min_mol: float

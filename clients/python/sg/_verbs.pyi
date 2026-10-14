@@ -102,10 +102,14 @@ def find(what: Literal['device'], *,
     """Devices with logic, in the world or on one gateway's data networks.
     Paging and prefab parts are applied by the verb layer to the handler's whole list (it walks every device either way).
     Reply:
-      gateway_id: str
       devices: list[{reference_id: str, prefab_name: str | None, prefab_hash: int, display_name: str | None, runtime_type: str | None, slot_count:
           int, is_gateway: bool, worn_by: str | None, worn_slot: str | None}]
       count: int
+      total: int
+      offset: int
+      limit: int
+      has_more: bool
+      gateway_id: str
     Example: sg.find('device', prefab='*GasSensor*')
     """
 
@@ -171,6 +175,9 @@ def find(what: Literal['pad'], *,
           list[{shuttle_type: str, pad_size_tiles: list[int], runway_tiles: int, needs_threshold: bool, fits: bool}], contacts: list[{reference_id:
           str, name: str | None, shuttle_type: str, pad_size_tiles: list[int], fits: bool, can_land: bool, reason: str}]}]
       count: int
+      total: int
+      offset: int
+      has_more: bool
     Types: Vec3 = {x: float, y: float, z: float}
     Example: sg.find('pad')
     """
@@ -185,6 +192,9 @@ def find(what: Literal['water'], *,
       sources: list[{kind: str, owner: Any, atmosphere_id: str, volume_l: float, pressure_kpa: float, temperature_k: float, water: {liquid_mol: float,
           liquid_l: float, hydration: float, polluted_mol: float, polluted_l: float, steam_mol: float, steam_if_condensed_l: float}}]
       count: int
+      total: int
+      offset: int
+      has_more: bool
       totals: {liquid_mol: float, liquid_l: float, hydration: float, polluted_mol: float, polluted_l: float, steam_mol: float, steam_if_condensed_l:
           float}
       min_mol: float
@@ -227,6 +237,10 @@ def find(what: Literal['food'], *,
           carried_by: str | None, held_in: list[{reference_id: str, prefab_name: str | None, display_name: str | None, slot_index: int, slot_name: str
           | None}], position: Vec3, distance_m: float | None, nutrition_each: float, nutrition: float, food_quality: str, decay_time_left_s: int |
           None, in_package: str | None, package_name: str | None}]
+      count: int
+      total: int
+      offset: int
+      has_more: bool
       drinks: list[{reference_id: str, prefab_name: str | None, display_name: str | None, quantity: float, max_quantity: float | None, location: str,
           carried_by: str | None, held_in: list[{reference_id: str, prefab_name: str | None, display_name: str | None, slot_index: int, slot_name: str
           | None}], position: Vec3, distance_m: float | None, liquid_l: float, hydration: float, in_package: str | None, package_name: str | None}]
@@ -251,11 +265,14 @@ def find(what: Literal['plant'], *,
 ) -> dict:  # main list: r['plants']; iterating or indexing it walks every page, in order
     """Plants in trays, planters and stations: stage, health, problems, time to harvest.
     Reply:
+      plants: list[Any]
+      count: int
+      total: int
+      offset: int
+      has_more: bool
       game_time_s: float
       day_length_s: int
       debug_fast_growth: bool
-      plants: list[Any]
-      count: int
     Example: sg.find('plant')
     In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
     """
@@ -271,6 +288,10 @@ def find(what: Literal['room'], *,
       rooms: list[{room_id: str, room_type: str, cell_count: int, volume_l: float, pressure_kpa: float, temperature_k: float, total_mol: float,
           heat_capacity_j_per_k: float, thermal_energy_j: float, gases: list[{gas: str, amount_mol: float, ratio: float}], bounds: {min: Vec3, max:
           Vec3}, contains_local_player: bool, devices: list[Thing] | None, cells: list[Vec3] | None}]
+      count: int
+      total: int
+      offset: int
+      has_more: bool
       local_player_room_id: str | None
     Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}; Vec3 = {x: float, y: float, z: float}
     Example: sg.find('room', id='4820585')
@@ -287,6 +308,9 @@ def find(what: Literal['gateway'], *,
       gateways: list[{gateway_id: str, display_name: str | None, prefab_name: str | None, available: bool, status: str, data_network_count: int,
           visible_device_count: int, worn_item_count: int}]
       count: int
+      total: int
+      offset: int
+      has_more: bool
     Example: sg.find('gateway')
     """
 

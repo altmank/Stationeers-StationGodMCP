@@ -5,7 +5,12 @@ using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using StationGodMCP.Api.Shared;
+using StationGodMCP.Api.Views;
 using StationGodMCP.Client;
+using StationGodMCP.Pure.Verbs;
 using StationGodMCP.Server;
 using Xunit;
 using static StationGodMCP.Tests.Hub.Verbs;
@@ -42,6 +47,47 @@ public sealed class CursorAndJobTests
         Same("""{"what":"item","prefab":"ItemIronOre","cursor":"open"}""", game.CallsTo("find")[0].Params());
         Same("""{"what":"item","prefab":"ItemIronOre","offset":2}""", game.CallsTo("find")[1].Params());
         Same("""{"entries":[{"reference_id":"3"}]}""", page);
+    }
+
+    // find device's reply for one page, as its handler writes it: 30 devices found, 25 offered of it (ListReply).
+    private static string DevicePage(int offset, int count)
+    {
+        List<DeviceView> devices = new List<DeviceView>();
+        for (int index = offset; index < offset + count; index++)
+        {
+            devices.Add(new DeviceView(new ThingView(new ThingId(500 + index), "StructureGasSensor",
+                "Gas Sensor " + index), -1252983604, "Assets.Scripts.Objects.Pipes.GasSensor", 0,
+                new DeviceWear(false, null, null)));
+        }
+
+        Newtonsoft.Json.JsonSerializer serializer = ApiJson.Fresh();
+        return ListReply.OfPage("devices", new Page<DeviceView>(devices, 30, offset, 25, offset + count < 30),
+            device => JToken.FromObject(device, serializer), ReplyFields.Of(("gateway_id", "world")))
+            .ToString(Formatting.None);
+    }
+
+    [Fact]
+    public void AProgramFaceFindDeviceWalksTheWholeListThroughMore()
+    {
+        FakeGameLink game = new();
+        game.Answer = call => FakeGameLink.Ok(call.Params()["offset"] == null ? DevicePage(0, 25) : DevicePage(25, 5));
+        VerbPipeline pipeline = game.Pipeline();
+
+        JsonNode reply = pipeline.Call("find", "device", "{}", Face.Program).Done()!;
+        JsonNode page = More(pipeline, 0, (string)reply["cursor"]!).Done()!;
+
+        // The mod's page marks itself (has_more, total, offset, limit), so the hub walks it by offset, not cursor_id.
+        Assert.True((bool)reply["has_more"]!);
+        Assert.Equal(25, reply["devices"]!.AsArray().Count);
+        Assert.Equal(30, (int)reply["total"]!);
+        Assert.Equal(25, (int)reply["limit"]!);
+        Assert.Equal("world", (string?)reply["gateway_id"]);
+        Same("""{"what":"device","cursor":"open"}""", game.CallsTo("find")[0].Params());
+        Same("""{"what":"device","offset":25}""", game.CallsTo("find")[1].Params());
+        Assert.Equal(5, page["entries"]!.AsArray().Count);
+        Assert.Equal("525", (string?)page["entries"]![0]!["reference_id"]);
+        Assert.Equal(30, reply["devices"]!.AsArray().Count + page["entries"]!.AsArray().Count);
+        Assert.Equal(0, pipeline.Cursors.Count);
     }
 
     [Fact]

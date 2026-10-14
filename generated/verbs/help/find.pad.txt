@@ -1,4 +1,4 @@
 Landing pads for traders and rockets (not power or teleport pads), by the game's checks: size, runway, which ships fit.
 No options.
-Reply: pads [{reference_id, prefab_name, display_name, position, forward, is_network_center, piece_count, extent, largest_square_tiles, runway_ok, fits_by_ship, contacts}], count
+Reply: pads [{reference_id, prefab_name, display_name, position, forward, is_network_center, piece_count, extent, largest_square_tiles, runway_ok, fits_by_ship, contacts}], count, total, offset, has_more
 Example: find {what: "pad"}

@@ -1,6 +1,9 @@
 #nullable enable
 
 using System.Collections.Generic;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure.Verbs;
@@ -10,7 +13,8 @@ namespace StationGodMCP.Verbs;
 /// <summary>
 /// find device (catalogue find.json): every device with logic in the gateway's scope (DeviceScope: devices, then worn
 /// and held logic items), by reference id, kept by prefab and by part of the shown name, then paged (offset, limit);
-/// {gateway_id, devices, count}, count the page's devices. The list pages by offset only. Read only.
+/// {devices, count, total, offset, limit, has_more, gateway_id} (ListReply: count the page's devices, total every
+/// device the call found, has_more while more follow). The list pages by offset only. Read only.
 /// </summary>
 internal static class FindDevice
 {
@@ -34,7 +38,8 @@ internal static class FindDevice
         }
 
         Page<DeviceView> page = options.Paging.Of(devices);
-        return new VerbOutcome.Answered(ReplyFields.Of(("gateway_id", scope.Id), ("devices", page.Entries),
-            ("count", page.Entries.Count)));
+        JsonSerializer serializer = ApiJson.Fresh();
+        return new VerbOutcome.Answered(ListReply.OfPage("devices", page,
+            device => JToken.FromObject(device, serializer), ReplyFields.Of(("gateway_id", scope.Id))));
     }
 }

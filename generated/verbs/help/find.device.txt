@@ -6,5 +6,5 @@ Options:
 - limit (integer, default 25): Entries per page.
 - offset (integer, default 0): Entries to skip.
 Paging and prefab parts are applied by the verb layer to the handler's whole list (it walks every device either way).
-Reply: gateway_id, devices [{reference_id, prefab_name, prefab_hash, display_name, runtime_type, slot_count, is_gateway, worn_by, worn_slot}], count
+Reply: devices [{reference_id, prefab_name, prefab_hash, display_name, runtime_type, slot_count, is_gateway, worn_by, worn_slot}], count, total, offset, limit, has_more, gateway_id
 Example: find {what: "device", prefab: "*GasSensor*"}

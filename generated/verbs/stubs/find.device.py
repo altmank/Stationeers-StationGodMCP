@@ -8,9 +8,13 @@ def find(what: Literal['device'], *,
     """Devices with logic, in the world or on one gateway's data networks.
     Paging and prefab parts are applied by the verb layer to the handler's whole list (it walks every device either way).
     Reply:
-      gateway_id: str
       devices: list[{reference_id: str, prefab_name: str | None, prefab_hash: int, display_name: str | None, runtime_type: str | None, slot_count:
           int, is_gateway: bool, worn_by: str | None, worn_slot: str | None}]
       count: int
+      total: int
+      offset: int
+      limit: int
+      has_more: bool
+      gateway_id: str
     Example: sg.find('device', prefab='*GasSensor*')
     """

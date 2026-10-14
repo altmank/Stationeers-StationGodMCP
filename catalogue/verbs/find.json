@@ -197,9 +197,13 @@
         "variants": [
           {
             "keys": {
-              "gateway_id": "str",
               "devices": "list[{reference_id: str, prefab_name: str | None, prefab_hash: int, display_name: str | None, runtime_type: str | None, slot_count: int, is_gateway: bool, worn_by: str | None, worn_slot: str | None}]",
-              "count": "int"
+              "count": "int",
+              "total": "int",
+              "offset": "int",
+              "limit": "int",
+              "has_more": "bool",
+              "gateway_id": "str"
             }
           }
         ]
@@ -292,7 +296,10 @@
           {
             "keys": {
               "pads": "list[{reference_id: str, prefab_name: str | None, display_name: str | None, position: Vec3, forward: str, is_network_center: bool, piece_count: int, extent: {x_tiles: int, z_tiles: int} | None, largest_square_tiles: int, runway_ok: bool | None, fits_by_ship: list[{shuttle_type: str, pad_size_tiles: list[int], runway_tiles: int, needs_threshold: bool, fits: bool}], contacts: list[{reference_id: str, name: str | None, shuttle_type: str, pad_size_tiles: list[int], fits: bool, can_land: bool, reason: str}]}]",
-              "count": "int"
+              "count": "int",
+              "total": "int",
+              "offset": "int",
+              "has_more": "bool"
             }
           }
         ],
@@ -319,6 +326,9 @@
             "keys": {
               "sources": "list[{kind: str, owner: Any, atmosphere_id: str, volume_l: float, pressure_kpa: float, temperature_k: float, water: {liquid_mol: float, liquid_l: float, hydration: float, polluted_mol: float, polluted_l: float, steam_mol: float, steam_if_condensed_l: float}}]",
               "count": "int",
+              "total": "int",
+              "offset": "int",
+              "has_more": "bool",
               "totals": "{liquid_mol: float, liquid_l: float, hydration: float, polluted_mol: float, polluted_l: float, steam_mol: float, steam_if_condensed_l: float}",
               "min_mol": "float",
               "local_player": "{reference_id: str, display_name: str | None, position: Vec3} | None"
@@ -398,6 +408,10 @@
           {
             "keys": {
               "food": "list[{reference_id: str, prefab_name: str | None, display_name: str | None, quantity: float, max_quantity: float | None, location: str, carried_by: str | None, held_in: list[{reference_id: str, prefab_name: str | None, display_name: str | None, slot_index: int, slot_name: str | None}], position: Vec3, distance_m: float | None, nutrition_each: float, nutrition: float, food_quality: str, decay_time_left_s: int | None, in_package: str | None, package_name: str | None}]",
+              "count": "int",
+              "total": "int",
+              "offset": "int",
+              "has_more": "bool",
               "drinks": "list[{reference_id: str, prefab_name: str | None, display_name: str | None, quantity: float, max_quantity: float | None, location: str, carried_by: str | None, held_in: list[{reference_id: str, prefab_name: str | None, display_name: str | None, slot_index: int, slot_name: str | None}], position: Vec3, distance_m: float | None, liquid_l: float, hydration: float, in_package: str | None, package_name: str | None}]",
               "packages": "list[{reference_id: str, prefab_name: str | None, display_name: str | None, location: str, carried_by: str | None, held_in: list[{reference_id: str, prefab_name: str | None, display_name: str | None, slot_index: int, slot_name: str | None}], position: Vec3, distance_m: float | None, runtime_type: str, contents: list[{prefab_name: str, display_name: str | None, items: int, quantity: float}], nutrition: float, liquid_l: float, hydration: float}]",
               "not_counted": "list[{prefab_name: str, display_name: str | None, reason: str, items: int, quantity: float}]",
@@ -428,11 +442,14 @@
         "variants": [
           {
             "keys": {
+              "plants": "list[Any]",
+              "count": "int",
+              "total": "int",
+              "offset": "int",
+              "has_more": "bool",
               "game_time_s": "float",
               "day_length_s": "int",
-              "debug_fast_growth": "bool",
-              "plants": "list[Any]",
-              "count": "int"
+              "debug_fast_growth": "bool"
             }
           }
         ]
@@ -457,6 +474,10 @@
           {
             "keys": {
               "rooms": "list[{room_id: str, room_type: str, cell_count: int, volume_l: float, pressure_kpa: float, temperature_k: float, total_mol: float, heat_capacity_j_per_k: float, thermal_energy_j: float, gases: list[{gas: str, amount_mol: float, ratio: float}], bounds: {min: Vec3, max: Vec3}, contains_local_player: bool, devices: list[Thing] | None, cells: list[Vec3] | None}]",
+              "count": "int",
+              "total": "int",
+              "offset": "int",
+              "has_more": "bool",
               "local_player_room_id": "str | None"
             }
           }
@@ -477,7 +498,10 @@
           {
             "keys": {
               "gateways": "list[{gateway_id: str, display_name: str | None, prefab_name: str | None, available: bool, status: str, data_network_count: int, visible_device_count: int, worn_item_count: int}]",
-              "count": "int"
+              "count": "int",
+              "total": "int",
+              "offset": "int",
+              "has_more": "bool"
             }
           }
         ]
