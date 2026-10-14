@@ -18,10 +18,12 @@ namespace StationGodMCP.Api.Views;
 /// </summary>
 internal sealed class RuntimeView : ITruncatingView
 {
+    private const string MethodsList = "methods";
+
     internal RuntimeView(double uptimeS, long worldEpoch, FrameBudget budget, DispatchSnapshot frames,
         MemoryView memory, List<MethodTiming> methods, List<ConnectionView>? connections = null,
         ProfilingSummaryView? profiling = null, JobSettlesView? jobSettles = null, PrefabIndexView? prefabIndex = null,
-        GameCountersView? counters = null)
+        GameCountersView? counters = null, ShapeRequest? shape = null)
     {
         PrefabIndex = prefabIndex ?? new PrefabIndexView(false, false, 0, 0, 0, 0);
         JobHolds = counters?.JobHolds;
@@ -39,7 +41,7 @@ internal sealed class RuntimeView : ITruncatingView
         RequestBudgetMs = budget.Unlimited ? null : budget.LimitMs;
         Frames = new FrameStatsView(frames);
         Memory = memory;
-        int listed = Math.Min(methods.Count, ReplyDefaults.RuntimeMethods);
+        int listed = Math.Min(methods.Count, MethodsLimitOf(shape));
         Methods = new List<MethodRuntimeView>(listed);
         for (int index = 0; index < listed; index++)
         {
@@ -63,8 +65,8 @@ internal sealed class RuntimeView : ITruncatingView
     public MemoryView Memory { get; }
 
     /// <summary>
-    /// The methods called at least once that cost the most main-thread time (handler + serialise), most first, up to
-    /// ReplyDefaults.RuntimeMethods; method_count counts them all.
+    /// The methods called at least once that cost the most main-thread time (handler + serialise), most first, up to the
+    /// call's list_limits for methods (ReplyDefaults.RuntimeMethods without one); method_count counts them all.
     /// </summary>
     public List<MethodRuntimeView> Methods { get; }
 
@@ -109,8 +111,17 @@ internal sealed class RuntimeView : ITruncatingView
     public ProfilingSummaryView? Profiling { get; }
 
     public void NoteTruncations(string path) =>
-        Truncations.Note(path + "methods", Methods.Count, MethodCount,
-            "no argument lists more: the costliest methods are listed first");
+        Truncations.Note(path + MethodsList, Methods.Count, MethodCount,
+            Truncations.WriterMore(MethodsList, MethodCount) + "; the costliest methods are listed first");
+
+    /// <summary>
+    /// How many methods the reply lists: the shape's own limit for the methods list when it names one (list_limits
+    /// {"methods": N}), the default otherwise. The shape's Limits can tell a limit of its own from none; LimitOf cannot.
+    /// </summary>
+    private static int MethodsLimitOf(ShapeRequest? shape) =>
+        shape != null && shape.Limits.TryGetValue(MethodsList, out int requested)
+            ? requested
+            : ReplyDefaults.RuntimeMethods;
 }
 
 /// <summary>

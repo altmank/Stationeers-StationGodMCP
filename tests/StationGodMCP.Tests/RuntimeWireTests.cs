@@ -3,9 +3,12 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Newtonsoft.Json.Linq;
+using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Catalogue;
+using StationGodMCP.Pure.Shaping;
 using Xunit;
 
 namespace StationGodMCP.Tests;
@@ -72,6 +75,82 @@ public sealed class RuntimeWireTests
 
         Assert.Equal(new[] { "grid_survey", "atmosphere_contents", "game_clock" },
             called.ConvertAll(static timing => timing.Method).ToArray());
+    }
+
+    // server info's runtime.methods: the call's own list_limits for methods raises the cut of ten or lowers it, and the
+    // note says how many methods there are and how to list them all.
+    [Fact]
+    public void TheCallsMethodsLimitListsEveryCalledMethod()
+    {
+        RuntimeView view = RuntimeOf(15, ShapeRequest.Lenient(
+            new JObject { ["limit"] = new JObject { ["methods"] = 200 } }));
+
+        Truncations.Begin();
+        view.NoteTruncations("runtime.");
+
+        JObject runtime = JObject.Parse(WireCheck.New(view));
+        Assert.Equal(15, ((JArray)runtime["methods"]!).Count);
+        Assert.Equal(15, (int)runtime["method_count"]!);
+        Assert.Empty(Truncations.Take());
+    }
+
+    [Fact]
+    public void FieldsAloneDoNotRaiseTheMethodsList()
+    {
+        RuntimeView view = RuntimeOf(15, ShapeRequest.Lenient(
+            new JObject { ["fields"] = new JArray("methods", "method_count") }));
+
+        JObject runtime = JObject.Parse(WireCheck.New(view));
+        Assert.Equal(ReplyDefaults.RuntimeMethods, ((JArray)runtime["methods"]!).Count);
+        Assert.Equal(15, (int)runtime["method_count"]!);
+    }
+
+    [Fact]
+    public void WithoutAMethodsLimitTheDefaultTenIsKeptAndNoted()
+    {
+        RuntimeView view = RuntimeOf(15);
+
+        Truncations.Begin();
+        view.NoteTruncations("runtime.");
+        Truncation note = Assert.Single(Truncations.Take());
+
+        JObject runtime = JObject.Parse(WireCheck.New(view));
+        Assert.Equal(ReplyDefaults.RuntimeMethods, ((JArray)runtime["methods"]!).Count);
+        Assert.Equal(15, (int)runtime["method_count"]!);
+        Assert.Equal("runtime.methods", note.List);
+        Assert.Equal(ReplyDefaults.RuntimeMethods, note.Returned);
+        Assert.Equal(15, note.Total);
+        Assert.Contains("list_limits {\"methods\": 15}", note.More);
+    }
+
+    [Fact]
+    public void AMethodsLimitBelowTheDefaultCutsToItAndIsNoted()
+    {
+        RuntimeView view = RuntimeOf(15, ShapeRequest.Lenient(
+            new JObject { ["limit"] = new JObject { ["methods"] = 4 } }));
+
+        Truncations.Begin();
+        view.NoteTruncations("runtime.");
+        Truncation note = Assert.Single(Truncations.Take());
+
+        JObject runtime = JObject.Parse(WireCheck.New(view));
+        Assert.Equal(4, ((JArray)runtime["methods"]!).Count);
+        Assert.Equal(15, (int)runtime["method_count"]!);
+        Assert.Equal(4, note.Returned);
+        Assert.Equal(15, note.Total);
+        Assert.Contains("list_limits {\"methods\": 15}", note.More);
+    }
+
+    private static RuntimeView RuntimeOf(int methods, ShapeRequest? shape = null)
+    {
+        MethodTimings timings = new MethodTimings();
+        for (int index = 0; index < methods; index++)
+        {
+            timings.Record("method_" + index, true, 1.0, 0.5, 2.0);
+        }
+
+        return new RuntimeView(0.0, 0, FrameBudget.For(4.0, false), new DispatchStats().Snapshot(),
+            new MemoryView(0, 0, 0, null, null), timings.Called(), shape: shape);
     }
 
     [Fact]

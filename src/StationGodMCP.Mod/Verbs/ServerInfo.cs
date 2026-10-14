@@ -12,6 +12,7 @@ using StationGodMCP.Pure;
 using StationGodMCP.Pure.Jobs;
 using StationGodMCP.Pure.Lint;
 using StationGodMCP.Pure.Profiling;
+using StationGodMCP.Pure.Shaping;
 using StationGodMCP.Pure.Verbs;
 using UnityEngine.Profiling;
 
@@ -21,8 +22,9 @@ namespace StationGodMCP.Verbs;
 /// server info (catalogue server.json): the running mod's identity and the pipe it listens on, every verb what with its
 /// counters since the mod loaded (MethodStats), and every game member it reaches by reflection or patches, with whether
 /// this build of the game has it (GameMembers.Report), and the runtime section: what the mod costs the game (per-method
-/// handler, serialisation, queue wait and reply size; per-frame load; the collector and the Mono heap; and, with
-/// include: ["counters"], the counters of the mod's game-side work). The methods list is the whats with a handler
+/// handler, serialisation, queue wait and reply size, the costliest methods up to ReplyDefaults.RuntimeMethods or the
+/// call's own list_limits for methods; per-frame load; the collector and the Mono heap; and, with include: ["counters"],
+/// the counters of the mod's game-side work). The methods list is the whats with a handler
 /// (VerbHandlers.Dispatcher.Keys): a retired per-tool method is not listed. Read only.
 /// </summary>
 internal static class ServerInfo
@@ -44,17 +46,17 @@ internal static class ServerInfo
         }
 
         ReflectionReport reflection = GameMembers.Report();
-        RuntimeView runtime = Runtime(options.Fields.Includes("counters"));
+        RuntimeView runtime = Runtime(options.Fields.Includes("counters"), options.Fields.Shape);
         runtime.NoteTruncations("runtime.");
         return Answer.Of(new ModInfoView(identity, methods, reflection.Members, reflection.Missing, runtime));
     }
 
-    private static RuntimeView Runtime(bool counters) =>
+    private static RuntimeView Runtime(bool counters, ShapeRequest? shape) =>
         new RuntimeView(StationGodMod.SinceLoad.Elapsed.TotalSeconds, WorldStores.Epoch,
             FrameBudget.For(PerformanceSettings.RequestBudgetMs, false), StationGodRequestDispatcher.Stats.Snapshot(),
             Memory(), MethodStats.Called(), Connections(), ProfilingControl.Summary(),
             new JobSettlesView(SettleGate.Run, SettleGate.Skipped, SettleGate.Unchecked), ThingIndex.View(counters),
-            counters ? Counters() : null);
+            counters ? Counters() : null, shape);
 
     private static GameCountersView Counters() =>
         new GameCountersView(new JobHoldsView(HeldTickJobs.HoldCounts()),
