@@ -140,7 +140,7 @@ internal sealed class GatewayCounts
 }
 
 /// <summary>
-/// describe_device: a device, how many logic types it reads or writes, the writable ones by name, and every one with
+/// inspect device: a device, how many logic types it reads or writes, the writable ones by name, and every one with
 /// its access when listed.
 /// </summary>
 internal sealed class DescribeDeviceView
@@ -222,7 +222,7 @@ internal sealed class LogicAccessView
     internal string NameOrId => Name ?? Id.ToString(System.Globalization.CultureInfo.InvariantCulture);
 }
 
-/// <summary>inspect_slots: a device's logical slots, what is in each, and each slot's readable logic.</summary>
+/// <summary>inspect slots: a device's logical slots, what is in each, and each slot's readable logic.</summary>
 internal sealed class InspectSlotsView
 {
     internal InspectSlotsView(string gatewayId, DeviceView device, List<SlotDetailView> slots, int slotCount)
@@ -406,7 +406,7 @@ internal sealed class SlotLogicView
     public double Value { get; }
 }
 
-/// <summary>network_snapshot: the readable logic of every matching device in the scope, up to max_devices.</summary>
+/// <summary>read snapshot: the readable logic of every matching device in the scope, up to max_devices.</summary>
 internal sealed class NetworkSnapshotView
 {
     internal NetworkSnapshotView(string gatewayId, List<DeviceSnapshotView> devices, int matchedCount)

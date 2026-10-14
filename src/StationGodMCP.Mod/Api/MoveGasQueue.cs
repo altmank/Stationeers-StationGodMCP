@@ -15,7 +15,7 @@ using StationGodMCP.Pure.Profiling;
 namespace StationGodMCP.Api;
 
 /// <summary>
-/// move_gas's pending moves, applied on the atmospherics thread by a postfix on
+/// move gas's pending moves, applied on the atmospherics thread by a postfix on
 /// AtmosphericsController.HandleMainThreadEvents, and the recent outcomes.
 /// </summary>
 internal static class GasMoves

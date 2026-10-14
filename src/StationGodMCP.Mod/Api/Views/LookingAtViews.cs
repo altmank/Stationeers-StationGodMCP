@@ -6,7 +6,7 @@ using StationGodMCP.Api.Shared;
 namespace StationGodMCP.Api.Views;
 
 /// <summary>
-/// looking_at: the thing under the crosshair and the look ray's hit; the player, the interactable on the thing and the
+/// inspect looking_at: the thing under the crosshair and the look ray's hit; the player, the interactable on the thing and the
 /// camera view when asked for.
 /// </summary>
 internal sealed class LookingAtView
@@ -84,17 +84,17 @@ internal sealed class LookingAtTargetView
 
     public double? DistanceM { get; }
 
-    /// <summary>A logic device the device tools take (describe_device, read_logic).</summary>
+    /// <summary>A logic device the device tools take (inspect device, read logic).</summary>
     public bool IsDevice { get; }
 
-    /// <summary>atmosphere_contents has something to report for it.</summary>
+    /// <summary>inspect atmosphere has something to report for it.</summary>
     public bool HasAtmosphere { get; }
 
     /// <summary>For a thing in a slot: its holder and the slot.</summary>
     public HeldInView? Parent { get; }
 
     /// <summary>
-    /// How it stands turned: facing (its front), up and Euler degrees, the forms place_structure takes, so it can be
+    /// How it stands turned: facing (its front), up and Euler degrees, the forms build structure takes, so it can be
     /// placed again as it stands or turned (facing reversed: 180 degrees). Structures only; left out otherwise.
     /// </summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]

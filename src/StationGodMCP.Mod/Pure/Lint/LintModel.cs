@@ -7,7 +7,7 @@ namespace StationGodMCP.Pure.Lint;
 
 /// <summary>
 /// The lint model: one set of object types for everything a rule can read, with each field's type and meaning.
-/// lint_rules fields lists it; the game side fills each field from the game's own objects.
+/// check rules fields lists it; the game side fills each field from the game's own objects.
 /// </summary>
 internal static class LintModel
 {
@@ -43,7 +43,7 @@ internal static class LintModel
         "A batch operation in a chip's program naming devices by prefab hash and name hash (lbn, sbn and the like).");
 
     internal static readonly ObjectType Placement = new ObjectType("placement",
-        "Whether a player could place a thing again where it stands (check_replaceable's rule).");
+        "Whether a player could place a thing again where it stands (check replaceable's rule).");
 
     internal static readonly ObjectType Controls = new ObjectType("controls",
         "The side of a device that carries its slots, buttons and switches.");
@@ -94,7 +94,7 @@ internal static class LintModel
 
         Port
             .Field("device", Thing, "The thing the port belongs to.")
-            .Field("index", number, "Its index on the device, as connections and grid_survey number ports.")
+            .Field("index", number, "Its index on the device, as inspect connections and survey area number ports.")
             .Field("type", text, "The game's network type: Power, Data, PowerAndData, Pipe, PipeLiquid, Chute.")
             .Field("role", text, "The game's connection role: Input, Input2, Output, Output2, Waste, None and others.")
             .Field("flow", textOrNull, "in for inputs, out for outputs and waste, null for a role with no direction.")

@@ -56,7 +56,7 @@ internal abstract class PlacementVerdict
     }
 }
 
-/// <summary>The rule names check_replaceable and lint_layout's not_replaceable report a refusal under.</summary>
+/// <summary>The rule names check replaceable and check layout's not_replaceable report a refusal under.</summary>
 internal static class PlacementRules
 {
     /// <summary>Nothing to stand on or mount to: a frame below, a wall or frame behind its back.</summary>

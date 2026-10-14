@@ -246,7 +246,7 @@ internal sealed class CleanDetail
     /// <summary>For a removal: its round (1 for a stub now, 2 for one the first round leaves, ...).</summary>
     internal int? Round { get; }
 
-    /// <summary>clean_chutes' removals: why the piece serves no path (orphan, no_consumer, no_source).</summary>
+    /// <summary>swap chute' removals: why the piece serves no path (orphan, no_consumer, no_source).</summary>
     internal string? Why { get; }
 }
 
@@ -294,7 +294,7 @@ internal sealed class UpgradePlan
     /// <summary>What remove_redundant removed and kept, with why; null when it was not asked for.</summary>
     internal RedundancyRecord? Redundancy { get; set; }
 
-    /// <summary>clean_chutes: pieces the run would change that carry an item, left as they are; null otherwise.</summary>
+    /// <summary>swap chute: pieces the run would change that carry an item, left as they are; null otherwise.</summary>
     internal List<RidingChute>? Riding { get; set; }
 
     internal List<UpgradeProblemView> Problems { get; } = new List<UpgradeProblemView>();

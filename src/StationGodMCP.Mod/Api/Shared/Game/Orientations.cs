@@ -9,8 +9,8 @@ using UnityEngine;
 namespace StationGodMCP.Api.Shared.Game;
 
 /// <summary>
-/// How a thing stands turned, in the forms place_structure takes: its transform's rotation (Thing.ThingTransformRotation,
-/// what place_structure sets when it builds) as a quarter-turn rotation when it is one, else its Euler angles only.
+/// How a thing stands turned, in the forms build structure takes: its transform's rotation (Thing.ThingTransformRotation,
+/// what build structure sets when it builds) as a quarter-turn rotation when it is one, else its Euler angles only.
 /// </summary>
 internal static class Orientations
 {

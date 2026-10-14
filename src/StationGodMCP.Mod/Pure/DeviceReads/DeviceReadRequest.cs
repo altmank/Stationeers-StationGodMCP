@@ -9,7 +9,7 @@ using StationGodMCP.Pure.Protocol;
 namespace StationGodMCP.Pure.DeviceReads;
 
 /// <summary>
-/// read_devices' bounds. Over any of them the whole request is refused (invalid_argument) before anything is read.
+/// read logic' bounds. Over any of them the whole request is refused (invalid_argument) before anything is read.
 /// A slot read without logic reads every slot logic type the device reads there; it counts AllSlotValuesWeight values.
 /// </summary>
 internal static class DeviceReadBounds

@@ -162,7 +162,7 @@ internal static class Refunds
         Run(new List<Place> { Place.HolderOf(source, body) }, () => GroundBeside(source, body), refund, delivered);
     }
 
-    /// <summary>Delivers along the receivers' route; refund_to ground at a remove_structure is DeliverAt instead.</summary>
+    /// <summary>Delivers along the receivers' route; refund_to ground at a remove structure is DeliverAt instead.</summary>
     internal static void Deliver(RefundReceivers receivers, List<ItemAmount> refund, List<UpgradeRefundView> delivered)
     {
         switch (receivers.Route)
@@ -197,7 +197,7 @@ internal static class Refunds
 
     /// <summary>
     /// Where the refund would go if it were delivered now, as Deliver plans it; null when nothing is given back.
-    /// refund_to ground (the single word) at a remove_structure: everything on the ground where each piece stood.
+    /// refund_to ground (the single word) at a remove structure: everything on the ground where each piece stood.
     /// </summary>
     internal static RefundPlanView? Forecast(RefundReceivers? receivers, List<ItemAmount> refund)
     {
@@ -249,7 +249,7 @@ internal static class Refunds
 
     private static ThingId? HolderOf(Slot slot) => slot.Parent != null ? new ThingId(slot.Parent.ReferenceId) : null;
 
-    // A chain's places in order; refund_to ground (the single word) outside remove_structure: the ground in front of
+    // A chain's places in order; refund_to ground (the single word) outside remove structure: the ground in front of
     // the source.
     private static List<Place> PlacesOf(RefundReceivers receivers)
     {

@@ -9,7 +9,7 @@ using StationGodMCP.Pure;
 
 namespace StationGodMCP.Api.Shared.Game.Structures;
 
-/// <summary>One replace_walls or replace_frames request as parsed: the family and the arguments.</summary>
+/// <summary>One swap wall or swap frame request as parsed: the family and the arguments.</summary>
 internal sealed class StructureSwapRequest
 {
     internal StructureSwapRequest(StructureFamily family, StructureSwapArguments arguments)
@@ -101,7 +101,7 @@ internal sealed class PlannedStructureSwap
 
     internal List<MaterialLine> Materials { get; } = new List<MaterialLine>();
 
-    /// <summary>replace_walls: each face the wall blocks.</summary>
+    /// <summary>swap wall: each face the wall blocks.</summary>
     internal List<WallFace>? Faces { get; set; }
 
     internal bool Stressed { get; set; }

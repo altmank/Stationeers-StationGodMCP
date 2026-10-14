@@ -13,7 +13,7 @@ using StationGodMCP.Pure;
 namespace StationGodMCP.Api.Shared.Game.Runs;
 
 /// <summary>
-/// The grid as the route search and grid_survey read it. A 2 m cell (GridController.GetCell at its centre): the
+/// The grid as the route search and survey area read it. A 2 m cell (GridController.GetCell at its centre): the
 /// structure in its Center slot when that is a frame (Frame), its room (RoomController.GetRoom; none is outside),
 /// and on each of its six faces the face structures registered there (GridController.GetFaceStructures at the face
 /// point, the midpoint between the two centres). A small cell (GridController.GetSmallCell): its slots, and for one

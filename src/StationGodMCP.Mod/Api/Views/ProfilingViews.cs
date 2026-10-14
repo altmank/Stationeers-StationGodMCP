@@ -8,7 +8,7 @@ using StationGodMCP.Pure.Profiling;
 namespace StationGodMCP.Api.Views;
 
 /// <summary>
-/// The profiling method's reply: the switch's state (enabled, since_s, slow_frame_ms, the CSV), the methods timed and
+/// The server profiling method's reply: the switch's state (enabled, since_s, slow_frame_ms, the CSV), the methods timed and
 /// any that could not be, and the session's report (ProfileSnapshot). After off it is the last session's report.
 /// </summary>
 internal sealed class ProfilingView
@@ -316,7 +316,7 @@ internal sealed class TickHoldView
 }
 
 /// <summary>
-/// mod_info's runtime.profiling while profiling is on: since when, StationGod's ms per frame, the worst frame and the
+/// server info's runtime.profiling while profiling is on: since when, StationGod's ms per frame, the worst frame and the
 /// five scopes or timed methods with the most self time.
 /// </summary>
 internal sealed class ProfilingSummaryView

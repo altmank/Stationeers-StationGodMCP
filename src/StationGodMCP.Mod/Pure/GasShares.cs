@@ -5,7 +5,7 @@ using System;
 namespace StationGodMCP.Pure;
 
 /// <summary>
-/// How move_gas splits one gas over several atmospheres: taken from each in proportion to what it holds, and given to
+/// How move gas splits one gas over several atmospheres: taken from each in proportion to what it holds, and given to
 /// a room's cells in proportion to their volume.
 /// </summary>
 internal static class GasShares

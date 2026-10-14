@@ -250,7 +250,7 @@ internal sealed class GasEnd
     internal static GasEnd? OfThing(Thing? thing) =>
         thing != null && thing.InternalAtmosphere != null ? new GasEnd(thing.InternalAtmosphere, thing, null) : null;
 
-    // Resolved as atmosphere_contents resolves an id, narrowed to exactly one atmosphere: a thing's internal
+    // Resolved as inspect atmosphere resolves an id, narrowed to exactly one atmosphere: a thing's internal
     // atmosphere, else a pipe's network, else a landing pad piece's pad network (INetworkedLandingPad: every piece
     // shares one atmosphere); a pipe or landing pad network id; an atmosphere id owned by a thing or a network. A
     // device with no internal atmosphere of its own is refused rather than guessed: pass the network's id.

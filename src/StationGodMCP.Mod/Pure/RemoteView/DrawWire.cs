@@ -25,7 +25,7 @@ internal readonly struct Rgba
 }
 
 /// <summary>
-/// What the server asks a client's StationGod to draw for its player: show_preview's wire boxes or highlight's marks.
+/// What the server asks a client's StationGod to draw for its player: show preview's wire boxes or show highlight's marks.
 /// Replace removes that kind's earlier drawings first (a call without keep); a replace with nothing to draw is clear.
 /// </summary>
 internal abstract class DrawCommand
@@ -58,7 +58,7 @@ internal abstract class DrawCommand
     }
 }
 
-/// <summary>One show_preview wire box: its corners, colour, seconds, a short name and whether it shows through walls.</summary>
+/// <summary>One show preview wire box: its corners, colour, seconds, a short name and whether it shows through walls.</summary>
 internal sealed class PreviewBox
 {
     internal PreviewBox(Box3 box, Rgba color, float seconds, string name, bool xray)

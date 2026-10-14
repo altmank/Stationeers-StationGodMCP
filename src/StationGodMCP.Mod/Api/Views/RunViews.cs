@@ -12,7 +12,7 @@ using StationGodMCP.Pure.Shaping;
 namespace StationGodMCP.Api.Views;
 
 /// <summary>
-/// place_cables, remove_cables, place_pipes and remove_pipes before anything is changed: every cell's piece, what
+/// build cable, remove cable, build pipe and remove pipe before anything is changed: every cell's piece, what
 /// the run joins, the materials, the networks before and as the edit would leave them, and every refusal. status is
 /// dry_run, scheduled (a job was started; poll it with job_id) or refused (nothing was changed; problems says why).
 /// </summary>
@@ -316,7 +316,7 @@ internal sealed class RunJoinView
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public ThingView? Thing { get; }
 
-    /// <summary>The device end's index, as connections numbers them.</summary>
+    /// <summary>The device end's index, as inspect connections numbers them.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public int? Port { get; }
 }

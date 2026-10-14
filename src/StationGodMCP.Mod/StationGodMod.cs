@@ -51,7 +51,7 @@ public sealed class StationGodMod : ModBehaviour
     private ServerSettings _server = ServerSettings.Defaults;
     private SubscriptionHub? _subscriptions;
 
-    /// <summary>Real time since the mod loaded (mod_info runtime uptime_s).</summary>
+    /// <summary>Real time since the mod loaded (server info runtime uptime_s).</summary>
     internal static System.Diagnostics.Stopwatch SinceLoad { get; } = System.Diagnostics.Stopwatch.StartNew();
 
     /// <summary>The local pipe's name, read once at load ([Pipe] Name, STATIONGODMCP_PIPE_NAME).</summary>
@@ -63,7 +63,7 @@ public sealed class StationGodMod : ModBehaviour
     /// <summary>The TCP listener's connections while it listens; null otherwise.</summary>
     internal static ProtocolHost? TcpConnections { get; private set; }
 
-    /// <summary>The subscription hub once the mod has loaded (mod_info's per-connection counts).</summary>
+    /// <summary>The subscription hub once the mod has loaded (server info's per-connection counts).</summary>
     internal static SubscriptionHub? Hub { get; private set; }
 
     /// <summary>
@@ -599,7 +599,7 @@ internal static class MultiplayerSettings
     internal static bool ShareViews(ConfigFile configuration) =>
         configuration.Bind("Multiplayer", "ShareViews", true,
             "Share views between games: a client tells a server running StationGod where its player looks, so the " +
-            "server's camera tools (looking_at, crosshair placement, show_preview, highlight...) work for that " +
+            "server's camera tools (inspect looking_at, crosshair placement, show preview, show highlight...) work for that " +
             "player, and the server's drawings show on that player's screen. StationGod stays optional on every " +
             "machine. It registers StationGod with LaunchPadBooster's networking, which makes a game expect " +
             "LaunchPadBooster networking on the other side of a join: on a server where no other mod uses it, " +
@@ -664,13 +664,13 @@ internal static class PerformanceSettings
         Scheduler = new SchedulerSettings(RequestBudgetMs, subscriptions, heavy, frames, Protocol.CallSession.MaxInFlight,
             Protocol.CallSession.MaxInFlightPerConnection);
         Profiling = configuration.Bind(Section, "Profiling", false,
-            "Start the runtime profiler when the mod loads (what the profiling method's action on does, with " +
+            "Start the runtime profiler when the mod loads (what the server profiling method's action on does, with " +
             $"slow_frame_ms {SlowFrameLimits.DefaultMs} and no CSV). It times StationGod's main-thread work per frame, " +
-            "call and job tick hold; off, it costs one check per timed piece. The profiling method switches it at any " +
+            "call and job tick hold; off, it costs one check per timed piece. The server profiling method switches it at any " +
             "time. Restart the game to apply.").Value;
         VerifyPrefabIndex = configuration.Bind(Section, "VerifyPrefabIndex", false,
-            "Debug: every find_things, find_items or item_totals call filtered by prefab, answered from the prefab " +
-            "index, also walks every thing in the world and logs a warning when the two differ (mod_info " +
+            "Debug: every find thing or find item call filtered by prefab, answered from the prefab " +
+            "index, also walks every thing in the world and logs a warning when the two differ (server info " +
             "runtime.prefab_index counts the checks and differences). Costs a full walk per call. Restart the game to " +
             "apply.").Value;
     }

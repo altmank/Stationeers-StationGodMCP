@@ -8,7 +8,7 @@ using StationGodMCP.Pure;
 namespace StationGodMCP.Api.Views;
 
 /// <summary>
-/// An umbilical's pairing (describe_device, grid_survey devices): its role, the partner the game holds for it and the
+/// An umbilical's pairing (inspect device, survey area devices): its role, the partner the game holds for it and the
 /// PartnerDistance it set, and the game's partner search replayed as it stands now (UmbilicalSearch), which names why
 /// each column stopped when nothing pairs.
 /// </summary>
@@ -78,7 +78,7 @@ internal sealed class UmbilicalStopView
 }
 
 /// <summary>
-/// The rocket a device or piece is part of (describe_device): the rocket network, the rocket's name and state, and what
+/// The rocket a device or piece is part of (inspect device): the rocket network, the rocket's name and state, and what
 /// the game counts for it (RocketNetwork: DryMass from IRocketMassContributor, its hull pieces and internals).
 /// </summary>
 internal sealed class RocketPartView

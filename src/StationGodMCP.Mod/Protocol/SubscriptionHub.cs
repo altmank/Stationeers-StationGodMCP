@@ -62,7 +62,7 @@ internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, IS
 
     internal SubscriptionLimits Limits => _engine.Limits;
 
-    /// <summary>Subscriptions the owner holds (mod_info, the console: a connection's Owner).</summary>
+    /// <summary>Subscriptions the owner holds (server info, the console: a connection's Owner).</summary>
     internal int CountOf(string owner) => _engine.CountOf(new ConnectionId(owner));
 
     /// <summary>Whether the method is one of the hub's.</summary>

@@ -130,7 +130,7 @@ internal sealed class RocketFlightLogEntry
 }
 
 /// <summary>
-/// The recorders, ticked from StationGodMod.Update. A sample reads the rocket as rocket_status does (main thread,
+/// The recorders, ticked from StationGodMod.Update. A sample reads the rocket as inspect rocket does (main thread,
 /// last tick's values); a rocket that is gone stops its recording and keeps what it has. Any failure stops that
 /// recording rather than the frame.
 /// </summary>

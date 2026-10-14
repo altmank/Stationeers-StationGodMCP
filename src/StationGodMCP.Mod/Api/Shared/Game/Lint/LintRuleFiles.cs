@@ -56,7 +56,7 @@ internal static class LintRuleFiles
         return _set;
     }
 
-    /// <summary>The set a save file's text would give with the mod's rules: lint_rules validate on text not yet saved.</summary>
+    /// <summary>The set a save file's text would give with the mod's rules: check rules validate on text not yet saved.</summary>
     internal static LintRuleSet With(string saveText, string name) =>
         Load(ModText(), new LintRuleText(name, saveText, LintRuleOrigin.Save));
 

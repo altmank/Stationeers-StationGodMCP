@@ -104,7 +104,7 @@ internal static class SlotLogicTypes
     }
 
     /// <summary>
-    /// Every type the device reads at the slot, by enum name, as inspect_slots lists them; a type that does not read
+    /// Every type the device reads at the slot, by enum name, as inspect slots lists them; a type that does not read
     /// (or throws) is left out.
     /// </summary>
     internal static Dictionary<string, double> ReadAll(ScopedTarget device, int index)
@@ -129,7 +129,7 @@ internal static class SlotLogicTypes
         return values;
     }
 
-    /// <summary>Refuses a slot index the device does not expose (ILogicable.TotalSlots), as inspect_slots does.</summary>
+    /// <summary>Refuses a slot index the device does not expose (ILogicable.TotalSlots), as inspect slots does.</summary>
     internal static void RequireSlot(ScopedTarget device, int index)
     {
         if (index >= Devices.TotalSlots(device))

@@ -47,7 +47,7 @@ internal static class ListOrders
 
 /// <summary>
 /// One row of a paged world list as the order sees it: distance from the player (null without one), a name, a rank
-/// that tells apart rows sharing a name and an id (find_items: an item before a machine's stock), and a reference id.
+/// that tells apart rows sharing a name and an id (find item: an item before a machine's stock), and a reference id.
 /// </summary>
 internal readonly struct ListKey
 {

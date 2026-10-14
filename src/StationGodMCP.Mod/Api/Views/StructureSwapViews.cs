@@ -10,7 +10,7 @@ using StationGodMCP.Pure.Shaping;
 namespace StationGodMCP.Api.Views;
 
 /// <summary>
-/// replace_walls and replace_frames before anything is changed: each piece and what replaces it, what it blocks
+/// swap wall and swap frame before anything is changed: each piece and what replaces it, what it blocks
 /// before and after, the materials, the rooms around the pieces, and every problem found. status is dry_run,
 /// scheduled (a job was started; poll it with job_id) or refused (nothing was changed; problems says why).
 /// </summary>
@@ -45,7 +45,7 @@ internal sealed class StructureSwapReportView : ITruncatingView
 
     public string Tool { get; }
 
-    /// <summary>The target prefab name, or own_prefab (replace_frames without to).</summary>
+    /// <summary>The target prefab name, or own_prefab (swap frame without to).</summary>
     public string Target { get; }
 
     /// <summary>dry_run, scheduled or refused.</summary>
@@ -214,10 +214,10 @@ internal sealed class StructurePieceView
 
     public bool Seals { get; }
 
-    /// <summary>replace_walls: a face's pressure difference is above the new wall's stress mark (a warning).</summary>
+    /// <summary>swap wall: a face's pressure difference is above the new wall's stress mark (a warning).</summary>
     public bool Stressed { get; }
 
-    /// <summary>replace_walls only: each face the wall blocks.</summary>
+    /// <summary>swap wall only: each face the wall blocks.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public List<StructureFaceView>? Faces { get; }
 
@@ -430,7 +430,7 @@ internal sealed class StructureMappingView
     public int Count { get; }
 }
 
-/// <summary>A room next to the pieces, as the rooms tool reports it: id, cells and air summed over them.</summary>
+/// <summary>A room next to the pieces, as the find room tool reports it: id, cells and air summed over them.</summary>
 internal sealed class StructureRoomView
 {
     internal StructureRoomView(string roomId, int cellCount, double totalMol, double energyJ)
@@ -451,7 +451,7 @@ internal sealed class StructureRoomView
 }
 
 /// <summary>
-/// A confirmed replace_walls or replace_frames run, polled by job_id. status: waiting (for the game tick to stop),
+/// A confirmed swap wall or swap frame run, polled by job_id. status: waiting (for the game tick to stop),
 /// verifying (swapped and checked with the tick held; the tick runs again and the rooms are being re-evaluated),
 /// applied (every check passed), applied_with_differences (a check found something: see held_check and room_check),
 /// stopped (a swap failed part way: swapped lists what was done, stopped_at why and whether the piece was restored),

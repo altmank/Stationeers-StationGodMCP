@@ -42,7 +42,7 @@ internal static class HeldTickJobs
     internal const string JobNotFoundCode = JobDrops.NotFoundCode;
     internal const int MaximumWaiting = 8;
 
-    // Ended jobs' final views, kept for polls and undo_job across every client, bounded by memory (KeptJobs).
+    // Ended jobs' final views, kept for polls and undo across every client, bounded by memory (KeptJobs).
     private static readonly KeptJobStore<object> Finished = KeptJobs.Main.Finals;
     private static readonly JobLine<QueuedJob> Waiting = new JobLine<QueuedJob>(MaximumWaiting);
 
@@ -69,7 +69,7 @@ internal static class HeldTickJobs
     /// <summary>A job holds the game tick now (the dispatcher's request budget is smaller then).</summary>
     internal static bool HoldsTick => _tickHeld;
 
-    /// <summary>How long jobs held the tick since the mod loaded, by HoldLengths bucket (mod_info runtime.job_holds).</summary>
+    /// <summary>How long jobs held the tick since the mod loaded, by HoldLengths bucket (server info runtime.job_holds).</summary>
     internal static long[] HoldCounts() => HoldTimes.Counts();
 
     /// <summary>

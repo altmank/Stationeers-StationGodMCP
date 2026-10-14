@@ -37,7 +37,7 @@ internal static class ChuteCleanupNames
 }
 
 /// <summary>
-/// The chute networks clean_chutes judges, on plain values: every piece of them (not only the selected ones, since a
+/// The chute networks swap chute judges, on plain values: every piece of them (not only the selected ones, since a
 /// piece is dead or alive by what the whole network does), the device chute ports, which pieces may change, why
 /// some may not (keep_ids, an item riding in it, indestructible, rocket, no kit), which pieces carry an item now,
 /// which devices let items fall out of a port left open, and whether a plain piece with given ends exists.
@@ -81,7 +81,7 @@ internal sealed class ChuteCleanupScene
     internal Func<PieceModel, bool> HasPlainPiece { get; }
 }
 
-/// <summary>What clean_chutes decides for one selected piece.</summary>
+/// <summary>What swap chute decides for one selected piece.</summary>
 internal abstract class ChuteVerdict
 {
     private protected ChuteVerdict(PieceModel piece)
@@ -177,7 +177,7 @@ internal sealed class ChuteCleanupResult
 }
 
 /// <summary>
-/// clean_chutes' rule. Items move one way through a chute network (ChuteFlow). A piece serves a path when an item can
+/// swap chute' rule. Items move one way through a chute network (ChuteFlow). A piece serves a path when an item can
 /// get into it from a source and on from it to a consumer:
 /// sources are device ports that push items in (role Output, and two-way ports) and pieces an item rides in now;
 /// consumers are device ports that take items (role Input, and two-way ports). An open end is neither: an item

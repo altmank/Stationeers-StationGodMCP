@@ -8,7 +8,7 @@ using UnityEngine.Rendering;
 namespace StationGodMCP.Api.Shared.Game;
 
 /// <summary>
-/// The see-through materials highlight and show_preview xray draw with. Meshes: the T-Ray SPU's own material
+/// The see-through materials show highlight and show preview xray draw with. Meshes: the T-Ray SPU's own material
 /// (SPUMesonScanner._material, which the scanner draws pipes, cables and chutes through walls with each frame by
 /// Graphics.DrawMeshInstanced, per-instance _Color; the Clear Lenses mod tints things the same way), copied and, when
 /// its shader has a depth-test switch, set to always pass. Without that prefab or field, and for lines: Unity's
@@ -41,7 +41,7 @@ internal static class XRay
         }
     }
 
-    /// <summary>The lines' material (show_preview xray), or null when the built-in shader is missing.</summary>
+    /// <summary>The lines' material (show preview xray), or null when the built-in shader is missing.</summary>
     internal static Material? LineMaterial
     {
         get

@@ -7,7 +7,7 @@ namespace StationGodMCP.Api.Views;
 
 /// <summary>
 /// One plant in short, as every plant of a world is listed by default: where it grows, how far along it is, and
-/// whether anything is wrong. plants with its reference_id, or verbose, gives the whole PlantView.
+/// whether anything is wrong. find plant with its reference_id, or verbose, gives the whole PlantView.
 /// </summary>
 internal sealed class PlantBriefView
 {

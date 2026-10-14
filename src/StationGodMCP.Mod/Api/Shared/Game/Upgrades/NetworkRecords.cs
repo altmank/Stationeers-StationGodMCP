@@ -490,7 +490,7 @@ internal sealed class PipeNetworkRecord : NetworkRecord
         }
 
         // A game event (AtmosphericEventInstance, e.g. a pump's or the console's) marks the atmosphere; a queued
-        // move_gas does not, so its queue is asked too.
+        // move gas does not, so its queue is asked too.
         if (_atmosphere.IsAwaitingEvent || GasMoves.Touches(_atmosphere))
         {
             plan.Problems.Add(new UpgradeProblemView("atmosphere_busy",

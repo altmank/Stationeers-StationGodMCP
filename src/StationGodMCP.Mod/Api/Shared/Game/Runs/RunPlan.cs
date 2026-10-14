@@ -66,7 +66,7 @@ internal sealed class RunBuild
 /// Pieces to remove: by id, and the family's pieces standing in listed cells; and things assumed gone (assume_removed):
 /// checked and forecast as if already removed, but never removed by this run (another job removes them). Alongside:
 /// network members that are not pieces (an in-line tank, a passive vent) the same job removes another way
-/// (remove_structure): forecast as removed, never removed by this run, and not an assume_removed.
+/// (remove structure): forecast as removed, never removed by this run, and not an assume_removed.
 /// </summary>
 internal sealed class RunRemoval
 {

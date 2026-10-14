@@ -7,8 +7,8 @@ using StationGodMCP.Api.Shared;
 namespace StationGodMCP.Api.Views;
 
 /// <summary>
-/// deep_miner_spots: the region and ore profile at a point, the world's profiles, and with ores the nearest spots
-/// whose profile gives them, with beacons ready for highlight's point targets.
+/// find ore: the region and ore profile at a point, the world's profiles, and with ores the nearest spots
+/// whose profile gives them, with beacons ready for show highlight's point targets.
 /// </summary>
 internal sealed class DeepMinerSpotsView
 {
@@ -34,7 +34,7 @@ internal sealed class DeepMinerSpotsView
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public List<MinerSpotView>? Spots { get; }
 
-    /// <summary>The spots as {at, label}, the shape highlight takes for point targets.</summary>
+    /// <summary>The spots as {at, label}, the shape show highlight takes for point targets.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public List<MinerBeaconView>? Beacons { get; }
 }
@@ -213,7 +213,7 @@ internal sealed class MinerTerrainView
     public string Note { get; }
 }
 
-/// <summary>A point target for highlight: where and what to call it.</summary>
+/// <summary>A point target for show highlight: where and what to call it.</summary>
 internal sealed class MinerBeaconView
 {
     internal MinerBeaconView(double[] at, string label)

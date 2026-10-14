@@ -29,7 +29,7 @@ namespace StationGodMCP.Api.Shared.Game;
 /// </summary>
 internal static class Plants
 {
-    /// <summary>The game's clock as plants read it: game time, the day's length, and whether growth is sped up.</summary>
+    /// <summary>The game's clock as find plant reads it: game time, the day's length, and whether growth is sped up.</summary>
     internal static PlantClock Clock() =>
         new PlantClock(GameManager.GameTime, OrbitalSimulation.GetDayLengthSeconds(), Plant.CustomPlantGrowthSpeed);
 
@@ -82,7 +82,7 @@ internal static class Plants
     }
 }
 
-/// <summary>The game's clock as plants read it.</summary>
+/// <summary>The game's clock as find plant reads it.</summary>
 internal sealed class PlantClock
 {
     internal PlantClock(float gameTimeS, int dayLengthS, bool debugFastGrowth)

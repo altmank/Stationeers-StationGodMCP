@@ -269,7 +269,7 @@ internal sealed class Args
 }
 
 /// <summary>
-/// The names handlers read that their method's catalogue entry does not declare (mod_info.runtime.catalogue_drift),
+/// The names handlers read that their method's catalogue entry does not declare (server info.runtime.catalogue_drift),
 /// and where the first read of each is reported (the mod's log).
 /// </summary>
 internal static class ArgumentDrift

@@ -224,7 +224,7 @@ internal static class Uprightness
 {
     /// <summary>
     /// Why a turn is not upright, or null. localUp is the prefab's own axis that looks like its top (+y for almost
-    /// everything; describe_prefab's visual_up): turned, it should point +y. A piece whose top is its local +y and whose
+    /// everything; inspect prefab's visual_up): turned, it should point +y. A piece whose top is its local +y and whose
     /// front faces up or down lies on a floor or ceiling and may turn freely about it.
     /// </summary>
     internal static string? Problem(CubeRotation turn, GridStep localUp)

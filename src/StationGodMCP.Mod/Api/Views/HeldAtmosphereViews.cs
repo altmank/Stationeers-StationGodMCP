@@ -7,7 +7,7 @@ using StationGodMCP.Pure;
 
 namespace StationGodMCP.Api.Views;
 
-/// <summary>An item that owns an atmosphere: the item as find_items lists it, then kind and runtime type.</summary>
+/// <summary>An item that owns an atmosphere: the item as find item lists it, then kind and runtime type.</summary>
 internal sealed class ItemOwnerView : ItemFieldsView
 {
     internal ItemOwnerView(ItemFields fields, string runtimeType) : base(fields)
@@ -22,7 +22,7 @@ internal sealed class ItemOwnerView : ItemFieldsView
 
 /// <summary>
 /// A thing other than an item that owns an atmosphere: a structure or device (kind structure), or a portable tank or
-/// other dynamic thing (kind dynamic), in find_things' kinds.
+/// other dynamic thing (kind dynamic), in find thing' kinds.
 /// </summary>
 internal sealed class StructureOwnerView
 {

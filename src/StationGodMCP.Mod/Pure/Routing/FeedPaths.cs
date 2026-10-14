@@ -88,7 +88,7 @@ internal sealed class FeedReport
 }
 
 /// <summary>
-/// feed_paths: the tree a network forms from a root device (an APC's output, a generator), found breadth first over
+/// survey feeds: the tree a network forms from a root device (an APC's output, a generator), found breadth first over
 /// the links (the shortest path to each device; a device is an end, never passed through), and for each device the
 /// rooms its feed crosses. A room entered at more than one piece has several feeds.
 /// </summary>

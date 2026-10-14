@@ -31,7 +31,7 @@ internal readonly struct PortCell
     internal int Role { get; }
 }
 
-/// <summary>The ports grid_survey lists for a device, from its ends as they stand or as a prefab would stand.</summary>
+/// <summary>The ports survey area lists for a device, from its ends as they stand or as a prefab would stand.</summary>
 internal static class PortCells
 {
     /// <summary>The ends whose type shares a bit with the mask, each keeping its index among all the ends.</summary>

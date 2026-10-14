@@ -122,7 +122,7 @@ internal static class BuildRuns
     }
 
     /// <summary>
-    /// One piece run's reply, for a caller that runs the call itself (undo_job's replay): the report until it acts, or
+    /// One piece run's reply, for a caller that runs the call itself (undo's replay): the report until it acts, or
     /// the started job. A refusal the call cannot be read with is thrown, as any call's is.
     /// </summary>
     internal static object Reply(RunKind kind, RunBuildOrder order) => Run(kind, order) switch

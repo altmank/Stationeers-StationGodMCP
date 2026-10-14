@@ -15,7 +15,7 @@ using StationGodMCP.Pure.Verbs;
 namespace StationGodMCP.Api.Shared.Game.Structures;
 
 /// <summary>
-/// The whole preflight of replace_walls and replace_frames: nothing here changes the game. It reads the pieces,
+/// The whole preflight of swap wall and swap frame: nothing here changes the game. It reads the pieces,
 /// resolves each one's target, compares their slots, judges what each would open or seal, runs the family's checks,
 /// counts the materials and records the rooms and air around the pieces. Every problem is listed; none stops the
 /// others from being looked for.

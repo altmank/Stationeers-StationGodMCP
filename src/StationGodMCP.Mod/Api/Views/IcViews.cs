@@ -116,7 +116,7 @@ internal sealed class CompileError
     internal string Type { get; }
 }
 
-/// <summary>get_ic_source: the chip's source and the line it is on.</summary>
+/// <summary>inspect chip: the chip's source and the line it is on.</summary>
 internal sealed class IcSourceView
 {
     internal IcSourceView(IcPlace place, IcChip chip, double lineNumber)
@@ -216,7 +216,7 @@ internal sealed class IcSourceSetView
     public List<SourceNote> Warnings { get; }
 }
 
-/// <summary>get_ic_status for a holder with no chip: its pins only.</summary>
+/// <summary>inspect chip for a holder with no chip: its pins only.</summary>
 internal sealed class IcNoChipView
 {
     internal IcNoChipView(IcPlace place, List<IcPinView> pins)
@@ -238,7 +238,7 @@ internal sealed class IcNoChipView
     public ThingView Holder { get; }
 }
 
-/// <summary>get_ic_status: the chip's source, state, holder, pins and runtime.</summary>
+/// <summary>inspect chip: the chip's source, state, holder, pins and runtime.</summary>
 internal sealed class IcStatusView
 {
     internal IcStatusView(IcPlace place, IcChip chip, ChipState state, IcHolderView housing, IcRuntimeParts parts)
@@ -610,7 +610,7 @@ internal readonly struct IcControlOutcome
     internal double PreviousLine { get; }
 }
 
-/// <summary>resolve_ic_selectors: what the chip's pins reach, its aliases, and batch selectors for devices.</summary>
+/// <summary>inspect chip: what the chip's pins reach, its aliases, and batch selectors for devices.</summary>
 internal sealed class IcSelectorsView
 {
     internal IcSelectorsView(IcPlace place, DeviceView db, List<PinTargetView> pins, List<AliasView> aliases,

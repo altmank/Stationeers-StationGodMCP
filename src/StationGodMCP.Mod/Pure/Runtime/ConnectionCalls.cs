@@ -33,9 +33,9 @@ internal sealed class MethodCallCount
 }
 
 /// <summary>
-/// The calls one connection made, per method, for mod_info's connections. Only method names the mod answers are
+/// The calls one connection made, per method, for server info's connections. Only method names the mod answers are
 /// counted (the caller passes known names), so the table is bounded by the method list. Recorded and read on the main
-/// thread only, where calls run and mod_info answers.
+/// thread only, where calls run and server info answers.
 /// </summary>
 internal sealed class ConnectionCalls
 {

@@ -292,7 +292,7 @@ internal sealed class DeadEndPiece
 }
 
 /// <summary>
-/// clean_cables and clean_pipes: the requested operations, composed in their fixed order over one shared pass. Each
+/// swap cable and swap pipe: the requested operations, composed in their fixed order over one shared pass. Each
 /// member is collected first; the operations then plan on the whole selection, each on what the earlier ones left.
 /// </summary>
 internal sealed class EndCleanupGoal : SwapGoal

@@ -766,7 +766,7 @@
           "id": {
             "type": ["string", "array"],
             "items": {"type": "string"},
-            "description": "The job, the bulk write (write-N), the script run (script-14), or \"paste\"; a list is undone newest first, in one report."
+            "description": "The job, the bulk write (write-N), the script run (script-14), or \"paste\" on its own; a list is undone newest first, in one report."
           },
           "allow_bridge": {"type": "array", "description": "Passed to every piece run."},
           "materials": {

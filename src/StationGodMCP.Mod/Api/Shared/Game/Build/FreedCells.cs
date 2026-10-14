@@ -7,7 +7,7 @@ using StationGodMCP.Pure;
 namespace StationGodMCP.Api.Shared.Game.Build;
 
 /// <summary>
-/// remove_structure gives a filled cell back as the last step of hand deconstruction does (FreedCellRule). The game
+/// remove structure gives a filled cell back as the last step of hand deconstruction does (FreedCellRule). The game
 /// (Structure.AttackWith) sets CurrentBuildStateIndex to -1, then StructureDestroyed and OnServer.Destroy; once Unity
 /// destroys it, OnDeregistered runs WorldChangeChecks, which, as the structure now lets air pass, queues
 /// AtmosphericEventInstance.StructureReleaseGrid for each of its cells. A player's next step comes ticks later, so each

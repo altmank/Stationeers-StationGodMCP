@@ -15,7 +15,7 @@ using UnityEngine;
 namespace StationGodMCP.Api.Shared.Game.Build;
 
 /// <summary>
-/// place_structure's orient, read against the world: {mount: wall|floor|ceiling|an axis (the side the surface is on),
+/// build structure's orient, read against the world: {mount: wall|floor|ceiling|an axis (the side the surface is on),
 /// upright (default true), controls_toward: a target, ports: [{role, index, type, toward}], flow: {from, to}}. A target
 /// is an axis (+x .. -z), "room" (into the room), "player" (the player), a point [x, y, z] or {reference_id}
 /// (that thing's position).

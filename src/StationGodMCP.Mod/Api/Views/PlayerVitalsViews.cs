@@ -4,7 +4,7 @@ using StationGodMCP.Api.Shared;
 
 namespace StationGodMCP.Api.Views;
 
-/// <summary>player_vitals: the player's stores, state, and hunger and thirst drain.</summary>
+/// <summary>inspect player: the player's stores, state, and hunger and thirst drain.</summary>
 internal sealed class PlayerVitalsView
 {
     internal PlayerVitalsView(ThingView player, BodyStores stores, BodyState state, VitalsRates rates,

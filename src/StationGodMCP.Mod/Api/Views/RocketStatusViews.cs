@@ -7,7 +7,7 @@ using StationGodMCP.Pure.Rockets;
 
 namespace StationGodMCP.Api.Views;
 
-/// <summary>rocket_status: every rocket asked for.</summary>
+/// <summary>inspect rocket: every rocket asked for.</summary>
 internal sealed class RocketStatusListView
 {
     internal RocketStatusListView(List<RocketStatusView> rockets, List<string>? explanations)
@@ -725,7 +725,7 @@ internal sealed class PartPoseView
     /// <summary>Metres from the engine mount, in the mount's own frame (x right, y up, z forward).</summary>
     public Dictionary<string, double> Offset { get; }
 
-    /// <summary>Its rotation relative to the engine mount, as place_structure takes it.</summary>
+    /// <summary>Its rotation relative to the engine mount, as build structure takes it.</summary>
     public OrientationView Rotation { get; }
 
     /// <summary>Prefabs in its slots (drill head, scanner head, payload, canisters, batteries).</summary>

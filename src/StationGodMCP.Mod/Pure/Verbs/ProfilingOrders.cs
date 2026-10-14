@@ -6,7 +6,7 @@ using StationGodMCP.Pure.Profiling;
 
 namespace StationGodMCP.Pure.Verbs;
 
-/// <summary>What the profiling what is asked to do.</summary>
+/// <summary>What the server profiling what is asked to do.</summary>
 internal enum ProfilingAction
 {
     On,

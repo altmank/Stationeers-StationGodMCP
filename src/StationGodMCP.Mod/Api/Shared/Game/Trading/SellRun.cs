@@ -14,7 +14,7 @@ using GameString = Assets.Scripts.Localization2.GameString;
 namespace StationGodMCP.Api.Shared.Game.Trading;
 
 /// <summary>
-/// trader_sell's lines, run so that no unit is sold twice.
+/// trade sell's lines, run so that no unit is sold twice.
 ///
 /// The game's sell (CODE, TradeDataHelper.HandleSellItem) walks the pad network's vending machines and then the card
 /// holder's contents, takes whole stacks with OnServer.Destroy and trims the last one. Destroy only marks the thing

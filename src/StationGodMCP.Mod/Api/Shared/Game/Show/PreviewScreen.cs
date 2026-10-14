@@ -11,11 +11,11 @@ using StationGodMCP.Pure.Verbs;
 namespace StationGodMCP.Api.Shared.Game.Show;
 
 /// <summary>
-/// show preview (catalogue show.json), the two branches the old show_preview handler ran: clear removes every box the
+/// show preview (catalogue show.json), the two branches the old show preview handler ran: clear removes every box the
 /// player's screen has of the mod's, and a draw plans the placements (PlacePlanner.Plan without the lint: a preview
 /// reports no lint problems) and draws each placement's footprint (green, red when it has a problem), its render box
 /// (white) and its ports' joining cells (cyan, red when blocked), then the call's own cells and boxes. The plan's
-/// report is the reply's plan: place_structure's own report of the placements, without the keys a job reply has and a
+/// report is the reply's plan: build structure's own report of the placements, without the keys a job reply has and a
 /// report does not (tool, status, job_id). Drawn on the player's screen (PlayerView): this game's, or a remote
 /// player's through their StationGod. Nothing in the world changes.
 /// </summary>

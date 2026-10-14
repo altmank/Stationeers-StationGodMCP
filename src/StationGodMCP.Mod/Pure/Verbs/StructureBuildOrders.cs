@@ -101,7 +101,7 @@ internal sealed class StructureBuildOrder
     }
 
     /// <summary>
-    /// The order undo_job's placement replay starts: the placements the job put back, who pays (the undo's from_id,
+    /// The order undo's placement replay starts: the placements the job put back, who pays (the undo's from_id,
     /// else the player), whether the call acts (confirm) or only reports, whether it queues behind the removal, and
     /// the caller's acknowledge_gas_lost. Nothing is lifted: a replay gives no allow. Null with every problem added.
     /// </summary>

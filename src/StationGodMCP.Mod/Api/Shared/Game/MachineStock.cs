@@ -12,7 +12,7 @@ using StationGodMCP.Pure;
 namespace StationGodMCP.Api.Shared.Game;
 
 /// <summary>
-/// Material a machine holds as reagents rather than as items (Thing.ReagentMixture), so find_items and item_totals can
+/// Material a machine holds as reagents rather than as items (Thing.ReagentMixture), so find item can
 /// count it. Two kinds, decided by the machine:
 ///
 /// fabricator: a FabricatorBase (Autolathe, Electronics Printer, Pipe Bender, Tool Manufactory...). Ingots put in

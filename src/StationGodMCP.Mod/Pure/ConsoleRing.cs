@@ -7,7 +7,7 @@ namespace StationGodMCP.Pure;
 
 /// <summary>
 /// The last lines a console printed, newest replacing oldest past Capacity. Thread safe: the game prints from any
-/// thread. A dedicated server's console keeps no buffer of its own, so this is what read_console reads there.
+/// thread. A dedicated server's console keeps no buffer of its own, so this is what server console reads there.
 /// </summary>
 internal sealed class ConsoleRing<T>
 {

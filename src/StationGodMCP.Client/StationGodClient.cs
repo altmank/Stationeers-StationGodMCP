@@ -79,7 +79,7 @@ public sealed class StationGodClient : IAsyncDisposable
 
     /// <summary>
     /// Subscribes to device values (protocol.md, Subscriptions). Refused carries the mod's subscription_limit (poll
-    /// read_devices instead); a server without subscriptions answers Unsupported.
+    /// read logic instead); a server without subscriptions answers Unsupported.
     /// </summary>
     public async Task<SubscribeOutcome> SubscribeAsync(JsonElement request, CancellationToken cancellation = default)
     {
@@ -93,7 +93,7 @@ public sealed class StationGodClient : IAsyncDisposable
         if (!connection.Features.Contains("subscriptions"))
         {
             return new SubscribeOutcome.Unsupported(
-                "This server has no subscriptions ('subscriptions' not in welcome.features); poll read_devices instead.");
+                "This server has no subscriptions ('subscriptions' not in welcome.features); poll read logic instead.");
         }
 
         Subscription subscription = new(this, request.Clone());

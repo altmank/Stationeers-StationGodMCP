@@ -11,7 +11,7 @@ using UnityEngine;
 
 namespace StationGodMCP.Api.Shared.Game.Build;
 
-/// <summary>place_structure's and remove_structure's plans as reports.</summary>
+/// <summary>build structure's and remove structure's plans as reports.</summary>
 internal static class BuildReports
 {
     internal const string DryRun = "dry_run";

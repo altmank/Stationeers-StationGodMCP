@@ -176,7 +176,7 @@ internal sealed class PortCheckView
     public bool InDoorKeepOut { get; }
 }
 
-/// <summary>place_structure's layout preview of one placement.</summary>
+/// <summary>build structure's layout preview of one placement.</summary>
 internal sealed class PlacementLayoutView
 {
     internal PlacementLayoutView(FootprintView footprint, SectionsView? sections, List<ConflictView> conflicts,
@@ -320,7 +320,7 @@ internal sealed class VisualUpView
     public bool Verified { get; }
 }
 
-/// <summary>describe_prefab: a buildable prefab in its own frame.</summary>
+/// <summary>inspect prefab: a buildable prefab in its own frame.</summary>
 internal sealed class DescribePrefabView
 {
     internal DescribePrefabView(PlacementPrefabView prefab, string runtimeType, string placement, float gridSizeM,
@@ -371,7 +371,7 @@ internal sealed class DescribePrefabView
     /// <summary>The axes the cursor turns a grid-placed prefab about.</summary>
     public string RotationAxes { get; }
 
-    /// <summary>The turns place_structure accepts (a face-mounted piece: every turn; the cursor check decides).</summary>
+    /// <summary>The turns build structure accepts (a face-mounted piece: every turn; the cursor check decides).</summary>
     public List<OrientationView> AllowedRotations { get; }
 
     /// <summary>How many small cells it takes (0 for a 2 m structure).</summary>
@@ -660,7 +660,7 @@ internal sealed class FreeRectView
     public int CellsHigh { get; }
 }
 
-/// <summary>wall_map: the plane, the side it is seen from, the text rows and what they show.</summary>
+/// <summary>survey wall: the plane, the side it is seen from, the text rows and what they show.</summary>
 internal sealed class WallMapView
 {
     internal WallMapView(string plane, string side, string right, string up, List<string> rows, PointView topLeft,
@@ -802,7 +802,7 @@ internal sealed class SpotReasonView
     public int Count { get; }
 }
 
-/// <summary>One lint_layout finding.</summary>
+/// <summary>One check layout finding.</summary>
 internal sealed class LintFindingView
 {
     internal LintFindingView(LintFinding finding)
@@ -838,7 +838,7 @@ internal sealed class LintFindingView
     public string? RuleId { get; }
 }
 
-/// <summary>lint_layout: what was checked, the counts per rule and the findings, warnings first.</summary>
+/// <summary>check layout: what was checked, the counts per rule and the findings, warnings first.</summary>
 internal sealed class LintLayoutView
 {
     internal LintLayoutView(string region, int cells, int pieces, int devices, int structures, int doors,
@@ -914,7 +914,7 @@ internal sealed class PrintView
 
     public string? MakerName { get; }
 
-    /// <summary>game_clock's game_time_s when it was made.</summary>
+    /// <summary>read clock's game_time_s when it was made.</summary>
     public double GameTimeS { get; }
 
     public int Quantity { get; }

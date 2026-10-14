@@ -7,7 +7,7 @@ using StationGodMCP.Pure;
 
 namespace StationGodMCP.Api.Views;
 
-/// <summary>A problem (the run is refused) or a warning of place_structure or remove_structure.</summary>
+/// <summary>A problem (the run is refused) or a warning of build structure or remove structure.</summary>
 internal sealed class BuildIssueView
 {
     internal BuildIssueView(string code, string message, int? index = null, ThingId? referenceId = null)
@@ -30,8 +30,8 @@ internal sealed class BuildIssueView
 
 /// <summary>
 /// A piece's orientation: where it faces (its front) and where its top points, and the Euler angles in degrees. For a
-/// piece on the grid's axes the angles are the quarter turns place_structure's rotation takes, and facing with up is
-/// the same turn as place_structure's facing and up, so either form places it again as it stands (facing reversed:
+/// piece on the grid's axes the angles are the quarter turns build structure's rotation takes, and facing with up is
+/// the same turn as build structure's facing and up, so either form places it again as it stands (facing reversed:
 /// turned 180 degrees). facing and up are null for a piece turned off the grid's axes; euler is then as the game holds it.
 /// </summary>
 internal sealed class OrientationView
@@ -49,7 +49,7 @@ internal sealed class OrientationView
 
     public RotationView Euler { get; }
 
-    /// <summary>A quarter-turn rotation, its Euler angles as place_structure's rotation takes them.</summary>
+    /// <summary>A quarter-turn rotation, its Euler angles as build structure's rotation takes them.</summary>
     internal static OrientationView Of(CubeRotation turn)
     {
         (int x, int y, int z) = turn.EulerTurns();
@@ -107,7 +107,7 @@ internal sealed class PlacementView
 
     /// <summary>
     /// A device (or another thing with ends that is not a cable, pipe or chute piece): its cable, pipe and chute ports
-    /// as they would stand at this position and turn, in grid_survey's shape (network_id is null: nothing is joined
+    /// as they would stand at this position and turn, in survey area's shape (network_id is null: nothing is joined
     /// yet). Left out for anything else.
     /// </summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
@@ -240,7 +240,7 @@ internal sealed class PaidByView
 }
 
 /// <summary>
-/// place_structure before anything is built: each placement, the materials, and every problem and warning. status
+/// build structure before anything is built: each placement, the materials, and every problem and warning. status
 /// is dry_run, scheduled (a job was started; poll it with job_id) or refused (nothing was changed).
 /// </summary>
 internal sealed class PlaceReportView
@@ -339,13 +339,13 @@ internal sealed class RemovalView
 
     public int BuildState { get; }
 
-    /// <summary>structure, or cable, pipe or chute for a network piece (removed as remove_cables etc. would).</summary>
+    /// <summary>structure, or cable, pipe or chute for a network piece (removed as remove cable etc. would).</summary>
     public string Kind { get; }
 
     public List<UpgradeAmountView> Refund { get; }
 }
 
-/// <summary>remove_structure before anything is removed: each piece, the refund, every problem and warning.</summary>
+/// <summary>remove structure before anything is removed: each piece, the refund, every problem and warning.</summary>
 internal sealed class RemoveReportView
 {
     internal RemoveReportView(BuildHeader header, List<RemovalView> removals, List<UpgradeAmountView> refund,
@@ -401,7 +401,7 @@ internal sealed class RemoveReportView
 }
 
 /// <summary>
-/// A pipe network left over its weakest pipe by a remove_structure request with allow_burst (will_burst): the
+/// A pipe network left over its weakest pipe by a remove structure request with allow_burst (will_burst): the
 /// forecast pressure against the rating, the pipes expected to burst and where each leaks (a room id, or outdoors),
 /// and the gas expected out (released_mol of the holds_mol it holds, gas by gas).
 /// </summary>
@@ -605,7 +605,7 @@ internal sealed class BuildStopView
 }
 
 /// <summary>
-/// A place_structure or remove_structure job as polled. status: waiting (for the game tick to stop), applied (done
+/// A build structure or remove structure job as polled. status: waiting (for the game tick to stop), applied (done
 /// and every check passed), applied_with_differences (done, some check failed; see verification), stopped (stopped
 /// part way; see stopped_at), refused (the final check found problems; nothing changed) or applied_unchecked.
 /// </summary>

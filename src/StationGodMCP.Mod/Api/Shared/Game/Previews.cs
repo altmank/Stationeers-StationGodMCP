@@ -7,7 +7,7 @@ using UnityEngine;
 namespace StationGodMCP.Api.Shared.Game;
 
 /// <summary>
-/// show_preview's in-game ghosts: wire boxes drawn with LineRenderers on game objects of the mod's own, never the
+/// show preview's in-game ghosts: wire boxes drawn with LineRenderers on game objects of the mod's own, never the
 /// game's construction cursor or any thing. Each lives for its seconds and is destroyed by Tick (the mod's Update);
 /// Clear removes them all (also when the mod unloads). Only the local game draws them: other players see nothing.
 /// With xray the lines use XRay's see-through material, so walls, frames and terrain no longer hide them.

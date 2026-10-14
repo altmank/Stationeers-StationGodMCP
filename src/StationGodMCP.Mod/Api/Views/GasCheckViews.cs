@@ -267,13 +267,13 @@ internal sealed class GasFamilyView
     public double EnergyAfterJ { get; }
 
     /// <summary>
-    /// What the job's plan deleted on purpose (remove_structure with allow_contents: a part of a split network that
+    /// What the job's plan deleted on purpose (remove structure with allow_contents: a part of a split network that
     /// lost its last member with its share), expected gone and not put back (1.4.4+).
     /// </summary>
     public double PlannedLossMol { get; }
 
     /// <summary>
-    /// What a burst the plan let happen may let out (remove_structure with allow_burst, will_burst): the burst comes on
+    /// What a burst the plan let happen may let out (remove structure with allow_burst, will_burst): the burst comes on
     /// a later tick, so the family is ok holding anything from its expected contents down to this much less; never put
     /// back.
     /// </summary>

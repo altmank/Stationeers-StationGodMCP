@@ -60,7 +60,7 @@ internal sealed class LayoutPreview
 }
 
 /// <summary>
-/// place_structure's layout preview of one placement, from the game's own data for the prefab at that position and
+/// build structure's layout preview of one placement, from the game's own data for the prefab at that position and
 /// turn: the small cells it would be registered in (GridBounds, as the game's cursor reads them), its render box
 /// (Thing.Bounds), the face plane it rests on and the 2 m wall sections it spans there, and the conflicts with what
 /// stands around it now: visual_overlap (render boxes run into each other by more than 0.1 m, VisualClash; neighbours

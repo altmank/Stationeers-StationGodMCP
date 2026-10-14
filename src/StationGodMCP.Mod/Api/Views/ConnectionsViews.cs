@@ -9,7 +9,7 @@ using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Api.Views;
 
-/// <summary>connections for a thing: its connection ends and what is attached at each.</summary>
+/// <summary>inspect connections for a thing: its connection ends and what is attached at each.</summary>
 internal sealed class ConnectionsView
 {
     internal ConnectionsView(ThingView thing, PositionView position, NetworkRefView? ownNetwork,
@@ -29,7 +29,7 @@ internal sealed class ConnectionsView
     public PositionView Position { get; }
 
     /// <summary>
-    /// How the thing stands turned: facing (its front), up and Euler degrees, the forms place_structure takes, so it
+    /// How the thing stands turned: facing (its front), up and Euler degrees, the forms build structure takes, so it
     /// can be placed again as it stands or turned (facing reversed: 180 degrees).
     /// </summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
@@ -38,7 +38,7 @@ internal sealed class ConnectionsView
     /// <summary>A pipe, cable or chute's own network; null for a device.</summary>
     public NetworkRefView? OwnNetwork { get; }
 
-    /// <summary>Its colour {index, name, is_default} as paint reads it; left out for a thing with none.</summary>
+    /// <summary>Its colour {index, name, is_default} as write paint reads it; left out for a thing with none.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public ThingColorView? Color { get; }
 
@@ -176,11 +176,11 @@ internal sealed class NetworkMemberView
 
     public PositionView Position { get; }
 
-    /// <summary>Its colour {index, name, is_default} as paint reads it; left out for a thing with none.</summary>
+    /// <summary>Its colour {index, name, is_default} as write paint reads it; left out for a thing with none.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public ThingColorView? Color { get; }
 
-    /// <summary>With open_ends_only: the indexes (as connections lists ends) of its open ends of the network's kind.</summary>
+    /// <summary>With open_ends_only: the indexes (as inspect connections lists ends) of its open ends of the network's kind.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public List<int>? OpenEnds { get; }
 

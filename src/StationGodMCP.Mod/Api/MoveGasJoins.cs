@@ -16,7 +16,7 @@ namespace StationGodMCP.Api;
 /// <summary>
 /// Which atmospheres the game joins: pairs it mixes to one composition and temperature every atmospherics tick with
 /// AtmosphereHelper.Mix, which pools two mixtures and hands each its volume's share, or with
-/// GasTankStorage's own pooling of the same kind. Gas moved out of one member flows back from the others, so move_gas
+/// GasTankStorage's own pooling of the same kind. Gas moved out of one member flows back from the others, so move gas
 /// treats a joined set as one unit. Only these joins are followed, each under the condition its OnAtmosphericTick
 /// checks (CODE, Assets.Scripts.Objects.Pipes unless noted):
 ///   GasTankStorage.OnAtmosphericTick: every ConnectedGasCanisters canister with every ConnectedPipeNetworks network,

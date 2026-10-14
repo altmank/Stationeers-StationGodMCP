@@ -5,7 +5,7 @@ using StationGodMCP.Api.Shared;
 
 namespace StationGodMCP.Api.Views;
 
-/// <summary>atmosphere_contents: every atmosphere one thing, pipe network or atmosphere id holds.</summary>
+/// <summary>inspect atmosphere: every atmosphere one thing, pipe network or atmosphere id holds.</summary>
 internal sealed class AtmosphereContentsView
 {
     internal AtmosphereContentsView(ThingId referenceId, object subject, List<HeldAtmosphereEntryView> atmospheres)
@@ -26,7 +26,7 @@ internal sealed class AtmosphereContentsView
     public int Count { get; }
 }
 
-/// <summary>Where an atmosphere_contents entry comes from: the reply's source values.</summary>
+/// <summary>Where an inspect atmosphere entry comes from: the reply's source values.</summary>
 internal static class AtmosphereSource
 {
     internal const string Internal = "internal";

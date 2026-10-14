@@ -61,7 +61,7 @@ internal sealed class AirSample
     }
 
     /// <summary>
-    /// A room's air as the rooms tool sums it: every cell's SampleGlobalAtmosphere (its own, or the planet's), in
+    /// A room's air as the find room tool sums it: every cell's SampleGlobalAtmosphere (its own, or the planet's), in
     /// the given order.
     /// </summary>
     internal static AirSample OfCells(AtmosphericsController air, List<GridPoint> cells)

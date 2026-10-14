@@ -14,7 +14,7 @@ using Trading;
 namespace StationGodMCP.Api.Shared.Game.Trading;
 
 /// <summary>
-/// What trader_inventory's have counts: what trader_sell would take (SellStock), before the trader lands. The goods on
+/// What trade inventory's have counts: what trade sell would take (SellStock), before the trader lands. The goods on
 /// the pad network's vending machines and in the card holder's inventory, and the pad network's gas, each only when
 /// the trader's conditions accept it (BuyDataInstance.BuyConditionsMet, as TradeDataHelper.HandleSellItem asks). The
 /// pad is the contact's own (ConnectedPad, set from the moment it is called to land); for a contact not called yet,
@@ -32,7 +32,7 @@ internal sealed class HeldGoods
     }
 
     /// <summary>
-    /// Whose inventory counts: the given card's holder, as trader_sell takes goods from it, else the player
+    /// Whose inventory counts: the given card's holder, as trade sell takes goods from it, else the player
     /// (PlayerOrigin: who carries the card the trade window uses). Null without a player: pads only.
     /// </summary>
     internal static ITradableInventory? Holder(ThingId? cardId)

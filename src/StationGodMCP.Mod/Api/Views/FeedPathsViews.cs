@@ -7,7 +7,7 @@ using StationGodMCP.Api.Shared;
 namespace StationGodMCP.Api.Views;
 
 /// <summary>
-/// feed_paths: from a root device, each device on the network with the rooms its feed crosses (daisy chains flagged),
+/// survey feeds: from a root device, each device on the network with the rooms its feed crosses (daisy chains flagged),
 /// each room with how many places its devices' feeds enter it, and devices no path reaches.
 /// </summary>
 internal sealed class FeedPathsView

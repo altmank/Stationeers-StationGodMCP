@@ -7,7 +7,7 @@ using System.Globalization;
 namespace StationGodMCP.Pure;
 
 /// <summary>
-/// Where move_player lands a player next to something: beside its body on the side facing where the player stands
+/// Where move player lands a player next to something: beside its body on the side facing where the player stands
 /// now, clear of it by ClearanceM, at the height of the body's base. Level only: the side is chosen in x and z, so a
 /// player above or below lands beside it on its floor, not on top.
 /// </summary>
@@ -90,7 +90,7 @@ internal readonly struct OrbitSurface
     internal bool IsStructure { get; }
 }
 
-/// <summary>A player as move_player finds them: the body, its reference id and the name players see.</summary>
+/// <summary>A player as move player finds them: the body, its reference id and the name players see.</summary>
 internal sealed class NamedPlayer<T> where T : class
 {
     internal NamedPlayer(T body, long referenceId, string name)

@@ -15,7 +15,7 @@ using UnityEngine;
 namespace StationGodMCP.Api.Shared.Game.Build;
 
 /// <summary>
-/// The prefabs place_structure may build: loaded structures with build states that some kit builds (a Constructor's
+/// The prefabs build structure may build: loaded structures with build states that some kit builds (a Constructor's
 /// BuildStructure or a MultiConstructor's Constructables), and the game's placement cursor for each
 /// (InventoryManager._constructionCursors, one instance per structure prefab, made when the inventory manager sets
 /// up). Always the registered prefab (Prefab.Find): a kit's entry is the source asset, whose GridBounds is empty.
@@ -209,7 +209,7 @@ internal static class CursorCheck
     /// The cursor's CanConstruct where it stands (At): the class's own rules; null when it allows it. A fuselage piece
     /// that would replace another (StructureFuselage.CanMerge) is not asked: its CanConstruct then reads the local
     /// player's other hand and allows the placement outright when that holds the angle grinder (Fuselage.cs:30-41,
-    /// EngineFuselage.cs:31-42, NoseCone.cs:28-39), and the tool builds as a player holding one (place_structure
+    /// EngineFuselage.cs:31-42, NoseCone.cs:28-39), and the tool builds as a player holding one (build structure
     /// refuses such a replacement unless a merge kit builds the prefab).
     /// </summary>
     internal static string? ConstructRefusal(Structure cursor)

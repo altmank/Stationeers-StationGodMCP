@@ -8,7 +8,7 @@ namespace StationGodMCP.Pure;
 /// <summary>
 /// What a build or remove report shows as refunded: with refund off nothing comes back, so every refund list is empty
 /// and every refund count 0, dry run or not, and a client summing refunds counts only what will be delivered. A swap
-/// (replace_walls, replace_frames) is the exception in part: the old piece's materials still pay toward the new one,
+/// (swap wall, swap frame) is the exception in part: the old piece's materials still pay toward the new one,
 /// as a merge placement does, so its refund stays listed as that offset; only its give-back (a negative net) goes.
 /// </summary>
 internal static class RefundShown

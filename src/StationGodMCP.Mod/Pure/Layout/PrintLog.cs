@@ -104,7 +104,7 @@ internal sealed class PrintLog
     }
 }
 
-/// <summary>find_things' made_by and made_since: which printed items to keep.</summary>
+/// <summary>find thing' made_by and made_since: which printed items to keep.</summary>
 internal sealed class PrintFilter
 {
     internal PrintFilter(long? makerId, string? makerContains, double? since)

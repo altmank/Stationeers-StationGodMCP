@@ -418,7 +418,7 @@ internal sealed class FlightSampleView
     public string Rule { get; }
 }
 
-/// <summary>rocket_flight_log: one rocket's log, summarised, with a page of rows.</summary>
+/// <summary>read flight_log: one rocket's log, summarised, with a page of rows.</summary>
 internal sealed class FlightLogView
 {
     internal FlightLogView(ThingId rocketId, string rocketName, bool recording, double intervalS, string? csvPath,
@@ -517,7 +517,7 @@ internal sealed class FlightEventView
     public string What { get; }
 }
 
-/// <summary>rocket_flight_log list: every log, summaries only.</summary>
+/// <summary>read flight_log list: every log, summaries only.</summary>
 internal sealed class FlightLogListView
 {
     internal FlightLogListView(List<FlightLogView> logs)
@@ -531,7 +531,7 @@ internal sealed class FlightLogListView
     public int Count { get; }
 }
 
-/// <summary>rocket_flight_log clear.</summary>
+/// <summary>read flight_log clear.</summary>
 internal sealed class FlightLogClearedView
 {
     internal FlightLogClearedView(bool cleared)

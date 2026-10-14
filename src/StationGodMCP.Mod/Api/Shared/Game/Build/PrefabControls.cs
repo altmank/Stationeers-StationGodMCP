@@ -33,7 +33,7 @@ internal static class PrefabControls
 
     /// <summary>
     /// The world side its controls face at a turn; its forward for anything with no control face (orient's
-    /// controls_toward and find_spot's front aim this).
+    /// controls_toward and plan spot's front aim this).
     /// </summary>
     internal static GridStep FrontOf(Structure prefab, CubeRotation turn) =>
         Of(prefab) is ControlFace controls ? turn.Turn(controls.Local) : turn.Forward;

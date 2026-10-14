@@ -6,7 +6,7 @@ using System.Collections.Generic;
 namespace StationGodMCP.Pure;
 
 /// <summary>
-/// A list filter on a thing's prefab name: prefab or prefabs, whole names as place_structure and describe_prefab take
+/// A list filter on a thing's prefab name: prefab or prefabs, whole names as build structure and inspect prefab take
 /// them (StructureFrame, not StructureFrameCorner), and prefab_contains, a part of one. All ignore case; exact names and
 /// a part given together, a name must be one of the names and hold the part. None: every name.
 /// </summary>

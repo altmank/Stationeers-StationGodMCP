@@ -7,7 +7,7 @@ using StationGodMCP.Pure;
 
 namespace StationGodMCP.Api.Views;
 
-/// <summary>thing_health: one thing's damage state.</summary>
+/// <summary>inspect health: one thing's damage state.</summary>
 internal sealed class HealthView
 {
     internal HealthView(ThingView thing, string kind, string type, DamageReading damage, HealthFlags flags,

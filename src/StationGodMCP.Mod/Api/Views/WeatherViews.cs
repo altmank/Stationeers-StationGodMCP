@@ -4,7 +4,7 @@ using System.Collections.Generic;
 
 namespace StationGodMCP.Api.Views;
 
-/// <summary>weather: the storm schedule, the world's weather events and the season.</summary>
+/// <summary>inspect weather: the storm schedule, the world's weather events and the season.</summary>
 internal sealed class WeatherView
 {
     internal WeatherView(bool worldHasWeather, string state, CurrentWeatherView? current, WeatherCountersView counters,

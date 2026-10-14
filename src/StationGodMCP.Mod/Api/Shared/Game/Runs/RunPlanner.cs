@@ -215,7 +215,7 @@ internal static class RunPlanner
         }
     }
 
-    // Members of the family that are not pieces, removed by the same job another way (remove_structure's in-line tanks
+    // Members of the family that are not pieces, removed by the same job another way (remove structure's in-line tanks
     // and passive vents): the forecast sees their network without them, so its split and contents checks and the
     // networks it rebuilds are those of the whole job. The run never removes them and gives nothing back for them.
     private static void ReadAlongside(RunPlan plan, RunRemoval removal, HashSet<long> seen)
@@ -746,7 +746,7 @@ internal static class RunPlanner
     }
 
     // from_id is a piece this request removes while refund_to asks to give into it (source, storage, the default):
-    // refused as remove_structure refuses it, since the holder is gone before the refund is delivered.
+    // refused as remove structure refuses it, since the holder is gone before the refund is delivered.
     private static void HolderRemoved(RunPlan plan)
     {
         Thing? from = plan.From;

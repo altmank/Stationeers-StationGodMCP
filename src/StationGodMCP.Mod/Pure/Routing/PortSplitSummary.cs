@@ -6,7 +6,7 @@ using System.Globalization;
 namespace StationGodMCP.Pure.Routing;
 
 /// <summary>
-/// remove_structure's would_split warnings for ports, one line per device instead of one per port: the ports that lose
+/// remove structure's would_split warnings for ports, one line per device instead of one per port: the ports that lose
 /// their connection and the network each was on, in the order the forecast lists them.
 /// </summary>
 internal static class PortSplitSummary

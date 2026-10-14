@@ -18,7 +18,7 @@ internal readonly struct SamplingTick
     internal double GameTimeS { get; }
 }
 
-/// <summary>Reads a devices subscription's items, all in the calling frame, as read_devices reads them.</summary>
+/// <summary>Reads a devices subscription's items, all in the calling frame, as read logic reads them.</summary>
 internal interface IDeviceReader<out TReading> where TReading : class
 {
     TReading Read(DeviceSubscriptionQuery query);

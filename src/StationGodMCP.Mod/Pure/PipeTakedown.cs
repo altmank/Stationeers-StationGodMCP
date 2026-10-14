@@ -74,7 +74,7 @@ internal sealed class TakedownOutcome
 
 /// <summary>
 /// What removing some members of one pipe network in one job does to it and its gas, in the order the job removes
-/// them: the one model remove_structure's would_split, holds_gas and would_burst are read from.
+/// them: the one model remove structure's would_split, holds_gas and would_burst are read from.
 /// <para>
 /// Kept whole (every removed member leaves the network before it is destroyed, as the run tools do when the network
 /// stays in one piece): the network keeps every mole in what is left.

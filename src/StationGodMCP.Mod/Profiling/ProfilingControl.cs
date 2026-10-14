@@ -93,7 +93,7 @@ internal static class ProfilingControl
         }
     }
 
-    /// <summary>The profiling call: on, off, reset or report.</summary>
+    /// <summary>The server profiling call: on, off, reset or report.</summary>
     internal static ProfilingView Run(ProfilingOrder order)
     {
         switch (order.Action)
@@ -120,7 +120,7 @@ internal static class ProfilingControl
         return View();
     }
 
-    /// <summary>mod_info's runtime.profiling: present only while profiling is on.</summary>
+    /// <summary>server info's runtime.profiling: present only while profiling is on.</summary>
     internal static ProfilingSummaryView? Summary()
     {
         ProfileRecorder? recorder = Prof.Recorder;

@@ -818,7 +818,6 @@
           {"label": "a piece run", "job_view": "RunJob"},
           {"label": "a swap job", "job_view": "SwapJob"},
           {"label": "an upgrade job", "job_view": "UpgradeJob"},
-          {"label": "an undo job", "job_view": "UndoJob"},
           {"label": "queued", "job_view": "JobQueued"},
           {"label": "a script run", "keys": {"text": "str"}}
         ]

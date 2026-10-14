@@ -5,7 +5,7 @@ using System.Collections.Generic;
 namespace StationGodMCP.Pure;
 
 /// <summary>
-/// Where one placement of a place_structure run would stand once built, as the game's placement checks read it: the
+/// Where one placement of a build structure run would stand once built, as the game's placement checks read it: the
 /// small cells a small-grid piece takes with the slot it takes in each (SmallCell keeps one cable, pipe, chute, device,
 /// rail and other per cell), or the 2 m cells a large piece registers in (a grid-placed piece's cells; a wall's cell on
 /// its front side) and whether it blocks the whole cell (CollisionType.BlockGrid: a frame).

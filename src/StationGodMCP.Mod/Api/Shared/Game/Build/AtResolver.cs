@@ -42,7 +42,7 @@ internal sealed class ResolvedAt
 }
 
 /// <summary>
-/// Reads place_structure's relative at and named facings against the world. at: {crosshair: true} (where the look ray
+/// Reads build structure's relative at and named facings against the world. at: {crosshair: true} (where the look ray
 /// hits, within 10 m), {relative_to: "player" | "crosshair" | a reference id | {reference_id}, frame: player | world |
 /// target, right_m, up_m, forward_m, from: origin | top | bottom | left | right | front | back} (from a thing's body:
 /// the middle of that side of its footprint box, sides read in the frame), or {on_face_i_look_at: true, along_right_m,

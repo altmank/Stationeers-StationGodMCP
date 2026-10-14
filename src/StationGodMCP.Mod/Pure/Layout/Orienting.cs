@@ -133,7 +133,7 @@ internal sealed class PortIntent
         Index.HasValue ? $"port {Index}" : $"the {(Type != null ? Type + " " : string.Empty)}{Role ?? "port"}";
 }
 
-/// <summary>place_structure's orient: what the piece's turn should achieve.</summary>
+/// <summary>build structure's orient: what the piece's turn should achieve.</summary>
 internal sealed class OrientIntent
 {
     internal OrientIntent(MountIntent? mount, bool upright, OrientTarget? controlsToward, List<PortIntent> ports,

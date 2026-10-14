@@ -10,7 +10,7 @@ using UnityEngine.Rendering;
 namespace StationGodMCP.Api.Shared.Game;
 
 /// <summary>
-/// highlight's marks, drawn every frame by Tick (the mod's Update) as the T-Ray SPU draws (SPUMesonScanner.Render from
+/// show highlight's marks, drawn every frame by Tick (the mod's Update) as the T-Ray SPU draws (SPUMesonScanner.Render from
 /// SensorLenses.UpdateEachFrame: Graphics.DrawMesh calls with a see-through material, no game object per piece), plus
 /// labels and screen-edge arrows from an OnGUI overlay on the mod's own game object. Only this game draws them;
 /// nothing in the world changes. Each mark lives for its seconds; Clear removes them all (also when the mod unloads or

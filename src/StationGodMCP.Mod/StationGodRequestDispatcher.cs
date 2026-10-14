@@ -39,7 +39,7 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
         _costs = new StreamCostCalls(scheduler.Costs);
     }
 
-    /// <summary>The per-frame counters mod_info reports.</summary>
+    /// <summary>The per-frame counters server info reports.</summary>
     internal static DispatchStats Stats { get; } = new DispatchStats();
 
     /// <summary>
@@ -88,7 +88,7 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
 
     public void OwnerResumed(string owner, object source) => Subscriptions?.Resumed(owner, source);
 
-    /// <summary>One frame of the scheduler, on the main thread; its outcome goes to mod_info's counters.</summary>
+    /// <summary>One frame of the scheduler, on the main thread; its outcome goes to server info's counters.</summary>
     internal void RunFrame(bool jobHoldsTick, ISampleLane? samples)
     {
         FrameOutcome outcome;
@@ -126,7 +126,7 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
     }
 
     /// <summary>
-    /// Runs one call on the main thread, and counts it for its connection (mod_info connections: calls, tool errors
+    /// Runs one call on the main thread, and counts it for its connection (server info connections: calls, tool errors
     /// and main-thread ms per known method; subscribe, unsubscribe, read sample, drop_job, stream_costs,
     /// hold_restore and inspect_controllers count as answered). The lane scheduler times the same span for the call's
     /// stream (stream_costs), and adds the slices of a call deferred over frames to both.

@@ -58,7 +58,7 @@ internal interface IRestoreDevices
 /// </para>
 /// <para>
 /// Bounded: MaximumPerStream restores per stream and MaximumPerOwner per owner; a change past either is refused whole.
-/// The results of applying (applied, skipped with a reason, dropped) are counted for mod_info and, for an owner whose
+/// The results of applying (applied, skipped with a reason, dropped) are counted for server info and, for an owner whose
 /// connection holds a resume token, kept for the next welcome on that token (TakeReport). Everything but TakeReport
 /// runs on the main thread; Wrote costs one field read while nothing is held.
 /// </para>
@@ -107,7 +107,7 @@ internal sealed class HeldRestores : ISessionEndStore
     /// <summary>Restores held, every owner and stream together.</summary>
     internal int Held => _held;
 
-    /// <summary>Restores written since the mod loaded (mod_info runtime.restores).</summary>
+    /// <summary>Restores written since the mod loaded (server info runtime.restores).</summary>
     internal long Applied { get; private set; }
 
     /// <summary>Restores not written: the device was changed, gone or refused the write, or the write rules held it.</summary>

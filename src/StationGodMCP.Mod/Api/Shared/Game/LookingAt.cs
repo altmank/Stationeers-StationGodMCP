@@ -145,7 +145,7 @@ internal static class LookingAt
     }
 }
 
-/// <summary>The parts of a looking_at reply beyond the target and the brief hit, as include names them.</summary>
+/// <summary>The parts of an inspect looking_at reply beyond the target and the brief hit, as include names them.</summary>
 [System.Flags]
 internal enum LookParts
 {

@@ -554,7 +554,7 @@ internal static class SiloSaver
 }
 
 /// <summary>
-/// Silo stock as find_items and item_totals count it: every entry's stored thing and every thing stored inside one
+/// Silo stock as find item counts it: every entry's stored thing and every thing stored inside one
 /// (as the item tools count a backpack's contents in a locker), located in the silo. Host only: a client holds no
 /// store, so it lists none.
 /// </summary>

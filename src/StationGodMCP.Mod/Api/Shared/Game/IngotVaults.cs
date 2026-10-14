@@ -80,7 +80,7 @@ internal static class IngotVaults
 
     internal static bool IsRemote(Thing thing) => IsA(thing, GameMembers.RemoteVaultType.Name);
 
-    // By the type's full name up the hierarchy, so move_item's check costs no assembly search when IngotVault is absent.
+    // By the type's full name up the hierarchy, so move item's check costs no assembly search when IngotVault is absent.
     private static bool IsA(Thing thing, string fullName)
     {
         for (Type? type = thing.GetType(); type != null; type = type.BaseType)

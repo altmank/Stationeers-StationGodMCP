@@ -6,7 +6,7 @@ using System.Collections.Generic;
 namespace StationGodMCP.Pure;
 
 /// <summary>
-/// lint_layout's built-in rule ids and their default levels, in report order: the shipped lint-rules.json defines each
+/// check layout's built-in rule ids and their default levels, in report order: the shipped lint-rules.json defines each
 /// with the same id and level (a test holds them together).
 /// </summary>
 internal static class LintCodes

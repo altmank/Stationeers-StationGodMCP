@@ -5,7 +5,7 @@ using System.Text;
 
 namespace StationGodMCP.Pure;
 
-/// <summary>What stands in one small-grid cell, as grid_survey encodes it.</summary>
+/// <summary>What stands in one small-grid cell, as survey area encodes it.</summary>
 internal readonly struct SmallOccupancy
 {
     internal SmallOccupancy(bool cable, bool pipe, bool chute, bool device, bool other, bool rocket)
@@ -37,7 +37,7 @@ internal readonly struct SmallOccupancy
 }
 
 /// <summary>
-/// The small grid inside the 2 m grid, and grid_survey's compact encoding. Large cells are centred on odd metres
+/// The small grid inside the 2 m grid, and survey area's compact encoding. Large cells are centred on odd metres
 /// (Grid3 10 + 20k); along each axis a large cell holds four small-cell centres at -1, -0.5, 0 and +0.5 m from its
 /// centre (index 0 to 3): index 0 lies on the cell's minimum face plane, shared with the neighbour (its +1 m is the
 /// neighbour's index 0). A large cell's 64 small cells are one string, index x + 4y + 16z, one character each:

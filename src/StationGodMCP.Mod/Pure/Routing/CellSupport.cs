@@ -173,7 +173,7 @@ internal static class CellSupports
     }
 
     /// <summary>
-    /// grid_survey's character: 'i' inside a frame (every 2 m cell it touches holds one), else 'e' a frame edge or
+    /// survey area's character: 'i' inside a frame (every 2 m cell it touches holds one), else 'e' a frame edge or
     /// corner, 'f' on a frame's face, 'w' wall plane, 'a' air.
     /// </summary>
     internal static char Code(CellSupport support, CellVisibility visibility) =>

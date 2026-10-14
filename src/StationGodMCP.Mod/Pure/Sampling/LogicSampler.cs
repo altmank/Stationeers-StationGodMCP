@@ -399,7 +399,7 @@ internal sealed class LogicSampler<TItem> where TItem : class
 }
 
 /// <summary>
-/// Compares two of read_logic_many's results as the sidecar loop compared their JSON text: index, ok, the device and
+/// Compares two of read logic's results as the sidecar loop compared their JSON text: index, ok, the device and
 /// logic type, the value (equal doubles write equal text, but 0 and -0 do not) or the error's code and message.
 /// </summary>
 internal sealed class LogicResultComparer : IReadingComparer<BatchItemView>

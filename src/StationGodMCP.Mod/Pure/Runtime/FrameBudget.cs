@@ -45,7 +45,7 @@ internal sealed class FrameBudget
 /// much main-thread time per frame (mean and maximum, and its percentiles in FrameHistogram), frames the budget stopped
 /// with requests still queued, and requests that expired in the queue before the main thread reached them. A frame
 /// counts as busy when it served a request or the budget stopped it; a frame that only took subscription samples does
-/// not count, while a busy frame's time includes its samples. Main thread writes, mod_info reads; one lock.
+/// not count, while a busy frame's time includes its samples. Main thread writes, server info reads; one lock.
 /// </summary>
 internal sealed class DispatchStats
 {
@@ -123,7 +123,7 @@ internal sealed class DispatchSnapshot
 
     internal long Expired { get; }
 
-    /// <summary>The busy frames' request ms in buckets: mod_info's frame_ms with include_counters.</summary>
+    /// <summary>The busy frames' request ms in buckets: server info's frame_ms with include_counters.</summary>
     internal FrameHistogramReading Histogram { get; }
 
     internal double? MeanPerFrame => BusyFrames > 0 ? (double)Served / BusyFrames : null;

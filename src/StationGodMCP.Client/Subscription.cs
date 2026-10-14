@@ -11,7 +11,7 @@ public abstract record SubscribeOutcome
 
     public sealed record Subscribed(Subscription Subscription) : SubscribeOutcome;
 
-    /// <summary>'subscriptions' not in welcome.features: poll read_devices with the same items.</summary>
+    /// <summary>'subscriptions' not in welcome.features: poll read logic with the same items.</summary>
     public sealed record Unsupported(string Message) : SubscribeOutcome;
 
     /// <summary>Refused (subscription_limit: poll instead) or no answer.</summary>
@@ -42,7 +42,7 @@ public sealed class Subscription : IAsyncDisposable
     /// <summary>The server's id on the current connection; null while not subscribed.</summary>
     public string? ServerId { get; private set; }
 
-    /// <summary>The last read_devices result received: the first reading, then each update's.</summary>
+    /// <summary>The last read logic result received: the first reading, then each update's.</summary>
     public JsonElement? State { get; private set; }
 
     public long Seq { get; private set; }

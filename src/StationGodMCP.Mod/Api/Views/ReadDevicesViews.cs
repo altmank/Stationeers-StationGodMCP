@@ -122,7 +122,7 @@ internal sealed class DeviceReadFailedView : BatchItemView
 
 /// <summary>
 /// One slot: its slot logic values by the name sent (without logic: every type the slot reads, by the names
-/// inspect_slots gives), the names that failed, or the slot's own error (slot_not_found).
+/// inspect slots gives), the names that failed, or the slot's own error (slot_not_found).
 /// </summary>
 internal sealed class SlotReadView
 {
@@ -153,7 +153,7 @@ internal sealed class SlotReadView
 
 /// <summary>
 /// One atmosphere, compact: where it comes from, the network's id when it is a network's, its bulk figures and each
-/// gas and liquid held (atmosphere_contents' figures, without owner, display names or water).
+/// gas and liquid held (inspect atmosphere' figures, without owner, display names or water).
 /// </summary>
 internal sealed class AtmosphereReadView
 {
@@ -192,7 +192,7 @@ internal sealed class AtmosphereReadView
     public List<CompactGasView> Contents { get; }
 }
 
-/// <summary>A gas or liquid held: atmosphere_contents' gas, state, amount_mol and (liquids) liquid_l.</summary>
+/// <summary>A gas or liquid held: inspect atmosphere' gas, state, amount_mol and (liquids) liquid_l.</summary>
 internal sealed class CompactGasView
 {
     internal CompactGasView(string gas, bool liquid, double amountMol, double? liquidL)
@@ -214,7 +214,7 @@ internal sealed class CompactGasView
     public double? LiquidL { get; }
 }
 
-/// <summary>The reagents tool's total and reagents for the item.</summary>
+/// <summary>The inspect reagents tool's total and reagents for the item.</summary>
 internal sealed class ReagentsReadView
 {
     internal ReagentsReadView(double total, List<ReagentView> reagents)

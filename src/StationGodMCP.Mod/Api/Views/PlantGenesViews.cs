@@ -6,7 +6,7 @@ using StationGodMCP.Api.Shared;
 
 namespace StationGodMCP.Api.Views;
 
-/// <summary>plant_genes read: one gene set of a plant item, every gene with its range, meaning and effect.</summary>
+/// <summary>inspect genes: one gene set of a plant item, every gene with its range, meaning and effect.</summary>
 internal sealed class PlantGenesView
 {
     internal PlantGenesView(GeneSetHeader header, int geneSetCount, List<GeneView> genes)
@@ -221,7 +221,7 @@ internal sealed class BandHighKpaView
     public double MaxKpa { get; }
 }
 
-/// <summary>plant_genes write: each gene written or refused, on one gene set.</summary>
+/// <summary>write genes: each gene written or refused, on one gene set.</summary>
 internal sealed class GenesWrittenView
 {
     internal GenesWrittenView(GeneSetHeader header, BatchResultView results)

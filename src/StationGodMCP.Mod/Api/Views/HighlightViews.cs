@@ -8,7 +8,7 @@ using StationGodMCP.Pure;
 
 namespace StationGodMCP.Api.Views;
 
-/// <summary>highlight: what each target drew, how many earlier marks went, for how long, with what.</summary>
+/// <summary>show highlight: what each target drew, how many earlier marks went, for how long, with what.</summary>
 internal sealed class HighlightView
 {
     internal HighlightView(List<HighlightTargetView> targets, int cleared, double seconds, string renderer,

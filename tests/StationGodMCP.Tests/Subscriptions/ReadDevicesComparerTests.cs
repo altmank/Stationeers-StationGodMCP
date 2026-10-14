@@ -200,7 +200,7 @@ public sealed class ReadDevicesComparerTests
 
         Assert.Equal("""{"name":"max_projected_ms_per_s","limit":22.5,"requested":30.72,"projected_ms_per_s":30.72}""",
             ApiJson.WriteFresh(refusal.Data));
-        Assert.Contains("read_devices", refusal.Message);
+        Assert.Contains("read logic", refusal.Message);
     }
 
     private static string[] Keys(JObject json)

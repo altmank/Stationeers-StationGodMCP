@@ -57,7 +57,7 @@ internal static class HealthCondition
     internal static double RankRatio(bool isBroken, double damageRatio) => isBroken ? 1.0 : damageRatio;
 
     /// <summary>
-    /// Whether thing_health's scan lists a thing: broken things always (broken_only lists only them), others when
+    /// Whether inspect health's scan lists a thing: broken things always (broken_only lists only them), others when
     /// measurable and damaged above the floor.
     /// </summary>
     internal static bool ScanKeeps(bool isBroken, bool measurable, double damageRatio, double minDamageRatio,

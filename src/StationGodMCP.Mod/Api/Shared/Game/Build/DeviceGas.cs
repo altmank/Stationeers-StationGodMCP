@@ -13,7 +13,7 @@ using StationGodMCP.Pure;
 namespace StationGodMCP.Api.Shared.Game.Build;
 
 /// <summary>
-/// remove_structure gas_to: a removed device's own atmosphere handed to a pipe network before the device goes, instead
+/// remove structure gas_to: a removed device's own atmosphere handed to a pipe network before the device goes, instead
 /// of being deleted with it (the game's deconstruction deletes a device's atmosphere; a tank lets its gas out where it
 /// stood). The gas goes as Mole values with their energy (Atmosphere.Add), on the atmospherics thread, where live
 /// values are read and written.

@@ -6,7 +6,7 @@ using StationGodMCP.Pure;
 
 namespace StationGodMCP.Api.Views;
 
-/// <summary>consumables: every food and drink in the world, the packages they are in, and totals.</summary>
+/// <summary>find food: every food and drink in the world, the packages they are in, and totals.</summary>
 internal sealed class ConsumablesView
 {
     internal ConsumablesView(List<FoodView> food, List<DrinkView> drinks, List<PackageView> packages,

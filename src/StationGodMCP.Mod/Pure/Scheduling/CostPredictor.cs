@@ -9,7 +9,7 @@ namespace StationGodMCP.Pure.Scheduling;
 /// <summary>
 /// Sorts a call into its lane (scheduling.md, The prediction). Cost world, plan and job is heavy whatever it took
 /// before. Any other cost is predicted from the method's last Window calls at that cost: their main-thread time per
-/// item (total time over total items) times this call's items, so a 5-item read_devices stays light while a 128-item
+/// item (total time over total items) times this call's items, so a 5-item read logic stays light while a 128-item
 /// one moves to the heavy lane on its own. A method with no history yet is light: its first call is what it learns
 /// from. Main thread only.
 /// </summary>

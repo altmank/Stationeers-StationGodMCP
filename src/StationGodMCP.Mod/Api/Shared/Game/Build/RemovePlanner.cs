@@ -56,7 +56,7 @@ internal sealed class PlannedTakedown
     internal PipeNetwork? GasTarget { get; set; }
 }
 
-/// <summary>A remove_structure run as planned.</summary>
+/// <summary>A remove structure run as planned.</summary>
 internal sealed class RemovePlan
 {
     internal RemovePlan(RemoveRequest arguments)
@@ -114,7 +114,7 @@ internal sealed class RemovePlan
 }
 
 /// <summary>
-/// remove_structure's whole preflight; nothing here changes the game. Each id must be a structure. The guards
+/// remove structure's whole preflight; nothing here changes the game. Each id must be a structure. The guards
 /// (RemovalRule) read the game: being destroyed, indestructible, a launching or landing rocket's part, broken (allow_broken: nothing given back), the
 /// game's own CanDeconstruct (not asked for a broken piece taken with allow_broken, as the game does not), a
 /// device attached to it, a device mounted on it or standing on it left with nothing to rest on (allow_unsupported),
@@ -557,7 +557,7 @@ internal static class RemovePlanner
     }
 
     // A network the job splits by taking an in-line tank or passive vent from it while it holds gas: its contents move
-    // between the networks left, which remove_pipes refuses (contents_would_move) and so does this, unless
+    // between the networks left, which remove pipe refuses (contents_would_move) and so does this, unless
     // allow_contents (pipes-25). A split by pipe pieces alone is their remove tool's own finding (NetworkGuard).
     private static void Divided(RemovePlan plan, Dictionary<long, NetworkTakedown> gas)
     {
@@ -1011,7 +1011,7 @@ internal static class RemovePlanner
                 case "cannot_remove" when index.HasValue && AlreadyRefused(plan, index.Value):
                     break;
                 case "no_local_player":
-                    // remove_structure gives the refund itself (refund_to and from_id, read in Source); the remove
+                    // remove structure gives the refund itself (refund_to and from_id, read in Source); the remove
                     // tool's planner runs here with its own refund off, so it needs no source.
                     break;
                 default:
@@ -1110,7 +1110,7 @@ internal static class RemovePlanner
     private static string Describe(GridPoint cell) => PlacePlanner.Describe(StructureSlots.MetresOf(cell));
 }
 
-/// <summary>One run tool plan inside a remove_structure request, and whether the gas model owns its gas checks.</summary>
+/// <summary>One run tool plan inside a remove structure request, and whether the gas model owns its gas checks.</summary>
 internal sealed class NetworkRun
 {
     internal NetworkRun(RunKind kind, List<PlannedTakedown> pieces, RunPlan plan, bool gasByModel)

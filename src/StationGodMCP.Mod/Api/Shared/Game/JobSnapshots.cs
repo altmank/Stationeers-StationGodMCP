@@ -14,7 +14,7 @@ namespace StationGodMCP.Api.Shared.Game;
 
 /// <summary>
 /// How the things a place or remove job will remove stood when the job was started, and where the job took its
-/// materials and put its refund (JobSource), kept by the job's id for undo_job (the job logs name removed things by id
+/// materials and put its refund (JobSource), kept by the job's id for undo (the job logs name removed things by id
 /// only, and a job's status does not echo its request). Kept in KeptJobs.Main.Snapshots, bounded by memory, the job's
 /// pin (its caller's stream) passed over until it is released; in memory only.
 /// </summary>
@@ -32,7 +32,7 @@ internal static class JobSnapshots
     /// <summary>
     /// Records a started (or queued) job's snapshots under the job id its reply carries; a reply without one (busy,
     /// refused) records nothing. source: where the job took its materials and put its refund (JobSource). burnt: the
-    /// burnt cables it removes (debris no coil lays), recorded as such so undo_job leaves them gone. Returns the reply
+    /// burnt cables it removes (debris no coil lays), recorded as such so undo leaves them gone. Returns the reply
     /// unchanged.
     /// </summary>
     internal static object Record(object reply, string tool, IEnumerable<Structure> removed, JobSource source,
@@ -80,8 +80,8 @@ internal static class JobSnapshots
     internal static bool Evicted(string jobId) => ByJob.WasEvicted(jobId);
 
     /// <summary>
-    /// Records the jobs a real undo_job run started to undo a job (its removal, placement and piece runs), so a later
-    /// undo_job of the same job says it was already undone. The last KeptUndos undone jobs; in memory only.
+    /// Records the jobs a real undo run started to undo a job (its removal, placement and piece runs), so a later
+    /// undo of the same job says it was already undone. The last KeptUndos undone jobs; in memory only.
     /// </summary>
     internal static void RecordUndo(string jobId, List<string> undoJobIds)
     {
@@ -102,7 +102,7 @@ internal static class JobSnapshots
         }
     }
 
-    /// <summary>The jobs an earlier real undo_job run of the job started; empty when there was none.</summary>
+    /// <summary>The jobs an earlier real undo run of the job started; empty when there was none.</summary>
     internal static List<string> UndoOf(string jobId) =>
         Undos.TryGetValue(jobId, out List<string> ids) ? ids : new List<string>();
 

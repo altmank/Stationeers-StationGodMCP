@@ -278,7 +278,7 @@ internal sealed class HandledRequest
 }
 
 /// <summary>
-/// Per-method counters since the mod loaded, for mod_info (methods and runtime). In memory only; nothing is logged.
+/// Per-method counters since the mod loaded, for server info (methods and runtime). In memory only; nothing is logged.
 /// Counted for a method the dispatcher answers only, so a client sending made-up names cannot grow the table. Thread-safe
 /// (MethodTimings): the main thread records times, the listener thread the reply size.
 /// </summary>
@@ -314,7 +314,7 @@ internal static class MethodStats
         }
     }
 
-    /// <summary>mod_info's methods entry: calls, errors and the handler's time, as before 1.9.1.</summary>
+    /// <summary>server info's methods entry: calls, errors and the handler's time, as before 1.9.1.</summary>
     internal static MethodStatsView ViewOf(string method)
     {
         MethodTiming timing = Timings.Snapshot(method);

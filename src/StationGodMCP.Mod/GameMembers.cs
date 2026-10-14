@@ -177,7 +177,7 @@ internal static class GameMembers
 
     private static readonly List<GameMember> All = new List<GameMember>();
 
-    // ---- The T-Ray SPU's see-through material (XRay: highlight, show_preview xray) ----
+    // ---- The T-Ray SPU's see-through material (XRay: show highlight, show preview xray) ----
     internal static readonly GameField MesonScannerMaterial = Field(typeof(SPUMesonScanner), "_material");
 
     // ---- ProgrammableChip runtime state (IcRuntimeInspector) ----
@@ -222,7 +222,7 @@ internal static class GameMembers
     internal static readonly GameField DishFieldOfView = Field(typeof(SatelliteDish), "dishFov");
     internal static readonly GameField SmallDishHorizontalPivot = Field(typeof(SmallSatelliteDish), "_horizontalPivot");
 
-    // ---- Structures (replace_walls: a prefab's face points before it is placed, as OnAssignedReference reads them) ----
+    // ---- Structures (swap wall: a prefab's face points before it is placed, as OnAssignedReference reads them) ----
     internal static readonly GameField StructureBlockingGrids = Field(typeof(Structure), "blockingGrids");
 
     // ---- Rockets: a rocket's small cells and their types (RocketNetwork.AddSmallCellOwnership), and the partner each
@@ -257,11 +257,11 @@ internal static class GameMembers
     internal static readonly GameField RocketMinerJunkSpeed = Field(typeof(RocketMiner), "junkSpeedMultiplier");
     internal static readonly GameField RocketScannerHead = Field(typeof(RocketScanner), "_scanningHead");
 
-    // ---- remove_structure: the game's own refusal to deconstruct (Cable, Pipe, Silo, LaunchMount, fuselage) ----
+    // ---- remove structure: the game's own refusal to deconstruct (Cable, Pipe, Silo, LaunchMount, fuselage) ----
     internal static readonly GameMethod StructureCanDeconstruct = Register(new GameMethod("Structure.CanDeconstruct",
         () => typeof(Structure).GetMethod("CanDeconstruct", PrivateInstance, null, Type.EmptyTypes, null)));
 
-    // remove_structure: the game's air and room checks when a structure's build state changes (FreedCells).
+    // remove structure: the game's air and room checks when a structure's build state changes (FreedCells).
     internal static readonly GameMethod StructureWorldChangeChecks = Register(new GameMethod(
         "Structure.WorldChangeChecks",
         () => typeof(Structure).GetMethod("WorldChangeChecks", PrivateInstance, null, Type.EmptyTypes, null)));
@@ -448,7 +448,7 @@ internal static class GameMembers
                 "GetSellItemQuantity",
                 BindingFlags.NonPublic | BindingFlags.Static)));
 
-    // ---- Saving (upgrade_cables and upgrade_pipes hold the game tick, as a save does) ----
+    // ---- Saving (swap cable and swap pipe hold the game tick, as a save does) ----
     internal static readonly GameMethod SaveIsSaving = Register(new GameMethod(
         "SaveHelper.IsSaving (getter)",
         () => AccessTools.PropertyGetter(typeof(Assets.Scripts.Serialization.SaveHelper), "IsSaving")));
@@ -641,7 +641,7 @@ internal static class GameMembers
         }
     }
 
-    /// <summary>For mod_info: every member and whether it resolved, and how many required ones are missing.</summary>
+    /// <summary>For server info: every member and whether it resolved, and how many required ones are missing.</summary>
     internal static ReflectionReport Report()
     {
         List<Api.Views.ReflectionMemberView> members = new List<Api.Views.ReflectionMemberView>();

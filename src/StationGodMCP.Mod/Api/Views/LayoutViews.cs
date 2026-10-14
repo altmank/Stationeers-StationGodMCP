@@ -115,7 +115,7 @@ internal sealed class ViewSourceView
     public double AgeS { get; }
 }
 
-/// <summary>looking_at's view: the camera's eye, basis, heading and pitch, snapped axes and the camera mode.</summary>
+/// <summary>inspect looking_at's view: the camera's eye, basis, heading and pitch, snapped axes and the camera mode.</summary>
 internal sealed class LookView
 {
     internal LookView(Vec3 eye, ViewBasis basis, bool thirdPerson, bool seated, ViewSourceView? source = null)
@@ -230,7 +230,7 @@ internal sealed class LookHitDetailView : LookHitView
     /// <summary>The small cell a piece mounted on this surface here would stand in.</summary>
     public PointView SmallCell { get; }
 
-    /// <summary>That small cell's grid_survey support character (i, e, f, w, a; x a door's keep-out, g a window).</summary>
+    /// <summary>That small cell's survey area support character (i, e, f, w, a; x a door's keep-out, g a window).</summary>
     public string Support { get; }
 
     /// <summary>The hit point in the target's own frame, from its origin.</summary>

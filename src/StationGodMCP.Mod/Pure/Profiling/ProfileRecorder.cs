@@ -7,7 +7,7 @@ using System.Text;
 
 namespace StationGodMCP.Pure.Profiling;
 
-/// <summary>The slow-frame threshold's one declaration of limits: the profiling method and the config use it.</summary>
+/// <summary>The slow-frame threshold's one declaration of limits: the server profiling method and the config use it.</summary>
 internal static class SlowFrameLimits
 {
     internal const double DefaultMs = 8.0;

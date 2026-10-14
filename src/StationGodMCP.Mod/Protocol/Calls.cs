@@ -48,7 +48,7 @@ internal abstract class QueuedCall
     internal void MarkDeferred() => Volatile.Write(ref _deferred, 1);
 
     /// <summary>
-    /// The known method its connection counts it under (mod_info connections), once its run is counted; null before,
+    /// The known method its connection counts it under (server info connections), once its run is counted; null before,
     /// or for a call that came on no connection.
     /// </summary>
     internal string? CountedAs { get; private set; }

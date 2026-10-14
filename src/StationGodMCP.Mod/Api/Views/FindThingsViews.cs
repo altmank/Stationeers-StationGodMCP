@@ -155,7 +155,7 @@ internal sealed class FoundThingView
     public string? RocketState { get; }
 
     /// <summary>
-    /// Its colour {index, name, is_default} as paint reads it: a paintable thing's paint, a state-coloured thing's
+    /// Its colour {index, name, is_default} as write paint reads it: a paintable thing's paint, a state-coloured thing's
     /// state colour; left out for a thing with neither.
     /// </summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]

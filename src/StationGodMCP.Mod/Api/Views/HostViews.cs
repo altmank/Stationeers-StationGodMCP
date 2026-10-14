@@ -77,7 +77,7 @@ internal sealed class CallReplyView
         new CallReplyView(id, false, null, null, error, null, null, null, false);
 }
 
-/// <summary>game_clock: the game's clock, for clients that must count game time.</summary>
+/// <summary>read clock: the game's clock, for clients that must count game time.</summary>
 internal sealed class GameClockView
 {
     internal GameClockView(float gameTimeS, bool paused, float timeOfDayRatio, uint daysPast)
@@ -99,7 +99,7 @@ internal sealed class GameClockView
     public uint DaysPast { get; }
 }
 
-/// <summary>mod_info: the mod's identity, each method's counters since it loaded, and its reflection health.</summary>
+/// <summary>server info: the mod's identity, each method's counters since it loaded, and its reflection health.</summary>
 internal sealed class ModInfoView
 {
     internal ModInfoView(ModIdentity identity, List<MethodStatsView> methods, List<ReflectionMemberView> reflection,

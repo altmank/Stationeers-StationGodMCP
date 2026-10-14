@@ -12,7 +12,7 @@ namespace StationGodMCP.Api.Shared.Game;
 /// Every store of per-world state, in one list (WorldScope), cleared the first frame after a world is left: loading a
 /// save, starting a new game or going to the menu (GameManager.GameState None or Loading, the test GasHold used
 /// before). Reference ids repeat across loads of a save, so without this a chip paused with write chip's run
-/// stayed paused in the reloaded world, undo_job could plan against a job of another world and find_things made_by
+/// stayed paused in the reloaded world, undo could plan against a job of another world and find thing made_by
 /// could name the wrong maker. StationGodMod.Update calls Tick before any request runs. A new store that holds world
 /// state registers its Clear below.
 /// </summary>

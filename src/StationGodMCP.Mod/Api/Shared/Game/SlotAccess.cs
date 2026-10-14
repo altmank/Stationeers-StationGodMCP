@@ -43,7 +43,7 @@ internal static class SlotAccess
             thing.SlotType.ToString(), thing is DraggableThing);
     }
 
-    /// <summary>Pure/ForcedSlotRule for move_item force: Slot.AllowMove less its reach and draggable rules.</summary>
+    /// <summary>Pure/ForcedSlotRule for move item force: Slot.AllowMove less its reach and draggable rules.</summary>
     internal static ForcedRefusal ForcedInto(DynamicThing thing, Slot slot, bool wholeItem) =>
         ForcedSlotRule.Into(HeldByStack(slot), slot.Get() != null, wholeItem, thing.CanEnter(slot).Result,
             ClassFits(thing, slot));

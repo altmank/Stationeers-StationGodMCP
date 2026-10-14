@@ -19,7 +19,7 @@ internal static class ThingColors
             : new List<ColorSwatch>();
 
     /// <summary>
-    /// The colour a thing shows when it has one, as paint reads it (a paintable thing's paint, a state-coloured
+    /// The colour a thing shows when it has one, as write paint reads it (a paintable thing's paint, a state-coloured
     /// thing's state colour); null for a thing with neither.
     /// </summary>
     internal static ThingColorView? ShownColorOf(Thing thing, List<ColorSwatch> swatches) =>

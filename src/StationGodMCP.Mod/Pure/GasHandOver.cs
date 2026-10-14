@@ -32,7 +32,7 @@ internal sealed class GasReceiver
 }
 
 /// <summary>
-/// remove_structure gas_to: which pipe network takes a device's gas before the device goes, or why none can. A network
+/// remove structure gas_to: which pipe network takes a device's gas before the device goes, or why none can. A network
 /// qualifies when the job leaves it standing, it has pipes, it carries liquid when the gas holds liquid, and the
 /// pressure with the gas added stays within its weakest pipe's rating (so the hand-over cannot burst it); the first
 /// that qualifies, in the order given, is chosen.

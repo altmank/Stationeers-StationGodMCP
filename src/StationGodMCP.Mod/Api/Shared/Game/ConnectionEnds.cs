@@ -102,7 +102,7 @@ internal static class EndsReader
     private static string? NonEmpty(string? text) => string.IsNullOrEmpty(text) ? null : text;
 
     /// <summary>
-    /// The networks a thing is part of (a cable, pipe or chute piece) or its ends join, each once, as connections
+    /// The networks a thing is part of (a cable, pipe or chute piece) or its ends join, each once, as inspect connections
     /// reports them; empty for a thing that is not on the small grid.
     /// </summary>
     internal static List<NetworkRefView> NetworksOf(Thing thing)

@@ -138,7 +138,7 @@ internal abstract class BuildStatePick
     }
 }
 
-/// <summary>The cheap guards of place_structure that need no game: free placement and the cursor's turn axes.</summary>
+/// <summary>The cheap guards of build structure that need no game: free placement and the cursor's turn axes.</summary>
 internal static class PlacementRule
 {
     /// <summary>Why free placement is refused; null when it is allowed (asked for in a creative world) or not asked.</summary>
@@ -299,7 +299,7 @@ internal sealed class NetworkSqueeze
     internal double? LowestKpa { get; }
 }
 
-/// <summary>The allow flags of remove_structure.</summary>
+/// <summary>The allow flags of remove structure.</summary>
 internal sealed class RemovalAllowance
 {
     internal RemovalAllowance(bool contents, bool breach, bool broken = false, bool burst = false,
@@ -426,7 +426,7 @@ internal sealed class BurstForecast
 }
 
 /// <summary>
-/// remove_structure's minimal safeguards, each naming its reason. Refused outright: being destroyed, indestructible,
+/// remove structure's minimal safeguards, each naming its reason. Refused outright: being destroyed, indestructible,
 /// a launching or landing rocket's part, the game's own refusal (a fuselage piece's asked as its last step would ask it),
 /// a device the game counts as attached to it. Refused unless allowed: broken (allow_broken: the game cannot
 /// repair a broken structure, only deconstruct it, and that gives nothing back; the game does not ask CanDeconstruct
@@ -475,8 +475,8 @@ internal static class RemovalRule
     }
 
     /// <summary>
-    /// A remove tool's would_split as remove_structure warns it: the remove tool's advice names arguments
-    /// remove_structure does not take (allow_split, root), so it is dropped and the warning says the split goes ahead.
+    /// A remove tool's would_split as remove structure warns it: the remove tool's advice names arguments
+    /// remove structure does not take (allow_split, root), so it is dropped and the warning says the split goes ahead.
     /// </summary>
     internal static string SplitWarning(string message)
     {

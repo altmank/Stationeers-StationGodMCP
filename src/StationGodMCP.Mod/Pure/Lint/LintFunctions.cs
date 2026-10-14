@@ -47,7 +47,7 @@ internal sealed class LintCall
 
 /// <summary>
 /// A library function: a name, typed parameters, a return type, what it does, and its body. Registering one
-/// (LintLibrary.Add) is all a new function needs: rule files can call it, lint_rules lists it.
+/// (LintLibrary.Add) is all a new function needs: rule files can call it, check rules lists it.
 /// </summary>
 internal sealed class LintFunction
 {

@@ -12,7 +12,7 @@ using StationGodMCP.Pure.Shaping;
 namespace StationGodMCP.Api.Views;
 
 /// <summary>
-/// mod_info's runtime section: what the mod costs the game since it loaded. Per method (only those called), the
+/// server info's runtime section: what the mod costs the game since it loaded. Per method (only those called), the
 /// main-thread time of the tool and of serialising its reply, the wait in the queue for the main thread, and the reply
 /// size; per frame, the requests served and the time spent on them; the Mono garbage collector's counts and heap; and
 /// the argument names handlers read that the catalogue does not declare (catalogue_drift, which should stay empty).
@@ -394,7 +394,7 @@ internal sealed class PrefabIndexView
 }
 
 /// <summary>
-/// The counters mod_info's runtime lists beside prefab_index with include_counters: job tick holds, the print log, the
+/// The counters server info's runtime lists beside prefab_index with include_counters: job tick holds, the print log, the
 /// lint chip-program cache, a dedicated server's console lines, held restores and the kept jobs' stores.
 /// </summary>
 internal sealed class GameCountersView

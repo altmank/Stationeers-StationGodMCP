@@ -9,7 +9,7 @@ using StationGodMCP.Pure;
 namespace StationGodMCP.Api.Shared.Game;
 
 /// <summary>
-/// Whether a thing is a wreck, as thing_health and find_things report it (is_broken, condition broken, the broken
+/// Whether a thing is a wreck, as inspect health and find thing report it (is_broken, condition broken, the broken
 /// filters): the game's Thing.IsBroken, a burst pipe or a burnt cable. A pipe bursts by Pipe.BurstPipe, which sets
 /// Pipe.IsBurst and swaps in its BurstMesh but leaves DamageState alone, so a burst pipe reads 0 damage and
 /// Thing.IsBroken false. A cable an overload burns is replaced by a CableRuptured piece (StructureCableStraightBurnt

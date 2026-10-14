@@ -11,7 +11,7 @@ namespace StationGodMCP.Api.Shared.Game;
 
 /// <summary>
 /// Pure/PartInUseRule over the game's slots: which part an item is to the device whose slot holds it, and the in_use
-/// refusal every tool that takes items out of slots asks before it does (move_item, silo_deposit; build payments skip
+/// refusal every tool that takes items out of slots asks before it does (move item; build payments skip
 /// such parts). Deconstructing the device itself is not a take: its contents go with it.
 /// </summary>
 internal static class PartsInUse

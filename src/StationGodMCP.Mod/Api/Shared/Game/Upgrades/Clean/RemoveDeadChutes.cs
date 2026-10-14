@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Api.Shared.Game.Upgrades;
 
-/// <summary>What clean_chutes does with a chute an item rides in.</summary>
+/// <summary>What swap chute does with a chute an item rides in.</summary>
 internal enum RidingPolicy
 {
     /// <summary>The piece stays, and with it whatever the item moves on into; the rest of the run goes ahead.</summary>
@@ -40,7 +40,7 @@ internal sealed class RidingChute
 }
 
 /// <summary>
-/// clean_chutes' one operation: every selected chute piece that serves no path is removed and every junction,
+/// swap chute' one operation: every selected chute piece that serves no path is removed and every junction,
 /// overflow or splitter that loses a branch becomes the plain piece its remaining ends need (ChuteCleanup on the whole
 /// networks the selection is on, ChuteSurroundings). Pieces come from and go back to Kit (Chute); a replacement keeps
 /// the old piece's paint and owner (the swap builds it from the old piece). A piece with an item riding in it is never

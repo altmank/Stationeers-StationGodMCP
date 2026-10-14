@@ -10,7 +10,7 @@ using StationGodMCP.Pure.Shaping;
 namespace StationGodMCP.Api.Views;
 
 /// <summary>
-/// upgrade_cables, upgrade_pipes, clean_cables and clean_pipes before anything is changed: what would be swapped for
+/// swap cable and swap pipe before anything is changed: what would be swapped for
 /// what, every problem found, the coils or kits it takes, the predicted connectivity and the networks' state. status is
 /// dry_run, scheduled (a job was started; poll it with job_id) or refused (nothing was changed; problems says why).
 /// </summary>
@@ -56,7 +56,7 @@ internal sealed class UpgradeReportView : ITruncatingView
 
     public string Tool { get; }
 
-    /// <summary>heavy, super_heavy, insulated, or minimal (clean_cables).</summary>
+    /// <summary>heavy, super_heavy, insulated, or minimal (swap cable).</summary>
     public string Target { get; }
 
     /// <summary>dry_run, scheduled or refused.</summary>
@@ -109,7 +109,7 @@ internal sealed class UpgradeReportView : ITruncatingView
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public UpgradeRedundancyView? Redundant { get; }
 
-    /// <summary>clean_chutes only: pieces the run would change that carry an item, all counted, up to limit listed.</summary>
+    /// <summary>swap chute only: pieces the run would change that carry an item, all counted, up to limit listed.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public int? RidingCount { get; }
 
@@ -361,7 +361,7 @@ internal sealed class UpgradePieceView
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public int? Round { get; }
 
-    /// <summary>clean_chutes removals only: why no item reaches a consumer through it (orphan, no_consumer, no_source).</summary>
+    /// <summary>swap chute removals only: why no item reaches a consumer through it (orphan, no_consumer, no_source).</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public string? Why { get; }
 
@@ -519,7 +519,7 @@ internal sealed class UpgradeDeadEndView
     public string? StoppedBy { get; }
 }
 
-/// <summary>clean_chutes' riding pieces: how many, and the first limit of them.</summary>
+/// <summary>swap chute' riding pieces: how many, and the first limit of them.</summary>
 internal sealed class UpgradeRidingList
 {
     internal UpgradeRidingList(int count, List<UpgradeRidingView> pieces)
@@ -894,7 +894,7 @@ internal sealed class UpgradeMountedView
     public bool? AttachedAfter { get; }
 }
 
-/// <summary>clean_chutes' counts for one chute network.</summary>
+/// <summary>swap chute' counts for one chute network.</summary>
 internal sealed class ChuteNetworkCounts
 {
     internal ChuteNetworkCounts(int pieces, int removed, int replaced, int riding)
@@ -915,7 +915,7 @@ internal sealed class ChuteNetworkCounts
 }
 
 /// <summary>
-/// A chute network a clean_chutes run touches: its pieces, how many the run removes and replaces, how many items ride
+/// A chute network a swap chute run touches: its pieces, how many the run removes and replaces, how many items ride
 /// in it, and its devices. After a run the game has given it a new id (renumbered_from names the old one).
 /// </summary>
 internal sealed class ChuteNetworkReportView : IListsDevices

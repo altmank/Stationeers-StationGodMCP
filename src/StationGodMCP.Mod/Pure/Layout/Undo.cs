@@ -94,7 +94,7 @@ internal sealed class ThingSnapshot
 
     /// <summary>
     /// Set for a cable, pipe or chute piece: it is built again by its place tool (piece by piece, with that tool's
-    /// would_bridge, burst and gas guards), never by place_structure, which joins whatever its ends touch unchecked.
+    /// would_bridge, burst and gas guards), never by build structure, which joins whatever its ends touch unchecked.
     /// </summary>
     internal NetworkPiece? Piece { get; }
 
@@ -128,7 +128,7 @@ internal sealed class PieceRestore
 /// first piece run (its remove_ids), in the same job that builds the old pieces back: a job that changed a piece in the
 /// middle of a network (a tee added onto a trunk, a long straight crossed) is then undone in one step, so the network
 /// is never cut between two jobs (the rebuild would be a would_bridge of the two halves) and the run's guards see the
-/// networks as they end up. Everything else goes through remove_structure first.
+/// networks as they end up. Everything else goes through remove structure first.
 /// </summary>
 internal sealed class UndoRemovals
 {
@@ -138,7 +138,7 @@ internal sealed class UndoRemovals
         ByRun = byRun;
     }
 
-    /// <summary>What remove_structure removes before any placement.</summary>
+    /// <summary>What remove structure removes before any placement.</summary>
     internal List<long> Structures { get; }
 
     /// <summary>For each piece run (UndoPlan.RestorePieces, same order): the pieces it removes itself.</summary>
@@ -173,7 +173,7 @@ internal sealed class UndoRemovals
     }
 }
 
-/// <summary>A job a real undo_job run started to undo another job, and that job's status now.</summary>
+/// <summary>A job a real undo run started to undo another job, and that job's status now.</summary>
 internal sealed class UndoStep
 {
     /// <summary>The status of an undo step whose job is no longer among the jobs kept.</summary>
@@ -210,7 +210,7 @@ internal sealed class JobFacts
         UndoneBy = undoneBy ?? new List<UndoStep>();
     }
 
-    /// <summary>The jobs an earlier real undo_job run of this job started; empty when it was never undone.</summary>
+    /// <summary>The jobs an earlier real undo run of this job started; empty when it was never undone.</summary>
     internal List<UndoStep> UndoneBy { get; }
 
     internal string JobId { get; }
@@ -248,7 +248,7 @@ internal sealed class UndoPlan
 
     internal List<ThingSnapshot> Restore { get; }
 
-    /// <summary>What place_structure builds again: everything restored that is not a network piece.</summary>
+    /// <summary>What build structure builds again: everything restored that is not a network piece.</summary>
     internal List<ThingSnapshot> RestoreStructures => Restore.FindAll(snapshot => snapshot.Piece == null);
 
     /// <summary>The network pieces restored, one group per place tool and grade, in the order first met.</summary>
@@ -291,7 +291,7 @@ internal sealed class UndoPlan
 /// Plans the inverse of a finished job: remove everything it built, then build again everything it removed, each as it
 /// stood (network pieces by their kind and grade). Refused (diverged) when something it built is gone or is no longer that
 /// prefab, when something it removed has no snapshot, stood off the grid's axes or is a network piece no coil or kit
-/// lays, or when the job had not finished; and when the job was already undone (an earlier real undo_job run started
+/// lays, or when the job had not finished; and when the job was already undone (an earlier real undo run started
 /// jobs that were not all refused). A burnt cable the job removed is never built again: a note says so and the
 /// rest is undone. The job kinds that can be undone are the place and remove tools (runs and structures).
 /// </summary>

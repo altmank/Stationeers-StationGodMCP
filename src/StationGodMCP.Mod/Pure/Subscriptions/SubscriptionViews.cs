@@ -30,7 +30,7 @@ internal sealed class SubscribeReplyView
 
     public long Frame { get; }
 
-    /// <summary>A full read_devices result; absent for the world topic.</summary>
+    /// <summary>A full read logic result; absent for the world topic.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public object? Result { get; }
 }
@@ -50,7 +50,7 @@ internal sealed class UnsubscribeReplyView
 
 /// <summary>
 /// An update event's keys after the envelope's type: {event: "update", subscription, seq, frame, game_time_s,
-/// late_ms, result}; result is the whole reading in read_devices' reply shape.
+/// late_ms, result}; result is the whole reading in read logic' reply shape.
 /// </summary>
 internal sealed class UpdateEventView
 {

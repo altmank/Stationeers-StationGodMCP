@@ -17,7 +17,7 @@ namespace StationGodMCP.Api.Shared.Game;
 
 /// <summary>
 /// The prefab index (Pure/PrefabIndex) over the game's two master lists, OcclusionManager.AllThings and
-/// AllDynamicThings, for find_things, find_items, item_totals, every other WorldItems walk filtered by prefab, and the
+/// AllDynamicThings, for find thing or find item, every other WorldItems walk filtered by prefab, and the
 /// SDB Silos (Silos.All, by the names of the Silo prefabs).
 /// <para>
 /// In step with the lists by the game's own add and remove points (decompile Assets.Scripts/OcclusionManager.cs):
@@ -132,7 +132,7 @@ internal static class ThingIndex
         return false;
     }
 
-    /// <summary>mod_info runtime.prefab_index; arrived and left only with include_counters.</summary>
+    /// <summary>server info runtime.prefab_index; arrived and left only with include_counters.</summary>
     internal static PrefabIndexView View(bool counters) =>
         counters
             ? new PrefabIndexView(Ready, Verify, Index.Count, Index.NameCount, _verified, _differences,

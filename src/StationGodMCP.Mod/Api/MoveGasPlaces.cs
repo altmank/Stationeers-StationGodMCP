@@ -38,7 +38,7 @@ internal abstract class GasPlace
     {
     }
 
-    /// <summary>Whether move_gas must be told which gases to take from here (a room: never empty it silently).</summary>
+    /// <summary>Whether move gas must be told which gases to take from here (a room: never empty it silently).</summary>
     internal abstract bool RequiresNamedGases { get; }
 
     internal static GasPlace Resolve(GasPlaceOption arg, string name, string label) => arg switch

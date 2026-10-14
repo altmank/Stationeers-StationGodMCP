@@ -13,7 +13,7 @@ using UnityEngine;
 namespace StationGodMCP.Api.Shared.Game.Structures;
 
 /// <summary>
-/// Confirmed replace_walls and replace_frames runs, on the shared runner (HeldTickJobs), so they never overlap an
+/// Confirmed swap wall and swap frame runs, on the shared runner (HeldTickJobs), so they never overlap an
 /// upgrade or clean job. The tick is held; once it has stopped, the whole preflight runs again and, only if it finds
 /// nothing, every piece is swapped in that frame (StructureSwapper). Once Unity has destroyed the old pieces the
 /// result is checked with the tick still held, then the tick is let go; once the game has run its ticks and emptied

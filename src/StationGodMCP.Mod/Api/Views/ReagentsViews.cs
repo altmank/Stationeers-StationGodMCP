@@ -5,7 +5,7 @@ using StationGodMCP.Api.Shared;
 
 namespace StationGodMCP.Api.Views;
 
-/// <summary>reagents: a thing's reagents, each with the amount the game holds.</summary>
+/// <summary>inspect reagents: a thing's reagents, each with the amount the game holds.</summary>
 internal sealed class ReagentsView
 {
     internal ReagentsView(ThingView thing, double total, List<ReagentView> reagents)

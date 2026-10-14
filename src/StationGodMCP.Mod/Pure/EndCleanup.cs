@@ -21,7 +21,7 @@ internal enum EndUse
 }
 
 /// <summary>
-/// clean_cables' rule on plain values: which pieces carry open ends, and the piece that would replace one (the same
+/// swap cable' rule on plain values: which pieces carry open ends, and the piece that would replace one (the same
 /// cells, only its connected ends). Whether such a piece exists is the coil's to say (TwinFinder).
 /// </summary>
 internal static class EndCleanup

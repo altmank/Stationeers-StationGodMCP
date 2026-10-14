@@ -46,7 +46,7 @@ internal abstract class SwapGoal
 }
 
 /// <summary>
-/// upgrade_cables and upgrade_pipes: each piece becomes the piece of the higher grade's coil or kit with the same
+/// swap cable and swap pipe: each piece becomes the piece of the higher grade's coil or kit with the same
 /// cells and ends. Costs the replacement's entry quantity; gives back what deconstructing the old piece would.
 /// </summary>
 internal abstract class GradeUpgrade : SwapGoal
@@ -144,7 +144,7 @@ internal abstract class GradeUpgrade : SwapGoal
 }
 
 /// <summary>
-/// upgrade_cables: the grade is Cable.CableType; a piece below the target becomes the target coil's piece. CableType
+/// swap cable: the grade is Cable.CableType; a piece below the target becomes the target coil's piece. CableType
 /// is read by nothing but placement, merging and the debug drawing (CableFamily).
 /// </summary>
 internal sealed class CableUpgrade : GradeUpgrade
@@ -168,7 +168,7 @@ internal sealed class CableUpgrade : GradeUpgrade
 }
 
 /// <summary>
-/// upgrade_pipes: a normal piece becomes insulated with the same content (normal to Insulated, NormalLowVolume to
+/// swap pipe: a normal piece becomes insulated with the same content (normal to Insulated, NormalLowVolume to
 /// InsulatedLowVolume); gas and liquid never mix, the content is part of the grade (PipeFamily).
 /// </summary>
 internal sealed class PipeUpgrade : GradeUpgrade
@@ -197,7 +197,7 @@ internal sealed class PipeUpgrade : GradeUpgrade
 }
 
 /// <summary>
-/// upgrade_pipes to repair: each burst piece becomes a new piece of its own kit with the same cells and ends, joined to
+/// swap pipe to repair: each burst piece becomes a new piece of its own kit with the same cells and ends, joined to
 /// the network before the burst piece leaves, so the contents stay (a burst pipe that is the only pipe of its network
 /// included). The game offers no repair for a burst pipe; a player deconstructs it and builds a new one, which empties
 /// a network of one pipe. Pieces that are not burst stay.

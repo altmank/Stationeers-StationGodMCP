@@ -7,7 +7,7 @@ using Newtonsoft.Json;
 namespace StationGodMCP.Pure.Catalogue;
 
 /// <summary>
-/// Where an error code's help is: a node tool_info answers, {tool, topic, subtopic} with only topic required (a shared
+/// Where an error code's help is: a node help answers, {tool, topic, subtopic} with only topic required (a shared
 /// topic when tool is absent). Every error the mod answers carries the pointer its code has in the catalogue.
 /// </summary>
 internal sealed class ErrorSee

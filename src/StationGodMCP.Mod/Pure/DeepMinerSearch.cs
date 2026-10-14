@@ -198,7 +198,7 @@ internal sealed class MinerSpotSearch
 }
 
 /// <summary>
-/// The reagents asked for (deep_miner_spots ores): a profile matches when its mix holds every one of them, names
+/// The reagents asked for (the ores find ore asks for): a profile matches when its mix holds every one of them, names
 /// compared ignoring case.
 /// </summary>
 internal sealed class OreQuery

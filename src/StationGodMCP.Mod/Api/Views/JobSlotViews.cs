@@ -152,7 +152,7 @@ internal sealed class JobPreflightSummaryView
 }
 
 /// <summary>
-/// The reply to a confirmed place_*, remove_*, place_structure or remove_structure run: unless verbose, the started or
+/// The reply to a confirmed place_*, remove_*, build structure or remove structure run: unless verbose, the started or
 /// queued job without the preflight it carries (the request's dry run answered it already), with the preflight in
 /// short. A busy reply, or any other, is returned as it is.
 /// </summary>

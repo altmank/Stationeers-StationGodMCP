@@ -12,7 +12,7 @@ using StationGodMCP.Pure;
 namespace StationGodMCP.Api.Shared.Game.Structures;
 
 /// <summary>
-/// replace_walls: walls and windows. A swap takes and builds exactly Wall or WallTransparent, so shuttered windows,
+/// swap wall: walls and windows. A swap takes and builds exactly Wall or WallTransparent, so shuttered windows,
 /// their connectors, floors, ladder platforms and crew umbilical doors (Wall subclasses with behaviour of their own)
 /// are never touched. A wall sits on faces: it affects the two cells each face separates, and the new wall must bear
 /// each face's pressure difference by the game's stress rule (WallStress) or the run is refused.

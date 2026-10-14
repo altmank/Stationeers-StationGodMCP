@@ -8,7 +8,7 @@ using StationGodMCP.Api.Views;
 namespace StationGodMCP.Pure.Subscriptions;
 
 /// <summary>
-/// Compares two read_devices readings value by value, without building JSON: numbers as numbers (NaN equals NaN),
+/// Compares two read logic readings value by value, without building JSON: numbers as numbers (NaN equals NaN),
 /// strings ordinally, every error by its code, lists in order. The clock is left out: it changes every sample and is
 /// never a change by itself. Derived counts are covered by comparing the items they count.
 /// </summary>

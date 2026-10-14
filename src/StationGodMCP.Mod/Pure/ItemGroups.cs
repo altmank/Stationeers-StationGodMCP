@@ -5,7 +5,7 @@ using System.Collections.Generic;
 
 namespace StationGodMCP.Pure;
 
-/// <summary>find_items group_by: each entry alone (none), summed per outermost holder and prefab, or per prefab.</summary>
+/// <summary>find item group_by: each entry alone (none), summed per outermost holder and prefab, or per prefab.</summary>
 internal enum ItemGrouping
 {
     None,
@@ -63,7 +63,7 @@ internal sealed class ItemGroup<T>
 }
 
 /// <summary>
-/// find_items group_by over the entries in list order: holder sums entries of one prefab (or one working-load reagent)
+/// find item group_by over the entries in list order: holder sums entries of one prefab (or one working-load reagent)
 /// in one outermost holder, loose entries of a prefab together with no holder; prefab sums every entry of it. Groups
 /// come in the order of their first entry, so the list's order still holds (nearest first, or by reference id).
 /// </summary>

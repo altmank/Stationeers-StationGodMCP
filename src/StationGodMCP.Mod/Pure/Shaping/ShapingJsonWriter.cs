@@ -806,7 +806,7 @@ internal sealed class ShapingJsonWriter : JsonWriter
 
                 Outcome.Unmatch(unmatched, seen, _validKeys ?? seen, _deepPaths);
                 // fields_closest naming near keys for every unmatched name answers it; fields_valid would repeat
-                // every key of the reply (some sixty on planet) to say less.
+                // every key of the reply (some sixty on inspect planet) to say less.
                 bool answered = _nameClosest && WriteClosest(fields, unmatched) == unmatched.Count;
                 if (!answered)
                 {

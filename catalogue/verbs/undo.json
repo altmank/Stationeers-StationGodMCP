@@ -4,7 +4,7 @@
   "read_only": false,
   "tool": {
     "options": {
-      "id": "The job, the bulk write (write-N), the script run (script-14), or \"paste\"; a list is undone newest first, in one report.",
+      "id": "The job, the bulk write (write-N), the script run (script-14), or \"paste\" on its own; a list is undone newest first, in one report.",
       "allow_bridge": "Passed to every piece run.",
       "materials": "The one holder every call pays from and refunds to. Default the job's own recorded source, else the player; never filled in by the verb layer.",
       "confirm": "true acts; left out, it reports.",
@@ -14,11 +14,11 @@
   },
   "whats": {
     "-": {
-      "summary": "a job id (place-12, run-4, remove-3...), a bulk write (write-N), a script run (script-14: the whole run), or \"paste\"",
+      "summary": "a job id (place-12, run-4, remove-3...), a bulk write (write-N), a script run (script-14: the whole run), or \"paste\" on its own",
       "options": {
         "id": {
           "use": "id",
-          "description": "The job, the bulk write (write-N), the script run (script-14), or \"paste\"; a list is undone newest first, in one report.",
+          "description": "The job, the bulk write (write-N), the script run (script-14), or \"paste\" on its own; a list is undone newest first, in one report.",
           "required": true,
           "x-script": "same"
         },

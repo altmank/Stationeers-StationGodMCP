@@ -29,7 +29,7 @@ namespace StationGodMCP.Api.Shared.Game;
 /// console and returns before any ConsoleLine is set, and PrintBlock, PrintSegmentedBlock and
 /// PrintSegmentedBlockRaw fall through to Print there (ConsoleWindow.cs, IsBatchMode branches). A
 /// Harmony prefix on that Print sees each batch-mode line, captures it as above, and keeps it in
-/// BatchLines, which read_console reads on such a server.
+/// BatchLines, which server console reads on such a server.
 /// </summary>
 internal static class ConsoleBridge
 {
@@ -82,7 +82,7 @@ internal static class ConsoleBridge
     private static readonly ConsoleRing<ConsoleLineView> BatchLines =
         new ConsoleRing<ConsoleLineView>(MaximumConsoleLines);
 
-    /// <summary>Lines a batch-mode server printed since the mod loaded, and their rate (mod_info runtime.batch_console).</summary>
+    /// <summary>Lines a batch-mode server printed since the mod loaded, and their rate (server info runtime.batch_console).</summary>
     internal static EventRate BatchLineRate { get; } = new EventRate(ProfileClock.System.Frequency);
 
     /// <summary>False on a network client, where several commands only queue a request.</summary>

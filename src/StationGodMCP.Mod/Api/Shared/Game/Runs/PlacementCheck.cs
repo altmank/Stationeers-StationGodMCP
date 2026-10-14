@@ -147,7 +147,7 @@ internal static class PlacementCheck
     // and of its content (PlayerPlacementRule.PipeUnderMountedDevice), and no cell may hold a pipe-slot thing that is
     // not plain piping (an in-line tank, a passive vent: "Cannot merge with"). The run planners refuse such a cell
     // before this is asked (the tank or vent is a pipe they cannot change: cannot_change, no_kit or long_piece); this
-    // stays as the backstop for every other caller (check_replaceable's neighbours, piece restores).
+    // stays as the backstop for every other caller (check replaceable's neighbours, piece restores).
     private static string? PipeRefusal(Pipe pipe, Vector3 position, Quaternion rotation, HashSet<long> ignore)
     {
         GridController world = GridController.World;

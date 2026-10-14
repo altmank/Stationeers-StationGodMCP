@@ -34,7 +34,7 @@ internal readonly struct SamplingInterval
 }
 
 /// <summary>
-/// What one sample of a devices subscription reads and is expected to cost: the values read_devices counts (a slot
+/// What one sample of a devices subscription reads and is expected to cost: the values read logic counts (a slot
 /// without logic counts DeviceReadBounds.AllSlotValuesWeight), the items, and the main-thread milliseconds per sample
 /// from the starting figures of scheduling.md (GUESS until measured).
 /// </summary>
@@ -81,7 +81,7 @@ internal readonly struct SubscriptionPlan
 }
 
 /// <summary>
-/// The admission limits: per subscription (one read_devices call), per connection (subscriptions and values), and
+/// The admission limits: per subscription (one read logic call), per connection (subscriptions and values), and
 /// across the mod the projected sampling load, half the subscription lane's share of a frame at 30 frames a second
 /// (scheduling.md, Subscriptions). A lane share of 0 turns subscriptions off.
 /// </summary>
@@ -144,7 +144,7 @@ internal enum SubscriptionLimitKind
 /// <summary>
 /// A subscribe refused with subscription_limit: the limit passed, its maximum, what the subscription would have made it,
 /// and the projected load of every subscription with this one. The code is the client's signal to poll the same
-/// items with read_devices at the same interval instead.
+/// items with read logic at the same interval instead.
 /// </summary>
 internal sealed class SubscriptionRefusal
 {
@@ -181,12 +181,12 @@ internal sealed class SubscriptionRefusal
     internal string Message => Kind switch
     {
         SubscriptionLimitKind.SubscriptionsOff =>
-            "Subscriptions are off on this game ([Performance] SubscriptionBudgetMs is 0); poll with read_devices.",
+            "Subscriptions are off on this game ([Performance] SubscriptionBudgetMs is 0); poll with read logic.",
         SubscriptionLimitKind.ProjectedLoad =>
             $"Sampling every subscription with this one would cost {Format(Requested)} ms per game second; at most " +
-            $"{Format(Maximum)}. Poll with read_devices at the same interval instead.",
+            $"{Format(Maximum)}. Poll with read logic at the same interval instead.",
         _ => $"The subscription would make {Name} {Format(Requested)}; at most {Format(Maximum)}. Poll with " +
-             "read_devices at the same interval instead.",
+             "read logic at the same interval instead.",
     };
 
     internal SubscriptionLimitData Data => new SubscriptionLimitData(Name, Maximum, Requested, ProjectedMsPerSecond);

@@ -3,7 +3,7 @@
 namespace StationGodMCP.Pure;
 
 /// <summary>
-/// Why the label tool (and place_structure's label) refuses a thing whose class the hand Labeller cannot rename. The
+/// Why the write label tool (and build structure's label) refuses a thing whose class the hand Labeller cannot rename. The
 /// pipe-size in-line tanks (class InLineTank: StructureInLineTankGas1x1 and the rest, insulated too) get their own
 /// reason, since the big in-line tanks (StructureInLineTank) do take a label and the two look alike in game.
 /// StationGod keeps no names of its own: a name the game would not show, save or sync is not a label.

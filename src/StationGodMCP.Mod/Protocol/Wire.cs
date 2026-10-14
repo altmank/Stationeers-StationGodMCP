@@ -235,7 +235,7 @@ internal sealed class WelcomeLimitsView
     [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
     public int? MaxSubscriptionValues { get; }
 
-    /// <summary>Values one subscription may read (one read_devices call's).</summary>
+    /// <summary>Values one subscription may read (one read logic call's).</summary>
     [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
     public int? MaxValuesPerSubscription { get; }
 

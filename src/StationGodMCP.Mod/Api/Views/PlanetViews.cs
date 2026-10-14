@@ -4,7 +4,7 @@ using System.Collections.Generic;
 
 namespace StationGodMCP.Api.Views;
 
-/// <summary>planet, before a world is loaded: only whether Terraforming Reloaded is there.</summary>
+/// <summary>inspect planet, before a world is loaded: only whether Terraforming Reloaded is there.</summary>
 internal sealed class PlanetNotLoadedView
 {
     internal PlanetNotLoadedView(TerraformingModView? terraformingMod)
@@ -18,7 +18,7 @@ internal sealed class PlanetNotLoadedView
 }
 
 /// <summary>
-/// planet: the planet's own atmosphere, its reservoirs and its temperature. Built from readings grouped by what they
+/// inspect planet: the planet's own atmosphere, its reservoirs and its temperature. Built from readings grouped by what they
 /// describe; the wire keeps the old flat order.
 /// </summary>
 internal sealed class PlanetView
@@ -104,7 +104,7 @@ internal sealed class PlanetView
 
 /// <summary>
 /// The air the world ships with (GlobalAtmosphereData.GlobalGasMixData, moles per outdoor cell), scaled to the
-/// planet's present cells: what the planet held when it was created or last reset.
+/// inspect planet's present cells: what the planet held when it was created or last reset.
 /// </summary>
 internal sealed class StartingAirView
 {

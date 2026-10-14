@@ -5,7 +5,7 @@ using StationGodMCP.Api.Shared;
 
 namespace StationGodMCP.Api.Views;
 
-/// <summary>move_gas: a queued move's prediction, or an applied or failed move's outcome.</summary>
+/// <summary>move gas: a queued move's prediction, or an applied or failed move's outcome.</summary>
 internal sealed class MoveGasView
 {
     internal const string Queued = "queued";
@@ -48,7 +48,7 @@ internal sealed class MoveGasView
         new MoveGasView(transferId, "failed", false, false, null, null, new List<MovedGasView>(), error);
 }
 
-/// <summary>move_gas with transfer_id, for a move still waiting for the atmospherics tick.</summary>
+/// <summary>move gas with transfer_id, for a move still waiting for the atmospherics tick.</summary>
 internal sealed class GasMoveWaitingView
 {
     internal GasMoveWaitingView(string transferId)
@@ -97,7 +97,7 @@ internal sealed class GasRoomView
         VolumeL = volumeL;
     }
 
-    /// <summary>As the rooms tool reports it.</summary>
+    /// <summary>As the find room tool reports it.</summary>
     public string RoomId { get; }
 
     public string RoomType { get; }

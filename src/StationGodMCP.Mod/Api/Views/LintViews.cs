@@ -305,7 +305,7 @@ internal sealed class LintExplainView
     public List<LintTracedView> Values { get; }
 }
 
-/// <summary>lint_rules' reply: what was asked for, the rule source, and the part the action fills.</summary>
+/// <summary>check rules' reply: what was asked for, the rule source, and the part the action fills.</summary>
 internal sealed class LintRulesView
 {
     internal LintRulesView(string action, LintRuleSourceView source)

@@ -97,7 +97,7 @@ internal sealed class ErrorView
     public object? Data { get; }
 
     /// <summary>
-    /// The tool_info node that explains the code; absent for a code the catalogue gives none.
+    /// The help node that explains the code; absent for a code the catalogue gives none.
     /// </summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public ErrorSee? See { get; }

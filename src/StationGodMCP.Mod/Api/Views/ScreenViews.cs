@@ -7,7 +7,7 @@ using StationGodMCP.Api.Shared;
 
 namespace StationGodMCP.Api.Views;
 
-/// <summary>screen_read: a ScriptedScreens host's surfaces and one surface's elements, a page of them.</summary>
+/// <summary>inspect screen: a ScriptedScreens host's surfaces and one surface's elements, a page of them.</summary>
 internal sealed class ScreenReadView
 {
     internal ScreenReadView(ThingView holder, ThingId chipId, List<ScreenSurfaceView> surfaces, string surface,

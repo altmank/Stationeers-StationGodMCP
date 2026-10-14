@@ -362,7 +362,7 @@ internal sealed class ScreenMark
 }
 
 /// <summary>
-/// Where show_preview and highlight draw: this game's screen (Previews, Highlights), or a remote player's, by sending
+/// Where show preview and show highlight draw: this game's screen (Previews, Highlights), or a remote player's, by sending
 /// the drawing to their StationGod (RemoteDrawings), which draws it with the same code. Each call answers how many
 /// earlier drawings of its kind it cleared.
 /// </summary>

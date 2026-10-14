@@ -18,7 +18,7 @@ internal static class RefundArgs
     internal const string Argument = "refund_to";
     internal const string Flag = "refund";
 
-    /// <summary>refund_to alone (remove_structure, undo_job): left out, the default chain.</summary>
+    /// <summary>refund_to alone (remove structure, undo): left out, the default chain.</summary>
     internal static RefundRoute Route(Args args) => RouteOf(args.Optional(Argument)) ?? RefundRoute.Default;
 
     /// <summary>refund_to with the refund flag (the run, upgrade, clean and replace tools).</summary>

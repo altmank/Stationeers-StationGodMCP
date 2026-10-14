@@ -9,7 +9,7 @@ namespace StationGodMCP.Api.Shared;
 
 /// <summary>
 /// What the gas hold meant for one request, collected while it runs (requests run one at a time on the main thread)
-/// and added to its reply as gas_hold. A request can judge several runs (undo_job checks and starts one per tool): the
+/// and added to its reply as gas_hold. A request can judge several runs (undo checks and starts one per tool): the
 /// reply keeps a lift a started run made over any refusal, a refusal over anything else, and otherwise the first.
 /// Nothing is added when the hold did not apply and no acknowledgement was given.
 /// </summary>

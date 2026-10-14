@@ -59,7 +59,7 @@ internal sealed class OpeningVerdict
 /// <summary>
 /// The write rules: the rules with "write" in their on, run on every opening transition of a vent, valve, pump or
 /// regulator (OpeningTransition) over the pipe networks it opens to as they hold now (OpeningWorld), through the same
-/// engine and rule files as lint_layout. Nothing is kept between writes, so a network that gains oxidiser between
+/// engine and rule files as check layout. Nothing is kept between writes, so a network that gains oxidiser between
 /// two openings is caught at the second. A write that opens nothing reads no rule file and builds no world.
 /// Findings at level info are not reported.
 /// </summary>

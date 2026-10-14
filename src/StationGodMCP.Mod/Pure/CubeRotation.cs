@@ -94,7 +94,7 @@ internal sealed class CubeRotation : IEquatable<CubeRotation>
         AboutY(yTurns).Times(AboutX(xTurns)).Times(AboutZ(zTurns));
 
     /// <summary>
-    /// Quarter turns about x, y and z whose Quaternion.Euler is this rotation: the form place_structure's rotation
+    /// Quarter turns about x, y and z whose Quaternion.Euler is this rotation: the form build structure's rotation
     /// takes, so a readout can be placed again as it stands. x stays 0 whenever it can and is 180 only when nothing
     /// else gives the rotation (as Unity's eulerAngles keeps x within -90 to 90).
     /// </summary>

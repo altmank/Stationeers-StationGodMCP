@@ -2,7 +2,7 @@
 
 namespace StationGodMCP.Pure;
 
-/// <summary>Arithmetic the planet tool does on numbers read from the game.</summary>
+/// <summary>Arithmetic the inspect planet tool does on numbers read from the game.</summary>
 internal static class PlanetMath
 {
     /// <summary>The gas constant planet has always used for partial pressures, J/(mol K).</summary>

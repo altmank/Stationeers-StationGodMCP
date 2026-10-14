@@ -162,7 +162,7 @@ internal sealed class RemoteVaultView
     public string Connection { get; }
 }
 
-/// <summary>vault_contents: every vault asked for, and the Remote Vaults.</summary>
+/// <summary>inspect vault: every vault asked for, and the Remote Vaults.</summary>
 internal sealed class VaultContentsView
 {
     internal VaultContentsView(List<VaultContentsEntryView> vaults, List<RemoteVaultView> remoteVaults)

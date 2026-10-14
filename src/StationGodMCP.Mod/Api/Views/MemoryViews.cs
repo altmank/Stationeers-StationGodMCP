@@ -25,7 +25,7 @@ internal sealed class MemoryPlace
     internal int? StackSize { get; }
 }
 
-/// <summary>read_memory: consecutive values of a device's memory (a chip's stack, a logic memory).</summary>
+/// <summary>read memory: consecutive values of a device's memory (a chip's stack, a logic memory).</summary>
 internal sealed class MemoryReadView
 {
     internal MemoryReadView(MemoryPlace place, List<double> values)

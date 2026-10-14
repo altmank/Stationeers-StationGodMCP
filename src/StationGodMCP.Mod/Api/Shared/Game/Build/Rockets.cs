@@ -146,7 +146,7 @@ internal static class Rockets
 
     /// <summary>
     /// A fuselage piece's last deconstruction step (StructureFuselage.CanDeconstruct at build state 0,
-    /// StructureFuselage.cs:294-317), asked whatever state it stands at because remove_structure takes it down in one
+    /// StructureFuselage.cs:294-317), asked whatever state it stands at because remove structure takes it down in one
     /// go: a fuselage piece on top of it, then any small-grid piece in one of its internal cells, each unless the same
     /// request removes it. Null when neither stops it.
     /// </summary>

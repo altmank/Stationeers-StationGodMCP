@@ -56,7 +56,7 @@ internal abstract class SubscribeOutcome<TReading> where TReading : class
 /// it is due, and offers the reading to its UpdateSlot only when a value other than the clock differs from the last
 /// reading offered (or a resync asked for the next reading whatever it holds). Due samples are taken round-robin
 /// across connections, the oldest due first within one, while the lane's budget allows; the connection the budget
-/// stopped at goes first next frame. Admission keeps one subscription to one read_devices call, a connection to
+/// stopped at goes first next frame. Admission keeps one subscription to one read logic call, a connection to
 /// MaxSubscriptions and MaxConnectionValues, and the projected load of all of them to MaxProjectedMsPerSecond.
 /// </para>
 /// <para>
@@ -118,7 +118,7 @@ internal sealed class SubscriptionEngine<TReading> where TReading : class
     /// <summary>
     /// A devices subscription: admitted, then read once now for the reply's first reading, which is also the
     /// baseline later readings are compared with. A read that throws leaves no subscription behind; the call fails
-    /// as read_devices would.
+    /// as read logic would.
     /// </summary>
     internal SubscribeOutcome<TReading> Subscribe(ConnectionId connection, DeviceSubscriptionQuery query,
         SamplingInterval interval, SamplingTick tick, long stream = 0)

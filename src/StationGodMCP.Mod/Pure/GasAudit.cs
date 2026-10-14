@@ -179,7 +179,7 @@ internal sealed class NetworkGas
 }
 
 /// <summary>
-/// Gas a job deletes from one pipe network on purpose, as its plan forecast and the request allowed (remove_structure
+/// Gas a job deletes from one pipe network on purpose, as its plan forecast and the request allowed (remove structure
 /// with allow_contents: a part of a split network that loses its last member while it still holds its share): a share
 /// of what the network held before the job. The gas check expects it gone and does not put it back.
 /// </summary>
@@ -198,7 +198,7 @@ internal sealed class PlannedGasLoss
     internal double Share { get; }
 
     /// <summary>
-    /// A release the job only sets up (remove_structure with allow_burst: a network left over its weakest pipe bursts
+    /// A release the job only sets up (remove structure with allow_burst: a network left over its weakest pipe bursts
     /// on a later atmospheric tick, and leaks there): at the check anything from none of the share to all of it may be
     /// gone. False for a deletion the job itself makes, all of which must be gone.
     /// </summary>
@@ -216,7 +216,7 @@ internal sealed class PlannedGasLoss
 }
 
 /// <summary>
-/// Gas the job puts into a network on purpose (remove_structure gas_to: a removed device's contents handed to one of
+/// Gas the job puts into a network on purpose (remove structure gas_to: a removed device's contents handed to one of
 /// its pipe networks): the check expects the network to hold it on top of what it held.
 /// </summary>
 internal sealed class PlannedGasGain

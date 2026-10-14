@@ -60,7 +60,7 @@ internal static class ProtocolLog
 
     internal static Action<string> WarningSink { get; set; } = static _ => { };
 
-    /// <summary>A reply's method and size once written (mod_info's reply_bytes).</summary>
+    /// <summary>A reply's method and size once written (server info's reply_bytes).</summary>
     internal static Action<string?, long> ReplyWritten { get; set; } = static (_, _) => { };
 
     internal static void Info(string message) => InfoSink(message);
@@ -139,12 +139,12 @@ internal sealed class Connection
 
     internal bool IsStopping => _stopping;
 
-    /// <summary>Calls answered on this connection (mod_info).</summary>
+    /// <summary>Calls answered on this connection (server info).</summary>
     internal long ServedCount => Interlocked.Read(ref _served);
 
     internal long BytesSent => Interlocked.Read(ref _bytesSent);
 
-    /// <summary>The calls run for this connection, per method (mod_info); main thread only.</summary>
+    /// <summary>The calls run for this connection, per method (server info); main thread only.</summary>
     internal Pure.ConnectionCalls Calls { get; } = new Pure.ConnectionCalls();
 
     internal void Start()
@@ -437,7 +437,7 @@ internal sealed class Connection
 /// <summary>What a connection does with each line it reads.</summary>
 internal abstract class Session
 {
-    /// <summary>The protocol version spoken (mod_info).</summary>
+    /// <summary>The protocol version spoken (server info).</summary>
     internal int Protocol => 2;
 
     /// <summary>The longest line accepted; null for no limit.</summary>

@@ -182,7 +182,7 @@ internal static class OpeningZones
     }
 
     /// <summary>
-    /// grid_survey's support string with the opening zones laid over it: 'x' in a door's keep-out, 'g' on a window.
+    /// survey area's support string with the opening zones laid over it: 'x' in a door's keep-out, 'g' on a window.
     /// </summary>
     internal static string Overlay(string support, IReadOnlyList<OpeningZone> zones)
     {

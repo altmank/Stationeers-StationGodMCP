@@ -6,7 +6,7 @@ using StationGodMCP.Api.Shared;
 
 namespace StationGodMCP.Api.Views;
 
-/// <summary>read_logic: one logic value of one device.</summary>
+/// <summary>read logic: one logic value of one device.</summary>
 internal sealed class LogicReadView
 {
     internal LogicReadView(string gatewayId, LogicRead read)

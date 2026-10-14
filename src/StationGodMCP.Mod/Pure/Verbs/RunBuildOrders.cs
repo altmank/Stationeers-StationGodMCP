@@ -193,7 +193,7 @@ internal sealed class RunBuildOrder
     }
 
     /// <summary>
-    /// The order a piece run of undo_job starts: the pieces the job takes down as it builds them again (the pieces
+    /// The order a piece run of undo starts: the pieces the job takes down as it builds them again (the pieces
     /// form), the grade they take, the pieces the same run takes down itself (remove_ids), the small-grid things of
     /// the rest of the removal it checks as gone (assume_removed), the caller's allow_bridge, who pays and where the
     /// refunds go, and whether the call acts (confirm) or only reports. Null with every problem added.

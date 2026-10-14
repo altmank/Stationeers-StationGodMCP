@@ -5,7 +5,7 @@ using StationGodMCP.Pure.Protocol;
 namespace StationGodMCP.Pure.Jobs;
 
 /// <summary>
-/// What the mod keeps of building jobs for polls and undo_job, bounded by memory (protocol.md, Job pins): each job's
+/// What the mod keeps of building jobs for polls and undo, bounded by memory (protocol.md, Job pins): each job's
 /// snapshots (JobSnapshots: how what it removes stood, its tool and source) and each ended job's final status
 /// (HeldTickJobs: the view its polls answer), in two stores with a budget each, and one set of pins over both, so a
 /// job's snapshot and final status are pinned and released together.

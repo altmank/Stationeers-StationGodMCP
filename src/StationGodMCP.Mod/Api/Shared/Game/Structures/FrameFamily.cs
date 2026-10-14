@@ -12,7 +12,7 @@ using UnityEngine;
 namespace StationGodMCP.Api.Shared.Game.Structures;
 
 /// <summary>
-/// replace_frames: frames (iron, steel, corner, side). A swap takes and builds exactly Frame, so rocket towers are
+/// swap frame: frames (iron, steel, corner, side). A swap takes and builds exactly Frame, so rocket towers are
 /// never touched. Without a target a frame is replaced by its own prefab at its final state, which finishes an
 /// unfinished frame in place. A frame fills its cell's centre: it affects that cell and its six neighbours. A frame
 /// that starts blocking air or gravity (finishing it) needs its cell empty of everything else but the walls on its

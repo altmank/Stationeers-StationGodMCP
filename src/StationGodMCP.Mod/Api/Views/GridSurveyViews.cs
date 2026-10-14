@@ -146,7 +146,7 @@ internal sealed class SurveyContents
     internal List<object> Networks { get; }
 }
 
-/// <summary>How much of each 2 m cell a grid_survey page tells: what occupies it, or everything known about it.</summary>
+/// <summary>How much of each 2 m cell a survey area page tells: what occupies it, or everything known about it.</summary>
 internal enum SurveyCellDetail
 {
     /// <summary>Its frame, the kind of structure on each face, and its small cells when any holds something.</summary>
@@ -156,7 +156,7 @@ internal enum SurveyCellDetail
     Full
 }
 
-/// <summary>One 2 m cell of a grid_survey page, in the form cell_detail asks for.</summary>
+/// <summary>One 2 m cell of a survey area page, in the form cell_detail asks for.</summary>
 internal abstract class SurveyCell
 {
     private protected SurveyCell(PositionView at) => At = at;
@@ -469,7 +469,7 @@ internal sealed class SurveyDeviceView
     public PositionView At { get; }
 
     /// <summary>
-    /// How the device stands turned: facing (its front), up and Euler degrees, the forms place_structure takes, so it
+    /// How the device stands turned: facing (its front), up and Euler degrees, the forms build structure takes, so it
     /// can be placed again as it stands or turned (facing reversed: 180 degrees).
     /// </summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]

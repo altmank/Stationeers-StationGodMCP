@@ -39,7 +39,7 @@ internal sealed class LintExampleResult
 /// A rule's examples: {"pass": [...], "fail": [...]}, each a subject written as its fields ({"prefab": ..., "cells":
 /// [...]}), or {"a": {...}, "b": {...}} for a pair rule. A key with parentheses fixes a function's result on that
 /// object: "sun_blocked()": true, "logic(On)": 1, "replaceable()": {"replaceable": false, ...}. A "world" key gives
-/// the world object. Run by lint_rules' self-test without the game.
+/// the world object. Run by check rules' self-test without the game.
 /// </summary>
 internal static class LintExamples
 {

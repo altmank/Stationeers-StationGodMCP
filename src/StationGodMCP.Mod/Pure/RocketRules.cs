@@ -36,7 +36,7 @@ internal static class RocketMotionRule
 /// <summary>
 /// What stops the last deconstruction step of a fuselage piece (StructureFuselage.CanDeconstruct,
 /// StructureFuselage.cs:294-317, asked when the piece is at build state 0): a fuselage piece standing on top of it,
-/// then any small-grid piece (device, chute, pipe, cable, other) in one of its internal cells. remove_structure takes a
+/// then any small-grid piece (device, chute, pipe, cable, other) in one of its internal cells. remove structure takes a
 /// piece down in one go, so this is asked whatever state it stands at, and things the same request removes are
 /// treated as gone.
 /// </summary>
@@ -55,7 +55,7 @@ internal static class FuselageTakedownRule
         : FuselageTakedown.Allowed;
 }
 
-/// <summary>One structure remove_structure takes down alone (not a cable, pipe or chute piece).</summary>
+/// <summary>One structure remove structure takes down alone (not a cable, pipe or chute piece).</summary>
 internal readonly struct RocketTakedownItem
 {
     internal RocketTakedownItem(int order, bool hull, double y)
@@ -75,7 +75,7 @@ internal readonly struct RocketTakedownItem
 }
 
 /// <summary>
-/// The order remove_structure takes structures down in, as a player would have to: everything that is not a fuselage
+/// The order remove structure takes structures down in, as a player would have to: everything that is not a fuselage
 /// piece first, in the request's order (a rocket's internals must be gone before its fuselage goes,
 /// StructureFuselage.cs:305-314), then the fuselage pieces from the top down (a piece that supports another may not go,
 /// StructureFuselage.cs:298-304). Removing the lower piece first would also make the game split the rocket

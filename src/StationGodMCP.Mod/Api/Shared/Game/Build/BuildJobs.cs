@@ -19,7 +19,7 @@ using UnityEngine;
 namespace StationGodMCP.Api.Shared.Game.Build;
 
 /// <summary>
-/// What a place_structure or remove_structure job does, apart from the running: the final check (the whole preflight
+/// What a build structure or remove structure job does, apart from the running: the final check (the whole preflight
 /// again once the tick has stopped), the work in that one frame, and the checks once Unity has finished it.
 /// </summary>
 internal abstract class BuildWork
@@ -50,7 +50,7 @@ internal abstract class BuildWork
 }
 
 /// <summary>
-/// Confirmed place_structure and remove_structure runs, on the shared runner (HeldTickJobs). Either can join or split
+/// Confirmed build structure and remove structure runs, on the shared runner (HeldTickJobs). Either can join or split
 /// pipe networks (an in-line tank, a passive vent, a pipe piece, a device on a pipe end); such a run has its contents
 /// checked (JobGas) and waits out a failed check (GasHold). A run that touches no pipe (a locker, a frame, a wall) is
 /// neither.
@@ -205,7 +205,7 @@ internal sealed class BuildSettling : HeldTickJob
 }
 
 /// <summary>
-/// place_structure's work. Each placement in order: the cursor check again (earlier pieces of the run now stand),
+/// build structure's work. Each placement in order: the cursor check again (earlier pieces of the run now stand),
 /// its materials taken as a kit's placement takes them (Stackable.OnUseItem), the piece built as a kit builds it
 /// (Constructor.SpawnConstruct: position, rotation, owner, colour) and raised to its build state as the authoring
 /// tool does (CurrentBuildStateIndex, then UpdateStateVisualizer), then labelled as the Labeller does. The first
@@ -350,7 +350,7 @@ internal sealed class PlaceWork : BuildWork
         catch (Exception exception)
         {
             // Thing.Create, the build state, the rename or a stack's OnUseItem failing part way: stop at this one.
-            StationGodMod.LogWarning($"place_structure placement {placement.Index} failed: {exception}");
+            StationGodMod.LogWarning($"build structure placement {placement.Index} failed: {exception}");
             return Stop(log, placement, "build_failed", exception.Message);
         }
     }
@@ -442,7 +442,7 @@ internal sealed class PlaceWork : BuildWork
 }
 
 /// <summary>
-/// remove_structure's work. Cable, pipe and chute pieces as their remove tool removes them (RunBuilder.Remove: a
+/// remove structure's work. Cable, pipe and chute pieces as their remove tool removes them (RunBuilder.Remove: a
 /// network kept whole keeps its id and contents); every other piece as deconstruction ends (with allow_contents its
 /// slots' items are dropped where it stood, as Structure.StructureDestroyed drops them; a filled cell given back to
 /// the air as the last deconstruction step gives it, FreedCells; OnServer.Destroy). Then the
@@ -624,7 +624,7 @@ internal sealed class RemoveWork : BuildWork
         catch (Exception exception)
         {
             // OnServer.MoveToWorld or OnServer.Destroy failing: stop here; what was removed stays removed.
-            StationGodMod.LogWarning($"remove_structure of {piece.ReferenceId} failed: {exception}");
+            StationGodMod.LogWarning($"remove structure of {piece.ReferenceId} failed: {exception}");
             log.StoppedAt = new BuildStopView(takedown.Index, new ErrorView("remove_failed",
                 $"Removing {piece.PrefabName} {piece.ReferenceId} failed: {exception.Message}"));
         }
@@ -655,7 +655,7 @@ internal sealed class RemoveWork : BuildWork
         catch (Exception exception)
         {
             // OnServer.CreateOrStack after the removals: they stand, the refund stops where it failed.
-            StationGodMod.LogWarning($"remove_structure refund failed: {exception}");
+            StationGodMod.LogWarning($"remove structure refund failed: {exception}");
             log.RefundError = new ErrorView("refund_failed", exception.Message);
         }
     }

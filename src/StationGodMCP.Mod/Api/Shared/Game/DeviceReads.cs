@@ -19,7 +19,7 @@ namespace StationGodMCP.Api.Shared.Game;
 /// <summary>
 /// Many reads of many things in one request, as read logic's items form and a devices subscription read them, all in
 /// the same frame (one Update; not one atmospherics
-/// tick: the atmosphere thread may run between two items). Per item: logic values as read_logic reads them, slot logic
+/// tick: the atmosphere thread may run between two items). Per item: logic values as read logic reads them, slot logic
 /// as inspect slots reads it, one atmosphere compact (its own, its internal one, or the pipe network at a device port),
 /// and reagents as inspect reagents reads them. Values come back keyed by the name the client sent. An id that names
 /// nothing fails its item; a part that cannot be read (the device out of scope) fails in the item's errors; a logic

@@ -83,7 +83,7 @@ internal static class LintChipPrograms
         "(?<![\\w.])(?:ic\\.(?:logic\\.)?(?:logic_)?|logic_)(write(?:_slot)?(?:_id)?)\\s*\\(([^()]*(?:\\([^()]*\\)[^()]*)*)\\)",
         RegexOptions.CultureInvariant);
 
-    /// <summary>Chip programs held parsed (mod_info runtime.lint_chip_programs).</summary>
+    /// <summary>Chip programs held parsed (server info runtime.lint_chip_programs).</summary>
     internal static int ParsedCount => Programs.Count;
 
     internal static void Register(LintLibrary library)

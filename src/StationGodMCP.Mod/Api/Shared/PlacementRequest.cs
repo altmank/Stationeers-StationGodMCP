@@ -199,9 +199,6 @@ internal sealed class PlaceRequest
 
 internal sealed class RemoveRequest
 {
-    /// <summary>The most ids one remove call gives.</summary>
-    internal const int MaximumRemovals = 256;
-
     internal RemoveRequest(List<ThingId> ids, RemovalAllowance allow, RefundRoute refundTo, ThingId? from,
         bool includeNotes = false, GasTarget? gasTo = null, bool splitDetail = false)
     {
@@ -233,7 +230,7 @@ internal sealed class RemoveRequest
     internal bool SplitDetail { get; }
 }
 
-/// <summary>remove_structure gas_to: a device's connected pipe networks (the first that can take it), or one network.</summary>
+/// <summary>remove structure gas_to: a device's connected pipe networks (the first that can take it), or one network.</summary>
 internal sealed class GasTarget
 {
     private GasTarget(ThingId? network)

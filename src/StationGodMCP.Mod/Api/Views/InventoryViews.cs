@@ -11,7 +11,7 @@ using StationGodMCP.Pure.Shaping;
 namespace StationGodMCP.Api.Views;
 
 /// <summary>
-/// What names a find_items group: its first entry's prefab (or working-load reagent), place and outermost holder (none
+/// What names a find item group: its first entry's prefab (or working-load reagent), place and outermost holder (none
 /// for a loose item), and the holder's position and distance from the player.
 /// </summary>
 internal sealed class FoundGroupFacts
@@ -44,7 +44,7 @@ internal sealed class FoundGroupFacts
 }
 
 /// <summary>
-/// find_items group_by holder: one prefab's entries (stacks, a machine's stock, silo entries) in one outermost holder,
+/// find item group_by holder: one prefab's entries (stacks, a machine's stock, silo entries) in one outermost holder,
 /// summed. Loose items of a prefab make one group with no holder and no position.
 /// </summary>
 internal sealed class HolderGroupView : IFoundItemView
@@ -87,7 +87,7 @@ internal sealed class HolderGroupView : IFoundItemView
     public double? DistanceM { get; }
 }
 
-/// <summary>find_items group_by prefab: every entry of one prefab (or working-load reagent) summed.</summary>
+/// <summary>find item group_by prefab: every entry of one prefab (or working-load reagent) summed.</summary>
 internal sealed class PrefabGroupView : IFoundItemView
 {
     internal PrefabGroupView(FoundGroupFacts first, int entries, double quantity, int holders)
@@ -284,7 +284,7 @@ internal sealed class PrefabQuantityView
     public double Quantity { get; }
 }
 
-/// <summary>container_contents: a thing's slots, and what is in each, a few levels deep.</summary>
+/// <summary>inspect contents: a thing's slots, and what is in each, a few levels deep.</summary>
 internal sealed class ContainerContentsView : ITruncatingView
 {
     internal ContainerContentsView(ThingView thing, PositionView position, double? distanceM, ShownSlots slots,
@@ -365,7 +365,7 @@ internal sealed class SlotView
 
     public int Index { get; }
 
-    /// <summary>The slot's shown name (Hand, Back, Slot), as inspect_slots names it.</summary>
+    /// <summary>The slot's shown name (Hand, Back, Slot), as inspect slots names it.</summary>
     public string? DisplayName { get; }
 
     public string SlotClass { get; }
@@ -414,7 +414,7 @@ internal sealed class OccupantView
             slots.Count > 0 ? slots : null, SlotsNotShown);
 }
 
-/// <summary>container_contents' slots as shown, and how many empty slots were left out on the way.</summary>
+/// <summary>inspect contents' slots as shown, and how many empty slots were left out on the way.</summary>
 internal sealed class ShownSlots
 {
     internal ShownSlots(List<SlotView> slots, int emptyOmitted)

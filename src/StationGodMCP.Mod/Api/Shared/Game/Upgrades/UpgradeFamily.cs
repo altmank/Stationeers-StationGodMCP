@@ -45,7 +45,7 @@ internal sealed class Grade
 /// </summary>
 internal abstract class UpgradeFamily
 {
-    /// <summary>cable or pipe, as connections names networks.</summary>
+    /// <summary>cable or pipe, as inspect connections names networks.</summary>
     internal abstract string NetworkKind { get; }
 
     /// <summary>A thing this family's networks hold (Cable, or Pipe for pipes).</summary>

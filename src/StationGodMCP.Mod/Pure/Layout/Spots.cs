@@ -5,7 +5,7 @@ using System.Collections.Generic;
 
 namespace StationGodMCP.Pure;
 
-/// <summary>find_spot's require flags: what a spot must meet to be offered.</summary>
+/// <summary>plan spot's require flags: what a spot must meet to be offered.</summary>
 internal sealed class SpotRequirements
 {
     internal SpotRequirements(bool oneSection, double? minBottomAboveFloorM, bool portsReachable, bool avoidDoors,
@@ -70,7 +70,7 @@ internal sealed class SpotGeometry
 }
 
 /// <summary>
-/// Why find_spot ruled spots out, counted: each reason once per spot (the filter's first, or the check's), grouped with
+/// Why plan spot ruled spots out, counted: each reason once per spot (the filter's first, or the check's), grouped with
 /// the numbers in it ignored ("2 cell(s) taken" and "3 cell(s) taken" are one reason), the first wording kept as the
 /// example. Most frequent first, then first seen.
 /// </summary>
@@ -111,7 +111,7 @@ internal sealed class SpotReasons
 }
 
 /// <summary>
-/// find_spot's cheap filter and ranking. The filter runs on geometry only (SpotGeometry), so the costly cursor check and
+/// plan spot's cheap filter and ranking. The filter runs on geometry only (SpotGeometry), so the costly cursor check and
 /// layout preview run only on spots that could pass; the rank orders passed spots by the layout preview's penalty, then
 /// distance from the point asked, then search order.
 /// </summary>

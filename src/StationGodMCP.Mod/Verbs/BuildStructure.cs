@@ -56,7 +56,7 @@ internal static class StructureBuild
     }
 
     /// <summary>
-    /// One placement call's reply, for a caller that runs the call itself (undo_job's replay): the report until it
+    /// One placement call's reply, for a caller that runs the call itself (undo's replay): the report until it
     /// acts, or the started job. A refusal the call cannot be read with is thrown, as any call's is.
     /// </summary>
     internal static object Reply(StructureBuildOrder order) => Run(order) switch

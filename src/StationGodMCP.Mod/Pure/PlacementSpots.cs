@@ -7,7 +7,7 @@ using System.Globalization;
 namespace StationGodMCP.Pure;
 
 /// <summary>
-/// Where one placement of a place_structure request stands, as the game's slots tell pieces apart: the snapped
+/// Where one placement of a build structure request stands, as the game's slots tell pieces apart: the snapped
 /// position, the slot kind, and for a piece placed on a cell face its side. The game registers a face-placed piece
 /// (a wall) in the cell it faces into (Structure.GetGrid: position + forward * 0.1, snapped), so a face holds one such
 /// piece per side: two plates back to back share the face and are two slots.
@@ -97,7 +97,7 @@ internal static class CursorAim
 }
 
 /// <summary>
-/// The faces a remove_structure request's would_breach findings have named, so a face breached by several pieces of
+/// The faces a remove structure request's would_breach findings have named, so a face breached by several pieces of
 /// one request (two plates back to back; a wall and the frame behind it) is reported once, by the first piece that
 /// opens it.
 /// </summary>

@@ -44,7 +44,7 @@ namespace StationGodMCP.Api.Shared.Game;
 /// </para>
 /// <para>
 /// Open reads every pipe network before the job; Close reads them again once everything is applied and compares each
-/// family of networks the job changed (GasAudit). Gas the job's plan deletes on purpose (Expect: remove_structure with
+/// family of networks the job changed (GasAudit). Gas the job's plan deletes on purpose (Expect: remove structure with
 /// allow_contents) is expected gone. A family short of gas gets what it lacks put back, unless that would take one of
 /// its networks over the rating of its weakest pipe (GasRefills: a burst vents everything), and the pipeless networks
 /// left holding the lost copy are emptied and dropped; anything still wrong fails the check and holds further pipe
@@ -227,7 +227,7 @@ internal static class PipeGasQueue
         !AtmosphericsThread.Busy;
 
     /// <summary>
-    /// AtmosphericsController.HandleMainThreadEvents without the mod's own move_gas postfix: split events, then merge
+    /// AtmosphericsController.HandleMainThreadEvents without the mod's own move gas postfix: split events, then merge
     /// and other atmosphere events, then the awaiting grids cleared. Then every pipe network's cached values are set
     /// to its live ones (Atmosphere.UpdateCache, as AtmosphericsManager.RunCacheAtmosphereDataJobs does each tick):
     /// the tick caches before it mixes and runs the devices, so a split made on the main thread would otherwise divide

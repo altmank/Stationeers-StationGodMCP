@@ -21,7 +21,7 @@ internal static class UnityFloat
 /// <summary>
 /// The rocket's flight arithmetic, ported line by line from Objects.Rockets.Rocket (decompile Objects.Rockets/Rocket.cs).
 /// Everything is float, as in the game, so a forecast and the game round the same way. The in-game self test
-/// (rocket_status checks) compares these with the game's own Rocket.GetApex and RocketAvionicsDevice
+/// (inspect rocket checks) compares these with the game's own Rocket.GetApex and RocketAvionicsDevice
 /// .GetAutoLandConfidenceRatio.
 /// </summary>
 internal static class FlightMath

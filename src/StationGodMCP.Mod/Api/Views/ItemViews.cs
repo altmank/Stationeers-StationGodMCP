@@ -7,13 +7,13 @@ using StationGodMCP.Pure;
 
 namespace StationGodMCP.Api.Views;
 
-/// <summary>One find_items entry: an item, or a machine's stock.</summary>
+/// <summary>One find item entry: an item, or a machine's stock.</summary>
 internal interface IFoundItemView
 {
 }
 
 /// <summary>
-/// An item in the world and where it is, as find_items lists it. Tools that add fields to an item derive from this;
+/// An item in the world and where it is, as find item lists it. Tools that add fields to an item derive from this;
 /// its fields always come first on the wire.
 /// </summary>
 internal abstract class ItemFieldsView
@@ -76,7 +76,7 @@ internal sealed class ItemView : ItemFieldsView, IFoundItemView
 
 /// <summary>
 /// Material a machine holds as reagent stock, listed like an item (same field names and order) with location
-/// machine_stock. It is not an item: reference_id is null, move_item cannot move it, and held_in names the machine
+/// machine_stock. It is not an item: reference_id is null, move item cannot move it, and held_in names the machine
 /// with slot_index -1. machine_stock says what it is and how to get it out.
 /// </summary>
 internal sealed class StockItemView : IFoundItemView

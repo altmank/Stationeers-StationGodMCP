@@ -1,7 +1,7 @@
-A job id (place-12, run-4, remove-3...), a bulk write (write-N), a script run (script-14: the whole run), or "paste".
+A job id (place-12, run-4, remove-3...), a bulk write (write-N), a script run (script-14: the whole run), or "paste" on its own.
 Reports first; confirm: true does it.
 Options:
-- id (string or array, required): The job, the bulk write (write-N), the script run (script-14), or "paste"; a list is undone newest first, in one report.
+- id (string or array, required): The job, the bulk write (write-N), the script run (script-14), or "paste" on its own; a list is undone newest first, in one report.
 - allow_bridge (list): Passed to every piece run.
 - materials (string): The one holder every call pays from and refunds to. Default the job's own recorded source, else the player; never filled in by the verb layer.
 - refund_to (string or integer or array, default [inventory, source, storage, ground]): Where removals' refunds go. Default nothing after a free placement, else each tool's own list.

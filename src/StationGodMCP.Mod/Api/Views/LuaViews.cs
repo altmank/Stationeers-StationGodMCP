@@ -50,7 +50,7 @@ internal sealed class LuaStateView
 
     public LuaErrorView? LastError { get; }
 
-    /// <summary>The tail of the chip's print() log; only get_ic_status reads it.</summary>
+    /// <summary>The tail of the chip's print() log; only inspect chip reads it.</summary>
     public LuaLogView? Log { get; }
 
     public string? Unavailable { get; }

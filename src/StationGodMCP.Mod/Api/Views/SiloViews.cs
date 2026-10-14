@@ -64,7 +64,7 @@ internal sealed class SiloEntryView
     public bool RotsWhenTaken { get; }
 }
 
-/// <summary>A silo's store as container_contents shows it, after the silo's own slots.</summary>
+/// <summary>A silo's store as inspect contents shows it, after the silo's own slots.</summary>
 internal sealed class SiloContentsView
 {
     internal SiloContentsView(int count, bool entriesKnown, SiloBusyView? busy, Slice<SiloEntryView> entries)
@@ -314,7 +314,7 @@ internal sealed class SiloDepositView
 }
 
 /// <summary>
-/// A silo entry (or a thing stored inside one) listed by find_items like an item, with location silo. Not a thing in
+/// A silo entry (or a thing stored inside one) listed by find item like an item, with location silo. Not a thing in
 /// the world: reference_id is null and held_in names the silo with slot_index -1. silo says which entry.
 /// </summary>
 internal sealed class SiloItemView : IFoundItemView

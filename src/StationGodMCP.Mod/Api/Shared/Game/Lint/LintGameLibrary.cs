@@ -54,7 +54,7 @@ internal static class LintGameLibrary
                 Replaceable, cached: true))
             .Add(new LintFunction("controls_side", "(x: thing) -> controls?",
                 "The world side of a device that carries its slots, buttons and switches (read from its prefab's " +
-                "interactables, as describe_prefab's controls); null for a thing without one or not on quarter turns.",
+                "interactables, as inspect prefab's controls); null for a thing without one or not on quarter turns.",
                 ControlsSide))
             .Add(new LintFunction("controls_blocked", "(x: thing) -> string?",
                 "What stands right in front of the side its controls face (another device, a chute or small thing, a " +

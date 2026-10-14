@@ -13,7 +13,7 @@ using UnityEngine;
 namespace StationGodMCP.Api.Shared.Game.Show;
 
 /// <summary>
-/// show highlight (catalogue show.json), the two branches the old highlight handler ran: clear removes every mark the
+/// show highlight (catalogue show.json), the two branches the old show highlight handler ran: clear removes every mark the
 /// player's screen has of the mod's, and a draw finds what each target names and hands the screen the marks to draw
 /// through walls, frames and terrain with (Highlights, the T-Ray SPU's material). Things by id and a network's pieces
 /// are drawn with their own meshes, tinted; a world point gets a beam and, out of view, an arrow at the screen's edge

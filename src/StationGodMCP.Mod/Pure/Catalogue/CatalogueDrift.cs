@@ -7,7 +7,7 @@ namespace StationGodMCP.Pure.Catalogue;
 
 /// <summary>
 /// Argument names the handlers read that their method's catalogue entry does not declare, counted per method and
-/// name since the mod loaded (mod_info.runtime.catalogue_drift; it should stay empty). Only misses are counted, so a
+/// name since the mod loaded (server info.runtime.catalogue_drift; it should stay empty). Only misses are counted, so a
 /// declared name costs the caller one set lookup and nothing else. Thread-safe.
 /// </summary>
 internal sealed class CatalogueDrift

@@ -5,7 +5,7 @@ using StationGodMCP.Api.Shared;
 
 namespace StationGodMCP.Api.Views;
 
-/// <summary>paint with no targets: the game's colour list.</summary>
+/// <summary>write paint with no targets: the game's colour list.</summary>
 internal sealed class PaintColorsView
 {
     internal PaintColorsView(List<PaintColorView> colors)

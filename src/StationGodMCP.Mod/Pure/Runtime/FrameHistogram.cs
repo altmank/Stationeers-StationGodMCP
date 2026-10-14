@@ -5,7 +5,7 @@ using System;
 namespace StationGodMCP.Pure;
 
 /// <summary>
-/// StationGod's request milliseconds per busy frame since the mod loaded, in fixed buckets, for mod_info's frame_ms
+/// StationGod's request milliseconds per busy frame since the mod loaded, in fixed buckets, for server info's frame_ms
 /// percentiles. The buckets end at EdgesMs, each edge belonging to the bucket below it (a 4.0 ms frame counts under
 /// 4), the last one open. The edges are half a millisecond to a millisecond apart up to the 4 ms default budget and
 /// its 2 ms job-held cap, coarser above, with 8, 16 and 33 ms (half a 60 Hz frame, a 60 Hz and a 30 Hz frame) among

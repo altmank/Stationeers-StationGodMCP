@@ -265,7 +265,7 @@ internal sealed class LintRule
     /// <summary>level_when: an expression giving the level (problem, warning, info) for one failing subject.</summary>
     internal LintEval? LevelWhen { get; }
 
-    /// <summary>The rule as written, for lint_rules and for an override to patch.</summary>
+    /// <summary>The rule as written, for check rules and for an override to patch.</summary>
     internal JObject Source { get; }
 
     internal LintRuleOrigin Origin { get; }
