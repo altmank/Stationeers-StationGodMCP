@@ -22,8 +22,8 @@ public sealed class ClientTests
 {
     private static readonly string Root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
 
-    // The hash the mod announces in welcome.catalogue.hash: SHA-256 over the verb files' raw bytes, concatenated
-    // whole in ordinal file-name order, with nothing between them.
+    // The hash the mod announces in welcome.catalogue.hash: SHA-256 over the verb files' raw bytes with every line
+    // ending a bare LF, concatenated whole in ordinal file-name order, with nothing between them.
     [Fact]
     public void TheBuiltInHashIsTheHashOfTheVerbFiles()
     {
@@ -32,10 +32,35 @@ public sealed class ClientTests
         foreach (string file in Directory.GetFiles(Path.Combine(Root, "catalogue", "verbs"), "*.json")
                      .OrderBy(path => "catalogue/verbs/" + Path.GetFileName(path), StringComparer.Ordinal))
         {
-            sha.AppendData(File.ReadAllBytes(file));
+            sha.AppendData(Lf(File.ReadAllBytes(file)));
         }
 
         Assert.Equal("sha256:" + Convert.ToHexString(sha.GetHashAndReset()).ToLowerInvariant(), GameCatalogue.BuiltIn.Hash);
+    }
+
+    // The rule the readers hash by, written here once more so the check stays independent of them: every line ending
+    // a bare LF, nothing else changed.
+    private static byte[] Lf(byte[] raw)
+    {
+        byte[] lf = new byte[raw.Length];
+        int at = 0;
+        for (int i = 0; i < raw.Length; i++)
+        {
+            if (raw[i] != (byte)'\r')
+            {
+                lf[at++] = raw[i];
+                continue;
+            }
+
+            lf[at++] = (byte)'\n';
+            if (i + 1 < raw.Length && raw[i + 1] == (byte)'\n')
+            {
+                i++;
+            }
+        }
+
+        Array.Resize(ref lf, at);
+        return lf;
     }
 
     [Theory]

@@ -29,9 +29,9 @@
     <Compile Include="src\StationGodMCP.Mod\**\*.cs" />
     <!-- The built-in lint rules: always loaded, with the save's lint-rules.json over them; the mod folder's copy is never loaded. -->
     <EmbeddedResource Include="lint-rules.json" LogicalName="StationGodMCP.lint-rules.json" />
-    <!-- The verb model (catalogue/verbs), the one catalogue the mod carries: its files' raw bytes are the hash the
-         welcome announces, and the assembled document is what the `catalogue` method answers. The Client and the
-         Server embed the same glob with the same logical names. -->
+    <!-- The verb model (catalogue/verbs), the one catalogue the mod carries: its files' bytes with every line ending
+         a bare LF are the hash the welcome announces, and the assembled document is what the `catalogue` method
+         answers. The Client and the Server embed the same glob with the same logical names. -->
     <EmbeddedResource Include="catalogue\verbs\*.json" LogicalName="catalogue/verbs/%(Filename)%(Extension)" />
   </ItemGroup>
 

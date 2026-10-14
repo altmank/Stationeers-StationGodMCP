@@ -21,7 +21,8 @@
 
   <ItemGroup>
     <!-- The verb model the client was built with (the repository's catalogue/verbs); its hash is SHA-256 of these
-         files' raw bytes, concatenated in ordinal file-name order - the hash the mod announces in welcome. -->
+         files' bytes with every line ending a bare LF, concatenated in ordinal file-name order - the hash the mod
+         announces in welcome. -->
     <EmbeddedResource Include="..\..\catalogue\verbs\*.json" LogicalName="catalogue/verbs/%(Filename)%(Extension)" />
   </ItemGroup>
 </Project>

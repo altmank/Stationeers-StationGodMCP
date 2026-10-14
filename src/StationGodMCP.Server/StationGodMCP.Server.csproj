@@ -17,8 +17,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The protocol client. It embeds the verb model (catalogue/verbs; SHA-256 of these files' raw bytes is the
-         catalogue hash the mod announces). -->
+    <!-- The protocol client. It embeds the verb model (catalogue/verbs; SHA-256 of these files' bytes with every
+         line ending a bare LF is the catalogue hash the mod announces). -->
     <ProjectReference Include="..\StationGodMCP.Client\StationGodMCP.Client.csproj" />
   </ItemGroup>
 
