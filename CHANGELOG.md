@@ -2,33 +2,36 @@
 
 ## Unreleased
 
-- **The mod answers verbs.** A call's method is a verb, `{"method": "<verb>", "params": {"what", ...options}}`, or
-  a protocol method; every per-tool method (`read_logic`, `sample_logic`, `mod_info`, ...) is refused
-  `method_not_found`, listing the verbs, and so is a verb or what with no handler yet. A verb call's options are
-  checked in the mod, every problem at once in verb names with the nearest valid names, and bound to a typed options
-  class generated from the catalogue; replies come from shared writers (per-id rows, list pages, one report shape).
-  The call key `rename` and the welcome feature `rename` are gone.
-- **The sidecar serves the verbs.** tools/list is the 15 verbs plus help and run_script (generated/verbs/tools.json)
-  with their instructions; today's 104 tools are no longer listed or callable. Each verb call is checked against its
-  what's options before anything is sent (every problem at once as `invalid_argument`, with the nearest valid names,
-  in verb names), translated onto today's handlers with a `rename` envelope so the mod's messages come back in verb
-  names, and a list of ids is sent whole, split into one call per id (rows `{index, ok, reference_id, ...}` with
-  `count`, `success_count`, `error_count`), or refused naming run_script, as the what declares. `help` answers the
-  generated pages and, with `lang: "python"`, the stub. `--record <path>` appends one line per call. run_script and
-  script runs are not in this release yet (`not_available`).
-- **The direct write rule, reports, refs and the cap.** Typed ids act; build, swap, remove, trade, undo, cheats,
-  refs and spreads report until `confirm: true`, every report one shape (`report_only`, `targets` rows with the undo
-  mark, `placed` for builds). A direct reply that lists things mints a ref `rN` (a target, and `repeat`); one over
-  12 KB is cut to about 4 KB with `ref`, `cut` and `next`. A write on a list acts as `write-N`, which `inspect job`
-  and `undo` know. Confirmed jobs answer when done, up to `max_wait`. Known limit: a job's step texts are printed
-  without the rename map, so they may name a handler argument.
+- **The mod answers verbs.** Every call is a verb, and most take a `what` naming the kind of thing:
+  `{"method": "<verb>", "params": {"what", ...options}}`. The tool surface is the 15 verbs - `find`, `inspect`,
+  `survey`, `read`, `write`, `plan`, `check`, `build`, `swap`, `remove`, `move`, `trade`, `show`, `undo`, `server` -
+  plus `help` and `run_script`, each with its generated instructions. The old per-tool methods are gone: a call naming
+  one is refused `method_not_found`.
+- **Calls are checked in verb names, and `help` answers the built pages.** Every call is checked against its what's
+  options before anything is sent - every problem at once as `invalid_argument`, with the nearest valid names - and the
+  mod binds them to typed option classes generated from the catalogue. A what that takes an id takes a list, answered
+  one row per id (`results`, `count`, `success_count`, `error_count`); a write that cannot be undone refuses a list,
+  naming `run_script`. Replies come from shared writers: one report shape, list pages, per-id rows. `help` lists the
+  verbs and topics, gives a verb's whats and shared options, one what in full, and the shared topics, and with
+  `lang: "python"` the stub for script calls. `--record <path>` appends one line per call.
+- **One write rule: typed ids act, everything else reports until `confirm: true`.** So do build, swap, remove, trade
+  and undo, and every cheat. A write whose targets were not typed out - a ref, a network, a spread - reports too,
+  listing every target with its current value. Every report carries `report_only` and `targets` (rows with the undo
+  mark, `placed` for builds); `confirm: false` only reports. A confirmed job answers when it is done, up to `max_wait`;
+  past that it answers its id, and `inspect job` follows. `undo` takes back a build or removal job, a bulk write
+  (`write-N`, what a write on a list acts as) or a script run.
+- **Refs and the reply cap.** Replies that are reports, plans, cut, or lists with `has_more` or three or more ids carry
+  a ref `rN`: a target, or `repeat` to call it again - with `confirm: true`, the report it listed runs for real. A
+  direct reply over 12 KB is cut to about 4 KB with `ref`, `cut` and `next`; a report, `whole: true`, `output_file`
+  and `list_limits` are never cut.
 - **run_script.** A run is `script-N` on its own stream, served by a pre-started Python worker (one per run, in a
   kill-on-close Job Object on Windows; `--python` picks the Python, sg ships next to the binary). Without `confirm`
   it is a report run: every write is listed `[id, name, current -> new]` and nothing changes. With `confirm: true`
   writes act on seen targets (ids this session's replies showed, the code's own constants and selectors, the run's
-  builds, `player`); an unseen target stops the run with its rows and the fix. `server stop` (or cancelling the
-  request, or a world change) stops a run once; its `finally` may still put back what it wrote and its held
-  restores, and the worker is killed 5 s later. Confirmed runs answer within `--confirmed-ceiling-s` (30 s), then
+  builds, `player`); an unseen target stops the run with its rows and the fix. Saved scripts (`write script`,
+  `find script`, `inspect script`, `remove script`) run through `run_script {name, args}`. `server {what: "stop"}` (or
+  cancelling the request, or a world change) stops a run once; its `finally` may still put back what it wrote and its
+  held restores, and the worker is killed 5 s later. Confirmed runs answer within `--confirmed-ceiling-s` (30 s), then
   `script-N running`; `inspect job` follows. Replies end with the writes by outcome and a cost line; a run that left
   something is a notice on every reply until inspected.
 - **The journal, undo of runs, and the session end.** Each hub writes a journal (`--journal-dir`) ahead of every write
@@ -37,21 +40,16 @@
   values before the run, newest first, reporting until `confirm: true`; a target changed since is left unless
   `allow: ["overwrite"]`. When the client closes stdin the hub stops every run, lets their cleanup writes and held
   restores go for 0.3 s, then ends the session so the mod applies what is still held.
-
-- **Frame cost measurement.** `mod_info` `include_counters` adds `runtime.frame_ms`: StationGod's request time per
-  busy frame as fixed buckets, reported as `p50`, `p90`, `p99` and `over_8ms` (the default reply is unchanged).
-  Replies gain `budget_hit: true` when the frame's request budget had been reached as the call's handler finished;
-  it is left out otherwise, so ordinary replies are the same size.
-  `frame_ms` also carries `buckets`, the 20 bucket counts, so two reads can be differenced into a window.
-- **`mod_info` `include_counters`, and safety fixes that change no replies.** `include_counters: true` (default
-  false, so the default reply is unchanged) adds runtime counters next to `prefab_index`:
-  - how long jobs hold the game tick (`job_holds`, counts in five length buckets)
-  - the print log fill (`print_log`)
-  - prefab-index `arrived` and `left` totals
-  - the lint chip-program cache size (`lint_chip_programs`)
-  - the batch console line rate (`batch_console`)
-
-  `profiling` gains a `job_gas_walk` scope for the gas move's per-tick pipe network walks.
+- **Frame cost measurement.** `server {what: "info", include: ["counters"]}` adds `runtime.frame_ms`: StationGod's
+  request time per busy frame in fixed buckets, reported as `frames`, `p50`, `p90`, `p99` and `over_8ms`, with the 20
+  `buckets` so two reads can be differenced into a window; the default reply is unchanged. A reply says `budget_hit`
+  when the frame's request budget had been reached as the call's handler finished; it is left out otherwise, so
+  ordinary replies are the same size.
+- **The game-side counters, profiling, and fixes that change no replies.** The same `include: ["counters"]` adds
+  runtime counters next to `prefab_index`: how long jobs hold the game tick (`job_holds`, counts in five length
+  buckets), the print log fill (`print_log`), prefab-index `arrived` and `left` totals, the lint chip-program cache
+  size (`lint_chip_programs`) and the batch console line rate (`batch_console`). `server profiling` gains a
+  `job_gas_walk` scope for the gas move's per-tick pipe network walks.
 
   Under the hood:
   - The mod build takes game assemblies only from their HintPath, so a stray .NET 8 dll in the repo can no longer
@@ -61,7 +59,7 @@
   - A request's argument names are checked once, not again on the main thread after a strict connection checked
     them.
   - Five unused members are gone.
-  - The catalogue's integer bounds, stated defaults and stated maximums are now tested against the code.
+  - The catalogue's integer bounds, stated defaults and stated maximums match the code.
 
 ## 1.33.2
 

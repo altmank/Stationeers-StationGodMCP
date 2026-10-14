@@ -22,7 +22,7 @@ StationGod MCP connects an AI agent such as Claude Code or Codex to your running
 [*][b]Blueprints:[/b] with BlueprintMod installed, paste a blueprint at an exact spot and quarter turn, even on a dedicated server with no player, then check or undo it.
 [*][b]Console:[/b] run the game's console commands and read the console.
 [/list]
-Every tool that rebuilds something has a dry run first. The real run holds the game tick, changes everything in one step, takes from your inventory what the game would charge, gives back what deconstruction would, and checks the result afterwards: connections, pipe contents, rooms and air.
+Every call that changes the world reports first: it lists every target with its current value, and nothing acts until the agent passes confirm: true. A call given typed ids acts at once. Everything else reports first - a build, swap, removal, trade or undo, a whole network, or targets from an earlier reply. The real run holds the game tick, changes everything in one step, takes from your inventory what the game would charge, gives back what deconstruction would, and checks the result afterwards: connections, pipe contents, rooms and air.
 
 [hr][/hr]
 [h2]Setup[/h2]
