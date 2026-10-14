@@ -6,12 +6,6 @@ using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Api.Shared;
 
-/// <summary>A list entry that was refused: its error, which a report lists as a problem.</summary>
-internal interface IBatchFailure
-{
-    ErrorView Error { get; }
-}
-
 /// <summary>
 /// A write checked against the world: the plan its act applies, or the refusal that stops it. The acting call and its
 /// report both start from one Run of the checks, so the report cannot check less than the act does. Without confirm the

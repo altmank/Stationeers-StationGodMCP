@@ -282,13 +282,13 @@ internal static class PlacementReader
     {
         PrefabRef prefab = PrefabOf(item.Optional("prefab"), prefix + "prefab");
         JToken at = item.Optional("at") ??
-                    throw ApiErrors.InvalidArgument($"{Vocabulary.Path(prefix)}{Vocabulary.Arg("at")} is required.");
+                    throw ApiErrors.InvalidArgument($"{prefix}at is required.");
         JObject? orient = item.OptionalObject("orient");
         if (orient != null && (item.Has("rotation") || item.Has("facing") || item.Has("face") || item.Has("up")))
         {
-            throw ApiErrors.InvalidArgument($"{Vocabulary.Path(prefix)}{Vocabulary.Arg("orient")} chooses the turn: " +
-                $"leave out {Vocabulary.Arg("rotation")}, {Vocabulary.Arg("facing")}, {Vocabulary.Arg("face")} and " +
-                $"{Vocabulary.Arg("up")}.");
+            throw ApiErrors.InvalidArgument($"{prefix}orient chooses the turn: " +
+                "leave out rotation, facing, face and " +
+                "up.");
         }
 
         if (orient != null)
@@ -300,7 +300,7 @@ internal static class PlacementReader
         double? above = item.OptionalDouble("above_floor_m");
         if (above.HasValue && (above.Value < 0 || above.Value > 20))
         {
-            throw ApiErrors.InvalidArgument($"{Vocabulary.Path(prefix)}{Vocabulary.Arg("above_floor_m")} must be 0 " +
+            throw ApiErrors.InvalidArgument($"{prefix}above_floor_m must be 0 " +
                 "to 20.");
         }
 
@@ -318,8 +318,8 @@ internal static class PlacementReader
         if (mount != null && (word == null ||
                               !(word == "wall" || word == "floor" || word == "ceiling" || GridStep.TryParse(word, out _))))
         {
-            throw ApiErrors.InvalidArgument($"{Vocabulary.Path(prefix)}{Vocabulary.Arg("orient")}." +
-                $"{Vocabulary.Arg("mount")} must be wall, floor, ceiling or an axis (+x .. -z).");
+            throw ApiErrors.InvalidArgument($"{prefix}orient." +
+                "mount must be wall, floor, ceiling or an axis (+x .. -z).");
         }
     }
 
@@ -342,14 +342,14 @@ internal static class PlacementReader
     {
         if (RelativeMath.AnchorOf(at.OptionalString("from")) == null)
         {
-            throw ApiErrors.InvalidArgument($"{Vocabulary.Path(name)}.{Vocabulary.Arg("from")} must be origin, top, " +
+            throw ApiErrors.InvalidArgument($"{name}.from must be origin, top, " +
                 "bottom, left, right, front or back.");
         }
 
         string? frame = at.OptionalString("frame")?.Trim().ToLowerInvariant();
         if (frame != null && frame != "player" && frame != "world" && frame != "target")
         {
-            throw ApiErrors.InvalidArgument($"{Vocabulary.Path(name)}.{Vocabulary.Arg("frame")} must be player, " +
+            throw ApiErrors.InvalidArgument($"{name}.frame must be player, " +
                 "world or target.");
         }
     }
@@ -366,9 +366,9 @@ internal static class PlacementReader
         if (item.Has("rotation") || item.Has("face"))
         {
             throw ApiErrors.InvalidArgument("Give at most one of " +
-                $"{Vocabulary.Path(prefix)}{Vocabulary.Arg("rotation")}, " +
-                $"{Vocabulary.Path(prefix)}{Vocabulary.Arg("facing")} and " +
-                $"{Vocabulary.Path(prefix)}{Vocabulary.Arg("face")}.");
+                $"{prefix}rotation, " +
+                $"{prefix}facing and " +
+                $"{prefix}face.");
         }
 
         GridStep? up = item.Has("up") ? Step(item.OptionalString("up"), prefix + "up") : (GridStep?)null;
@@ -392,7 +392,7 @@ internal static class PlacementReader
             return InWorld(new Metres(ox, oy, oz), name);
         }
 
-        throw ApiErrors.InvalidArgument($"{Vocabulary.Path(name)} must be a position: [x, y, z] or {{x, y, z}} in " +
+        throw ApiErrors.InvalidArgument($"{name} must be a position: [x, y, z] or {{x, y, z}} in " +
             "metres.");
     }
 
@@ -402,7 +402,7 @@ internal static class PlacementReader
         System.Math.Abs(point.Z) <= MaximumCoordinateM
             ? point
             : throw ApiErrors.InvalidArgument(
-                $"{Vocabulary.Path(name)} lies more than {MaximumCoordinateM:0} m from the world's origin on an " +
+                $"{name} lies more than {MaximumCoordinateM:0} m from the world's origin on an " +
                 $"axis: {point}.");
 
     internal static RotationSpec RotationOf(Args item, string prefix)
@@ -411,9 +411,9 @@ internal static class PlacementReader
         if (forms > 1)
         {
             throw ApiErrors.InvalidArgument("Give at most one of " +
-                $"{Vocabulary.Path(prefix)}{Vocabulary.Arg("rotation")}, " +
-                $"{Vocabulary.Path(prefix)}{Vocabulary.Arg("facing")} and " +
-                $"{Vocabulary.Path(prefix)}{Vocabulary.Arg("face")}.");
+                $"{prefix}rotation, " +
+                $"{prefix}facing and " +
+                $"{prefix}face.");
         }
 
         GridStep? up = item.Has("up") ? Step(item.OptionalString("up"), prefix + "up") : (GridStep?)null;
@@ -421,8 +421,8 @@ internal static class PlacementReader
         {
             if (up.HasValue)
             {
-                throw ApiErrors.InvalidArgument($"{Vocabulary.Path(prefix)}{Vocabulary.Arg("up")} goes with " +
-                    $"{Vocabulary.Arg("facing")} or {Vocabulary.Arg("face")}, not {Vocabulary.Arg("rotation")}.");
+                throw ApiErrors.InvalidArgument($"{prefix}up goes with " +
+                    "facing or face, not rotation.");
             }
 
             return EulerOf(item.Optional("rotation")!, prefix + "rotation");
@@ -439,8 +439,8 @@ internal static class PlacementReader
         }
 
         return up.HasValue
-            ? throw ApiErrors.InvalidArgument($"{Vocabulary.Path(prefix)}{Vocabulary.Arg("up")} goes with " +
-                $"{Vocabulary.Arg("facing")} or {Vocabulary.Arg("face")}.")
+            ? throw ApiErrors.InvalidArgument($"{prefix}up goes with " +
+                "facing or face.")
             : RotationSpec.Default;
     }
 
@@ -456,7 +456,7 @@ internal static class PlacementReader
             long value = token.Value<long>();
             return value >= 0 && value < 64
                 ? new BuildStatePick.Index((int)value)
-                : throw ApiErrors.InvalidArgument($"{Vocabulary.Path(name)} must be \"finished\", \"first\" or 0 to " +
+                : throw ApiErrors.InvalidArgument($"{name} must be \"finished\", \"first\" or 0 to " +
                     "63.");
         }
 
@@ -465,7 +465,7 @@ internal static class PlacementReader
         {
             "finished" => BuildStatePick.Finished,
             "first" => BuildStatePick.First,
-            _ => throw ApiErrors.InvalidArgument($"{Vocabulary.Path(name)} must be \"finished\", \"first\" or a " +
+            _ => throw ApiErrors.InvalidArgument($"{name} must be \"finished\", \"first\" or a " +
                 "state index.")
         };
     }
@@ -481,13 +481,13 @@ internal static class PlacementReader
         }
 
         throw ApiErrors.InvalidArgument(
-            $"{Vocabulary.Path(name)} must be [x, y, z] in degrees, each a multiple of 90 (0, 90, 180, 270).");
+            $"{name} must be [x, y, z] in degrees, each a multiple of 90 (0, 90, 180, 270).");
     }
 
     private static GridStep Step(string? text, string name) =>
         GridStep.TryParse(text, out GridStep step)
             ? step
-            : throw ApiErrors.InvalidArgument($"{Vocabulary.Path(name)} must be one of +x, -x, +y, -y, +z, -z.");
+            : throw ApiErrors.InvalidArgument($"{name} must be one of +x, -x, +y, -y, +z, -z.");
 
     internal static PrefabRef PrefabOf(JToken? token, string name)
     {
@@ -496,13 +496,13 @@ internal static class PlacementReader
             long hash = token.Value<long>();
             return hash >= int.MinValue && hash <= int.MaxValue
                 ? new PrefabRef.Hashed((int)hash)
-                : throw ApiErrors.InvalidArgument($"{Vocabulary.Path(name)} is not a 32-bit prefab hash.");
+                : throw ApiErrors.InvalidArgument($"{name} is not a 32-bit prefab hash.");
         }
 
         string text = token != null && token.Type == JTokenType.String ? token.Value<string>()!.Trim() : string.Empty;
         if (text.Length == 0)
         {
-            throw ApiErrors.InvalidArgument($"{Vocabulary.Path(name)} is required: a prefab name or a prefab hash.");
+            throw ApiErrors.InvalidArgument($"{name} is required: a prefab name or a prefab hash.");
         }
 
         return int.TryParse(text, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out int parsed)
@@ -519,7 +519,7 @@ internal static class PlacementReader
 
         return token.Type == JTokenType.String || token.Type == JTokenType.Integer
             ? token.ToString()
-            : throw ApiErrors.InvalidArgument($"{Vocabulary.Path(name)} must be a colour name or index.");
+            : throw ApiErrors.InvalidArgument($"{name} must be a colour name or index.");
     }
 
     private static string? Text(Args item, string field, string prefix)
@@ -532,7 +532,7 @@ internal static class PlacementReader
 
         return token.Type == JTokenType.String
             ? token.Value<string>()
-            : throw ApiErrors.InvalidArgument($"{Vocabulary.Path(prefix)}{Vocabulary.Arg(field)} must be a string.");
+            : throw ApiErrors.InvalidArgument($"{prefix}{field} must be a string.");
     }
 
     private static bool Number(JToken token, out double value)

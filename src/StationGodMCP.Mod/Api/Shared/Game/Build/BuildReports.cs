@@ -33,18 +33,18 @@ internal static class BuildReports
         "gives nothing, as the game's deconstruction of a broken thing gives nothing.",
         "Refused: indestructible, a launching or landing rocket's part, the game's own refusal (a fuselage piece: " +
         "nothing on top, no internals left in its cells), a device attached to it; unless allowed: broken " +
-        "({arg:allow_broken}), items or gas inside ({arg:allow_contents}), a removal joining spaces whose pressures " +
-        "differ by 1 kPa or more ({arg:allow_breach}), a device mounted on it or standing on it left with nothing " +
-        "else to rest on ({arg:allow_unsupported}: it stays and works, but cannot be rebuilt in place until " +
+        "(allow_broken), items or gas inside (allow_contents), a removal joining spaces whose pressures " +
+        "differ by 1 kPa or more (allow_breach), a device mounted on it or standing on it left with nothing " +
+        "else to rest on (allow_unsupported: it stays and works, but cannot be rebuilt in place until " +
         "something supports it). The breach check judges the whole request at once: a face stays sealed while " +
         "anything left on it, or a finished frame beside it, blocks air.",
         "An in-line tank or passive vent whose removal squeezes the network left past its weakest pipe is refused " +
-        "(would_burst) unless {arg:allow_burst}, e.g. outdoors: then will_burst names the pipes expected to burst, " +
+        "(would_burst) unless allow_burst, e.g. outdoors: then will_burst names the pipes expected to burst, " +
         "where they leak (a room id or outdoors) and the gas expected out, and the job's gas check expects that " +
         "release.",
-        "Cable, pipe and chute pieces are removed as {tool:remove_cables}, {tool:remove_pipes} and " +
-        "{tool:remove_chutes} remove them; their would_split is a warning here.",
-        "A real run needs {arg:dry_run}: false and {arg:confirm}: true; poll the job with {arg:job_id}.");
+        "Cable, pipe and chute pieces are removed as remove cable, remove pipe and " +
+        "remove chute remove them; their would_split is a warning here.",
+        "A real run needs dry_run: false and confirm: true; poll the job with job_id.");
 
     internal static PlaceReportView Of(PlacePlan plan, string status, string? jobId)
     {
@@ -53,8 +53,8 @@ internal static class BuildReports
         if (!layouts)
         {
             Pure.Shaping.Truncations.Note("placements[].layout", 0, plan.Placements.Count,
-                Vocabulary.Text("pass {arg:verbose}: true (a report that is not ready leaves the layout previews " +
-                    "out)"));
+                "pass verbose: true (a report that is not ready leaves the layout previews " +
+                    "out)");
         }
         List<PlacementView> placements = new List<PlacementView>(plan.Placements.Count);
         foreach (PlannedPlacement placement in plan.Placements)

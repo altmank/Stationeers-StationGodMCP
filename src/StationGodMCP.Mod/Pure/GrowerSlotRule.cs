@@ -122,7 +122,7 @@ internal static class GrowerRefusalText
 
         return fertiliserSlot.HasValue
             ? $"{plantSlot}; fertiliser goes into the grower's fertiliser slot {fertiliserSlot.Value}, as a player's " +
-                $"hand sends it: pass {Vocabulary.Arg("to_slot")} {fertiliserSlot.Value} or auto."
+                $"hand sends it: pass to_slot {fertiliserSlot.Value} or auto."
             : $"{plantSlot}; fertiliser goes into the grower's fertiliser slot.";
     }
 

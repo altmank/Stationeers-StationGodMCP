@@ -63,8 +63,8 @@ public sealed class SolarPipesRound6Tests
             "Network 1349 would fall into 2 networks. Devices per part: []; []. No root is on it (pass root to name " +
             "one). Pass allow_split if that is meant.");
         Assert.Equal(
-            "Network 1349 would fall into 2 networks. Devices per part: []; []. No root is on it; remove_structure " +
-            "only warns of a split and removes it anyway (plan_removal or remove_pipes with root name the devices a " +
+            "Network 1349 would fall into 2 networks. Devices per part: []; []. No root is on it; remove structure " +
+            "only warns of a split and removes it anyway (plan removal or remove pipe with root name the devices a " +
             "root still reaches).", warning);
         Assert.DoesNotContain("allow_split", warning);
         Assert.DoesNotContain("pass root", warning);
@@ -75,7 +75,7 @@ public sealed class SolarPipesRound6Tests
     {
         string warning = RemovalRule.SplitWarning(
             "Port 0 of device 12 would lose its connection to network 7. Pass allow_split if that is meant.");
-        Assert.StartsWith("Port 0 of device 12 would lose its connection to network 7; remove_structure", warning);
+        Assert.StartsWith("Port 0 of device 12 would lose its connection to network 7; remove structure", warning);
     }
 
     // solar-24: a dry run's credits_after is the predicted balance, refused lines left out.

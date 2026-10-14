@@ -269,7 +269,7 @@ internal sealed class GeneWrittenView : BatchItemView
     public float Value { get; }
 }
 
-internal sealed class GeneNotWrittenView : BatchItemView, IBatchFailure
+internal sealed class GeneNotWrittenView : BatchItemView
 {
     internal GeneNotWrittenView(int index, string gene, float? previousValue, ApiException error)
         : base(index, ok: false)

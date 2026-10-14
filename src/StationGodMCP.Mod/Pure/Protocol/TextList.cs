@@ -4,17 +4,17 @@ using System.Collections.Generic;
 
 namespace StationGodMCP.Pure.Protocol;
 
-/// <summary>A fixed list of Vocabulary templates a reply carries as a whole (a report's notes), worked out once.</summary>
+/// <summary>A fixed list of texts a reply carries as a whole (a report's notes).</summary>
 internal sealed class TextList
 {
     private readonly List<string> _plain;
 
-    internal TextList(params string[] templates)
+    internal TextList(params string[] texts)
     {
-        _plain = new List<string>(templates.Length);
-        foreach (string template in templates)
+        _plain = new List<string>(texts.Length);
+        foreach (string text in texts)
         {
-            _plain.Add(Vocabulary.Render(template));
+            _plain.Add(text);
         }
     }
 

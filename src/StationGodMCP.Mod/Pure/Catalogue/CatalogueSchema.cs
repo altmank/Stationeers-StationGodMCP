@@ -366,8 +366,8 @@ internal sealed class SchemaNode
         }
     }
 
-    // A path as a problem prints it: its names as the call's rename map says them (Vocabulary).
-    private static string Said(string path) => Vocabulary.Path(path);
+    // A path as a problem prints it: its names as the call names them.
+    private static string Said(string path) => path;
 
     // ---- compile helpers ----
 

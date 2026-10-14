@@ -406,7 +406,7 @@ internal sealed class CatalogueMethod
             return new List<SchemaProblem>
             {
                 new SchemaProblem(path, repeated
-                    ? $"Argument '{Vocabulary.Path(path)}' is given twice; name each key once."
+                    ? $"Argument '{path}' is given twice; name each key once."
                     : $"The arguments are not JSON: {exception.Message}")
             };
         }

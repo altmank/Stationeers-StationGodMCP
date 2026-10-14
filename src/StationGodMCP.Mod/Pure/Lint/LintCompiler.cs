@@ -367,7 +367,7 @@ internal sealed class LintCompiler
     {
         LintFunction function = _library.Find(call.Name) ??
                                 throw new LintSyntaxException($"no function '{call.Name}' " +
-                                    $"({Vocabulary.Tool("lint_rules")} functions lists them)",
+                                    "(check rules functions lists them)",
                                     call.Position);
         if (call.Named.Count > 0)
         {

@@ -124,7 +124,7 @@ internal sealed class LogicReadItemView : BatchItemView
 /// A read or write of a batch that failed: the device and logic type it named, each null when it could not be read
 /// from the entry, and why it failed. Callers match results by index; the names are there to read a failure alone.
 /// </summary>
-internal sealed class LogicFailedItemView : BatchItemView, IBatchFailure
+internal sealed class LogicFailedItemView : BatchItemView
 {
     internal LogicFailedItemView(int index, ThingId? referenceId, LogicTypeView? logicType, ApiException error)
         : base(index, ok: false)

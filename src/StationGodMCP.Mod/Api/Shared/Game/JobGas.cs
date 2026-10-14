@@ -185,7 +185,7 @@ internal static class GasHold
         GasLoss loss = GasLoss.Unchecked(jobId,
             $"Its atmosphere work ran past the {AtmosphericsThread.LimitSeconds} s limit and finished after the job " +
             "had stopped, so the pipe networks' contents were not checked; look at them " +
-            $"({Vocabulary.Tool("atmosphere_contents")}) before acknowledging.");
+            "(inspect atmosphere) before acknowledging.");
         _loss = loss;
         StationGodMod.LogWarning($"gas hold set: {loss.Describe()}.");
     }

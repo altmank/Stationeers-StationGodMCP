@@ -88,14 +88,14 @@ internal sealed class RefundReceivers
         if (!GameLookup.TryFindThing(new ThingId(id), out Thing thing) || thing.IsBeingDestroyed)
         {
             findings.Add(new GuardFinding("refund_target_not_found", GuardLevel.Refusal,
-                $"{Vocabulary.Arg("refund_to")} names {id}, and there is no thing with that reference id."));
+                $"refund_to names {id}, and there is no thing with that reference id."));
             return;
         }
 
         if (thing.Slots == null || !thing.Slots.Exists(static slot => slot != null && SlotAccess.Reaches(slot)))
         {
             findings.Add(new GuardFinding("refund_target_not_container", GuardLevel.Refusal,
-                $"{Vocabulary.Arg("refund_to")} names {Names.Of(thing)} {id}, which has no slot a refund could go " +
+                $"refund_to names {Names.Of(thing)} {id}, which has no slot a refund could go " +
                 "into."));
             return;
         }

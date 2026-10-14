@@ -24,7 +24,7 @@ internal abstract class BatchItemView
     public bool Ok { get; }
 }
 
-internal sealed class BatchErrorView : BatchItemView, IBatchFailure
+internal sealed class BatchErrorView : BatchItemView
 {
     internal BatchErrorView(int index, ErrorView error) : base(index, ok: false)
     {

@@ -328,8 +328,8 @@ internal sealed class ContainerContentsView : ITruncatingView
         if (hidden > 0)
         {
             Truncations.Note(path + "slots (nested past depth)", shown, shown + hidden,
-                Vocabulary.Text("pass {arg:depth} (max 6), or {tool:container_contents} of the " +
-                    "occupant"), atLeast: true);
+                "pass depth (max 6), or inspect contents of the " +
+                    "occupant", atLeast: true);
         }
     }
 

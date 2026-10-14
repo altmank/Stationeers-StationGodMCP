@@ -481,7 +481,7 @@ internal sealed class StackWindowView : ITruncatingView
         if (Values.Count < Size)
         {
             Truncations.Note(path + "values", Values.Count, Size,
-                $"pass {Vocabulary.Arg("stack_start")} (now {StartAddress}) and {Vocabulary.Arg("stack_count")} (max " +
+                $"pass stack_start (now {StartAddress}) and stack_count (max " +
                 $"{Size})");
         }
     }

@@ -353,7 +353,7 @@ internal static class UpgradePlanner
         {
             plan.Problem("unmatched_pieces",
                 $"{plan.Unmatched.Count} piece(s) have no replacement (see unmatched_pieces); pass " +
-                $"{Vocabulary.Arg("skip_unmatched")} to leave them as they are.");
+                "skip_unmatched to leave them as they are.");
         }
 
         CountCoils(plan, request);
@@ -383,7 +383,7 @@ internal static class UpgradePlanner
             case PieceSelection.Box box:
                 return Capped(InBox(family, box));
             default:
-                throw ApiErrors.InvalidArgument(Vocabulary.Text("Pass {arg:network_id} or {arg:reference_ids}."));
+                throw ApiErrors.InvalidArgument("Pass network_id or reference_ids.");
         }
     }
 
@@ -392,7 +392,7 @@ internal static class UpgradePlanner
             ? members
             : throw ApiErrors.Refused("too_many_pieces",
                 $"{members.Count} pieces; at most {MaximumPieces} per run. Name them with " +
-                $"{Vocabulary.Arg("reference_ids")} in {Vocabulary.Arg("parts")}.");
+                "reference_ids in parts.");
 
     // Each small cell of the box once, every piece once however many cells it fills.
     internal static List<SmallGrid> InBox(UpgradeFamily family, PieceSelection.Box box)
@@ -441,7 +441,7 @@ internal static class UpgradePlanner
                 plan.Problem($"not_a_{family.NetworkKind}_piece",
                     $"{Names.Of(thing)} ({thing.PrefabName}) is not a {family.NetworkKind} piece" +
                     (thing is CableRuptured
-                        ? Vocabulary.Text("; a burnt cable is on no network: remove it with {tool:remove_cables}.")
+                        ? "; a burnt cable is on no network: remove it with remove cable."
                         : "."), thing);
             }
             else
@@ -544,8 +544,8 @@ internal static class UpgradePlanner
         if (player.Player == null && needsPlayer)
         {
             plan.Problem("no_local_player",
-                $"{player.Absence} Nothing to take coils from (or, with {Vocabulary.Arg("refund_to")} source, to " +
-                $"give the refund to); pass {Vocabulary.Arg("from_id")}.");
+                $"{player.Absence} Nothing to take coils from (or, with refund_to source, to " +
+                "give the refund to); pass from_id.");
         }
 
         return player.Player;

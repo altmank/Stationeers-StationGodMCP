@@ -119,7 +119,7 @@ internal abstract class GasHoldVerdict
 
         internal override string Note(GasHoldStage stage) => Given == null
             ? "No gas hold is in place."
-            : $"{Vocabulary.Arg(AcknowledgeArgument)} \"{Given}\": no gas hold is in place, so there is nothing to " +
+            : $"{AcknowledgeArgument} \"{Given}\": no gas hold is in place, so there is nothing to " +
                 "lift.";
     }
 
@@ -135,7 +135,7 @@ internal abstract class GasHoldVerdict
 
         internal override string Note(GasHoldStage stage) =>
             $"Pipe jobs are held ({Hold!.Describe()}), but this run touches no pipe network, so the hold does not " +
-            "apply to it and stays" + (Given != null ? $"; {Vocabulary.Arg(AcknowledgeArgument)} was not used." : ".");
+            "apply to it and stays" + (Given != null ? $"; {AcknowledgeArgument} was not used." : ".");
     }
 
     /// <summary>A verdict that refuses the run: its error code and message.</summary>
@@ -168,9 +168,9 @@ internal abstract class GasHoldVerdict
         internal override string Code => "gas_check_failed";
 
         internal override string Message =>
-            $"Job {Hold!.JobId}'s gas check failed: {Hold.Summary} Poll that job with {Vocabulary.Arg("job_id")} for " +
+            $"Job {Hold!.JobId}'s gas check failed: {Hold.Summary} Poll that job with job_id for " +
             "its gas_check. Pipe jobs stay refused until the world is loaded again, or until a run passes " +
-            $"{Vocabulary.Arg(AcknowledgeArgument)}: \"{Hold.JobId}\" to accept the loss; ask the user before " +
+            $"{AcknowledgeArgument}: \"{Hold.JobId}\" to accept the loss; ask the user before " +
             "acknowledging it. Nothing was changed.";
     }
 
@@ -187,8 +187,8 @@ internal abstract class GasHoldVerdict
         internal override string Code => "gas_hold_mismatch";
 
         internal override string Message =>
-            $"{Vocabulary.Arg(AcknowledgeArgument)} names \"{Given}\", but pipe jobs are held by {Hold!.Describe()} " +
-            $"({Hold.Summary}). Only {Vocabulary.Arg(AcknowledgeArgument)}: \"{Hold.JobId}\" lifts that hold, and " +
+            $"{AcknowledgeArgument} names \"{Given}\", but pipe jobs are held by {Hold!.Describe()} " +
+            $"({Hold.Summary}). Only {AcknowledgeArgument}: \"{Hold.JobId}\" lifts that hold, and " +
             "only after the user has agreed to accept that loss. Nothing was changed.";
     }
 
@@ -205,13 +205,13 @@ internal abstract class GasHoldVerdict
         internal override string Note(GasHoldStage stage) => stage switch
         {
             GasHoldStage.DryRun =>
-                $"Pipe jobs are held: {Hold!.Describe()}. A real run with {Vocabulary.Arg(AcknowledgeArgument)} " +
+                $"Pipe jobs are held: {Hold!.Describe()}. A real run with {AcknowledgeArgument} " +
                 $"\"{Hold.JobId}\" would accept that loss, lift the hold and go on; a dry run lifts nothing.",
             GasHoldStage.Started =>
                 $"GAS LOSS ACKNOWLEDGED: {Hold!.Describe()} ({Hold.Summary}). The hold on pipe jobs is lifted; a later " +
                 "gas check that fails holds them again.",
             GasHoldStage.Queued =>
-                $"Queued with {Vocabulary.Arg(AcknowledgeArgument)} \"{Hold!.JobId}\" ({Hold.Describe()}): the hold " +
+                $"Queued with {AcknowledgeArgument} \"{Hold!.JobId}\" ({Hold.Describe()}): the hold " +
                 "is lifted when this run starts, if that job's loss still holds pipe jobs then; until then it stays.",
             _ =>
                 $"Nothing was started, so the hold ({Hold!.Describe()}) was not lifted."
@@ -232,7 +232,7 @@ internal static class GasHoldRule
     /// </summary>
     internal static string? BlankRefusal(string? acknowledge) =>
         acknowledge != null && string.IsNullOrWhiteSpace(acknowledge)
-            ? $"{Vocabulary.Arg(GasHoldVerdict.AcknowledgeArgument)} is empty; pass the id of the job whose gas " +
+            ? $"{GasHoldVerdict.AcknowledgeArgument} is empty; pass the id of the job whose gas " +
                 "check failed (run-N, upgrade-N, place-N, remove-N), or leave it out."
             : null;
 

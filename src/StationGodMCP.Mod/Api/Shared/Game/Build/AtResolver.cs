@@ -62,7 +62,7 @@ internal static class AtResolver
             case AtForm.Relative relative:
                 return Relative(new Args(relative.Spec), facts, name, camera).Seen(camera.Source);
             default:
-                throw ApiErrors.InvalidArgument($"{Vocabulary.Path(name)} cannot be read.");
+                throw ApiErrors.InvalidArgument($"{name} cannot be read.");
         }
     }
 
@@ -82,11 +82,11 @@ internal static class AtResolver
         }
 
         JToken reference = spec.Optional("relative_to") ??
-                           throw ApiErrors.InvalidArgument($"{Vocabulary.Path(name)} needs crosshair, relative_to or " +
+                           throw ApiErrors.InvalidArgument($"{name} needs crosshair, relative_to or " +
                                "on_face_i_look_at.");
         BodyAnchor anchor = RelativeMath.AnchorOf(spec.OptionalString("from")) ??
                             throw ApiErrors.InvalidArgument(
-                                $"{Vocabulary.Path(name)}.{Vocabulary.Arg("from")} must be origin, top, bottom, " +
+                                $"{name}.from must be origin, top, bottom, " +
                                 "left, right, front or back.");
         if (reference.Type == JTokenType.String && reference.Value<string>()!.Trim().ToLowerInvariant() == "player")
         {
@@ -110,8 +110,8 @@ internal static class AtResolver
             : ThingId.TryRead(reference, out ThingId read)
                 ? read
                 : throw ApiErrors.InvalidArgument(
-                    $"{Vocabulary.Path(name)}.{Vocabulary.Arg("relative_to")} must be \"player\", \"crosshair\", a " +
-                    $"reference id or {{{Vocabulary.Arg("reference_id")}}}.");
+                    $"{name}.relative_to must be \"player\", \"crosshair\", a " +
+                    "reference id or {reference_id}.");
         Thing thing = GameLookup.RequireThing(id);
         Frame3 thingFrame = FrameOf(spec, "target", thing, name, camera);
         Vec3 start = Bodies.V(thing.ThingTransformPosition);
@@ -131,11 +131,11 @@ internal static class AtResolver
         Hit hit = Crosshair(name, camera);
         if (!hit.Outward.HasValue || hit.Plane == null)
         {
-            throw ApiErrors.Refused("no_face", $"{Vocabulary.Path(name)}: the look ray hits {hit.Point}, which is " +
+            throw ApiErrors.Refused("no_face", $"{name}: the look ray hits {hit.Point}, which is " +
                 "not on a 2 m face plane; look straight at a wall, floor or ceiling.");
         }
 
-        ViewBasis basis = camera.Require(Vocabulary.Path(name)).Basis;
+        ViewBasis basis = camera.Require(name).Basis;
         (GridStep right, GridStep up) = RelativeMath.FaceAxes(hit.Outward.Value, basis.LevelForward, basis.LevelRight);
         Vec3 point = hit.Point + Vec3.Of(right) * (spec.OptionalDouble("along_right_m") ?? 0.0) +
                      Vec3.Of(up) * (spec.OptionalDouble("along_up_m") ?? 0.0);
@@ -167,7 +167,7 @@ internal static class AtResolver
                 GridStep? outward = at.FaceOutward ?? Crosshair(name, camera).Outward;
                 if (!outward.HasValue)
                 {
-                    throw ApiErrors.Refused("no_face", $"{Vocabulary.Path(name)}: out_of_face needs a face: look at " +
+                    throw ApiErrors.Refused("no_face", $"{name}: out_of_face needs a face: look at " +
                         "a wall, floor or ceiling (or give at on it with on_face_i_look_at).");
                 }
 
@@ -249,8 +249,8 @@ internal static class AtResolver
 
     private static Hit Crosshair(string name, CameraUse camera)
     {
-        CameraHit hit = camera.Require(Vocabulary.Path(name)).HitWithin(ReachM) ??
-                        throw ApiErrors.Refused("no_crosshair_hit", $"{Vocabulary.Path(name)}: the look ray hits " +
+        CameraHit hit = camera.Require(name).HitWithin(ReachM) ??
+                        throw ApiErrors.Refused("no_crosshair_hit", $"{name}: the look ray hits " +
                             $"nothing within {ReachM} m.");
         Vec3 point = hit.Point;
         GridStep? outward = ViewBasis.Along(hit.Normal, 10.0);
@@ -280,7 +280,7 @@ internal static class AtResolver
             case "target":
                 if (target == null)
                 {
-                    throw ApiErrors.InvalidArgument($"{Vocabulary.Path(name)}.{Vocabulary.Arg("frame")} target needs " +
+                    throw ApiErrors.InvalidArgument($"{name}.frame target needs " +
                         "relative_to a thing.");
                 }
 
@@ -289,20 +289,20 @@ internal static class AtResolver
                 if (turn == null)
                 {
                     throw ApiErrors.Refused("ambiguous_axis",
-                        $"{Vocabulary.Path(name)}: {Names.Of(target)} is turned off the grid's axes; use frame world " +
+                        $"{name}: {Names.Of(target)} is turned off the grid's axes; use frame world " +
                         "or player.");
                 }
 
                 return Frame3.Of(turn.Right, turn.Up, turn.Forward, "target");
             default:
-                throw ApiErrors.InvalidArgument($"{Vocabulary.Path(name)}.{Vocabulary.Arg("frame")} must be player, " +
+                throw ApiErrors.InvalidArgument($"{name}.frame must be player, " +
                     "world or target.");
         }
     }
 
     private static Frame3 PlayerFrame(Args spec, string name, CameraUse camera)
     {
-        ViewBasis basis = camera.Require(Vocabulary.Path(name)).Basis;
+        ViewBasis basis = camera.Require(name).Basis;
         bool moves = (spec.OptionalDouble("right_m") ?? 0.0) != 0.0 || (spec.OptionalDouble("forward_m") ?? 0.0) != 0.0;
         if (basis.Ambiguous && moves)
         {
@@ -346,7 +346,7 @@ internal static class AtResolver
     private static Metres ToMetres(Vec3 v) => new Metres(v.X, v.Y, v.Z);
 
     private static ApiException Ambiguous(string name, string why) =>
-        ApiErrors.Refused("ambiguous_axis", $"{Vocabulary.Path(name)}: {why}; give a world axis or frame world " +
+        ApiErrors.Refused("ambiguous_axis", $"{name}: {why}; give a world axis or frame world " +
             "instead.");
 }
 

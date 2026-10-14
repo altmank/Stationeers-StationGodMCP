@@ -79,15 +79,15 @@ internal sealed class UndoSource
 
         if (refundTo != null)
         {
-            notes.Add($"{Vocabulary.Arg("refund_to")} {refundTo.Name}: the caller's choice for the removals' refund.");
+            notes.Add($"refund_to {refundTo.Name}: the caller's choice for the removals' refund.");
         }
 
         RefundRoute? refund = refundTo;
         if (refund == null && job.Free)
         {
             refund = RefundRoute.Nothing;
-            notes.Add(Vocabulary.Text("The job placed for {arg:free} ({arg:free}: true): removing what it built " +
-                "gives nothing back ({arg:refund_to} none)."));
+            notes.Add("The job placed for free (free: true): removing what it built " +
+                "gives nothing back (refund_to none).");
         }
 
         if (job.RefundedNothing)

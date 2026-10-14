@@ -16,7 +16,7 @@ namespace StationGodMCP.Api.Shared;
 /// does take and every one it takes, before the method runs. Without the check a misspelt filter (prefab for
 /// prefab_contains) was dropped and the call answered the whole world. Null is an omitted argument. Nested objects
 /// are left to each method. A method the catalogue does not list is not checked. The refusal names arguments and the
-/// method as the call's rename map says (Vocabulary).
+/// method as the call names them.
 /// </summary>
 internal sealed class DeclaredArguments
 {
@@ -75,14 +75,14 @@ internal sealed class DeclaredArguments
 
             string? nearest = NearestName.Of(property.Name, names.Sorted);
             problems.Append(nearest != null
-                ? $"Unknown argument '{Vocabulary.Arg(property.Name)}'; did you mean '{Vocabulary.Arg(nearest)}'? "
-                : $"Unknown argument '{Vocabulary.Arg(property.Name)}'. ");
+                ? $"Unknown argument '{property.Name}'; did you mean '{nearest}'? "
+                : $"Unknown argument '{property.Name}'. ");
         }
 
         if (problems != null)
         {
             string list = names.Sorted.Count == 0 ? "none" : Listed(names);
-            throw ApiErrors.InvalidArgument($"{problems}{Vocabulary.Tool(method)} takes: {list}. Nothing was run.");
+            throw ApiErrors.InvalidArgument($"{problems}{method} takes: {list}. Nothing was run.");
         }
     }
 

@@ -15,7 +15,7 @@ namespace StationGodMCP.Api.Shared;
 /// invalid_argument, naming the argument; a getter never guesses. A request's own parameters know their method's
 /// declared names (the catalogue), and a name read that is not one of them counts in ArgumentDrift. Shape is the
 /// call's shape, which a handler asks before building a reply part it declares costly. Every message names arguments
-/// as the call's rename map says (Vocabulary); reading a value never looks at the map.
+/// as the call names them.
 /// </summary>
 internal sealed class Args
 {
@@ -221,38 +221,6 @@ internal sealed class Args
     internal bool Declares(string name) => _declared == null || _declared.Contains(name);
 
     /// <summary>
-    /// Refuses arguments that belong to another form of the tool. A name the method does not declare is skipped:
-    /// it was refused (invalid_argument) before the handler ran. form is a Vocabulary template ({arg:job_id}).
-    /// </summary>
-    internal void Reject(string form, params string[] names)
-    {
-        foreach (string name in names)
-        {
-            if (Declares(name) && Has(name))
-            {
-                throw ApiErrors.InvalidArgument($"Argument '{Named(name)}' does not go with {Vocabulary.Text(form)}.");
-            }
-        }
-    }
-
-    /// <summary>
-    /// Refuses every argument given but the allowed ones, for a form that takes only those (a walk's later page takes
-    /// cursor_id and limit). A name the method does not declare is skipped, as Reject skips it; form is a template.
-    /// </summary>
-    internal void RejectAllBut(string form, params string[] allowed)
-    {
-        foreach (JProperty property in _parameters.Properties())
-        {
-            if (property.Value.Type != JTokenType.Null && System.Array.IndexOf(allowed, property.Name) < 0 &&
-                Declares(property.Name))
-            {
-                throw ApiErrors.InvalidArgument(
-                    $"Argument '{Named(property.Name)}' does not go with {Vocabulary.Text(form)}.");
-            }
-        }
-    }
-
-    /// <summary>
     /// The raw value of an argument that takes more than one JSON type (a logic type by name or number, a scope by id
     /// or "world"), for a parser that knows them; null when absent.
     /// </summary>
@@ -284,7 +252,7 @@ internal sealed class Args
 
     // The name as an error message gives it: with the nested object's path in front, both as the caller says them.
     private string Named(string name) =>
-        _path.Length == 0 ? Vocabulary.Arg(name) : $"{Vocabulary.Path(_path)}.{Vocabulary.Arg(name)}";
+        _path.Length == 0 ? name : $"{_path}.{name}";
 
     private JToken? Token(string name)
     {

@@ -17,7 +17,7 @@ namespace StationGodMCP.Tests;
 /// check that refuses the acting call is the call's refusal or the report's one problem. Its checks read the world
 /// (write memory's range, the genes' values).
 /// </summary>
-public sealed class ReportOnlyTests
+public sealed class WriteCheckTests
 {
     private sealed class Plan
     {

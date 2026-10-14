@@ -90,8 +90,8 @@ internal static class Orienter
         }
 
         throw ApiErrors.InvalidArgument(
-            $"{Vocabulary.Path(name)} must be an axis (+x .. -z), \"room\", \"player\", a point [x, y, z] or " +
-            $"{{{Vocabulary.Arg("reference_id")}}}.");
+            $"{name} must be an axis (+x .. -z), \"room\", \"player\", a point [x, y, z] or " +
+            "{reference_id}.");
     }
 
     private static MountIntent? MountOf(string? text)

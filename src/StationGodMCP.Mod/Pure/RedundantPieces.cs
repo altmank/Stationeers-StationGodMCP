@@ -38,7 +38,7 @@ internal sealed class KeptPiece
             string devices = string.Join(", ", Devices);
             if (Reason == RedundantPieces.KeepIds)
             {
-                return Vocabulary.Text("remove_redundant: it is in {arg:keep_ids}, so it never goes.");
+                return "remove_redundant: it is in keep_ids, so it never goes.";
             }
 
             if (Reason == RedundantPieces.DevicePort)

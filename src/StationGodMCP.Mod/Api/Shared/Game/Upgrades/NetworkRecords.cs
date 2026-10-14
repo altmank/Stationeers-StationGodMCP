@@ -495,7 +495,7 @@ internal sealed class PipeNetworkRecord : NetworkRecord
         {
             plan.Problems.Add(new UpgradeProblemView("atmosphere_busy",
                 $"Pipe network {Id} has a gas change waiting for the next atmospherics tick (a game event or a " +
-                $"queued {Vocabulary.Tool("move_gas")}); try again.", Id));
+                "queued move gas); try again.", Id));
         }
 
         foreach (PlannedSwap swap in Swaps)

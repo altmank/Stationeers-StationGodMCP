@@ -39,8 +39,8 @@ internal static class BrokenNeighbours
         }
 
         Truncations.Note("broken_neighbours", shown, found.Count,
-            Vocabulary.Text("{tool:thing_health} {{arg:broken_only}: true, {arg:near_player_m}} or " +
-                "{tool:find_things} {{arg:broken}: true} near the network"));
+            "inspect health {broken_only: true, near_player_m} or " +
+                "find thing {broken: true} near the network");
         return new BrokenNeighbourReport(views, found.Count,
             BrokenNeighbourSearch.Warning(found.Count, kind, listed, "broken_neighbours"));
     }

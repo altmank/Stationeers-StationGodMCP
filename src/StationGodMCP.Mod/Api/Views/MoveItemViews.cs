@@ -59,7 +59,7 @@ internal sealed class ItemMovedView : BatchItemView
 }
 
 /// <summary>One move that was refused; nothing was changed for it.</summary>
-internal sealed class ItemNotMovedView : BatchItemView, IBatchFailure
+internal sealed class ItemNotMovedView : BatchItemView
 {
     internal ItemNotMovedView(int index, ThingId? referenceId, ApiException error) : base(index, ok: false)
     {

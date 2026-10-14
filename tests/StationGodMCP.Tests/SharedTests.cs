@@ -66,14 +66,6 @@ public sealed class ArgsTests
     }
 
     [Fact]
-    public void RejectNamesTheArgumentFromAnotherForm()
-    {
-        Args args = Parse("{\"kind\": \"pipe\"}");
-        ApiException error = Assert.Throws<ApiException>(() => args.Reject("reference_id", "kind"));
-        Assert.Contains("'kind'", error.Message);
-    }
-
-    [Fact]
     public void ANestedObjectsErrorsNameItsLine()
     {
         Args line = new Args(JObject.Parse("{\"name\": \"a\", \"quantity\": 0}"), "items[7]");

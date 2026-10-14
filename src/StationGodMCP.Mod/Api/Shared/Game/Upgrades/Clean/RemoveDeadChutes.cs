@@ -105,7 +105,7 @@ internal sealed class RemoveDeadChutes : ICleanOperation
             pass.Plan.Problem(ItemsRidingCode,
                 $"{riding.Count} chute piece(s) this run would remove or replace carry an item (see riding); let the " +
                 $"items pass or take them out with move item, or pass " +
-                $"{Vocabulary.Arg("riding")}: skip to leave those pieces.");
+                "riding: skip to leave those pieces.");
         }
     }
 

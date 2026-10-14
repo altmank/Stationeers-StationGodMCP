@@ -471,7 +471,7 @@ internal static class RemovalRule
             }
         }
 
-        return trimmed.TrimEnd('.') + Vocabulary.Text("; {arg:allow_contents} is set, so it is removed anyway.");
+        return trimmed.TrimEnd('.') + "; allow_contents is set, so it is removed anyway.";
     }
 
     /// <summary>
@@ -481,16 +481,16 @@ internal static class RemovalRule
     internal static string SplitWarning(string message)
     {
         string trimmed = message.TrimEnd();
-        string advice = Vocabulary.Text(" Pass {arg:allow_split} if that is meant.");
+        string advice = " Pass allow_split if that is meant.";
         if (trimmed.EndsWith(advice, StringComparison.Ordinal))
         {
             trimmed = trimmed.Substring(0, trimmed.Length - advice.Length);
         }
 
-        return trimmed.Replace(Vocabulary.Text(" (pass {arg:root} to name one)."), ".").TrimEnd('.') +
-               Vocabulary.Text("; {tool:remove_structure} only warns of a split and removes it anyway " +
-                   "({tool:plan_removal} or {tool:remove_pipes} with {arg:root} name the devices a root still " +
-                   "reaches).");
+        return trimmed.Replace(" (pass root to name one).", ".").TrimEnd('.') +
+               "; remove structure only warns of a split and removes it anyway " +
+               "(plan removal or remove pipe with root name the devices a root still " +
+               "reaches).";
     }
 
     internal const string BrokenWhat =
@@ -540,7 +540,7 @@ internal static class RemovalRule
         if (facts.GasMoles >= GasFloorMol && facts.GasRefusal != null)
         {
             Refuse(findings, true, "gas_to_refused",
-                $"it holds {facts.GasMoles:0.###} mol of gas or liquid and {Vocabulary.Arg("gas_to")} finds no pipe " +
+                $"it holds {facts.GasMoles:0.###} mol of gas or liquid and gas_to finds no pipe " +
                 "network to take it: " +
                 facts.GasRefusal);
         }
@@ -610,10 +610,10 @@ internal static class RemovalRule
             : string.Format(CultureInfo.InvariantCulture, "the game keeps the gas in the {0:0.#} L left",
                 squeeze.LeftL);
         return new GuardFinding("would_burst", GuardLevel.Refusal, string.Format(CultureInfo.InvariantCulture,
-            Vocabulary.Format("removing it takes {0:0.#} L off pipe network {1} and {2}: {3:0.#} kPa now, {4:0.#} " +
+            "removing it takes {0:0.#} L off pipe network {1} and {2}: {3:0.#} kPa now, {4:0.#} " +
                 "kPa after, over the weakest pipe left (rated {5:0.#} kPa), which would burst; take at least {6:0.#} " +
-                "% of its gas out first ({tool:move_gas}), or pass {arg:allow_burst} where a burst is acceptable " +
-                "(outdoors)"), squeeze.RemovedL, squeeze.Network,
+                "% of its gas out first (move gas), or pass allow_burst where a burst is acceptable " +
+                "(outdoors)", squeeze.RemovedL, squeeze.Network,
             where, squeeze.BeforeKpa, squeeze.AfterKpa, squeeze.LowestKpa.Value,
             Math.Ceiling(share * 10.0) / 10.0));
     }
@@ -652,9 +652,9 @@ internal static class RemovalRule
             : string.Format(CultureInfo.InvariantCulture, "pipe network {0} ({1:0.#} L left)", squeeze.Network,
                 squeeze.LeftL);
         string what = string.Format(CultureInfo.InvariantCulture,
-            Vocabulary.Format("removing it squeezes {0} to {1:0.#} kPa (now {2:0.#} kPa), over its weakest pipe " +
-                "(rated {3:0.#} kPa); {arg:allow_burst} is set, so it goes " +
-                "ahead"), left, squeeze.AfterKpa, squeeze.BeforeKpa,
+            "removing it squeezes {0} to {1:0.#} kPa (now {2:0.#} kPa), over its weakest pipe " +
+                "(rated {3:0.#} kPa); allow_burst is set, so it goes " +
+                "ahead", left, squeeze.AfterKpa, squeeze.BeforeKpa,
             squeeze.LowestKpa ?? 0.0);
         if (!forecast.Bursts)
         {
@@ -712,9 +712,9 @@ internal static class RemovalRule
         string consequence = $"the game divides the contents among them by volume: {string.Join(" + ", shares)} mol";
         return allow.Contents
             ? new GuardFinding("contents_would_move", GuardLevel.Warning,
-                $"{what}; {Vocabulary.Arg("allow_contents")} is set, so {consequence}")
+                $"{what}; allow_contents is set, so {consequence}")
             : new GuardFinding("contents_would_move", GuardLevel.Refusal,
-                $"{what}; {consequence}. Empty it first, or pass {Vocabulary.Arg("allow_contents")} to remove it " +
+                $"{what}; {consequence}. Empty it first, or pass allow_contents to remove it " +
                 "anyway");
     }
 
@@ -724,18 +724,18 @@ internal static class RemovalRule
     /// </summary>
     internal static string HolderRemoved(string holder, string? removedContainer) =>
         (removedContainer == null
-            ? $"{Vocabulary.Arg("from_id")} {holder} is removed by this request"
-            : $"{Vocabulary.Arg("from_id")} {holder} is inside {removedContainer}, which this request removes") +
-        Vocabulary.Text(", so the refund would be destroyed with it; pass another {arg:from_id}, or {arg:refund_to} " +
-            "ground or none.");
+            ? $"from_id {holder} is removed by this request"
+            : $"from_id {holder} is inside {removedContainer}, which this request removes") +
+        ", so the refund would be destroyed with it; pass another from_id, or refund_to " +
+            "ground or none.";
 
     /// <summary>A container refund_to names that the request removes, or that is inside something it removes.</summary>
     internal static string ContainerRemoved(string container, string? removedContainer) =>
         (removedContainer == null
-            ? $"{Vocabulary.Arg("refund_to")} container {container} is removed by this request"
-            : $"{Vocabulary.Arg("refund_to")} container {container} is inside {removedContainer}, which this request " +
+            ? $"refund_to container {container} is removed by this request"
+            : $"refund_to container {container} is inside {removedContainer}, which this request " +
                 "removes") +
-        Vocabulary.Text(", so the refund would be destroyed with it; name another container in {arg:refund_to}.");
+        ", so the refund would be destroyed with it; name another container in refund_to.";
 
     internal static bool Refused(IEnumerable<GuardFinding> findings)
     {
@@ -786,8 +786,8 @@ internal static class PayerRule
         }
 
         return new GuardFinding(MaterialsFromPlayer, GuardLevel.Warning, named
-            ? $"Materials come from player {player} ({playerId}), whom {Vocabulary.Arg("from_id")} names."
-            : $"Materials come from player {player}'s inventory ({playerId}): {Vocabulary.Arg("from_id")} was left " +
+            ? $"Materials come from player {player} ({playerId}), whom from_id names."
+            : $"Materials come from player {player}'s inventory ({playerId}): from_id was left " +
               "out. Name a locker or other storage in it to pay from there.");
     }
 }

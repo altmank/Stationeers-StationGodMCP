@@ -40,7 +40,7 @@ internal static class SourceArgs
 
         return ids.Count > 0
             ? ids
-            : throw ApiErrors.InvalidArgument($"Argument '{Vocabulary.Arg(Argument)}' must name 1 to " +
+            : throw ApiErrors.InvalidArgument($"Argument '{Argument}' must name 1 to " +
                 $"{MaximumSources} things.");
     }
 

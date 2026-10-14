@@ -128,7 +128,7 @@ internal static class PartInUseRule
     /// <summary>The in_use refusal: the item, the device with its label, the slot, and what taking it out does.</summary>
     internal static string Refusal(string item, long itemId, DevicePart part, PartHolder holder) =>
         $"{item} ({itemId}) is in slot {holder.SlotIndex} of {holder.Named}, which is using it: {Consequence(part)}. " +
-        $"Take a spare instead, or pass {Vocabulary.Arg("allow_in_use")} true to take it anyway.";
+        "Take a spare instead, or pass allow_in_use true to take it anyway.";
 
     private static string Consequence(DevicePart part) =>
         part switch
