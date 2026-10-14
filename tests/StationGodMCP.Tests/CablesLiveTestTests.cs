@@ -160,24 +160,36 @@ public sealed class CablesLiveTestTests
     [Fact]
     public void AnUndoUsesTheJobsOwnSource()
     {
-        UndoSource source = UndoSource.Of(new JobSource(462, false, null, true), null, null);
+        UndoSource source = UndoSource.Of(new JobSource(462, false, null, true), null, false, null);
         Assert.Equal(462, source.FromId);
         Assert.Null(source.RefundTo);
-        Assert.Contains(source.Notes, note => note.Contains("from_id 462"));
+        Assert.Contains(source.Notes, note => note.Contains("materials 462"));
     }
 
     [Fact]
     public void TheCallersSourceOverridesTheJobs()
     {
-        UndoSource source = UndoSource.Of(new JobSource(462, true, null, null), 500, RefundRoute.WherePieceStood);
+        UndoSource source = UndoSource.Of(new JobSource(462, true, null, null), 500, true,
+            RefundRoute.WherePieceStood);
         Assert.Equal(500, source.FromId);
         Assert.Same(RefundRoute.WherePieceStood, source.RefundTo);
+        Assert.Contains(source.Notes, note => note.Contains("the job's own, 462"));
+    }
+
+    // T-A5-2: the caller naming the player pays from the player, where leaving materials out uses the job's own source.
+    [Fact]
+    public void TheCallerNamingThePlayerPaysInsteadOfTheJobsOwnSource()
+    {
+        UndoSource source = UndoSource.Of(new JobSource(462, false, null, null), null, true, null);
+
+        Assert.Null(source.FromId);
+        Assert.Contains(source.Notes, note => note.Contains("materials player") && note.Contains("462"));
     }
 
     [Fact]
     public void UndoingAFreePlacementRefundsNothing()
     {
-        UndoSource source = UndoSource.Of(new JobSource(null, true, null, null), null, null);
+        UndoSource source = UndoSource.Of(new JobSource(null, true, null, null), null, false, null);
         Assert.Null(source.FromId);
         Assert.Same(RefundRoute.Nothing, source.RefundTo);
     }
@@ -185,7 +197,7 @@ public sealed class CablesLiveTestTests
     [Fact]
     public void AnUnrecordedJobLeavesTheDefaults()
     {
-        UndoSource source = UndoSource.Of(JobSource.Unknown, null, null);
+        UndoSource source = UndoSource.Of(JobSource.Unknown, null, false, null);
         Assert.Null(source.FromId);
         Assert.Null(source.RefundTo);
         Assert.Empty(source.Notes);

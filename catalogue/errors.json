@@ -765,6 +765,11 @@
     "origin": "protocol",
     "see": {"topic": "errors", "subtopic": "protocol"}
   },
+  "queue_full": {
+    "description": "The job queue already holds the most waiting jobs it takes (16); nothing more was queued. Wait for one to start, then try again.",
+    "origin": "tool",
+    "see": {"topic": "jobs", "subtopic": "queue"}
+  },
   "read_failed": {
     "description": "The game failed to read the value; the message says why.",
     "origin": "tool",
@@ -983,9 +988,14 @@
     "see": {"topic": "errors", "subtopic": "protocol"}
   },
   "undo_expired": {
-    "description": "The mod had that job, but evicted what undoing it needs under its memory bound for kept jobs: its stream's pins are released, or pinned jobs alone pass the bound. data.job_id names it. When the message asks for them, pass the four lists its job_ended event carries; otherwise it cannot be undone.",
+    "description": "The mod had that job, but evicted what undoing it needs under its memory bound for kept jobs: its stream's pins are released, or pinned jobs alone pass the bound. data.job_id names it; it cannot be undone.",
     "origin": "tool",
     "see": {"tool": "undo_job", "topic": "facts"}
+  },
+  "undo_refused": {
+    "description": "The job cannot be undone as it stands: it had not finished, was already undone, or the world has changed since it ran (a thing it built is gone or changed, a removed thing has no snapshot, or a piece stood off the grid's axes). The message says which; nothing ran for that id.",
+    "origin": "tool",
+    "see": {"tool": "undo_job", "topic": "diverged"}
   },
   "unit_out_of_range": {
     "description": "The gene set index is out of range; the message gives how many sets the plant has.",

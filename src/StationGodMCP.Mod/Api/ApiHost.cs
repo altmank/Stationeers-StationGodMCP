@@ -32,10 +32,7 @@ internal static class ApiHost
     private const int ElapsedDecimals = 2;
 
     internal static readonly Dictionary<string, Func<Args, object>> Methods =
-        new Dictionary<string, Func<Args, object>>(StringComparer.Ordinal)
-        {
-            ["undo_job"] = static args => UndoJobApi.Handle(args)
-        };
+        new Dictionary<string, Func<Args, object>>(StringComparer.Ordinal);
 
     /// <summary>
     /// One call: its reply message as JSON text (type reply, shaped, elapsed_ms, queue_ms, frame, budget_hit when the

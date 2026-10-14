@@ -146,39 +146,42 @@ public sealed class TruncationNoticeTests
 
     /// <summary>
     /// Every method whose catalogue cuts lists by default (x-default-limits): on the large world its reply names each
-    /// list it cut, with the list's whole length.
+    /// list it cut, with the list's whole length. Every shaped method, one by one: the table holds none while every
+    /// per-tool method is retired.
     /// </summary>
-    [Theory]
-    [MemberData(nameof(ReplyBudgetTests.Shaped), MemberType = typeof(ReplyBudgetTests))]
-    public void EveryDefaultCutOnTheLargeWorldIsAnnounced(string method)
+    [Fact]
+    public void EveryDefaultCutOnTheLargeWorldIsAnnounced()
     {
-        IReadOnlyDictionary<string, int> limits = ReplyBudgetTests.DefaultLimitsOf(method);
-        if (limits.Count == 0)
+        foreach (string method in ReplyShapes.ByMethod.Keys)
         {
-            return;
-        }
-
-        foreach (ReplyShape shape in ReplyShapes.ByMethod[method])
-        {
-            object view = new ReplySynth(shape.Over(ReplyShapes.Common)).Make(shape.View);
-            JObject whole = JObject.Parse(ApiJson.WriteFresh(view));
-            ShapeRequest cut = ShapeRequest.WithDefaultLimits(null, limits)!;
-            JObject written = JObject.Parse(ApiJson.WriteShaped(ApiJson.Fresh(), view, cut, ShapingRoot.Result,
-                new List<Truncation>(), announce: true).Json);
-            JArray truncated = (JArray)written["truncated"]!;
-            foreach (KeyValuePair<string, int> limit in limits)
+            IReadOnlyDictionary<string, int> limits = ReplyBudgetTests.DefaultLimitsOf(method);
+            if (limits.Count == 0)
             {
-                int length = whole[limit.Key] is JArray list ? list.Count : 0;
-                JToken? entry = truncated.FirstOrDefault(note => (string?)note["list"] == limit.Key);
-                if (length > limit.Value)
+                continue;
+            }
+
+            foreach (ReplyShape shape in ReplyShapes.ByMethod[method])
+            {
+                object view = new ReplySynth(shape.Over(ReplyShapes.Common)).Make(shape.View);
+                JObject whole = JObject.Parse(ApiJson.WriteFresh(view));
+                ShapeRequest cut = ShapeRequest.WithDefaultLimits(null, limits)!;
+                JObject written = JObject.Parse(ApiJson.WriteShaped(ApiJson.Fresh(), view, cut, ShapingRoot.Result,
+                    new List<Truncation>(), announce: true).Json);
+                JArray truncated = (JArray)written["truncated"]!;
+                foreach (KeyValuePair<string, int> limit in limits)
                 {
-                    Assert.True(entry != null, $"{method} {shape.View.Name}: {limit.Key} cut to {limit.Value} of {length} unannounced");
-                    Assert.Equal(length, (int)entry!["total"]!);
-                    Assert.Equal(limit.Value, (int)entry["returned"]!);
-                }
-                else
-                {
-                    Assert.Null(entry);
+                    int length = whole[limit.Key] is JArray list ? list.Count : 0;
+                    JToken? entry = truncated.FirstOrDefault(note => (string?)note["list"] == limit.Key);
+                    if (length > limit.Value)
+                    {
+                        Assert.True(entry != null, $"{method} {shape.View.Name}: {limit.Key} cut to {limit.Value} of {length} unannounced");
+                        Assert.Equal(length, (int)entry!["total"]!);
+                        Assert.Equal(limit.Value, (int)entry["returned"]!);
+                    }
+                    else
+                    {
+                        Assert.Null(entry);
+                    }
                 }
             }
         }

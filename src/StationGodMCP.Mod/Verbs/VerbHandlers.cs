@@ -103,5 +103,6 @@ internal static class VerbHandlers
         VerbHandler.For(ServerConsoleOptions.Spec, ServerConsoleOptions.Bind, ServerConsole.Run),
         VerbHandler.For(ServerInfoOptions.Spec, ServerInfoOptions.Bind, ServerInfo.Run),
         VerbHandler.For(ServerProfilingOptions.Spec, ServerProfiling.Call.Bind, ServerProfiling.Run),
+        VerbHandler.For(UndoOptions.Spec, UndoOrders.Bind, Undo.Run),
     });
 }

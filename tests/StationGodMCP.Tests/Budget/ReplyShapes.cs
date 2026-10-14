@@ -61,26 +61,8 @@ internal static class ReplyShapes
     private static Dictionary<string, ReplyShape[]> Build()
     {
         Dictionary<string, ReplyShape[]> shapes = new Dictionary<string, ReplyShape[]>(StringComparer.Ordinal);
-
-        shapes["undo_job"] = new[]
-        {
-            // The plan with the removal's and the placement's dry runs (no piece runs: a structure was removed).
-            PlaceReportInto(S<UndoJobView>()).List("UndoPlanView.Remove", 10).List("UndoPlanView.Restore", 10)
-                .List("UndoPlanView.Diverged", 0).List("UndoPlanView.Notes", 2).List("UndoPlanView.UndoneBy", 0)
-                .List("UndoJobView.PieceRuns", 0).Holds("UndoJobView.Removal", typeof(RemoveReportView))
-                .Holds("UndoJobView.Placement", typeof(PlaceReportView)).List("RemoveReportView.Removals", 4)
-                .List("RemoveReportView.WillBurst", 0).List("RefundPlanView.Skipped", 0)
-                .List("RefundPlanView.Destinations", 2).Absent("RemoveReportView.Notes")
-        };
         return shapes;
     }
-
-    // place structure's dry run of one placement with its layout preview.
-    private static ReplyShape PlaceReportInto(ReplyShape shape) => shape
-        .List("PlaceReportView.Placements", 1).Absent("PlacementView.Orient", "FootprintView.LargeCells")
-        .List("CellListView.Cells", 0).List("SectionsView.Walls", 1).List("PlacementLayoutView.Conflicts", 1)
-        .List("PlacementLayoutView.PortChecks", 2).List("PlaceReportView.Materials", 2)
-        .Absent("PlaceReportView.Notes");
 
     // clean_chutes' dry run at the default limit: removals and dead pieces kept each listed up to it. kept_pieces holds
     // only pieces on a path left with an open end (a piece serving a path is not listed). riding: an item rides in a

@@ -61,24 +61,73 @@
       "x-cost": {"class": "job"},
       "x-cost-report": {"class": "plan"},
       "reply": {
-        "list": "piece_runs",
+        "list": "plans",
         "variants": [
           {
+            "label": "UndoPlan",
+            "view": "UndoPlan",
             "keys": {
-              "job_id": "str",
+              "reference_id": "str",
+              "id": "str",
               "tool": "str",
-              "status": "str",
-              "plan": "{remove: list[Any], restore: list[Any], diverged: list[Any], notes: list[str], ready: bool}",
-              "remove_arguments": "dict | None",
-              "place_arguments": "dict | None",
-              "removal": "dict | None",
-              "placement": "dict | None",
-              "piece_runs": "list[{tool: str, arguments: dict, reply: dict}]",
-              "resolved_networks": "list | None",
-              "gas_hold": "dict | None"
+              "remove": "{id: list[str], refund_to: Any | None, acknowledge_gas_lost: str | None, materials: str | None} | None",
+              "build": "{placements: list[{prefab: str, at: list[float], rotation: list[float], build_state: int, label: str | None}], materials: str | None, acknowledge_gas_lost: str | None} | None",
+              "piece_runs": "list[{what: str, pieces: list[{at: list[float], ends: list[str]}], grade: str, remove_ids: list[str], assume_removed: list[str]}]",
+              "notes": "list[str]",
+              "jobs": "list[Any]"
+            }
+          },
+          {
+            "label": "Paste",
+            "view": "Paste",
+            "keys": {
+              "reference_id": "str",
+              "id": "str",
+              "tool": "str",
+              "remove": "None",
+              "build": "None",
+              "piece_runs": "list",
+              "notes": "list[str]",
+              "reply": "{message: str}"
+            }
+          },
+          {
+            "label": "UndoBatchResult",
+            "view": "UndoBatchResult",
+            "keys": {
+              "results": "list[{index: int, ok: bool, reference_id: str, id: str, tool: str, remove: Any | None, build: Any | None, piece_runs: list, notes: list[str], jobs: list[Any]} | {index: int, ok: bool, reference_id: str, error: Error}]",
+              "count": "int",
+              "success_count": "int",
+              "error_count": "int"
+            }
+          },
+          {
+            "label": "UndoReport",
+            "view": "UndoReport",
+            "keys": {
+              "id": "str",
+              "tool": "str",
+              "remove": "Any | None",
+              "build": "Any | None",
+              "piece_runs": "list",
+              "notes": "list[str]",
+              "report_only": "bool",
+              "targets": "list[{id: str | None, cell: list[float] | None, name: str | None, current: Any | None, new: Any | None, undo: str, passed: list[str] | None, driven_by: Any | None, text: str}]",
+              "problems": "list[{index: int | None, reference_id: str | None, code: str, message: str, data: Any | None}]"
+            }
+          },
+          {
+            "label": "UndoBatchReport",
+            "view": "UndoBatchReport",
+            "keys": {
+              "plans": "list[{id: str, tool: str, remove: Any | None, build: Any | None, piece_runs: list, notes: list[str]}]",
+              "report_only": "bool",
+              "targets": "list[{id: str | None, cell: list[float] | None, name: str | None, current: Any | None, new: Any | None, undo: str, passed: list[str] | None, driven_by: Any | None, text: str}]",
+              "problems": "list[{index: int | None, reference_id: str | None, code: str, message: str, data: Any | None}]"
             }
           }
-        ]
+        ],
+        "types": ["Error"]
       },
       "write": {
         "route": "confirm",

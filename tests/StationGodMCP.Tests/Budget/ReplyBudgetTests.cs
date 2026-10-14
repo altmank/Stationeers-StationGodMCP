@@ -21,9 +21,6 @@ public sealed class ReplyBudgetTests
     /// <summary>The most a default reply may weigh, in UTF-8 bytes of the mod's compact JSON.</summary>
     internal const int BudgetBytes = 8192;
 
-    public static IEnumerable<object[]> Shaped() =>
-        ReplyShapes.ByMethod.Keys.OrderBy(name => name, StringComparer.Ordinal).Select(name => new object[] { name });
-
     [Fact]
     public void EveryMethodHasAShapeOrAnExemption()
     {
@@ -57,25 +54,31 @@ public sealed class ReplyBudgetTests
         }
     }
 
-    [Theory]
-    [MemberData(nameof(Shaped))]
-    public void TheDefaultReplyFitsTheBudget(string method)
+    /// <summary>
+    /// Every shaped method's default reply on the large world: no list without a declared bound, and the reply under
+    /// the budget. Every shaped method, one by one: the table holds none while every per-tool method is retired.
+    /// </summary>
+    [Fact]
+    public void EveryShapedMethodsDefaultReplyFitsTheBudget()
     {
         List<string> failures = new List<string>();
-        foreach (ReplyShape shape in ReplyShapes.ByMethod[method])
+        foreach (string method in ReplyShapes.ByMethod.Keys)
         {
-            Measured measured = Measure(shape.WithTopLimits(DefaultLimitsOf(method)));
-            if (measured.Undeclared.Count > 0)
+            foreach (ReplyShape shape in ReplyShapes.ByMethod[method])
             {
-                failures.Add($"{shape.View.Name}: lists with no declared bound: {string.Join(", ", measured.Undeclared)}");
-            }
-            else if (measured.Bytes > BudgetBytes)
-            {
-                failures.Add($"{shape.View.Name}: {measured.Bytes} bytes, over the {BudgetBytes} budget");
+                Measured measured = Measure(shape.WithTopLimits(DefaultLimitsOf(method)));
+                if (measured.Undeclared.Count > 0)
+                {
+                    failures.Add($"{method} {shape.View.Name}: lists with no declared bound: {string.Join(", ", measured.Undeclared)}");
+                }
+                else if (measured.Bytes > BudgetBytes)
+                {
+                    failures.Add($"{method} {shape.View.Name}: {measured.Bytes} bytes, over the {BudgetBytes} budget");
+                }
             }
         }
 
-        Assert.True(failures.Count == 0, method + ": " + string.Join("; ", failures));
+        Assert.True(failures.Count == 0, string.Join("\n", failures));
     }
 
     /// <summary>The method's x-default-limits from the built-in catalogue.</summary>

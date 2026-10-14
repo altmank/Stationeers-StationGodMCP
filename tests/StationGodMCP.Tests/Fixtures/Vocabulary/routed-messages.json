@@ -1,7 +1,4 @@
 {
-  "Api/RemoveStructures.cs": [
-    "Pass job_id, or reference_ids."
-  ],
   "Api/Shared/Args.cs": [
     "{_path}.{name}"
   ],
@@ -156,18 +153,8 @@
   "Pure/GrowerSlotRule.cs": [
     "{plantSlot}; fertiliser goes into the grower's fertiliser slot {fertiliserSlot.Value}, as a player's hand sends it: pass to_slot {fertiliserSlot.Value} or auto."
   ],
-  "Pure/Layout/JobEndFacts.cs": [
-    "Argument '{name}' must be a list, as the job's final reply gives it.",
-    "Every entry of '{name}' must be {shape}, as the job's final reply gives it."
-  ],
-  "Pure/Layout/UndoFactsSource.cs": [
-    "{JobId}'s final status was evicted under the memory bound for kept jobs. Pass the created_ids, removed, changed and placed its job_ended event or final reply gave to undo it; nothing was changed.",
-    "{jobId}'s final status is no longer kept: what it built and removed is the request's created_ids, removed, changed and placed, and only what they list is undone."
-  ],
   "Pure/Layout/UndoSource.cs": [
     "The job placed for free (free: true): removing what it built gives nothing back (refund_to none).",
-    "from_id {fromId.Value}: the caller's source pays and takes the refunds (instead of {(job.FromId.HasValue ? $\"the job's own, {job.FromId.Value}).\" : \"the player).\")}",
-    "from_id {job.FromId.Value}: the job's own source pays and takes the refunds.",
     "refund_to {refundTo.Name}: the caller's choice for the removals' refund."
   ],
   "Pure/Lint/LintCompiler.cs": [

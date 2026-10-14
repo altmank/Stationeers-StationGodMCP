@@ -88,11 +88,15 @@ public sealed class Round11FixesTests
         Assert.Contains("acknowledge_gas_lost is empty", GasHoldRule.BlankRefusal(""));
         Assert.NotNull(GasHoldRule.BlankRefusal("  "));
 
-        Assert.Equal("invalid_argument", Assert.Throws<ApiException>(() =>
-            GasHoldArgs.Acknowledgement(new Args(JObject.Parse("{\"acknowledge_gas_lost\":\"\"}")))).Code);
-        Assert.Null(GasHoldArgs.Acknowledgement(new Args(JObject.Parse("{}"))));
-        Assert.Equal("run-7",
-            GasHoldArgs.Acknowledgement(new Args(JObject.Parse("{\"acknowledge_gas_lost\":\"run-7\"}"))));
+        List<StationGodMCP.Pure.Verbs.OptionProblem> problems =
+            new List<StationGodMCP.Pure.Verbs.OptionProblem>();
+        GasHoldArgs.Check(null, problems);
+        GasHoldArgs.Check("run-7", problems);
+        Assert.Empty(problems);
+        GasHoldArgs.Check("", problems);
+        GasHoldArgs.Check("  ", problems);
+        Assert.Equal(2, problems.Count);
+        Assert.True(problems.TrueForAll(problem => problem.Path == "acknowledge_gas_lost"));
     }
 
     // ct-2: a stock refusal said "after the earlier lines" when no earlier line bought from that entry.

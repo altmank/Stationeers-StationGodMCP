@@ -394,6 +394,10 @@
     "description": "A message the protocol does not allow. The connection is closed after the reply; reconnect and send a valid message.",
     "see": {"topic": "errors"}
   },
+  "queue_full": {
+    "description": "The job queue already holds the most waiting jobs it takes (16); nothing more was queued. Wait for one to start, then try again.",
+    "see": {"verb": "inspect", "what": "job"}
+  },
   "read_failed": {"description": "The game failed to read the text; the message says why."},
   "refund_failed": {
     "description": "Giving the refund_to back failed; the message says why. Check refund_to, then the ground in front of the code."
@@ -509,7 +513,11 @@
     "see": {"topic": "errors"}
   },
   "undo_expired": {
-    "description": "What undoing that job needs is no longer kept (its run's pins are released, or kept jobs passed the memory bound). Name the job's lists from its job_ended event if the message asks for them; otherwise it cannot be undone."
+    "description": "What undoing that job needs is no longer kept (its run's pins are released, or kept jobs passed the memory bound); it cannot be undone."
+  },
+  "undo_refused": {
+    "description": "The job cannot be undone as it stands: it had not finished, was already undone, or the world has changed since it ran (a thing it built is gone or changed, a removed thing has no snapshot, or a piece stood off the grid's axes). The message says which; nothing ran for that id.",
+    "see": {"verb": "undo"}
   },
   "unit_out_of_range": {
     "description": "The gene set index is out of range; the message gives how many sets the plant has.",

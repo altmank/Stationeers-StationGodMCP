@@ -4,13 +4,12 @@ using System.Collections.Generic;
 using System.Globalization;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
-using StationGodMCP.Pure.Protocol;
 
 namespace StationGodMCP.Pure;
 
 /// <summary>
-/// What a held-tick job did, in a few lists: the facts undo_job plans from, and what a jobs-topic job_ended event
-/// carries. {job_id, tool, status, error {code, message}, created_ids, removed, changed, placed}, each key present only
+/// What a held-tick job did, in a few lists: what a jobs-topic job_ended event carries, and the facts undo plans
+/// from. {job_id, tool, status, error {code, message}, created_ids, removed, changed, placed}, each key present only
 /// when the job's final reply has it, a list only when it holds something:
 /// <list type="bullet">
 /// <item>created_ids: every id the job built, new and changed pieces (a run's log.created_ids);</item>
@@ -18,15 +17,9 @@ namespace StationGodMCP.Pure;
 /// <item>changed: a run's changed pieces {old_reference_id, new_reference_id, target_prefab_name};</item>
 /// <item>placed: the new things {reference_id, prefab_name} (a run's log.placed, a structure job's result.placed).</item>
 /// </list>
-/// The same lists are what undo_job takes in its request when the job is past the finished jobs the mod keeps.
 /// </summary>
 internal static class JobEndFacts
 {
-    internal const string CreatedIdsKey = "created_ids";
-    internal const string RemovedKey = "removed";
-    internal const string ChangedKey = "changed";
-    internal const string PlacedKey = "placed";
-
     /// <summary>The facts of a job's final reply, as the client sees it (its wire JSON).</summary>
     internal static JObject Of(JObject reply)
     {
@@ -45,106 +38,43 @@ internal static class JobEndFacts
         }
 
         JArray created = new JArray();
-        foreach (JToken id in Array(log?[CreatedIdsKey]))
+        foreach (JToken id in Array(log?["created_ids"]))
         {
             AddId(created, id);
         }
 
         JArray removed = new JArray();
-        foreach (JToken id in Array(log?[RemovedKey]))
+        foreach (JToken id in Array(log?["removed"]))
         {
             AddId(removed, id);
         }
 
-        foreach (JToken piece in Array(result?[RemovedKey]))
+        foreach (JToken piece in Array(result?["removed"]))
         {
             AddId(removed, piece["reference_id"]);
         }
 
         JArray changed = new JArray();
-        foreach (JToken change in Array(log?[ChangedKey]))
+        foreach (JToken change in Array(log?["changed"]))
         {
             changed.Add(Change(change));
         }
 
         JArray placed = new JArray();
-        foreach (JToken thing in Array(log?[PlacedKey]))
+        foreach (JToken thing in Array(log?["placed"]))
         {
             placed.Add(Placed(thing));
         }
 
-        foreach (JToken thing in Array(result?[PlacedKey]))
+        foreach (JToken thing in Array(result?["placed"]))
         {
             placed.Add(Placed(thing));
         }
 
-        AddList(facts, CreatedIdsKey, created);
-        AddList(facts, RemovedKey, removed);
-        AddList(facts, ChangedKey, changed);
-        AddList(facts, PlacedKey, placed);
-        return facts;
-    }
-
-    /// <summary>
-    /// undo_job's created_ids, removed, changed and placed, read into facts: null with no problem when none is given;
-    /// null with the problem (an invalid_argument) when one is not the shape a job's final reply gives it. removed takes
-    /// ids, or things with a reference_id (a structure job's result.removed).
-    /// </summary>
-    internal static JObject? FromRequest(JToken? createdIds, JToken? removed, JToken? changed, JToken? placed,
-        out string? problem)
-    {
-        problem = null;
-        if (Absent(createdIds) && Absent(removed) && Absent(changed) && Absent(placed))
-        {
-            return null;
-        }
-
-        JObject facts = new JObject();
-        JArray created = new JArray();
-        foreach (JToken id in Listed(createdIds, CreatedIdsKey, ref problem))
-        {
-            Require(AddId(created, id), CreatedIdsKey, "a reference id", ref problem);
-        }
-
-        JArray gone = new JArray();
-        foreach (JToken entry in Listed(removed, RemovedKey, ref problem))
-        {
-            Require(AddId(gone, entry is JObject thing ? thing["reference_id"] : entry), RemovedKey,
-                "a reference id or {reference_id}", ref problem);
-        }
-
-        JArray swaps = new JArray();
-        foreach (JToken entry in Listed(changed, ChangedKey, ref problem))
-        {
-            bool valid = entry is JObject change && IsId(change["old_reference_id"]) &&
-                         IsId(change["new_reference_id"]) && IsTextOrAbsent(change["target_prefab_name"]);
-            Require(valid, ChangedKey, "{old_reference_id, new_reference_id, target_prefab_name}", ref problem);
-            if (valid)
-            {
-                swaps.Add(Change(entry));
-            }
-        }
-
-        JArray things = new JArray();
-        foreach (JToken entry in Listed(placed, PlacedKey, ref problem))
-        {
-            bool valid = entry is JObject thing && IsId(thing["reference_id"]) && IsTextOrAbsent(thing["prefab_name"]);
-            Require(valid, PlacedKey, "{reference_id, prefab_name}", ref problem);
-            if (valid)
-            {
-                things.Add(Placed(entry));
-            }
-        }
-
-        if (problem != null)
-        {
-            return null;
-        }
-
-        AddList(facts, CreatedIdsKey, created);
-        AddList(facts, RemovedKey, gone);
-        AddList(facts, ChangedKey, swaps);
-        AddList(facts, PlacedKey, things);
+        AddList(facts, "created_ids", created);
+        AddList(facts, "removed", removed);
+        AddList(facts, "changed", changed);
+        AddList(facts, "placed", placed);
         return facts;
     }
 
@@ -155,26 +85,26 @@ internal static class JobEndFacts
     internal static List<(long Id, string? Prefab)> Created(JObject facts)
     {
         Dictionary<long, string?> prefabs = new Dictionary<long, string?>();
-        foreach (JToken placed in Array(facts[PlacedKey]))
+        foreach (JToken placed in Array(facts["placed"]))
         {
             prefabs[Id(placed["reference_id"])] = placed.Value<string>("prefab_name");
         }
 
-        foreach (JToken changed in Array(facts[ChangedKey]))
+        foreach (JToken changed in Array(facts["changed"]))
         {
             prefabs[Id(changed["new_reference_id"])] = changed.Value<string>("target_prefab_name");
         }
 
         List<(long, string?)> created = new List<(long, string?)>();
         HashSet<long> listed = new HashSet<long>();
-        foreach (JToken id in Array(facts[CreatedIdsKey]))
+        foreach (JToken id in Array(facts["created_ids"]))
         {
             long value = Id(id);
             listed.Add(value);
             created.Add((value, prefabs.TryGetValue(value, out string? prefab) ? prefab : null));
         }
 
-        foreach (JToken placed in Array(facts[PlacedKey]))
+        foreach (JToken placed in Array(facts["placed"]))
         {
             long value = Id(placed["reference_id"]);
             if (!listed.Contains(value))
@@ -190,12 +120,12 @@ internal static class JobEndFacts
     internal static List<long> Removed(JObject facts)
     {
         List<long> removed = new List<long>();
-        foreach (JToken id in Array(facts[RemovedKey]))
+        foreach (JToken id in Array(facts["removed"]))
         {
             removed.Add(Id(id));
         }
 
-        foreach (JToken changed in Array(facts[ChangedKey]))
+        foreach (JToken changed in Array(facts["changed"]))
         {
             removed.Add(Id(changed["old_reference_id"]));
         }
@@ -218,30 +148,6 @@ internal static class JobEndFacts
         CopyId(thing, brief, "reference_id");
         CopyText(thing, brief, "prefab_name");
         return brief;
-    }
-
-    private static IEnumerable<JToken> Listed(JToken? token, string name, ref string? problem)
-    {
-        if (Absent(token))
-        {
-            return System.Array.Empty<JToken>();
-        }
-
-        if (token is JArray array)
-        {
-            return array;
-        }
-
-        problem ??= $"Argument '{Vocabulary.Arg(name)}' must be a list, as the job's final reply gives it.";
-        return System.Array.Empty<JToken>();
-    }
-
-    private static void Require(bool ok, string name, string shape, ref string? problem)
-    {
-        if (!ok)
-        {
-            problem ??= $"Every entry of '{Vocabulary.Arg(name)}' must be {shape}, as the job's final reply gives it.";
-        }
     }
 
     private static void AddList(JObject facts, string key, JArray list)
@@ -278,12 +184,6 @@ internal static class JobEndFacts
             into[key] = text.Value<string>();
         }
     }
-
-    private static bool IsId(JToken? token) => ThingId.TryRead(token, out _);
-
-    private static bool IsTextOrAbsent(JToken? token) => Absent(token) || token!.Type == JTokenType.String;
-
-    private static bool Absent(JToken? token) => token == null || token.Type == JTokenType.Null;
 
     private static string Text(long id) => id.ToString(CultureInfo.InvariantCulture);
 

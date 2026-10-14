@@ -104,6 +104,7 @@ internal static class RetiredMethods
         "trader_contacts",
         "trader_inventory",
         "trader_sell",
+        "undo_job",
         "upgrade_cables",
         "upgrade_pipes",
         "vault_contents",

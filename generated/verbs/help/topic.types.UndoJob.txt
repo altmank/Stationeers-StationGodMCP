@@ -1,3 +1,4 @@
-UndoJob = {job_id: str, tool: str, status: str, plan: {remove: list[str], restore: list[str], diverged: list[str], notes: list[str], ready: bool,
-    undone_by: list[str] | None}, remove_arguments: Any | None, place_arguments: Any | None, removal: Any | None, placement: Any | None, piece_runs:
-    list[{tool: str, arguments: Any, reply: Any | None}]}
+UndoJob = {id: str, tool: str, remove: {id: list[str], refund_to: Any | None, acknowledge_gas_lost: str | None,
+    materials: str | None} | None, build: {placements: list[{prefab: str, at: list[float], rotation: list[float], build_state: int,
+    label: str | None}], materials: str | None, acknowledge_gas_lost: str | None} | None, piece_runs: list[{what: str,
+    pieces: list[{at: list[float], ends: list[str]}], grade: str, remove_ids: list[str], assume_removed: list[str]}], notes: list[str]}

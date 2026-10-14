@@ -447,11 +447,9 @@ public sealed class ToolRegistrationTests
     // the catalogue.
     private static readonly string[] SidecarOnly = { "sample_logic", "tool_info" };
 
-    /// <summary>The methods the mod still handles per tool: every one A5 retires with the verbs.</summary>
-    private static readonly HashSet<string> LaterMethods = new HashSet<string>(System.StringComparer.Ordinal)
-    {
-        "undo_job"
-    };
+    /// <summary>The methods the mod still handles per tool: every one A5 retires with the verbs. Empty: A5's last
+    /// per-tool method (undo_job) is gone.</summary>
+    private static readonly HashSet<string> LaterMethods = new HashSet<string>(System.StringComparer.Ordinal);
 
     [Fact]
     public void TheToolListAndTheModsHandlersAgree()
@@ -465,7 +463,8 @@ public sealed class ToolRegistrationTests
 
         Assert.Empty(names.Except(handled).Except(SidecarOnly).Except(CatalogueChecks.RetiredMethods.Names));
         Assert.Empty(handled.Except(names));
-        // The methods A5 has still to retire: the sidecar lists them and the mod still handles them.
+        // The methods A5 has still to retire: none left, so the sidecar's whole list is RetiredMethods until the
+        // method catalogue goes in B.
         Assert.Subset(names, LaterMethods);
         Assert.Subset(handled, LaterMethods);
     }

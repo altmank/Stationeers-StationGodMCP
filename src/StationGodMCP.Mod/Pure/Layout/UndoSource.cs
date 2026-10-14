@@ -6,9 +6,9 @@ using StationGodMCP.Pure.Protocol;
 namespace StationGodMCP.Pure;
 
 /// <summary>
-/// Where a place or remove job took its materials and put its refund, as its request named them: from_id (null: the
-/// player), free (place_structure without materials), refund_to (a single word or a chain of targets) and
-/// refund (the run tools' refund flag).
+/// Where a place or remove job took its materials and put its refund, as its request named them: materials (null:
+/// the player), free (build structure without materials), refund_to (a single word or a chain of targets) and refund
+/// (the run tools' refund flag).
 /// </summary>
 internal sealed class JobSource
 {
@@ -36,9 +36,10 @@ internal sealed class JobSource
 }
 
 /// <summary>
-/// The source undo_job's own calls use: from_id (the caller's, else the job's own, so an undo runs on a dedicated
-/// server whenever the job did), and the removals' refund_to (the caller's; else none when the job placed for free,
-/// since nothing was paid that could be given back; else each tool's default chain).
+/// The source undo's own calls use: materials (the caller's, else the job's own recorded source, so an undo runs on
+/// a dedicated server whenever the job did), and the removals' refund_to (the caller's; else none when the job placed
+/// for free, since nothing was paid that could be given back; else each tool's default chain). The caller naming the
+/// player is not the same as leaving materials out: only the job's own recorded source can stand in for it.
 /// </summary>
 internal sealed class UndoSource
 {
@@ -49,7 +50,7 @@ internal sealed class UndoSource
         Notes = notes;
     }
 
-    /// <summary>Every call's from_id; null leaves it out (the player).</summary>
+    /// <summary>Every call's materials; null is the player.</summary>
     internal long? FromId { get; }
 
     /// <summary>The removals' refund_to; null leaves it out (each tool's default chain).</summary>
@@ -57,20 +58,23 @@ internal sealed class UndoSource
 
     internal List<string> Notes { get; }
 
-    internal static UndoSource Of(JobSource job, long? fromId, RefundRoute? refundTo)
+    /// <param name="job">The job's own recorded source (JobSource).</param>
+    /// <param name="callerId">The holder the caller named (materials): a thing by id, or null for the player.</param>
+    /// <param name="callerGiven">Whether the caller named materials at all.</param>
+    /// <param name="refundTo">The caller's refund_to; null when it gave none.</param>
+    internal static UndoSource Of(JobSource job, long? callerId, bool callerGiven, RefundRoute? refundTo)
     {
         List<string> notes = new List<string>();
-        long? from = fromId ?? job.FromId;
-        if (fromId.HasValue)
+        long? from = callerGiven ? callerId : job.FromId;
+        if (callerGiven)
         {
-            notes.Add($"{Vocabulary.Arg("from_id")} {fromId.Value}: the caller's source pays and takes the refunds " +
-                "(instead of " +
-                      (job.FromId.HasValue ? $"the job's own, {job.FromId.Value})." : "the player)."));
+            notes.Add(callerId.HasValue
+                ? $"materials {callerId.Value}: the caller's source pays and takes the refunds" + Instead(job)
+                : "materials player: the player pays and takes the refunds" + Instead(job));
         }
         else if (job.FromId.HasValue)
         {
-            notes.Add($"{Vocabulary.Arg("from_id")} {job.FromId.Value}: the job's own source pays and takes the " +
-                "refunds.");
+            notes.Add($"materials {job.FromId.Value}: the job's own source pays and takes the refunds.");
         }
 
         if (refundTo != null)
@@ -93,4 +97,8 @@ internal sealed class UndoSource
 
         return new UndoSource(from, refund, notes);
     }
+
+    // What the caller's own materials choice stands in place of: the job's own recorded source, when it has one.
+    private static string Instead(JobSource job) =>
+        job.FromId.HasValue ? $" (instead of the job's own, {job.FromId.Value})." : string.Empty;
 }

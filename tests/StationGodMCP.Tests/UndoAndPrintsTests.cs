@@ -2,11 +2,12 @@
 
 using System.Collections.Generic;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Verbs;
 using Xunit;
 
 namespace StationGodMCP.Tests;
 
-/// <summary>undo_job's planner and the print provenance log (1.4.3).</summary>
+/// <summary>undo's planner and the print provenance log (1.4.3).</summary>
 public sealed class UndoAndPrintsTests
 {
     private static ThingSnapshot Straight(long id, bool onGrid = true) =>
@@ -46,6 +47,12 @@ public sealed class UndoAndPrintsTests
         Assert.Equal(new List<string> { "run-11" }, plan.UndoneBy);
         Assert.Contains(plan.Diverged, reason => reason.Contains("already undone") && reason.Contains("run-11 (applied)"));
         Assert.DoesNotContain(plan.Diverged, reason => reason.Contains("is gone"));
+
+        // T-A5-7: a diverged id is refused undo_refused, its message the planner's lines joined.
+        VerbError refused = UndoReplies.Refused(plan);
+        Assert.Equal("undo_refused", refused.Code);
+        Assert.Contains("already undone", refused.Message);
+        Assert.Contains("run-11 (applied)", refused.Message);
     }
 
     [Fact]

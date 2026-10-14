@@ -56,7 +56,6 @@ public sealed class KeptJobsTests
         UndoFactsSource.Expired expired = Assert.IsType<UndoFactsSource.Expired>(Choose(kept, "place-1"));
         Assert.Equal("place-1", expired.JobId);
         Assert.Contains("place-1", expired.Message);
-        Assert.False(expired.FactsWouldDo);
     }
 
     [Fact]
@@ -295,7 +294,7 @@ public sealed class KeptJobsTests
     }
 
     [Fact]
-    public void AFinalStatusEvictedWithItsSnapshotKeptAsksForTheRequestsFacts()
+    public void AFinalStatusEvictedIsExpiredEvenWhileItsSnapshotsAreKept()
     {
         KeptJobs kept = Small(entries: 10);
         kept.Snapshots.Put("place-1", Job(), Entry);
@@ -306,14 +305,13 @@ public sealed class KeptJobsTests
         }
 
         UndoFactsSource.Expired expired = Assert.IsType<UndoFactsSource.Expired>(Choose(kept, "place-1"));
-        Assert.True(expired.FactsWouldDo);
-        Assert.IsType<UndoFactsSource.Given>(Choose(kept, "place-1", new JObject { ["created_ids"] = new JArray() }));
+        Assert.Equal("place-1", expired.JobId);
     }
 
     [Fact]
     public void ASnapshotEvictedMakesUndoExpiredEvenWhileItsFinalStatusIsKept()
     {
-        UndoFactsSource source = UndoFactsSource.Choose(new JObject { ["job_id"] = "place-1" }, false, null,
+        UndoFactsSource source = UndoFactsSource.Choose(new JObject { ["job_id"] = "place-1" },
             snapshotEvicted: true, finalEvicted: false, jobId: "place-1");
 
         Assert.IsType<UndoFactsSource.Expired>(source);
@@ -372,9 +370,9 @@ public sealed class KeptJobsTests
         kept.Finals.Put(id, new JObject { ["job_id"] = id, ["status"] = "applied" }, Entry);
     }
 
-    private static UndoFactsSource Choose(KeptJobs kept, string id, JObject? given = null) =>
-        UndoFactsSource.Choose(kept.Finals.Of(id) as JObject, kept.Snapshots.Contains(id), given,
-            kept.Snapshots.WasEvicted(id), kept.Finals.WasEvicted(id), id);
+    private static UndoFactsSource Choose(KeptJobs kept, string id) =>
+        UndoFactsSource.Choose(kept.Finals.Of(id) as JObject, kept.Snapshots.WasEvicted(id),
+            kept.Finals.WasEvicted(id), id);
 
     private static RecordedJob Job(params ThingSnapshot[] removed)
     {
