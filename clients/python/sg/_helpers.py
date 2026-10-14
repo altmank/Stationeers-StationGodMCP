@@ -1,6 +1,7 @@
-"""The sg helpers that are not verbs: wait, watch, hold, ref and help (hub.md, *The hub protocol* and *Runs*)."""
+"""The sg helpers that are not verbs: wait, watch, changes, hold, ref and help (hub.md, *The hub protocol* and *Runs*)."""
 import threading
 import time
+from collections import deque
 from collections.abc import Mapping
 
 from . import _session
@@ -11,6 +12,9 @@ from ._verbs import read as _read
 
 LIGHT_POLL_S = 1.0
 HEAVY_POLL_S = 5.0
+
+# The mod's SamplingInterval.MinimumSeconds: one game tick at 2 Hz. `every` clamps to it (T-B-7; the help says so).
+MIN_EVERY_S = 0.5
 
 # The keys read logic's reads entries take (catalogue/verbs/read.json): a watch whose every entry is a mapping of
 # those alone is the form the devices subscription covers.
@@ -61,9 +65,107 @@ def watch(reads, until, timeout):
             subscription.end()
 
 
+def changes(reads, timeout, every=1):
+    """Yields the read rows each time a value changes, until timeout seconds pass or the run stops.
+
+    every (seconds) is the sampling window: the devices subscription's interval_s, never under 0.5 s (one game tick),
+    and the default 1 s is the rate polling uses. Each yield is the whole reading, one row per reads entry, in order,
+    and a reading equal to the last yielded is skipped. A hub whose welcome lists subscriptions, and reads whose every
+    entry is a devices-form read, subscribe to the devices topic: every update the mod pushes (it samples on game ticks
+    and sends one when a value other than the clock changes) is yielded in order, with no read logic call after the
+    first. Anything else polls read logic every `every` seconds and yields only a reading that differs from the last.
+    In a report run the hub answers the first wait with {"instant": true}: the current rows are yielded once and the
+    generator ends. It never raises at the timeout; a stop ends it, and a stop that arrives on its own wait raises
+    sg.Stopped as any wait does. A subscription the hub refuses (a limit), ends, or drops with a world change falls
+    back to polling for the rest of the timeout, and one still live when the generator ends is unsubscribed."""
+    interval = max(float(every), MIN_EVERY_S)
+    started = time.monotonic()
+    subscription = None if _stopped() else _subscribe(reads, interval, queue_events=True)
+    try:
+        if _stopped():
+            return
+        rows = subscription.rows() if subscription is not None else _watch_rows(reads)
+        while True:
+            left = timeout - (time.monotonic() - started)
+            if left <= 0 or _stopped():
+                return
+            answer = _session.request("wait", {"s": min(interval, left), "kind": "watch",
+                                               "in_loop": _session.in_loop()})
+            if isinstance(answer, dict) and answer.get("instant"):
+                yield rows
+                return
+            while True:
+                fresh = _next_reading(subscription, reads, rows)
+                if fresh is None:
+                    break
+                rows = fresh
+                yield rows
+    finally:
+        if subscription is not None:
+            subscription.end()
+
+
+def _next_reading(subscription, reads, last):
+    """The next reading that differs from last, or None when there is none yet: the subscription's oldest unyielded
+    update, or one read where the subscription is not live (while it is, a subscribed run makes no read logic call)."""
+    if subscription is not None:
+        fresh = subscription.take()
+        while fresh is not None and fresh == last:
+            fresh = subscription.take()
+        if fresh is not None:
+            return fresh
+        if subscription.live:
+            return None
+    rows = _watch_rows(reads)
+    return rows if rows != last else None
+
+
+def jobs(timeout):
+    """Yields one item per job the run started that ends, until timeout seconds pass or the run stops.
+
+    Each item is the mod's job object as its job_ended event carries it: {job_id, tool, status, error, created_ids,
+    removed, changed, placed}, the error and the lists only when the job's final reply had them. The run hears its own
+    jobs alone (the hub drops a job_ended event for a job it did not start); a session with no run keeps the whole
+    view. The jobs topic is a subscription, so this needs a hub whose welcome lists subscriptions; where it does not,
+    or the hub refuses the subscribe, the iterator ends without yielding (no read can see a job end). It never raises
+    at the timeout; a stop ends it, and a stop that arrives on its own wait raises sg.Stopped as any wait does. In a
+    report run the hub answers the first wait with {"instant": true} and it ends without yielding. It waits a second
+    at a time at the most, so an ended job is yielded within about a second of the mod reporting it; a stream_end
+    drops the subscription with the stream and an ended subscription ends the iterator, since nothing more can
+    arrive."""
+    started = time.monotonic()
+    if _stopped() or not _subscriptions_offered():
+        return
+    subscription = _JobsSubscription()
+    if not subscription.start():
+        return
+    try:
+        while True:
+            left = timeout - (time.monotonic() - started)
+            if left <= 0 or _stopped():
+                return
+            job = subscription.take()
+            if job is None:
+                if not subscription.live:
+                    return
+                answer = _session.request("wait", {"s": min(LIGHT_POLL_S, left), "kind": "watch",
+                                                   "in_loop": _session.in_loop()})
+                if isinstance(answer, dict) and answer.get("instant"):
+                    return
+                continue
+            yield job
+    finally:
+        subscription.end()
+
+
 def _watch_rows(reads):
     reply = _read("logic", reads=reads)
     return list(reply.get("results") or [])
+
+
+def _rows_of(reading):
+    """A reading's rows, in reads order; empty when the reading does not carry results."""
+    return list(reading.get("results") or []) if isinstance(reading, Mapping) else []
 
 
 def _stopped():
@@ -73,16 +175,21 @@ def _stopped():
     return run is not None and run.stopped
 
 
-def _subscribe(reads, interval):
-    """A started devices subscription for the watch, or None when it polls: the hub does not advertise subscriptions,
-    a reads entry is not the devices form, or the hub refused the subscribe (a subscription limit, or too many of
-    them), which is the mod's own way of saying to poll instead."""
+def _subscriptions_offered():
+    """Whether the hub's welcome lists subscriptions: the devices and jobs topics both need it."""
     welcome = _session.current_transport().welcome or {}
-    if "subscriptions" not in (welcome.get("features") or []):
+    return "subscriptions" in (welcome.get("features") or [])
+
+
+def _subscribe(reads, interval, queue_events=False):
+    """A started devices subscription for the watch (or the changes iterator, queue_events), or None when it polls:
+    the hub does not advertise subscriptions, a reads entry is not the devices form, or the hub refused the subscribe
+    (a subscription limit, or too many of them), which is the mod's own way of saying to poll instead."""
+    if not _subscriptions_offered():
         return None
     if not all(_devices_form(entry) for entry in reads):
         return None
-    subscription = _DevicesSubscription(reads, interval)
+    subscription = _DevicesSubscription(reads, interval, queue_events)
     return subscription if subscription.start() else None
 
 
@@ -95,11 +202,12 @@ def _devices_form(entry):
 class _DevicesSubscription:
     """One watch's devices subscription: the subscribe call, its latest reading, and the events that change it.
 
-    The handler runs on the transport's reader thread, so the reading it keeps and the flags it sets are under a lock.
-    `live` goes false when the subscription ends or a world change drops it, and the watch then polls for the rest of
-    its timeout."""
+    The handler runs on the transport's reader thread, so the reading it keeps, the queue it fills and the flags it
+    sets are under a lock. `live` goes false when the subscription ends or a world change drops it, and the watch then
+    polls for the rest of its timeout. A changes iterator asks for the queue: one entry per update event, taken in
+    order; a watch queues nothing and keeps only the latest reading."""
 
-    def __init__(self, reads, interval):
+    def __init__(self, reads, interval, queue_events=False):
         self._reads = reads
         self._interval = interval
         self._lock = threading.Lock()
@@ -107,6 +215,7 @@ class _DevicesSubscription:
         self._id = None
         self._reading = None
         self._live = False
+        self._pending = deque() if queue_events else None
 
     @property
     def live(self):
@@ -140,7 +249,14 @@ class _DevicesSubscription:
         """The latest reading's rows, in reads order; empty before a reading arrives."""
         with self._lock:
             reading = self._reading
-        return list(reading.get("results") or []) if isinstance(reading, Mapping) else []
+        return _rows_of(reading)
+
+    def take(self):
+        """The oldest update's rows not yet handed out, or None when none is queued (a watch queues none)."""
+        if self._pending is None:
+            return None
+        with self._lock:
+            return self._pending.popleft() if self._pending else None
 
     def end(self):
         """Unsubscribes when a live subscription is still known and stops listening for its events. A hub that has
@@ -171,6 +287,86 @@ class _DevicesSubscription:
                 return
             if kind == "update":
                 self._reading = event.get("result") or self._reading
+                if self._pending is not None and isinstance(event.get("result"), Mapping):
+                    self._pending.append(_rows_of(event.get("result")))
+            elif kind == "subscription_ended":
+                self._live = False
+
+
+class _JobsSubscription:
+    """One sg.jobs subscription: the jobs-topic subscribe call, the jobs the mod reports as ended, and its end.
+
+    The handler runs on the transport's reader thread, so the queue it fills and the flags it sets are under a lock.
+    `live` goes false when the subscription ends or a world change drops it; there is no fallback to polling, because
+    no read can see a job end."""
+
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._transport = None
+        self._id = None
+        self._pending = deque()
+        self._live = False
+
+    @property
+    def live(self):
+        with self._lock:
+            return self._live
+
+    def start(self):
+        """Subscribes to the jobs topic; False when the hub refused it, which leaves nothing open and the iterator
+        ending without a yield."""
+        transport = _session.current_transport()
+        transport.on_event(self._on_event)
+        try:
+            reply = _session.request("subscribe", {"topic": "jobs"}, line=False)
+        except (Stopped, _PassEnd):
+            transport.off_event(self._on_event)
+            raise
+        except Error:
+            transport.off_event(self._on_event)
+            return False
+        with self._lock:
+            self._id = reply.get("subscription") if isinstance(reply, dict) else None
+            self._live = self._id is not None
+        if not self._live:
+            transport.off_event(self._on_event)
+            return False
+        self._transport = transport
+        return True
+
+    def take(self):
+        """The oldest job the mod reported as ended and the iterator has not yielded, or None."""
+        with self._lock:
+            return self._pending.popleft() if self._pending else None
+
+    def end(self):
+        """Unsubscribes when a live subscription is still known and stops listening for its events. A hub that has
+        already forgotten it (a stream end, a world change) refuses unknown_subscription; nothing the iterator can act
+        on either way, since the subscription is gone with what ended it."""
+        if self._transport is None:
+            return
+        self._transport.off_event(self._on_event)
+        with self._lock:
+            live, subscription = self._live, self._id
+        if not live or subscription is None:
+            return
+        try:
+            _session.request("unsubscribe", {"subscription": subscription}, line=False)
+        except Error:
+            pass
+
+    def _on_event(self, event):
+        """On the reader thread: queues each job_ended job, in the mod's order, and follows the events that end a
+        subscription. An event is taken when it names this subscription, or when the reply has not named it yet."""
+        kind = event.get("event")
+        with self._lock:
+            if kind == "world_changed":
+                self._live = False
+                return
+            if self._id is not None and event.get("subscription") != self._id:
+                return
+            if kind == "job_ended" and isinstance(event.get("job"), Mapping):
+                self._pending.append(event["job"])
             elif kind == "subscription_ended":
                 self._live = False
 

@@ -79,6 +79,10 @@ public interface IRunChannel
     Task AnalysisAsync(JsonElement message);
 
     Task EndedAsync(JsonElement message);
+
+    /// <summary>Whether this run started the job (a job-start reply named it while running). A run hears job_ended
+    /// events of its own jobs alone; a session with no run hears every job.</summary>
+    bool StartedJob(string jobId);
 }
 
 /// <summary>

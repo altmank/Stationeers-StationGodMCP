@@ -29,6 +29,7 @@ internal sealed partial class Run : IRunChannel, IPipelineExtras, IVerbCalls
     private readonly HashSet<string> _contested = new(StringComparer.Ordinal);
     private readonly List<(string Id, string Logic, JsonNode? After)> _holds = [];
     private readonly List<string> _pendingJobs = [];
+    private readonly HashSet<string> _startedJobs = new(StringComparer.Ordinal);
     private readonly CancellationTokenSource _stopSignal = new();
     private readonly TaskCompletionSource _ended = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private bool _readOnly;
@@ -525,6 +526,17 @@ internal sealed partial class Run : IRunChannel, IPipelineExtras, IVerbCalls
         lock (Record.Sync)
         {
             return _holds.Count > 0;
+        }
+    }
+
+    /// <summary>Whether the run started this job (a job-start reply named it while running). Kept for the run's life,
+    /// unlike the pending list, which drops a job once a release covers it: the job may end after that, and the run
+    /// still hears its job_ended.</summary>
+    public bool StartedJob(string jobId)
+    {
+        lock (Record.Sync)
+        {
+            return _startedJobs.Contains(jobId);
         }
     }
 

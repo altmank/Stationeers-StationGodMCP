@@ -717,7 +717,8 @@ internal sealed partial class Run
         }
     }
 
-    // Under Sync: warnings (driven_by, lint), lifted guards (passed) and jobs still running, from a reply and its rows.
+    // Under Sync: warnings (driven_by, lint), lifted guards (passed) and the jobs the run started: still running
+    // (_pendingJobs) and every one for its life (_startedJobs), from a reply and its rows.
     private void Gather(JsonNode? answer)
     {
         if (answer is not JsonObject reply)
@@ -757,9 +758,13 @@ internal sealed partial class Run
             AddOnce(Record.Passed, JsonNodes.Text(passed) ?? passed?.ToJsonString() ?? "");
         }
 
-        if (JsonNodes.Text(reply["job_id"]) is { } job && JsonNodes.IsTrue(reply["running"]) && !_pendingJobs.Contains(job))
+        if (JsonNodes.Text(reply["job_id"]) is { } job && JsonNodes.IsTrue(reply["running"]))
         {
-            _pendingJobs.Add(job);
+            _startedJobs.Add(job);
+            if (!_pendingJobs.Contains(job))
+            {
+                _pendingJobs.Add(job);
+            }
         }
     }
 

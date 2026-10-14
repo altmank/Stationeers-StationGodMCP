@@ -98,12 +98,12 @@ public sealed partial class HubSession
         }
     }
 
-    // Raised on the link's reader for every event: a relayed subscription's goes to the caller under its id. The rest
-    // (the link's own topics, other sessions' subscriptions, the mod's world_changed, which OnWorldChanged covers) are
-    // not this caller's.
+    // Raised on the link's reader for every event: a relayed subscription's goes to the caller under its id, except
+    // that a run hears only its own jobs' job_ended events. The rest (the link's own topics, other sessions'
+    // subscriptions, the mod's world_changed, which OnWorldChanged covers) are not this caller's.
     private void OnEvent(JsonElement message)
     {
-        if (Text(message, "subscription") is not { } modId)
+        if (Text(message, "subscription") is not { } modId || !HearsJob(message))
         {
             return;
         }
@@ -121,6 +121,19 @@ public sealed partial class HubSession
                 Forget(callerId, modId);
             }
         }
+    }
+
+    // A run hears job_ended events of its own jobs alone (the mod sends every job to every jobs subscription, whichever
+    // client started it); a session with no run (the --hub program) keeps the whole view. A job_ended that names no
+    // job_id is nobody's.
+    private bool HearsJob(JsonElement message)
+    {
+        if (Text(message, "event") != "job_ended" || _settings.RunChannel is not { } run)
+        {
+            return true;
+        }
+
+        return Child(message, "job") is { } job && Text(job, "job_id") is { } id && run.StartedJob(id);
     }
 
     // Raised once per new world id by the link, from the mod's world_changed or from a reconnect's welcome.

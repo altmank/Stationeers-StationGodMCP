@@ -399,13 +399,54 @@ public sealed class HubSessionTests
         Assert.Equal("""{"subscription":"s40"}""", unsubscribe.Parameters.GetRawText());
     }
 
+    [Fact]
+    public async Task AJobEndedReachesOnlyTheRunThatStartedTheJob()
+    {
+        int next = 40;
+        FakeHubLink link = new()
+        {
+            Answer = (call, _) => Task.FromResult(call.Method == "subscribe"
+                ? FakeGameLink.Ok("{\"subscription\":\"s" + next++ + "\",\"interval_s\":1.0,\"values\":0,\"frame\":5}")
+                : FakeGameLink.Ok("""{"subscription":"s40","ended":true}"""))
+        };
+        RecordingRun mine = new();
+        mine.Jobs.Add("run-3");
+        await using HubCaller own = await ScriptSession(link, mine);
+        await using HubCaller other = await ScriptSession(link);
+        await using HubCaller program = HubCaller.Start(link);
+        await program.HelloAsync();
+        await own.CallAsync("1", "subscribe", """{"topic":"jobs"}""");
+        await other.CallAsync("1", "subscribe", """{"topic":"jobs"}""");
+        await program.CallAsync("1", "subscribe", """{"topic":"jobs"}""");
+
+        link.Raise("""{"type":"event","event":"job_ended","subscription":"s40","seq":1,"frame":9,"job":{"job_id":"run-3","tool":"build"}}""");
+        link.Raise("""{"type":"event","event":"job_ended","subscription":"s40","seq":2,"frame":10,"job":{"job_id":"run-9"}}""");
+        link.Raise("""{"type":"event","event":"job_ended","subscription":"s41","seq":1,"frame":10,"job":{"job_id":"run-3"}}""");
+        link.Raise("""{"type":"event","event":"job_ended","subscription":"s42","seq":1,"frame":10,"job":{"job_id":"run-9"}}""");
+        link.Raise("""{"type":"event","event":"update","subscription":"s41","seq":1,"frame":11,"result":{"results":[]}}""");
+
+        List<string> ownLines = await own.LastLinesWithinAsync(TimeSpan.FromMilliseconds(300));
+        List<string> otherLines = await other.LastLinesWithinAsync(TimeSpan.FromMilliseconds(300));
+        List<string> programLines = await program.LastLinesWithinAsync(TimeSpan.FromMilliseconds(300));
+
+        JsonElement ownJob = FakeHubLink.Element(Assert.Single(ownLines));
+        Assert.Equal("job_ended", ownJob.GetProperty("event").GetString());
+        Assert.Equal("s1", ownJob.GetProperty("subscription").GetString());
+        Assert.Equal("run-3", ownJob.GetProperty("job").GetProperty("job_id").GetString());
+        JsonElement otherUpdate = FakeHubLink.Element(Assert.Single(otherLines));
+        Assert.Equal("update", otherUpdate.GetProperty("event").GetString());
+        JsonElement programJob = FakeHubLink.Element(Assert.Single(programLines));
+        Assert.Equal("job_ended", programJob.GetProperty("event").GetString());
+        Assert.Equal("run-9", programJob.GetProperty("job").GetProperty("job_id").GetString());
+    }
+
     // A run's session with its analysis sent, as Run builds it: MainStream 7, a script's Face.
-    private static async Task<HubCaller> ScriptSession(FakeHubLink link)
+    private static async Task<HubCaller> ScriptSession(FakeHubLink link, IRunChannel? channel = null)
     {
         HubCaller caller = HubCaller.Start(link, new HubSessionSettings(Face.Script)
         {
             Run = new JsonObject { ["id"] = "script-5" },
-            RunChannel = new RecordingRun(),
+            RunChannel = channel ?? new RecordingRun(),
             MainStream = 7
         });
         await caller.HelloAsync();
@@ -521,6 +562,10 @@ public sealed class HubSessionTests
     private sealed class RecordingRun : IRunChannel
     {
         public List<string> Messages { get; } = [];
+
+        public HashSet<string> Jobs { get; } = [];
+
+        public bool StartedJob(string jobId) => Jobs.Contains(jobId);
 
         public Task AnalysisAsync(JsonElement message)
         {

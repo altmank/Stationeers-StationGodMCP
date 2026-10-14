@@ -210,6 +210,257 @@ class SubscribedWatchTests(HubCase):
         self.assertEqual(1, len(self.params("verb")))
 
 
+class ChangesTests(HubCase):
+    """sg.changes where the hub has no subscriptions: the poll fallback, the timeout and a stop."""
+
+    READS = [{"id": "5", "logic": "Pressure"}]
+
+    def test_the_poll_fallback_yields_only_a_changed_reading(self):
+        values = iter([1.0, 1.0, 2.0])
+
+        def handler(method, params):
+            if method == "wait":
+                return ok({})
+            return ok({"results": [{"value": next(values)}]})
+
+        self.handler = handler
+        seen = []
+        for rows in sg.changes(self.READS, timeout=60):
+            seen.append(rows[0]["value"])
+            break
+        self.assertEqual([2.0], seen)
+        self.assertEqual([], self.params("subscribe"))
+        self.assertEqual(3, len(self.params("verb")))  # the baseline read, then polls until one differs
+        self.assertEqual([("watch", 1.0), ("watch", 1.0)], [(p["kind"], p["s"]) for p in self.params("wait")])
+
+    def test_the_timeout_ends_it_without_raising(self):
+        def handler(method, params):
+            if method == "wait":
+                time.sleep(params["s"])
+            return ok({})
+
+        self.handler = handler
+        started = time.monotonic()
+        self.assertEqual([], list(sg.changes(self.READS, timeout=0.3)))
+        self.assertLess(time.monotonic() - started, 5)
+
+    def test_after_a_stop_it_ends_without_subscribing_or_reading(self):
+        source = ("try:\n    sg.wait(1)\nexcept BaseException:\n    pass\n"
+                  "seen = []\nfor rows in sg.changes([{'id': '5', 'logic': 'On'}], 600):\n    seen.append(rows)\nseen")
+        answers = iter([refused("stopped", "stopped", stopped=True)])
+        self.handler = lambda method, params: next(answers) if method == "wait" else ok({"results": []})
+        self.assertEqual([], self.run_code(source))
+        self.assertEqual([], self.params("subscribe"))
+        self.assertEqual([], self.params("verb"))
+
+
+class SubscribedChangesTests(HubCase):
+    """sg.changes on a hub that has the devices topic: the subscription, the clamp and the report run."""
+
+    features = ["pipeline", "subscriptions"]
+    READS = [{"id": "5", "logic": "Pressure"}]
+
+    def push(self, *values):
+        """One update event of this subscription, one row per value."""
+        self.hub.write({"type": "event", "event": "update", "subscription": "s1", "seq": 1, "frame": 9,
+                        "game_time_s": 3.0, "late_ms": 1.0,
+                        "result": {"results": [{"value": value} for value in values]}})
+
+    def test_each_changed_update_yields_once_with_no_reads_and_unsubscribes(self):
+        def handler(method, params):
+            if method == "subscribe":
+                return ok({"subscription": "s1", "interval_s": 1.0, "result": {"results": [{"value": 1.0}]}})
+            if method == "wait":
+                self.push(5.0)
+                self.push(5.0)  # the same rows again: no second yield
+                self.push(7.0)
+                return ok({})
+            return ok({})
+
+        self.handler = handler
+        seen = []
+        for rows in sg.changes(self.READS, timeout=60):
+            seen.append(rows[0]["value"])
+            if len(seen) == 2:
+                break
+        self.assertEqual([5.0, 7.0], seen)
+        self.assertEqual([{"reads": self.READS, "interval_s": 1.0}], self.params("subscribe"))
+        self.assertEqual([], self.params("verb"))  # a subscribed iterator makes no read logic call
+        self.assertEqual([("watch", 1.0)], [(p["kind"], p["s"]) for p in self.params("wait")])
+        self.assertEqual([{"subscription": "s1"}], self.params("unsubscribe"))
+
+    def test_every_below_the_mods_minimum_clamps_to_half_a_second(self):
+        def handler(method, params):
+            if method == "subscribe":
+                return ok({"subscription": "s1", "interval_s": params["interval_s"],
+                           "result": {"results": [{"value": 1.0}]}})
+            if method == "wait":
+                self.push(2.0)
+                return ok({})
+            return ok({})
+
+        self.handler = handler
+        for rows in sg.changes(self.READS, timeout=600, every=0.1):
+            self.assertEqual(2.0, rows[0]["value"])
+            break
+        self.assertEqual([{"reads": self.READS, "interval_s": 0.5}], self.params("subscribe"))
+        self.assertEqual([("watch", 0.5)], [(p["kind"], p["s"]) for p in self.params("wait")])
+
+    def test_a_report_run_yields_the_current_rows_once(self):
+        def handler(method, params):
+            if method == "subscribe":
+                return ok({"subscription": "s1", "result": {"results": [{"value": 1.0}]}})
+            return ok({"instant": True}) if method == "wait" else ok({})
+
+        self.handler = handler
+        self.assertEqual([[{"value": 1.0}]], list(sg.changes(self.READS, 600)))
+        self.assertEqual([{"subscription": "s1"}], self.params("unsubscribe"))
+
+    def test_the_timeout_returns_without_raising_and_unsubscribes(self):
+        def handler(method, params):
+            if method == "subscribe":
+                return ok({"subscription": "s1", "result": {"results": [{"value": 0.0}]}})
+            if method == "wait":
+                time.sleep(params["s"])
+            return ok({})
+
+        self.handler = handler
+        started = time.monotonic()
+        self.assertEqual([], list(sg.changes(self.READS, timeout=0.3)))
+        self.assertLess(time.monotonic() - started, 5)
+        self.assertEqual([{"subscription": "s1"}], self.params("unsubscribe"))
+
+    def test_a_stop_on_its_own_wait_raises_after_unsubscribing(self):
+        def handler(method, params):
+            if method == "subscribe":
+                return ok({"subscription": "s1", "result": {"results": []}})
+            if method == "wait":
+                return refused("stopped", "stopped", stopped=True)
+            return ok({})
+
+        self.handler = handler
+        with self.assertRaises(sg.Stopped):
+            list(sg.changes(self.READS, 600))
+        self.assertEqual([{"subscription": "s1"}], self.params("unsubscribe"))
+
+    def test_a_world_changed_event_falls_back_to_polling(self):
+        def handler(method, params):
+            if method == "subscribe":
+                return ok({"subscription": "s1", "result": {"results": [{"value": 1.0}]}})
+            if method == "wait":
+                self.hub.write({"type": "event", "event": "world_changed", "subscription": "s1",
+                                "world": {"id": "w2"}})
+                return ok({})
+            return ok({"results": [{"value": 2.0}]})
+
+        self.handler = handler
+        seen = []
+        for rows in sg.changes(self.READS, timeout=60):
+            seen.append(rows[0]["value"])
+            break
+        self.assertEqual([2.0], seen)
+        self.assertEqual(1, len(self.params("verb")))  # the poll that found the change
+        self.assertEqual([], self.params("unsubscribe"))  # the hub already forgot it
+
+
+class JobsTests(HubCase):
+    """sg.jobs where the hub has no subscriptions: it ends without yielding, and a stop ends it."""
+
+    def test_a_hub_without_subscriptions_ends_it_without_yielding(self):
+        self.handler = lambda method, params: ok({})
+        self.assertEqual([], list(sg.jobs(600)))
+        self.assertEqual([], self.params("subscribe"))
+
+    def test_after_a_stop_it_ends_without_subscribing(self):
+        source = ("try:\n    sg.wait(1)\nexcept BaseException:\n    pass\n"
+                  "seen = []\nfor job in sg.jobs(600):\n    seen.append(job)\nseen")
+        answers = iter([refused("stopped", "stopped", stopped=True)])
+        self.handler = lambda method, params: next(answers) if method == "wait" else ok({})
+        self.assertEqual([], self.run_code(source))
+        self.assertEqual([], self.params("subscribe"))
+
+
+class SubscribedJobsTests(HubCase):
+    """sg.jobs on a hub that has the jobs topic: the events, the order and the ways it ends."""
+
+    features = ["pipeline", "subscriptions"]
+
+    def subscribed(self):
+        return ok({"subscription": "s1", "interval_s": 1.0, "values": 0, "frame": 5})
+
+    def test_it_yields_the_mods_job_objects_oldest_first(self):
+        first = {"job_id": "run-3", "tool": "build", "status": "done", "placed": [{"reference_id": "1"}]}
+        second = {"job_id": "run-4", "tool": "swap", "status": "error", "error": {"code": "x", "message": "y"}}
+
+        def handler(method, params):
+            if method == "subscribe":
+                return self.subscribed()
+            if method == "wait":
+                for job in (first, second):
+                    self.hub.write({"type": "event", "event": "job_ended", "subscription": "s1", "seq": 1,
+                                    "frame": 9, "job": job})
+            return ok({})
+
+        self.handler = handler
+        seen = []
+        for job in sg.jobs(60):
+            seen.append(job)
+            if len(seen) == 2:
+                break
+        self.assertEqual([first, second], seen)
+        self.assertEqual([{"topic": "jobs"}], self.params("subscribe"))
+        self.assertEqual([{"subscription": "s1"}], self.params("unsubscribe"))
+        self.assertEqual([], self.params("verb"))
+        self.assertEqual([("watch", 1.0)], [(p["kind"], p["s"]) for p in self.params("wait")])
+
+    def test_the_timeout_ends_it_without_raising_and_unsubscribes(self):
+        def handler(method, params):
+            if method == "subscribe":
+                return self.subscribed()
+            if method == "wait":
+                time.sleep(params["s"])
+            return ok({})
+
+        self.handler = handler
+        started = time.monotonic()
+        self.assertEqual([], list(sg.jobs(0.3)))
+        self.assertLess(time.monotonic() - started, 5)
+        self.assertEqual([{"subscription": "s1"}], self.params("unsubscribe"))
+
+    def test_a_subscription_ended_event_ends_it_without_raising(self):
+        def handler(method, params):
+            if method == "subscribe":
+                return self.subscribed()
+            if method == "wait":
+                self.hub.write({"type": "event", "event": "subscription_ended", "subscription": "s1",
+                                "reason": "stream_end"})
+            return ok({})
+
+        self.handler = handler
+        self.assertEqual([], list(sg.jobs(600)))
+        self.assertEqual([], self.params("unsubscribe"))  # the hub already forgot it
+
+    def test_a_report_run_ends_at_its_first_wait_without_yielding(self):
+        def handler(method, params):
+            if method == "subscribe":
+                return self.subscribed()
+            return ok({"instant": True}) if method == "wait" else ok({})
+
+        self.handler = handler
+        self.assertEqual([], list(sg.jobs(600)))
+        self.assertEqual([], self.params("verb"))
+
+    def test_a_refused_subscribe_ends_it_without_yielding(self):
+        def handler(method, params):
+            if method == "subscribe":
+                return refused("subscription_limit", "1,024 values is the limit for one subscription; poll instead")
+            return ok({})
+
+        self.handler = handler
+        self.assertEqual([], list(sg.jobs(600)))
+        self.assertEqual([], self.params("wait"))
+
+
 class HoldTests(HubCase):
     def setUp(self):
         super().setUp()
