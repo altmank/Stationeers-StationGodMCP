@@ -68,7 +68,7 @@ public sealed class FindFiltersAndSlimRepliesTests
     }
 
     private static RunReportView Report() => new RunReportView(
-        new RunHeaderView("place_cables", "dry_run", null, "heavy", null),
+        new RunHeaderView("build cable", "dry_run", null, "heavy", null),
         new RunCellsView(new List<RunCellView>(), 12, 10, 2, 0, new List<RunRemovalView>(), 0),
         new RunMaterialsView(null,
             new List<UpgradeCoilView>

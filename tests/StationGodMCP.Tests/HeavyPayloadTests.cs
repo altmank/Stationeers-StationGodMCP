@@ -139,7 +139,7 @@ public sealed class HeavyPayloadTests
     [Fact]
     public void ABriefBuildPollDropsPreflightAndFinalCheck()
     {
-        BuildJobView job = new BuildJobView("place-3", "place_structure", "applied", new { big = true },
+        BuildJobView job = new BuildJobView("place-3", "build structure", "applied", new { big = true },
             new BuildJobResult(new { big = true }, new BuildLog(), new List<BuildCheckView>(), null));
         JObject json = JObject.Parse(WireCheck.New(BuildJobView.Brief(job)));
 
@@ -152,7 +152,7 @@ public sealed class HeavyPayloadTests
     [Fact]
     public void ARefusedBuildPollKeepsTheFinalCheckThatSaysWhy()
     {
-        BuildJobView job = new BuildJobView("place-4", "place_structure", "refused", new { big = true },
+        BuildJobView job = new BuildJobView("place-4", "build structure", "refused", new { big = true },
             new BuildJobResult(new { problems = 1 }, new BuildLog(), new List<BuildCheckView>(),
                 new ErrorView("final_check_failed", "x")));
         JObject json = JObject.Parse(WireCheck.New(BuildJobView.Brief(job)));
@@ -164,7 +164,7 @@ public sealed class HeavyPayloadTests
     [Fact]
     public void ABriefPollPassesAnyOtherViewThrough()
     {
-        JobQueuedView queued = new JobQueuedView("run-8", "place_structure", 1, "run-7", null);
+        JobQueuedView queued = new JobQueuedView("run-8", "build structure", 1, "run-7", null);
 
         Assert.Same(queued, BuildJobView.Brief(queued));
         Assert.Same(queued, RunJobView.Brief(queued));

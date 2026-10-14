@@ -42,7 +42,7 @@ internal static class RemoveStructureApi
                     args.OptionalBool(RefundArgs.Flag));
                 object started = JobSnapshots.Record(
                     BuildJobs.Start("remove", removing, args.OptionalBool("wait") ?? false, acknowledge),
-                    "remove_structure", plan.Takedowns.ConvertAll(takedown => takedown.Piece), source);
+                    "remove structure", plan.Takedowns.ConvertAll(takedown => takedown.Piece), source);
                 return run.Verbose ? started : JobStartReplies.Brief(started, JobPreflightSummaryView.Of(preflight));
             default:
                 throw ApiErrors.InvalidArgument(Vocabulary.Text("Pass {arg:job_id}, or {arg:reference_ids}."));

@@ -303,7 +303,7 @@ public sealed class StructureSwapWireTests
     internal static StructureSwapReportView Report(List<UpgradeProblemView> problems, string status = "dry_run",
         string? jobId = null)
     {
-        UpgradeHeader header = new UpgradeHeader("replace_walls", "StructureCompositeWall", status, jobId,
+        UpgradeHeader header = new UpgradeHeader("swap wall", "StructureCompositeWall", status, jobId,
             new List<string>());
         StructureFaceView face = new StructureFaceView(new PositionView(2, 1, 1),
             new List<PositionView> { new PositionView(1, 1, 1), new PositionView(3, 1, 1) },
@@ -341,7 +341,7 @@ public sealed class StructureSwapWireTests
         string json = WireCheck.New(Report(new List<UpgradeProblemView>()));
 
         Assert.StartsWith(
-            "{\"tool\":\"replace_walls\",\"target\":\"StructureCompositeWall\",\"status\":\"dry_run\"," +
+            "{\"tool\":\"swap wall\",\"target\":\"StructureCompositeWall\",\"status\":\"dry_run\"," +
             "\"job_id\":null,\"ready\":true,\"problems\":[],\"pieces_total\":3,\"to_swap\":1,\"kept\":2," +
             "\"unmatched\":0,\"pieces\":[{\"reference_id\":\"301\",\"prefab_name\":\"StructureWallIron\"," +
             "\"position\":{\"x\":2.0,\"y\":1.0,\"z\":1.0},\"rotation_deg\":{\"x\":0.0,\"y\":90.0,\"z\":0.0}," +
@@ -391,15 +391,15 @@ public sealed class StructureSwapWireTests
             new List<string>());
         StructureRoomCheckView rooms = new StructureRoomCheckView(true, 3, new List<UpgradeProblemView>(),
             new List<StructureRoomResultView> { room }, new List<StructureRoomView>());
-        StructureSwapJobView job = new StructureSwapJobView("replace-1", "replace_walls", "applied",
+        StructureSwapJobView job = new StructureSwapJobView("replace-1", "swap wall", "applied",
             Report(new List<UpgradeProblemView>(), "scheduled", "replace-1"),
             new StructureSwapJobResult(null, log,
                 new StructureChecks(new StructureHeldCheckView(new List<UpgradeProblemView>()), rooms), null));
 
         string json = WireCheck.New(job);
 
-        Assert.StartsWith("{\"job_id\":\"replace-1\",\"tool\":\"replace_walls\",\"status\":\"applied\"," +
-                          "\"preflight\":{\"tool\":\"replace_walls\"", json);
+        Assert.StartsWith("{\"job_id\":\"replace-1\",\"tool\":\"swap wall\",\"status\":\"applied\"," +
+                          "\"preflight\":{\"tool\":\"swap wall\"", json);
         Assert.Contains(
             "\"final_check\":null,\"swapped\":[{\"old_reference_id\":\"301\",\"new_reference_id\":\"302\"," +
             "\"prefab_name\":\"StructureWallIron\",\"target_prefab_name\":\"StructureCompositeWall\"}]," +
@@ -422,7 +422,7 @@ public sealed class StructureSwapWireTests
             StoppedAt = new StructureStopView(new ThingId(301), new ErrorView("placement_mismatch", "m"), true, true,
                 null)
         };
-        StructureSwapJobView job = new StructureSwapJobView("replace-2", "replace_frames", "stopped",
+        StructureSwapJobView job = new StructureSwapJobView("replace-2", "swap frame", "stopped",
             Report(new List<UpgradeProblemView>()), new StructureSwapJobResult(null, log, StructureChecks.None, null));
 
         Assert.Contains(
@@ -434,7 +434,7 @@ public sealed class StructureSwapWireTests
     [Fact]
     public void AWaitingJobHasNoChecksYet()
     {
-        string json = WireCheck.New(new StructureSwapJobView("replace-3", "replace_walls", "waiting",
+        string json = WireCheck.New(new StructureSwapJobView("replace-3", "swap wall", "waiting",
             Report(new List<UpgradeProblemView>()), null));
         Assert.Contains("\"held_check\":null,\"room_check\":null,\"error\":null}", json);
     }

@@ -40,7 +40,7 @@ internal static class BuildStructure
 internal static class StructureBuild
 {
     // The job's name in its status, in inspect job and in its undo record.
-    private const string JobTool = "place_structure";
+    private const string JobTool = "build structure";
 
     /// <summary>The guard a lint problem was let through on, for the rows about it.</summary>
     private static readonly string[] LintLifted = { WriteLint.Guard };

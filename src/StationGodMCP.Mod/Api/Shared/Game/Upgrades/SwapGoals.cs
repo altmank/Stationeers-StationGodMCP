@@ -156,7 +156,7 @@ internal sealed class CableUpgrade : GradeUpgrade
         _target = target;
     }
 
-    internal override string Tool => "upgrade_cables";
+    internal override string Tool => "swap cable";
 
     internal override string Target => CableFamily.NameOf(_target);
 
@@ -173,7 +173,7 @@ internal sealed class CableUpgrade : GradeUpgrade
 /// </summary>
 internal sealed class PipeUpgrade : GradeUpgrade
 {
-    internal override string Tool => "upgrade_pipes";
+    internal override string Tool => "swap pipe";
 
     internal override string Target => "insulated";
 
@@ -204,7 +204,7 @@ internal sealed class PipeUpgrade : GradeUpgrade
 /// </summary>
 internal sealed class PipeRepair : SwapGoal
 {
-    internal override string Tool => "upgrade_pipes";
+    internal override string Tool => "swap pipe";
 
     internal override string Target => "repair";
 

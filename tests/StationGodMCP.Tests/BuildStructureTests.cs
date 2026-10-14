@@ -346,7 +346,7 @@ public sealed class BuildViewTests
             new ThingView(new ThingId(9), "Human", "Player"), false);
 
         JObject json = JObject.Parse(WireCheck.New(report));
-        Assert.Equal("place_structure", (string?)json["tool"]);
+        Assert.Equal("build structure", (string?)json["tool"]);
         Assert.True((bool)json["ready"]!);
         Assert.Equal("network_piece", (string?)json["warnings"]![0]!["code"]);
         JToken first = json["placements"]![0]!;
@@ -365,7 +365,7 @@ public sealed class BuildViewTests
     {
         BuildLog log = new BuildLog();
         log.Removed.Add(new BuiltPieceView(0, new ThingView(new ThingId(5), "StructureWallIron", "Wall")));
-        BuildJobView job = new BuildJobView("remove-1", "remove_structure", "applied", new { tool = "x" },
+        BuildJobView job = new BuildJobView("remove-1", "remove structure", "applied", new { tool = "x" },
             new BuildJobResult(null, log,
                 new List<BuildCheckView> { new BuildCheckView(0, new ThingId(5), new List<string>()) }, null));
 

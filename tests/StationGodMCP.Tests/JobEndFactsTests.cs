@@ -32,7 +32,7 @@ public sealed class JobEndFactsTests
         BuildLog log = new BuildLog();
         log.Placed.Add(new BuiltPieceView(0, new ThingView(new ThingId(7), "StructureWallIron", "Wall")));
         log.Removed.Add(new BuiltPieceView(1, new ThingView(new ThingId(5), "StructureFrame", "Frame")));
-        BuildJobView job = new BuildJobView("place-3", "place_structure", "applied_with_differences",
+        BuildJobView job = new BuildJobView("place-3", "build structure", "applied_with_differences",
             new { preflight = "kept out" },
             new BuildJobResult(new { final_check = "kept out" }, log,
                 new List<BuildCheckView> { new BuildCheckView(0, new ThingId(7), new List<string> { "moved" }) },
@@ -42,7 +42,7 @@ public sealed class JobEndFactsTests
 
         Assert.Equal(new JObject
         {
-            ["job_id"] = "place-3", ["tool"] = "place_structure", ["status"] = "applied_with_differences",
+            ["job_id"] = "place-3", ["tool"] = "build structure", ["status"] = "applied_with_differences",
             ["error"] = new JObject { ["code"] = "stopped", ["message"] = "A step failed." },
             ["removed"] = new JArray("5"),
             ["placed"] = new JArray(new JObject { ["reference_id"] = "7", ["prefab_name"] = "StructureWallIron" })
@@ -52,10 +52,10 @@ public sealed class JobEndFactsTests
     [Fact]
     public void AJobThatChangedNothingCarriesNoLists()
     {
-        JObject facts = JobEndFacts.Of(Wire(new RunJobView("run-2", "place_cables", "refused", null,
+        JObject facts = JobEndFacts.Of(Wire(new RunJobView("run-2", "build cable", "refused", null,
             new RunJobResultView(null, new RunLogView(), null, null))));
 
-        Assert.Equal(new JObject { ["job_id"] = "run-2", ["tool"] = "place_cables", ["status"] = "refused" }, facts);
+        Assert.Equal(new JObject { ["job_id"] = "run-2", ["tool"] = "build cable", ["status"] = "refused" }, facts);
     }
 
     [Fact]
@@ -70,7 +70,7 @@ public sealed class JobEndFactsTests
             log.AddCreated("run", id);
         }
 
-        RunJobView job = new RunJobView("run-9", "place_pipes", "applied", null,
+        RunJobView job = new RunJobView("run-9", "build pipe", "applied", null,
             new RunJobResultView(null, log, null, null));
         int whole = Encoding.UTF8.GetByteCount(JsonConvert.SerializeObject(job, ApiJson.Settings));
         int facts = Encoding.UTF8.GetByteCount(JobEndFacts.Of(Wire(job)).ToString(Formatting.None));

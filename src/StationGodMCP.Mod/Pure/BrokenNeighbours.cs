@@ -114,7 +114,7 @@ internal static class ReplaceInPlace
     /// <summary>The refusal's advice: the call, run as a dry run first.</summary>
     internal static string Advice(string placeTool, long id, PieceModel piece, string? grade) =>
         "To replace it in one job, as a player would: " + Call(placeTool, id, piece, grade) +
-        Vocabulary.Text(" (a dry run first, then {arg:dry_run} false and {arg:confirm} true).");
+        Vocabulary.Text(" (it reports first; {arg:confirm} true builds).");
 
     // The cell with the lowest (sign -1) or highest (sign 1) x + y + z: the two ends of a straight piece.
     private static GridCell Extreme(IReadOnlyList<GridCell> cells, int sign)

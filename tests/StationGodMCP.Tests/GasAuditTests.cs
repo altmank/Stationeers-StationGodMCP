@@ -315,9 +315,9 @@ public sealed class GasAuditTests
     public void APipeRunCarriesItsGasCheckAndACableRunDoesNot()
     {
         GasCheckView check = CheckWith(true, 0);
-        RunJobView pipes = new RunJobView("run-3", "place_pipes", "applied", null!,
+        RunJobView pipes = new RunJobView("run-3", "build pipe", "applied", null!,
             new RunJobResultView(null, null, null, null, check));
-        RunJobView cables = new RunJobView("run-4", "place_cables", "applied", null!,
+        RunJobView cables = new RunJobView("run-4", "build cable", "applied", null!,
             new RunJobResultView(null, null, null, null));
 
         JObject json = JObject.Parse(WireCheck.New(pipes));

@@ -225,7 +225,7 @@ internal sealed class PlaceWork : BuildWork
         TouchesPipes = touchesPipes;
     }
 
-    internal override string Tool => "place_structure";
+    internal override string Tool => "build structure";
 
     internal override object Preflight => _preflight;
 
@@ -466,7 +466,7 @@ internal sealed class RemoveWork : BuildWork
         TouchesPipes = touchesPipes;
     }
 
-    internal override string Tool => "remove_structure";
+    internal override string Tool => "remove structure";
 
     internal override object Preflight => _preflight;
 

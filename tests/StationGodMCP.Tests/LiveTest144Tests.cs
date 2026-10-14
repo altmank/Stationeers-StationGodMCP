@@ -179,7 +179,7 @@ public sealed class LiveTest144Tests
             [403] = new ThingSnapshot(403, "StructureWallLight", new Vec3(720, 201, 668),
                 CubeRotation.FromFacing(S("+z"), S("+y")), 0, null)
         };
-        JobFacts job = new JobFacts("run-9", "remove_cables", "applied", new List<(long, string?)>(),
+        JobFacts job = new JobFacts("run-9", "remove cable", "applied", new List<(long, string?)>(),
             new List<long> { 400, 401, 402, 403 }, snapshots);
         UndoPlan plan = UndoPlanner.Plan(job, _ => null);
         Assert.True(plan.Ready);
@@ -198,7 +198,7 @@ public sealed class LiveTest144Tests
         {
             [410] = Piece(410, "pipe", null, (RunModels.At(0, 0, 0), new[] { "+x", "-x" }))
         };
-        JobFacts job = new JobFacts("run-10", "remove_pipes", "applied", new List<(long, string?)>(),
+        JobFacts job = new JobFacts("run-10", "remove pipe", "applied", new List<(long, string?)>(),
             new List<long> { 410 }, snapshots);
         UndoPlan plan = UndoPlanner.Plan(job, _ => null);
         Assert.False(plan.Ready);

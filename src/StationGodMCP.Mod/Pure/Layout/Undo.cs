@@ -299,8 +299,8 @@ internal static class UndoPlanner
 {
     internal static readonly string[] Tools =
     {
-        "place_cables", "place_pipes", "place_chutes", "remove_cables", "remove_pipes", "remove_chutes",
-        "place_structure", "remove_structure"
+        "build cable", "build pipe", "build chute", "remove cable", "remove pipe", "remove chute",
+        "build structure", "remove structure"
     };
 
     private static readonly string[] Finished =

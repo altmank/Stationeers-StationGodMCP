@@ -92,9 +92,9 @@ public sealed class BrokenNeighbourTests
             new[] { End(cell, 5, 0, 0), End(cell, -5, 0, 0), End(cell, 0, 0, 5) }, null);
 
         Assert.Equal(
-            "place_pipes {piece: {at: [725, 206.5, 683], ends: [\"+x\", \"-x\", \"+z\"]}, grade: \"gas\", " +
+            "build pipe {piece: {at: [725, 206.5, 683], ends: [\"+x\", \"-x\", \"+z\"]}, grade: \"gas\", " +
             "remove_ids: [\"2243415\"]}",
-            ReplaceInPlace.Call("place_pipes", 2243415, junction, "gas"));
+            ReplaceInPlace.Call("build pipe", 2243415, junction, "gas"));
     }
 
     [Fact]
@@ -105,20 +105,20 @@ public sealed class BrokenNeighbourTests
         GridCell c = new GridCell(20, 5, 0);
         PieceModel straight = new PieceModel(9, new[] { b, c, a }, new[] { End(a, -5, 0, 0), End(c, 5, 0, 0) }, null);
 
-        Assert.Equal("place_cables {waypoints: [[1, 0.5, 0], [2, 0.5, 0]], grade: \"heavy\", remove_ids: [\"9\"]}",
-            ReplaceInPlace.Call("place_cables", 9, straight, "heavy"));
+        Assert.Equal("build cable {waypoints: [[1, 0.5, 0], [2, 0.5, 0]], grade: \"heavy\", remove_ids: [\"9\"]}",
+            ReplaceInPlace.Call("build cable", 9, straight, "heavy"));
     }
 
     [Fact]
-    public void TheAdviceSaysToDryRunFirstAndNamesAMissingGrade()
+    public void TheAdviceSaysItReportsFirstAndNamesAMissingGrade()
     {
         GridCell cell = new GridCell(0, 0, 0);
-        string advice = ReplaceInPlace.Advice("place_pipes", 7, new PieceModel(7, new[] { cell },
+        string advice = ReplaceInPlace.Advice("build pipe", 7, new PieceModel(7, new[] { cell },
             new[] { End(cell, 0, 5, 0) }, null), null);
 
-        Assert.StartsWith("To replace it in one job, as a player would: place_pipes {piece:", advice);
+        Assert.StartsWith("To replace it in one job, as a player would: build pipe {piece:", advice);
         Assert.Contains("grade: \"<its grade>\"", advice);
-        Assert.EndsWith("(a dry run first, then dry_run false and confirm true).", advice);
+        Assert.EndsWith("(it reports first; confirm true builds).", advice);
     }
 
     [Theory]

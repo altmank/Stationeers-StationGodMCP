@@ -37,7 +37,7 @@ public sealed class CablesRound3Tests
     {
         ThingSnapshot burnt = new ThingSnapshot(621, "StructureCableStraightBurnt", new Vec3(-1126.5, 232, -701),
             null, 0, null, null, burnt: true);
-        JobFacts job = new JobFacts("run-31", "place_cables", "applied",
+        JobFacts job = new JobFacts("run-31", "build cable", "applied",
             new List<(long, string?)> { (645, "StructureCableStraight") }, new List<long> { 621 },
             new Dictionary<long, ThingSnapshot> { [621] = burnt });
 

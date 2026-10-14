@@ -201,7 +201,7 @@ public sealed class CleanCablesWireTests
 {
     private static UpgradeReportView Report(UpgradeCleanView? ends, UpgradeDeadEnds? deadEnds)
     {
-        UpgradeHeader header = new UpgradeHeader("clean_cables", "minimal", "dry_run", null, new List<string>());
+        UpgradeHeader header = new UpgradeHeader("swap cable", "minimal", "dry_run", null, new List<string>());
         UpgradeTargetView target =
             new UpgradeTargetView("StructureCableStraight", new RotationView(0, 90, 0), false, 0);
         UpgradePieceView piece = new UpgradePieceView(
@@ -245,9 +245,9 @@ public sealed class CleanCablesWireTests
     {
         UpgradeSwapLog log = new UpgradeSwapLog();
         log.Removed.Add(new ThingId(5));
-        UpgradeJobView removed = new UpgradeJobView("upgrade-3", "clean_pipes", "applied", Report(null, null),
+        UpgradeJobView removed = new UpgradeJobView("upgrade-3", "swap pipe", "applied", Report(null, null),
             new UpgradeJobResult(null, log, null, null));
-        UpgradeJobView none = new UpgradeJobView("upgrade-4", "clean_pipes", "applied", Report(null, null),
+        UpgradeJobView none = new UpgradeJobView("upgrade-4", "swap pipe", "applied", Report(null, null),
             new UpgradeJobResult(null, new UpgradeSwapLog(), null, null));
 
         Assert.Contains("\"swapped_count\":0,\"removed\":[\"5\"],\"not_swapped\":[]", WireCheck.New(removed));

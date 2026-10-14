@@ -27,9 +27,9 @@ internal sealed class ChuteRunKind : RunKind
 
     internal override UpgradeFamily Family => _family;
 
-    internal override string PlaceTool => "place_chutes";
+    internal override string PlaceTool => "build chute";
 
-    internal override string RemoveTool => "remove_chutes";
+    internal override string RemoveTool => "remove chute";
 
     internal override string[] GradeNames => new[] { "chute" };
 

@@ -64,7 +64,7 @@ public sealed class UndoFactsSourceTests
         UndoFactsSource.Kept source = Assert.IsType<UndoFactsSource.Kept>(
             UndoFactsSource.Choose(Wire(Run()), snapshotsKept: false, stale));
 
-        Assert.Equal("place_pipes", (string?)source.Facts["tool"]);
+        Assert.Equal("build pipe", (string?)source.Facts["tool"]);
         Assert.Equal(new long[] { 101, 102 }, JobEndFacts.Created(source.Facts).ConvertAll(created => created.Id).ToArray());
     }
 
@@ -127,7 +127,7 @@ public sealed class UndoFactsSourceTests
     }
 
     private static JobFacts Facts(JObject facts, string status) =>
-        new JobFacts("run-7", "place_pipes", status, JobEndFacts.Created(facts), JobEndFacts.Removed(facts), Snapshots);
+        new JobFacts("run-7", "build pipe", status, JobEndFacts.Created(facts), JobEndFacts.Removed(facts), Snapshots);
 
     // What the run left: its two pieces stand, the two it removed are gone.
     private static string? Standing(long id) => id switch
@@ -140,7 +140,7 @@ public sealed class UndoFactsSourceTests
     private static ThingSnapshot Snapshot(long id) =>
         new ThingSnapshot(id, "StructurePipeStraight", new Vec3(id, 0, 0), CubeRotation.Identity, 0, null);
 
-    // A place_pipes run that built 101 (new) and 102 (a tee in place of 60), and removed 55.
+    // A build pipe run that built 101 (new) and 102 (a tee in place of 60), and removed 55.
     private static RunJobView Run()
     {
         RunLogView log = new RunLogView();
@@ -150,7 +150,7 @@ public sealed class UndoFactsSourceTests
         log.PlacedPieces.Add(new ThingView(new ThingId(101), "StructurePipeStraight", "Pipe"));
         log.AddCreated("run", new ThingId(101));
         log.AddCreated("run", new ThingId(102));
-        return new RunJobView("run-7", "place_pipes", "applied", null, new RunJobResultView(null, log, null, null));
+        return new RunJobView("run-7", "build pipe", "applied", null, new RunJobResultView(null, log, null, null));
     }
 
     private static BuildJobView StructureJob()
@@ -158,7 +158,7 @@ public sealed class UndoFactsSourceTests
         BuildLog log = new BuildLog();
         log.Placed.Add(new BuiltPieceView(0, new ThingView(new ThingId(7), "StructureWallIron", "Wall")));
         log.Removed.Add(new BuiltPieceView(1, new ThingView(new ThingId(5), "StructureFrame", "Frame")));
-        return new BuildJobView("place-3", "place_structure", "applied", null,
+        return new BuildJobView("place-3", "build structure", "applied", null,
             new BuildJobResult(null, log, new List<BuildCheckView>(), null));
     }
 

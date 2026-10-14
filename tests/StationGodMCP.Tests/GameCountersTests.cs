@@ -205,7 +205,7 @@ public sealed class GameCountersTests
     {
         KeptJobs kept = new KeptJobs(1000, 600);
         kept.Pin("place-1", new CallContext("hub", 4));
-        kept.Snapshots.Put("place-1", new RecordedJob("remove_structure",
+        kept.Snapshots.Put("place-1", new RecordedJob("remove structure",
             new Dictionary<long, ThingSnapshot>(), JobSource.Unknown), 512);
         kept.Finals.Put("place-1", new object(), 300);
         kept.Finals.Put("place-2", new object(), 200);

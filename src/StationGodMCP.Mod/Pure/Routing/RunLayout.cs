@@ -64,7 +64,7 @@ internal sealed class RunSurroundings
 
     internal Dictionary<GridCell, string> Blocked { get; } = new Dictionary<GridCell, string>();
 
-    /// <summary>The tool whose split_long_straights splits the family's long straights (clean_pipes for pipes); null
+    /// <summary>The tool whose split_long_straights splits the family's long straights (swap pipe for pipes); null
     /// when the family has none.</summary>
     internal string? SplitTool { get; set; }
 

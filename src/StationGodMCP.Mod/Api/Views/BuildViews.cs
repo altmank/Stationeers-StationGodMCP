@@ -248,7 +248,7 @@ internal sealed class PlaceReportView
     internal PlaceReportView(BuildHeader header, List<PlacementView> placements, List<BuildMaterialView> materials,
         ThingView? from, bool free)
     {
-        Tool = "place_structure";
+        Tool = "build structure";
         Status = header.Status;
         JobId = header.JobId;
         Ready = header.Problems.Count == 0;
@@ -351,7 +351,7 @@ internal sealed class RemoveReportView
     internal RemoveReportView(BuildHeader header, List<RemovalView> removals, List<UpgradeAmountView> refund,
         object refundTo, ThingView? from, List<BurstView>? willBurst = null, RefundPlanView? refundPlan = null)
     {
-        Tool = "remove_structure";
+        Tool = "remove structure";
         Status = header.Status;
         JobId = header.JobId;
         Ready = header.Problems.Count == 0;

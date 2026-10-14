@@ -118,7 +118,7 @@
     "\", remove_ids: [\"",
     ", ends: [",
     ", grade: \"",
-    "To replace it in one job, as a player would: {Call(placeTool, id, piece, grade)} (a dry run first, then dry_run false and confirm true).",
+    "To replace it in one job, as a player would: {Call(placeTool, id, piece, grade)} (it reports first; confirm true builds).",
     "piece: {at: ",
     "waypoints: ["
   ],

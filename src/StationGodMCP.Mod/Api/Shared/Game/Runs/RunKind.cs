@@ -195,11 +195,11 @@ internal sealed class CableRunKind : RunKind
 
     internal override UpgradeFamily Family => _family;
 
-    internal override string PlaceTool => "place_cables";
+    internal override string PlaceTool => "build cable";
 
-    internal override string RemoveTool => "remove_cables";
+    internal override string RemoveTool => "remove cable";
 
-    internal override string CleanTool => "clean_cables";
+    internal override string CleanTool => "swap cable";
 
     internal override string[] GradeNames => new[] { "normal", "heavy", "super_heavy" };
 
@@ -265,11 +265,11 @@ internal sealed class PipeRunKind : RunKind
 
     internal override UpgradeFamily Family => _family;
 
-    internal override string PlaceTool => "place_pipes";
+    internal override string PlaceTool => "build pipe";
 
-    internal override string RemoveTool => "remove_pipes";
+    internal override string RemoveTool => "remove pipe";
 
-    internal override string CleanTool => "clean_pipes";
+    internal override string CleanTool => "swap pipe";
 
     internal override string[] GradeNames => new[] { "gas", "liquid", "insulated_gas", "insulated_liquid" };
 

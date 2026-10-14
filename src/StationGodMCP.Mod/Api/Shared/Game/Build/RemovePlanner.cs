@@ -951,7 +951,7 @@ internal static class RemovePlanner
         }
 
         List<ThingId> ids = pieces.ConvertAll(takedown => new ThingId(takedown.Piece.ReferenceId));
-        RunRequest request = new RunRequest(kind, "remove_structure", null,
+        RunRequest request = new RunRequest(kind, "remove structure", null,
             new RunRemoval(ids, new List<GridCell>(), null, alongside),
             new RunOptions(EditAllowance.Nothing, null, RefundRoute.Nothing, RunArgs.DefaultListLimit));
         RunPlan runPlan = RunPlanner.Plan(request);

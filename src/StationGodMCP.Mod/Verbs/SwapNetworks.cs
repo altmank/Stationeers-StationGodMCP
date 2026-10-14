@@ -223,7 +223,7 @@ internal static class SwapNetworks
 internal static class SwapChute
 {
     // The job's name in its status and in inspect job.
-    private const string JobTool = "clean_chutes";
+    private const string JobTool = "swap chute";
 
     internal static VerbOutcome Run(SwapChuteOptions options)
     {
@@ -278,7 +278,7 @@ internal sealed class TidyOptions
 internal static class SwapCable
 {
     // The jobs' names in their status and in inspect job.
-    private const string TidyTool = "clean_cables";
+    private const string TidyTool = "swap cable";
 
     internal static VerbOutcome Run(SwapCableOptions options) =>
         SwapNetworks.Tidyable(new CableFamily(), SwapCableOptions.Spec, "cable",
@@ -297,7 +297,7 @@ internal static class SwapCable
 internal static class SwapPipe
 {
     // The jobs' names in their status and in inspect job.
-    private const string TidyTool = "clean_pipes";
+    private const string TidyTool = "swap pipe";
 
     internal static VerbOutcome Run(SwapPipeOptions options) =>
         SwapNetworks.Tidyable(new PipeFamily(), SwapPipeOptions.Spec, "pipe",

@@ -86,7 +86,7 @@ public sealed class RemoveRunTests
             null, 0, null, null, burnt: true);
         ThingSnapshot locker = new ThingSnapshot(622, "StructureStorageLocker", new Vec3(-1124, 232, -701),
             CubeRotation.Identity, 0, null);
-        JobFacts job = new JobFacts("remove-1", "remove_structure", "applied", new List<(long, string?)>(),
+        JobFacts job = new JobFacts("remove-1", "remove structure", "applied", new List<(long, string?)>(),
             new List<long> { 621, 622 }, new Dictionary<long, ThingSnapshot> { [621] = burnt, [622] = locker });
 
         UndoPlan plan = UndoPlanner.Plan(job, _ => null);

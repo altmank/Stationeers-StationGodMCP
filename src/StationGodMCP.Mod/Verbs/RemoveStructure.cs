@@ -28,7 +28,7 @@ internal static class RemoveStructure
     private const string Removed = "removed";
 
     // The job's name in its status, in inspect job and in its undo record.
-    private const string JobTool = "remove_structure";
+    private const string JobTool = "remove structure";
 
     internal static VerbOutcome Run(RemoveStructureOptions options)
     {

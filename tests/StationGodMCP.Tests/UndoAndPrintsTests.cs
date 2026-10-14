@@ -13,7 +13,7 @@ public sealed class UndoAndPrintsTests
         new ThingSnapshot(id, "StructureCableStraightH", new Vec3(719, 200, 667.5),
             onGrid ? CubeRotation.FromFacing(RunModels.Step("+x"), RunModels.Step("+y")) : null, 0, null);
 
-    private static JobFacts Job(string status = "applied", string tool = "place_cables")
+    private static JobFacts Job(string status = "applied", string tool = "build cable")
     {
         List<(long, string?)> created = new List<(long, string?)> { (500, "StructureCableJunctionH"), (501, null) };
         Dictionary<long, ThingSnapshot> snapshots = new Dictionary<long, ThingSnapshot> { [400] = Straight(400) };
@@ -37,7 +37,7 @@ public sealed class UndoAndPrintsTests
     [Fact]
     public void AJobAlreadyUndoneSaysSoAndNamesTheUndosJobs()
     {
-        JobFacts undone = new JobFacts("run-10", "place_cables", "applied",
+        JobFacts undone = new JobFacts("run-10", "build cable", "applied",
             new List<(long, string?)> { (465, null) }, new List<long> { 463 },
             new Dictionary<long, ThingSnapshot> { [463] = Straight(463) },
             new List<UndoStep> { new UndoStep("run-11", "applied") });
@@ -55,7 +55,7 @@ public sealed class UndoAndPrintsTests
         {
             [500] = "StructureCableJunctionH", [501] = "StructureCableStraightH"
         };
-        JobFacts job = new JobFacts("run-7", "place_cables", "applied",
+        JobFacts job = new JobFacts("run-7", "build cable", "applied",
             new List<(long, string?)> { (500, "StructureCableJunctionH"), (501, null) }, new List<long> { 400 },
             new Dictionary<long, ThingSnapshot> { [400] = Straight(400) },
             new List<UndoStep> { new UndoStep("run-8", "refused") });
@@ -82,10 +82,10 @@ public sealed class UndoAndPrintsTests
     [Fact]
     public void RemovalsWithoutASnapshotOrOffTheGridCannotBeRestored()
     {
-        JobFacts noSnapshot = new JobFacts("remove-2", "remove_structure", "applied", new List<(long, string?)>(),
+        JobFacts noSnapshot = new JobFacts("remove-2", "remove structure", "applied", new List<(long, string?)>(),
             new List<long> { 900 }, new Dictionary<long, ThingSnapshot>());
         Assert.Contains(UndoPlanner.Plan(noSnapshot, _ => null).Diverged, reason => reason.Contains("no snapshot"));
-        JobFacts offGrid = new JobFacts("remove-3", "remove_structure", "applied", new List<(long, string?)>(),
+        JobFacts offGrid = new JobFacts("remove-3", "remove structure", "applied", new List<(long, string?)>(),
             new List<long> { 400 }, new Dictionary<long, ThingSnapshot> { [400] = Straight(400, false) });
         Assert.Contains(UndoPlanner.Plan(offGrid, _ => null).Diverged, reason => reason.Contains("off the grid"));
     }
@@ -94,7 +94,7 @@ public sealed class UndoAndPrintsTests
     public void OnlyFinishedPlaceAndRemoveJobsAreUndone()
     {
         Assert.False(UndoPlanner.Plan(Job("running"), _ => "x").Ready);
-        Assert.False(UndoPlanner.Plan(Job(tool: "replace_walls"), _ => "x").Ready);
+        Assert.False(UndoPlanner.Plan(Job(tool: "swap wall"), _ => "x").Ready);
         UndoPlan stopped = UndoPlanner.Plan(Job("stopped"), id => id == 400 ? null : "StructureCableJunctionH");
         Assert.Contains(stopped.Notes, note => note.Contains("stopped"));
     }

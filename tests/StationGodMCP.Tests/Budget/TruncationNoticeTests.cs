@@ -105,7 +105,7 @@ public sealed class TruncationNoticeTests
         Truncations.Begin();
         RunLogView log = new RunLogView();
         log.PlacedPieces.Add(new ThingView(new ThingId(1), "StructureCableSuperHeavyStraight", "Cable"));
-        RunJobView job = RunJobView.Brief(new RunJobView("j1", "place_cables", "applied", null,
+        RunJobView job = RunJobView.Brief(new RunJobView("j1", "build cable", "applied", null,
             new RunJobResultView(null, log, null, null)), null);
         TruncatingViews.Note(new PlanHolder(job));
 

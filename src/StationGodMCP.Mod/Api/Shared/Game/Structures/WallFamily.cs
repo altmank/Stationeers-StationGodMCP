@@ -19,7 +19,7 @@ namespace StationGodMCP.Api.Shared.Game.Structures;
 /// </summary>
 internal sealed class WallFamily : StructureFamily
 {
-    internal override string Tool => "replace_walls";
+    internal override string Tool => "swap wall";
 
     internal override string Noun => "wall";
 

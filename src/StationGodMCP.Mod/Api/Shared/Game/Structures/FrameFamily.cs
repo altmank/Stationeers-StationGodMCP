@@ -26,7 +26,7 @@ internal sealed class FrameFamily : StructureFamily
     // 0.5 m (Grid3 with SmallGridSize 0.5, SmallGridOffset 0.25), and those at +-1 m lie on the cell's faces.
     private static readonly float[] SmallOffsets = { -0.5f, 0f, 0.5f };
 
-    internal override string Tool => "replace_frames";
+    internal override string Tool => "swap frame";
 
     internal override string Noun => "frame";
 
