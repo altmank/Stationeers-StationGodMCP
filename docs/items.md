@@ -7,75 +7,78 @@ these tools need a gateway.
 
 ## Tools
 
-| Tool | What it does | Main arguments |
+| Call | What it does | Main options |
 | --- | --- | --- |
-| `find_items` | Items anywhere: on the ground, in lockers and machines, carried by players at any depth. Each with its quantity, location, chain of holders and distance. Also material loaded into machines as stock, and what SDB Silos store. | `prefab` (exact), `prefabs` (several exact names), `prefab_contains`, `name_contains`, `location` (`ground`, `player`, `stored`, `machine_stock`, `silo`), `within_id`, `near_player_m`, an area (`min` and `max`, or `near` with `radius_m`), `limit`, `offset`, `order`, `group_by` (`holder`, `prefab`), `exclude_in_use` |
-| `item_totals` | Total quantity of each item type, split into on the ground, carried, stored, machine stock and silo, with the holder that holds the most (`holders_limit` holders; one by default). | as `find_items`, and `holders_limit` (0 leaves the holders out) |
-| `find_things` | Anything by name, not only items: tanks, canisters, crates, structures, devices, players, animals. Matches the Labeller name and the game's own name. | `name_contains`, `prefab` (exact), `prefabs` (several exact names), `prefab_contains`, `kind`, `runtime_type`, `labelled_only`, `broken`, `has_atmosphere`, `near_player_m`, an area (`min` and `max`, or `near` with `radius_m`), `made_by`, `made_since`, `location`, `order` |
-| `list_containers` | Every outermost holder with at least one item in it, not carried, nearest first. A crate in a lander counts towards the lander. | `prefab_contains`, `name_contains`, `near_player_m`, `order` |
-| `container_contents` | The slots of one thing and what is in them, nested. `player` is your whole inventory. Empty slots are left out at every depth and counted in `empty_slots_omitted`; `include_empty: true` keeps them (to find a free slot). Shape it with paths through the slots: `fields: ["slots.index", "slots.occupant.prefab_name"]`, or `occupant.slots.occupant.prefab_name` for what a backpack holds. | `reference_id`, `depth` (default 3), `include_empty`, `prefab_contains`, `name_contains` (slots holding a match at any depth) |
-| `consumables` | Every food and drink in the world, with nutrition, hydration, food quality and time until it decays; packages counted by content. | none |
-| `move_item` | Move an item, or part of a stack, into a slot. | `reference_id`, `quantity`, `to_id`, `to_slot`, `merge`, `allow_in_use`, `force` (cheat); or `moves: [...]` |
-| `label` | Rename things as the hand Labeller does. | `reference_id`, `name`; or `labels: [...]` |
-| `paint` | Paint things as a spray can does, no paint used; or list the colours. | `reference_ids` with `color`, or `items: [{reference_id, color}]` |
+| `find item` | Items anywhere: on the ground, in lockers and machines, carried by players at any depth. Each with its quantity, location, chain of holders and distance. Also material loaded into machines as stock, and what SDB Silos store. | `prefab` (a whole name, a hash, a list, or parts with `*`), `name`, `location` (`ground`, `player`, `stored`, `machine_stock`, `silo`), `within`, `near` + `radius`, `box`, `limit`, `offset`, `order`, `group_by` (`holder`, `prefab`, `place`), `exclude_in_use` |
+| `find item` (`group_by: "place"`) | Total quantity of each item type, split into on the ground, carried, stored, machine stock and silo, with the holder that holds the most (`holders` holders; one by default). | as `find item`, and `holders` (0 leaves the holders out) |
+| `find thing` | Anything by name, not only items: tanks, canisters, crates, structures, devices, players, animals. Matches the Labeller name and the game's own name. | `name`, `prefab` (a whole name, a hash, a list, or parts with `*`), `category`, `runtime_type`, `labelled`, `broken`, `has_atmosphere`, `near` + `radius`, `box`, `made_by`, `made_since`, `location`, `order` |
+| `find container` | Every outermost holder with at least one item in it, not carried, nearest first. A crate in a lander counts towards the lander. | `prefab`, `name`, `near` + `radius`, `order` |
+| `inspect contents` | The slots of one thing and what is in them, nested. `player` is your whole inventory. Empty slots are left out at every depth and counted in `empty_slots_omitted`; `include: ["empty"]` keeps them (to find a free slot). Shape it with paths through the slots: `fields: ["slots.index", "slots.occupant.prefab_name"]`, or `occupant.slots.occupant.prefab_name` for what a backpack holds. | `id`, `depth` (default 3), `include: ["empty"]`, `prefab`, `name` (slots holding a match at any depth) |
+| `find food` | Every food and drink in the world, with nutrition, hydration, food quality and time until it decays; packages counted by content. | none |
+| `move item` | Move an item, or part of a stack, into a slot. | `id`, `quantity`, `to`, `slot`, `merge`, `allow: ["in_use"]`, `force` (cheat); or `moves: [...]` |
+| `write label` | Rename things as the hand Labeller does. | `id`, `label`; or `labels: [...]` |
+| `write paint` | Paint things as a spray can does, no paint used; or list the colours. | `id` with `color`, or `items: [{id, color}]` |
 
 ## Finding things
 
-- `find_items` answers "where is my iron"; `item_totals` answers "how much iron do I have". A prefab filter makes
-  these lists cheap for the game: with `prefab`, `prefabs` or `prefab_contains` the mod reads only the things of
-  those prefabs from an index it keeps in step with the game's own lists, instead of every thing in the world.
-  `prefabs: ["ItemIronIngot", "ItemSteelIngot"]` counts several items in one call; each item's `prefab_name` tells
+- `find item` answers "where is my iron"; `find item` with `group_by: "place"` answers "how much iron do I have".
+  A prefab filter makes these lists cheap for the game: with `prefab` (a whole name, a hash, a list, or parts with
+  `*`) the mod reads only the things of those prefabs from an index it keeps in step with the game's own lists,
+  instead of every thing in the world.
+  `prefab: ["ItemIronIngot", "ItemSteelIngot"]` counts several items in one call; each item's `prefab_name` tells
   them apart. Ingots loaded into a fabricator count as the ingots it would eject (`location: machine_stock`). Stock
-  cannot be moved with `move_item`: open the fabricator to eject it.
+  cannot be moved with `move item`: open the fabricator to eject it.
 - `group_by` sums the matches instead of listing each with its holder chain and position: `holder` gives one entry per
   outermost holder and prefab (`quantity`, `entries`, `location`, `holder`, its `position` and `distance_m`; loose items
-  of a prefab make one entry with no holder), `prefab` one per prefab (`quantity`, `entries`, `holders`). 360 stacks in
+  of a prefab make one entry with no holder), `prefab` one per prefab (`quantity`, `entries`, `holders`), and `place`
+  one per prefab split into ground, carried, stored, machine stock and silo, with its top `holders`. 360 stacks in
   a row of 12 lockers come to about 25 KB by holder and under 1 KB by prefab, against about 130 KB listed one by one.
-  Groups come in the order of their first entry; `limit` and `offset` page the groups.
+  Groups come in the order of their first entry; `limit` and `offset` page the groups (`place` takes neither: its
+  totals are not paged).
 - `exclude_in_use: true` leaves out parts a device is using and what is inside them (the filters of a running
   filtration machine, chips in their housings; see *Moving items*), counted in `in_use_left_out`, so a search for
   spare filters lists the spares.
-- `find_things` finds what `find_items` does not: a tank labelled `T1` is found by `T1` and by `Portable Liquid Tank`.
-- `find_things` pages with `limit` and `offset`, or walks a whole search with `cursor: true` and then `cursor_id` on
-  each next page: one scan, the first call's order, removed things skipped, the filter not checked again
-  (`tool_info {topic: "paging", subtopic: "walk"}`; protocol.md, *Walks*).
-  `min` and `max` keep only things in a box (`kind: "structure"` with a box gives the walls of one building). A
+- `find thing` finds what `find item` does not: a tank labelled `T1` is found by `T1` and by `Portable Liquid Tank`.
+- `find thing` pages with `limit` and `offset`; `order: "id"` keeps the pages still while the world changes, so a
+  whole list can be paged without gaps. In a program or a script the whole list is walked to the end for you (`help
+  {topic: "scripts"}`; architecture/hub.md, *Streams*).
+  `box` keeps only things in a box (`category: "structure"` with a box gives the walls of one building). A
   rocket's part reports `rocket_state`: its position moves while the rocket flies. A paintable thing reports
-  `color {index, name, is_default}` as `paint` reads it; a structure short of its last build state reports
-  `build_state {current, last, complete}` (`advance_build_state` finishes it).
+  `color {index, name, is_default}` as `write paint` reads it; a structure short of its last build state reports
+  `build_state {current, last, complete}` (`build finish` finishes it).
   `location` keeps things where they are: `ground` (loose), `player` (carried), `stored` (in any other slot), `built`
   (structures) or `world` (players, animals). For many hits, ask only the keys you need with `fields` (for example
   `["reference_id", "position"]`), or write the reply to a file with `output_file` (README, *Large replies*).
 - Print provenance (1.4.3+): every item a fabricator, printer or other machine makes is recorded as it is made, and a
-  stack split off a printed one keeps the record. `find_things` reports `made {maker_id, maker_prefab, maker_name,
+  stack split off a printed one keeps the record. `find thing` reports `made {maker_id, maker_prefab, maker_name,
   game_time_s, quantity, split_from}` and filters with `made_by` (a maker's id, or text in its name) and `made_since`
   (a game time, or negative seconds before now). The record lives in memory since the world was loaded (1.9.1+: leaving a world clears it).
   `runtime_type: "DynamicGasCanister"` finds every portable tank whatever its prefab or label; `has_atmosphere: true`
-  every thing that holds gas; `labelled_only: true` every label in the world. Each result says whether the Labeller can
-  rename it (`labelable`), whether the device tools take it (`is_device`) and whether `atmosphere_contents` has
+  every thing that holds gas; `labelled: true` every label in the world. Each result says whether the Labeller can
+  rename it (`labelable`), whether the device tools take it (`is_device`) and whether `inspect atmosphere` has
   something for it; a structure also reports how it stands turned (`rotation`). Every result has `is_broken` and
   `condition` (`broken`, `damaged`, `intact`, `indestructible`, `none`); `broken: true` finds every wreck, such as
   fire-burnt vents, which read 100 % health, burst pipes, which read 0 damage, and burnt cables an overload left (see
-  `thing_health`).
-- `label` renames what the hand Labeller renames. The pipe-size in-line tanks (`StructureInLineTankGas1x1` and the
+  `inspect health`).
+- `write label` renames what the hand Labeller renames. The pipe-size in-line tanks (`StructureInLineTankGas1x1` and the
   rest, insulated too) are not among them: the game has no rename for them, and StationGod keeps no names of its own,
-  so `label` refuses them with `not_labelable`. The big in-line tanks take a label. To name a small one, label a sign
+  so `write label` refuses them with `not_labelable`. The big in-line tanks take a label. To name a small one, label a sign
   or a device beside it.
 - Results are sorted nearest first and paged (`limit`, `offset`). Nearest first is measured at each call, so pages
-  taken while you walk overlap and leave gaps; to page a whole list, pass `order: "reference_id"` (also on
-  `list_containers` and `outer_frames`).
-- `within_id` must name something that exists: a mistyped id answers `thing_not_found`, not an empty result.
-- `list_containers` lists only the outermost holder: a crate in the lander, or a box in a locker, is not listed on its
-  own, and its items count towards the lander or locker. Look inside with `container_contents` or
-  `find_items {within_id}`.
+  taken while you walk overlap and leave gaps; to page a whole list, pass `order: "id"` (also on
+  `find container` and `find frame`).
+- `within` must name something that exists: a mistyped id answers `thing_not_found`, not an empty result.
+- `find container` lists only the outermost holder: a crate in the lander, or a box in a locker, is not listed on its
+  own, and its items count towards the lander or locker. Look inside with `inspect contents` or
+  `find item {within}`.
 
 ## Moving items
 
-`move_item` uses the game's own moves, as an inventory click does: slot to slot, never through the world, so ice and
+`move item` uses the game's own moves, as an inventory click does: slot to slot, never through the world, so ice and
 other perishables are never loose in the air.
 
-- `to_id` is the thing holding the slot (a locker, a belt, a suit, a player); `to_slot` is its index, as
-  `container_contents` gives it for any thing (`inspect_slots` only takes devices), or `"auto"`: a matching stack
+- `to` is the thing holding the slot (a locker, a belt, a suit, a player); `slot` is its index, as
+  `inspect contents` gives it for any thing (`inspect slots` only takes devices), or `"auto"`: a matching stack
   first, else the first empty slot that takes the item.
 - Only slots you could click in the game are used. A hidden slot (a cable coil's internal slot, a vending machine's
   store) is refused with `slot_refuses`: the game keeps it for itself, and a coil destroys whatever is in it when it is
@@ -102,7 +105,7 @@ other perishables are never loose in the air.
 - A part a device is using is not taken out (`in_use`, naming the device, its label and the slot): a chip in an IC
   housing or any other chip holder and a console's motherboard always; a filtration machine's filter, an area power
   control's or battery-run machine's battery and a Stirling engine's or portable machine's canister while the device
-  is switched on. Switch it off first, take a spare, or pass `allow_in_use: true`. Battery chargers, canister docks
+  is switched on. Switch it off first, take a spare, or pass `allow: ["in_use"]`. Battery chargers, canister docks
   and the batteries, tanks and filters of carried gear are not guarded.
 - If the game throws part way through a move but the slot holds the result, the move is reported done with the
   game's error in `warning`: do not repeat it.
@@ -111,36 +114,36 @@ other perishables are never loose in the air.
   refused because the game only drags those into a slot), `slot_occupied`, `stack_full`,
   `no_free_slot`, `planted`, `in_use`, `slot_locked`, `not_movable` (a structure) and others. A refused move changes nothing.
 
-Put 50 iron ingots into a locker's first free slot, `move_item`:
+Put 50 iron ingots into a locker's first free slot, `move item`:
 
 ```json
-{ "reference_id": "160455", "quantity": 50, "to_id": "148870", "to_slot": "auto" }
+{ "id": "160455", "quantity": 50, "to": "148870", "slot": "auto" }
 ```
 
 ## Labels and paint
 
-- `label` writes a name as the Labeller writes it: an empty name restores the game's name, names are cut to 200
+- `write label` writes a name as the Labeller writes it: an empty name restores the game's name, names are cut to 200
   characters. Only things the Labeller can rename are accepted (portable things, every device, in-line tanks, trays,
   plants, IC chips, flags); pipes, cables, frames and ordinary items answer `not_labelable`. Up to 64 renames per call.
-- `paint` with no targets lists the colours. `color` is a name, an index, or `default` for the thing's own colour. Each
+- `write paint` with no targets lists the colours. `color` is a name, an index, or `default` for the thing's own colour. Each
   result carries `previous_color`, so a later call can put it back. A thing whose colour is a state set through the
   `Color` logic type, such as the LED display, cannot be painted (`has_color_state`), as with a spray can; its
   `previous_color` is the state colour it shows. Lights paint. A thing with no colour has `index` and `name` null.
-  Up to 256 things per call.
+  Up to 256 `items` entries per call.
 - Both sync to other players and are saved with the world.
 
 ## SDB Silo
 
-`container_contents` on an SDB Silo lists its store (entries are save data, not things, so `reference_id` is null),
-`find_items` and `item_totals` count it at `location: silo`, and `silo_withdraw` and `silo_deposit` move things
+`inspect contents` on an SDB Silo lists its store (entries are save data, not things, so `reference_id` is null),
+`find item` counts it at `location: silo`, and `move item` moves things
 straight out of and into it with the silo's own bookkeeping: see [silo.md](silo.md).
 
 ## Ingot Vault
 
-With the Ingot Vault mod, `vault_deposit` and `vault_withdraw` move ingots, ores and ices straight into and out of a
-vault's store, and `vault_contents` reads it exactly: see [ingot-vault.md](ingot-vault.md).
+With the Ingot Vault mod, `move item` moves ingots, ores and ices straight into and out of a
+vault's store, and `inspect vault` reads it exactly: see [ingot-vault.md](ingot-vault.md).
 
 ## Multiplayer
 
-`move_item` works on the host only (`not_host` on a client). `label` and `paint` use the game's own calls, which sync
-to every player.
+`move item` works on the host only (`not_host` on a client). `write label` and `write paint` use the game's own calls,
+which sync to every player.

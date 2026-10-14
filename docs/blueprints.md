@@ -2,7 +2,7 @@
 
 [Back to the README](../README.md)
 
-With [BlueprintMod](https://steamcommunity.com/sharedfiles/filedetails/?id=3672138641) loaded, `paste_blueprint`
+With [BlueprintMod](https://steamcommunity.com/sharedfiles/filedetails/?id=3672138641) loaded, `build blueprint`
 pastes one of its blueprints at a position and quarter turn you give, with no player needed. BlueprintMod's console
 command `bppaste` takes both from the local player, so it cannot run on a dedicated server; this tool makes the call
 the D.B.P.U. makes instead.
@@ -11,53 +11,53 @@ BlueprintMod is optional: the mod finds it by name at run time. Without it the t
 
 BlueprintMod spawns every piece without the game's placement checks, so a paste can leave a piece no player could
 place there again: a vent with nothing behind it pastes and works, and can never be rebuilt once it breaks. Run
-`check_replaceable` over the pasted pieces, or `lint_layout` over the area (`not_replaceable`); see
-[walls-frames-structures.md](walls-frames-structures.md#could-a-player-place-it-again-145).
+`check replaceable` over the pasted pieces, or `check layout` over the area (`not_replaceable`); see
+[walls-frames-structures.md](walls-frames-structures.md#could-a-player-place-it-again-150).
 
 ## Three forms
 
 **Paste:**
 
 ```json
-{ "name": "airlock-3x3", "anchor": [701, 200, 655], "rotation": 90 }
+{ "what": "blueprint", "blueprint": "airlock-3x3", "at": [701, 200, 655], "turn": 90 }
 ```
 
-- `name`: a file in BlueprintMod's Blueprints folder, or an absolute path; either with or without `.blueprint` (an
+- `blueprint`: a file in BlueprintMod's Blueprints folder, or an absolute path; either with or without `.blueprint` (an
   absolute path with another extension is taken as given).
-- `anchor` `[x, y, z]`: the world position in metres where the blueprint's reference point lands. That is the grid
+- `at` `[x, y, z]`: the world position in metres where the blueprint's reference point lands. That is the grid
   point BlueprintMod snapped the copying player to: x and z odd whole metres, y even. A paste lines up with the grid
   when the anchor is such a point.
-- `rotation`: 0 (default), 90, 180 or 270, added to the angle the blueprint was copied at, so every piece stays on the
+- `turn`: 0 (default), 90, 180 or 270, added to the angle the blueprint was copied at, so every piece stays on the
   grid.
 
-The reply comes at once: `started`, `file`, `entries`, `anchor`, `rotation`, `copy_y_angle` and
+The reply comes at once: `job_id`, `file`, `entries`, `anchor`, `rotation`, `copy_y_angle` and
 `expected_duration_s`. BlueprintMod then places the pieces over 2 to 30 seconds (0.15 s per entry).
 
-**Progress:** `{ "status": true }` reports the last paste this tool started: `active`, `complete`, `cancelled`,
-`created`, `failed`, `skipped`, `pasted`, `standing`, and `other_active` when a paste this tool did not start is
-running. The counts stay readable after the paste ends. `created` and `pasted` are BlueprintMod's own counts: a piece
+**Progress:** `inspect {what: "job", id: "paste"}` reports the last paste this tool started: `active`, `complete`,
+`cancelled`, `created`, `failed`, `skipped`, `pasted`, `standing`, and `other_active` when a paste this tool did not
+start is running. The counts stay readable after the paste ends. `created` and `pasted` are BlueprintMod's own counts: a piece
 the game then refuses to register (its spot already taken, "Grid face may be open" in the log) still counts there,
 though it does not stand and undo finds nothing to remove. `standing` counts the pasted things that still exist. The
 pieces are placed only while the game runs: in a paused world a paste waits, whatever `expected_duration_s` said.
 
-**Undo:** `{ "undo": true }` runs BlueprintMod's `bpundo`: it cancels a running paste and removes what it placed, or
+**Undo:** `undo {id: "paste"}` runs BlueprintMod's `bpundo`: it cancels a running paste and removes what it placed, or
 removes the last finished paste. Its answer comes back as `message`. BlueprintMod keeps one undo stack for the whole
 world (`bppaste`, the D.B.P.U. and every caller of this tool), so undo removes the newest paste of anyone, not
-necessarily the one `status` reports. In a shared world, check what stands before undoing.
+necessarily the one the progress call reports. In a shared world, check what stands before undoing.
 
 ## Good to know
 
 - **Rooms are not worked out again** after a paste or an undo. Run the console command `regeneraterooms`
-  (`run_console_command`) before reading `rooms`.
+  (`server command`) before reading the rooms (`find room`).
 - **Materials:** outside creative, BlueprintMod charges DeanamicMatter from the local player. A dedicated server has
   no local player, so use a creative world there.
 - **Paused servers:** a dedicated server with no player connected may hold its world paused. BlueprintMod places pieces
-  over game time, so the paste stops part way (the `status` counts stop moving) until the console command
+  over game time, so the paste stops part way (the progress counts stop moving) until the console command
   `pause false`.
 - **Refused:** `paste_refused` with BlueprintMod's own message (the same blueprint already pasted at that position and
   turn, not enough DeanamicMatter), or while a paste (anyone's) is still placing: nothing is started, so wait until
-  `status` no longer says `active`; `blueprint_failed` (BlueprintMod threw, with its error, such as a file that is not a
-  blueprint); `invalid_argument` (no such file, naming the path it looked at; a rotation other than 0, 90, 180 or 270);
+  `active` is false; `blueprint_failed` (BlueprintMod threw, with its error, such as a file that is not a
+  blueprint); `invalid_argument` (no such file, naming the path it looked at; a turn other than 0, 90, 180 or 270);
   `game_changed` (BlueprintMod no longer has something the tool calls).
 - **Multiplayer:** host only. BlueprintMod shows its paste effect to every player and the game sends them the new
   structures.
@@ -65,6 +65,6 @@ necessarily the one `status` reports. In a shared world, check what stands befor
 ## Trying designs on a dedicated server
 
 A creative dedicated server is a safe place to try a blueprint before pasting it into a real base: paste, look at the
-result with `grid_survey`, `connections` and `rooms` (after `regeneraterooms`), undo, and paste again at another
-position or turn. When that server runs on the same machine as your game, give it its own pipe name so the two do not
+result with `survey area`, `inspect connections` and `find room` (after `regeneraterooms`), undo, and paste again at
+another position or turn. When that server runs on the same machine as your game, give it its own pipe name so the two do not
 compete for one pipe; see [install.md](install.md#two-games-on-one-machine).

@@ -7,97 +7,98 @@ Tidying and refactoring whole networks is on its own page: [cleanup-and-refactor
 
 ## How every building tool works
 
-This applies to every tool that changes the world: the run, upgrade and clean tools here, and
-`replace_walls`, `replace_frames`, `place_structure` and `remove_structure`.
+This applies to every tool that changes the world: the `build`, `swap` and `remove` whats here, and
+`build structure`, `swap wall`, `swap frame` and `remove structure`.
 
-1. **Dry run by default.** A call without `dry_run: false` changes nothing. It reports every piece, what it costs and
+1. **Reports by default.** A call without `confirm: true` changes nothing. It reports every piece, what it costs and
    gives back, the networks before and after, and every problem at once. Read `ready`, `problems` and `warnings`.
-   The run tools (`place_*`, `remove_*`, `plan_*_route`, `plan_removal`) give `links` as counts (`added_count`,
-   `lost_count`) and leave their fixed `notes` out; `include_links: true` lists every link, `include_notes: true`
-   adds the notes. `limit` caps the cells listed (default 5; 0 lists none, the counts stay). `networks_before` and
-   `networks_after` give each network's `device_count` (and a chute network's `items_riding`);
-   `include_network_devices: true` lists the devices and riding items too. `upgrade_*` and `clean_*` list up to 5
-   pieces per list by default, `replace_walls` and `replace_frames` 5, and their fixed notes, as `place_structure`'s
-   and `remove_structure`'s, only with `include_notes: true`. A `place_structure` dry run that is not ready answers
-   its verdict without each placement's layout preview; `verbose: true` keeps the previews.
-2. **A real run** needs `dry_run: false` and `confirm: true`, and starts only when the checks find no problem. It
+   The run tools (`build cable` and its pipe and chute twins, their `remove` twins, `plan route` and `plan removal`)
+   give `links` as counts (`added_count`, `lost_count`) and leave their fixed `notes` out; `include: ["links"]` lists
+   every link, `include: ["notes"]` adds the notes. `rows` caps the cells listed (default 5; 0 lists none, the counts
+   stay). `networks_before` and `networks_after` give each network's `device_count` (and a chute network's
+   `items_riding`); `include: ["network_devices"]` lists the devices and riding items too. `swap cable`, `swap pipe`
+   and `swap chute` list up to 5 pieces per list by default, `swap wall` and `swap frame` 5, and their fixed notes, as
+   `build structure`'s and `remove structure`'s, only with `include: ["notes"]`. A `build structure` report that is
+   not ready answers its verdict without each placement's layout preview; `verbose: true` keeps the previews.
+2. **A real run** needs `confirm: true`, and starts only when the checks find no problem. It
    returns the `job_id`, the status and a `preflight_summary` (pieces placed, changed and removed, and the warning
-   codes); the dry run you already read is left out unless `verbose: true`. This holds for the run tools,
-   `place_structure` and `remove_structure`.
+   codes); the report you already read is left out unless `verbose: true`. This holds for the run tools,
+   `build structure` and `remove structure`.
 3. **One held tick.** The mod holds the game tick as a save does, runs every check again on the world as it is now,
    makes every change in one frame, and checks the result the next frame before letting the tick go. No power,
    atmospherics or logic tick ever sees a half-built network. Players see a brief pause. On a server with players
    connected, each step of the job waits until the game has sent the step before it to them (a twentieth to a tenth
    of a second a step), so every player's game ends with the same networks as the server's.
-4. **Poll** with `{job_id}` alone until the status is final:
+4. **Poll** with `inspect {what: "job", id: "<job id>"}` until the status is final:
 
    | Status | Meaning |
    | --- | --- |
-   | `waiting`, `verifying` | Still running. |
+   | `queued`, `waiting`, `verifying` | Not started yet (`queued`), or still running. |
    | `applied` | Done, and every check afterwards passed. |
    | `applied_with_differences` | Done, but the check found something other than planned; the job lists it. |
    | `applied_unchecked` | Done, but the check afterwards could not run; the job says why. Look before relying on it. |
    | `stopped` | A piece failed part way. The job lists what was done and where it stopped; nothing after that was done. For upgrades, running the same call again resumes. |
-   | `gas_lost` | Pipe network contents went missing and could not be put back; `gas_check` says how much and where. Every later pipe job is refused (`gas_check_failed`), and so is a `place_structure` / `remove_structure` run that places or removes anything with a pipe; other structure runs and dry runs are not. Loading a save (or going back to the menu) lifts it, and so does a run that acknowledges the loss (`acknowledge_gas_lost`, see *Gas hold* below); ask the user first. |
+   | `gas_lost` | Pipe network contents went missing and could not be put back; `gas_check` says how much and where. Every later pipe job is refused (`gas_check_failed`), and so is a `build structure` / `remove structure` run that places or removes anything with a pipe; other structure runs and reports are not. Loading a save (or going back to the menu) lifts it, and so does a run that acknowledges the loss (`acknowledge_gas_lost`, see *Gas hold* below); ask the user first. |
    | `refused` | The checks in the held tick failed; nothing changed. |
 
    A poll answers the status and what the job did (pieces, materials, `verification`, `gas_check`, `error`). The
    reports the real run already answered with, `preflight` and the held tick's `final_check`, come back only with
-   `verbose: true` (a refused job keeps `final_check`: it holds why). This holds for the run tools, `place_structure`
-   and `remove_structure`.
+   `verbose: true` (a refused job keeps `final_check`: it holds why). This holds for the run tools, `build structure`
+   and `remove structure`.
 
-5. **One job at a time.** A real run that finds another job running answers `busy` with `running_job_id` and changes
-   nothing. With `wait: true` it is queued instead (status `queued`, its own `job_id` and `position`; up to 8 wait) and
-   starts when the slot is free, with every check run again on the world the earlier jobs left.
-6. **Materials** come from your inventory at any depth, or from `from_id` (a belt, a locker, any container), and cost
+5. **One job at a time.** A real run that finds another job running with `queue: false` answers a `JobBusy`
+   (`running_job_id`, `waiting`, `message`) and changes nothing. By default (`queue: true`) it waits in line instead
+   (status `queued`, its own `job_id` and `position`; up to 8 wait) and starts when the slot is free, with every check
+   run again on the world the earlier jobs left.
+6. **Materials** come from your inventory at any depth, or from `materials` (a belt, a locker, any container), and cost
    what the game's own placement charges. Nothing is made for free (`not_enough_coils` for cables and pipes,
-   `not_enough_kits` for chutes, `not_enough_materials` for structures). On the place, upgrade, clean and replace tools
-   `from_id` may list up to 8 things, tried in order for each material, so a hull piece can take its kit from one
-   locker and its steel from another: `"from_id": ["<rocket parts locker>", "<materials locker>"]`. The dry run's
+   `not_enough_kits` for chutes, `not_enough_materials` for structures). On the build, swap and remove tools
+   `materials` may list up to 8 things, tried in order for each material, so a hull piece can take its kit from one
+   locker and its steel from another: `"materials": ["<rocket parts locker>", "<materials locker>"]`. The report's
    materials then give `paid_by`, what each thing pays and holds; the first thing is the one refunds to `source` use.
    A part a device is using (a chip in its holder, a running machine's filter, battery or canister) never pays.
-7. **Refunds** are what deconstruction would give back. Every tool that refunds (the place tools with `remove_ids`,
-   the remove, upgrade, clean and replace tools, `remove_structure`, `undo_job`, `plan_removal`) takes `refund_to`: a
+7. **Refunds** are what deconstruction would give back. Every tool that refunds (the build tools with `remove_ids`,
+   the remove and swap tools, `remove structure`, `undo`, `plan removal`) takes `refund_to`: a
    list of targets tried in turn for each item until it fits.
 
    | Target | Where |
    | --- | --- |
-   | `inventory` | The player's inventory: `from_id` when it is a player, else the local player. Skipped on a dedicated server. |
-   | `source` | Tops up `from_id` when it is a stack, such as a coil. |
-   | `storage` | `from_id`'s slots and everything in them, then the other slots of the container it is stored in. |
+   | `inventory` | The player's inventory: `materials` when it is a player, else the local player. Skipped on a dedicated server. |
+   | `source` | Tops up `materials` when it is a stack, such as a coil. |
+   | `storage` | `materials`' slots and everything in them, then the other slots of the container it is stored in. |
    | a reference id | Exactly that container and what is stored in it (as a string or a number). |
-   | `ground` | A metre in front of `from_id` or the player, at rest; where the first piece stood when there is neither. |
+   | `ground` | A metre in front of `materials` or the player, at rest; where the first piece stood when there is neither. |
 
    The default is `["inventory", "source", "storage", "ground"]`. Each target first tops up matching stacks, then
    makes new stacks in empty slots that take the item, a holder's own slots before those of the items in them. Never
    a hidden slot, a body slot (hands, suit, helmet: only the slots of worn and held items) or a stack's own slot, such
    as a cable coil's: the game destroys what is in it with the coil. What fits no target goes on the ground in front
-   of the holder. A target that cannot be used is skipped: `inventory` with no player, `source` with no `from_id` or one
-   that is not a stack, `storage` with no `from_id` (and no local player) or one with no slot a refund could go into
-   and stored in nothing that has one (a cable piece), either with a `from_id` that names no thing. When you named the
-   list yourself, the dry run warns `refund_target_skipped`, naming which case it is. A container id that is not one
-   is refused (`refund_target_not_found`, `refund_target_not_container`). `refund_holder_removed` refuses a `from_id`
-   the same request removes when `refund_to` gives into it (`source`, `storage`, the default): `remove_structure`, and
-   the remove tools and the place tools' `remove_ids` for a piece they take.
+   of the holder. A target that cannot be used is skipped: `inventory` with no player, `source` with no `materials` or one
+   that is not a stack, `storage` with no `materials` (and no local player) or one with no slot a refund could go into
+   and stored in nothing that has one (a cable piece), either with a `materials` holder that names no thing. When you named the
+   list yourself, the report warns `refund_target_skipped`, naming which case it is. A container id that is not one
+   is refused (`refund_target_not_found`, `refund_target_not_container`). `refund_holder_removed` refuses a `materials`
+   holder the same request removes when `refund_to` gives into it (`source`, `storage`, the default): `remove structure`, and
+   the remove tools and the build tools' `remove_ids` for a piece they take.
 
-   **No player, no `from_id`** (a dedicated server): a job needs one only when it takes materials (a cable, pipe or
+   **No player, no `materials`** (a dedicated server): a job needs one only when it takes materials (a cable, pipe or
    chute run, an upgrade, a split, a replace that charges anything) or its `refund_to` is the single word `source`
    (`no_local_player` otherwise). Everything else runs without one, the refund following the chain: a removal, a
    clean that takes no coils (removing dead ends, merging straights), a replace that charges nothing; with nothing in the chain to
    take it, the refund goes on the ground where the first piece stood.
 
-   One word keeps its old meaning: `source` puts everything into `from_id`'s inventory (default the local player)
-   and the player carrying it, the rest in front of it, as the tools did before; a `from_id` stack stored in a holder
+   One word keeps its old meaning: `source` puts everything into `materials`' inventory (default the local player)
+   and the player carrying it, the rest in front of it, as the tools did before; a `materials` stack stored in a holder
    (a coil in a locker) then takes the refund onto itself only, never into the holder's other slots. `ground` puts it
-   on the ground (`remove_structure`: where each piece stood; the other tools: in front of the source). `none`, or
-   `refund: false`, gives nothing back. `inventory`, `storage` or an id alone are a list of one.
+   on the ground (`remove structure`: where each piece stood; the other tools: in front of the source). `none`
+   gives nothing back. `inventory`, `storage` or an id alone are a list of one.
 
-   The dry run's `refund_plan` (in `materials` for the run tools, at the top for the swap tools and
-   `remove_structure`) lists each item's destinations: `target`, `where` (`merged`, `slot` or `ground`), `into` (the
+   The report's `refund_plan` (in `materials` for the run tools, at the top for the swap tools and
+   `remove structure`) lists each item's destinations: `target`, `where` (`merged`, `slot` or `ground`), `into` (the
    stack or holder), `fallback: true` for what fit no target, the targets `skipped`, and `on_ground_as_fallback`. The
-   job's `refunded` (`refund_delivered`) lists where each part went and its `target`. With `refund: false` nothing
-   comes back, and a dry run says so: every refund list is empty and every refund count 0. A swap (`replace_walls`,
-   `replace_frames`) still lists the old piece's refund, since it pays toward the new piece either way, but its `net`
+   job's `refunded` (`refund_delivered`) lists where each part went and its `target`. With `refund_to: "none"` nothing
+   comes back, and a report says so: every refund list is empty and every refund count 0. A swap (`swap wall`,
+   `swap frame`) still lists the old piece's refund, since it pays toward the new piece either way, but its `net`
    never goes below 0.
 8. **Host only** (`not_host` on a client). Changes use the same calls as a player's own building, so other players,
    saves and ownership follow as for normal building. Players without the mod see ordinary cables and pipes.
@@ -110,14 +111,15 @@ neighbour or a tap's trunk piece turned into a junction) and `fill`.
 
 | Tool | What it does |
 | --- | --- |
-| `grid_survey` | What stands in each 2 m cell of a box or room, down to 0.5 m: frames, walls, pieces, devices and their ports, networks, and how visible a piece would be in each small cell. Read only. |
-| `plan_cable_route`, `plan_pipe_route`, `plan_chute_route` | Find a route under rules and return it with the place tool's own dry run (`summary: true`: the dry run in short, without its per-cell list). Read only. |
-| `place_cables`, `place_pipes`, `place_chutes` | Lay a run, with branches, one piece, or several separate pieces (`pieces`, 1.4.4+). |
-| `remove_cables`, `remove_pipes`, `remove_chutes` | Remove pieces as wire cutters, a wrench or deconstruction would. |
-| `undo_job` | Undo a finished place or remove job: remove what it built, build again what it removed (1.4.3+). |
-| `upgrade_cables` | Normal cable to heavy (default) or super heavy, piece for piece, in place. |
-| `upgrade_pipes` | Normal gas and liquid pipe to insulated pipe of the same content, in place; `to: "repair"` swaps burst pipes for new ones. |
-| `connections` | A piece's or device's ends, or a network's members and load; see [devices-and-logic.md](devices-and-logic.md#connections-and-networks). |
+| `survey area` | What stands in each 2 m cell of a box or room, down to 0.5 m: frames, walls, pieces, devices and their ports, networks, and how visible a piece would be in each small cell. Read only. |
+| `plan route` (`kind: cable`, `pipe` or `chute`) | Find a route under rules and return it with the build tool's own report (`summarize: true`: the report in short, without its per-cell list). Read only. |
+| `build cable`, `build pipe`, `build chute` | Lay a run, with branches, one piece, or several separate pieces (`pieces`, 1.4.4+). |
+| `remove cable`, `remove pipe`, `remove chute` | Remove pieces as wire cutters, a wrench or deconstruction would. |
+| `undo` | Undo a finished build or removal job: remove what it built, build again what it removed (1.4.3+). |
+| `swap cable` | Upgrade cable in place with `into`: normal to heavy (default) or super heavy, piece for piece. |
+| `swap pipe` | Upgrade pipe in place with `into`: normal gas and liquid pipe to insulated pipe of the same content; `into: "repair"` swaps burst pipes for new ones. |
+| `inspect connections` | A piece's or device's ends and what each joins. |
+| `survey network` | A network's members and load, 30 a page or `summarize` for counts; see [devices-and-logic.md](devices-and-logic.md#connections-and-networks). |
 
 Grades: cables `normal`, `heavy` (default) or `super_heavy`; pipes `gas`, `liquid`, `insulated_gas` or
 `insulated_liquid` (required); chutes `chute`.
@@ -128,7 +130,7 @@ Structures sit on 2 m cells, whose centres are at odd whole metres. Cables, pipe
 grid, centres on multiples of 0.5 m: four small cells per axis in each 2 m cell. Directions are world axes: `+x`, `-x`,
 `+y` (up), `-y`, `+z` (north), `-z`.
 
-`grid_survey {room_id}` or `{min: [x, y, z], max: [x, y, z]}` gives, per 2 m cell, what occupies it: `empty: true`
+`survey area {room: "<id>"}` or `{box: [[x, y, z], [x, y, z]]}` gives, per 2 m cell, what occupies it: `empty: true`
 when it holds nothing, `frame_id`, `faces` (six characters for +x, -x, +y, -y, +z, -z: `.` nothing, `w` wall, `g`
 window, `x` door) and `small` (left out when all `.`). `cell_detail: "full"` gives each cell's frame, walls, room and
 two 64-character strings over its small cells:
@@ -142,23 +144,23 @@ two 64-character strings over its small cells:
 
 Then every piece with its ends and network, every device with its `rotation` and each port's cell, direction, type
 and role, and the networks with their loads or contents. `rotation` is `{facing, up, euler}` in the forms
-`place_structure` takes, so a device can be placed again as it stands, or turned: `facing` reversed is a half turn.
-`find_things`, `looking_at` and `connections` report the same `rotation` for structures. `network_visibility` counts each network's cells by class and lists the floating
-ones; `include_refund: true` adds what removing each piece would give back. A piece filling more than one small cell
-(a long straight, an in-line tank) gives `cell_count` and `cell_box`; `include_piece_cells: true` lists every cell.
+`build structure` takes, so a device can be placed again as it stands, or turned: `facing` reversed is a half turn.
+`find thing`, `inspect looking_at` and `inspect connections` report the same `rotation` for structures. `network_visibility` counts each network's cells by class and lists the floating
+ones; `include: ["refund"]` adds what removing each piece would give back. A piece filling more than one small cell
+(a long straight, an in-line tank) gives `cell_count` and `cell_box`; `include: ["piece_cells"]` lists every cell.
 `occupied_only: true` pages only through cells holding a frame, a face structure or a small-grid thing, so a large,
-mostly empty box takes few pages. Pages of 27 cells (`limit` up to 125, `offset`).
+mostly empty box takes few pages. Pages of 8 cells (`limit` up to 125, `offset`).
 
 A whole survey of a small box can run to tens of kilobytes. Ask for what you need:
 
 - `sections`: any of `cells`, `pieces`, `devices`, `networks`, `network_visibility`, `doors`; the parts not named are
   left out of the reply. The pieces and devices are still the ones standing in the page's cells, and `count`, `total`
   and `has_more` still page the cells.
-- `network_ids`: only the pieces on these networks (a network id, or any cable, pipe or chute piece on it), the
+- `network`: only the pieces on these networks (a network id, or any cable, pipe or chute piece on it), the
   devices with a port on one of them, and those networks.
-- `kinds`: only `cable`, `pipe` or `chute` pieces and the devices with such a port.
-- `prefab`, `prefabs` or `prefab_contains`: only the pieces and devices of those prefabs (`prefab_contains:
-  "Insulated"` for the insulated pipes, `prefabs: ["StructureVolumePump"]` for the pumps). A 300-piece pieces section
+- `kind`: only `cable`, `pipe` or `chute` pieces and the devices with such a port.
+- `prefab`: only the pieces and devices of those prefabs (`prefab: "*Insulated*"` for the insulated pipes,
+  `prefab: ["StructureVolumePump"]` for the pumps). A 300-piece pieces section
   of about 50 KB comes to about 9 KB for its 50 insulated pipes.
 - `cell_detail`: `occupancy` (default, a few dozen bytes a cell) or `full` (the `support` string, wall ids and
   prefabs, room, frame build state: several hundred bytes a cell).
@@ -171,32 +173,33 @@ airlocks, blast and hangar doors, hatches, roll covers, robot arm doors and the 
 size count. A piece hidden inside the floor slab under a threshold is not in it, and the cells joining the door's
 own ports are released so the door can still be wired.
 
-- The route planners never route through a keep-out; `allow_door_keepout: true` lets them. A route's own end cells
+- The route planners never route through a keep-out; `allow: ["door_keepout"]` lets them. A route's own end cells
   are released, with a note.
-- `place_cables`, `place_pipes`, `place_chutes` and `place_structure` refuse a new piece there with `in_door_keepout`;
-  `allow_door_keepout: true` makes it a warning.
+- `build cable`, `build pipe`, `build chute` and `build structure` refuse a new piece there with `in_door_keepout`;
+  `allow: ["door_keepout"]` makes it a warning.
 - A window's plane (its closed square, seams with the next pane, edges and base included: glass, composite, padded
   and shuttered windows and window shutters; floor gratings are floors, not windows) takes no run while a lint rule
   whose `route` is `off_windows` is a problem (LU's world file sets it on `run_crosses_window`): the planners keep off
-  it and the place tools refuse a piece there. At warning it costs a route extra and warns; with none, nothing. A
+  it and the build tools refuse a piece there. At warning it costs a route extra and warns; with none, nothing. A
   device's mesh on a window's plane is lint `blocks_window` in that file.
-- `grid_survey` lists `doors` (faces, plane, band, port cells) and each wall's `kind` (wall, window, door).
+- `survey area` lists `doors` (faces, plane, band, port cells) and each wall's `kind` (wall, window, door).
 
 ## Planning a route
 
-`plan_cable_route` (and its pipe and chute twins) searches the small grid and dry-runs the result.
+`plan route` (`kind: "cable"`, `"pipe"` or `"chute"`) searches the small grid and reports the result as `build`
+would.
 
-**Ends.** `from` and `to` are each `{at: [x, y, z]}` (a cell), `{reference_id}` of a piece (joined; leaving through an
-open end is free, any other direction makes it a junction) or `{reference_id, port}` of a device port (`port` may be
-left out when the device has one port of the kind). `to` may also be `{network_id}`, the nearest piece of that network,
-or a long straight, any of its cells. For pipes, `{reference_id}` of an in-line tank or a passive vent (or another
+**Ends.** `start` and `end` are each `{at: [x, y, z]}` (a cell), `{id}` of a piece (joined; leaving through an
+open end is free, any other direction makes it a junction) or `{id, port}` of a device port (`port` may be
+left out when the device has one port of the kind). `end` may also be `{network}`, the nearest piece of that network,
+or a long straight, any of its cells. For pipes, `{id}` of an in-line tank or a passive vent (or another
 pipe thing with its own ends that is neither a pipe piece nor a device) is the cell beyond its free end, and the pipe
 there gets an end toward it, as at a device port; name the end with `port` when more than one is free.
 
-**Keeping cells free.** `reserve_cells: [[x, y, z], ...]` and `reserve_ports: [{reference_id, port}]` are cells the
+**Keeping cells free.** `reserve_cells: [[x, y, z], ...]` and `reserve_ports: [{id, port}]` are cells the
 search treats as blocked, a port's being the cell a piece joining it stands in. Reserve a device's other ports while
 routing to one of them, so this run cannot take the cell the next run needs. A reserved cell that is one of the
-route's own ends is released, and `notes` say how many cells were kept free. Without them the dry run still warns
+route's own ends is released, and `notes` say how many cells were kept free. Without them the report still warns
 `blocks_port` when a new piece takes a free port's cell without joining that port.
 
 **Rules.**
@@ -209,52 +212,52 @@ route's own ends is released, and `notes` say how many cells were kept free. Wit
 | `style: "hidden"` | Supported, and the least visible route: per cell inside a frame 1, on a frame's surface 3, on a wall's plane 5, in air 9. A hidden route up to three times as long beats one along a surface. |
 | `style: "inside_frames"` | Strict: only cells inside a frame or on its surface (beam tops and outer faces included), the start and end cells excepted. May give `no_route` where `hidden` would still find one. |
 | `style: "free"` | The shortest route, through air or not. |
-| `avoid_walkways`, `avoid_room_interior` | Extra cost for room cells above the floor, or away from every face plane. |
+| `avoid: ["walkways"]`, `avoid: ["room_interior"]` | Extra cost for room cells above the floor, or away from every face plane. |
 | `avoid_networks` | `true`: never beside another network of the kind; or a list of network ids (network handles work too); an id naming no network is `network_not_found`. |
 | `min_bends`, `axis_order` | Fewer turns; `vertical_first` or `horizontal_first`. |
-| `margin_m` (default 6, max 32), `max_length` (default 400) | Search box around the ends; longest route. |
+| `margin` (default 6, max 32), `max_length` (default 400) | Search box around the ends; longest route. |
 
 Every route reports `visibility {inside, frame_surface, wall, air}` for its new cells.
 
-**Several starts.** `from: {reference_id, ports: [2, 3]}`, or an array of starts, up to 16, grows one tree: the first
-start routes to `to`, every other start to the nearest cell of the tree so far, joined with a junction. A device with
+**Several starts.** `start: {id, ports: [2, 3]}`, or an array of starts, up to 16, grows one tree: the first
+start routes to `end`, every other start to the nearest cell of the tree so far, joined with a junction. A device with
 separate power and data ports gets one run, never two parallel runs that close a loop. Plan such a device in one call.
 
-**Bus mode.** `trunk: {waypoints}` (or `cells`) instead of `to` lays that trunk as given, for example one planned with
+**Bus mode.** `trunk: {waypoints}` (or `cells`) instead of `end` lays that trunk as given, for example one planned with
 this tool and not built yet, and branches every start from it. The trunk and its drops are one job and one check.
 
 **Rerouting.** `reroute: {between: [end, end]}` replaces the shortest run between two devices or pieces on one
-network; `reroute: {reference_ids: [...]}` replaces those pieces. The old run must meet the rest at exactly two cells.
+network; `reroute: {id: [...]}` replaces those pieces. The old run must meet the rest at exactly two cells.
 The new run is built and the old one removed in one job, so no device is ever unpowered. An APC, transformer or pump
-sits on two networks: `between` uses the one both ends share, or name the port with `{reference_id, port}`.
+sits on two networks: `between` uses the one both ends share, or name the port with `{id, port}`.
 
 **Planning around old pieces.** `assume_removed: [ids]` plans as if those things were gone: their cells free, their
-links absent. The cable pieces among them go into `place_arguments.remove_ids`, so one job builds the new run and
-removes the old pieces, and the dry run's checks see the finished network. Other things (a pipe in a cable's way) go
-into `place_arguments.assume_removed`: remove them first with their own tool. `route.assumed_removed.in_the_way` lists
+links absent. The cable pieces among them go into `build_arguments.remove_ids`, so one job builds the new run and
+removes the old pieces, and the report's checks see the finished network. Other things (a pipe in a cable's way) go
+into `build_arguments.assume_removed`: remove them first with their own tool. `route.assumed_removed.in_the_way` lists
 the pieces the route needs gone; `route.removal_refund` prices them.
 
 **The result** has `found`, `route` (waypoints, length, bends, air cells, branches when there are several starts,
-visibility), `place_arguments` (ready for the place tool: add `dry_run: false` and `confirm: true` to build) and
-`dry_run`, the place tool's own report.
+visibility), `build_arguments` (ready for the build tool: add `confirm: true` to build) and
+`build_report`, the build tool's own report.
 
 Example, a drop from a device's power port to the nearest piece of the network that trunk piece `140977` is on, kept
-inside frames where possible, `plan_cable_route`:
+inside frames where possible, `plan route`:
 
 ```json
-{ "from": { "reference_id": "151020", "port": 0 }, "to": { "network_id": "140977" }, "prefer": "hidden" }
+{ "what": "route", "kind": "cable", "start": { "id": "151020", "port": 0 }, "end": { "network": "140977" }, "style": "hidden" }
 ```
 
 ## Laying a run
 
-`place_cables` takes a run as `waypoints` (points joined by straight lines), `cells` (every cell), or one piece as
+`build cable` takes a run as `waypoints` (points joined by straight lines), `cells` (every cell), or one piece as
 `piece: {at, ends: ["+x", "-y"]}`.
 
 - **Pieces fit their connections.** Each small cell gets the one-cell piece whose ends match exactly, read from the
   loaded coil or kit and turned to fit. Long straights are never placed.
 - **Meeting existing pieces.** A piece the run crosses or joins becomes the junction with the extra end, keeping its
   own grade. A long straight the run must join in its middle is split into single pieces in the same job (warning
-  `long_split`; `allow_split_long: false` refuses with `long_piece`).
+  `long_split`; `split_long: false` refuses with `long_piece`).
 - **Joining.** `join: "ends"` (default) joins the run's first and last cells to open ends and device ports pointing at
   them, and a run end that joins nothing else to the piece straight ahead of it; a run end at a port, on an existing
   piece or at a piece's open end has arrived and never joins the piece beyond (which may be across a transformer);
@@ -274,30 +277,30 @@ inside frames where possible, `plan_cable_route`:
 - **Tap check.** A run end left open next to, or one free cell short of, another network's piece it could join (never
   a pipe of other content) warns `not_joined`.
   `join_to` names the network the run must end up on; `join_trunk: true` adds the missing tap (warning `tap_added`).
-  The planners set `join_to` themselves when `to` names a network, piece or port.
+  The planners set `join_to` themselves when `end` names a network, piece or port.
 
 ## Undoing a job (1.4.3+)
 
-`undo_job {job_id}` undoes a finished `place_*`, `remove_*`, `place_structure` or `remove_structure` job the mod
+`undo {id: "<job id>"}` undoes a finished `build` or `remove` job the mod
 still keeps: it removes everything the job built and builds again everything it removed, as it stood when the job started
 (the mod takes a snapshot of each removed thing then). Cable, pipe and chute pieces come
-back through `place_cables`, `place_pipes` and `place_chutes` (their `pieces` form, each piece with the ends it had),
+back through `build cable`, `build pipe` and `build chute` (their `pieces` form, each piece with the ends it had),
 so `would_bridge`, `would_split` and the burst and gas guards apply; everything else comes back through
-`place_structure` (1.4.4+). The pieces the job built are removed by that same place tool call (its `remove_ids`), in
+`build structure` (1.4.4+). The pieces the job built are removed by that same build tool call (its `remove_ids`), in
 the one job that builds the old pieces back, so undoing a tee added onto a trunk, or a run that crossed a long
 straight, never leaves the trunk cut between two jobs; only what no piece run builds again goes through
-`remove_structure` first. Old pieces of several grades of one
-tool come back in several runs, and only the first removes: if it cannot rejoin the network alone, its dry run says
+`remove structure` first. Old pieces of several grades of one
+tool come back in several runs, and only the first removes: if it cannot rejoin the network alone, its report says
 `would_split` and the undo is refused. It is refused, with `plan.diverged` saying why, when the world is no longer as the job
 left it: something it built is gone or another prefab now, or something it removed cannot be placed again exactly.
 A burnt cable the job removed is never built again; `plan.notes` says so and the rest is undone.
-The dry run shows the plan, every tool's arguments and their dry runs; `plan.ready` is true only when all of them
-are. Pass `allow_bridge` when rejoining networks is meant (a removal that split a network). `dry_run: false, confirm:
+The report shows the plan, every tool's arguments and their reports; `plan.ready` is true only when all of them
+are. Pass `allow_bridge` when rejoining networks is meant (a removal that split a network). `confirm:
 true` makes the same checks, starts the removal and queues the placements behind it. Every guard of every tool
-applies, and materials are paid and refunded as by hand: every call takes the job's own `from_id`, so an undo runs on
-a dedicated server whenever the job did. `from_id` overrides it (a job that used the local player, or one whose
-record is gone); removing what a `free: true` placement built gives nothing back (`refund_to: none`), and `refund_to`
-(any form) is passed to every removal the undo makes. `plan.notes` says which applied. A job already undone is refused: its dry run
+applies, and materials are paid and refunded as by hand: every call takes the job's own `materials`, so an undo runs on
+a dedicated server whenever the job did. `materials` overrides it (a job that used the local player, or one whose
+record is gone); removing what a `free: true` placement built gives nothing back (`refund_to: "none"`), and `refund_to`
+(any form) is passed to every removal the undo makes. `plan.notes` says which applied. A job already undone is refused: its report
 or real run says so in `plan.diverged` and lists the undo's own jobs in `plan.undone_by` (undo those, the last first,
 to have the job back); an earlier undo whose jobs were all refused does not count, and `plan.notes` mentions it.
 
@@ -321,31 +324,32 @@ caller's copy may be partial.
 
 ## Removing pieces
 
-`remove_cables`, `remove_pipes` and `remove_chutes` take `reference_ids`, or the pieces in the cells of `waypoints` or
-`cells`. A network that only loses pieces keeps its id. `remove_cables` also removes burnt cables (by id or cell;
-they refund nothing). With `refund: false` nothing is given back; only `refund_to: "source"` needs a player or `from_id`
-(the default skips the inventory on a dedicated server and gives to the ground). A `from_id` among the pieces removed
-is refused (`refund_holder_removed`) when `refund_to` gives into it. `plan_removal` prices a removal without doing it; see
+`remove cable`, `remove pipe` and `remove chute` take `id`, or the pieces in the cells of `waypoints` or
+`cells`. A network that only loses pieces keeps its id. `remove cable` also removes burnt cables (by id or cell;
+they refund nothing). With `refund_to: "none"` nothing is given back; only `refund_to: "source"` needs a player or
+`materials` (the default skips the inventory on a dedicated server and gives to the ground). A `materials` holder among
+the pieces removed is refused (`refund_holder_removed`) when `refund_to` gives into it. `plan removal` prices a removal
+without doing it; see
 [cleanup-and-refactor.md](cleanup-and-refactor.md#pricing-a-removal).
 
 ## Guards
 
-Each refusal names what it found. An `allow_*` argument accepts that one case after you have read it.
+Each refusal names what it found. An `allow` entry (`allow: ["split"]`) accepts that one case after you have read it.
 
 | Code | Meaning | Override |
 | --- | --- | --- |
 | `would_bridge` | The run would join two or more networks, or two ports of one device (both sides of an APC or transformer, a battery's input and output, a pump's two sides, a device's chute output into its own input). Names the networks and the devices on each. | `allow_bridge`, naming every network of the merge, or the device |
-| `would_split` | A removal would split a network or leave a device port joined to nothing. Lists each resulting network with its devices (`components`), the devices that feed it (`root`: your `root`, else every supplier: an APC's, transformer's or battery's output, a generator, a solar panel) and `cut_off`, the devices no root reaches afterwards. | `allow_split` |
+| `would_split` | A removal would split a network or leave a device port joined to nothing. Lists each resulting network with its devices (`components`), the devices that feed it (`root`: your `root`, else every supplier: an APC's, transformer's or battery's output, a generator, a solar panel) and `cut_off`, the devices no root reaches afterwards. | `allow: ["split"]` |
 | `would_overload` | A cable network after the edit would carry more than its weakest cable, so the game would burn a cable every power tick. Counted over the networks it keeps, a network the edit replaces whole (a reroute), and every device port it newly joins, from the device's own state (a battery's charge and free capacity, an APC's or transformer's supply and demand, a generator's rate, a consumer's use), with the game's own on/off and error checks: an output gives nothing while off or in error, a consumer in error still draws, a solar panel gives its rate on or off. Only ports in the device's power role count: a data-only port (a station battery's data port) carries nothing, and a device is counted once per network however many of its ports are on it. Where a removal splits a network, each part is checked with the whole old network's numbers (its `networks_after` guard shows them, even for a part with no devices left): an upper bound, harmless since a removal cannot raise the load. | none: upgrade the cable or keep the networks apart |
-| `would_overload_when_on` (warning) | Safe as the devices stand, but the network would carry more than its weakest cable once its devices that are off now are switched on: the game counts an off device as nothing, so two full batteries joined while both are off would burn a cable the moment they go on. Counted as `would_overload` with every off device on the network after the edit as if on, each at the game's ceiling rather than its charge now (which drifts, so a warning priced from it came and went between the dry run and the real run): a station battery's full `PowerMaximum` on its output and on its input (the game has no battery rate limit: a battery gives all it holds and takes all it lacks in one power tick), an APC's output its `MaximumPower` (input potential plus a full cell), a power transmitter's 5000 W; the flow is still the smaller of supply and demand, so a battery input beside solar panels carries only their rate, those already on a network it keeps included; an APC, transformer or power transmitter whose input is on the network passes on what the devices off on its output network would then require, and on through the next such device there (up to 8 deep, each network counted once, never one of the edit's own networks), a transformer at most its `Setting` and a transmitter at most 5000 W in all; a battery passes nothing on (its input takes only its own charge), so joining an APC's input while an empty battery sits off on its output warns; the devices off behind are named too; where the edit splits a network, each part counts only its own devices, so a removal that parts an off source from its consumer does not warn; the message names the off devices, and with none off there is no warning. The job itself is safe while they stay off. | not needed: keep them off, upgrade the cable, or keep the networks apart |
+| `would_overload_when_on` (warning) | Safe as the devices stand, but the network would carry more than its weakest cable once its devices that are off now are switched on: the game counts an off device as nothing, so two full batteries joined while both are off would burn a cable the moment they go on. Counted as `would_overload` with every off device on the network after the edit as if on, each at the game's ceiling rather than its charge now (which drifts, so a warning priced from it came and went between the report and the real run): a station battery's full `PowerMaximum` on its output and on its input (the game has no battery rate limit: a battery gives all it holds and takes all it lacks in one power tick), an APC's output its `MaximumPower` (input potential plus a full cell), a power transmitter's 5000 W; the flow is still the smaller of supply and demand, so a battery input beside solar panels carries only their rate, those already on a network it keeps included; an APC, transformer or power transmitter whose input is on the network passes on what the devices off on its output network would then require, and on through the next such device there (up to 8 deep, each network counted once, never one of the edit's own networks), a transformer at most its `Setting` and a transmitter at most 5000 W in all; a battery passes nothing on (its input takes only its own charge), so joining an APC's input while an empty battery sits off on its output warns; the devices off behind are named too; where the edit splits a network, each part counts only its own devices, so a removal that parts an off source from its consumer does not warn; the message names the off devices, and with none off there is no warning. The job itself is safe while they stay off. | not needed: keep them off, upgrade the cable, or keep the networks apart |
 | `would_burst` | A pipe network's pressure after the edit would exceed its weakest pipe. | none |
-| `holds_contents`, `contents_would_move` | A pipe removal would delete a network's gas or liquid, or divide it. | none: empty it first with `move_gas` |
+| `holds_contents`, `contents_would_move` | A pipe removal would delete a network's gas or liquid, or divide it. | none: empty it first with `move gas` |
 | `content_mismatch` | A pipe of the other content (gas and liquid never join). | none |
 | `cell_blocked`, `cannot_change`, `no_piece_for_ends`, `link_lost` | A cell is taken; a piece cannot be changed (a fuse or meter mounted, indestructible, part of a launching or landing rocket); inside a rocket, a cell whose type takes no piece of the kind, or a free cell right above or below a rocket's cell (the game's rule); no piece has those ends; a piece would lose a link. | none |
 | `nothing_to_join` | A one-cell run joins nothing, so its piece has no direction. | name its ends with `piece` |
 | `assumed_present` | A real run while something in `assume_removed` still stands. | remove it first |
 | `would_loop` (warning) | The run joins something already joined another way: a second path. Keep it only if the redundancy is meant. | not needed |
-| `in_door_keepout` | A new piece in a door's keep-out (1.4.3+). | `allow_door_keepout` |
+| `in_door_keepout` | A new piece in a door's keep-out (1.4.3+). | `allow: ["door_keepout"]` |
 | `crosses_window` (warning) | A new piece on a window's face (1.4.3+). | not needed |
 | `not_joined`, `through_air`, `open_end`, `long_split` (warnings) | A run end stops short of a network; pieces in air; an end left open (with `pieces`, also an end pointing into another piece of the job that has no end back); a long straight split. | not needed |
 
@@ -359,14 +363,14 @@ only pipe: its singles are built over it and take the network on. `would_bridge`
 
 **Contents are checked.** The game moves gas between merged or split pipe networks at the next game tick, not at
 once; a job applies those changes after every piece it builds, so a run that joins several networks keeps every
-mole. Every job that can change pipe networks (`place_pipes`, `remove_pipes`, `upgrade_pipes`, `clean_pipes`,
-`place_structure`, `remove_structure`) then compares each family of networks it changed, before and after, in
+mole. Every job that can change pipe networks (`build pipe`, `remove pipe`, `swap pipe`, `build structure`,
+`remove structure`) then compares each family of networks it changed, before and after, in
 `gas_check`:
 
 | Field | Meaning |
 | --- | --- |
 | `ok`, `summary` | Every family holds what it held, no network without pipes holds gas, and the job left no orphan. |
-| `families` | `networks_before`, `networks_after`, `mol_before`, `mol_after`, `energy_before_j`, `energy_after_j`, `planned_loss_mol` (gas a `remove_structure` with `allow_contents` deletes as its dry run said: expected gone, not put back), `missing_mol` (beyond that); `emptied` when all its pipes were removed (the contents go with the last pipe, as in the game). |
+| `families` | `networks_before`, `networks_after`, `mol_before`, `mol_after`, `energy_before_j`, `energy_after_j`, `planned_loss_mol` (gas a `remove structure` with `allow: ["contents"]` deletes as its report said: expected gone, not put back), `missing_mol` (beyond that); `emptied` when all its pipes were removed (the contents go with the last pipe, as in the game). |
 | `ghosts` | Networks without pipes left holding gas, with the devices still registered on them: where missing gas sits. |
 | `recovered`, `ghosts_cleared` | Gas the game's merge lost, put back into the family's networks by volume, and the pipeless networks emptied and dropped after. The job then ends `applied_with_differences`. |
 | `withheld` | Gas a family lacks that was **not** put back, because it would take one of its networks over its weakest pipe (`network_id`, `family_networks`, `mol`, `pressure_after_kpa`, `rating_kpa`): a burst would vent everything. The family stays short, so the job ends `gas_lost`. |
@@ -376,26 +380,27 @@ mole. Every job that can change pipe networks (`place_pipes`, `remove_pipes`, `u
 | `checked` | False only when a save took the game tick before the check. |
 
 **Gas hold.** A job that ends `gas_lost` holds pipe jobs: every later real run that touches a pipe network
-(`place_pipes`, `remove_pipes`, `upgrade_pipes`, `clean_pipes`, `undo_job`, and a `place_structure` /
-`remove_structure` run that places or removes anything with a pipe end) is refused with `gas_check_failed`, so a
-fault that lost gas once cannot lose more before someone looks. Dry runs still answer, and runs that touch no pipe are
+(`build pipe`, `remove pipe`, `swap pipe`, `undo`, and a `build structure` /
+`remove structure` run that places or removes anything with a pipe end) is refused with `gas_check_failed`, so a
+fault that lost gas once cannot lose more before someone looks. Reports still answer, and runs that touch no pipe are
 not held. The hold ends when the world is left (a save loaded, or back to the menu), or when a run acknowledges the
 loss:
 
 - **Ask the user before acknowledging a gas loss.** Show them the job's `gas_check` (how much went missing, from
   which networks) and go on only once they agree to accept it. An agent never acknowledges a loss on its own.
 - Pass `acknowledge_gas_lost` with the id of the job that set the hold (the one that ended `gas_lost`, as the
-  refusal names it). The hold is lifted as the run starts, and the run goes on as usual. A run queued with `wait`
+  refusal names it). The hold is lifted as the run starts, and the run goes on as usual. A run queued with `queue`
   lifts it when it leaves the queue, if that job's loss still holds pipe jobs then.
 - The reply's `gas_hold` repeats the loss, so the acknowledgement is on record: `status` `acknowledged`, `lifted`
   true, `held_by_job_id`, `loss` (`job_id`, `networks`, `missing_mol`, `summary`) and a `note`. Every poll of that
-  job with `job_id` repeats the same `gas_hold`, the finished job's record too, while the job is kept.
+  job (`inspect {what: "job", id: "<job id>"}`) repeats the same `gas_hold`, the finished job's record too, while
+  the job is kept.
 - An empty `acknowledge_gas_lost` (`""`) is refused (`invalid_argument`), not read as left out.
 - Another job's id is refused with `gas_hold_mismatch`, naming the holding job and its loss. Nothing is lifted.
-- A dry run reports `gas_hold` when a hold would apply to it or `acknowledge_gas_lost` was given (`applies`: whether
+- A report carries `gas_hold` when a hold would apply to it or `acknowledge_gas_lost` was given (`applies`: whether
   the hold would refuse the real run; the note says what acknowledging would lift) and lifts nothing. With no hold
   that applies and no acknowledgement, a reply has no `gas_hold` key.
-- `undo_job` passes `acknowledge_gas_lost` on to every call it makes, and refuses a real run the hold would refuse in
+- `undo` passes `acknowledge_gas_lost` on to every call it makes, and refuses a real run the hold would refuse in
   any of them before starting the first.
 - A later job that ends `gas_lost` holds pipe jobs again, under its own job id: each loss is acknowledged by itself.
 
@@ -408,24 +413,24 @@ The same tools with Kit (Chute), and the item flow checked.
   overflows, bins, windows, inlets and outlets are never placed.
 - **Direction matters.** Items travel from a run's first cell to its last. Start at the source (a device's chute Output
   port, a chute bin, a line carrying items towards you) and end at the sink (a device's chute Input port).
-  `plan_chute_route` refuses a `to` at an Output port or a `from` at an Input port (`invalid_argument`).
-  `connections` and `grid_survey` list each port's role.
+  `plan route` refuses an `end` at an Output port or a `start` at an Input port (`invalid_argument`).
+  `inspect connections` and `survey area` list each port's role.
 - A junction takes items in through two inputs and lets them out through its output, so it merges flows; it cannot
   split one. The tool turns it to face downstream.
 - Refused: `flow_reversed` (reverse the waypoints), `flow_conflict` (two flows meeting head-on), `flow_ambiguous`
   (nothing says which way a junction must face). Warned: `drops_items` (items would fall out of an open end),
   `flow_unknown`.
-- A chute with an item riding in it is never removed or replaced: let it pass, or take it out with `move_item`.
+- A chute with an item riding in it is never removed or replaced: let it pass, or take it out with `move item`.
 - Chutes block cables, pipes, devices and other chutes in the same small cell. Chute networks take new ids after any
   change.
 
 ## Upgrading networks in place
 
-`upgrade_cables` turns normal cable into heavy (default) or super heavy cable; `upgrade_pipes` turns normal gas and
-liquid pipe into insulated pipe of the same content. The game itself will not place heavy cable over normal cable or
+`swap cable` turns normal cable into heavy (default) or super heavy cable with `into`; `swap pipe` turns normal gas and
+liquid pipe into insulated pipe of the same content with `into`. The game itself will not place heavy cable over normal cable or
 insulated pipe over normal pipe, so the tools rebuild each piece the way the coil's or kit's own merge placement does.
 
-- Name a network with `network_id` or pieces with `reference_ids` (up to 4096). Pieces already at the target stay, and
+- Name a network with `network` or pieces with `id` (up to 4096). Pieces already at the target stay, and
   so do pipe members that are not pipes (vents, radiators).
 - Each piece becomes the target piece with exactly its cells and ends, long straights included. A piece without one is
   refused, or left as it is with `skip_unmatched: true`.
@@ -434,20 +439,20 @@ insulated pipe over normal pipe, so the tools rebuild each piece the way the coi
   Mounted fuses, analysers and pipe meters stay attached.
 - Cable networks keep their ids. A pipe network keeps its contents; only its volume changes by the difference between
   old and new pieces, and the run is refused if the pressure would then exceed the weakest pipe.
-- `upgrade_pipes` with `to: "repair"` swaps each burst pipe for a new piece of its own kit the same way, so a burst
+- `swap pipe` with `into: "repair"` swaps each burst pipe for a new piece of its own kit the same way, so a burst
   pipe that is the only pipe of its network keeps the contents (the game itself has no repair: deconstructing it
   empties the network). Pieces that are not burst stay. Burst pieces are swapped by the other modes too. A burst pipe
-  that is not on its line's network (`thing_health` and `connections` list it in `broken_neighbours`) is not in
-  `network_id`: name it in `reference_ids`.
+  that is not on its line's network (`inspect health` reads it `pipe_burst`; `survey network` lists such a pipe in
+  `broken_neighbours`) is not one `network` reaches: name it in `id`.
 - Pieces inside a rocket, pieces in their broken build state and, for a repair, a burst pipe off its line's network are
-  not swapped (`rocket_internal`, `broken_build_state`, `off_network`): the refusal names the `place_pipes` (or
-  `place_cables`) call that builds a new piece at the same cell with the same ends and removes the old one in the same
+  not swapped (`rocket_internal`, `broken_build_state`, `off_network`): the refusal names the `build pipe` (or
+  `build cable`) call that builds a new piece at the same cell with the same ends and removes the old one in the same
   job, as a player would.
 - A confirmed run answers `job_id`, `status` and `preflight_summary`; polls answer the result without the preflight
   and, unless the job was refused, without the final check. `verbose: true` gives both.
 
-Make a whole network heavy cable, `upgrade_cables` (dry run, then again with `dry_run: false, confirm: true`):
+Make a whole network heavy cable, `swap cable` (report first, then again with `confirm: true`):
 
 ```json
-{ "network_id": { "reference_id": "133871", "port": 1 }, "to": "heavy" }
+{ "what": "cable", "network": { "id": "133871", "port": 1 }, "into": "heavy" }
 ```

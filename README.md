@@ -54,8 +54,8 @@ The mod and the sidecar must be the same version: when the mod updates, extract 
 another version cannot talk to the mod.
 
 Players who join a game or a dedicated server do not need the mod. With it, their game shares where they look, so
-the agent's camera tools (`looking_at`, placing at the crosshair, `highlight`, `show_preview`...) work for them on a
-dedicated server too, and highlights are drawn on their screen.
+the agent's camera verbs (`inspect {what: "looking_at"}`, placing at the crosshair, `show {what: "highlight"}`,
+`show {what: "preview"}`) work for them on a dedicated server too, and highlights are drawn on their screen.
 
 Full steps, Codex, dedicated servers and multiplayer: **[docs/install.md](docs/install.md)**.
 
@@ -63,78 +63,86 @@ Full steps, Codex, dedicated servers and multiplayer: **[docs/install.md](docs/i
 
 Ask the agent to call these, in order, to see that everything works:
 
-1. `mod_info`: the mod's version and the pipe it listens on.
-2. `list_devices`: every device in your world, with the reference ids other tools take.
-3. `looking_at`: what your crosshair is on. Point at something and ask the agent about it.
+1. `help {}`: the verbs and the shared topics (targets, paging, writes, shaping, refs, errors, cheats...).
+2. `find {what: "device"}`: every device in your world, with the ids other calls take.
+3. `inspect {what: "looking_at"}`: what your crosshair is on. Point at something and ask the agent about it.
 
 From there, ask in plain words: "which rooms are losing pressure", "what does this chip do", "run heavy cable from
-the APC to the new room along the frames". Each tool's own description is short; the agent reads the long help with
-`tool_info` (`{tool: "place_structure"}`, then a topic), and every error names the `tool_info` topic that explains it.
+the APC to the new room along the frames". `help {verb: "build"}` lists what a verb can act on;
+`help {verb: "build", what: "cable"}` describes one in full, with an example; and a refusal's `fix` names the help
+topic that explains it.
 
 ## Tools
 
-102 tools, in these areas, plus `tool_info`, the help. Each page lists its tools with what they take and give back.
+17 tools: 15 verbs, plus `help` and `run_script`. A call names the verb and, for most, the kind of thing it acts on:
 
-| Area | Tools | Page |
-| --- | --- | --- |
-| Devices, logic and console | `list_devices`, `describe_device`, `read_logic`, `write_logic`, `read_logic_many`, `write_logic_many`, `read_devices`, `read_memory`, `write_memory`, `inspect_slots`, `network_snapshot`, `sample_logic`, `connections`, `set_uplink`, `list_gateways`, `run_console_command`, `read_console`, `set_battery_charge`, `game_clock`, `looking_at`, `mod_info`, `profiling` | [devices-and-logic.md](docs/devices-and-logic.md) |
-| Chips | `get_ic_source`, `set_ic_source`, `get_ic_status`, `control_ic_execution`, `resolve_ic_selectors`, `set_ic_pins`, `screen_read`, `screen_press` | [chips.md](docs/chips.md) |
-| Items | `find_items`, `find_things`, `item_totals`, `list_containers`, `container_contents`, `move_item`, `label`, `paint`, `consumables` | [items.md](docs/items.md) |
-| Air, planet, plants and survival | `rooms`, `atmosphere_contents`, `water_sources`, `move_gas`, `outer_frames`, `planet`, `deep_miner_spots`, `weather`, `plants`, `plant_genes`, `reagents`, `player_vitals`, `move_player`, `ignition_risk`, `thing_health` | [air-planet-and-plants.md](docs/air-planet-and-plants.md) |
-| Solar, dishes and traders | `solar_aim`, `dish_aim`, `landing_pads`, `trader_contacts`, `trader_inventory`, `trader_buy`, `trader_sell` | [solar-and-traders.md](docs/solar-and-traders.md) |
-| Cables, pipes and chutes | `grid_survey`, `plan_cable_route`, `plan_pipe_route`, `plan_chute_route`, `place_cables`, `place_pipes`, `place_chutes`, `remove_cables`, `remove_pipes`, `remove_chutes`, `upgrade_cables`, `upgrade_pipes` | [building.md](docs/building.md) |
-| Clean-up and refactoring | `clean_cables`, `clean_pipes`, `clean_chutes`, `plan_removal`, `feed_paths` | [cleanup-and-refactor.md](docs/cleanup-and-refactor.md) |
-| Walls, frames and structures | `replace_walls`, `replace_frames`, `describe_prefab`, `wall_map`, `find_spot`, `lint_layout`, `lint_rules`, `check_replaceable`, `show_preview`, `highlight`, `place_structure`, `advance_build_state`, `remove_structure`, `undo_job` | [walls-frames-structures.md](docs/walls-frames-structures.md), [lint-rules.md](docs/lint-rules.md) |
-| Rockets | `rocket_status`, `rocket_forecast`, `rocket_mining_options`, `rocket_flight_log` | [rockets.md](docs/rockets.md) |
-| Blueprints | `paste_blueprint` | [blueprints.md](docs/blueprints.md) |
-| SDB Silo | `silo_withdraw`, `silo_deposit` (and `container_contents` on a silo) | [silo.md](docs/silo.md) |
-| Ingot Vault (mod) | `vault_contents`, `vault_deposit`, `vault_withdraw`, `vault_transfer` | [ingot-vault.md](docs/ingot-vault.md) |
+```json
+{"verb": "find", "what": "device", "prefab": "*GasSensor*"}
+```
 
-Every building tool works the same way: a **dry run** by default that changes nothing and lists every problem; a real
-run only with `dry_run: false` and `confirm: true`; the change made in one held game tick and checked afterwards;
-materials taken from your inventory as the game would charge, and refunds put back into it. See
+| Verb | What it does |
+| --- | --- |
+| `find` | List things in the world or an area, filtered, nearest first. |
+| `inspect` | Describe one thing, or a few by id, in detail. |
+| `survey` | Map an area or a network as a whole: the grid's cells, a wall face, a network's members, feed paths. |
+| `read` | Read live values: logic, memory, a snapshot, samples over time, the clock, flight logs. |
+| `write` | Set values and states. |
+| `plan` | Work out how, changing nothing: routes, removal prices, free spots, rocket flights, mining yields, aim angles. |
+| `check` | Check against rules and risks: the layout lint of a room or box, the lint rule set, whether things are replaceable, the player's ignition risk. |
+| `build` | Build new things as a player would, paying materials. |
+| `swap` | Swap things already built, in place: walls or frames, upgrade or tidy cable, pipe and chute networks. |
+| `remove` | Take things away as a player would, with refunds and guards. |
+| `move` | Move items, gas and players. |
+| `trade` | Trade with traders: contacts in the sky, what each buys and sells, and buying or selling with the landed trader. |
+| `show` | Draw on the player's screen only, for a while: a build preview, or highlights through walls. |
+| `undo` | Undo a finished build or removal job, a bulk write (write-N), a script run (script-14: the whole run, newest first), or the newest blueprint paste. |
+| `server` | StationGod and the game server: mod version, health and costs, profiling, the in-game console. |
+| `help` | StationGod's help: `help {}` lists verbs and topics; `{verb}` a verb's whats and options; `{verb, what}` one what in full; `{topic}` a shared topic. |
+| `run_script` | Run Python 3.10 against the game: one call made of verb calls. |
+
+Each verb's help names its whats, their options and their reply keys. The shared topics cover what every verb
+takes: `targets` (id, a list of ids, a ref, near + radius, box, room, network, prefab), `paging` (limit and offset,
+next page), `writes` (what acts at once, what reports first, `confirm`), `shaping` (fields, omit, list_limits,
+output_file), `refs` (rN: an earlier reply, repeat, from_plan), `errors`, `cheats` and more.
+
+**Every change reports first.** Build, swap, remove, trade and undo calls, and every cheat, only report until
+`confirm: true`; so does any write whose targets you did not type out (a ref, a network, a spread). A write to typed
+ids acts at once. A report changes nothing and lists every target with its current value under `targets`; a
+confirmed job runs in one held game tick and is checked afterwards; materials are taken from your inventory as the
+game would charge, and refunds are put back into it. See
 [building.md](docs/building.md#how-every-building-tool-works).
 
-Every tool error has one shape, `{code, message}`, as the result's text and its structured content alike. Arguments
-are checked against the tool's schema before the call runs: an argument the tool does not take (the message names the
-nearest one it does take), a value of the wrong JSON type, a value out of range, a word the argument's list does not
-hold, a missing required argument, a key given twice and a number past a double's range (`1e309`) are
-`invalid_argument`, with each problem and where it is. The mod does the checking, so scripts that talk to it directly
-get the same checks: a filter misspelt as `prefab` for `prefab_contains` is refused rather than ignored. An integer may be written `3.0` or `1e2`. Reference ids are decimal strings (`"364"`). `game_unavailable` means the game could not be reached, and says whether no pipe
-answered or the game took the request but did not reply in time (it may still have run).
+A refusal is `{code, message, fix}`: the message says what went wrong, the fix what to do next. Missing or wrong
+options are one `invalid_argument` listing every problem at once (`{path, problem}` each), with a short list of what
+the what does take, nearest first. The mod does the checking, so scripts that talk to it directly get the same
+checks. `game_unavailable` means the MCP server could not reach the game; a write may have run if the game took the
+call. After a game update a missing game member turns off only the whats that need it, which answer `game_changed`.
 
-**Large replies.** Every tool that can answer a lot (lists, surveys, plans, dry runs, job polls, rocket forecasts,
-chip sources) takes the shaping arguments `fields`, `omit` and `list_limits`. `fields: ["reference_id", "position"]` keeps only those keys in each
-entry of the reply's top-level lists and inside each top-level object, and a name that is a top-level key keeps it
-whole (`looking_at` `fields: ["target"]`); counts and other plain top-level values stay. A name that matches nothing
-but has one safe near match (`name` for `display_name`, `used_slots` for `used_slot_count`) is read as that key and
-reported in `fields_mapped`; any other comes back in `fields_unmatched`, with near keys in `fields_closest` and the
-valid keys in `fields_valid`, and `tool_info` names each tool's reply keys.
-A dotted name is a path read from each entry, through nested objects and lists at any depth (`occupant.prefab_name`,
-`held_in.reference_id`), or from the top-level key it starts with: `things.position.x` keeps only `x` inside
-`position` in each entry of `things`, `target.reference_id` only the target's id; dictionary keys keep their case (`results.logic.Temperature`). `omit: ["source",
-"runtime.registers"]` leaves keys out wherever a path from the top of the reply reaches them, top-level keys included
-(a list on the way applies the rest to each entry: `members.position`; a bare name also reaches into each top-level
-object and list entry: `body` drops `target.body`; a path that left nothing out comes back in
-`omit_unmatched`). The mod applies `fields` and `omit` while it writes the reply, so the keys left out
-are never formatted or sent, over the pipe or TCP alike. Where a key costs the game real work, the mod does not
-even work it out when `fields` leaves it out: `thing_health`'s `networks`, the networks of every structure listed.
-`output_file: true`, or a file name such as `"ores"`, writes the whole reply as indented JSON to a file and answers a
-small pointer instead: `{output_file (the full path), bytes, tool, counts (each list's length), summary (the short
-top-level values), in_file_only}`. Files go to `%LOCALAPPDATA%\StationGodMCP\output` on the machine the sidecar runs
-on (the agent's), or the folder given with `--output-dir`; a named file is overwritten, and files older than 7 days or
-beyond the newest 200 are deleted. A reply larger than 200 KB that did not ask for `output_file` is written to a file
-on its own and answered with the pointer, marked `auto_output_file: true` (`--inline-limit-kb` changes the size).
-Errors always come back in the reply. Run replies are compact by default: a confirmed run answers its job and a
-`preflight_summary`, and network device lists are counts unless asked for. Every tool's default reply is kept under
-8 KB on a large base: lists come a short page at a time (`limit`, `offset`), a long list is cut to its first entries
-and every reply ends with `truncated`, naming each list it held back with how many it returned, the total and
-the argument that gets the rest (`[]` when it held nothing back) (`list_limits: {"devices": 100}` keeps more), and fixed explanations
-are in the tool help (`tool_info`), not the replies (`include_notes: true` where a report has them).
+**Large replies.** Every verb takes the shaping options `fields`, `omit` and `list_limits`. `fields: ["reference_id",
+"position"]` keeps only those keys in each entry of the reply's lists, and a dotted name is a path read from each
+entry, through nested objects and lists at any depth (`occupant.prefab_name`, `held_in.reference_id`). `omit:
+["source", "runtime.registers"]` leaves keys out wherever a path reaches them. A name that matches nothing comes
+back in `fields_unmatched` with the nearest names in `fields_closest`, and `omit` names that matched nothing in
+`omit_unmatched`. The mod applies `fields` and `omit` while it writes the reply, so keys left out are never formatted
+or sent; where a key costs the game real work, the mod does not even work it out when `fields` leaves it out.
+`output_file: true`, or a file name such as `"ores"`, writes the whole reply as indented JSON to a file and answers
+a small pointer instead: `{output_file (the full path), bytes, tool, counts, summary, in_file_only}`. Files go to
+`%LOCALAPPDATA%\StationGodMCP\output` on the machine the sidecar runs on (the agent's), or the folder given with
+`--output-dir`; a named file is overwritten, and files older than 7 days or beyond the newest 200 are deleted. A
+reply larger than 200 KB that did not ask for `output_file` is written to a file on its own and answered with the
+pointer, marked `auto_output_file: true` (`--inline-limit-kb` changes the size).
+
+A direct reply over 12 KB, to a call that asked for no size, is cut to about 4 KB: it keeps whole entries where they
+fit, else every entry in a shallow form, and adds `ref`, `cut` and `next` (repeat the call with `whole: true`, or
+with an `offset` for the next page). `whole: true` lifts the cut; a report, a paging `limit`, `list_limits` and
+`output_file` are never cut. Lists answer one page at a time: `limit` entries from `offset`, with `total` and
+`has_more`, and `repeat: "r3"` with a new `offset` fetches the next page. Every reply ends with `truncated`, naming
+each list it held back, how many it returned, the total, and how to get the rest (`[]` when it held nothing back);
+`list_limits: {"devices": 100}` keeps more of one list.
 
 Things are named by `display_name`, the game's own name (the label, else the localised name). Where the game has no
 English name for a prefab it shows a placeholder such as `<N:EN:StructureCrewUmbilicalDoor>`; `display_name` and every
-message then carry the prefab name instead (`StructureCrewUmbilicalDoor`), the same in every tool.
+message then carry the prefab name instead (`StructureCrewUmbilicalDoor`), the same in every verb.
 
 ## Configuration
 
@@ -145,8 +153,8 @@ The game stays smooth while several clients call at once. The mod answers within
 (`[Performance] RequestBudgetMs`), clients take turns, quick calls go first, and at most one heavy call (a survey, a
 plan, a building job) runs per frame.
 
-To see what the mod costs a running server, the `profiling` tool switches a profiler on and off at runtime: per
-frame, per call and per job tick hold, with a slow-frame warning in the log and an optional rolling CSV
+To see what the mod costs a running server, `server {what: "profiling"}` switches a profiler on and off at runtime:
+per frame, per call and per job tick hold, with a slow-frame warning in the log and an optional rolling CSV
 ([devices-and-logic.md](docs/devices-and-logic.md#profiling-a-running-server)). Off, it costs next to nothing. It
 runs on the host, where requests run, and sends nothing to other players.
 
@@ -158,15 +166,21 @@ at once on one connection, reconnecting, and **subscriptions**, which push a set
 them changes instead of reading them every tick. The protocol itself is in
 [docs/architecture/protocol.md](docs/architecture/protocol.md).
 
+An agent or a program can also run Python inside the game's hub with `run_script`: one call made of verb calls, with
+waits, polls and repeated work written in ordinary Python. A run changes nothing unless it is confirmed, and a
+finished run's writes can be taken back with `undo {id: "script-14"}`.
+
 ## Safety
 
-- **It can cheat.** Every tool has a class: read, write (what a player or a chip can do: logic, chips, labels, paint,
-  item moves, trading, building) or cheat (what no player can: `move_gas`, `write_memory`, the console, battery charge,
-  moving players, free placement, gene edits, blueprint pastes, forced item moves into hidden slots). Every connection can call every tool; the class is
-  there so an agent can tell you when a tool is a cheat and ask first. There is no general undo: save first.
+- **It can cheat.** Every what is a read, a write (what a player or a chip can do: logic, chips, labels, paint,
+  item moves, trading, building), or a cheat (what no player can: `move {what: "gas"}` and `"player"`,
+  `write {what: "memory", "battery", "genes"}`, `server {what: "command"}`, free placement, blueprint pastes,
+  forced item moves). Every connection can call every verb; the class is there so an agent can tell you when a call
+  is a cheat and ask first. Reports make even the risky writes show their targets first. There is no general undo:
+  save first.
 - **Host only.** The mod runs on the game that hosts; its changes reach other players through the game's own sync.
   Every player who joins needs the same version, because the StationGod Gateway is a new structure.
-- **The building tools refuse rather than guess.** They never make materials, never delete a pipe network's
+- **The building verbs refuse rather than guess.** They never make materials, never delete a pipe network's
   contents, never remove a chute with an item in it, never touch indestructible pieces or a launching or landing rocket, and
   never swap a
   wall or frame in a way that opens a room. Every job that changes pipe networks checks their contents before and
@@ -175,7 +189,7 @@ them changes instead of reading them every tick. The protocol itself is in
 - **Remote access is not encrypted.** Over TCP the shared secret keeps out anyone without it, but the secret and
   everything after it travel in plain text: use a private network or a VPN.
 - **After a game update** the mod checks at load every game member it relies on. A missing one turns off only the
-  tools that need it, which answer `game_changed`; `mod_info` lists them.
+  whats that need it, which answer `game_changed`; `server {what: "info"}` lists them.
 
 ## Documentation
 

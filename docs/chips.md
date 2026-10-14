@@ -9,7 +9,7 @@ an IC Housing's device pins. They work on IC10 chips and, with
 
 ## Where a chip can be
 
-`reference_id` names a **holder**, the thing whose slot holds the chip:
+`id` names a **holder**, the thing whose slot holds the chip:
 
 - IC10: an IC Housing, a suit or another worn holder (toolbelts, tablets, mining robots, logic I/O devices).
 - Lua (StationeersLua): an IC Housing, or a [ScriptedScreens](https://steamcommunity.com/sharedfiles/filedetails/?id=3666779631)
@@ -23,20 +23,20 @@ StationeersLua is optional: the mod finds it by name at run time and works the s
 
 ## Tools
 
-| Tool | What it does | Main arguments |
+| Call | What it does | Main options |
 | --- | --- | --- |
-| `get_ic_source` | Read the program. | `reference_id` |
-| `set_ic_source` | Write the program, as the IC editor's export does. | `reference_id`, `source` or `source_file`, `include_source` |
-| `get_ic_status` | Current line, registers, stack, aliases, defines, jump tags, power and pause state, errors, and pins `d0` to `d5`; for Lua, compile state, last error and print log. | `reference_id`, `stack_start`, `stack_count` (default 64), `log_lines` (default 5) |
-| `control_ic_execution` | Pause, step one instruction, resume (IC10); restart (Lua). | `reference_id`, `action`: `pause`, `step`, `resume`, `restart` |
-| `resolve_ic_selectors` | What a chip's `db` and `d0`... pins and its aliases point at, and the prefab and name-hash selector (`lbn`, `sbn`) of each device on its data network. | `reference_id`, `target_reference_ids` |
-| `set_ic_pins` | Set an IC Housing's pins, as turning its screws would. | `reference_id`, `pins: {d0: "<id>", d3: null}`, `allow_off_network` |
-| `screen_read` | What a ScriptedScreens screen shows: its surfaces and one surface's elements, each with its box, text and props; a picture where the game draws. | `reference_id`, `surface`, `type`, `text_contains`, `shown_only`, `include_style`, `image` |
-| `screen_press` | Touch a control on a ScriptedScreens screen as a player does: a click, a change or a toggle. | `reference_id`, `element_id` or `at: [x, y]`, `event`, `value`, `player` |
+| `inspect chip` (`source`) | Read the program. | `id`, `parts: ["source"]` |
+| `write chip` (`code`) | Write the program, as the IC editor's export does. | `id`, `code` or `code_file`, `include: ["code"]` |
+| `inspect chip` (`status`) | Current line, registers, stack, aliases, defines, jump tags, power and pause state, errors, and pins `d0` to `d5`; for Lua, compile state, last error and print log. | `id`, `start`, `count` (default 64), `log` (default 5) |
+| `write chip` (`run`) | Pause, step one instruction, resume (IC10); restart (Lua). | `id`, `run`: `pause`, `step`, `resume`, `restart` |
+| `inspect chip` (`selectors`) | What a chip's `db` and `d0`... pins and its aliases point at, and the prefab and name-hash selector (`lbn`, `sbn`) of each device on its data network. | `id`, `targets` |
+| `write chip` (`pins`) | Set an IC Housing's pins, as turning its screws would. | `id`, `pins: {d0: "<id>", d3: null}`, `allow: ["off_network"]` |
+| `inspect screen` | What a ScriptedScreens screen shows: its surfaces and one surface's elements, each with its box, text and props; a picture where the game draws. | `id`, `surface`, `type`, `text`, `shown_only`, `include: ["style"]`, `include: ["image"]` |
+| `write screen` | Touch a control on a ScriptedScreens screen as a player does: a click, a change or a toggle. | `id`, `element` or `pixel: [x, y]`, `event`, `text`, `as_player` |
 
 ## IC10
 
-- `set_ic_source` compiles the program at once and restarts it at line 0. A paused chip stays paused; registers and the
+- `write chip` with `code` compiles the program at once and restarts it at line 0. A paused chip stays paused; registers and the
   stack are kept (`sp` goes back to 0). A compile error sets `compilation_error`, `compile_error_line` (0-based) and
   `compile_error_type`; `error_line` and `error_type` are the runtime error's. `error_line` is the game's own text, a
   string such as `"0"`, while `compile_error_line` is an integer; both are kept as they are so existing readers do not
@@ -49,51 +49,53 @@ StationeersLua is optional: the mod finds it by name at run time and works the s
   characters in all, and cuts a longer program when a player opens and submits it. The program is still written;
   `warnings` has `over_editor_lines`, `over_editor_line_length` or `over_editor_size`. `over_editor_line_length` names
   every long line (0-based); past 10 it gives their count and the first 10.
-- `control_ic_execution` `pause` holds the chip; `step` runs exactly one instruction and stays paused (a running chip is
-  paused first); `resume` lets it run. `step` is refused, with nothing changed, while the program has a compile error
+- `write chip` with `run: "pause"` holds the chip; `run: "step"` runs exactly one instruction and stays paused (a
+  running chip is paused first); `run: "resume"` lets it run. `step` is refused, with nothing changed, while the
+  program has a compile error
   (`ic_compile_error`) or the holder is off or unpowered (`ic_not_operable`). Pausing holds IC Housings and suits only:
   other holders report paused but keep running. A pause lasts until `resume` or until the world is left: loading a
   save, starting a new game or going to the menu lets every paused chip run again (1.9.1+).
-- `resolve_ic_selectors` lists the devices the chip's batch instructions (`lb`, `lbn`, `sb`, `sbn`) reach: those on the
+- `inspect chip`'s `selectors` part lists the devices the chip's batch instructions (`lb`, `lbn`, `sb`, `sbn`)
+  reach: those on the
   holder's data network (`batch_device_count`; null when it has none). A selector is `unique` when exactly one device
-  on that network has its prefab and name hash. A device named in `target_reference_ids` that is off the network is
+  on that network has its prefab and name hash. A device named in `targets` that is off the network is
   listed with `reachable: false` and no `ic10_example`: the chip cannot read it, and an `lbn` with its pair reads the
   reachable devices that share the pair instead, or none. `collision_count` counts reachable devices only, so for an
   unreachable device it is how many other devices that pair would read. An id that is not a device is
   `device_not_found`.
 - A register or stack value that is not finite reads as a string: `"NaN"`, `"Infinity"`, `"-Infinity"`.
-- `get_ic_status` shows the stack as a window: `stack_start` and `stack_count` choose it. The program is left out
-  (`source` null, `source_length` still its length) unless `include_source: true`, so polling a chip's log or state
-  never reads a long Lua source; `get_ic_source` reads the program alone (with `output_file` for a long one). The same
-  goes for `set_ic_source`'s reply: it echoes the stored program only with `include_source: true`.
-- `source_file` (MCP only) instead of `source`: an absolute path, on the machine the MCP server runs on, to a UTF-8
+- `inspect chip`'s `status` part shows the stack as a window: `start` and `count` choose it. The program is left out
+  (`source` null, `source_length` still its length) unless `parts: ["status", "source"]` is given, so polling a chip's
+  log or state never reads a long Lua source; the `source` part reads the program alone (with `output_file` for a long
+  one). The same goes for `write chip`'s reply: it echoes the stored program only with `include: ["code"]`.
+- `code_file` (MCP only) instead of `code`: an absolute path, on the machine the MCP server runs on, to a UTF-8
   text file whose text is written as the source. A 60 KB Lua hub then never passes through the agent's context.
-- `pins` lists only pins with a device or an alias (each keeps its `name`, `d0`...); `resolve_ic_selectors` only pins
-  with a device.
-- A holder with no chip: `get_ic_status` answers only `has_chip: false`, the holder and its pins (no `housing`, power
-  or runtime fields); the other tools refuse with `no_programmable_chip`, `resolve_ic_selectors` too. Arguments are
-  checked before the chip, so a bad `action` or `source`, or a malformed id in `target_reference_ids`, is
+- `pins` lists only pins with a device or an alias (each keeps its `name`, `d0`...); `inspect chip`'s `selectors`
+  part only pins with a device.
+- A holder with no chip: `inspect chip`'s `status` part answers only `has_chip: false`, the holder and its pins (no
+  `housing`, power or runtime fields); the other parts refuse with `no_programmable_chip`, `selectors` too. Arguments
+  are checked before the chip, so a bad `run` or `code`, or a malformed id in `targets`, is
   `invalid_argument` on any holder; an unknown or repeated id is looked up only after the holder and its chip.
 
-Load a program and check it, `set_ic_source` then `get_ic_status`:
+Load a program and check it, `write chip` then `inspect chip`:
 
 ```json
-{ "reference_id": "151020", "source": "alias sensor d0\nloop:\nl r0 sensor Temperature\nyield\nj loop" }
+{ "id": "151020", "code": "alias sensor d0\nloop:\nl r0 sensor Temperature\nyield\nj loop" }
 ```
 
 ## Lua chips
 
-- `set_ic_source` writes Lua the way the IC editor's export does. There is no IC10 line or byte limit; the tool takes up
+- `write chip` writes Lua the way the IC editor's export does. There is no IC10 line or byte limit; the tool takes up
   to 262144 characters (`source_too_large` above that).
-- `get_ic_status`'s `runtime` (registers, stack, aliases, defines, jump tags) is IC10's; for a Lua chip it is null.
-- StationeersLua compiles on a worker thread, so the reply usually shows `lua.compiling: true`. Call `get_ic_status`
+- `inspect chip`'s `runtime` (registers, stack, aliases, defines, jump tags) is IC10's; for a Lua chip it is null.
+- StationeersLua compiles on a worker thread, so the reply usually shows `lua.compiling: true`. Call `inspect chip`
   until it is false, then read `lua.running` and `lua.last_error`. No separate restart is needed.
 - `lua` in the replies: `compiling`, `has_runtime`, `init_complete` (module code done, `tick(dt)` running), `running`,
   `library` (a `--@module` chip other chips require), `source_version`, `last_error` (`kind` compile or runtime,
-  `line`, `message`, `traceback`) and, in `get_ic_status`, the last `log_lines` lines of the chip's `print()` log.
-- `control_ic_execution` `restart` compiles the chip's source again and runs it from the start, clearing a latched
+  `line`, `message`, `traceback`) and, in `inspect chip`, the last `log` lines of the chip's `print()` log.
+- `write chip` with `run: "restart"` compiles the chip's source again and runs it from the start, clearing a latched
   error. Lua chips cannot be paused or stepped (`lua_chip_unsupported`).
-- `housing.kind` in `get_ic_status` says what holds the chip, and `operable` whether it runs now: a board runs while its
+- `housing.kind` in `inspect chip` says what holds the chip, and `operable` whether it runs now: a board runs while its
   computer is on, powered and built; a cartridge while its tablet is on and powered; a suit or visor with a charged
   battery.
 - A holder that is off or unpowered compiles the new source when it runs again.
@@ -101,45 +103,45 @@ Load a program and check it, `set_ic_source` then `get_ic_status`:
 ## Screens (ScriptedScreens)
 
 A Lua chip on a ScriptedScreens board, cartridge or visor draws its screen from a model the host keeps: every element
-the script has built, with its type, its place and its props. `screen_read {reference_id}` reads that model, so it
+the script has built, with its type, its place and its props. `inspect screen {id}` reads that model, so it
 works on a dedicated server too. It lists the surfaces (`shown_on` says which screen shows each) and the elements of one
 (default: the one the main screen shows), each with `box {x, y, w, h}` in surface pixels from the top-left corner,
-`shown`, `touch` (a control a press acts on) and `props` (`text`, `value`, `z_index`...). `text_contains` and `type`
+`shown`, `touch` (a control a press acts on) and `props` (`text`, `value`, `z_index`...). `text` and `type`
 narrow the list. A vector element's motion is drawn by each player's game; its props hold the scene, not the frame.
 
 `image: true` adds ScriptedScreens' own PNG of the drawn surface. Only a game that draws can give one: on a dedicated
 server the answer is `not_rendered`; read the elements instead.
 
-`screen_press` sends a touch into the host's input path, as a player's touch arrives: `click` (default), `change` with
-`value`, or `toggle`, on `element_id`, or on the shown control at `at: [x, y]` (the highest `z_index` there; scroll
+`write screen` sends a touch into the host's input path, as a player's touch arrives: `click` (default), `change` with
+`text`, or `toggle`, on `element`, or on the shown control at `pixel: [x, y]` (the highest `z_index` there; scroll
 positions are not applied). The script's handler runs on its next tick and sees `player` (default your name) as the one
 who touched it, so read the screen again about half a second later to see what it did.
 
 ## Pins
 
-`set_ic_pins` sets any of `d0` to `d5` to a device's reference id, or `null` to clear it; pins left out keep their
-device. When the housing is on a data network, the device must be on that network too, because the chip only reaches
-a pin's device there; `allow_off_network: true` stores it anyway. Every pin is checked before any is written, so a
+`write chip` with `pins` sets any of `d0` to `d5` to a device's reference id, or `null` to clear it; pins left out
+keep their device. When the housing is on a data network, the device must be on that network too, because the chip
+only reaches a pin's device there; `allow: ["off_network"]` stores it anyway. Every pin is checked before any is written, so a
 refused call changes nothing. A running chip uses the new devices from its next instruction; nothing is recompiled.
 Rocket IC Housings work too; suits and other worn holders are refused.
 
 Refusal codes: `not_ic_housing` (not an IC Housing, e.g. a suit), `device_not_found` (the housing or a pin's device is
 outside the scope), `thing_not_found` (nothing has a pin's id), `not_logic_device` (a pin's id is a frame, a pipe or
 another non-device), `logic_not_readable` (a device with no readable logic), `not_on_data_network` (off the housing's
-data network without `allow_off_network`), `invalid_argument` (a bad `pins` object, pin name or id, a pin listed
+data network without `allow: ["off_network"]`), `invalid_argument` (a bad `pins` object, pin name or id, a pin listed
 twice, the housing itself).
 
 ## Who writes a device
 
-A device written by a chip is written back on the chip's next pass. `write_logic` and `write_logic_many` say so in
-`driven_by` when a chip on the device's data network writes the same logic type to it, and the protocol method
-`inspect_controllers` lists every controller of a device or a network (see `docs/architecture/protocol.md`, Protocol
-methods). A chip counts when its code writes the device through a pin (`s d0 On 1`, also through `alias`), `db`, its
+A device written by a chip is written back on the chip's next pass. `write logic` says so in
+`driven_by` when a chip on the device's data network writes the same logic type to it, and `inspect controllers`
+lists every controller of a device (`help {verb: "inspect", what: "controllers"}`). A chip counts when its code
+writes the device through a pin (`s d0 On 1`, also through `alias`), `db`, its
 id (`sd`), or a batch to its prefab hash (`sb`, and `sbn` with its name), with defines and `HASH("...")` resolved; a
 Lua chip through `ic.write`, `ic.write_id` or `batch_write` with constant arguments. A device register (`dr0`) or
 anything held in a register is not followed. Each program is parsed once and kept until its source changes.
 
 ## Multiplayer
 
-Writes happen on the host. `set_ic_source` sends the chip to the other players and `set_ic_pins` sends the new pins,
-through the game's own sync.
+Writes happen on the host. `write chip` sends the chip's new source and pins to the other players, through the game's
+own sync.

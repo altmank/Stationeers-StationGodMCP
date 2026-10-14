@@ -4,56 +4,57 @@
 
 Rooms and their air, gas in tanks and pipes, the planet's atmosphere and weather, plants and their genes, and the
 player's own needs and where they stand. Everything here is read from the game's own state and formulas; only
-`move_gas`, `plant_genes` and `move_player` change anything. No gateway is needed.
+`move gas`, `write genes` and `move player` change anything. No gateway is needed.
 
 Units: pressure in kPa, temperature in kelvin, gas in moles, liquids also in litres, time in game seconds.
 
 ## Tools
 
-| Tool | What it does | Main arguments |
+| Call | What it does | Main options |
 | --- | --- | --- |
-| `rooms` | Every closed room, measured cell by cell: volume, pressure, temperature, every gas; its devices with `include_devices`. | `reference_id` (only the room that thing is in), `include_cells`, `include_devices` |
-| `atmosphere_contents` | What gas or liquid one thing holds: a canister, tank, suit, a pipe's whole network, a landing pad's shared atmosphere, or every network a device is on. | `reference_id` |
-| `water_sources` | Every canister, tank, device and pipe network that holds water, polluted water or steam, largest first. | `min_mol` |
-| `move_gas` | Move gas and liquid between atmospheres, or delete it. A cheat: it bypasses the game's physics. | `from`, `to` or `delete`, `gases`, `amount_mol`, `joined`, `force`, `dry_run`; `transfer_id` to poll |
-| `outer_frames` | Frames with a face on the planet's outside air. | `near_player_m`, `include_inner`, `limit`, `offset`, `order` |
-| `planet` | The planet's atmosphere: pressure, temperature and its parts, every gas, today's and the orbit's temperature range, ice and cloud reservoirs. | none |
-| `deep_miner_spots` | Where a deep miner mines what: the region and ore profile at a point, and the nearest spots whose profile gives the ores you name, with distance, bearing, the ground there and beacons for `highlight` (1.7.0+). | `at`, `ores`, `radius_m`, `count`, `min_separation_m`, `step_m` |
-| `weather` | The storm schedule, when the next event can come, every event this world can roll, and the season. | none |
-| `plants` | Every plant in a tray, planter or station in short (stage, health, problems in plain words, time to harvest); one plant, or `verbose`, in full: needs, conditions and forecasts to the next stage, harvest and seeds. | `reference_id`, `include_unplanted`, `verbose` |
-| `plant_genes` | Read or edit the genes of plants, seeds and produce, as the Gene Splicer does. | `reference_id` or `reference_ids`, `genes`, `unit`, `force`, `include_notes` (each gene's meaning) |
-| `reagents` | What a furnace, centrifuge, mixer or microwave holds, reagent by reagent (logic only gives the total). | `reference_id` |
-| `player_vitals` | Your hunger and thirst: stores, capacities, drain rates and time until empty, awake and asleep. | none |
-| `move_player` | A cheat: move a player anywhere at once, to a point, beside a thing or beside another player (see *Moving a player*). | `at`, or `to_id`, or `near_player`; `player`, `safe_ground`, `dry_run` |
-| `ignition_risk` | Whether anything you carry would catch fire in the air around you, by the game's fire rule. | `include_prefabs` |
-| `thing_health` | The damage of any thing, of every piece of one network, or every damaged or broken thing in the world, broken first, then worst first. | `reference_id`, `reference_ids`, `network_id` (with `kind`, `damaged_only`), or none; `structures_only`, `broken_only`, `min_damage_ratio` |
+| `find room` | Every closed room, measured cell by cell: volume, pressure, temperature, every gas; its devices with `include: ["devices"]`. | `id` (only the room that thing is in), `include: ["cells", "devices"]` |
+| `inspect atmosphere` | What gas or liquid one thing holds: a canister, tank, suit, a pipe's whole network, a landing pad's shared atmosphere, or every network a device is on. | `id` |
+| `find water` | Every canister, tank, device and pipe network that holds water, polluted water or steam, largest first. | `min_mol` |
+| `move gas` | Move gas and liquid between atmospheres, or delete it. A cheat: it bypasses the game's physics. | `source`, `to` or `delete`, `gases`, `amount_mol`, `joined`, `allow: ["burst"]`, `confirm`; the reply's `transfer_id` to poll with `inspect job` |
+| `find frame` | Frames with a face on the planet's outside air. | `near` + `radius`, `include: ["inner"]`, `limit`, `offset`, `order` |
+| `inspect planet` | The planet's atmosphere: pressure, temperature and its parts, every gas, today's and the orbit's temperature range, ice and cloud reservoirs. | none |
+| `find ore` | Where a deep miner mines what: the region and ore profile at a point, and the nearest spots whose profile gives the ores you name, with distance, bearing, the ground there and beacons for `show highlight` (1.7.0+). | `near`, `ores`, `radius`, `limit`, `separation`, `step` |
+| `inspect weather` | The storm schedule, when the next event can come, every event this world can roll, and the season. | none |
+| `find plant` | Every plant in a tray, planter or station in short (stage, health, problems in plain words, time to harvest); one plant, or `verbose`, in full: needs, conditions and forecasts to the next stage, harvest and seeds. | `id`, `include: ["unplanted"]`, `verbose` |
+| `inspect genes`, `write genes` | Read or edit the genes of plants, seeds and produce, as the Gene Splicer does. | `id`, `genes`, `unit`, `allow: ["out_of_range"]`, `include: ["notes"]` (each gene's meaning) |
+| `inspect reagents` | What a furnace, centrifuge, mixer or microwave holds, reagent by reagent (logic only gives the total). | `id` |
+| `inspect player` | Your hunger and thirst: stores, capacities, drain rates and time until empty, awake and asleep. | none |
+| `move player` | A cheat: move a player anywhere at once, to a point, beside a thing or beside another player (see *Moving a player*). | `at`, or `to`, or `to_player`; `player`, `safe_ground`, `confirm` |
+| `check ignition` | Whether anything you carry would catch fire in the air around you, by the game's fire rule. | `include: ["prefabs"]` |
+| `inspect health` | The damage of any thing, or of every piece of one network, worst first. | `id`, `network` (with `kind`, `damaged_only`) |
+| `find damaged` | Every damaged or broken thing in the world, broken first, then worst first. | `structures_only`, `broken_only`, `min_damage` |
 
 ## Rooms
 
 A room is the game's closed flood fill of 2 m cells, at most 1200 cells; a bigger or open space is outside and has no
-room. `rooms` sums each room's air fresh from its cells, as the game pools it. Sample `thermal_energy_j` twice: its
+room. `find room` sums each room's air fresh from its cells, as the game pools it. Sample `thermal_energy_j` twice: its
 change over the time between is the room's net heat flow in watts.
 
-`outer_frames` finds the frames that face the outside: a face counts as exposed when the cell across it is in no room
+`find frame` finds the frames that face the outside: a face counts as exposed when the cell across it is in no room
 and can hold air. A sealed space bigger than 1200 cells has no room, so frames facing into it count as outer too.
 `build_state` is the frame's build state index, from 0 (bare) up to its finished state, which differs by frame (a
 finished steel frame is 3); `blocks_air` says whether that state holds air.
 
-`water_sources` lists a new pipe network at once, even while the game is paused. A thing's own atmosphere made since
+`find water` lists a new pipe network at once, even while the game is paused. A thing's own atmosphere made since
 the last atmospherics tick (a canister spawned while paused) shows from the next tick on. A call that holds the game's
 main thread 250 ms or more logs, at most once a minute, where the time went: the wait for the game's atmosphere and
 pipe network lists (the game tick holds them during its passes), the scan, the rows and any garbage collection.
 
 ## Moving a player
 
-`move_player` is a cheat: it puts a player somewhere at once, which no player can do (the console's `teleport` is
-creative only and moves just the player at that keyboard). Ask before each use. It moves at once; `dry_run: true`
-moves nothing and reports where the player stands and where they would go.
+`move player` is a cheat: it puts a player somewhere at once, which no player can do (the console's `teleport` is
+creative only and moves just the player at that keyboard). Ask before each use. It reports first: `confirm: true`
+moves the player; left out, the call reports where the player stands and where they would go.
 
 - **Who:** `player`, a name (a whole name, or a part only one name holds, any case) or a reference id; without it, the
   player (on a dedicated server the one connected player). `player_not_found` and `ambiguous_player` list the players.
-- **Where:** one of `at` (a point, `[x, y, z]`), `to_id` (beside that thing, on the side facing where the player
-  stands, at the height of its base; an item in a locker or a suit counts as its holder) or `near_player` (beside that
+- **Where:** one of `at` (a point, `[x, y, z]`), `to` (beside that thing, on the side facing where the player
+  stands, at the height of its base; an item in a locker or a suit counts as its holder) or `to_player` (beside that
   player). Beside means 0.5 m clear of the thing's body; it does not check for walls, so a thing in a tight corner can
   land a player in the wall next to it. A point beyond the world's terrain is refused (`outside_world`); the low-orbit
   area above the planet is allowed.
@@ -62,7 +63,7 @@ moves nothing and reports where the player stands and where they would go.
   the roof, so leave it off to land on a floor indoors. In the low-orbit area (y 1500 to 2500 m above the planet, where
   orbital launch mounts are deployed) there is no terrain and no gravity, so it stands the player 0.5 m above the
   highest structure at that x and z (a mount's deck, a station's roof), or keeps the point when nothing is built
-  there. `to_id` of a mount or anything else up there lands beside it as on the ground; the player floats there.
+  there. `to` of a mount or anything else up there lands beside it as on the ground; the player floats there.
 - **The reply:** `before` and `after` (position, `room_id` and `room_type`, or `outside: true`), `distance_m`, the
   `destination` as asked, and `moved_by`.
 
@@ -73,7 +74,7 @@ made:
 - `client`: the player plays on another machine. The server sends the order to their StationGod, which moves them; the
   server's copy goes there too. This needs StationGod 1.28.0 or later on their game as well (the same version as the
   server); without it the call is refused `client_cannot_move` and nothing moves. `after` is the point sent; a
-  `dry_run` call a moment later reads where they actually stand.
+  call without `confirm` a moment later reads where they actually stand.
 - `seat_exit`: the player is in a seat, bed, cryo tube or capsule. They leave it and stand at the point, the same way
   getting up works, which reaches every player whatever they run.
 - `server`: the player at this game's own keyboard, or a body nobody controls (its player is offline).
@@ -82,13 +83,13 @@ A dead player, or one another player is dragging, is refused `player_not_movable
 
 ## Moving gas
 
-`move_gas` is a cheat: it bypasses the game's physics. Gas and liquid jump from one atmosphere to another with no
+`move gas` is a cheat: it bypasses the game's physics. Gas and liquid jump from one atmosphere to another with no
 pipe, pump or valve between them, no flow time and no power, which nothing a player builds can do. It uses the game's
 own gas calls: each gas leaves with its share of the heat and arrives with it.
 
-- `from` and `to` are reference ids of a canister, portable tank, tank or suit, a pipe (its network), any landing pad
+- `source` and `to` are ids of a canister, portable tank, tank or suit, a pipe (its network), any landing pad
   piece (the pad's shared atmosphere), a pipe or landing pad network id, or an atmosphere id from
-  `atmosphere_contents`, or a room (below). A single world cell is refused. `from: "planet"` with `delete: true` and
+  `inspect atmosphere`, or a room (below). A single world cell is refused. `source: "planet"` with `delete: true` and
   named `gases` takes those gases out of the planet's own air (the mix Terraforming Reloaded reads) and its clouds and
   ice caps; it needs Terraforming Reloaded (`terraforming_mod_required`, after the arguments are checked).
 - `gases` names the gases (`Oxygen`, `Nitrogen`, `CarbonDioxide`, `LiquidOxygen`, `Steam`...); omit for all of them.
@@ -105,17 +106,20 @@ own gas calls: each gas leaves with its share of the heat and arrives with it.
   the air), so the move is refused when more would freeze than before, or when an arriving liquid would sit under its
   minimum liquid pressure (6.3 kPa of gas for water) in a room without the heat to boil it all, where it keeps
   evaporating and cooling the room until the rest freezes. Boiling that would cool the room under the liquid's
-  freezing point counts as not having the heat. `force` skips every check.
-- **Timing:** the game changes gas only on its atmospherics thread, so the move is queued (`status: queued`) and applied
-  at the next atmospherics tick, about half a second later, never while paused. The reply is the prediction; call again
-  with only `transfer_id` for the outcome: `queued` until it has been applied, then `applied` or `failed` (with
-  `error.code` `nothing_to_move` when the source held none of the gases by then, `atmosphere_not_found` when an
-  atmosphere was destroyed first, `move_failed` when the game's gas call threw). `transfer_not_found` means an id never
-  issued, or older than the last 64 outcomes. `dry_run: true` returns the same prediction after the same checks and
-  queues nothing (`status: dry_run`, no `transfer_id`). While a move waits, `upgrade_pipes` and `clean_pipes` on a
-  network it takes from or gives to answer `atmosphere_busy`: wait for the tick and try again.
-- **Rooms:** `{"room_id": "<id>"}` (the `room_id` from `rooms`) or `{"room_of": "<reference id>"}` (the room that
-  thing is in; the player's id gives the room you stand in, and an item in a slot is in its outermost holder's room) as `from` or `to`. The game keeps no room-wide
+  freezing point counts as not having the heat. `allow: ["burst"]` moves past a burst rating only; the matter rules
+  still refuse.
+- **Timing:** the game changes gas only on its atmospherics thread, so a confirmed move is applied
+  at the next atmospherics tick, about half a second later, never while paused. The call waits for it (up to
+  `max_wait`, default 30 s) and answers `status` `applied` or `failed`; past `max_wait` it answers `queued` and its
+  `transfer_id`, and `inspect job {id}` reads the outcome: `queued` until it has been applied, then `applied` or
+  `failed` (with `error.code` `nothing_to_move` when the source held none of the gases by then, `atmosphere_not_found`
+  when an atmosphere was destroyed first, `move_failed` when the game's gas call threw). `transfer_not_found` means an
+  id never issued, or older than the last 64 outcomes. A call without `confirm` returns the same prediction after the
+  same checks and queues nothing (no `transfer_id`). While a move waits, a `swap pipe` on a network it takes from or
+  gives to answers `atmosphere_busy`: wait for the tick and try again.
+- **Rooms:** `{"room": "<id>"}` (the `room_id` from `find room`) or `{"room_of": "<id>"}` (the room that
+  thing is in; the player's id gives the room you stand in, and an item in a slot is in its outermost holder's room)
+  as `source` or `to`. The game keeps no room-wide
   atmosphere, only one per 2 m cell, so a room here is every cell of it that has air of its own; cells without are
   left out, and a room with none is refused `no_atmosphere`. From a room, `gases` is required, so its breathable air
   is never emptied by leaving `gases` out. Each named gas is taken from every cell in proportion to what the cell
@@ -124,7 +128,7 @@ own gas calls: each gas leaves with its share of the heat and arrives with it.
   spiking to many times the room's pressure while the game spreads it. A room has no burst rating; the tank or network
   on the other side keeps every check. The reply's side has `room {room_id, room_type, cell_count, cells_with_air,
   volume_l}`, no per-cell `members`, and `total.before` / `total.after` are the room's air, pressure included, over
-  its cells with air (the `rooms` tool also counts cells without air of their own at the planet's air, so it can
+  its cells with air (the `find room` tool also counts cells without air of their own at the planet's air, so it can
   differ slightly).
 - To undo, move each gas back; it returns at the other side's temperature by then.
 - Host only (`not_host` on a client).
@@ -132,87 +136,89 @@ own gas calls: each gas leaves with its share of the heat and arrives with it.
 ### Landing pads
 
 Every piece of one landing pad (tiles, gas storage tanks, the tank connectors, the data and power connection) shares
-one atmosphere, the pad network's. Name any piece, or the network's id, in `atmosphere_contents` or `move_gas`. Its
+one atmosphere, the pad network's. Name any piece, or the network's id, in `inspect atmosphere` or `move gas`. Its
 volume is 500 L per gas storage piece and 1 L per other piece. It holds gases and liquids alike and never changes their
 state, so liquid ozone stays liquid there, but boils once moved into a warm pipe network: check `after_boiling`.
 
-Empty a canister's oxygen into a pipe network, `move_gas`:
+Empty a canister's oxygen into a pipe network, `move gas`:
 
 ```json
-{ "from": "171002", "to": "169540", "gases": ["Oxygen"] }
+{ "source": "171002", "to": "169540", "gases": ["Oxygen"], "confirm": true }
 ```
 
-Clear the nitrous oxide out of the room you stand in into a tank (`rooms` gives `local_player_room_id`):
+Clear the nitrous oxide out of the room you stand in into a tank (`find room` gives `local_player_room_id`):
 
 ```json
-{ "from": { "room_id": "5321" }, "to": "124640", "gases": ["NitrousOxide"] }
+{ "source": { "room": "5321" }, "to": "124640", "gases": ["NitrousOxide"], "confirm": true }
 ```
 
 ## Planet and weather
 
-`planet` reads the atmosphere every outdoor cell relaxes toward, with the parts of its temperature (sun angle, distance,
+`inspect planet` reads the atmosphere every outdoor cell relaxes toward, with the parts of its temperature (sun angle, distance,
 greenhouse, density, weather), the coldest and warmest the game's formula gives today and across the orbit, and which
 gases would condense. With Terraforming Reloaded loaded it also reports
 that mod's state.
 
-`weather` gives the storm schedule from the game's weather manager: the current or scheduled event with its start and
+`inspect weather` gives the storm schedule from the game's weather manager: the current or scheduled event with its start and
 length, the days until a new one can be scheduled, and every event the world can roll. The game picks an event at
 random the moment both of its day rules pass, so the schedule is exact from that moment.
 
 ## Plants
 
-`plants` reads each plant itself, so it works for trays with no data port. Problems come in plain words (dry, too cold,
+`find plant` reads each plant itself, so it works for trays with no data port. Problems come in plain words (dry, too cold,
 harmful gas), each with how long it has lasted against the time after which it starts damaging the plant. Forecasts
-use the plant's current growth efficiency. `include_unplanted` adds harvested crops and seed bags.
+use the plant's current growth efficiency. `include: ["unplanted"]` adds harvested crops and seed bags.
 
-`plant_genes` reads all 19 genes, each with what it does and the stat it sets now and at both ends of its range.
-Writing (`genes: {"GrowthSpeedMultiplier": 0.8}`) edits the gene set planting copies, as the Gene Splicer does; values
-stay within -1 to 1 unless `force` is given. Edits are saved and inherited by harvests and seeds like natural genes.
-Host only.
+`inspect genes` reads all 19 genes, each with what it does and the stat it sets now and at both ends of its range
+(`include: ["notes"]` adds each gene's meaning). `write genes` (`genes: {"GrowthSpeedMultiplier": 0.8}`) edits the
+gene set planting copies, as the Gene Splicer does; values
+stay within -1 to 1 unless `allow: ["out_of_range"]` is given. Edits are saved and inherited by harvests and seeds
+like natural genes. Host only.
 
 ## Survival
 
-- `player_vitals` computes hunger and thirst drain with the game's own per-tick formulas, right now and when up and
-  about, with the time until each store runs out. Food and water you carry are in `consumables` and `water_sources`.
-- `ignition_risk` checks every burnable thing you carry against the air of your cell: its effective flashpoint at this
+- `inspect player` computes hunger and thirst drain with the game's own per-tick formulas, right now and when up and
+  about, with the time until each store runs out. Food and water you carry are in `find food` and `find water`.
+- `check ignition` checks every burnable thing you carry against the air of your cell: its effective flashpoint at this
   pressure, its autoignition temperature, and whether it would light now.
-- `thing_health` reads the game's damage state, which no logic type exposes. `damage_ratio` 0 is like new, 1 destroyed;
+- `inspect health` reads the game's damage state, which no logic type exposes. `damage_ratio` 0 is like new, 1 destroyed;
   `health_percent` matches the solar panel tooltip. A solar panel generates (1 - `damage_ratio`) of its full output.
   Indestructible things report `null`, never a false 0.
 - `condition` says it in one word: `broken`, `damaged`, `intact`, `indestructible` or `none`. `broken` is the game's own
   broken state (`is_broken`), and it wins over the numbers: the game heals a structure when it breaks it, so a
   burnt-out vent reads 0 damage and 100 % health. A burst pipe (`pipe_burst` not `none`) is broken too: bursting does
   not damage it, so it also reads 0 damage. `pipe_burst` reads `pressure` for any burst pipe; `damage_record` lists
-  every cause that has damaged a pipe (`pressure`, `liquid`, `solid`), as its tooltip names them. So is a burnt cable an overload left (`StructureCableStraightBurnt` and the
-  like, a separate undamaged piece that carries no power; `remove_cables` removes it). The scan lists broken things
-  whatever their numbers;
+  every cause that has damaged a pipe (`pressure`, `liquid`, `solid`), as its tooltip names them. So is a burnt cable
+  an overload left (`StructureCableStraightBurnt` and the like, a separate undamaged piece that carries no power;
+  `remove cable` removes it). The `find damaged` scan lists broken things whatever their numbers;
   `broken_only: true` lists only them. Structures also report `broken_build_state`, their Labeller name
   (`custom_name`) and the cable, pipe and chute networks they are on (`networks`). A thing in a slot (a stored item, a
-  planted plant) reports its outermost holder's `position`, so `near_player_m` finds it. `remove_structure` with
-  `allow_broken` removes them.
-- `network_id` (1.10.0+) reads every piece of one network (`kind`: `pipe`, the default, `cable` or `chute`; devices
-  are not pieces), worst first, paged like the scan. `damaged_only: true` keeps the damaged and broken ones, so a whole
-  plant line's pipes are one small call: `{network_id: {reference_id: "<device>", port: 1}, damaged_only: true}`.
-  `network_id` takes a network id, a piece or device on it, or `{reference_id, port}`; `pieces` counts them all.
+  planted plant) reports its outermost holder's `position`, so `near: "player"` with a `radius` finds it.
+  `remove structure` with `allow: ["broken"]` removes them.
+- `inspect health` with `network` (1.10.0+) reads every piece of one network (`kind`: `pipe`, the default, `cable` or
+  `chute`; devices are not pieces), worst first, paged like the scan. `damaged_only: true` keeps the damaged and broken
+  ones, so a whole
+  plant line's pipes are one small call: `{network: {id: "<device>", port: 1}, damaged_only: true}`.
+  `network` takes a network id, a piece or device on it, or `{id, port}`; `pieces` counts them all.
 - A burst or broken piece stays in its cell, joined at its ends, but need not be on its network, so the network's
   pieces (and `damaged_only`) cannot show it: "0 damaged" is not proof of no leak. The network form therefore also walks
   every piece's and device's ends and reports what is broken there and not on the network: `broken_neighbour_count`
   (0 when none), and when there are any a `warning` and `broken_neighbours` (the first one, with its `position`,
-  `pipe_burst`, its own `network` or null, and `touches`, the piece it meets). `connections` does the same for a
+  `pipe_burst`, its own `network` or null, and `touches`, the piece it meets). `survey network` does the same for a
   network: its members form adds the `warning`, `summarize` the count and the list.
 
 ## Deep-miner spots
 
 A deep miner takes the ore profile of the region it is built in, once, when it is built: the first of the world's
-profiles whose region holds there. `deep_miner_spots` asks the game the same question:
+profiles whose region holds there. `find ore` asks the game the same question:
 
 - Without arguments: the region and profile under you, and every profile of the world with what one dirty ore holds
   (`reagents`, grams), how many drop at a time and how long a drop takes at 200 RPM. `profile_id` null means a miner
   there cannot mine.
 - `ores: ["Cobalt"]` (or several, e.g. `["Gold", "Silver"]`: a profile must hold every one; coal is `Hydrocarbon`):
-  the nearest spots around you (or `at`) within `radius_m` (default 500 m), at least `min_separation_m` apart (default
+  the nearest spots around you (or `near`) within `radius` (default 500 m), at least `separation` apart (default
   100 m), each with distance, `bearing_deg` (0 north = +z, 90 east = +x), `compass`, and the ground there.
 - `terrain.terrain_ok` is the miner's own terrain rule only (it must stand in terrain: the cell at its position may
   hold at most 6000 L of air). Structures in the way and the rest of its footprint are not checked; look before
   building.
-- `beacons` lists the spots as `{at, label}`, ready to pass to `highlight` as point targets.
+- `beacons` lists the spots as `{at, label}`, ready to pass to `show highlight` as point targets.

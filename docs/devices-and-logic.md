@@ -7,42 +7,43 @@ memory, but for any device in the world at once and without a chip.
 
 ## Identifying things
 
-- **Reference ids** are the game's own ids for things, passed and returned as strings (`"132000"`). `list_devices`,
-  `find_things` and `looking_at` give them; every other tool takes them.
+- **Reference ids** are the game's own ids for things, passed and returned as strings (`"132000"`). `find device`,
+  `find thing` and `inspect looking_at` give them; every other tool takes them.
 - **Logic types** are given by name, as IC10 writes them (`Setting`, `On`, `Pressure`, `Color`), or by numeric id
   (0 to 65535).
-- **Scope:** every device tool reaches every device in the world. Omit `gateway_id`, or pass `world` (an empty
-  `gateway_id` counts as omitted, and spaces around an id are ignored). A StationGod Gateway id narrows a call to that
+- **Scope:** every device tool reaches every device in the world. Omit `gateway`, or pass `world` (an empty
+  `gateway` counts as omitted, and spaces around an id are ignored). A StationGod Gateway id narrows a call to that
   gateway's data networks (see below).
 
 ## Tools
 
-| Tool | What it does | Main arguments |
+| Call | What it does | Main options |
 | --- | --- | --- |
-| `list_devices` | Every device in the world, or on one gateway's networks. | `name_contains`, `prefab_hash`, `gateway_id` |
-| `describe_device` | One device and every logic type it can read or write; for a rocket's device its rocket, for an umbilical its pairing, for a Logic Rocket Uplink its downlink (see *Rockets and umbilicals*). | `reference_id` |
-| `set_uplink` | Point a Logic Rocket Uplink at a downlink, as a screwdriver would. | `reference_id`, `downlink_id` |
-| `read_logic` | Read one logic value. | `reference_id`, `logic_type` |
-| `write_logic` | Write one logic value; the reply reads it back at once (`current_value`). | `reference_id`, `logic_type`, `value` |
-| `read_logic_many` | Up to 256 reads in one call; each gets its own result or error. | `reads: [{reference_id, logic_type}]` |
-| `write_logic_many` | Up to 256 writes in order, in one call. | `writes: [{reference_id, logic_type, value}]` |
-| `read_devices` | A control loop's whole read in one call, all in one frame (1.10.0+): logic, slot logic, an atmosphere and reagents of up to 128 things, plus the clock (see *One read per tick*). | `items: [{reference_id, logic, slots, atmosphere, reagents}]`, `include: ["clock"]` |
-| `read_memory` | Up to 512 consecutive values from a device with memory (an IC Housing's or suit's chip stack, a Logic Sorter, a satellite dish, a fabricator; a Logic Memory has only `Setting`). | `reference_id`, `start_address`, `count` |
-| `write_memory` | Up to 512 consecutive values into such a device. | `reference_id`, `start_address`, `values` |
-| `inspect_slots` | A device's slots, what is in them, what each slot takes, and every slot logic value. Changes nothing. Devices only: for a crate, the lander or a tool use `container_contents`. | `reference_id`, `slot_index` |
-| `network_snapshot` | Many devices and their logic values at one instant, in one game frame. Without `logic_types`, gas and liquid ratios reading 0 are left out and counted in `zero_ratios_omitted`. | `reference_ids`, `prefab_hash`, `name_contains`, `logic_types`, `include_zero_ratios`, `max_devices` (default 2) |
-| `sample_logic` | Record up to 32 values for up to 30 seconds; the first readings plus every change, timestamped. | `targets: [{reference_id, logic_type}]`, `duration_seconds` (default 5), `interval_seconds` (default 0.5) |
-| `connections` | A pipe, cable, chute or device's ends and what each joins; or every member of a network with its load or contents, 30 a page, or `summarize` for counts by prefab and colour. | `reference_id`, or `network_id` with `kind` (filters `prefab_contains`, `open_ends_only`, an area: `min` and `max`, or `near` with `radius_m`), or `min` and `max` alone: open ends in a box |
-| `list_gateways` | The scopes device tools accept: `world` and every StationGod Gateway. | none |
-| `looking_at` | What your crosshair is on, and the button, switch, port or slot under it; where you look from and which way (1.4.3+), the surface the look ray hits and the grid there, and the target's body. | `max_distance_m` |
-| `game_clock` | Game time, paused or not, time of day, days past. | none |
-| `run_console_command` | Any console command, with the lines it printed. | `command`, `max_output_lines` |
-| `set_battery_charge` | A cheat: set the charge of single batteries, full or to a ratio or joules (see *Batteries*). | `reference_ids`, or `rocket_id`, or `in_id`; `ratio` or `joules`; `dry_run`, `confirm` |
-| `read_console` | The latest console lines, including Unity errors and stack traces. | `lines` |
-| `mod_info` | Mod version, pipe name, call statistics per method, and every game member the mod relies on. | none |
-| `profiling` | Switch the runtime profiler on or off, clear it, or read its report: what StationGod costs the main thread per frame, per call and per job tick hold (see *Profiling a running server*). | `action`, `slow_frame_ms`, `csv` |
+| `find device` | Every device in the world, or on one gateway's networks. | `name`, `prefab`, `gateway` |
+| `inspect device` | One device and every logic type it can read or write; for a rocket's device its rocket, for an umbilical its pairing, for a Logic Rocket Uplink its downlink (see *Rockets and umbilicals*). | `id` |
+| `write uplink` | Point a Logic Rocket Uplink at a downlink, as a screwdriver would. | `id`, `downlink` |
+| `read logic` | Read one logic value. | `id`, `logic` |
+| `write logic` | Write one logic value; the reply reads it back at once (`current_value`). | `id`, `logic`, `value` |
+| `read logic` | Up to 256 reads in one call; each gets its own result or error. | `reads: [{id, logic}]` |
+| `write logic` | Up to 256 writes in order, in one call. | `writes: [{id, logic, value}]` |
+| `read logic` | A control loop's whole read in one call, all in one frame (1.10.0+): logic, slot logic, an atmosphere and reagents of up to 128 things, plus the clock (see *One read per tick*). | `reads: [{id, logic, slots, atmosphere, reagents}]`, `include: ["clock"]`, or an `id` list with a `logic` list |
+| `read memory` | Up to 512 consecutive values from a device with memory (an IC Housing's or suit's chip stack, a Logic Sorter, a satellite dish, a fabricator; a Logic Memory has only `Setting`). | `id`, `start`, `count` |
+| `write memory` | Up to 512 consecutive values into such a device. | `id`, `start`, `values` |
+| `inspect slots` | A device's slots, what is in them, what each slot takes, and every slot logic value. Changes nothing. Devices only: for a crate, the lander or a tool use `inspect contents`. | `id`, `slot` |
+| `read snapshot` | Many devices and their logic values at one instant, in one game frame. Without `logic`, gas and liquid ratios reading 0 are left out and counted in `zero_ratios_omitted`. | `id`, `prefab`, `name`, `logic`, `include: ["zero_ratios"]`, `limit` (default 2) |
+| `read sample` | Record up to 32 values for up to 30 seconds; the first readings plus every change, timestamped. | `reads: [{id, logic}]`, `seconds` (default 5), `interval` (default 0.5) |
+| `inspect connections` | A pipe, cable, chute or device's ends and what each joins. | `id` |
+| `survey network` | Every member of a pipe, cable or chute network with its load or contents, 30 a page, or `summarize` for counts by prefab and colour; or the open ends in a box. | `network` with `kind` (filters `prefab`, `open_ends`, an area: `near` with `radius`), or `box` alone |
+| `find gateway` | The scopes device tools accept: `world` and every StationGod Gateway. | none |
+| `inspect looking_at` | What your crosshair is on, and the button, switch, port or slot under it; where you look from and which way (1.4.3+), the surface the look ray hits and the grid there, and the target's body. | `distance` |
+| `read clock` | Game time, paused or not, time of day, days past. | none |
+| `server command` | Any console command, with the lines it printed. | `command`, `lines` |
+| `write battery` | A cheat: set the charge of single batteries, full or to a ratio or joules (see *Batteries*). | `id`, or `rocket`, or `within`; `ratio` or `joules`; `confirm` |
+| `server console` | The latest console lines, including Unity errors and stack traces. | `lines` |
+| `server info` | Mod version, pipe name, call statistics per method, and every game member the mod relies on. | none |
+| `server profiling` | Switch the runtime profiler on or off, clear it, or read its report: what StationGod costs the main thread per frame, per call and per job tick hold (see *Profiling a running server*). | `action`, `slow_frame_ms`, `csv` |
 
-## One read per tick: `read_devices` (1.10.0+)
+## One read per tick: `read logic` (1.10.0+)
 
 A script that reads the same devices every tick (a furnace card, a print queue) can make one call where it made one
 per device, slot and pipe network. Every item is read in the same game frame (one update; the atmospherics thread may
@@ -50,27 +51,27 @@ still run between two items, so it is one frame, not one atmospherics tick).
 
 ```json
 {"include": ["clock"],
- "items": [
-   {"reference_id": "811234", "logic": ["Temperature", "Pressure", "RatioOxygen", "280"],
+ "reads": [
+   {"id": "811234", "logic": ["Temperature", "Pressure", "RatioOxygen", "280"],
     "slots": [{"index": 0, "logic": ["Occupied", "OccupantHash", "Quantity"]}],
     "atmosphere": {"of": "internal"}, "reagents": true},
-   {"reference_id": "811410", "atmosphere": {"port": 1}},
-   {"reference_id": "811300", "slots": [{"index": 0}]}]}
+   {"id": "811410", "atmosphere": {"port": 1}},
+   {"id": "811300", "slots": [{"index": 0}]}]}
 ```
 
-Each item takes a `reference_id` and at least one part:
+Each item takes an `id` and at least one part:
 
-- `logic`: up to 64 logic types, read as `read_logic` reads them.
+- `logic`: up to 64 logic types, read as `read logic` reads them.
 - `slots`: up to 16 `{index, logic}`; slot logic as a chip's `ls` reads it. Without `logic`, every slot logic type
-  the slot reads, under the names `inspect_slots` gives them (`Occupied`, `Quantity`...).
+  the slot reads, under the names `inspect slots` gives them (`Occupied`, `Quantity`...).
 - `atmosphere`, compact (pressure, temperature, total moles, volume, liquid volume, and each gas or liquid held):
   `{}` the id's own (a thing's internal atmosphere, a pipe's or landing pad piece's network, a pipe network id, an
   atmosphere id); `{of: "internal"}` only the thing's internal one; `{port: n}` the pipe network joined at a device's
-  port `n`, the end index `connections` lists. A port follows the network through rebuilds, so a script need not keep
-  network ids. A device's connected networks are not its own: ask for them by port.
-- `reagents: true`: the total and each reagent, as the `reagents` tool.
+  port `n`, the end index `inspect connections` lists. A port follows the network through rebuilds, so a script need not
+  keep network ids. A device's connected networks are not its own: ask for them by port.
+- `reagents: true`: the total and each reagent, as `inspect reagents`.
 
-`include: ["clock"]` adds `clock`, as `game_clock`.
+`include: ["clock"]` adds `clock`, as `read clock`.
 
 ```json
 {"gateway_id": "world", "clock": {"game_time_s": 84211.5, "paused": false, "time_of_day_ratio": 0.31, "days_past": 12},
@@ -98,13 +99,13 @@ Each item takes a `reference_id` and at least one part:
 - **Bounds.** At most 128 items, 64 logic types per item and per slot, 16 slots per item, 1,024 values in all (a slot
   without `logic` counts 32). Over a bound, an unknown key in an item, slot or atmosphere, or a slot index given twice
   is `invalid_argument` and nothing is read.
-- Read only. Writes stay with `write_logic_many`.
+- Read only. Writes stay with `write logic`.
 
 ## Rockets and umbilicals
 
-`describe_device` on a device in a rocket adds `rocket`: its rocket network, name and state, and what the game counts
+`inspect device` on a device in a rocket adds `rocket`: its rocket network, name and state, and what the game counts
 for it (`dry_mass_kg`, `hull_pieces`, `internals`). On a rocket umbilical (gas, power, chute or crew; the male one on
-a Rocket Tower or the socket on the rocket) it adds `umbilical`, and `grid_survey` lists the same on each umbilical
+a Rocket Tower or the socket on the rocket) it adds `umbilical`, and `survey area` lists the same on each umbilical
 among its `devices`:
 
 - `role`: `umbilical` (the male one) or `socket`; `open`: extended and passing gas, power or items.
@@ -114,34 +115,34 @@ among its `devices`:
   searches up to 14 small cells along its front, in its own column and two to its right; the socket one column. A
   partner must be the matching kind, face back (dot 0.9 or more), and have no other device between.
 
-On a Logic Rocket Uplink `describe_device` adds `uplink`: the Logic Rocket Downlink it follows (`downlink`, with that
+On a Logic Rocket Uplink `inspect device` adds `uplink`: the Logic Rocket Downlink it follows (`downlink`, with that
 downlink's `rocket`; null when it follows none), `connected` (its data connection is live: on, powered, built, and
 the downlink on a data network) and `choices`, every downlink it may follow: those a screwdriver press on the uplink
-steps through, built and logic readable. `set_uplink` (`reference_id`, `downlink_id`) points it at one of them, as
+steps through, built and logic readable. `write uplink` (`id`, `downlink`) points it at one of them, as
 those presses would; anything else is refused `invalid_downlink`. Its reply's `previous_downlink` sets it back.
 
 ## Reading back what you wrote
 
-- `write_logic` returns `requested_value`, `previous_value` and `current_value`. `current_value` is read back at once
+- `write logic` returns `requested_value`, `previous_value` and `current_value`. `current_value` is read back at once
   and can differ from the request: the device clamps it (`On` 7 reads 1), ignores it (a paint-only colour index on the
   LED display), or moves toward it over time (a solar panel's angle). The write still succeeds; compare the two when
   it matters.
-- `write_logic` and each written item of `write_logic_many` carry `driven_by` when a chip, logic writer or batch
+- `write logic` and each written item of its `writes` list carry `driven_by` when a chip, logic writer or batch
   writer on the device's data networks writes the same logic type to it: `[{kind, reference_id, prefab_name,
   logic_type, via, line}]` (`via` is the pin, `db`, `id`, the batch instruction or `output`; `line` is the chip's
   0-based line). The value you wrote can be written back on the chip's next pass. It is left out when nothing does.
-- In `read_logic_many`, `write_logic_many` and `sample_logic` every result has its `index`; a failed one also names
+- In `read logic`, `write logic` and `read sample` every result has its `index`; a failed one also names
   the `reference_id` and `logic_type` it asked for (null where the entry's own could not be read) and its `error`.
-- `read_memory` and `write_memory` check the whole range against the device's `stack_size` before touching it: an
+- `read memory` and `write memory` check the whole range against the device's `stack_size` before touching it: an
   address past the end is refused (`invalid_argument`) and nothing is written. An IC Housing or suit with no chip has
   no memory to read (`no_programmable_chip`).
-- `sample_logic`'s `interval_seconds` is the least time between samples. The game takes each sample in the first frame
+- `read sample`'s `interval` is the least time between samples. The game takes each sample in the first frame
   at or after it is due, on the real clock (a paused game is still sampled), so an interval shorter than a frame gives
   fewer samples than asked; `sample_count` says how many. The call answers when its last sample is taken.
 
 ## Where you look (1.4.3+)
 
-`looking_at` also answers the words a player uses: "on this wall", "to my right", "a metre up".
+`inspect looking_at` also answers the words a player uses: "on this wall", "to my right", "a metre up".
 
 - `view`: the camera's `eye`, its `forward`, `right` and `up`, `yaw_deg` (0 along `+z`, 90 along `+x`), `pitch_deg`,
   and `axes`: the world axes nearest your **level** forward, right and up (and back, left, down), so "forward" runs
@@ -151,9 +152,9 @@ those presses would; anything else is refused `invalid_downlink`. Its reply's `p
   server, the view the player's own StationGod shares, read on their game the same way), with `age_s`, the seconds
   since it was taken. Without a view the call refuses `no_view`, saying why (see
   [install: multiplayer](install.md#multiplayer)).
-- `hit`: the first surface on the look ray up to `max_distance_m` (default 10 m, beyond the game's 3 m reach): the
+- `hit`: the first surface on the look ray up to `distance` (default 10 m, beyond the game's 3 m reach): the
   point, its normal and `face` axis, the `face_plane` it lies on (`z=668`; within 0.3 m of the plane, so the top of a floor plate counts, 1.4.4+), the 2 m cell on your side, the small cell a
-  mounted piece would stand in, that cell's `support` character (as `grid_survey`: `x` a door's keep-out, `g` a
+  mounted piece would stand in, that cell's `support` character (as `survey area`: `x` a door's keep-out, `g` a
   window), what was hit, and the point in the target's own frame (`local_on_target`).
 - `target.body` for a structure: `render_box` (the box its meshes fill), `centre_offset` from its origin, and
   `grid_box`, the box of the small cells the game registers it in, its real footprint. `facing_me` says whether its
@@ -161,40 +162,40 @@ those presses would; anything else is refused `invalid_downlink`. Its reply's `p
 
 ## Examples
 
-Examples show a tool's name and the arguments the agent passes.
+Examples show a call and the arguments the agent passes.
 
-Turn a device on and set it, `write_logic_many`:
+Turn a device on and set it, `write logic`:
 
 ```json
 { "writes": [
-  { "reference_id": "132000", "logic_type": "On", "value": 1 },
-  { "reference_id": "132000", "logic_type": "Setting", "value": 101.3 } ] }
+  { "id": "132000", "logic": "On", "value": 1 },
+  { "id": "132000", "logic": "Setting", "value": 101.3 } ] }
 ```
 
-Every Wall Heater's power draw at one instant, `network_snapshot`:
+Every Wall Heater's power draw at one instant, `read snapshot`:
 
 ```json
-{ "name_contains": "Wall Heater", "logic_types": ["On", "Power"] }
+{ "name": "Wall Heater", "logic": ["On", "Power"] }
 ```
 
-Without `logic_types` a device reads every logic type it exposes, less the gas and liquid ratios that read 0
+Without `logic` a device reads every logic type it exposes, less the gas and liquid ratios that read 0
 (`RatioOxygen`, `RatioNitrogenInput2` and the like, over a hundred on a filtration unit): each device counts them in
-`zero_ratios_omitted`. Name them in `logic_types`, or pass `include_zero_ratios: true`, to read them. `Ratio` itself and
+`zero_ratios_omitted`. Name them in `logic`, or pass `include: ["zero_ratios"]`, to read them. `Ratio` itself and
 `CompletionRatio` always stay. One filtration unit's snapshot drops from about 10 KB to about 2 KB.
 
-Watch a tank's pressure for 20 seconds, `sample_logic`:
+Watch a tank's pressure for 20 seconds, `read sample`:
 
 ```json
-{ "targets": [{ "reference_id": "140211", "logic_type": "Pressure" }], "duration_seconds": 20, "interval_seconds": 1 }
+{ "id": "140211", "logic": "Pressure", "seconds": 20, "interval": 1 }
 ```
 
 ## Connections and networks
 
-`connections {reference_id}` lists each end of a pipe, cable, chute or device: its type (`Power`, `Data`,
+`inspect connections {id}` lists each end of a pipe, cable, chute or device: its type (`Power`, `Data`,
 `PowerAndData`, `Pipe`, `Chute`...), its role (`Input`, `Output`...), the network attached there and everything
 connected at that end, by the game's own connection test.
 
-`connections {network_id, kind}` lists a network's members, pieces first, then devices, paged. It adds a summary:
+`survey network {network, kind}` lists a network's members, pieces first, then devices, paged. It adds a summary:
 
 - **Cable:** the Cable Analyser's numbers from the last power tick: `required_w`, `potential_w`, `actual_w`,
   `shortfall_w`, the weakest cable's rating (`lowest_cable_max_w`), the weakest fuse, and `overloaded` when the network
@@ -203,7 +204,7 @@ connected at that end, by the game's own connection test.
 - **Chute:** the member count.
 
 Two filters narrow the members before paging, so `total` counts what they keep (`structure_count` and `device_count`
-stay the whole network's): `prefab_contains` (part of the prefab name, any case) and `open_ends_only`, which keeps
+stay the whole network's): `prefab` (part of the prefab name, any case) and `open_ends`, which keeps
 members with an end of the network's kind that nothing is attached at (a run's loose ends, a device port left
 unjoined) and lists those ends in each member's `open_ends`. A 32 KB chute network of plain straights answers with
 the few pieces that matter.
@@ -214,31 +215,31 @@ the few pieces that matter.
 `device_count` and `open_end_count`. The filters apply first.
 
 Every member, the one-thing form and the box form's pieces carry `color {index, name, is_default}` when the thing has
-a colour, as `paint` reads it, so a new run can be painted like the lines beside it.
+a colour, as `write paint` reads it, so a new run can be painted like the lines beside it.
 
-`min` and `max` without `reference_id` or `network_id` list every cable, pipe and chute piece in the box with an open
-end, across all networks, each with its `network_id` and `open_ends`; `kind` keeps one kind, `prefab_contains` works
+`box` without `network` lists every cable, pipe and chute piece in the box with an open
+end, across all networks, each with its `network_id` and `open_ends`; `kind` keeps one kind, `prefab` works
 as above. Up to a 32 m cube, 25 a page.
 
 Network ids change after almost every edit: when networks merge or split, the game gives them new ids. Wherever a
-tool takes a network id it also takes the reference id of any piece or device on the network, or
-`{reference_id, port}` of a device port, and resolves it to the current id when the call runs (`resolved_networks` in
+tool takes a network it also takes the id of any piece or device on the network, or
+`{id, port}` of a device port, and resolves it to the current id when the call runs (`network` in
 the reply). Name networks that way rather than by a stored id.
 
 ## Batteries
 
-`set_battery_charge` sets the charge of the batteries you name, where the console's `setbatteries` sets every battery
-in the world at once. It is a cheat: the power comes from nowhere, so ask before each use. Like the building tools it is
-a dry run by default (`dry_run: false` and `confirm: true` to set), and it runs on the host only; other players see
+`write battery` sets the charge of the batteries you name, where the console's `setbatteries` sets every battery
+in the world at once. It is a cheat: the power comes from nowhere, so ask before each use. Like the building tools it
+reports first (`confirm: true` to set), and it runs on the host only; other players see
 the new charge through the game's own sync.
 
-- **Which batteries:** `reference_ids` (up to 256, each checked on its own), `rocket_id` (every battery of that
-  rocket: its id, its rocket network's or any part's), or `in_id` (every battery cell in a thing's slots and in the
+- **Which batteries:** `id` (up to 256, each checked on its own), `rocket` (every battery of that
+  rocket: its id, its rocket network's or any part's), or `within` (every battery cell in a thing's slots and in the
   slots of what they hold, six levels down: a suit, a tool, a locker, a rover; `"player"` for you).
 - **What counts:** placed Station Batteries and Large Station Batteries, the batteries built into rockets, battery cells
   of every size (the wireless one too) whether loose, in a device, a suit or a tool, and a power pylon end's buffer.
   Anything else is refused `not_a_battery`, naming what the thing is; when its slots hold cells (a suit, a drill), the
-  message gives the `in_id` call that sets them. A Disposable Battery Charger is a consumable, not a battery.
+  message gives the `within` call that sets them. A Disposable Battery Charger is a consumable, not a battery.
 - **How full:** full by default; `ratio` (0 to 1) sets a share of each battery's capacity, `joules` an amount, filling
   a battery smaller than that (`clamped`). A ratio below the present charge drains it.
 - **The reply:** per battery `kind` (`station_battery`, `rocket_battery`, `battery_cell`, `pylon_buffer`), `held_by`
@@ -249,21 +250,21 @@ A cell's charge display and its percentage catch up on the next power tick (abou
 
 ## Console
 
-`run_console_command` runs any console command on the game's main thread and returns what it printed. It is
+`server command` runs any console command on the game's main thread and returns what it printed. It is
 unrestricted: the console can spawn and delete things, teleport players, change world settings and quit the game, and
 none of it can be undone. Refusals such as "requires creative mode" come back as red output lines, not as errors.
 
 Some commands (`save`, `load`, `new`, `difficulty` and others) finish on a background task and print nothing before the
-call returns: the reply then says `completes_asynchronously`. Read the result a moment later with `read_console`.
+call returns: the reply then says `completes_asynchronously`. Read the result a moment later with `server console`.
 
 ## The StationGod Gateway
 
 Optional. The mod adds one structure, the StationGod Gateway: a passive, always-on copy of the game's Logic Memory.
 Print *Kit (StationGod Gateway)* at the Electronics Printer (1 g copper, 1 g gold, 10 seconds), build it and connect a
-data port. Passing its id as `gateway_id` limits a device call to the devices on its data networks; attached to two
+data port. Passing its id as `gateway` limits a device call to the devices on its data networks; attached to two
 data networks it covers both, each device once. Without a gateway every device tool reaches the whole world.
 
-`list_gateways` gives each gateway's `status`: `ready` (`available` true, its id scopes a call), `incomplete` (not
+`find gateway` gives each gateway's `status`: `ready` (`available` true, its id scopes a call), `incomplete` (not
 fully built) or `no_data_network` (no data cable on either port); the `world` entry says `bypass`. A device tool given
 an id no gateway has answers `gateway_not_found`; given a gateway that is not `ready`, it answers `gateway_unavailable`
 and the message names the status.
@@ -272,14 +273,14 @@ Its model and kit picture are copied from the Logic Memory at run time; no game 
 
 ## Health and game updates
 
-`mod_info` counts every call per method (`calls`, `errors`, `mean_ms`, `max_ms`) and lists `reflection`: every game
+`server info` counts every call per method (`calls`, `errors`, `mean_ms`, `max_ms`) and lists `reflection`: every game
 member the mod reaches by name, and whether it was found. After a game update, a missing member turns off only the
 tools that need it; they answer `game_changed`. The mod's pipe reply envelope, which pipe clients such as the script
 dashboard read, also carries `elapsed_ms`, the time a request took on the game's main thread; MCP tool results do not
 carry it, so read the per-method `mean_ms` and `max_ms` instead.
 
 Pipe clients can shape a reply with an optional `shape` object beside `params` in the request line:
-`{"id": "1", "method": "thing_health", "params": {...}, "shape": {"fields": ["reference_id", "damage_ratio"],
+`{"id": "1", "method": "find", "params": {"what": "damaged"}, "shape": {"fields": ["reference_id", "damage_ratio"],
 "limit": {"things": 20}, "max_bytes": 65536}}`. `fields` works as the tools' `fields` argument (single names and
 dotted paths, read from each list entry and top-level object at any depth or from the top-level key a path starts
 with; a name with one safe near match is read as that key and reported in `fields_mapped`; a name that matches nothing
@@ -291,13 +292,11 @@ of every top-level list (`counts`), instead of a larger reply. A key the mod can
 envelope carries `"shaped": true`; errors are never shaped. The method's own paging arguments save the game's work as
 well and are better than `limit` where a method has them.
 
-`mod_info` also has a `runtime` section (1.9.1+) that shows what the mod costs the game since it loaded. Per method
+`server info` also has a `runtime` section (1.9.1+) that shows what the mod costs the game since it loaded. Per method
 called: the main-thread time of the tool (`handler_ms`) and of turning its reply into text (`serialize_ms`), the wait
 for the next frame (`queue_wait_ms`) and the reply's size (`reply_bytes`), each as total, mean and max. Per frame: how
 many requests were answered and how long they took (`frames`), and how often the request budget left some for the
-next frame (`budget_stops`). And the game's garbage collector and Mono heap (`memory`). `catalogue_drift` lists any
-argument name a method's code read that its catalogue entry does not declare (`method`, `argument`, `reads`); it should
-stay empty, and the mod's log names the first read of each. A frame spends at most
+next frame (`budget_stops`). And the game's garbage collector and Mono heap (`memory`). A frame spends at most
 `[Performance] RequestBudgetMs` (4 ms by default, at most 2 ms while a job holds the game tick) on requests; the rest
 wait for the next frame, in order (see [configuration](configuration.md)).
 
@@ -306,7 +305,7 @@ wait for the next frame, in order (see [configuration](configuration.md)).
 `runtime.job_settles` counts pipe jobs' settles after each piece: `run`, `skipped` (the game had no gas change queued,
 so applying the queues would have done nothing) and `unchecked` (settled because the game's queues could not be read).
 
-`include_counters: true` adds the counters of the mod's game-side work. `runtime.prefab_index` then counts the things
+`include: ["counters"]` adds the counters of the mod's game-side work. `runtime.prefab_index` then counts the things
 the game reported spawning (`arrived`) and despawning (`left`) since load, and `runtime.job_holds` counts jobs' holds
 of the game tick by length, profiling on or off: `under_100ms`, `under_1s`, `under_10s`, `under_60s` and `over_60s`
 (60 s or more), each bucket from its lower edge. `runtime.print_log` gives the
@@ -321,20 +320,20 @@ includes its samples). The times fall into 20 fixed buckets with upper edges 0.1
 (nearest rank), so N percent of the frames took at most that long, or the longest frame seen when that bucket is the
 open one. With no frames the percentiles are `null`. `over_8ms` counts frames over 8.0 ms; a frame of exactly 8.0 ms
 does not count. `buckets` is the 20 bucket counts since load, shortest bucket first and the open one last. Percentiles
-since load cannot be split into a time window, so to measure one (a test run, say) read `mod_info` with
-`include_counters` before and after, subtract the two `buckets` arrays bucket by bucket, and take the window's
+since load cannot be split into a time window, so to measure one (a test run, say) read `server info` with
+`include: ["counters"]` before and after, subtract the two `buckets` arrays bucket by bucket, and take the window's
 percentiles from the differences against the edges above. `runtime.restores` counts held restores since load (the
 hub's `sg.hold`; protocol method `hold_restore`): `applied`, written when a session ended abruptly; `skipped`, not
 written because the device held another value than its stream last wrote, was gone or refused the write, or the
 restore would open a vent, valve or pump and the write lint rules found a problem or could not run; and
 `dropped`, not written because their world was left. `runtime.job_stores` gives what the mod keeps of building
-jobs for polls and `undo_job`: for `snapshots` and `final_statuses`, the estimated `bytes` held against
+jobs for polls and `undo`: for `snapshots` and `final_statuses`, the estimated `bytes` held against
 `budget_bytes`, the `entries` and how many are `pinned` to the stream that started them; and `pins`, the jobs pinned
-in all ([protocol.md](architecture/protocol.md), *Job pins*).
+in all ([protocol.md](architecture/protocol.md), *Streams*).
 
 ## Profiling a running server
 
-`profiling` measures what StationGod costs the game's main thread while the server runs. `action: on` starts a
+`server profiling` measures what StationGod costs the game's main thread while the server runs. `action: on` starts a
 session, `off` stops it and answers the final report, `reset` clears it and goes on (after `off`, it drops the stored report), `report` reads it and changes
 nothing; every reply carries `enabled`, `since_s`, `slow_frame_ms` and `csv_path` with the report (the first 10
 `scopes` and 8 `calls` by default; `list_limits` keeps more). `on` again keeps
@@ -350,10 +349,10 @@ loads.
   `job_gas_open`, `job_gas_settle`, `job_gas_close`, `atmosphere_wait`, `previews`, `highlights`,
   `rocket_flight_recorder`, `pool_snapshot` (copying a game list), `prefab_index` (a lookup in the prefab index),
   `job_gas_walk` (a pipe job's main-thread walks of every pipe network; its pool-thread walks count in
-  `atmosphere_wait`), and `unscoped`, the rest of the update. Methods (`kind: method`): the busiest read handlers
-  (`list_devices`, `read_devices`, `read_logic_many`, `network_snapshot`, `find_things`, `find_items`, `item_totals`,
-  `grid_survey`, `connections`, the route planners; named as `ListDevicesApi.Handle`) and StationGod's own game hooks,
-  timed on the main thread only; a method's time also counts in the piece it runs in.
+  `atmosphere_wait`), and `unscoped`, the rest of the update. Methods (`kind: method`): the shared read handlers
+  (`DeviceReads.Read`, `DeviceSnapshots.Read`) and the game hooks the mod patches (the route planners, the console,
+  print provenance, gas move and construction cursor patches), each named for its class and its method, timed on the
+  main thread only; a method's time also counts in the piece it runs in.
   Each has `total_ms`, `self_ms` (the pieces inside it left out), `count`, `mean_ms`, and `p95_frame_ms` and
   `max_frame_ms` per frame it ran in.
 - `worst_frame`: the costliest frame after on or reset, with its 8 costliest pieces by self ms and its 8 slowest
@@ -372,7 +371,7 @@ the newest 3 are kept. `csv: false`, or `off`, stops it.
 
 Off, each timed piece costs one check and the timed methods carry no wrapper; `on` wraps them and `off` unwraps them.
 A failure inside the profiler is logged once, turns profiling off and answers `failure` in the next reply. While on,
-`mod_info`'s `runtime.profiling` gives a summary: `since_s`, `frame_ms`, `worst_frame_ms` and the five pieces with the
+`server info`'s `runtime.profiling` gives a summary: `since_s`, `frame_ms`, `worst_frame_ms` and the five pieces with the
 most self time. Profiling runs on the host, where requests run, and sends nothing to other players; a player's game
 is not measured and sees nothing different. For the game's own tick, its `debugthreads GameTick` console command
-times the tick's stages; on a dedicated server it prints one tick's breakdown to the console (`read_console`).
+times the tick's stages; on a dedicated server it prints one tick's breakdown to the console (`server console`).

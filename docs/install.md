@@ -16,7 +16,7 @@ StationGod MCP has two parts:
 - An AI agent that runs MCP servers over stdio: Claude Code, Codex, or another MCP client.
 - Optional mods, found by name at run time; everything else works without them:
   [StationeersLua](https://steamcommunity.com/sharedfiles/filedetails/?id=3659911735) for Lua chips and
-  [BlueprintMod](https://steamcommunity.com/sharedfiles/filedetails/?id=3672138641) for `paste_blueprint`.
+  [BlueprintMod](https://steamcommunity.com/sharedfiles/filedetails/?id=3672138641) for `build blueprint`.
 
 ## 1. Install the mod
 
@@ -125,9 +125,9 @@ server, gets no answer.
 
 - The BepInEx log (`BepInEx\LogOutput.log`) shows
   `[StationGodMCP] Authoritative MCP bridge listening on \\.\pipe\StationGodMCP` once a hosted save is loaded.
-- Ask the agent to call `mod_info`. It answers with `mod_version` and `pipe_name`, and `missing_count` 0 when every
+- Ask the agent to call `server info`. It answers with `mod_version` and `pipe_name`, and `missing_count` 0 when every
   game member the mod relies on was found.
-- Then `list_devices`: every device in the world.
+- Then `find device`: every device in the world.
 
 **No answer?** Check, in this order: the game hosts and a save is loaded; the log line above is there (lines starting
 `[StationGodMCP]` say what went wrong); the agent lists the server (`claude mcp list`); the sidecar is not inside a mod
@@ -141,9 +141,9 @@ folder; the pipe name matches (see *Two games on one machine*).
   Gateway and its kit are new prefabs, which a game without the mod cannot show.
 - **What StationGod on a player's game adds (1.12.0+).** On a dedicated server the agent's "the player" is the one
   connected player, but their camera is on their own machine. With StationGod there, their game shares where they look
-  with the server, so the camera tools work for them as in single player: `looking_at`, placing at the `crosshair`,
-  `on_face_i_look_at`, the `player` frame, `find_spot` near the crosshair, `wall_map` and `find_spot` with
-  `looking: true`, and `highlight` and `show_preview`, which their game then draws on their screen (the reply's
+  with the server, so the camera tools work for them as in single player: `inspect looking_at`, placing at the crosshair
+  (`looking_at`), `on_face`, the `player` frame, `plan spot` near the crosshair, `survey wall` and `plan spot` with
+  `looking: true`, and `show highlight` and `show preview`, which their game then draws on their screen (the reply's
   `drawn_on` names them). Without it those calls refuse `no_view`, and the message says why (no StationGod on their
   game, or a version that speaks another view protocol). A view the player has since walked away from (more than
   0.3 m, or older than 5 s once they moved) is refused `view_stale` rather than read; standing still keeps it current,
@@ -203,7 +203,7 @@ use a long random secret, change it if it leaks, and prefer a private network or
 Several sidecars may connect at once.
 
 **A dedicated server with nobody connected** may hold its world paused. Gas moves and blueprint pastes wait for the
-game to run; the console command `pause false` (through `run_console_command`) unpauses it.
+game to run; the console command `pause false` (through `server command`) unpauses it.
 
 ## Two games on one machine
 
@@ -215,7 +215,7 @@ a sidecar reaches whichever started first. Give one of them its own name:
 Name = StationGodMCP-Test
 ```
 
-and start that game's sidecar with `--pipe StationGodMCP-Test`. `mod_info` reports `pipe_name`, so the agent can check
+and start that game's sidecar with `--pipe StationGodMCP-Test`. `server info` reports `pipe_name`, so the agent can check
 which game it reached. Players never see the pipe name; it only matters on the machine the game runs on.
 
 ## Removing it

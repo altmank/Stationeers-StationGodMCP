@@ -2,7 +2,7 @@
 
 [Back to the README](../README.md)
 
-`lint_layout` checks a room or a box against layout rules, and the place and plan tools check what they are about to
+`check layout` checks a room or a box against layout rules, and the build and plan tools check what they are about to
 build against the same kind of rules. From 1.7.0 those rules are data: a file, `lint-rules.json`, that you can read,
 change, extend and test without touching the mod's code. This page explains the file, the language its rules are
 written in, everything a rule can look at, and how to add your own rules for one save.
@@ -25,8 +25,8 @@ How the save's file applies, rule by rule (by `id`):
   off; `{"id": "port_cell_foreign_network", "level": "info"}` makes it information only.
 
 A rule that does not load (a typo, a field that does not exist) is left out and reported; every other rule still
-runs. `lint_rules` with `action: "validate"` lists every error with its file, rule, field, line, column and the
-character in the expression; with `text` it checks a file's content before you save it.
+runs. `check rules` with `action: "validate"` lists every error with its file, rule, field, line, column and the
+character in the expression; with `rules_text` it checks a file's content before you save it.
 
 A small save file:
 
@@ -48,43 +48,43 @@ A small save file:
 
 ## Where the rules run
 
-- **`lint_layout`** runs the rules with `"audit"` in their `on` over a room or a box of what stands now. Its reply
+- **`check layout`** runs the rules with `"audit"` in their `on` over a room or a box of what stands now. Its reply
   lists the findings (problems first, then warnings, then information, rules in file order) and `rule_source`: the
   files used, the rules the save adds or turns off, and any rule that did not load.
-- **The place and plan tools** (`place_cables`, `place_pipes`, `place_chutes`, `place_structure`,
-  `plan_cable_route`, `plan_pipe_route`, `plan_chute_route`) run the rules with `"report"` in their `on` on what the
+- **The build and plan tools** (`build cable`, `build pipe`, `build chute`, `build structure`, and `plan route` for a
+  cable, pipe or chute) run the rules with `"report"` in their `on` on what the
   request would build, in the world around it: the touched 2 m cells and their neighbours, with what the request
   removes or replaces left out. Each finding about a planned thing is `lint_<rule id>`: at level `problem` (the rule's
   `level`, or its `level_when`) it refuses the request, naming the rule and how to allow it (set its `level` to
   `warning`, or `"enabled": false`, in the save's lint-rules.json); at `warning` or `info` it is a warning. A rule
-  turned off never runs. `plan_chute_route` also routes around a rule whose `route` is `inside_frames` while it is
+  turned off never runs. `plan route` for a chute also routes around a rule whose `route` is `inside_frames` while it is
   in effect, whatever the `style`: cells outside a frame's body are refused at level problem and avoided otherwise (the ends and the cells
   next to them excepted). A planned thing knows only its prefab, place, turn, cells and ports: it has no
   network, slots or logic yet. The grid around it is read as it stands now, so a frame or wall the same request also
-  places does not yet count as support for its other placements. Removals (`remove_*`, `plan_removal`) are not
-  linted.
-- **`write_logic` and `write_logic_many`** run the rules with `"write"` in their `on` when a write opens a vent,
+  places does not yet count as support for its other placements. Removals (`remove cable`, `remove pipe`,
+  `remove chute`, `plan removal`) are not linted.
+- **`write logic`** (one write or several) runs the rules with `"write"` in their `on` when a write opens a vent,
   valve, pump or regulator: `On` or `Open` from 0 to 1, a vent's `Mode` from inward (1) to outward (0), a turbo
   pump's `Mode` turned the other way, a volume pump's `Setting` from 0 (the value written, as the device takes it,
   against the value it holds). A write that opens nothing runs no rule and reads no rule file. The rules see:
   - `networks`: the device's pipe networks (a vent's one; a valve's, pump's or regulator's both sides), as they stand
     at the write;
   - `things`: the device, and for a valve, pump or regulator every vent on those networks;
-  - every other set empty; the world and cells as for `lint_layout`.
+  - every other set empty; the world and cells as for `check layout`.
 
   They run on every opening, never from a cache, so a network that gains oxidiser between two openings is refused
   at the second. A finding at level `problem` refuses the write with `lint_refused` (its data lists each rule, its
-  message and the thing) unless the call passes `allow_lint: true`, which writes and reports each problem as a
-  warning; a `warning` is `lint_<rule id>` in the reply's `warnings`; `info` is not reported. `write_logic_many`
-  refuses entry by entry. `dry_run: true` runs the same checks and writes nothing. A check runs at the write: a
+  message and the thing) unless the call passes `allow: ["lint"]`, which writes and reports each problem as a
+  warning; a `warning` is `lint_<rule id>` in the reply's `warnings`; `info` is not reported. `write logic` with
+  several writes refuses entry by entry. `confirm: false` runs the same checks and writes nothing. A check runs at the write: a
   network that changes after it (a fill heating up) is not watched. The shipped write rules are
   `no_oxidiser_vented_outdoors` and `fuel_oxidiser_mix_temperature`; a save's file can add `"write"` to any rule
   that reads only those sets.
 - **Held restores** (protocol `hold_restore`, the hub's `sg.hold`) run the same write rules when the mod applies one
-  that opens its device, judged against the value the device holds then. There is no `allow_lint`: a problem, or
+  that opens its device, judged against the value the device holds then. There is no `allow` here: a problem, or
   rules that cannot run, skip the restore (reason `lint` or `lint_unavailable` in the next `welcome`), and a warning
   is listed on the applied entry. A restore that opens nothing runs no rule.
-- **`lint_rules`** lists the rules in effect (`list`), validates (`validate`), shows the model (`fields`) and the
+- **`check rules`** lists the rules in effect (`list`), validates (`validate`), shows the model (`fields`) and the
   library (`functions`), runs each rule's examples (`test`) and explains a finding (`explain`): the rule run again on
   one subject, with every value it read, so you can see why it fired.
 
@@ -186,7 +186,7 @@ asking the game: `"sun_blocked()": true`, `"logic(Ratio)": 0.05`, `"replaceable(
 "support", "reason": "..."}`. It works for any function whose first argument is that object. A `"world"` key gives
 the world object.
 
-`lint_rules` with `action: "test"` runs every rule's examples (or `rule_id`'s) without the world: a `pass` example
+`check rules` with `action: "test"` runs every rule's examples (or `rule`'s) without the world: a `pass` example
 must pass (or be left out by the `where`), a `fail` example must fail. Every shipped rule has both.
 
 ## The rules the mod ships
@@ -195,7 +195,7 @@ The mod builds in only rules whose finding is a fact of the game's code in any w
 
 | Rule | Level | Runs on | Finds |
 | --- | --- | --- | --- |
-| `not_replaceable` | problem | audit | a piece, device or 2 m structure a player could not place again where it stands ([check_replaceable](walls-frames-structures.md#could-a-player-place-it-again-150)) |
+| `not_replaceable` | problem | audit | a piece, device or 2 m structure a player could not place again where it stands ([check replaceable](walls-frames-structures.md#could-a-player-place-it-again-150)) |
 | `port_cell_foreign_network` | warning | both | a port whose joining cell holds a piece that does not join it |
 | `replaceable_unchecked` | info | audit | a thing `not_replaceable` could not ask about |
 | `cable_grade_matches_network` | warning | audit | a cable lighter than its network's heaviest while the power through the network is more than its weakest cable carries (the power tick burns a cable rated below that flow) |
@@ -209,11 +209,11 @@ names, is `tools/lint/Vulcan2_4.lint-rules.json` in the StationeersWorkspace rep
 have its rules there. Its `run_crosses_window` and `chute_outside_frame` carry the `route` field, so with it the route
 planners keep off windows and keep chutes inside frames; without it they do neither.
 
-`lint_rules` with `action: "list"` and a `rule_id` shows any rule in full.
+`check rules` with `action: "list"` and a `rule` shows any rule in full.
 
 ## The model
 
-Everything a rule reads. `lint_rules` with `action: "fields"` gives the same list from the running mod. Fields are
+Everything a rule reads. `check rules` with `action: "fields"` gives the same list from the running mod. Fields are
 read from the game the first time a rule asks and kept for the rest of the call.
 
 ### thing
@@ -236,7 +236,7 @@ Anything built: a cable, pipe or chute piece, a device, a frame, wall, window or
 | `finished` | `bool` | At its last build state. |
 | `broken` | `bool` | A broken structure (a fire-burnt device). |
 | `weather_damage_scale` | `number` | How much storm damage it takes (Thing.WeatherDamageScale): 0 takes none, 1 the full amount. |
-| `planned` | `bool` | Part of a dry run's plan, not built yet: only its prefab, place, turn, cells and ports are known. |
+| `planned` | `bool` | Part of a report's plan, not built yet: only its prefab, place, turn, cells and ports are known. |
 | `position` | `vec` | Where it stands, metres. |
 | `rotation` | `rotation?` | Which way it faces; null when not on the grid's axes. |
 | `mesh_box` | `box?` | The box its meshes fill. |
@@ -263,7 +263,7 @@ One cable, pipe or chute connection of a device.
 | Field | Type | Meaning |
 | --- | --- | --- |
 | `device` | `thing` | The thing the port belongs to. |
-| `index` | `number` | Its index on the device, as connections and grid_survey number ports. |
+| `index` | `number` | Its index on the device, as `inspect connections` and `survey area` number ports. |
 | `type` | `string` | The game's network type: Power, Data, PowerAndData, Pipe, PipeLiquid, Chute. |
 | `role` | `string` | The game's connection role: Input, Input2, Output, Output2, Waste, None and others. |
 | `flow` | `string?` | in for inputs, out for outputs and waste, null for a role with no direction. |
@@ -408,13 +408,13 @@ One slot of a thing.
 
 ## The library
 
-`lint_rules` with `action: "functions"` lists every form and function with its signature. Functions marked cached
+`check rules` with `action: "functions"` lists every form and function with its signature. Functions marked cached
 keep their result for the rest of the call when asked again with the same arguments.
 
 | Function | What it gives |
 | --- | --- |
-| `replaceable(x: thing) -> placement` | Whether a player could place the thing again where it stands, its neighbours present: check_replaceable's rule. `replaceable` is null when it could not be asked, and for a planned thing. Cached. |
-| `controls_side(x: thing) -> controls?` | The world side of a device that carries its slots, buttons and switches, read from its prefab's interactables (describe_prefab's controls); null for a device whose prefab lists none a player uses (a radiator). |
+| `replaceable(x: thing) -> placement` | Whether a player could place the thing again where it stands, its neighbours present: `check replaceable`'s rule. `replaceable` is null when it could not be asked, and for a planned thing. Cached. |
+| `controls_side(x: thing) -> controls?` | The world side of a device that carries its slots, buttons and switches, read from its prefab's interactables (`inspect prefab`'s `controls`); null for a device whose prefab lists none a player uses (a radiator). |
 | `controls_blocked(x: thing) -> string?` | What stands right in front of the side its controls face (another device, a chute or small thing, a frame's body, a wall or frame on the plane in front; or any plate, frame or thing whose mesh box covers a quarter of that side within 0.5 m of it or across it), as text; null when that side is clear, when it has no control side, or when that side is a face-mounted thing's front. Cached. |
 | `clips_surface(x: thing) -> string?` | The wall, floor or ceiling plate or frame body a small-grid device's mesh box runs into by more than 0.1 m, other than the surface it rests on (the face plane behind its small cells along its top, or its back for a mounted one), as text with how deep; null when none, and for pieces, in-line tanks, passive vents and 2 m structures. Cached. |
 | `window_crossed(x: thing) -> string?` | The window whose plane a small-grid thing's mesh box crosses or sits on within the window's rectangle, as text; null when none, and for cable, pipe and chute pieces and 2 m structures. The surface it is mounted on does not excuse it. Cached. |
@@ -447,14 +447,14 @@ The forms are part of the language: `has`, `if`, `any`, `all`, `count`, `sum`, `
 
 ## Explaining a finding
 
-`lint_rules` with `action: "explain"`, a `rule_id` and the subject runs that one rule again on it in the world around
+`check rules` with `action: "explain"`, a `rule` and the subject runs that one rule again on it in the world around
 it and returns its outcome (skipped by the `where`, passed, failed, error), the message and level, and every value it
 read: each field, call and `let` with the values it had (up to four inside a lambda). Name the subject with
-`reference_id` (a thing, a network or a room; `port` for one port of a device; `other_id` for the other of a pair),
+`id` (a thing, a network or a room; `port` for one port of a device; `other` for the other of a pair),
 or `at` for a cell.
 
 ```json
-{ "action": "explain", "rule_id": "floating_run", "reference_id": "171026" }
+{ "what": "rules", "action": "explain", "rule": "floating_run", "id": "171026" }
 ```
 
 ## Adding a function (maintainers)
@@ -471,7 +471,7 @@ library.Add(new LintFunction("is_powered", "(x: thing) -> bool",
 ```
 
 The signature is checked at load like any expression: rules that call the function with the wrong types are refused
-with their position. `lint_rules functions` lists it at once. A function never throws past the engine: a
+with their position. `check rules functions` lists it at once. A function never throws past the engine: a
 `LintEvaluationException` (or any other exception) becomes a `rule_error` finding for that subject. Keep game
 functions on the main thread's data (a lint call runs in the game's update loop) and mark expensive ones `cached`.
 A new field on an object type is added the same way, in `LintModel` (its type and meaning) and the subject class that

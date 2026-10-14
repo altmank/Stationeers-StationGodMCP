@@ -9,18 +9,17 @@ out with the game's own geometry and checks. No gateway is needed.
 
 | Tool | What it does | Main arguments |
 | --- | --- | --- |
-| `solar_aim` | The Horizontal and Vertical that point a solar panel straight at the sun. Read only. | `reference_id` |
-| `dish_aim` | The Horizontal and Vertical that point a satellite dish at a trader contact. Read only. | `dish_id`, `contact_id` |
-| `trader_contacts` | Every trader in the sky: type, shuttle, pad size it needs, direction, power needed to resolve and contact, time left; and every dish with where it points. | none |
-| `trader_inventory` | What each trader buys and sells, at what price and under what conditions, and how many of each it would accept from what you hold. | `contact_id` (omit for all), `credit_card_id` |
-| `landing_pads` | Every landing pad, measured by the game's own checks, and which traders fit and can land now. | none |
-| `trader_buy` | Buy from the landed trader, as the trade window's Buy button does. | `reference_id`, `items: [{name or prefab_name, quantity}]`, `credit_card_id`, `dry_run` |
-| `trader_sell` | Sell to the landed trader, as the Sell button does. | as `trader_buy` |
+| `plan aim` | The Horizontal and Vertical that point a solar panel straight at the sun, or a satellite dish at a trader contact. Read only. | `id` (the panel or the dish), `contact` (dish only) |
+| `trade contacts` | Every trader in the sky: type, shuttle, pad size it needs, direction, power needed to resolve and contact, time left; and every dish with where it points. | none |
+| `trade inventory` | What each trader buys and sells, at what price and under what conditions, and how many of each it would accept from what you hold. | `id` (omit for all), `card` |
+| `find pad` | Every landing pad, measured by the game's own checks, and which traders fit and can land now. | none |
+| `trade buy` | Buy from the landed trader, as the trade window's Buy button does. | `id`, `items: [{name or prefab, quantity}]`, `card` |
+| `trade sell` | Sell to the landed trader, as the Sell button does. | as `trade buy` |
 
 ## Aiming
 
-`solar_aim` works from the panel's own pivots and the game's sun vector: no daylight sensor, no calibration. It returns
-`horizontal` and `vertical` in logic degrees, ready for `write_logic`, the angle still off when the sun is outside the
+`plan aim` works from the panel's own pivots and the game's sun vector: no daylight sensor, no calibration. It returns
+`horizontal` and `vertical` in logic degrees, ready for `write logic`, the angle still off when the sun is outside the
 panel's tilt range, and the panel's aim now. Every pose has a twin that faces the same way (horizontal + 180,
 vertical 180 - vertical); when both reach the sun it answers the one nearer the panel's current aim, so a tracker that
 writes every answer never swings the panel round. With the sun below the horizon it gives the pose closest to the sun
@@ -32,16 +31,16 @@ within its rotation tolerance, up to about 0.4 degrees short of the written Hori
 nothing from it at any angle. `sun.eclipse` is always false on a dedicated server: the game works out eclipses only in
 a game with a screen. A missing id is refused with `thing_not_found`, and a thing that is neither a solar panel nor a satellite dish with `not_aimable`.
 
-`dish_aim` tries angles on the dish's own model and puts it back within one frame, so nothing moves. It works on the
+`plan aim` on a dish tries angles on the dish's own model and puts it back within one frame, so nothing moves. It works on the
 Medium and the Small Satellite Dish (the Small one turns its pivots without an animator). Under 2 degrees of
 `error_deg` the contact gets the dish's whole signal. `finished`, `powered`, `on` and `can_rotate` (all three) say
-whether the dish turns now; `trader_contacts` gives the same per dish. Refusals: `thing_not_found` (no dish with that
-id), `contact_not_found`, `dish_not_ready` (a dish model that cannot be posed). Write the result with `write_logic`:
+whether the dish turns now; `trade contacts` gives the same per dish. Refusals: `thing_not_found` (no dish with that
+id), `contact_not_found`, `dish_not_ready` (a dish model that cannot be posed). Write the result with `write logic`:
 
 ```json
-{ "writes": [
-  { "reference_id": "182200", "logic_type": "Horizontal", "value": 131.4 },
-  { "reference_id": "182200", "logic_type": "Vertical", "value": 38.2 } ] }
+{ "what": "logic", "writes": [
+  { "id": "182200", "logic": "Horizontal", "value": 131.4 },
+  { "id": "182200", "logic": "Vertical", "value": 38.2 } ] }
 ```
 
 Power the dish and switch it on before writing. A dish that cannot rotate still stores the written angles as its
@@ -50,7 +49,7 @@ angles again once it is powered does nothing: write another value first, then th
 
 ## Landing pads
 
-`landing_pads` measures each pad as the game does: the largest square it passes, whether its network has exactly one
+`find pad` measures each pad as the game does: the largest square it passes, whether its network has exactly one
 centre, the runway threshold for planes, and per trader whether it fits and whether it can land now with the game's
 own reason if not. The check moves the pad's landing point and puts it back, so a landing in progress is never
 affected.
@@ -69,34 +68,34 @@ affected.
   moles per unit, temperature). The card must be carried by a player or held by a vending machine; any other card is
   refused with `card_not_usable`, because the game's sell reads the card holder's inventory and fails without one.
 - **Selling several lines:** the lines of one call add up. Each is checked against what the trader still wants and what
-  is available after the lines before it, in a dry run as in a real run, and the lines of one trader entry are sold
+  is available after the lines before it, in a report as in a real run, and the lines of one trader entry are sold
   together. The game takes sold stacks out of their slots only at the end of the frame, so without this a second line
   of iron ore sold the same ore again. Two entries that accept the same goods in one call: the second is refused with
   `sell_separately` when the game would take goods already sold; sell it in a call of its own.
 - Prices are the trader's, adjusted for respawn stress as the trade window shows them. Credits in replies are rounded
   to the cent.
-- **Buying several lines:** a `trader_buy` dry run adds the lines up as the real run meets them. Each line is checked,
+- **Buying several lines:** a `trade buy` report adds the lines up as the real run meets them. Each line is checked,
   in the game's order (stock, credits, a free slot), against what the lines before it would leave: the card's
   credits, the trader's stock of that entry and the empty tradable slots on the pad network's vending machines and
   the card holder. A stackable item fills slots up to its stack size, anything else takes one slot per unit, gas none.
-  So the dry run refuses the same lines the real run would (`insufficient_stock`, `insufficient_credits`, `no_room`);
+  So the report refuses the same lines the real run would (`insufficient_stock`, `insufficient_credits`, `no_room`);
   a line that runs out of room part way is `trade_failed`, as in the real run, with the part it would buy.
-- In a dry run `credits_after` is the predicted balance (1.4.4+): `credits_before` less what the lines that pass would
+- In a report `credits_after` is the predicted balance (1.4.4+): `credits_before` less what the lines that pass would
   spend, plus what they would earn. It never goes below 0.
 - A refused line's `quantity` is how many were actually traded (0 when refused up front), not the quantity asked; in a
-  dry run it is the part a line that runs out of room would buy. Its `index` points at the line asked.
-- `trader_inventory` shows, for the landed trader, how many of each item it would take right now (`sellable`), the
-  trade window's own count: what the pad network's vending machines and you hold. `trader_sell` counts the card
+  report it is the part a line that runs out of room would buy. Its `index` points at the line asked.
+- `trade inventory` shows, for the landed trader, how many of each item it would take right now (`sellable`), the
+  trade window's own count: what the pad network's vending machines and you hold. `trade sell` counts the card
   holder's inventory in place of yours, so the two agree when the card is yours.
 - `have` is, for every trader in the sky, how many units of what you hold meet its conditions: the goods on the pad
-  network's vending machines and in the card holder's inventory, counted as `trader_sell` takes them (a "Box of ..."
+  network's vending machines and in the card holder's inventory, counted as `trade sell` takes them (a "Box of ..."
   line counts only the boxes whose contents it accepts), or the pad network's gas in units when the gas meets its
   conditions. It is not capped by `wanted`, as the game's own `sellable` count is not: a trader that wants 0 more still
   shows what would qualify. The pad is the one the trader is called to; before that, every landing pad's network. The
-  card holder is `credit_card_id`'s holder, else you. The game rolls a trader's inventory when the contact appears, so
+  card holder is `card`'s holder, else you. The game rolls a trader's inventory when the contact appears, so
   this works before the trader is interrogated.
 - `credits_spent` (buy) and `credits_earned` (sell) are signed and agree between the dry and the real run: a line with a
   negative price (a trader that pays you to take a gas, such as Bulk Pollutants) has a negative `credits_spent`.
 - `trade_failed` carries the game's own message without its rich-text colour tags. `no_credit_card` means neither
-  `credit_card_id` nor the local player's card is there to pay with (a dedicated server has no local player).
+  `card` nor the local player's card is there to pay with (a dedicated server has no local player).
 - Host only.
