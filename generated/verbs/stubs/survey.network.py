@@ -14,7 +14,10 @@ def survey(what: Literal['network'], *,
     Reply, one of:
     (NetworkMembers)
       network: {kind: str, id: str}
-      summary: Any | None
+      summary: {required_w: float, potential_w: float, actual_w: float, shortfall_w: float, lowest_cable_max_w: float | None, lowest_fuse_break_w:
+          float | None, overloaded: bool, fuse_overloaded: bool, cable_count: int, fuse_count: int} | {content: str, volume_l: float, pressure_kpa:
+          float, temperature_k: float, total_mol: float, liquid_volume_l: float, gases: list[{gas: str, state: str, amount_mol: float}]} |
+          {member_count: int} | None
       warning: str | None
       members: list[{reference_id: str, prefab_name: str | None, display_name: str | None, member: str, position: Vec3, color: Color | None,
           open_ends: list[int] | None, network_id: str | None}]
@@ -27,7 +30,10 @@ def survey(what: Literal['network'], *,
       has_more: bool
     (NetworkOverview)
       network: {kind: str, id: str}
-      summary: Any | None
+      summary: {required_w: float, potential_w: float, actual_w: float, shortfall_w: float, lowest_cable_max_w: float | None, lowest_fuse_break_w:
+          float | None, overloaded: bool, fuse_overloaded: bool, cable_count: int, fuse_count: int} | {content: str, volume_l: float, pressure_kpa:
+          float, temperature_k: float, total_mol: float, liquid_volume_l: float, gases: list[{gas: str, state: str, amount_mol: float}]} |
+          {member_count: int} | None
       warning: str | None
       broken_neighbour_count: int
       broken_neighbours: list[{reference_id: str, prefab_name: str | None, position: Vec3, pipe_burst: str | None, network: {kind: str, id: str} |

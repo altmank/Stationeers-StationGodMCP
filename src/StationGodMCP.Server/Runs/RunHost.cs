@@ -356,9 +356,18 @@ public sealed partial class RunHost : IAsyncDisposable
 
     // ---- inspect job, stop, ref -------------------------------------------------------------------------------------
 
-    /// <summary>inspect job for a run, or with no id the runs with notices pending; null for any other job.</summary>
+    /// <summary>
+    /// inspect job for a run, for a list of ids (one row each), or with no id the runs with notices pending; null for
+    /// any other job.
+    /// </summary>
     internal async Task<VerbReply?> InspectJobAsync(JsonObject options)
     {
+        if (options["id"] is JsonArray ids)
+        {
+            await AdoptedAsync().ConfigureAwait(false);
+            return await GatheredAsync(options, ids).ConfigureAwait(false);
+        }
+
         string? id = JsonNodes.Text(options["id"])?.Trim();
         if (id == null)
         {
@@ -366,11 +375,40 @@ public sealed partial class RunHost : IAsyncDisposable
             return new VerbReply.Done(Pending());
         }
 
-        if (!id.StartsWith(Prefix, StringComparison.OrdinalIgnoreCase))
+        return IsRunId(id) ? await RunJobAsync(id, options).ConfigureAwait(false) : null;
+    }
+
+    /// <summary>
+    /// An id list answers one row per id (D13), in the order given: {results: [{index, ok, reference_id, payload |
+    /// error}], count, success_count, error_count}. A run's payload is its text view, a bulk write's its view, any
+    /// other id the pipeline's answer for it (the mod's); each fails alone.
+    /// </summary>
+    private async Task<VerbReply> GatheredAsync(JsonObject options, JsonArray ids)
+    {
+        JsonArray rows = [];
+        int succeeded = 0;
+        for (int index = 0; index < ids.Count; index++)
         {
-            return null;
+            JsonNode? id = ids[index];
+            string text = (JsonNodes.Text(id) ?? string.Empty).Trim();
+            VerbReply reply = IsRunId(text)
+                ? await RunJobAsync(text, options).ConfigureAwait(false)
+                : await _pipeline.JobIdAsync(options, id, CancellationToken.None).ConfigureAwait(false);
+            (JsonObject row, bool ok) = VerbPipeline.RowOf(index, id, reply);
+            if (ok)
+            {
+                succeeded++;
+            }
+
+            rows.Add(row);
         }
 
+        return new VerbReply.Done(VerbPipeline.GatheredRows(rows, succeeded));
+    }
+
+    // One run's own answer: its text view (waited for per max_wait), or job_not_found.
+    private async Task<VerbReply> RunJobAsync(string id, JsonObject options)
+    {
         await AdoptedAsync().ConfigureAwait(false);
         Notes? notes = NotesOf(id);
         if (notes == null)

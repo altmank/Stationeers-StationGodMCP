@@ -351,18 +351,10 @@ public sealed partial class VerbPipeline
             JsonObject one = (JsonObject)options.DeepClone();
             one["id"] = id?.DeepClone();
             VerbReply reply = await OneAsync(call, what, one, acting, cancellation).ConfigureAwait(false);
-            JsonObject row = new() { ["index"] = index, ["reference_id"] = id?.DeepClone() };
-            switch (reply)
+            (JsonObject row, bool ok) = RowOf(index, id, reply);
+            if (ok)
             {
-                case VerbReply.Done done:
-                    succeeded++;
-                    row["ok"] = true;
-                    row["payload"] = done.Reply?.DeepClone();
-                    break;
-                case VerbReply.Failed failed:
-                    row["ok"] = false;
-                    row["error"] = failed.ToJson();
-                    break;
+                succeeded++;
             }
 
             rowsByIndex[index] = row;
@@ -374,13 +366,50 @@ public sealed partial class VerbPipeline
             rows.Add(row);
         }
 
-        return new VerbReply.Done(new JsonObject
+        return new VerbReply.Done(GatheredRows(rows, succeeded));
+    }
+
+    /// <summary>
+    /// One id's answer as PLAN's row: {index, ok: true, reference_id, payload} or {index, ok: false, reference_id,
+    /// error}, with whether the id succeeded.
+    /// </summary>
+    internal static (JsonObject Row, bool Ok) RowOf(int index, JsonNode? id, VerbReply reply)
+    {
+        JsonObject row = new() { ["index"] = index, ["reference_id"] = id?.DeepClone() };
+        switch (reply)
         {
-            ["results"] = rows,
-            ["count"] = ids.Count,
-            ["success_count"] = succeeded,
-            ["error_count"] = ids.Count - succeeded
-        });
+            case VerbReply.Done done:
+                row["ok"] = true;
+                row["payload"] = done.Reply?.DeepClone();
+                return (row, true);
+            case VerbReply.Failed failed:
+                row["ok"] = false;
+                row["error"] = failed.ToJson();
+                return (row, false);
+            default:
+                throw new InvalidOperationException("A verb reply is done or failed.");
+        }
+    }
+
+    /// <summary>The gathered rows as their reply: {results, count, success_count, error_count}.</summary>
+    internal static JsonObject GatheredRows(JsonArray rows, int succeeded) => new()
+    {
+        ["results"] = rows,
+        ["count"] = rows.Count,
+        ["success_count"] = succeeded,
+        ["error_count"] = rows.Count - succeeded
+    };
+
+    /// <summary>
+    /// inspect job for one id of a list the runs' host gathered (the MCP adapter's direct face): a bulk write's view,
+    /// or the mod's answer for that one id, each failing alone. A run's id is the host's own.
+    /// </summary>
+    internal Task<VerbReply> JobIdAsync(JsonObject options, JsonNode? id, CancellationToken cancellation)
+    {
+        JsonObject one = (JsonObject)options.DeepClone();
+        one["id"] = id?.DeepClone();
+        WhatEntry what = Catalogue.Verb("inspect")!.What("job")!;
+        return OneAsync(new VerbCall("inspect", "job", one, Face.Direct), what, one, null, cancellation);
     }
 
     // One id of a gathered list: the hub's own (a write-N's view or undo) or the mod's.

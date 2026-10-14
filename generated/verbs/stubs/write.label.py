@@ -17,7 +17,9 @@ def write(what: Literal['label'], *,
       previous: {display_name: str | None, custom_name: str | None}
       current: {display_name: str | None, custom_name: str | None}
     (BatchResult)
-      results: list[{index: int, ok: bool, error: Error}]
+      results: list[{index: int, ok: bool, reference_id: str, prefab_name: str | None, written: str, sent_to_host: bool, previous: {display_name: str
+          | None, custom_name: str | None}, current: {display_name: str | None, custom_name: str | None}} | {index: int, ok: bool, reference_id: str,
+          error: Error}]
       count: int
       success_count: int
       error_count: int

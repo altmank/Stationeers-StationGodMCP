@@ -13,6 +13,13 @@ def inspect(what: Literal['player'], *,
       food_quality: float
       food_quality_multiplier: float
       mood: float
+      sleeping: bool
+      brain_online: bool
+      robot: bool
+      life_suspended: bool
+      dead: bool
+      suit_worn: bool
+      helmet_closed: bool | None
       thirst_temperature: {temperature_k: float | None, source: str}
       difficulty: {id: str | None, hunger_rate: float, hydration_rate: float, offline_metabolism: float}
       hunger: {per_second: float, per_hour: float, awake_per_second: float, awake_per_hour: float, time_left_s: float | None, time_left_awake_s: float

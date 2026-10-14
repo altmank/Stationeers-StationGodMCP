@@ -6,7 +6,7 @@ def inspect(what: Literal['weather'], *,
     Reply:
       world_has_weather: bool
       state: str
-      current: {id: str | None, name: str | None, running: bool, starts_in_s: float, length_s: float} | None
+      current: {id: str | None, name: str | None, running: bool, starts_in_s: float, length_s: float, ends_in_s: float | None} | None
       days_past: int
       days_since_last: int
       cooldown_days: int

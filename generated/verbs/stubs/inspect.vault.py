@@ -7,6 +7,7 @@ def inspect(what: Literal['vault'], *,
       vaults: list[{vault: Thing, position: Vec3, on_off: bool, powered: bool, stock: list[{kind: str, prefab_name: str | None, display_name: str |
           None, reagent: str | None, max_stack: float | None, quantity: float}], pending_vends: int}]
       remote_vaults: list[{remote: Thing, vault_id: str | None, connection: str}]
+      count: int
     Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}; Vec3 = {x: float, y: float, z: float}
     Example: sg.inspect('vault')
     In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.

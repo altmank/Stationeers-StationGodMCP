@@ -4,6 +4,7 @@ def find(what: Literal['room'], *,
     include: list[Literal['cells', 'devices']] = None,  # cells: every cell centre; devices: the devices in each room.
 ) -> dict:  # main list: r['rooms']; iterating or indexing it walks every page, in order
     """Closed rooms measured cell by cell: volume, pressure, temperature, gases; or the room one thing is in.
+    One id answers the wrapper below; a list of ids answers one row per id, {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count, local_player_room_id}, each row's payload the room itself (the rooms item's keys) - not the wrapper - or the error for a thing in no room.
     Reply:
       rooms: list[{room_id: str, room_type: str, cell_count: int, volume_l: float, pressure_kpa: float, temperature_k: float, total_mol: float,
           heat_capacity_j_per_k: float, thermal_energy_j: float, gases: list[{gas: str, amount_mol: float, ratio: float}], bounds: {min: Vec3, max:

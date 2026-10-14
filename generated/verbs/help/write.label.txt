@@ -6,5 +6,5 @@ Options:
 - confirm (boolean, default false): true acts; false only reports, whatever the call names (typed ids included). Left out, the write rule decides: typed ids act at once where the verb acts on them; a ref, network or spread reports.
 Pipe, cable and chute pieces cannot be renamed (not_labelable, per entry).
 Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the one-id reply; a bad id is a row with error.
-Reply: (Labelled) index, ok, reference_id, prefab_name, written, sent_to_host, previous {display_name, custom_name}, current {display_name, custom_name} | (BatchResult) results [{index, ok, error}], count, success_count, error_count
+Reply: (Labelled) index, ok, reference_id, prefab_name, written, sent_to_host, previous {display_name, custom_name}, current {display_name, custom_name} | (BatchResult) results [{index, ok, reference_id, prefab_name, written, sent_to_host, previous, current, ok, reference_id, error}], count, success_count, error_count
 Example: write {what: "label", id: "1199811", label: "O2 Tank 1"}

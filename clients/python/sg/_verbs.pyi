@@ -265,7 +265,30 @@ def find(what: Literal['plant'], *,
 ) -> dict:  # main list: r['plants']; iterating or indexing it walks every page, in order
     """Plants in trays, planters and stations: stage, health, problems, time to harvest.
     Reply:
-      plants: list[Any]
+      plants: list[{reference_id: str, prefab_name: str | None, display_name: str | None, planted: bool, tray: {reference_id: str, prefab_name: str |
+          None, display_name: str | None, lit_by_grow_light: bool} | None, stage: int, stage_count: int, maturity_ratio: float, ready_to_harvest:
+          bool, dead: bool, health_percent: int | None, problems: list[str], harvest_in_s: float | None}] | list[{reference_id: str, prefab_name: str
+          | None, name: str | None, display_name: str | None, planted: bool, tray: {reference_id: str, prefab_name: str | None, display_name: str |
+          None, lit_by_grow_light: bool} | None, stage: {index: int, count: int, first_mature_index: int, first_seeding_index: int, dead_index: int,
+          mature_index: int, seeding_index: int, progress_s: float | None, length_s: float | None}, stages: list[{index: int, length_s: float, mature:
+          bool, seeding: bool, dead: bool}], maturity_ratio: float, seeding_ratio: float, mature: bool, seeding: bool, dead: bool, perennial: bool |
+          None, ready_to_harvest: bool, efficiency: {growth_factor: float | None, growth_percent: int, breathing_factor: float, temperature_factor:
+          float, hydration_factor: float, pressure_factor: float, light_factor: float, random_factor: float, gene_speed_factor: float | None},
+          problems: list[str], active_states: list[str], conditions: list[{state: str, words: str, active: bool, time_s: float | None, damage_after_s:
+          float | None, damaging: bool, damage_in_s: float | None}] | None, can_heal: bool | None, health: {damage_ratio: float, health_percent: int,
+          total: float, max: float, brute: float, burn: float, oxygen: float, hydration: float, toxic: float, starvation: float, radiation: float,
+          stun: float, decay: float} | None, harvest: {quantity: int, max: int, seeds: int, fertiliser_bonus: float, forecast: {expected: float,
+          stress: float} | None, nutrition_each: float}, fertiliser: {fertilised: bool, growth_boost: float | None, harvest_bonus: float, waiting:
+          {reference_id: str, prefab_name: str | None, growth_speed: float, harvest_boost: float, cycles: float} | None}, light: {exposure: float,
+          lit: bool, lit_ratio: float | None, dark_ratio: float | None, stress: float | None}, atmosphere: {pressure_kpa: float, temperature_k: float,
+          total_mol: float, ratios: dict[str, float | None]} | None, water: {liquid_mol: float, water_mol: float, temperature_k: float} | None, needs:
+          {profile: str | None, temperature_k: {ideal: list[float], survivable: list[float]}, pressure_kpa: {ideal: list[float], survivable:
+          list[float]}, takes_in: list[{gas: str, mol_per_tick: float, needs_ratio: float, ratio_now: float | None}], gives_out: list[{gas: str,
+          mol_per_tick: float}], water_mol_per_tick: float | None, light_per_day_s: float, dark_per_day_s: float, harmful: list[{gas: str, limit_kpa:
+          float, now_kpa: float | None}]} | None, record: {age_s: float, dry_s: float, cold_s: float, hot_s: float, suffocated_s: float,
+          low_pressure_s: float, high_pressure_s: float, polluted_s: float} | None, genes: dict[str, float] | None, forecast: {growth_rate: float |
+          None, next_stage_s: float | None, harvest_in_s: float | None, seeds_in_s: float | None, regrow_s: float | None, regrow_full_speed_s: float |
+          None}}]
       count: int
       total: int
       offset: int
@@ -284,6 +307,7 @@ def find(what: Literal['room'], *,
     include: list[Literal['cells', 'devices']] = None,  # cells: every cell centre; devices: the devices in each room.
 ) -> dict:  # main list: r['rooms']; iterating or indexing it walks every page, in order
     """Closed rooms measured cell by cell: volume, pressure, temperature, gases; or the room one thing is in.
+    One id answers the wrapper below; a list of ids answers one row per id, {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count, local_player_room_id}, each row's payload the room itself (the rooms item's keys) - not the wrapper - or the error for a thing in no room.
     Reply:
       rooms: list[{room_id: str, room_type: str, cell_count: int, volume_l: float, pressure_kpa: float, temperature_k: float, total_mol: float,
           heat_capacity_j_per_k: float, thermal_energy_j: float, gases: list[{gas: str, amount_mol: float, ratio: float}], bounds: {min: Vec3, max:
@@ -790,6 +814,7 @@ def inspect(what: Literal['vault'], *,
       vaults: list[{vault: Thing, position: Vec3, on_off: bool, powered: bool, stock: list[{kind: str, prefab_name: str | None, display_name: str |
           None, reagent: str | None, max_stack: float | None, quantity: float}], pending_vends: int}]
       remote_vaults: list[{remote: Thing, vault_id: str | None, connection: str}]
+      count: int
     Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}; Vec3 = {x: float, y: float, z: float}
     Example: sg.inspect('vault')
     In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
@@ -838,6 +863,13 @@ def inspect(what: Literal['player'], *,
       food_quality: float
       food_quality_multiplier: float
       mood: float
+      sleeping: bool
+      brain_online: bool
+      robot: bool
+      life_suspended: bool
+      dead: bool
+      suit_worn: bool
+      helmet_closed: bool | None
       thirst_temperature: {temperature_k: float | None, source: str}
       difficulty: {id: str | None, hunger_rate: float, hydration_rate: float, offline_metabolism: float}
       hunger: {per_second: float, per_hour: float, awake_per_second: float, awake_per_hour: float, time_left_s: float | None, time_left_awake_s: float
@@ -859,6 +891,32 @@ def inspect(what: Literal['planet'], *,
     (PlanetNotLoaded)
       terraforming_mod: {version: str | None, state: str | None, temperature_adjustment_k: float | None} | None
     (Planet)
+      loaded: bool
+      world_time_s: float
+      day_length_s: float
+      volume_l: float
+      gas_volume_l: float
+      cells: float
+      size_ratio: float | None
+      gas_mol: float
+      liquid_mol: float
+      liquid_l: float
+      sea: {liquid_l: float, threshold_l: float, shown: bool}
+      pressure_kpa: float
+      game_pressure_kpa: float
+      temperature_k: float
+      temperature_parts: {sun_angle_k: float, sun_distance_k: float, greenhouse_k: float, density_k: float, weather_k: float, latent_k: float,
+          external_k: float}
+      sun_angle_deg: float
+      solar_energy_percent: float
+      range: {today_min_k: float, today_min_sun_angle_deg: float, today_max_k: float, today_max_sun_angle_deg: float, orbit_min_k: float, orbit_max_k:
+          float}
+      storm: {id: str | None} | None
+      oxygen_kpa: float
+      toxins_kpa: float
+      fuel_mol: float
+      oxidiser_mol: float
+      carbon_dioxide_ratio: float
       gases: list[{gas: str, display_name: str | None, state: str, amount_mol: float, per_cell_mol: float, partial_kpa: float | None, freezes_below_k:
           float | None, min_liquid_pressure_kpa: float | None, condenses_below_today_coldest_k: float | None, condenses_below_orbit_coldest_k: float |
           None}]
@@ -879,7 +937,7 @@ def inspect(what: Literal['weather'], *,
     Reply:
       world_has_weather: bool
       state: str
-      current: {id: str | None, name: str | None, running: bool, starts_in_s: float, length_s: float} | None
+      current: {id: str | None, name: str | None, running: bool, starts_in_s: float, length_s: float, ends_in_s: float | None} | None
       days_past: int
       days_since_last: int
       cooldown_days: int
@@ -1045,7 +1103,10 @@ def survey(what: Literal['network'], *,
     Reply, one of:
     (NetworkMembers)
       network: {kind: str, id: str}
-      summary: Any | None
+      summary: {required_w: float, potential_w: float, actual_w: float, shortfall_w: float, lowest_cable_max_w: float | None, lowest_fuse_break_w:
+          float | None, overloaded: bool, fuse_overloaded: bool, cable_count: int, fuse_count: int} | {content: str, volume_l: float, pressure_kpa:
+          float, temperature_k: float, total_mol: float, liquid_volume_l: float, gases: list[{gas: str, state: str, amount_mol: float}]} |
+          {member_count: int} | None
       warning: str | None
       members: list[{reference_id: str, prefab_name: str | None, display_name: str | None, member: str, position: Vec3, color: Color | None,
           open_ends: list[int] | None, network_id: str | None}]
@@ -1058,7 +1119,10 @@ def survey(what: Literal['network'], *,
       has_more: bool
     (NetworkOverview)
       network: {kind: str, id: str}
-      summary: Any | None
+      summary: {required_w: float, potential_w: float, actual_w: float, shortfall_w: float, lowest_cable_max_w: float | None, lowest_fuse_break_w:
+          float | None, overloaded: bool, fuse_overloaded: bool, cable_count: int, fuse_count: int} | {content: str, volume_l: float, pressure_kpa:
+          float, temperature_k: float, total_mol: float, liquid_volume_l: float, gases: list[{gas: str, state: str, amount_mol: float}]} |
+          {member_count: int} | None
       warning: str | None
       broken_neighbour_count: int
       broken_neighbours: list[{reference_id: str, prefab_name: str | None, position: Vec3, pipe_burst: str | None, network: {kind: str, id: str} |
@@ -1452,7 +1516,9 @@ def write(what: Literal['label'], *,
       previous: {display_name: str | None, custom_name: str | None}
       current: {display_name: str | None, custom_name: str | None}
     (BatchResult)
-      results: list[{index: int, ok: bool, error: Error}]
+      results: list[{index: int, ok: bool, reference_id: str, prefab_name: str | None, written: str, sent_to_host: bool, previous: {display_name: str
+          | None, custom_name: str | None}, current: {display_name: str | None, custom_name: str | None}} | {index: int, ok: bool, reference_id: str,
+          error: Error}]
       count: int
       success_count: int
       error_count: int
@@ -1478,12 +1544,13 @@ def write(what: Literal['paint'], *,
       colors: list[{index: int, name: str | None, paint_only: bool}]
       count: int
     (BatchResult)
-      results: list[{index: int, ok: bool, error: Error}]
+      results: list[{index: int, ok: bool, reference_id: str, previous_color: Color, color: Color} | {index: int, ok: bool, reference_id: str, error:
+          Error}]
       count: int
       success_count: int
       error_count: int
-    Types: Error = {code: str, message: str, data: Any | None, see: {verb: str | None, what: str | None, topic: str | None, subtopic: str | None} |
-        None}
+    Types: Color = {index: int | None, name: str | None, is_default: bool}; Error = {code: str, message: str, data: Any | None, see: {verb: str |
+        None, what: str | None, topic: str | None, subtopic: str | None} | None}
     Example: sg.write('paint', network='4639870', kind='pipe', color='Red')
     In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
     """
@@ -3305,12 +3372,34 @@ def trade(what: Literal['buy'], *,
       count: int
       success_count: int
       error_count: int
+    (TradeReport)
+      reference_id: str
+      name: str | None
+      credit_card_id: str
+      credits_before: float
+      credits_after: float
+      results: list[{index: int, ok: bool, name: str | None, prefab_name: str | None, quantity: int, credits: float, error: Error} | {index: int, ok:
+          bool, name: str | None, prefab_name: str | None, gas: bool, quantity: int, credits_each: float, credits_spent: float | None, credits_earned:
+          float | None, stock_after: int | None, wanted_after: int | None} | {index: int, ok: bool, error: Error}]
+      count: int
+      success_count: int
+      error_count: int
+      delivered: list[{reference_id: str, slot: int, item: Thing, quantity: float}]
+      gas_atmosphere_id: str | None
+      report_only: bool
+      targets: list[{id: str | None, cell: list[float] | None, name: str | None, current: Any | None, new: Any | None, undo: str, passed: list[str] |
+          None, driven_by: Any | None, text: str}]
+      problems: list[{index: int | None, reference_id: str | None, code: str, message: str, data: Any | None}]
     (TradesReport)
       trades: list[{reference_id: str, name: str | None, credit_card_id: str, credits_before: float, credits_after: float, results: list[{index: int,
           ok: bool, name: str | None, prefab_name: str | None, quantity: int, credits: float, error: Error} | {index: int, ok: bool, name: str | None,
           prefab_name: str | None, gas: bool, quantity: int, credits_each: float, credits_spent: float | None, credits_earned: float | None,
           stock_after: int | None, wanted_after: int | None} | {index: int, ok: bool, error: Error}], count: int, success_count: int, error_count:
           int, delivered: list[{reference_id: str, slot: int, item: Thing, quantity: float}], gas_atmosphere_id: str | None}]
+      report_only: bool
+      targets: list[{id: str | None, cell: list[float] | None, name: str | None, current: Any | None, new: Any | None, undo: str, passed: list[str] |
+          None, driven_by: Any | None, text: str}]
+      problems: list[{index: int | None, reference_id: str | None, code: str, message: str, data: Any | None}]
     Types: Error = {code: str, message: str, data: Any | None, see: {verb: str | None, what: str | None, topic: str | None, subtopic: str | None} |
         None}; Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}
     Example: sg.trade('buy', id='7', items=[{'prefab': 'ItemIronIngot', 'quantity': 50}])
@@ -3351,12 +3440,34 @@ def trade(what: Literal['sell'], *,
       count: int
       success_count: int
       error_count: int
+    (TradeReport)
+      reference_id: str
+      name: str | None
+      credit_card_id: str
+      credits_before: float
+      credits_after: float
+      results: list[{index: int, ok: bool, name: str | None, prefab_name: str | None, quantity: int, credits: float, error: Error} | {index: int, ok:
+          bool, name: str | None, prefab_name: str | None, gas: bool, quantity: int, credits_each: float, credits_spent: float | None, credits_earned:
+          float | None, stock_after: int | None, wanted_after: int | None} | {index: int, ok: bool, error: Error}]
+      count: int
+      success_count: int
+      error_count: int
+      delivered: list[{reference_id: str, slot: int, item: Thing, quantity: float}]
+      gas_atmosphere_id: str | None
+      report_only: bool
+      targets: list[{id: str | None, cell: list[float] | None, name: str | None, current: Any | None, new: Any | None, undo: str, passed: list[str] |
+          None, driven_by: Any | None, text: str}]
+      problems: list[{index: int | None, reference_id: str | None, code: str, message: str, data: Any | None}]
     (TradesReport)
       trades: list[{reference_id: str, name: str | None, credit_card_id: str, credits_before: float, credits_after: float, results: list[{index: int,
           ok: bool, name: str | None, prefab_name: str | None, quantity: int, credits: float, error: Error} | {index: int, ok: bool, name: str | None,
           prefab_name: str | None, gas: bool, quantity: int, credits_each: float, credits_spent: float | None, credits_earned: float | None,
           stock_after: int | None, wanted_after: int | None} | {index: int, ok: bool, error: Error}], count: int, success_count: int, error_count:
           int, delivered: list[{reference_id: str, slot: int, item: Thing, quantity: float}], gas_atmosphere_id: str | None}]
+      report_only: bool
+      targets: list[{id: str | None, cell: list[float] | None, name: str | None, current: Any | None, new: Any | None, undo: str, passed: list[str] |
+          None, driven_by: Any | None, text: str}]
+      problems: list[{index: int | None, reference_id: str | None, code: str, message: str, data: Any | None}]
     Types: Error = {code: str, message: str, data: Any | None, see: {verb: str | None, what: str | None, topic: str | None, subtopic: str | None} |
         None}; Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}
     Example: sg.trade('sell', id='7', items=[{'prefab': 'ItemGoldIngot', 'quantity': 20}])
