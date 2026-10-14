@@ -47,9 +47,10 @@ public sealed class GameCatalogue
     public static GameCatalogue BuiltIn => Embedded.Value;
 
     /// <summary>
-    /// The catalogue's identity: "sha256:" and the lowercase hex of SHA-256 over the verb files' raw bytes,
-    /// concatenated whole in ordinal resource-name order (catalogue/verbs/_errors.json, _shared.json, build.json,
-    /// ... write.json), with nothing between them - the hash the mod announces in welcome.catalogue.hash.
+    /// The catalogue's identity: "sha256:" and the lowercase hex of SHA-256 over the verb files' raw bytes with every
+    /// line ending a bare LF, concatenated whole in ordinal resource-name order (catalogue/verbs/_errors.json,
+    /// _shared.json, build.json, ... write.json), with nothing between them - the hash the mod announces in
+    /// welcome.catalogue.hash.
     /// </summary>
     public string Hash { get; }
 
@@ -142,10 +143,8 @@ public sealed class GameCatalogue
         document.Append("{\"shared\":").Append(OneLine(Text(files[SharedFile])))
             .Append(",\"errors\":").Append(OneLine(Text(files[ErrorsFile]))).Append(",\"verbs\":{");
         bool first = true;
-        using IncrementalHash sha = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         foreach ((string file, byte[] raw) in files)
         {
-            sha.AppendData(raw);
             if (file == SharedFile || file == ErrorsFile)
             {
                 continue;
@@ -158,8 +157,50 @@ public sealed class GameCatalogue
 
         document.Append("}}");
         JsonElement model = JsonDocument.Parse(document.ToString()).RootElement.Clone();
-        return new GameCatalogue(model, "sha256:" + Convert.ToHexString(sha.GetHashAndReset()).ToLowerInvariant(),
-            Rules(model));
+        return new GameCatalogue(model, HashOf(files), Rules(model));
+    }
+
+    /// <summary>
+    /// The identity of a set of verb files: "sha256:" and the lowercase hex of SHA-256 over their raw bytes with every
+    /// line ending a bare LF, concatenated whole in file-name order - the hash the mod announces in
+    /// welcome.catalogue.hash for those same committed bytes, whatever line endings a checkout gave its copy of them.
+    /// </summary>
+    internal static string HashOf(SortedDictionary<string, byte[]> files)
+    {
+        using IncrementalHash sha = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        foreach (KeyValuePair<string, byte[]> entry in files)
+        {
+            byte[] file = Lf(entry.Value);
+            sha.AppendData(file);
+        }
+
+        return "sha256:" + Convert.ToHexString(sha.GetHashAndReset()).ToLowerInvariant();
+    }
+
+    // The file's bytes with every line ending a bare LF: a CRLF becomes one LF and a lone CR becomes one LF, so
+    // nothing else about the bytes changes. Normalising never lengthens the file, so one buffer of its own length
+    // holds the result.
+    private static byte[] Lf(byte[] raw)
+    {
+        byte[] lf = new byte[raw.Length];
+        int at = 0;
+        for (int i = 0; i < raw.Length; i++)
+        {
+            if (raw[i] != (byte)'\r')
+            {
+                lf[at++] = raw[i];
+                continue;
+            }
+
+            lf[at++] = (byte)'\n';
+            if (i + 1 < raw.Length && raw[i + 1] == (byte)'\n')
+            {
+                i++;
+            }
+        }
+
+        Array.Resize(ref lf, at);
+        return lf;
     }
 
     private static byte[] Bytes(Assembly assembly, string resource)

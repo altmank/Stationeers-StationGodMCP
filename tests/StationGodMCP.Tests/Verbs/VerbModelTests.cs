@@ -17,11 +17,15 @@ namespace StationGodMCP.Tests.Verbs;
 
 /// <summary>
 /// The verb model, the one catalogue: the files the mod, the Client and the Server embed, the hash the mod announces
-/// in welcome.catalogue.hash (SHA-256 over their raw bytes, concatenated whole in ordinal file-name order), the
-/// assembled document the `catalogue` method answers, and the rules the Client reads out of it.
+/// in welcome.catalogue.hash (SHA-256 over their bytes with every line ending a bare LF, concatenated whole in ordinal
+/// file-name order), the assembled document the `catalogue` method answers, and the rules the Client reads out of it.
 /// </summary>
 public sealed class VerbModelTests
 {
+    // The identity of the committed catalogue/verbs/*.json: the hash every reader of those bytes must announce,
+    // whatever line endings its own copy of them carries.
+    private const string CommittedHash = "sha256:394a1c773d3104edff65f7e4207381fc8a65d6167e0721ff3d07b81d8cb4e047";
+
     [Fact]
     public void TheModAndTheClientComputeTheSameHashFromTheirOwnEmbeds()
     {
@@ -33,14 +37,39 @@ public sealed class VerbModelTests
     public void TheHashIsTheVerbFilesRawBytesInOrdinalFileNameOrder()
     {
         using IncrementalHash sha = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-        foreach (string file in Directory.GetFiles(Path.Combine(CatalogueFiles.SourceRoot, "verbs"), "*.json")
-                     .OrderBy(path => "catalogue/verbs/" + Path.GetFileName(path), StringComparer.Ordinal))
+        foreach (string path in CataloguePaths())
         {
-            sha.AppendData(File.ReadAllBytes(file));
+            byte[] file = Lf(File.ReadAllBytes(path));
+            sha.AppendData(file, 0, file.Length);
         }
 
         Assert.Equal("sha256:" + Convert.ToHexString(sha.GetHashAndReset()).ToLowerInvariant(),
             VerbDocument.Embedded.Hash);
+    }
+
+    // The committed LF bytes as a checkout that rewrote them carries them, CRLF for one case and a bare CR for the
+    // other, every file of the catalogue in memory. Each reader hashes its own copy of them and must announce the
+    // committed hash, so the normalising is the reader's own work on the bytes it read.
+    [Theory]
+    [InlineData("\r\n")]
+    [InlineData("\r")]
+    public void TheLineEndingsOfTheBytesEachReaderHashesAreBareLf(string newline)
+    {
+        List<string> names = [];
+        Dictionary<string, byte[]> bytes = new(StringComparer.Ordinal);
+        SortedDictionary<string, byte[]> files = new(StringComparer.Ordinal);
+        foreach (string path in CataloguePaths())
+        {
+            string file = Path.GetFileName(path);
+            byte[] variant = Variant(path, newline);
+            AssertVariantCarries(file, variant, newline);
+            names.Add(Resource(file));
+            bytes.Add(file, variant);
+            files.Add(file, variant);
+        }
+
+        Assert.Equal(CommittedHash, VerbDocument.HashOf(names, bytes));
+        Assert.Equal(CommittedHash, GameCatalogue.HashOf(files));
     }
 
     [Fact]
@@ -161,4 +190,35 @@ public sealed class VerbModelTests
     }
 
     private static JsonElement Json(string text) => JsonDocument.Parse(text).RootElement.Clone();
+
+    // The catalogue's files in the order both hash readers take them: resource name, ordinal.
+    private static IEnumerable<string> CataloguePaths() =>
+        Directory.GetFiles(Path.Combine(CatalogueFiles.SourceRoot, "verbs"), "*.json")
+            .OrderBy(path => Resource(Path.GetFileName(path)), StringComparer.Ordinal);
+
+    private static string Resource(string file) => "catalogue/verbs/" + file;
+
+    private static string Text(byte[] raw) => new UTF8Encoding(false).GetString(raw);
+
+    private static byte[] Bytes(string text) => new UTF8Encoding(false).GetBytes(text);
+
+    // The text with every line ending a bare LF, whatever the checkout that wrote the file did to them.
+    private static string BareLf(string text) => text.Replace("\r\n", "\n").Replace('\r', '\n');
+
+    // The file's bytes as each reader hashes them.
+    private static byte[] Lf(byte[] raw) => Bytes(BareLf(Text(raw)));
+
+    // The file as a checkout that rewrote its line endings carries it: every one of them the newline given.
+    private static byte[] Variant(string path, string newline) =>
+        Bytes(BareLf(Text(File.ReadAllBytes(path))).Replace("\n", newline));
+
+    // The variant must really carry the endings the readers normalise, or the hashes above would hold while no reader
+    // ever met a CR: a CRLF variant has as many CRs as LFs, a bare-CR variant has CRs and no LF at all.
+    private static void AssertVariantCarries(string file, byte[] variant, string newline)
+    {
+        int crs = variant.Count(value => value == (byte)'\r');
+        int lfs = variant.Count(value => value == (byte)'\n');
+        bool carries = newline == "\r\n" ? crs > 0 && crs == lfs : crs > 0 && lfs == 0;
+        Assert.True(carries, $"{file} carries {crs} CR and {lfs} LF as {newline.Length}-byte endings");
+    }
 }

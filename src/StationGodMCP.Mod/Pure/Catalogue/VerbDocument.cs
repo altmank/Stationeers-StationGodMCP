@@ -12,10 +12,11 @@ namespace StationGodMCP.Pure.Catalogue;
 
 /// <summary>
 /// The verb model document (catalogue/verbs): the files an assembly embeds, assembled once and identified by one
-/// hash. The hash is "sha256:" and the lowercase hex of SHA-256 over the files' raw bytes, concatenated whole in
-/// ordinal resource-name order (catalogue/verbs/_errors.json, _shared.json, build.json, ... write.json), with nothing
-/// between them; every assembly that embeds catalogue/verbs/*.json computes the same hash from its own copy, and only
-/// raw bytes are hashed, never re-serialised JSON. welcome.catalogue.hash is that hash.
+/// hash. The hash is "sha256:" and the lowercase hex of SHA-256 over the files' raw bytes with every line ending a
+/// bare LF, concatenated whole in ordinal resource-name order (catalogue/verbs/_errors.json, _shared.json, build.json,
+/// ... write.json), with nothing between them; every assembly that embeds catalogue/verbs/*.json computes the same
+/// hash from its own copy - a checkout that rewrote the committed LF bytes announces it too - and only raw bytes are
+/// hashed, never re-serialised JSON. welcome.catalogue.hash is that hash.
 /// <para>
 /// The assembled document - {"shared": &lt;_shared.json&gt;, "errors": &lt;_errors.json&gt;,
 /// "verbs": {"&lt;verb&gt;": &lt;file&gt;}} - carries the files' own text, so what the `catalogue` method answers is
@@ -139,13 +140,14 @@ internal sealed class VerbDocument
 
     private static string FileName(string resource) => resource.Substring(ResourcePrefix.Length);
 
-    // The hash of every file's raw bytes, concatenated whole in the order names gives them.
-    private static string HashOf(List<string> names, Dictionary<string, byte[]> bytes)
+    // The hash of every file's raw bytes with every line ending a bare LF, concatenated whole in the order names
+    // gives them: the committed bytes and a checkout that rewrote them to CRLF announce the same hash.
+    internal static string HashOf(List<string> names, Dictionary<string, byte[]> bytes)
     {
         using IncrementalHash sha = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         foreach (string name in names)
         {
-            byte[] file = bytes[FileName(name)];
+            byte[] file = Lf(bytes[FileName(name)]);
             sha.AppendData(file, 0, file.Length);
         }
 
@@ -157,6 +159,32 @@ internal sealed class VerbDocument
         }
 
         return hex.ToString();
+    }
+
+    // The file's bytes with every line ending a bare LF: a CRLF becomes one LF and a lone CR becomes one LF, so
+    // nothing else about the bytes changes. Normalising never lengthens the file, so one buffer of its own length
+    // holds the result.
+    private static byte[] Lf(byte[] raw)
+    {
+        byte[] lf = new byte[raw.Length];
+        int at = 0;
+        for (int i = 0; i < raw.Length; i++)
+        {
+            if (raw[i] != (byte)'\r')
+            {
+                lf[at++] = raw[i];
+                continue;
+            }
+
+            lf[at++] = (byte)'\n';
+            if (i + 1 < raw.Length && raw[i + 1] == (byte)'\n')
+            {
+                i++;
+            }
+        }
+
+        Array.Resize(ref lf, at);
+        return lf;
     }
 
     private static string JsonQuote(string text) => "\"" + text.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\"";
