@@ -54,7 +54,9 @@ section says otherwise.
 
 - `welcome` is the mod's last welcome as the hub saw it, with `client_id` the hub's own name for the caller and
   `features` the mod's plus `pipeline`. Before the game is reachable the hub answers `hello` with a welcome whose
-  `server.game_state` is `Unreachable`, and calls answer `game_unreachable` until it is.
+  `server.game_state` is `Unreachable`, and calls answer `game_unreachable` until it is. A session answered that way
+  is sent the mod's welcome once the link first gets it (one extra `welcome`, before any event); `sg` keeps the
+  latest welcome, so a watch started after the game answers subscribes where it would otherwise have polled.
 - A `call` whose `method` is a mod method is passed to the mod on the caller's mapped stream, its reply passed back
   with the caller's id. `subscribe` and `unsubscribe` are relayed: the hub holds one mod subscription per caller
   subscription and passes its events through with the caller's subscription id.

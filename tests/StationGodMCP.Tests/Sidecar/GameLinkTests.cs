@@ -31,6 +31,31 @@ public sealed class GameLinkTests
     }
 
     [Fact]
+    public async Task AFirstConnectThatFailsIsRetriedUntilTheGameAnswers()
+    {
+        // The hub answers hello before the game is up; the link must come up on its own when the game does, so
+        // LinkUp (a session's refreshed welcome) reaches the caller without any call being made.
+        string name = "StationGodMCP-fake-late-" + Guid.NewGuid().ToString("N");
+        await using GameLink link = new(new ClientOptions(new GameTarget.Pipe(name)));
+        int ups = 0;
+        link.LinkUp += () => Interlocked.Increment(ref ups);
+
+        Assert.False(await link.ConnectAsync());
+        Assert.Null(link.Welcome);
+
+        await using FakeGame game = FakeGame.OnPipe(name);
+        Stopwatch watch = Stopwatch.StartNew();
+        while (link.Welcome == null && watch.ElapsedMilliseconds < 15000)
+        {
+            await Task.Delay(50);
+        }
+
+        Assert.NotNull(link.Welcome);
+        Assert.Equal("world-1", link.WorldId);
+        Assert.Equal(1, Volatile.Read(ref ups));
+    }
+
+    [Fact]
     public async Task TheStreamTagIsSentForStreamsOtherThanZero()
     {
         await using FakeGame game = HubGame();

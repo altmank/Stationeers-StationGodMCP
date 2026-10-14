@@ -10,7 +10,7 @@ import unittest
 from unittest import mock
 
 from _support import FakeHub, ok
-from fakehub import PACKAGE_ROOT
+from fakehub import PACKAGE_ROOT, welcome
 import sg
 from sg import _transport
 from sg._transport import Transport
@@ -33,6 +33,21 @@ class TransportTests(unittest.TestCase):
         self.assertEqual(["pipeline"], hello["features"])
         self.assertEqual("welcome", welcome["type"])
         self.assertIs(welcome, transport.welcome)
+
+    def test_a_welcome_after_hello_replaces_the_session_state(self):
+        # A hub whose game was unreachable at hello sends the mod's welcome when the link first comes up; the features
+        # watch/changes read must be the newest ones, not the hello answer's.
+        hub, transport = self.connect(None)
+        transport.hello(timeout=5)
+        self.assertEqual(["pipeline"], transport.welcome["features"])
+
+        hub.write(welcome(features=["pipeline", "subscriptions"]))
+        deadline = time.time() + 5
+        while time.time() < deadline and "subscriptions" not in (transport.welcome.get("features") or []):
+            time.sleep(0.01)
+
+        self.assertEqual(["pipeline", "subscriptions"], transport.welcome["features"])
+        self.assertEqual("w1", transport.welcome["server"]["world"]["id"])
 
     def test_replies_that_come_back_out_of_order_reach_their_own_callers(self):
         def handler(method, params):

@@ -58,6 +58,11 @@ internal sealed class FakeHubLink : IHubLink
 
     public event Action<JsonElement>? EventReceived;
 
+    /// <summary>Raised when a test says the link got the mod's welcome after having none.</summary>
+    public event Action? LinkUp;
+
+    public void RaiseLinkUp() => LinkUp?.Invoke();
+
     public void ChangeWorld(string? id) => WorldChanged?.Invoke(id);
 
     public static JsonElement Element(string json)

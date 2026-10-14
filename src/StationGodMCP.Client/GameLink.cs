@@ -69,6 +69,9 @@ public sealed class GameLink : IHubLink, IAsyncDisposable
     /// <summary>The last welcome message; null before the first connection.</summary>
     public JsonElement? Welcome { get; private set; }
 
+    /// <summary>Raised once, off every lock the link holds, when Welcome first arrives.</summary>
+    public event Action? LinkUp;
+
     /// <summary>
     /// The world id from the last welcome or world_changed; null while no connection is open or no world runs. Going
     /// unreachable raises nothing: the world has not changed, it is only out of sight.
@@ -681,7 +684,13 @@ public sealed class GameLink : IHubLink, IAsyncDisposable
             _connectLock.Release();
         }
 
-        if (adopted != null)
+        if (connecting is Connecting.Failed)
+        {
+            // The first connect can fail while the game is still coming up, and nothing else wakes the link then: keep
+            // trying in the background so its LinkUp (and every call's own retry) finds the game when it answers.
+            StartReconnecting();
+        }
+        else if (adopted != null)
         {
             AfterAdopting(adopted);
         }
@@ -696,6 +705,7 @@ public sealed class GameLink : IHubLink, IAsyncDisposable
     private Adoption? Adopt(GameConnection connection)
     {
         string? world = WorldIdOf(connection.World);
+        bool firstWelcome;
         Adoption adoption;
         lock (_gate)
         {
@@ -705,6 +715,7 @@ public sealed class GameLink : IHubLink, IAsyncDisposable
                 return null;
             }
 
+            firstWelcome = !_welcomed;
             adoption = new Adoption(connection, world, worldChanged: _welcomed && world != _lastWorldId, reconnected: _welcomed);
             _connection = connection;
             Welcome = connection.Welcome;
@@ -715,6 +726,12 @@ public sealed class GameLink : IHubLink, IAsyncDisposable
 
         _admission.SetLimits(connection.PerStreamLimit, connection.PerConnectionLimit);
         _ = Task.Run(() => connection.ReadAsync(OnMessage, OnClosed), CancellationToken.None);
+        if (firstWelcome)
+        {
+            // Off the lock: a session may answer its caller from here.
+            LinkUp?.Invoke();
+        }
+
         return adoption;
     }
 

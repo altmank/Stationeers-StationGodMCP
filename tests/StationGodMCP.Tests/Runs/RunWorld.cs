@@ -49,6 +49,12 @@ internal sealed class RunWorld : IHubLink
         remove { }
     }
 
+    public event Action? LinkUp
+    {
+        add { }
+        remove { }
+    }
+
     /// <summary>A call answered before the world's own handling (null: the world answers).</summary>
     public Func<GameCall, GameReply?>? Override { get; set; }
 

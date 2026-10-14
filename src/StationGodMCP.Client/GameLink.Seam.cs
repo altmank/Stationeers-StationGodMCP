@@ -53,6 +53,13 @@ public interface IHubLink : IGameLink
     /// <summary>The mod's last welcome; null before the first connection.</summary>
     JsonElement? Welcome { get; }
 
+    /// <summary>
+    /// Raised (off any lock the link holds) when the link gets the mod's welcome after having none: the first
+    /// connection's. A session whose welcome was answered while the mod had never spoken thus hears the mod's features
+    /// and limits once the link is up.
+    /// </summary>
+    event Action? LinkUp;
+
     /// <summary>The world as the last welcome or world_changed gave it ({id, save, epoch}); null before any.</summary>
     JsonElement? World { get; }
 

@@ -104,7 +104,8 @@ internal sealed class FakeGame : IAsyncDisposable
 
     public int OpenConnections => _peers.Count;
 
-    public static FakeGame OnPipe() => new("StationGodMCP-fake-" + Guid.NewGuid().ToString("N"), null);
+    /// <summary>A fake game on a pipe of its own; name: a pipe that is to appear later, else a fresh one.</summary>
+    public static FakeGame OnPipe(string? name = null) => new(name ?? "StationGodMCP-fake-" + Guid.NewGuid().ToString("N"), null);
 
     public static FakeGame OnTcp()
     {

@@ -66,6 +66,8 @@ public sealed partial class HubSession
     private int _openStreams;
     private int _inFlightLimit = DefaultPerStreamLimit * MaxStreams;
     private bool _welcomed;
+    private bool _welcomeWasBlind;
+    private bool _refreshedWelcome;
     private bool _sessionEnded;
     private bool _analysed;
     private bool _runEnded;
@@ -138,6 +140,7 @@ public sealed partial class HubSession
         _output = new HubOutput(output, SlowClientAfter, end => _stopped.TrySetResult(end));
         _link.EventReceived += OnEvent;
         _link.WorldChanged += OnWorldChanged;
+        _link.LinkUp += OnLinkUp;
         HubLineReader reader = new(input, _link.MaxRequestBytes);
         while (true)
         {
@@ -288,11 +291,32 @@ public sealed partial class HubSession
         lock (_gate)
         {
             _welcomed = true;
+            _welcomeWasBlind = _link.Welcome is null;
             _inFlightLimit = PerStreamLimit(_link.Welcome) * MaxStreams;
             Send(HubLines.Line(Welcome(reachable)));
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// The link got the mod's welcome after this session had answered hello without one: the features and limits it
+    /// answered with were the hub's own alone (the mod has never spoken), so the caller is sent the mod's welcome now,
+    /// once. sg reads the latest welcome, so a watch started later subscribes where it would have silently polled.
+    /// </summary>
+    private void OnLinkUp()
+    {
+        bool refresh;
+        lock (_gate)
+        {
+            refresh = _welcomeWasBlind && _welcomed && !_refreshedWelcome && !_closing;
+            _refreshedWelcome = refresh;
+        }
+
+        if (refresh)
+        {
+            Send(HubLines.Line(Welcome(reachable: true)));
+        }
     }
 
     // The mod's last welcome as the link saw it, with the caller's client_id, features plus pipeline, and no resume or

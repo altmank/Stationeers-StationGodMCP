@@ -34,6 +34,7 @@ public sealed partial class HubSession
 
         _link.EventReceived -= OnEvent;
         _link.WorldChanged -= OnWorldChanged;
+        _link.LinkUp -= OnLinkUp;
         await Task.WhenAny(Task.WhenAll(running), Task.Delay(CloseWait)).ConfigureAwait(false);
 
         // A subscribe bound while the calls wound down is registered by now, so it is ended here too.

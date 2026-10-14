@@ -228,6 +228,9 @@ class Transport:
             pending.done.set()
         elif kind == "welcome":
             with self._welcome_ready:
+                # The latest welcome is the session's state: a hub whose game was unreachable at hello sends a fresh one
+                # when the mod's welcome first arrives, and its features (subscriptions) are what watch/changes read.
+                self.welcome = message
                 self._welcomes.append(message)
                 self._welcome_ready.notify_all()
         elif kind == "event":

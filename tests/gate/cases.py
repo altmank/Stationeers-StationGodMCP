@@ -449,6 +449,10 @@ def undo_overwrite_check(ctx):
     ctx.oracle.set_logic(FIX["cap1"], "Setting", 1000)
     text, _ = h.run_script("sg.write('logic', id='%s', logic='Setting', value=1111)" % FIX["cap1"], confirm=True)
     rid = run_id(text)
+    if rid is None:
+        # The run never started (a busy pipe, a link with no world): report that, rather than letting undo answer
+        # "id: required" for the null id, which reads like a bad undo argument.
+        return result(False, run=text[:600])
     ctx.oracle.set_logic(FIX["cap1"], "Setting", 1500)
     undo, _ = h.tool("undo", {"id": rid, "confirm": True})
     kept = ctx.oracle.logic(FIX["cap1"], "Setting") == 1500

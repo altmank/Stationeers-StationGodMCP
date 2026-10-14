@@ -50,6 +50,38 @@ public sealed class HubSessionTests
     }
 
     [Fact]
+    public async Task ABlindHelloIsSentTheModsWelcomeOnceTheLinkComesUp()
+    {
+        // T-B-16: the hello went out while the link had never heard the mod, so its features were the hub's own; when the
+        // link gets the mod's first welcome the caller is sent it, and sg then reads subscriptions where it would have
+        // silently polled. Once: a later LinkUp says nothing.
+        FakeHubLink link = new() { Reachable = false, Welcome = null };
+        await using HubCaller caller = HubCaller.Start(link,
+            new HubSessionSettings(Face.Program) { PassThrough = true, ClientId = "blind-1" });
+
+        JsonElement blind = await caller.HelloAsync();
+        Assert.Equal("Unreachable", blind.GetProperty("server").GetProperty("game_state").GetString());
+        Assert.Equal(new[] { "pipeline" },
+            blind.GetProperty("features").EnumerateArray().Select(feature => feature.GetString()));
+
+        link.Welcome = FakeHubLink.Element(FakeHubLink.ModWelcome);
+        link.Reachable = true;
+        link.RaiseLinkUp();
+
+        JsonElement refreshed = await caller.NextAsync();
+        Assert.Equal("welcome", refreshed.GetProperty("type").GetString());
+        Assert.Equal("blind-1", refreshed.GetProperty("client_id").GetString());
+        Assert.Equal("Running", refreshed.GetProperty("server").GetProperty("game_state").GetString());
+        Assert.Contains("subscriptions",
+            refreshed.GetProperty("features").EnumerateArray().Select(feature => feature.GetString()));
+        Assert.Contains("pipeline",
+            refreshed.GetProperty("features").EnumerateArray().Select(feature => feature.GetString()));
+
+        link.RaiseLinkUp();
+        Assert.Empty(await caller.LastLinesWithinAsync(TimeSpan.FromMilliseconds(300)));
+    }
+
+    [Fact]
     public async Task AModMethodGoesOnTheCallersMappedStreamAndItsReplyComesBackUnderTheCallersId()
     {
         FakeHubLink link = new()

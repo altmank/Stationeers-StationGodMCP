@@ -195,6 +195,28 @@ public sealed class PipeProtocolTests
     }
 
     [Fact]
+    public async Task ClientsThatDieBeforeTheirWelcomeOrBeforeHelloFreeTheirInstances()
+    {
+        using PipeRig rig = new PipeRig(maxConnections: 1);
+        for (int index = 0; index < 6; index++)
+        {
+            NamedPipeClientStream raw = await rig.ConnectAsync();
+            Connection connection = rig.WaitConnected();
+            string when = index % 2 == 1 ? "after hello" : "before hello";
+            if (index % 2 == 1)
+            {
+                await Send(raw, Hello);
+            }
+
+            raw.Dispose();
+            Assert.True(connection.Stopped.WaitOne(5000), $"client {index} left its pipe instance taken {when}");
+
+            using V2Client next = await V2Client.Connect(rig, "after-death" + index);
+            Assert.True((bool)next.Call("n", "read", TestVerbs.Clock())["ok"]!);
+        }
+    }
+
+    [Fact]
     public async Task PastTheLimitAClientWaitsUntilAConnectionCloses()
     {
         using PipeRig rig = new PipeRig(maxConnections: 3);

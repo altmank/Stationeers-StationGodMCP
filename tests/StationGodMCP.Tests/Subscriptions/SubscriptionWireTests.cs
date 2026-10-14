@@ -218,6 +218,73 @@ public sealed class SubscriptionWireTests
     }
 
     [Fact]
+    public async Task AConnectionKilledWithASubscriptionHeldFreesItsPipeInstance()
+    {
+        // T-B-15's invariant on the wire: an abrupt end (no bye) with a subscription held must free the instance, not
+        // leave it for a client that is gone. maxConnections 1 makes it decidable: the next client could only connect
+        // if the first instance was freed.
+        SubscriptionHub hub = Hub();
+        using PipeRig rig = new PipeRig(maxConnections: 1, mainThread: false, subscriptions: hub,
+            tick: () => new SamplingTick(_frame, _gameTimeS));
+        V2Client client = await V2Client.Connect(rig);
+        Connection connection = rig.Host.Open.Single();
+        Call(rig, client, "1", "subscribe", DeviceParams());
+        Assert.Equal(1, hub.CountOf(ClientId(client)));
+
+        client.Dispose();
+        Assert.True(connection.Stopped.WaitOne(5000), "the pipe instance was not freed after the client vanished");
+
+        using V2Client next = await V2Client.Connect(rig, "after-kill");
+        Assert.Equal("welcome", (string?)next.Welcome["type"]);
+    }
+
+    [Fact]
+    public async Task FortyClientsOfEveryKindLeaveEveryInstanceFree()
+    {
+        // The gate opens a connection per case (a hub, an oracle) and failed at its 33rd: the churn pins that a
+        // subscription, a call in flight, a half-written line and a bye each free their instance.
+        SubscriptionHub hub = Hub();
+        using PipeRig rig = new PipeRig(maxConnections: 6, mainThread: false, subscriptions: hub,
+            tick: () => new SamplingTick(_frame, _gameTimeS), resumeWindowMs: 60000);
+        for (int index = 0; index < 40; index++)
+        {
+            V2Client client = await V2Client.Connect(rig, "churn" + index);
+            Connection connection = rig.Host.Open.Single();
+            switch (index % 5)
+            {
+                case 0:
+                    Send(client, "subscribe", DeviceParams());
+                    break;
+                case 1:
+                    Send(client, "read", new JObject { ["what"] = "logic", ["id"] = "5", ["logic"] = "On" });
+                    break;
+                case 2:
+                    client.SendRaw("""{"type":"call","id":"x","method":"read","params":{"what":"logic""");
+                    break;
+                case 3:
+                    Send(client, "subscribe", DeviceParams());
+                    Send(client, "subscribe", DeviceParams());
+                    break;
+                default:
+                    client.Send("""{"type":"bye"}""");
+                    break;
+            }
+
+            await Task.Delay(index % 3);
+            client.Dispose();
+            Assert.True(connection.Stopped.WaitOne(5000),
+                $"client {index} (kind {index % 5}) left its pipe instance taken");
+
+            using V2Client next = await V2Client.Connect(rig, "probe" + index);
+            Assert.Equal("welcome", (string?)next.Welcome["type"]);
+        }
+    }
+
+    private static void Send(V2Client client, string method, JObject parameters) =>
+        client.Send(new JObject { ["type"] = "call", ["id"] = "1", ["method"] = method, ["params"] = parameters }
+            .ToString(Formatting.None));
+
+    [Fact]
     public async Task EndingAStreamEndsItsSubscriptionsWithoutAnEventAndLeavesTheOthers()
     {
         SubscriptionHub hub = Hub();
