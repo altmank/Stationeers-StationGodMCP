@@ -26,7 +26,7 @@ def find(what: Literal['damaged'], *,
       limit: int
       has_more: bool
       local_player: {reference_id: str, display_name: str | None, position: Vec3} | None
-    Types: Error = {code: str, message: str, data: Any | None, see: {tool: str | None, topic: str, subtopic: str | None} | None}; Vec3 = {x: float, y:
-        float, z: float}
+    Types: Error = {code: str, message: str, data: Any | None, see: {verb: str | None, what: str | None, topic: str | None, subtopic: str | None} |
+        None}; Vec3 = {x: float, y: float, z: float}
     Example: sg.find('damaged', min_damage=0.25, structures_only=True)
     """

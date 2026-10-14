@@ -1,4 +1,0 @@
-{
-  "type": "boolean",
-  "description": "With join_to: add the missing tap instead of only warning. Default false (see runs/taps)."
-}

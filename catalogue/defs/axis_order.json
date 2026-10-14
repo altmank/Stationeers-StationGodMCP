@@ -1,5 +1,0 @@
-{
-  "type": "string",
-  "enum": ["any", "vertical_first", "horizontal_first"],
-  "description": "any (default), vertical_first or horizontal_first."
-}

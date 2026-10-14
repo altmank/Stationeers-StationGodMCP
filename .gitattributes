@@ -2,6 +2,5 @@
 *.png binary
 *.dll binary
 *.zip binary
-# The catalogue's identity is the SHA-256 of these exact bytes: never convert its line ends.
-catalogue.json -text
+# The verb model's identity is the SHA-256 of catalogue/verbs/*.json's exact bytes: keep them LF.
 catalogue/** text eol=lf

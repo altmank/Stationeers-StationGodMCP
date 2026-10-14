@@ -1,4 +1,0 @@
-{
-  "type": "boolean",
-  "description": "true: a piece in a door keep-out is a warning, not a refusal. Default false (see doors)."
-}

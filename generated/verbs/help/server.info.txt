@@ -1,5 +1,5 @@
 The running mod: version, per-method calls and times, game members, its cost to the game.
 Options:
 - include (list of counters): counters: job holds, print log, lint chip programs, batch console, prefab index.
-Reply: mod_id, mod_version, assembly_version, informational_version, pipe_name, methods [{method, calls, errors, total_ms, mean_ms, max_ms}], count, reflection [{member, resolved, optional}], missing_count, runtime {uptime_s, world_epoch, request_budget_ms, frames, memory, methods, method_count, catalogue_drift, connections, job_settles, prefab_index, job_holds, print_log, lint_chip_programs, batch_console, frame_ms, profiling}
+Reply: mod_id, mod_version, assembly_version, informational_version, pipe_name, methods [{method, calls, errors, total_ms, mean_ms, max_ms}], count, reflection [{member, resolved, optional}], missing_count, runtime {uptime_s, world_epoch, request_budget_ms, frames, memory, methods, method_count, connections, job_settles, prefab_index, job_holds, print_log, lint_chip_programs, batch_console, frame_ms, profiling}
 Example: server {what: "info"}

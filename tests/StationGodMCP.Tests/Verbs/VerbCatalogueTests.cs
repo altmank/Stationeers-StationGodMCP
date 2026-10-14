@@ -27,10 +27,6 @@ public sealed class VerbCatalogueTests
 
     private static readonly Lazy<SortedDictionary<string, string>> ModOptions = new(VerbOptionsCode.Files);
 
-    private static readonly Lazy<Dictionary<string, JsonObject>> Methods = new(() =>
-        CatalogueFiles.ReadJson(CatalogueFiles.AssembledPath)["methods"]!.AsArray()
-            .ToDictionary(method => (string)method!["name"]!, method => method!.AsObject()));
-
     private readonly ITestOutputHelper _output;
 
     public VerbCatalogueTests(ITestOutputHelper output)
@@ -615,62 +611,36 @@ public sealed class VerbCatalogueTests
     // ---- names ----
 
     /// <summary>
-    /// Old names: today's tool names, and handler arguments the verbs renamed, merged or moved that are no option
-    /// name now. Only names with an underscore count (a one-word old name such as label or paint is plain English and
-    /// often a what), and a name that is a reply key somewhere stays allowed (reply keys keep today's names).
+    /// The old catalogue's tool names, frozen when it went: the names the verb model replaced, minus the one-word
+    /// ones (a one-word old name such as label or paint is plain English and often a what) and minus any name that is
+    /// a verb, a what, an option or a reply key now (reply keys keep today's names). Verb help and errors are scanned
+    /// for these.
     /// </summary>
-    internal static SortedSet<string> OldNames()
+    internal static readonly string[] OldNames =
     {
-        HashSet<string> current = new(StringComparer.Ordinal);
-        HashSet<string> replyKeys = new(StringComparer.Ordinal);
-        Regex key = new(@"\b(\w+):");
-        foreach ((string verb, string what, JsonObject source) in VerbCatalogue.Whats())
-        {
-            current.Add(verb);
-            current.Add(what);
-            foreach ((string name, JsonObject option) in VerbCatalogue.OptionsOf(source))
-            {
-                current.Add(name);
-                CatalogueFiles.CollectPropertyNames(option["schema"]!, current);
-            }
-
-            foreach (JsonNode? variant in source["reply"]?["variants"]?.AsArray() ?? new JsonArray())
-            {
-                foreach ((string name, JsonNode? type) in variant!["keys"]?.AsObject() ?? new JsonObject())
-                {
-                    replyKeys.Add(name);
-                    foreach (Match match in key.Matches((string?)type ?? ""))
-                    {
-                        replyKeys.Add(match.Groups[1].Value);
-                    }
-                }
-            }
-        }
-
-        foreach (string small in VerbCatalogue.Shared["types"]!.AsObject().Select(pair => (string)pair.Value!))
-        {
-            foreach (Match match in key.Matches(small))
-            {
-                replyKeys.Add(match.Groups[1].Value);
-            }
-        }
-
-        SortedSet<string> old = new(StringComparer.Ordinal);
-        foreach (string tool in Methods.Value.Keys)
-        {
-            if (tool.Contains('_') && !current.Contains(tool) && !replyKeys.Contains(tool))
-            {
-                old.Add(tool);
-            }
-        }
-
-        return old;
-    }
+        "advance_build_state", "atmosphere_contents", "check_replaceable", "clean_cables", "clean_chutes",
+        "clean_pipes", "container_contents", "control_ic_execution", "deep_miner_spots", "describe_device",
+        "describe_prefab", "dish_aim", "feed_paths", "find_items", "find_spot", "find_things", "game_clock",
+        "get_ic_source", "get_ic_status", "grid_survey", "ignition_risk", "inspect_slots", "item_totals",
+        "landing_pads", "lint_layout", "lint_rules", "list_containers", "list_devices", "list_gateways",
+        "mod_info", "move_gas", "move_item", "move_player", "network_snapshot", "outer_frames",
+        "paste_blueprint", "place_cables", "place_chutes", "place_pipes", "place_structure", "plan_cable_route",
+        "plan_chute_route", "plan_pipe_route", "plan_removal", "plant_genes", "player_vitals", "read_console",
+        "read_devices", "read_logic", "read_logic_many", "read_memory", "remove_cables", "remove_chutes",
+        "remove_pipes", "remove_structure", "replace_frames", "replace_walls", "resolve_ic_selectors",
+        "rocket_flight_log", "rocket_forecast", "rocket_mining_options", "rocket_status", "run_console_command",
+        "sample_logic", "screen_press", "screen_read", "set_battery_charge", "set_ic_pins", "set_ic_source",
+        "set_uplink", "show_preview", "silo_deposit", "silo_withdraw", "solar_aim", "thing_health", "tool_info",
+        "trader_buy", "trader_contacts", "trader_inventory", "trader_sell", "undo_job", "upgrade_cables",
+        "upgrade_pipes", "vault_contents", "vault_deposit", "vault_transfer", "vault_withdraw", "wall_map",
+        "water_sources", "write_logic", "write_logic_many", "write_memory"
+    };
 
     [Fact]
     public void NoOldToolOrOptionNameIsInVerbHelpOrErrors()
     {
-        SortedSet<string> old = OldNames();
+        SortedSet<string> old = new(OldNames, StringComparer.Ordinal);
+        Assert.Equal(92, old.Count);
         Assert.Contains("find_things", old);
         Assert.Contains("advance_build_state", old);
         Regex word = new(@"\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b");
@@ -709,12 +679,9 @@ public sealed class VerbCatalogueTests
     }
 
     [Fact]
-    public void EveryVerbErrorCodeIsTodaysAndPointsAtVerbHelp()
+    public void EveryVerbErrorCodePointsAtVerbHelp()
     {
         JsonObject errors = CatalogueFiles.ReadJson(Path.Combine(VerbCatalogue.SourceRoot, "_errors.json")).AsObject();
-        JsonObject today = CatalogueFiles.ReadJson(Path.Combine(CatalogueFiles.SourceRoot, "errors.json")).AsObject();
-        Assert.Equal(today.Select(pair => pair.Key).OrderBy(code => code, StringComparer.Ordinal),
-            errors.Select(pair => pair.Key).OrderBy(code => code, StringComparer.Ordinal));
         HashSet<string> topics = new(VerbHelp.TopicKeys());
         foreach ((string code, JsonNode? error) in errors)
         {

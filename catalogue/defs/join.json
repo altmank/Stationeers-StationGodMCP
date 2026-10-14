@@ -1,5 +1,0 @@
-{
-  "type": "string",
-  "enum": ["ends", "none", "all"],
-  "description": "ends (default), none or all: what the run joins (see runs/joins)."
-}

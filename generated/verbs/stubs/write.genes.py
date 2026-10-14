@@ -24,7 +24,7 @@ def write(what: Literal['genes'], *,
       count: int
       success_count: int
       error_count: int
-    Types: Error = {code: str, message: str, data: Any | None, see: {tool: str | None, topic: str, subtopic: str | None} | None}; Thing =
-        {reference_id: str, prefab_name: str | None, display_name: str | None}
+    Types: Error = {code: str, message: str, data: Any | None, see: {verb: str | None, what: str | None, topic: str | None, subtopic: str | None} |
+        None}; Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}
     Example: sg.write('genes', id='3311223', genes={'GrowthSpeedMultiplier': 1})
     """

@@ -1,4 +1,0 @@
-{
-  "type": "boolean",
-  "description": "Let removals split networks or leave ports joined to nothing. Default false (see runs/guards)."
-}

@@ -101,7 +101,7 @@ def move(what: Literal['item'], *,
       placed: list[{where: str, slot: {id: str, slot: int} | None, quantity: float, reference_id: str | None}]
       stock: {prefab_name: str | None, display_name: str | None, before: float, change: float, after: float}
       count: {before: int, after: int}
-    Types: Error = {code: str, message: str, data: Any | None, see: {tool: str | None, topic: str, subtopic: str | None} | None}; Thing =
-        {reference_id: str, prefab_name: str | None, display_name: str | None}
+    Types: Error = {code: str, message: str, data: Any | None, see: {verb: str | None, what: str | None, topic: str | None, subtopic: str | None} |
+        None}; Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}
     Example: sg.move('item', id='3311223', to='player')
     """

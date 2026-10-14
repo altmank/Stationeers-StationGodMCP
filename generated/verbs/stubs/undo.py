@@ -49,7 +49,8 @@ def undo(*,
       targets: list[{id: str | None, cell: list[float] | None, name: str | None, current: Any | None, new: Any | None, undo: str, passed: list[str] |
           None, driven_by: Any | None, text: str}]
       problems: list[{index: int | None, reference_id: str | None, code: str, message: str, data: Any | None}]
-    Types: Error = {code: str, message: str, data: Any | None, see: {tool: str | None, topic: str, subtopic: str | None} | None}
+    Types: Error = {code: str, message: str, data: Any | None, see: {verb: str | None, what: str | None, topic: str | None, subtopic: str | None} |
+        None}
     Example: sg.undo(id='place-41')
     In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
     """

@@ -8,7 +8,7 @@ class StationGodError(Exception):
 
 class GameError(StationGodError):
     """The mod answered with an error: code is for programs, message for people, data is the error's data object, see
-    the tool_info node that explains the code ({tool, topic, subtopic}; empty when the error carries none)."""
+    the help node that explains the code ({verb, what, topic, subtopic}; empty when the error carries none)."""
 
     def __init__(self, code, message, data=None, see=None):
         super().__init__(f"{code}: {message}")

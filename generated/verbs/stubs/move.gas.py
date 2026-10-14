@@ -36,6 +36,7 @@ def move(what: Literal['gas'], *,
       amount_mol: float | None
       ticks: int | None
       note: str | None
-    Types: Error = {code: str, message: str, data: Any | None, see: {tool: str | None, topic: str, subtopic: str | None} | None}
+    Types: Error = {code: str, message: str, data: Any | None, see: {verb: str | None, what: str | None, topic: str | None, subtopic: str | None} |
+        None}
     Example: sg.move('gas', source='2005300', gases=['Hydrogen'], delete=True)
     """

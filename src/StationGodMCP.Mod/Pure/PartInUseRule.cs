@@ -79,7 +79,7 @@ internal sealed class PartHolder
 }
 
 /// <summary>
-/// Which items a device is using, so no tool takes one out of it unasked (allow_in_use). Two kinds of part:
+/// Which items a device is using, so no tool takes one out of it unasked (allow: ["in_use"]). Two kinds of part:
 ///
 /// Program parts are in use whenever they sit in their holder, switched on or not, because the device's working
 /// state lives in them. A programmable chip in any ICircuitHolder (IC housing, a circuit device's chip slot, laptop,
@@ -121,14 +121,14 @@ internal static class PartInUseRule
             _ => switchedOn
         };
 
-    /// <summary>Whether a take must be refused: the part is in use and the caller did not pass allow_in_use.</summary>
+    /// <summary>Whether a take must be refused: the part is in use and the caller did not lift the guard.</summary>
     internal static bool Refuses(DevicePart part, bool switchedOn, bool allowInUse) =>
         !allowInUse && InUse(part, switchedOn);
 
     /// <summary>The in_use refusal: the item, the device with its label, the slot, and what taking it out does.</summary>
     internal static string Refusal(string item, long itemId, DevicePart part, PartHolder holder) =>
         $"{item} ({itemId}) is in slot {holder.SlotIndex} of {holder.Named}, which is using it: {Consequence(part)}. " +
-        "Take a spare instead, or pass allow_in_use true to take it anyway.";
+        "Take a spare instead, or lift the guard with allow: [\"in_use\"] to take it anyway.";
 
     private static string Consequence(DevicePart part) =>
         part switch

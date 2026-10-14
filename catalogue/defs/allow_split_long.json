@@ -1,4 +1,0 @@
-{
-  "type": "boolean",
-  "description": "Default true: split a long straight the run joins or crosses; false refuses (see runs/long_straights)."
-}

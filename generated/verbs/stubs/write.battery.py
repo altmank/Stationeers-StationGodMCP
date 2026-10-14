@@ -19,8 +19,8 @@ def write(what: Literal['battery'], *,
       success_count: int
       error_count: int
       added_j: float
-    Types: Error = {code: str, message: str, data: Any | None, see: {tool: str | None, topic: str, subtopic: str | None} | None}; Thing =
-        {reference_id: str, prefab_name: str | None, display_name: str | None}
+    Types: Error = {code: str, message: str, data: Any | None, see: {verb: str | None, what: str | None, topic: str | None, subtopic: str | None} |
+        None}; Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}
     Example: sg.write('battery', within='player')
     In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
     """

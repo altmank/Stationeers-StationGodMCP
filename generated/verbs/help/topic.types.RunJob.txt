@@ -36,7 +36,7 @@ RunJob = {job_id: str, tool: str, status: str, preflight: {tool: str, status: st
     list[{from_id: str, from_prefab_name: str | None, to_id: str, to_prefab_name: str | None}] | None, added_count: int, lost_count: int,
     model_matches_game: bool, model_differences: list[{from_id: str, from_prefab_name: str | None, to_id: str, to_prefab_name: str | None}]} | None,
     notes: list[str] | None} | None, log: {removed: list[str], changed: list[{old_reference_id: str, new_reference_id: str, prefab_name: str | None,
-    target_prefab_name: str | None}], used: list[{prefab_name: str | None, quantity: int}], refunded: list[{reference_id: str, prefab_name: str |
+    target_prefab_name: str | None}], placed: list[Thing] | None, placed_count: int, used: list[{prefab_name: str | None, quantity: int}], refunded: list[{reference_id: str, prefab_name: str |
     None, quantity: int, where: str, target: str | None, target_id: str | None, target_name: str | None}], created_ids: list[str], created_by_part:
     list[{part: str, ids: list[str]}], stopped_at: Error | None, refund_error: Error | None} | None, verification: {ok: bool, problems: list[{code:
     str, message: str, reference_id: str | None, at: Vec3 | None}], networks_now: list[str]} | None, gas_check: GasCheck | None, error: Error | None}

@@ -37,8 +37,8 @@ def trade(what: Literal['buy'], *,
           prefab_name: str | None, gas: bool, quantity: int, credits_each: float, credits_spent: float | None, credits_earned: float | None,
           stock_after: int | None, wanted_after: int | None} | {index: int, ok: bool, error: Error}], count: int, success_count: int, error_count:
           int, delivered: list[{reference_id: str, slot: int, item: Thing, quantity: float}], gas_atmosphere_id: str | None}]
-    Types: Error = {code: str, message: str, data: Any | None, see: {tool: str | None, topic: str, subtopic: str | None} | None}; Thing =
-        {reference_id: str, prefab_name: str | None, display_name: str | None}
+    Types: Error = {code: str, message: str, data: Any | None, see: {verb: str | None, what: str | None, topic: str | None, subtopic: str | None} |
+        None}; Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}
     Example: sg.trade('buy', id='7', items=[{'prefab': 'ItemIronIngot', 'quantity': 50}])
     In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
     """

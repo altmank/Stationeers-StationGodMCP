@@ -1,1 +1,0 @@
-{"type": "boolean", "description": "Queue behind a running job instead of answering busy (see jobs/queue)."}

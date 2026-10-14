@@ -3,7 +3,7 @@
   Build StationGod MCP and stage the Steam Workshop package.
 
 .DESCRIPTION
-  Runs every test (the catalogue's text lint included), builds the mod DLL against the local game install, checks the
+  Runs every test (the verb catalogue's checks included), builds the mod DLL against the local game install, checks the
   one version is the same everywhere, and stages
   .\package\: the About and GameData folders, the DLL, the LICENSE and the Sidecar folder with both sidecar ZIPs.
   With -Deploy it also replaces Documents\My Games\Stationeers\mods\StationGodMCP with the package and installs the
@@ -30,7 +30,7 @@ if (-not (Test-Path (Join-Path $GameDir 'rocketstation_Data\Managed\Assembly-CSh
     throw "Stationeers not found at '$GameDir'. Pass -GameDir or set STATIONEERS_DIR."
 }
 
-# One version in six places and nothing else keeps them in step. A published build and a local build sharing a
+# One version in five places and nothing else keeps them in step. A published build and a local build sharing a
 # version number cannot be told apart afterwards, and the MCP client sees only the sidecar's.
 function Find([string]$path, [string]$pattern) {
     ([regex]::Match((Get-Content (Join-Path $root $path) -Raw), $pattern)).Groups[1].Value
@@ -41,8 +41,6 @@ $versions = [ordered]@{
     'About.xml' = Find 'About\About.xml' '<Version>([^<]+)</Version>'
     'Server.csproj' = Find 'src\StationGodMCP.Server\StationGodMCP.Server.csproj' '<Version>([^<]+)</Version>'
     'Program.ServerVersion' = Find 'src\StationGodMCP.Server\Program.cs' 'ServerVersion = "([^"]+)"'
-    # The method catalogue, embedded in both halves; CatalogueConsistencyTests writes it from catalogue/.
-    'catalogue.json' = Find 'catalogue.json' '"mod_version": "([^"]+)"'
 }
 # @() so a single shared version stays an array; indexing a bare string yields one char.
 $distinct = @($versions.Values | Sort-Object -Unique)
@@ -60,8 +58,8 @@ if ($pageLength -ge 8000) { throw "About.xml Description is $pageLength characte
 $changeLength = $about.ModMetadata.ChangeLog.Length
 if ($changeLength -ge 8000) { throw "About.xml ChangeLog is $changeLength characters; the limit is under 8000." }
 
-# Every test, the catalogue's text lint (CatalogueTextTests) included: a tool, argument or error code that skips the
-# text rubric, a stale catalogue.json or any failing test stops the build before anything is staged.
+# Every test, the verb catalogue's checks (VerbCatalogueTests) included: a verb, what or option that skips a rule, a
+# generated/verbs or mod option file that is not current, or any failing test stops the build before anything is staged.
 Write-Host "Testing $version"
 dotnet test (Join-Path $root 'tests\StationGodMCP.Tests\StationGodMCP.Tests.csproj') -nologo -v q
 if ($LASTEXITCODE -ne 0) { throw "Tests failed with exit code $LASTEXITCODE; nothing was built." }
@@ -97,8 +95,6 @@ try {
     Copy-Item (Join-Path $root 'LICENSE') $package
     # The default lint rules; a lint-rules.json next to a save overrides them (docs/lint-rules.md).
     Copy-Item (Join-Path $root 'lint-rules.json') $package
-    # The method catalogue the DLL and the sidecar embed, for tools and clients that read it from the mod folder.
-    Copy-Item (Join-Path $root 'catalogue.json') $package
     # The sidecars ship zipped: LaunchPad scans a mod folder recursively for DLLs and would try to load theirs.
     foreach ($to in @((Join-Path $package 'Sidecar'), $portable, $native)) {
         Copy-Item (Join-Path $root 'Sidecar\README.txt') $to

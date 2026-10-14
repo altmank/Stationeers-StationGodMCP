@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
@@ -190,17 +189,16 @@ public sealed class FrameHistogramTests
         Assert.Equal(12, before.Sum());
     }
 
+    /// <summary>
+    /// The edges FrameHistogram counts in are the ones the docs state, in the same order and form.
+    /// </summary>
     [Fact]
-    public void TheCatalogueAndTheDocsStateTheEdges()
+    public void TheDocsStateTheEdges()
     {
         string edges = string.Join(", ", FrameHistogram.EdgesMs.Take(FrameHistogram.EdgesMs.Length - 1).Select(Ms)) +
                        " and " + Ms(FrameHistogram.EdgesMs[FrameHistogram.EdgesMs.Length - 1]) + " ms";
-        string source = Path.Combine(CatalogueFiles.SourceRoot, "methods", "mod_info.json");
-        JsonNode method = JsonNode.Parse(File.ReadAllText(source))!;
-        string counters = (string)method["help"]!["topics"]!["counters"]!["text"]!;
         string docs = File.ReadAllText(Path.Combine(CatalogueFiles.RepositoryRoot(), "docs", "devices-and-logic.md"));
 
-        Assert.Contains("upper edges " + edges, counters);
         Assert.Contains("upper edges " + edges, Regex.Replace(docs, @"\s+", " "));
     }
 

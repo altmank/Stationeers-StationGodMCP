@@ -1,7 +1,0 @@
-{
-  "type": "array",
-  "minItems": 1,
-  "maxItems": 1024,
-  "items": {"description": "[x, y, z] in metres, snapped to its 0.5 m cell."},
-  "description": "Every cell of the run, each next to the one before (see runs/forms)."
-}

@@ -1,11 +1,10 @@
 #nullable enable
 
-using System.IO;
 using System.Linq;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Catalogue;
-using StationGodMCP.Tests.CatalogueChecks;
+using StationGodMCP.Pure.Verbs;
 using Xunit;
 
 namespace StationGodMCP.Tests;
@@ -14,7 +13,7 @@ namespace StationGodMCP.Tests;
 /// Parts a device is using (LU 2026-10-08: an agent's move_item took the running "Hangar Doors Chip" out of its IC
 /// housing and the hangar door lever stopped working). A chip in a chip holder and a computer's motherboard are always
 /// in use; a running machine's filter, battery or canister only while it is switched on. Refused as in_use, naming the
-/// device, its label and the slot, unless allow_in_use; chargers, canister docks and carried gear are not guarded.
+/// device, its label and the slot, unless allow: ["in_use"]; chargers, canister docks and carried gear are not guarded.
 /// </summary>
 public sealed class PartInUseTests
 {
@@ -32,7 +31,7 @@ public sealed class PartInUseTests
         Assert.Contains("Hangar Doors Chip (4755685)", message);
         Assert.Contains("slot 0 of IC Housing \"Hangar Doors\" (4755001)", message);
         Assert.Contains("resets the chip", message);
-        Assert.Contains("allow_in_use", message);
+        Assert.Contains("allow: [\"in_use\"]", message);
     }
 
     [Fact]
@@ -100,19 +99,16 @@ public sealed class PartInUseTests
         Assert.Contains("switched on", message);
     }
 
-    [Theory]
-    [InlineData("move_item")]
-    [InlineData("silo_deposit")]
-    public void TheOverrideIsDeclaredOnEveryToolThatTakesItemsOutOfSlots(string tool)
+    /// <summary>
+    /// Every what that takes items out of slots declares the guard's override: move item's allow takes in_use (into a
+    /// slot or a silo) and ground (out of a store). Slot and silo moves are one what.
+    /// </summary>
+    [Fact]
+    public void TheInUseGuardIsDeclaredOnTheWhatThatTakesItemsOutOfSlots()
     {
-        JObject catalogue = JObject.Parse(File.ReadAllText(CatalogueFiles.AssembledPath));
-        JToken method = catalogue["methods"]!.First(entry => (string?)entry["name"] == tool);
+        JObject allow = MoveItemOptions.Spec.Option("allow")!.Schema;
 
-        Assert.Equal("boolean", (string?)method["params"]!["properties"]!["allow_in_use"]!["type"]);
-        if (tool == "move_item")
-        {
-            Assert.Equal("boolean",
-                (string?)method["params"]!["properties"]!["moves"]!["items"]!["properties"]!["allow_in_use"]!["type"]);
-        }
+        string[] words = ((JArray)allow["items"]!["enum"]!).Select(word => (string)word!).ToArray();
+        Assert.Equal(new[] { "in_use", "ground" }, words);
     }
 }

@@ -319,8 +319,8 @@ def find(what: Literal['damaged'], *,
       limit: int
       has_more: bool
       local_player: {reference_id: str, display_name: str | None, position: Vec3} | None
-    Types: Error = {code: str, message: str, data: Any | None, see: {tool: str | None, topic: str, subtopic: str | None} | None}; Vec3 = {x: float, y:
-        float, z: float}
+    Types: Error = {code: str, message: str, data: Any | None, see: {verb: str | None, what: str | None, topic: str | None, subtopic: str | None} |
+        None}; Vec3 = {x: float, y: float, z: float}
     Example: sg.find('damaged', min_damage=0.25, structures_only=True)
     """
 
@@ -507,8 +507,8 @@ def inspect(what: Literal['health'], *,
       offset: int
       limit: int
       has_more: bool
-    Types: Error = {code: str, message: str, data: Any | None, see: {tool: str | None, topic: str, subtopic: str | None} | None}; Vec3 = {x: float, y:
-        float, z: float}
+    Types: Error = {code: str, message: str, data: Any | None, see: {verb: str | None, what: str | None, topic: str | None, subtopic: str | None} |
+        None}; Vec3 = {x: float, y: float, z: float}
     Example: sg.inspect('health', network='5012345', kind='pipe', damaged_only=True)
     In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
     """
@@ -592,8 +592,8 @@ def inspect(what: Literal['genes'], *,
       count: int
       success_count: int
       error_count: int
-    Types: Error = {code: str, message: str, data: Any | None, see: {tool: str | None, topic: str, subtopic: str | None} | None}; Thing =
-        {reference_id: str, prefab_name: str | None, display_name: str | None}
+    Types: Error = {code: str, message: str, data: Any | None, see: {verb: str | None, what: str | None, topic: str | None, subtopic: str | None} |
+        None}; Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}
     Example: sg.inspect('genes', id='3311223')
     In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
     """
@@ -1089,8 +1089,8 @@ def read(what: Literal['logic'], *,
           temperature_k: float, total_mol: float, liquid_volume_l: float, contents: list[{gas: str, state: str, amount_mol: float, liquid_l: float |
           None}]} | None, reagents: {total: float, reagents: list[{reagent: str, name: str | None, quantity: float, unit: str | None}]} | None,
           errors: dict[str, Error] | None} | {index: int, ok: bool, error: Error}]
-    Types: Error = {code: str, message: str, data: Any | None, see: {tool: str | None, topic: str, subtopic: str | None} | None}; LogicType = {id:
-        int, name: str | None}
+    Types: Error = {code: str, message: str, data: Any | None, see: {verb: str | None, what: str | None, topic: str | None, subtopic: str | None} |
+        None}; LogicType = {id: int, name: str | None}
     Example: sg.read('logic', id=['1199811', '1199812'], logic=['Pressure', 'Temperature'])
     In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
     """
@@ -1257,8 +1257,8 @@ def write(what: Literal['logic'], *,
       count: int
       success_count: int
       error_count: int
-    Types: Error = {code: str, message: str, data: Any | None, see: {tool: str | None, topic: str, subtopic: str | None} | None}; LogicType = {id:
-        int, name: str | None}
+    Types: Error = {code: str, message: str, data: Any | None, see: {verb: str | None, what: str | None, topic: str | None, subtopic: str | None} |
+        None}; LogicType = {id: int, name: str | None}
     Example: sg.write('logic', id='4820585', logic='On', value=1)
     In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
     """
@@ -1398,7 +1398,8 @@ def write(what: Literal['label'], *,
       count: int
       success_count: int
       error_count: int
-    Types: Error = {code: str, message: str, data: Any | None, see: {tool: str | None, topic: str, subtopic: str | None} | None}
+    Types: Error = {code: str, message: str, data: Any | None, see: {verb: str | None, what: str | None, topic: str | None, subtopic: str | None} |
+        None}
     Example: sg.write('label', id='1199811', label='O2 Tank 1')
     In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
     """
@@ -1423,7 +1424,8 @@ def write(what: Literal['paint'], *,
       count: int
       success_count: int
       error_count: int
-    Types: Error = {code: str, message: str, data: Any | None, see: {tool: str | None, topic: str, subtopic: str | None} | None}
+    Types: Error = {code: str, message: str, data: Any | None, see: {verb: str | None, what: str | None, topic: str | None, subtopic: str | None} |
+        None}
     Example: sg.write('paint', network='4639870', kind='pipe', color='Red')
     In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
     """
@@ -1527,8 +1529,8 @@ def write(what: Literal['battery'], *,
       success_count: int
       error_count: int
       added_j: float
-    Types: Error = {code: str, message: str, data: Any | None, see: {tool: str | None, topic: str, subtopic: str | None} | None}; Thing =
-        {reference_id: str, prefab_name: str | None, display_name: str | None}
+    Types: Error = {code: str, message: str, data: Any | None, see: {verb: str | None, what: str | None, topic: str | None, subtopic: str | None} |
+        None}; Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}
     Example: sg.write('battery', within='player')
     In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
     """
@@ -1560,8 +1562,8 @@ def write(what: Literal['genes'], *,
       count: int
       success_count: int
       error_count: int
-    Types: Error = {code: str, message: str, data: Any | None, see: {tool: str | None, topic: str, subtopic: str | None} | None}; Thing =
-        {reference_id: str, prefab_name: str | None, display_name: str | None}
+    Types: Error = {code: str, message: str, data: Any | None, see: {verb: str | None, what: str | None, topic: str | None, subtopic: str | None} |
+        None}; Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}
     Example: sg.write('genes', id='3311223', genes={'GrowthSpeedMultiplier': 1})
     """
 
@@ -1935,7 +1937,8 @@ def check(what: Literal['replaceable'], *,
       count: int
       success_count: int
       error_count: int
-    Types: Error = {code: str, message: str, data: Any | None, see: {tool: str | None, topic: str, subtopic: str | None} | None}
+    Types: Error = {code: str, message: str, data: Any | None, see: {verb: str | None, what: str | None, topic: str | None, subtopic: str | None} |
+        None}
     Example: sg.check('replaceable', id='r12.things')
     In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
     """
@@ -1970,8 +1973,8 @@ def check(what: Literal['ignition'], *,
       count: int
       success_count: int
       error_count: int
-    Types: Error = {code: str, message: str, data: Any | None, see: {tool: str | None, topic: str, subtopic: str | None} | None}; Thing =
-        {reference_id: str, prefab_name: str | None, display_name: str | None}; Vec3 = {x: float, y: float, z: float}
+    Types: Error = {code: str, message: str, data: Any | None, see: {verb: str | None, what: str | None, topic: str | None, subtopic: str | None} |
+        None}; Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}; Vec3 = {x: float, y: float, z: float}
     Example: sg.check('ignition', id='2005300')
     In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
     """
@@ -2367,7 +2370,7 @@ def build(what: Literal['finish'], *,
       success_count: int
       error_count: int
     Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}; Error = {code: str, message: str, data: Any | None, see:
-        {tool: str | None, topic: str, subtopic: str | None} | None}
+        {verb: str | None, what: str | None, topic: str | None, subtopic: str | None} | None}
     Example: sg.build('finish', id='1199811', state=2)
     In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
     """
@@ -3057,8 +3060,8 @@ def move(what: Literal['item'], *,
       placed: list[{where: str, slot: {id: str, slot: int} | None, quantity: float, reference_id: str | None}]
       stock: {prefab_name: str | None, display_name: str | None, before: float, change: float, after: float}
       count: {before: int, after: int}
-    Types: Error = {code: str, message: str, data: Any | None, see: {tool: str | None, topic: str, subtopic: str | None} | None}; Thing =
-        {reference_id: str, prefab_name: str | None, display_name: str | None}
+    Types: Error = {code: str, message: str, data: Any | None, see: {verb: str | None, what: str | None, topic: str | None, subtopic: str | None} |
+        None}; Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}
     Example: sg.move('item', id='3311223', to='player')
     """
 
@@ -3101,7 +3104,8 @@ def move(what: Literal['gas'], *,
       amount_mol: float | None
       ticks: int | None
       note: str | None
-    Types: Error = {code: str, message: str, data: Any | None, see: {tool: str | None, topic: str, subtopic: str | None} | None}
+    Types: Error = {code: str, message: str, data: Any | None, see: {verb: str | None, what: str | None, topic: str | None, subtopic: str | None} |
+        None}
     Example: sg.move('gas', source='2005300', gases=['Hydrogen'], delete=True)
     """
 
@@ -3167,7 +3171,8 @@ def trade(what: Literal['inventory'], *,
       count: int
       success_count: int
       error_count: int
-    Types: Error = {code: str, message: str, data: Any | None, see: {tool: str | None, topic: str, subtopic: str | None} | None}
+    Types: Error = {code: str, message: str, data: Any | None, see: {verb: str | None, what: str | None, topic: str | None, subtopic: str | None} |
+        None}
     Example: sg.trade('inventory', id='7')
     In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
     """
@@ -3212,8 +3217,8 @@ def trade(what: Literal['buy'], *,
           prefab_name: str | None, gas: bool, quantity: int, credits_each: float, credits_spent: float | None, credits_earned: float | None,
           stock_after: int | None, wanted_after: int | None} | {index: int, ok: bool, error: Error}], count: int, success_count: int, error_count:
           int, delivered: list[{reference_id: str, slot: int, item: Thing, quantity: float}], gas_atmosphere_id: str | None}]
-    Types: Error = {code: str, message: str, data: Any | None, see: {tool: str | None, topic: str, subtopic: str | None} | None}; Thing =
-        {reference_id: str, prefab_name: str | None, display_name: str | None}
+    Types: Error = {code: str, message: str, data: Any | None, see: {verb: str | None, what: str | None, topic: str | None, subtopic: str | None} |
+        None}; Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}
     Example: sg.trade('buy', id='7', items=[{'prefab': 'ItemIronIngot', 'quantity': 50}])
     In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
     """
@@ -3258,8 +3263,8 @@ def trade(what: Literal['sell'], *,
           prefab_name: str | None, gas: bool, quantity: int, credits_each: float, credits_spent: float | None, credits_earned: float | None,
           stock_after: int | None, wanted_after: int | None} | {index: int, ok: bool, error: Error}], count: int, success_count: int, error_count:
           int, delivered: list[{reference_id: str, slot: int, item: Thing, quantity: float}], gas_atmosphere_id: str | None}]
-    Types: Error = {code: str, message: str, data: Any | None, see: {tool: str | None, topic: str, subtopic: str | None} | None}; Thing =
-        {reference_id: str, prefab_name: str | None, display_name: str | None}
+    Types: Error = {code: str, message: str, data: Any | None, see: {verb: str | None, what: str | None, topic: str | None, subtopic: str | None} |
+        None}; Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}
     Example: sg.trade('sell', id='7', items=[{'prefab': 'ItemGoldIngot', 'quantity': 20}])
     In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
     """
@@ -3390,7 +3395,8 @@ def undo(*,
       targets: list[{id: str | None, cell: list[float] | None, name: str | None, current: Any | None, new: Any | None, undo: str, passed: list[str] |
           None, driven_by: Any | None, text: str}]
       problems: list[{index: int | None, reference_id: str | None, code: str, message: str, data: Any | None}]
-    Types: Error = {code: str, message: str, data: Any | None, see: {tool: str | None, topic: str, subtopic: str | None} | None}
+    Types: Error = {code: str, message: str, data: Any | None, see: {verb: str | None, what: str | None, topic: str | None, subtopic: str | None} |
+        None}
     Example: sg.undo(id='place-41')
     In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
     """
@@ -3416,15 +3422,15 @@ def server(what: Literal['info'], *,
           int, expired: int}, memory: {gc_collections: int, gc_max_generation: int, gc_total_memory_bytes: int, mono_used_bytes: int | None,
           mono_heap_bytes: int | None}, methods: list[{method: str, calls: int, errors: int, main_thread_ms: float, handler_ms: {total: float, mean:
           float | None, max: float}, serialize_ms: {total: float, mean: float | None, max: float}, queue_wait_ms: {total: float, mean: float | None,
-          max: float}, reply_bytes: {total: float, mean: float | None, max: float}}], method_count: int, catalogue_drift: list[{method: str, argument:
-          str, reads: int}], connections: list[{client_id: str, client: str | None, label: str | None, transport: str, protocol: int | None,
-          in_flight: int, served: int, bytes_sent: int, subscriptions: int, methods: list[{method: str, calls: int, errors: int, total_ms: float}],
-          method_count: int}] | None, job_settles: {run: int, skipped: int, unchecked: int}, prefab_index: {ready: bool, verify: bool, things: int,
-          names: int, verified: int, differences: int, arrived: int | None, left: int | None}, job_holds: {under_100ms: int, under_1s: int, under_10s:
-          int, under_60s: int, over_60s: int} | None, print_log: {records: int, capacity: int} | None, lint_chip_programs: int | None, batch_console:
-          {lines: int, lines_per_minute: float} | None, frame_ms: {frames: int, p50: float | None, p90: float | None, p99: float | None, over_8ms:
-          int, buckets: list[int]} | None, profiling: {since_s: float, slow_frame_ms: float, frame_ms: {p50: float | None, p95: float | None, max:
-          float | None}, worst_frame_ms: float | None, top: list[{name: str, ms: float}]} | None}
+          max: float}, reply_bytes: {total: float, mean: float | None, max: float}}], method_count: int, connections: list[{client_id: str, client:
+          str | None, label: str | None, transport: str, protocol: int | None, in_flight: int, served: int, bytes_sent: int, subscriptions: int,
+          methods: list[{method: str, calls: int, errors: int, total_ms: float}], method_count: int}] | None, job_settles: {run: int, skipped: int,
+          unchecked: int}, prefab_index: {ready: bool, verify: bool, things: int, names: int, verified: int, differences: int, arrived: int | None,
+          left: int | None}, job_holds: {under_100ms: int, under_1s: int, under_10s: int, under_60s: int, over_60s: int} | None, print_log: {records:
+          int, capacity: int} | None, lint_chip_programs: int | None, batch_console: {lines: int, lines_per_minute: float} | None, frame_ms: {frames:
+          int, p50: float | None, p90: float | None, p99: float | None, over_8ms: int, buckets: list[int]} | None, profiling: {since_s: float,
+          slow_frame_ms: float, frame_ms: {p50: float | None, p95: float | None, max: float | None}, worst_frame_ms: float | None, top: list[{name:
+          str, ms: float}]} | None}
     Example: sg.server('info')
     """
 

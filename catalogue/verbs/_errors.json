@@ -122,7 +122,7 @@
     "description": "The IC Housing is off, unpowered or not operable, or a worn item's battery is flat. Fix that, then try again."
   },
   "in_use": {
-    "description": "The item is a part its device is using (a chip in its holder, a console's motherboard, or a running machine's filter, battery or canister); the message names the device, its write label and the slot. Take a spare, switch the device off first, or pass allow true."
+    "description": "The item is a part its device is using (a chip in its holder, a console's motherboard, or a running machine's filter, battery or canister); the message names the device, its write label and the slot. Take a spare, switch the device off first, or lift the guard with allow: [\"in_use\"]."
   },
   "in_vault_slot": {"description": "The item sits in a vault's slot. Take it out first, or let the vault finish."},
   "ingot_vault_changed": {"description": "This StationGod build does not know the loaded IngotVault version. Nothing ran; update StationGod."},

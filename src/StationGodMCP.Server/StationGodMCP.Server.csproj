@@ -17,8 +17,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The protocol client. It embeds the method catalogue the tools come from (the repository root's catalogue.json,
-         assembled from catalogue/). -->
+    <!-- The protocol client. It embeds the verb model (catalogue/verbs; SHA-256 of these files' raw bytes is the
+         catalogue hash the mod announces). -->
     <ProjectReference Include="..\StationGodMCP.Client\StationGodMCP.Client.csproj" />
   </ItemGroup>
 

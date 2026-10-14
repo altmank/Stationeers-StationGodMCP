@@ -2,7 +2,6 @@
 
     py -3.12 tools/tool_list_cost.py measure <name>=<tools file> [<name>=<tools file> ...] [--out file.json]
     py -3.12 tools/tool_list_cost.py serve <tools file>          (the stub MCP server the measure runs start)
-    py -3.12 tools/tool_list_cost.py today <catalogue.json> <out file>   (today's tools/list, as ToolCatalogue builds it)
 
 A tools file is {"instructions": str, "tools": [MCP tool objects]}. measure runs one-turn Opus calls with a trivial
 prompt: two with no MCP server (Claude Code's default deferred loading, and every schema loaded:
@@ -26,39 +25,6 @@ PROMPT = "Reply with the single word ok. Do not call any tool."
 
 def compact(obj):
     return json.dumps(obj, ensure_ascii=False, separators=(",", ":"))
-
-
-# ---------------------------------------------------------------- today's list (ToolCatalogue.ToolsOf in Python)
-def today(catalogue_path, out_path):
-    with open(catalogue_path, encoding="utf-8") as f:
-        catalogue = json.load(f)
-    tools = []
-    for method in catalogue["methods"]:
-        if method.get("x-mcp") == "hidden":
-            continue
-        schema = json.loads(json.dumps(method["params"]))
-        if method.get("x-shaping") == "lists":
-            props = schema["properties"]
-            props["output_file"] = {"type": ["boolean", "string"],
-                                    "description": "Whole reply to a file; answers a pointer (see shaping)."}
-            props["fields"] = {"type": "array", "minItems": 1, "items": {"type": "string"},
-                               "description": "Keys to keep (see shaping)."}
-            props["omit"] = {"type": "array", "minItems": 1, "items": {"type": "string"},
-                             "description": "Paths to leave out (see shaping)."}
-            props["list_limits"] = {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0},
-                                    "description": "{list: count}: lift a default cut (see truncation)."}
-        for name, entry in (method.get("x-file-arguments") or {}).items():
-            schema["properties"][name] = {"type": "string", "description": entry["description"]}
-            if isinstance(schema.get("required"), list):
-                schema["required"] = [r for r in schema["required"] if r != entry["into"]]
-        read_only = method.get("class") == "read" and method.get("x-class-when") is None
-        tools.append({"name": method["name"], "description": method["description"], "inputSchema": schema,
-                      "annotations": {"readOnlyHint": read_only, "destructiveHint": not read_only,
-                                      "idempotentHint": read_only, "openWorldHint": False}})
-    with open(out_path, "w", encoding="utf-8", newline="\n") as f:
-        json.dump({"instructions": catalogue["server"]["instructions"], "tools": tools}, f, ensure_ascii=False,
-                  indent=1)
-    print("%d tools, %d chars compact" % (len(tools), len(compact(tools))))
 
 
 # ---------------------------------------------------------------- the stub server
@@ -155,8 +121,6 @@ def measure(pairs, out):
 def main(argv):
     if len(argv) >= 2 and argv[0] == "serve":
         serve(argv[1])
-    elif len(argv) == 3 and argv[0] == "today":
-        today(argv[1], argv[2])
     elif len(argv) >= 2 and argv[0] == "measure":
         out = None
         args = list(argv[1:])

@@ -1,4 +1,0 @@
-{
-  "type": "string",
-  "description": "Omit or 'world' for every device; a gateway id narrows to its data networks (see gateways)."
-}

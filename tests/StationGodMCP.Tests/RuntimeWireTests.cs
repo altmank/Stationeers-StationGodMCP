@@ -47,7 +47,7 @@ public sealed class RuntimeWireTests
             "\"serialize_ms\":{\"total\":0.4,\"mean\":0.2,\"max\":0.3}," +
             "\"queue_wait_ms\":{\"total\":24.0,\"mean\":12.0,\"max\":15.0}," +
             "\"reply_bytes\":{\"total\":3000.0,\"mean\":1500.0,\"max\":1600.0}}],\"method_count\":1," +
-            "\"catalogue_drift\":[],\"job_settles\":{\"run\":0,\"skipped\":0,\"unchecked\":0}," +
+            "\"job_settles\":{\"run\":0,\"skipped\":0,\"unchecked\":0}," +
             "\"prefab_index\":{\"ready\":false,\"verify\":false,\"things\":0,\"names\":0,\"verified\":0," +
             "\"differences\":0}}",
             WireCheck.New(view));

@@ -204,7 +204,7 @@ internal sealed class SiloDepositPlan
     }
 
     // The slot move's rules for taking a thing out of its slot: not a locked slot, not a plant growing in a grower, not a
-    // part its device is using unless allow_in_use.
+    // part its device is using unless allow: ["in_use"].
     private static ApiException? SourceRefusal(DynamicThing thing, bool allowInUse)
     {
         Slot? from = thing.ParentSlot;

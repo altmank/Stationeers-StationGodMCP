@@ -35,8 +35,8 @@ def read(what: Literal['logic'], *,
           temperature_k: float, total_mol: float, liquid_volume_l: float, contents: list[{gas: str, state: str, amount_mol: float, liquid_l: float |
           None}]} | None, reagents: {total: float, reagents: list[{reagent: str, name: str | None, quantity: float, unit: str | None}]} | None,
           errors: dict[str, Error] | None} | {index: int, ok: bool, error: Error}]
-    Types: Error = {code: str, message: str, data: Any | None, see: {tool: str | None, topic: str, subtopic: str | None} | None}; LogicType = {id:
-        int, name: str | None}
+    Types: Error = {code: str, message: str, data: Any | None, see: {verb: str | None, what: str | None, topic: str | None, subtopic: str | None} |
+        None}; LogicType = {id: int, name: str | None}
     Example: sg.read('logic', id=['1199811', '1199812'], logic=['Pressure', 'Temperature'])
     In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
     """

@@ -1,4 +1,0 @@
-{
-  "type": "boolean",
-  "description": "Extra cost for room cells above the floor plane on no vertical face plane. Default false."
-}

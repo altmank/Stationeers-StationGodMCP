@@ -1,16 +1,17 @@
 #nullable enable
 
 using System.Linq;
-using System.Text.Json.Nodes;
 using StationGodMCP.Pure;
-using StationGodMCP.Tests.CatalogueChecks;
+using StationGodMCP.Pure.Catalogue;
+using StationGodMCP.Pure.Scheduling;
+using StationGodMCP.Pure.Verbs;
 using Xunit;
 
 namespace StationGodMCP.Tests;
 
 /// <summary>
 /// The settle gate (skip only when the game provably has nothing queued; unreadable queues settle), a connection's
-/// per-method counts, the slow water_sources warning, and the three methods costed for the heavy lane.
+/// per-method counts, the slow water_sources warning, and the three whats costed for the heavy lane.
 /// </summary>
 public sealed class PerfFollowUpTests
 {
@@ -96,17 +97,17 @@ public sealed class PerfFollowUpTests
         Assert.EndsWith("; 1 slow call(s) not logged before it.", warning.Check(80, in slow));
     }
 
-    [Theory]
-    [InlineData("run_console_command", "world")]
-    [InlineData("rocket_status", "world")]
-    [InlineData("dish_aim", "plan")]
-    public void SlowMethodsAreCostedForTheHeavyLane(string method, string cost)
+    /// <summary>
+    /// A console command, a rocket's status and a dish aim are the slow calls: each states the cost class of the heavy
+    /// lane, and the predictor agrees, so none is ever predicted into the light lane.
+    /// </summary>
+    [Fact]
+    public void SlowWhatsAreCostedForTheHeavyLane()
     {
-        JsonObject entry = CatalogueFiles.ReadJson(CatalogueFiles.AssembledPath)["methods"]!.AsArray()
-            .Select(node => node!.AsObject()).Single(node => (string?)node["name"] == method);
+        WhatSpec[] heavy = { ServerCommandOptions.Spec, InspectRocketOptions.Spec, PlanAimOptions.Spec };
 
-        Assert.Equal(cost, (string?)entry["cost"]);
-        Assert.True(StationGodMCP.Pure.Scheduling.CostPredictor.IsHeavyByClass(
-            cost == "world" ? StationGodMCP.Pure.Catalogue.CostClass.World : StationGodMCP.Pure.Catalogue.CostClass.Plan));
+        Assert.Equal(new[] { CostClass.World, CostClass.World, CostClass.Plan },
+            heavy.Select(what => what.Cost.Class));
+        Assert.All(heavy, what => Assert.True(CostPredictor.IsHeavyByClass(what.Cost.Class), what.Label));
     }
 }

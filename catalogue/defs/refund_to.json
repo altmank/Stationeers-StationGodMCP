@@ -1,8 +1,0 @@
-{
-  "oneOf": [
-    {"type": "string"},
-    {"type": "integer"},
-    {"type": "array", "minItems": 1, "maxItems": 8, "items": {"oneOf": [{"type": "string"}, {"type": "integer"}]}}
-  ],
-  "description": "Where removed materials go (see refunds)."
-}
