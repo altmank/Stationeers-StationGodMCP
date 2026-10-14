@@ -1,0 +1,6 @@
+One saved script in full: its source, parameters, version and where it was last run.
+Options:
+- name (string, required): The saved script's name.
+source is the file as saved (the header, then the code); parameters is main(...)'s signature, one line per parameter; last_used names the run that last ran it and when (null when none did). A world script is shown only in the world it was saved in.
+Reply: name, scope, world, version, description, parameters, file, source, last_used {run, at}
+Example: inspect {what: "script", name: "greet"}

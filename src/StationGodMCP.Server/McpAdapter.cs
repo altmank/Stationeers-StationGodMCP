@@ -63,14 +63,17 @@ internal sealed class McpAdapter : IAsyncDisposable
         _link = link;
         _owned = owned ? link as IAsyncDisposable : null;
         _recorder = options.RecordPath is { } path ? new CallRecorder(path) : null;
-        _pipeline = new VerbPipeline(link, recorder: _recorder, shown: shown == null ? _seen : new ShownToBoth(_seen, shown));
+        RunHostSettings hubSettings = runs ?? new RunHostSettings
+        {
+            ConfirmedCeiling = TimeSpan.FromSeconds(options.ConfirmedCeilingSeconds),
+            Python = options.Python
+        };
+        ScriptStore scripts = ScriptStore.For(options, hubSettings.SgRoot, hubSettings.Journal);
+        _pipeline = new VerbPipeline(link, recorder: _recorder, shown: shown == null ? _seen : new ShownToBoth(_seen, shown),
+            scripts: scripts);
         if (link is IHubLink hub)
         {
-            _runs = new RunHost(hub, _pipeline, _seen, runs ?? new RunHostSettings
-            {
-                ConfirmedCeiling = TimeSpan.FromSeconds(options.ConfirmedCeilingSeconds),
-                Python = options.Python
-            });
+            _runs = new RunHost(hub, _pipeline, _seen, hubSettings);
         }
     }
 

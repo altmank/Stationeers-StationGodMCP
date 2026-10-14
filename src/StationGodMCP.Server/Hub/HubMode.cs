@@ -12,7 +12,9 @@ internal static class HubMode
     {
         GameLink link = new(options.Client);
         using CallRecorder? recorder = options.RecordPath is { } path ? new CallRecorder(path) : null;
-        VerbPipeline pipeline = new(link, recorder: recorder);
+        // The --hub face serves no runs, but it answers the four script whats (and help) itself: it gets the store.
+        VerbPipeline pipeline = new(link, recorder: recorder,
+            scripts: ScriptStore.For(options, WorkerPool.ShippedSgRoot));
         HubSession session = new(link, pipeline, new HubSessionSettings(Face.Program) { PassThrough = true, EndsLinkSession = true });
         try
         {

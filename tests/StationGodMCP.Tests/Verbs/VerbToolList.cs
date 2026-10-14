@@ -10,7 +10,8 @@ namespace StationGodMCP.Tests.Verbs;
 /// The MCP tools array plus instructions, generated from catalogue/verbs. One tool per verb: its description, a what
 /// enum whose description lists each what's brief (or summary), and every option any of its whats takes, once, with
 /// its schemas merged across those whats and the verb's short text for it (tool.options) as the only description;
-/// the per-what detail is help {verb, what}. Every verb but help and run_script also takes the shaping options.
+/// the per-what detail is help {verb, what}. Every verb but help and the hub-only ones (run_script) also takes the
+/// shaping options.
 /// </summary>
 internal static class VerbToolList
 {
@@ -71,7 +72,7 @@ internal static class VerbToolList
             }
         }
 
-        if (name != "help" && name != "run_script")
+        if (name != "help" && !VerbCatalogue.IsHubOnly(verb))
         {
             foreach (string shaping in VerbCatalogue.Shaping)
             {

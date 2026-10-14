@@ -133,9 +133,29 @@ public sealed partial class RunHost : IAsyncDisposable
             return refused;
         }
 
-        if (JsonNodes.Text(options["code"]) is not { } code || code.Trim().Length == 0)
+        string? code = JsonNodes.Text(options["code"]);
+        string? name = JsonNodes.Text(options["name"])?.Trim();
+        if (code != null && name != null)
+        {
+            return OptionProblem.Refusal("run_script",
+                [new OptionProblem("name", "not with code: give exactly one of code or name")]);
+        }
+
+        if (code == null && name == null)
+        {
+            return OptionProblem.Refusal("run_script", [new OptionProblem("code",
+                "exactly one of code or name: code is inline Python, name a saved script (find script lists them)")]);
+        }
+
+        if (code is { } inline && inline.Trim().Length == 0)
         {
             return OptionProblem.Refusal("run_script", [new OptionProblem("code", "required: the Python to run")]);
+        }
+
+        if (code != null && options["args"] != null)
+        {
+            return OptionProblem.Refusal("run_script",
+                [new OptionProblem("args", "with name only: the saved script's main(...) arguments")]);
         }
 
         if (options["output_file"] != null)
@@ -161,8 +181,39 @@ public sealed partial class RunHost : IAsyncDisposable
             return new VerbReply.Failed("no_world", "no world loaded: start the run when the game is in a world.");
         }
 
+        RunScript? saved = null;
+        if (name != null)
+        {
+            if (_pipeline.Scripts is not { } store)
+            {
+                return new VerbReply.Failed(VerbFailure.NotAvailable,
+                    "no script store is configured (--scripts-dir): run the code inline instead");
+            }
+
+            JsonObject args = options["args"] as JsonObject ?? new JsonObject();
+            switch (store.Open(name, _link.WorldId))
+            {
+                case ScriptOutcome<SavedScript>.Refused refusedScript:
+                    return new VerbReply.Failed(refusedScript.Code, refusedScript.Message, data: refusedScript.Data);
+                case ScriptOutcome<SavedScript>.Done opened:
+                    // The arguments are checked before the run starts (SPEC-NOTES 5b): a bad argument is a refusal, not
+                    // a failed run, and no worker is taken.
+                    if (ScriptArguments.Check(opened.Value.Parameters, args) is { } problems)
+                    {
+                        return OptionProblem.Refusal($"run_script {name}", problems,
+                            ScriptArguments.Named(opened.Value.Parameters));
+                    }
+
+                    code = opened.Value.Source;
+                    saved = new RunScript(opened.Value.Name, opened.Value.Version, args);
+                    break;
+                default:
+                    throw new InvalidOperationException("An open is done or refused.");
+            }
+        }
+
         DateTime asked = DateTime.UtcNow;
-        Run run = Start(code, JsonNodes.IsTrue(options["confirm"]));
+        Run run = Start(code!, JsonNodes.IsTrue(options["confirm"]), saved);
         using CancellationTokenRegistration cancel = hooks.Cancelled.Register(() =>
             run.RequestStop("stopped", "the agent cancelled the run_script request", world: false));
         await WaitReplyAsync(run, MaxWait(options, _settings.DefaultMaxWait), asked, hooks).ConfigureAwait(false);
@@ -176,7 +227,7 @@ public sealed partial class RunHost : IAsyncDisposable
     internal static VerbReply.Failed SessionEnded() =>
         new("session_ended", "The session is ending: only a stopped run's cleanup writes and held restores go now.");
 
-    private Run Start(string code, bool confirm)
+    private Run Start(string code, bool confirm, RunScript? script = null)
     {
         string id;
         lock (_gate)
@@ -185,7 +236,7 @@ public sealed partial class RunHost : IAsyncDisposable
             id = Prefix + _next.ToString(CultureInfo.InvariantCulture);
         }
 
-        RunRecord record = new(id, code, confirm, _link.NewStream(), _link.WorldId);
+        RunRecord record = new(id, code, confirm, _link.NewStream(), _link.WorldId, script);
         Run run = new(this, record, _pipeline, _link, Seen, _settings.Journal, _settings);
         Notes notes = new(record, run);
         lock (_gate)

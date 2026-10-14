@@ -24,9 +24,9 @@ VERB_CATALOGUE = REPOSITORY / "catalogue" / "verbs"
 STUBS = REPOSITORY / "generated" / "verbs" / "stubs"
 PACKAGE = HERE / "sg"
 
-# Verbs sg does not get a generated function for: help is sg.help (it takes topics too), and run_script is what
-# runs sg, not something sg calls.
-NOT_GENERATED = ("help", "run_script")
+# Verbs sg does not get a generated function for: help is sg.help (it takes topics too), and a verb every what of
+# which the hub answers itself ("hub": true, run_script) is nothing sg calls.
+NOT_GENERATED = ("help",)
 
 # Options a script passes although the catalogue marks them x-script: drop. undo's id is dropped there, but the
 # scripts help topic and the hub contract undo by id (undo {id: "script-14"}), so sg.undo takes it.
@@ -74,6 +74,12 @@ def script_options(verb, shared):
 
 def has_whats(verb):
     return list(verb["whats"]) != ["-"]
+
+
+def not_generated(verb):
+    """Whether sg gets no generated function for the verb: help is sg.help, and a hub-only verb's whats are all
+    answered by the hub itself (run_script runs sg; it is not something sg calls)."""
+    return verb["verb"] in NOT_GENERATED or all(source.get("hub") for source in verb["whats"].values())
 
 
 def first_sentence(text):
@@ -128,7 +134,7 @@ def render_verbs(shared, verbs):
     ]
     for verb in verbs:
         name = verb["verb"]
-        if name in NOT_GENERATED:
+        if not_generated(verb):
             continue
         options = script_options(verb, shared)
         keywords = ", ".join(f"{option}=None" for option in options)
@@ -175,7 +181,7 @@ def render_stubs(verbs):
     ]
     for verb in verbs:
         name = verb["verb"]
-        if name in NOT_GENERATED:
+        if not_generated(verb):
             continue
         overloaded = len(verb["whats"]) > 1
         for what in verb["whats"]:

@@ -330,13 +330,15 @@ public sealed class OptionKindTests
     }
 
     [Fact]
-    public void TheSurfaceIsTheCatalogueVerbsWithoutRunScript()
+    public void TheSurfaceIsTheCatalogueVerbsWithoutTheHubWhats()
     {
-        Assert.Equal(VerbCatalogue.Verbs.Select(VerbCatalogue.NameOf).Where(name => name != "run_script"),
+        // B-6 (T-B-3): a hub-marked what has no generated mod options and no VerbSurface entry, so the mod never
+        // dispatches it; run_script is the hub-only verb.
+        Assert.Equal(VerbCatalogue.Verbs.Where(verb => !VerbCatalogue.IsHubOnly(verb)).Select(VerbCatalogue.NameOf),
             VerbSurface.VerbNames);
         foreach ((string verb, string what, System.Text.Json.Nodes.JsonObject source) in VerbCatalogue.Whats())
         {
-            if (verb == "run_script")
+            if (VerbCatalogue.IsHub(source))
             {
                 continue;
             }

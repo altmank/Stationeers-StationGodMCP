@@ -67,6 +67,17 @@ internal static class VerbCatalogue
         !(verb["whats"]!.AsObject().Count == 1 && verb["whats"]!.AsObject().ContainsKey(WhatlessKey));
 
     /// <summary>
+    /// A what the hub answers itself ("hub": true): its reply comes from the store or the runs, help pages and stubs
+    /// are generated for it like any other, and the mod never sees it - VerbSurface and the generated mod options
+    /// leave it out (tool list, help and stubs move together; the mod's surface does not).
+    /// </summary>
+    internal static bool IsHub(JsonObject what) => (bool?)what["hub"] ?? false;
+
+    /// <summary>A verb every what of which is hub-answered (run_script): the mod dispatches none of it, and sg gets no
+    /// generated function for it (help is the hub's own page server too).</summary>
+    internal static bool IsHubOnly(JsonObject verb) => WhatsOf(verb).All(pair => IsHub(pair.What));
+
+    /// <summary>
     /// A what's agent options, each resolved against its shared definition: everything the tool list, help and stubs
     /// show. A wire option (x-wire: the hub and sg send it, an agent does not) is left out.
     /// </summary>

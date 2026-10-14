@@ -14,8 +14,9 @@ namespace StationGodMCP.Tests.Verbs;
 /// (verb, what) in verb option names, made of the shared option kinds (Selector, Fields, Paging, ReportConfirm on a what
 /// that takes confirm, MaterialsSource; the per-id list form inside Selector) and the what's own options typed by their
 /// schema, with the what's spec (options and schemas, main list, id_list, write rules) the option check reads; and
-/// VerbSurface.Generated.cs, the verbs in catalogue order. run_script is the hub's own and gets none. The hub's own
-/// options (max_wait, file options) are in the spec, so the check can name them, and in no class.
+/// VerbSurface.Generated.cs, the verbs in catalogue order. A what the hub answers itself ("hub": true) gets none: the
+/// mod never dispatches it, and a verb every what of which is hub-answered (run_script) is left out of the surface. The
+/// hub's own options (max_wait, file options) are in the spec, so the check can name them, and in no class.
 /// </summary>
 internal static class VerbOptionsCode
 {
@@ -41,17 +42,22 @@ internal static class VerbOptionsCode
         foreach (JsonObject verb in VerbCatalogue.Verbs)
         {
             string name = VerbCatalogue.NameOf(verb);
-            if (name == "run_script")
-            {
-                continue;
-            }
-
             List<string> specs = new();
             foreach ((string what, JsonObject source) in VerbCatalogue.WhatsOf(verb))
             {
+                if (VerbCatalogue.IsHub(source))
+                {
+                    continue;
+                }
+
                 string type = ClassName(name, what);
                 files[type + ".cs"] = OptionsClass(verb, name, what, source, type);
                 specs.Add(type + ".Spec");
+            }
+
+            if (specs.Count == 0)
+            {
+                continue;
             }
 
             table.Append("        new VerbSpec(").Append(Literal(name)).Append(", ")

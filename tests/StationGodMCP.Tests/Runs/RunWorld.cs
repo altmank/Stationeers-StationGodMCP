@@ -440,10 +440,11 @@ internal sealed class RunBench : IAsyncDisposable
 {
     private static readonly Lazy<string?> PythonProblem = new(FindPythonProblem);
 
-    public RunBench(RunHostSettings? settings = null, Func<RunHostSettings, RunHostSettings>? adjust = null)
+    public RunBench(RunHostSettings? settings = null, Func<RunHostSettings, RunHostSettings>? adjust = null,
+        ScriptStore? scripts = null)
     {
         World = new RunWorld();
-        Pipeline = new VerbPipeline(World, shown: Seen) { PollInterval = TimeSpan.Zero };
+        Pipeline = new VerbPipeline(World, shown: Seen, scripts: scripts) { PollInterval = TimeSpan.Zero };
         RunHostSettings chosen = settings ?? new RunHostSettings
         {
             SgRoot = SgRoot,

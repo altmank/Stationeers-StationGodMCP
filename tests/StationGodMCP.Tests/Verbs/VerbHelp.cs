@@ -110,7 +110,7 @@ internal static class VerbHelp
             text.Append("Every what here takes: ").Append(string.Join(", ", common)).Append(".\n");
         }
 
-        if (name != "help" && name != "run_script")
+        if (name != "help" && !VerbCatalogue.IsHubOnly(verb))
         {
             text.Append("Shaping on every call: ").Append(string.Join(", ", VerbCatalogue.Shaping))
                 .Append(" (help {topic: \"shaping\"}).\n");

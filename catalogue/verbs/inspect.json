@@ -2,7 +2,7 @@
   "verb": "inspect",
   "description": "Describe one thing, or a few by id, in detail. Read only.",
   "read_only": true,
-  "tool": {"options": {}},
+  "tool": {"options": {"name": "inspect script: the saved script's name; inspect contents: a display name to match."}},
   "whats": {
     "device": {
       "summary": "a device: logic types it reads and writes, writable ones by name, rocket, umbilical and uplink details",
@@ -843,6 +843,40 @@
         ]
       },
       "brief": "what writes or overrides a device"
+    },
+    "script": {
+      "hub": true,
+      "summary": "one saved script in full: its source, parameters, version and where it was last run",
+      "options": {
+        "name": {
+          "schema": {"type": "string"},
+          "description": "The saved script's name.",
+          "required": true,
+          "x-script": "same"
+        }
+      },
+      "text": [
+        "source is the file as saved (the header, then the code); parameters is main(...)'s signature, one line per parameter; last_used names the run that last ran it and when (null when none did). A world script is shown only in the world it was saved in."
+      ],
+      "example": {"name": "greet"},
+      "reply": {
+        "variants": [
+          {
+            "keys": {
+              "name": "str",
+              "scope": "str",
+              "world": "str | None (world scope)",
+              "version": "int",
+              "description": "str",
+              "parameters": "list[str] (each line as the signature reads)",
+              "file": "str",
+              "source": "str",
+              "last_used": "{run: str, at: str} | None"
+            }
+          }
+        ]
+      },
+      "brief": "one saved script"
     }
   }
 }

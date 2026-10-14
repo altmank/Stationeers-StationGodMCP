@@ -194,14 +194,26 @@ public sealed class Journal : IRunJournal, IDisposable
 
     // ---- IRunJournal --------------------------------------------------------------------------------------------------
 
-    public void Started(RunRecord run) => Append(new JsonObject
+    public void Started(RunRecord run)
     {
-        ["t"] = "run",
-        ["run"] = run.Id,
-        ["first_line"] = run.FirstLine,
-        ["confirm"] = run.Confirm,
-        ["world"] = run.World
-    });
+        JsonObject line = new()
+        {
+            ["t"] = "run",
+            ["run"] = run.Id,
+            ["at"] = new DateTimeOffset(run.Started).ToUnixTimeMilliseconds(),
+            ["first_line"] = run.FirstLine,
+            ["confirm"] = run.Confirm,
+            ["world"] = run.World
+        };
+        if (run.Script is { } script)
+        {
+            // A run of a saved script: inspect script reads these for its last used (T-B-4).
+            line["script"] = script.Name;
+            line["version"] = script.Version;
+        }
+
+        Append(line);
+    }
 
     public void Before(RunRecord run, WriteEntry write)
     {

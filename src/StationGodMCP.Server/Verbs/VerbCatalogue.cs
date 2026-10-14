@@ -186,12 +186,12 @@ internal sealed class VerbEntry
 
 /// <summary>
 /// One what: its options (resolved), the write rules of a write what, the list option an id list goes into (id_list),
-/// the reply's main list and the example.
+/// the reply's main list and the example; a what the hub answers itself ("hub": true) never reaches the mod.
 /// </summary>
 internal sealed class WhatEntry
 {
     private WhatEntry(string verb, string name, Dictionary<string, OptionEntry> options, List<string> optionNames,
-        bool wireCursor, WriteRules? write, string? idList, string? mainList, JsonObject? example)
+        bool wireCursor, WriteRules? write, string? idList, string? mainList, JsonObject? example, bool hub)
     {
         Verb = verb;
         Name = name;
@@ -202,6 +202,7 @@ internal sealed class WhatEntry
         IdList = idList;
         MainList = mainList;
         Example = example;
+        Hub = hub;
         Phrase = name == VerbCatalogue.WhatlessKey ? verb : $"{verb} {{what: \"{name}\"}}";
         Key = name == VerbCatalogue.WhatlessKey ? verb : verb + "." + name;
         Label = name == VerbCatalogue.WhatlessKey ? verb : verb + " " + name;
@@ -238,6 +239,10 @@ internal sealed class WhatEntry
 
     internal JsonObject? Example { get; }
 
+    /// <summary>The hub answers it itself ("hub": true): the mod never dispatches it, and neither VerbSurface nor the
+    /// mod's generated options class holds it.</summary>
+    internal bool Hub { get; }
+
     /// <summary>True when the id option takes a list of ids.</summary>
     internal bool IdTakesList => Options.TryGetValue("id", out OptionEntry? id) && id.Takes("array");
 
@@ -266,7 +271,7 @@ internal sealed class WhatEntry
 
         WriteRules? write = source["write"] is JsonObject rules ? WriteRules.Of(rules) : null;
         return new WhatEntry(verb, name, options, optionNames, wireCursor, write, (string?)source["id_list"],
-            (string?)source["reply"]?["list"], source["example"] as JsonObject);
+            (string?)source["reply"]?["list"], source["example"] as JsonObject, (bool?)source["hub"] ?? false);
     }
 
     // A shared definition with the what's own keys replacing its keys.

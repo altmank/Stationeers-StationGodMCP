@@ -15,6 +15,7 @@ whats:
 - room: closed rooms measured cell by cell: volume, pressure, temperature, gases; or the room one thing is in
 - gateway: the device scopes: 'world' and each StationGod Gateway with its status
 - damaged: damaged and broken things in the world, worst first
+- script: the saved scripts a run in this world can see: name, description, parameters and version
 
 Shaping on every call: fields, omit, list_limits, output_file, whole, repeat (help {topic: "shaping"}).
 help {verb: "find", what} gives a what's options, reply keys and an example.

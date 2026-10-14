@@ -3,7 +3,7 @@
   "description": "List things in the world or an area, filtered, nearest first. Read only.",
   "text": ["Pages: limit, offset, has_more; order nearest (default) or id."],
   "read_only": true,
-  "tool": {"options": {"prefab": "Whole name, hash, or parts with * ('*Tank*Insulated*'); or a list."}},
+  "tool": {"options": {"prefab": "Whole name, hash, or parts with * ('*Tank*Insulated*'); or a list.", "text": "find script: text a saved script's name or description holds."}},
   "whats": {
     "thing": {
       "summary": "any object: structures, devices, tanks, loose items, players, animals",
@@ -533,6 +533,33 @@
         "x-wire": {"cursor_id": "str | None"}
       },
       "brief": "damaged and broken things"
+    },
+    "script": {
+      "hub": true,
+      "summary": "the saved scripts a run in this world can see: name, description, parameters and version",
+      "options": {
+        "text": {
+          "schema": {"type": "string"},
+          "description": "Keep scripts whose name or description holds this text, any case.",
+          "x-script": "same"
+        }
+      },
+      "text": [
+        "A run sees the shared scripts and the scripts of the world it runs in (inspect script shows one in full; write script saves them). The parameters are main(...)'s, one line each as its signature reads; run_script {name, args} checks its arguments against them."
+      ],
+      "example": {"text": "greet"},
+      "reply": {
+        "list": "scripts",
+        "variants": [
+          {
+            "keys": {
+              "scripts": "list[{name: str, scope: str, world: str | None, version: int, description: str, parameters: list[str]}] (one line per parameter, as main's signature reads)",
+              "count": "int"
+            }
+          }
+        ]
+      },
+      "brief": "saved scripts"
     }
   }
 }

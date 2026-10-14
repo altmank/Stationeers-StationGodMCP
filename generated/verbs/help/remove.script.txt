@@ -1,0 +1,6 @@
+Delete a saved script and every version kept beside it.
+Options:
+- name (string, required): The saved script's name.
+The hub removes it, not the game: <name>.py and the <name>/ folder of versions under the script store's scope. A world script is removed only in the world it was saved in; an unknown name is refused with the nearest names.
+Reply: name, scope, world, version, removed
+Example: remove {what: "script", name: "greet"}

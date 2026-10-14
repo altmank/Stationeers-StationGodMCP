@@ -209,20 +209,27 @@ public sealed class NoRunJournal : IRunJournal
 }
 
 /// <summary>
+/// A run of a saved script: its name, the version it ran (the journal records it), and the arguments its main(...)
+/// got. Null on a run of inline code.
+/// </summary>
+public sealed record RunScript(string Name, int Version, JsonObject? Args);
+
+/// <summary>
 /// What a run did, as the hub keeps it for its reply, its notices and (C5) its journal and undo: the code, the route,
 /// the end state, the writes that acted in order, the rows it reported or had refused, and what it printed and
 /// returned. Lists are read under Sync.
 /// </summary>
 public sealed class RunRecord
 {
-    public RunRecord(string id, string code, bool confirm, long stream, string? world)
+    public RunRecord(string id, string code, bool confirm, long stream, string? world, RunScript? script = null)
     {
         Id = id;
         Code = code;
         Confirm = confirm;
         Stream = stream;
         World = world;
-        FirstLine = FirstCodeLine(code);
+        Script = script;
+        FirstLine = script != null ? script.Name + " v" + script.Version : FirstCodeLine(code);
         Started = DateTime.UtcNow;
     }
 
@@ -233,7 +240,10 @@ public sealed class RunRecord
 
     public string Code { get; }
 
-    /// <summary>The first non-blank code line, as notices and cost lines name the run.</summary>
+    /// <summary>The saved script the run came from (its name, version and main(...) arguments); null for inline code.</summary>
+    public RunScript? Script { get; }
+
+    /// <summary>The first non-blank code line (a saved script's name and version), as notices and cost lines name the run.</summary>
     public string FirstLine { get; }
 
     public bool Confirm { get; }

@@ -7,6 +7,7 @@
       "id": "structure: The structures. cable, pipe, chute: Pieces. Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the one-id reply; a bad id is a row with error.",
       "materials": "structure: The one holder for source and storage refunds: an id or \"player\". Default the player. cable, pipe, chute: Holder(s) that pay, in order; ids or \"player\".",
       "confirm": "true acts; left out, it reports.",
+      "name": "remove script: the saved script's name.",
       "waypoints": "The piece in every cell along these lines.",
       "fields": "Keys to keep.",
       "omit": "Key paths to leave out."
@@ -382,6 +383,36 @@
           {"path": "root", "role": "acts-on"}
         ]
       }
+    },
+    "script": {
+      "hub": true,
+      "summary": "delete a saved script and every version kept beside it",
+      "options": {
+        "name": {
+          "schema": {"type": "string"},
+          "description": "The saved script's name.",
+          "required": true,
+          "x-script": "same"
+        }
+      },
+      "text": [
+        "The hub removes it, not the game: <name>.py and the <name>/ folder of versions under the script store's scope. A world script is removed only in the world it was saved in; an unknown name is refused with the nearest names."
+      ],
+      "example": {"name": "greet"},
+      "reply": {
+        "variants": [
+          {
+            "keys": {
+              "name": "str",
+              "scope": "str",
+              "world": "str | None (world scope)",
+              "version": "int",
+              "removed": "bool"
+            }
+          }
+        ]
+      },
+      "brief": "delete a saved script"
     }
   }
 }

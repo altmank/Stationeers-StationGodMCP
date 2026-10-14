@@ -11,7 +11,8 @@ namespace StationGodMCP.Server;
 /// --inline-limit-kb is the reply size above which a reply goes to a file on its own (200, 0 for never); --record appends
 /// the recording (docs/architecture/hub.md, Recording) to a file. The hub's options (hub.md, Modes): --hub serves the hub
 /// protocol on stdio instead of MCP; --confirmed-ceiling-s caps a confirmed run's reply wait (30, 0 for none);
-/// --journal-dir is where journals live; --python is the Python for script workers.
+/// --journal-dir is where journals live; --python is the Python for script workers; --scripts-dir is where the saved
+/// scripts live (the four script whats and run_script {name}).
 /// </summary>
 internal sealed class SidecarOptions
 {
@@ -28,7 +29,7 @@ internal sealed class SidecarOptions
     private static readonly string[] ValueOptions =
     [
         "--pipe", "--host", "--port", "--secret-env", "--client", "--inline-limit-kb", "--output-dir", "--record",
-        "--confirmed-ceiling-s", "--journal-dir", "--python"
+        "--confirmed-ceiling-s", "--journal-dir", "--python", "--scripts-dir"
     ];
 
     internal SidecarOptions(ClientOptions client, OutputFolder output, int inlineLimitBytes, string? recordPath = null)
@@ -59,6 +60,9 @@ internal sealed class SidecarOptions
 
     /// <summary>Where journals live (hub.md, The journal).</summary>
     internal string JournalDirectory { get; init; } = DefaultJournalDirectory(Environment.GetEnvironmentVariable);
+
+    /// <summary>Where the saved scripts live (SPEC-NOTES 5b): shared/ and world/&lt;world id&gt;/.</summary>
+    internal string ScriptsDirectory { get; init; } = DefaultScriptsDirectory(Environment.GetEnvironmentVariable);
 
     /// <summary>The Python for script workers: the program, then the arguments that come before the worker's own.</summary>
     internal IReadOnlyList<string> Python { get; init; } = DefaultPython;
@@ -118,6 +122,12 @@ internal sealed class SidecarOptions
             return new Parsed.Invalid("--python must name the Python program for script workers.");
         }
 
+        string? scripts = Argument(args, "--scripts-dir");
+        if (scripts != null && string.IsNullOrWhiteSpace(scripts))
+        {
+            return new Parsed.Invalid("--scripts-dir must name a folder.");
+        }
+
         ClientOptions client = new(target)
         {
             ClientName = Argument(args, "--client"),
@@ -133,6 +143,7 @@ internal sealed class SidecarOptions
             Hub = Flag(args, "--hub"),
             ConfirmedCeilingSeconds = ceiling,
             JournalDirectory = journal != null ? Path.GetFullPath(journal.Trim()) : DefaultJournalDirectory(environment),
+            ScriptsDirectory = scripts != null ? Path.GetFullPath(scripts.Trim()) : DefaultScriptsDirectory(environment),
             Python = python != null ? [python.Trim()] : DefaultPython
         });
     }
@@ -154,6 +165,24 @@ internal sealed class SidecarOptions
             : Path.Combine(environment("HOME") ?? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
                 ".local", "state");
         return Path.Combine(state, "stationgodmcp", "journal");
+    }
+
+    /// <summary>%LOCALAPPDATA%\StationGodMCP\scripts on Windows, else $XDG_DATA_HOME/stationgodmcp/scripts.</summary>
+    internal static string DefaultScriptsDirectory(Func<string, string?> environment)
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            string local = environment("LOCALAPPDATA") is { Length: > 0 } given
+                ? given
+                : Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            return Path.Combine(local, "StationGodMCP", "scripts");
+        }
+
+        string data = environment("XDG_DATA_HOME") is { Length: > 0 } xdg
+            ? xdg
+            : Path.Combine(environment("HOME") ?? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                ".local", "share");
+        return Path.Combine(data, "stationgodmcp", "scripts");
     }
 
     private static string? Argument(string[] args, string name)

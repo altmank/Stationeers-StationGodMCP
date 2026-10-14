@@ -94,6 +94,12 @@ public sealed class VerbCatalogueTests
         {
             JsonObject? write = VerbCatalogue.WriteOf(source);
             string at = verb + " " + what;
+            if (VerbCatalogue.IsHub(source))
+            {
+                // The hub answers it (help, run_script, the four script whats): no game write rules at all.
+                continue;
+            }
+
             if (write == null)
             {
                 if (writeVerbs.Contains(verb))
@@ -183,13 +189,52 @@ public sealed class VerbCatalogueTests
     }
 
     [Fact]
+    public void TheHubMarkerKeepsTheModsSurfaceClean()
+    {
+        // T-B-3/B-6: a hub-marked what ("hub": true) is the hub's own to answer. Help pages and stubs are generated
+        // for it like any other what (tool list, help and stubs move together), and the mod gets no options class and
+        // no VerbSurface entry for it, so it can never dispatch it.
+        SortedDictionary<string, string> mod = ModOptions.Value;
+        string surface = mod["VerbSurface.Generated.cs"];
+        List<string> hub = new();
+        foreach ((string verb, string what, JsonObject source) in VerbCatalogue.Whats())
+        {
+            if (!VerbCatalogue.IsHub(source))
+            {
+                continue;
+            }
+
+            hub.Add(verb + " " + what);
+            string type = VerbOptionsCode.ClassName(verb, what);
+            Assert.False(mod.ContainsKey(type + ".cs"), type + ".cs is generated for a hub what");
+            Assert.DoesNotContain(type, surface, StringComparison.Ordinal);
+        }
+
+        Assert.Equal(new[] { "find script", "inspect script", "write script", "remove script", "run_script -" }, hub);
+        Assert.DoesNotContain("new VerbSpec(\"run_script\"", surface, StringComparison.Ordinal);
+        Assert.Contains("new VerbSpec(\"write\"", surface, StringComparison.Ordinal);
+
+        // The four whats are in the tool list, the help and the stubs.
+        JsonObject write = VerbCatalogue.Verb("write");
+        JsonObject tool = VerbToolList.Tool(write);
+        JsonArray whats = tool["inputSchema"]!["properties"]!["what"]!["enum"]!.AsArray();
+        Assert.Contains("script", whats.Select(value => (string)value!));
+        foreach ((string verb, string what) in new[] { ("write", "script"), ("find", "script"), ("inspect", "script"), ("remove", "script") })
+        {
+            Assert.NotNull(VerbHelp.WhatPage(VerbCatalogue.Verb(verb), what));
+            Assert.NotEmpty(VerbStubs.Stub(VerbCatalogue.Verb(verb), what));
+        }
+    }
+
+    [Fact]
     public void EveryWhatTheGameAnswersStatesItsCost()
     {
         string[] classes = { "instant", "bounded", "world", "plan", "job", "stream" };
         foreach ((string verb, string what, JsonObject source) in VerbCatalogue.Whats())
         {
-            if (verb is "help" or "run_script")
+            if (verb == "help" || VerbCatalogue.IsHub(source))
             {
+                // Help and the hub's own whats (run_script, write/find/inspect/remove script) never go to the game.
                 Assert.Null(source["x-cost"]);
                 continue;
             }
@@ -743,8 +788,9 @@ public sealed class VerbCatalogueTests
             string name = VerbCatalogue.NameOf(verb);
             foreach ((string what, JsonObject source) in VerbCatalogue.WhatsOf(verb))
             {
-                if (source["reply"] is not JsonObject reply || name == "run_script")
+                if (source["reply"] is not JsonObject reply || VerbCatalogue.IsHubOnly(verb))
                 {
+                    // run_script's reply is its run's text; the hub-only verb has no stub or what page of its own.
                     continue;
                 }
 

@@ -1,0 +1,6 @@
+The saved scripts a run in this world can see: name, description, parameters and version.
+Options:
+- text (string): Keep scripts whose name or description holds this text, any case.
+A run sees the shared scripts and the scripts of the world it runs in (inspect script shows one in full; write script saves them). The parameters are main(...)'s, one line each as its signature reads; run_script {name, args} checks its arguments against them.
+Reply: scripts, count
+Example: find {what: "script", text: "greet"}

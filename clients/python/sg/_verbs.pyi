@@ -325,6 +325,20 @@ def find(what: Literal['damaged'], *,
     """
 
 @overload
+def find(what: Literal['script'], *,
+    fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
+    text: str = None,  # Keep scripts whose name or description holds this text, any case.
+) -> dict:  # main list: r['scripts']; iterating or indexing it walks every page, in order
+    """The saved scripts a run in this world can see: name, description, parameters and version.
+    A run sees the shared scripts and the scripts of the world it runs in (inspect script shows one in full; write script saves them). The parameters are main(...)'s, one line each as its signature reads; run_script {name, args} checks its arguments against them.
+    Reply:
+      scripts: list[{name: str, scope: str, world: str | None, version: int, description: str, parameters: list[str]}] (one line per parameter, as
+          main's signature reads)
+      count: int
+    Example: sg.find('script', text='greet')
+    """
+
+@overload
 def inspect(what: Literal['device'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
     id: str | list[str],  # Target: an id, a list of ids, or "looking_at" (the thing the crosshair is on); "player" where the what says.
@@ -897,6 +911,26 @@ def inspect(what: Literal['controllers'], *,
       count: int
     Example: sg.inspect('controllers', id='4936423')
     In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    """
+
+@overload
+def inspect(what: Literal['script'], *,
+    fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
+    name: str,  # The saved script's name.
+) -> dict:
+    """One saved script in full: its source, parameters, version and where it was last run.
+    source is the file as saved (the header, then the code); parameters is main(...)'s signature, one line per parameter; last_used names the run that last ran it and when (null when none did). A world script is shown only in the world it was saved in.
+    Reply:
+      name: str
+      scope: str
+      world: str | None (world scope)
+      version: int
+      description: str
+      parameters: list[str] (each line as the signature reads)
+      file: str
+      source: str
+      last_used: {run: str, at: str} | None
+    Example: sg.inspect('script', name='greet')
     """
 
 @overload
@@ -1565,6 +1599,26 @@ def write(what: Literal['genes'], *,
     Types: Error = {code: str, message: str, data: Any | None, see: {verb: str | None, what: str | None, topic: str | None, subtopic: str | None} |
         None}; Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}
     Example: sg.write('genes', id='3311223', genes={'GrowthSpeedMultiplier': 1})
+    """
+
+@overload
+def write(what: Literal['script'], *,
+    fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
+    name: str,  # The script's name: letters, digits and underscores (it names a file and an sg module).
+    code: str,  # The Python source; it must define main(...), with type hints on the parameters run_script checks.
+    description: str,  # One line saying what the script does (find script shows it).
+    scope: Literal['shared', 'world'],  # shared: runs in any world, and may hard-code no ids; world: bound to the world it is saved in.
+) -> dict:
+    """Save a Python script under a name: the next version, every older one kept.
+    The hub saves it, not the game: under the server's --scripts-dir, in shared/ or world/<world id>/. Saving a name again writes the next version as <name>/v<N>.py and makes <name>.py it; every older version stays. The code is parsed once here: a script that does not parse, has no def main(...), or has positional-only parameters is refused. A shared script may not hard-code ids: a constant written as an id, an integer of 100000 and up, or digits that big written as a string are all refused. Not caught: an id built at run time, one below 100000 reached through a variable, and composite ids like '5-1234'. A world script belongs to the world it was saved in. A name is a Python module name, and may not collide with a script of the other scope a run can see, or with either in the same scope however it is cased.
+    Reply:
+      name: str
+      scope: str
+      world: str | None (world scope)
+      version: int
+      parameters: list[str] (each line as the signature reads: 'who: str', '*extra')
+      file: str
+    Example: sg.write('script', name='greet', code='def main(who: str) -> str: return \'hi \' + who', description='greet a player by name', scope='shared')
     """
 
 @overload
@@ -2954,6 +3008,22 @@ def remove(what: Literal['chute'], *,
         RunJob
     Example: sg.remove('chute', id=['3763565'])
     In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    """
+
+@overload
+def remove(what: Literal['script'], *,
+    fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
+    name: str,  # The saved script's name.
+) -> dict:
+    """Delete a saved script and every version kept beside it.
+    The hub removes it, not the game: <name>.py and the <name>/ folder of versions under the script store's scope. A world script is removed only in the world it was saved in; an unknown name is refused with the nearest names.
+    Reply:
+      name: str
+      scope: str
+      world: str | None (world scope)
+      version: int
+      removed: bool
+    Example: sg.remove('script', name='greet')
     """
 
 @overload

@@ -15,8 +15,9 @@ reach the next one. It:
    the null device and fd 1 at stderr. That keeps accidental writes to fd 1, child processes and input() away from
    the protocol. It does not stop code that sets out to find the descriptors; the hub keeps the run's end state
    itself and kills the worker after run_end (hub.md, *Runs*);
-2. says hello and reads the hub's welcome, whose `run` key holds the code (hub.md, *Runs*); end of stdin instead
-   means the hub no longer needs this worker;
+2. says hello and reads the hub's welcome, whose `run` key holds the code (hub.md, *Runs*; a run of a saved script
+   carries `call` and `args` too, and the run is that function's call); end of stdin instead means the hub no longer
+   needs this worker;
 3. sends run_analysis before any user code runs;
 4. runs the code as a function body with `sg`, `print` (tables for row lists) and `time.sleep` (sg.wait) in place,
    capturing what it prints;
@@ -148,8 +149,12 @@ def guarded_run(transport, run):
 
 
 def run_one(transport, run):
-    """Analyses and runs one run's code; returns its run_end message (run_analysis is sent from here)."""
+    """Analyses and runs one run's code; returns its run_end message (run_analysis is sent from here). A run the hub
+    started from a saved script carries `call` (the function to call, "main") and `args`: the code's body runs as
+    usual, defining that function, and the run is its call."""
     source = run.get("code") or ""
+    call = run.get("call")
+    args = run.get("args") or {}
     analysis = analyse(source)
     transport.send(analysis.message())
     if analysis.code is None:
@@ -165,7 +170,14 @@ def run_one(transport, run):
     returned, exception = None, None
     try:
         exec(analysis.code, namespace)  # defines the run function
-        returned = namespace[RUN_FUNCTION]()
+        if call:
+            namespace[RUN_FUNCTION]()  # the script's own statements: defines main
+            entry = namespace.get(call)
+            if not callable(entry):
+                raise LookupError(f"the script defines no {call}() to run")
+            returned = entry(**args)
+        else:
+            returned = namespace[RUN_FUNCTION]()
     except BaseException as error:  # noqa: BLE001 - anything the code raised ends the run
         exception = error
     returned = returnable(returned)

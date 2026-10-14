@@ -28,13 +28,15 @@ public sealed class VerbExampleTests
     public static IEnumerable<object[]> Whats() =>
         VerbCatalogue.Embedded.Verbs
             .Where(verb => verb.Name != "run_script")
-            .SelectMany(verb => verb.WhatNames.Select(name => new object[] { verb.Whats[name].Key }));
+            .SelectMany(verb => verb.WhatNames.Select(name => verb.Whats[name]))
+            .Where(what => !what.Hub)
+            .Select(what => new object[] { what.Key });
 
     [Fact]
-    public void TheCatalogueHasNinetyOneWhatsAndThreeWhatlessVerbs()
+    public void TheCatalogueHasNinetyFiveWhatsAndThreeWhatlessVerbs()
     {
         int whats = VerbCatalogue.Embedded.Verbs.Where(verb => verb.HasWhats).Sum(verb => verb.WhatNames.Count);
-        Assert.Equal(91, whats);
+        Assert.Equal(95, whats);
         Assert.Equal(new[] { "undo", "help", "run_script" },
             VerbCatalogue.Embedded.Verbs.Where(verb => !verb.HasWhats).Select(verb => verb.Name));
     }

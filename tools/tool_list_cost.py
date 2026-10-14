@@ -14,6 +14,7 @@ the stub answers initialize and tools/list, and refuses every call.
 """
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -21,6 +22,9 @@ import time
 
 SERVER = "stationgod"
 PROMPT = "Reply with the single word ok. Do not call any tool."
+# An npm install on Windows puts claude.cmd on PATH; shutil.which resolves it (a bare "claude" is an extensionless
+# shell script there, which CreateProcess cannot start).
+CLAUDE = shutil.which("claude") or "claude"
 
 
 def compact(obj):
@@ -59,7 +63,7 @@ def one(label, mcp_path, tool_search, cwd):
            if k not in ("ENABLE_TOOL_SEARCH", "ANTHROPIC_API_KEY", "CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT")}
     if tool_search is not None:
         env["ENABLE_TOOL_SEARCH"] = tool_search
-    cmd = ["claude", "-p", PROMPT, "--model", "opus", "--output-format", "stream-json", "--verbose",
+    cmd = [CLAUDE, "-p", PROMPT, "--model", "opus", "--output-format", "stream-json", "--verbose",
            "--mcp-config", mcp_path, "--strict-mcp-config", "--setting-sources", "project,local",
            "--no-session-persistence", "--permission-mode", "dontAsk", "--max-turns", "1"]
     p = subprocess.run(cmd, cwd=cwd, env=env, capture_output=True, text=True, encoding="utf-8", errors="replace",
@@ -109,7 +113,7 @@ def measure(pairs, out):
         rows.append(row)
         print("%s: %d tools, full %d tokens, %d chars" % (name, row["tools"], row["full_cost"], row["chars"]))
     result = {"taken": time.strftime("%Y-%m-%dT%H:%M:%S"),
-              "claude_version": subprocess.run(["claude", "--version"], capture_output=True, text=True).stdout.strip(),
+              "claude_version": subprocess.run([CLAUDE, "--version"], capture_output=True, text=True).stdout.strip(),
               "no_mcp_first_context": {"deferred": base_deferred["first_context"], "loaded": base["first_context"]},
               "lists": rows}
     if out:

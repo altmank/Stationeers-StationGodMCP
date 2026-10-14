@@ -455,6 +455,30 @@
     "description": "The silo is off, unpowered or not finished, so it neither imports nor exports. Nothing ran; power it on."
   },
   "slot_locked": {"description": "The item is in a locked slot. Unlock the slot first."},
+  "script_name": {
+    "description": "That is not a name a saved script may have: one word of letters, digits and underscores, starting with a letter or _, no Python keyword and no path separator.",
+    "see": {"verb": "write", "what": "script"}
+  },
+  "script_invalid": {
+    "description": "The saved script was refused: it does not parse, has no def main(...), has positional-only parameters, or its file has no stationgod header. The message gives the reason.",
+    "see": {"verb": "write", "what": "script"}
+  },
+  "script_ids": {
+    "description": "A shared script may not hard-code ids: it must run in any world. Save it world-scoped (scope: world), or read the ids at run time.",
+    "see": {"verb": "write", "what": "script"}
+  },
+  "script_exists": {
+    "description": "A script of that name is already saved in the other scope a run can see (shared, or this world). Remove it first, or use another name.",
+    "see": {"verb": "write", "what": "script"}
+  },
+  "script_not_found": {
+    "description": "No saved script of that name is visible in this world; the message lists the nearest names. find script lists them all.",
+    "see": {"verb": "find", "what": "script"}
+  },
+  "script_world": {
+    "description": "That script belongs to another world: a world script runs only in the world it was saved in.",
+    "see": {"verb": "write", "what": "script"}
+  },
   "slot_not_found": {"description": "The thing has no slot with that index; the message gives how many it has. inspect slots lists them."},
   "slot_occupied": {"description": "The slot is taken. Pick an empty slot, or move what is there first."},
   "slot_refuses": {"description": "The slot does not take that item. Pick a slot that does; inspect slots lists them."},

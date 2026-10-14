@@ -65,6 +65,43 @@ internal sealed partial class Run : IRunChannel, IPipelineExtras, IVerbCalls
         _seen = seen;
         _journal = journal;
         _settings = settings;
+        // A saved script run's arguments count as written (SPEC-NOTES 5b, the seen rule): the agent wrote them at the
+        // call, as it wrote the code of an inline run. The script's own literals come with its run_analysis.
+        Written(record.Script?.Args);
+    }
+
+    // Each scalar argument as a literal the gate accepts as a target, whatever it is nested in.
+    private void Written(JsonNode? value)
+    {
+        switch (value)
+        {
+            case JsonArray list:
+                foreach (JsonNode? entry in list)
+                {
+                    Written(entry);
+                }
+
+                break;
+            case JsonObject entries:
+                foreach ((string _, JsonNode? entry) in entries)
+                {
+                    Written(entry);
+                }
+
+                break;
+            case JsonValue scalar when scalar.GetValueKind() is not (JsonValueKind.True or JsonValueKind.False):
+                if (IdText(scalar) is { } text)
+                {
+                    _literals.Add(text);
+                }
+
+                if (JsonNodes.Number(scalar) is { } number)
+                {
+                    _literalNumbers.Add(number);
+                }
+
+                break;
+        }
     }
 
     internal RunRecord Record { get; }
@@ -127,15 +164,26 @@ internal sealed partial class Run : IRunChannel, IPipelineExtras, IVerbCalls
         }
     }
 
-    /// <summary>The welcome's run key: the worker reads its code and route from it.</summary>
-    internal JsonObject WelcomeRun() => new()
+    /// <summary>The welcome's run key: the worker reads its code and route from it; a saved script's run calls its
+    /// main(...) with the arguments the hub checked (the code is the script's source).</summary>
+    internal JsonObject WelcomeRun()
     {
-        ["id"] = Record.Id,
-        ["code"] = Record.Code,
-        ["confirm"] = Record.Confirm,
-        ["face"] = "script",
-        ["limits"] = new JsonObject { ["cut_bytes"] = RunText.CutBytes }
-    };
+        JsonObject run = new()
+        {
+            ["id"] = Record.Id,
+            ["code"] = Record.Code,
+            ["confirm"] = Record.Confirm,
+            ["face"] = "script",
+            ["limits"] = new JsonObject { ["cut_bytes"] = RunText.CutBytes }
+        };
+        if (Record.Script is { } script)
+        {
+            run["call"] = "main";
+            run["args"] = script.Args?.DeepClone() ?? new JsonObject();
+        }
+
+        return run;
+    }
 
     // ---- life -------------------------------------------------------------------------------------------------------
 

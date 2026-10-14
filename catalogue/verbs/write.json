@@ -5,7 +5,15 @@
     "A write on a device that a chip or another writer drives warns driven_by (inspect {what: \"controllers\", id} lists them). Opening a vent, valve or pump runs the network lint: a problem refuses unless allow: [\"lint\"]."
   ],
   "read_only": false,
-  "tool": {"options": {"allow": "lint: pass a network lint problem."}},
+  "tool": {
+    "options": {
+      "allow": "lint: pass a network lint problem.",
+      "name": "write script: the script's name (letters, digits, underscores).",
+      "code": "write chip: the IC10 source; write script: the Python source, which must define main(...).",
+      "description": "write script: one line saying what the script does.",
+      "scope": "write script: shared (any world, no hard-coded ids), or world (bound to this world)."
+    }
+  },
   "whats": {
     "logic": {
       "summary": "logic values on devices, as a chip or console writes them; answers previous and read-back values",
@@ -683,6 +691,55 @@
         "x-target": [{"path": "id", "role": "acts-on"}]
       },
       "brief": "edit plant genes"
+    },
+    "script": {
+      "hub": true,
+      "summary": "save a Python script under a name: the next version, every older one kept",
+      "options": {
+        "name": {
+          "schema": {"type": "string"},
+          "description": "The script's name: letters, digits and underscores (it names a file and an sg module).",
+          "required": true,
+          "x-script": "same"
+        },
+        "code": {
+          "schema": {"type": "string"},
+          "description": "The Python source; it must define main(...), with type hints on the parameters run_script checks.",
+          "required": true,
+          "x-script": "same"
+        },
+        "description": {
+          "schema": {"type": "string"},
+          "description": "One line saying what the script does (find script shows it).",
+          "required": true,
+          "x-script": "same"
+        },
+        "scope": {
+          "schema": {"type": "string", "enum": ["shared", "world"]},
+          "description": "shared: runs in any world, and may hard-code no ids; world: bound to the world it is saved in.",
+          "required": true,
+          "x-script": "same"
+        }
+      },
+      "text": [
+        "The hub saves it, not the game: under the server's --scripts-dir, in shared/ or world/<world id>/. Saving a name again writes the next version as <name>/v<N>.py and makes <name>.py it; every older version stays. The code is parsed once here: a script that does not parse, has no def main(...), or has positional-only parameters is refused. A shared script may not hard-code ids: a constant written as an id, an integer of 100000 and up, or digits that big written as a string are all refused. Not caught: an id built at run time, one below 100000 reached through a variable, and composite ids like '5-1234'. A world script belongs to the world it was saved in. A name is a Python module name, and may not collide with a script of the other scope a run can see, or with either in the same scope however it is cased."
+      ],
+      "example": {"name": "greet", "code": "def main(who: str) -> str: return 'hi ' + who", "description": "greet a player by name", "scope": "shared"},
+      "reply": {
+        "variants": [
+          {
+            "keys": {
+              "name": "str",
+              "scope": "str",
+              "world": "str | None (world scope)",
+              "version": "int",
+              "parameters": "list[str] (each line as the signature reads: 'who: str', '*extra')",
+              "file": "str"
+            }
+          }
+        ]
+      },
+      "brief": "save a script"
     }
   }
 }

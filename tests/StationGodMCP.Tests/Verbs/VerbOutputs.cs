@@ -49,7 +49,8 @@ internal static class VerbOutputs
                     files["help/" + name + "." + what + ".txt"] = VerbHelp.WhatPage(verb, what);
                 }
 
-                if (name != "run_script")
+                // A hub-only verb (run_script) has no stub: sg has no function for it (help is sg.help).
+                if (!VerbCatalogue.IsHubOnly(verb))
                 {
                     files["stubs/" + name + (whatless ? "" : "." + what) + ".py"] = VerbStubs.Stub(verb, what);
                 }

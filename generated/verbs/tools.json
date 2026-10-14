@@ -22,9 +22,10 @@
               "plant",
               "room",
               "gateway",
-              "damaged"
+              "damaged",
+              "script"
             ],
-            "description": "thing: any object: structures, devices, items, players; item: stackable items and kits anywhere; group_by sums; device: devices with logic; container: holders with items; frame: outer frames; pad: landing pads; water: water and steam sources; ore: deep miner ore spots; food: food and drink; plant: plants: stage, health, harvest; room: closed rooms: pressure, gases; gateway: device scopes (gateways); damaged: damaged and broken things"
+            "description": "thing: any object: structures, devices, items, players; item: stackable items and kits anywhere; group_by sums; device: devices with logic; container: holders with items; frame: outer frames; pad: landing pads; water: water and steam sources; ore: deep miner ore spots; food: food and drink; plant: plants: stage, health, harvest; room: closed rooms: pressure, gases; gateway: device scopes (gateways); damaged: damaged and broken things; script: saved scripts"
           },
           "name": {"type": "string"},
           "prefab": {
@@ -61,6 +62,7 @@
           "min_damage": {"type": "number"},
           "broken_only": {"type": "boolean"},
           "structures_only": {"type": "boolean"},
+          "text": {"type": "string", "description": "find script: text a saved script's name or description holds."},
           "fields": {"type": "array", "items": {"type": "string"}},
           "omit": {"type": "array", "items": {"type": "string"}},
           "list_limits": {"type": "object"},
@@ -97,9 +99,10 @@
               "planet",
               "weather",
               "job",
-              "controllers"
+              "controllers",
+              "script"
             ],
-            "description": "device: a device's logic types; prefab: a prefab before it is built; slots: a device's slots; contents: a holder's contents, nested; health: damage of things or a network; connections: a piece's ends and joins; atmosphere: the gas one thing holds; reagents: a machine's reagents; genes: plant genes; chip: a chip's status, source, selectors; screen: a screen's surfaces and elements; rocket: rockets now; vault: Ingot Vault stock; looking_at: what the crosshair is on; player: the player's hunger and thirst; planet: the planet's atmosphere; weather: storms and season; job: a job or script run, by id; controllers: what writes or overrides a device"
+            "description": "device: a device's logic types; prefab: a prefab before it is built; slots: a device's slots; contents: a holder's contents, nested; health: damage of things or a network; connections: a piece's ends and joins; atmosphere: the gas one thing holds; reagents: a machine's reagents; genes: plant genes; chip: a chip's status, source, selectors; screen: a screen's surfaces and elements; rocket: rockets now; vault: Ingot Vault stock; looking_at: what the crosshair is on; player: the player's hunger and thirst; planet: the planet's atmosphere; weather: storms and season; job: a job or script run, by id; controllers: what writes or overrides a device; script: one saved script"
           },
           "id": {"type": ["string", "array"], "items": {"type": "string"}},
           "gateway": {"type": "string"},
@@ -127,7 +130,10 @@
           "prefab": {"type": ["string", "integer", "array"]},
           "slot": {"type": "integer"},
           "depth": {"type": "integer"},
-          "name": {"type": "string"},
+          "name": {
+            "type": "string",
+            "description": "inspect script: the saved script's name; inspect contents: a display name to match."
+          },
           "limit": {"type": "integer"},
           "offset": {"type": "integer"},
           "network": {"type": ["string", "object"]},
@@ -268,8 +274,20 @@
         "properties": {
           "what": {
             "type": "string",
-            "enum": ["logic", "memory", "chip", "screen", "label", "paint", "flight_log", "uplink", "battery", "genes"],
-            "description": "logic: logic values on devices; memory: device memory; chip: chip source, pins, run state; screen: press a screen control; label: rename things; paint: paint things or a network; flight_log: start, stop, clear a recorder; uplink: point an uplink; battery: set charge; genes: edit plant genes"
+            "enum": [
+              "logic",
+              "memory",
+              "chip",
+              "screen",
+              "label",
+              "paint",
+              "flight_log",
+              "uplink",
+              "battery",
+              "genes",
+              "script"
+            ],
+            "description": "logic: logic values on devices; memory: device memory; chip: chip source, pins, run state; screen: press a screen control; label: rename things; paint: paint things or a network; flight_log: start, stop, clear a recorder; uplink: point an uplink; battery: set charge; genes: edit plant genes; script: save a script"
           },
           "id": {"type": ["string", "array"]},
           "logic": {"type": ["string", "integer"]},
@@ -284,7 +302,10 @@
           "confirm": {"type": "boolean"},
           "start": {"type": "integer"},
           "values": {"type": "array", "items": {"type": "number"}},
-          "code": {"type": "string"},
+          "code": {
+            "type": "string",
+            "description": "write chip: the IC10 source; write script: the Python source, which must define main(...)."
+          },
           "code_file": {"type": "string"},
           "pins": {"type": "object"},
           "run": {"enum": ["pause", "step", "resume", "restart"]},
@@ -312,6 +333,12 @@
           "joules": {"type": "number"},
           "unit": {"type": "integer"},
           "genes": {"type": "object"},
+          "name": {"type": "string", "description": "write script: the script's name (letters, digits, underscores)."},
+          "description": {"type": "string", "description": "write script: one line saying what the script does."},
+          "scope": {
+            "enum": ["shared", "world"],
+            "description": "write script: shared (any world, no hard-coded ids), or world (bound to this world)."
+          },
           "fields": {"type": "array", "items": {"type": "string"}},
           "omit": {"type": "array", "items": {"type": "string"}},
           "list_limits": {"type": "object"},
@@ -593,8 +620,8 @@
         "properties": {
           "what": {
             "type": "string",
-            "enum": ["structure", "cable", "pipe", "chute"],
-            "description": "structure: built structures by id (up to 256, one job), taken apart; every build state is refunded down to the kit; cable: cable pieces as wire cutters remove them: by id, or the piece in each cell of waypoints or cells; pipe: pipe pieces as a player remove them: by id, or the piece in each cell of waypoints or cells, never emptying or splitting a network that holds gas; chute: chute pieces as a player remove them: by id, or the piece in each cell of waypoints or cells"
+            "enum": ["structure", "cable", "pipe", "chute", "script"],
+            "description": "structure: built structures by id (up to 256, one job), taken apart; every build state is refunded down to the kit; cable: cable pieces as wire cutters remove them: by id, or the piece in each cell of waypoints or cells; pipe: pipe pieces as a player remove them: by id, or the piece in each cell of waypoints or cells, never emptying or splitting a network that holds gas; chute: chute pieces as a player remove them: by id, or the piece in each cell of waypoints or cells; script: delete a saved script"
           },
           "id": {
             "type": ["string", "array"],
@@ -618,6 +645,7 @@
           "cells": {"type": "array"},
           "root": {"type": "string"},
           "rows": {"type": "integer"},
+          "name": {"type": "string", "description": "remove script: the saved script's name."},
           "fields": {"type": "array", "items": {"type": "string"}, "description": "Keys to keep."},
           "omit": {"type": "array", "items": {"type": "string"}, "description": "Key paths to leave out."},
           "list_limits": {"type": "object"},
@@ -835,11 +863,13 @@
     },
     {
       "name": "run_script",
-      "description": "Run Python 3.10 against the game: one call made of verb calls. sg.<verb>('what', **options) is the direct call with the same options and reply dicts; per-id whats always answer {results: [...]}.\nA script changes nothing unless the run has confirm: true. Seen targets: ids this session's replies showed you (report rows and a finished run's printed or returned value count), int or str constants in the code, selectors in the code (a network, a spread, sg.ref('r7')), what the run builds, and \"player\". Two routes:\n- run_script {code}: a report run. Nothing changes; every target is listed [id or cell, name, current -> new]. To act, send the same code with confirm: true: its rows are now seen.\n- run_script {code, confirm: true}: acts as it goes on seen targets. An unseen target stops the run with sg.Stopped (a BaseException); the reply lists that call's targets (now seen), what acted, and the fix.\nconfirm inside the code is refused.\nPoll, and put things back:\n  sg.write('logic', id=ff, logic='Open', value=1)\n  try:\n      while sg.read('logic', reads=[{'id': probe, 'atmosphere': True}])['results'][0]['atmosphere']['pressure_kpa'] < 15:\n          sg.wait(5)        # poll a sensor with read; a room or find query walks the world\n  finally:\n      sg.write('logic', id=ff, logic='Open', value=0)   # best effort at session end\n  # sure, even at session end: with sg.hold(ff, 'Open', 1, after=0): ...\nA confirmed run answers within 30 s, then script-N running (follow with inspect {what: 'job', id}); a report or read-only run waits up to 600 s. sg.help('scripts') has the full API; errors raise sg.Error(code, message, fix, maybe_ran).\nFooter: writes by outcome, WARNINGS, CLEANUP, undo script-N, cost.",
+      "description": "Run Python 3.10 against the game: one call made of verb calls. sg.<verb>('what', **options) is the direct call with the same options and reply dicts; per-id whats always answer {results: [...]}.\nA script changes nothing unless the run has confirm: true. Seen targets: ids this session's replies showed you (report rows and a finished run's printed or returned value count), int or str constants in the code, selectors in the code (a network, a spread, sg.ref('r7')), what the run builds, and \"player\". Two routes:\n- run_script {code}: a report run. Nothing changes; every target is listed [id or cell, name, current -> new]. To act, send the same code with confirm: true: its rows are now seen.\n- run_script {code, confirm: true}: acts as it goes on seen targets. An unseen target stops the run with sg.Stopped (a BaseException); the reply lists that call's targets (now seen), what acted, and the fix.\nconfirm inside the code is refused.\nSaved scripts: write script saves Python under a name, find script lists them, inspect script shows one in full, and run_script {name, args} runs its main(**args). The arguments are checked against main's signature before the run: a missing required argument or an unknown name is a refusal, and a value's type too where the annotation maps one; a list's items and anything else are left to the run. A shared script may hard-code no ids; a world script runs only in the world it was saved in. The journal records the version it ran.\nPoll, and put things back:\n  sg.write('logic', id=ff, logic='Open', value=1)\n  try:\n      while sg.read('logic', reads=[{'id': probe, 'atmosphere': True}])['results'][0]['atmosphere']['pressure_kpa'] < 15:\n          sg.wait(5)        # poll a sensor with read; a room or find query walks the world\n  finally:\n      sg.write('logic', id=ff, logic='Open', value=0)   # best effort at session end\n  # sure, even at session end: with sg.hold(ff, 'Open', 1, after=0): ...\nA confirmed run answers within 30 s, then script-N running (follow with inspect {what: 'job', id}); a report or read-only run waits up to 600 s. sg.help('scripts') has the full API; errors raise sg.Error(code, message, fix, maybe_ran).\nFooter: writes by outcome, WARNINGS, CLEANUP, undo script-N, cost.",
       "inputSchema": {
         "type": "object",
         "properties": {
           "code": {"type": "string", "description": "Python 3.10 source, run as a function body."},
+          "name": {"type": "string", "description": "A saved script to run with args; exactly one of code or name."},
+          "args": {"type": "object", "description": "The saved script's main(...) arguments by name; checked before the run."},
           "confirm": {
             "type": "boolean",
             "description": "true: writes act, on seen targets. Left out: a report run; nothing changes."

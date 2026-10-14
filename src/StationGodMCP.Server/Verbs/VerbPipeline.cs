@@ -41,6 +41,7 @@ public sealed partial class VerbPipeline
     private readonly DirectWriteGate _directGate;
     private readonly CallRecorder? _recorder;
     private readonly VerbCatalogue _catalogue;
+    private readonly ScriptStore? _scripts;
     private readonly IShownText? _shown;
     private readonly RefStore _refs = new();
     private readonly BulkWrites _bulk = new();
@@ -52,16 +53,18 @@ public sealed partial class VerbPipeline
 
     /// <summary>
     /// gate, when given, decides every write that does not carry its own (VerbCall.Gate); otherwise the direct and
-    /// program faces get the direct write rule and a script call without a gate reports.
+    /// program faces get the direct write rule and a script call without a gate reports. scripts, when given, serves
+    /// the four script whats (write/find/inspect/remove script) and run_script {name, args}.
     /// </summary>
     internal VerbPipeline(IGameLink link, IWriteGate? gate = null, CallRecorder? recorder = null,
-        VerbCatalogue? catalogue = null, IShownText? shown = null)
+        VerbCatalogue? catalogue = null, IShownText? shown = null, ScriptStore? scripts = null)
     {
         _link = link;
         _gate = gate;
         _recorder = recorder;
         _shown = shown;
         _catalogue = catalogue ?? VerbCatalogue.Embedded;
+        _scripts = scripts;
         _directGate = new DirectWriteGate(_catalogue);
         _link.WorldChanged += OnWorldChanged;
     }
@@ -190,15 +193,17 @@ public sealed partial class VerbPipeline
         }
 
         JsonObject options = Normalised(what!, call.Face, resolved);
-        VerbReply reply = what!.Write != null
-            ? await WriteAsync(call, what, options, refs, cancellation).ConfigureAwait(false)
-            : await ReadAsync(call, what, options, cancellation).ConfigureAwait(false);
+        VerbReply reply = IsScriptWhat(what!)
+            ? await ScriptAsync(call, what!, options).ConfigureAwait(false)
+            : what!.Write != null
+                ? await WriteAsync(call, what, options, refs, cancellation).ConfigureAwait(false)
+                : await ReadAsync(call, what, options, cancellation).ConfigureAwait(false);
         if (call.Note != null && reply is VerbReply.Done { Reply: JsonObject noted })
         {
             noted["note"] = call.Note;
         }
 
-        return call.Face == Face.Direct ? Capped(call, what, options, reply) : Unmarked(reply);
+        return call.Face == Face.Direct ? Capped(call, what!, options, reply) : Unmarked(reply);
     }
 
     // The replay a report keeps for its ref is the direct face's; other faces never see it.

@@ -1,5 +1,7 @@
 Options:
 - code (string): Python 3.10 source, run as a function body.
+- name (string): A saved script to run, with args (find script lists them); exactly one of code or name.
+- args (object): The saved script's main(...) arguments by name; with name only. A missing required argument or an unknown name is refused before the run; a value's type is checked where main's annotation maps one (int, float, str, bool, list, dict, None), and not further.
 - confirm (boolean): true: writes act, on seen targets. Left out: a report run; nothing changes.
 - max_wait (number): How long this reply waits; a confirmed run answers within 30 s whatever this says (it may only shorten). The run goes on.
 Reply: text

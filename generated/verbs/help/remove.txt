@@ -6,7 +6,7 @@ whats:
 - cable: cable pieces as wire cutters remove them: by id, or the piece in each cell of waypoints or cells
 - pipe: pipe pieces as a player remove them: by id, or the piece in each cell of waypoints or cells, never emptying or splitting a network that holds gas
 - chute: chute pieces as a player remove them: by id, or the piece in each cell of waypoints or cells
+- script: delete a saved script and every version kept beside it
 
-Every what here takes: allow, confirm, id, include, materials, max_wait, queue, refund_to, verbose.
 Shaping on every call: fields, omit, list_limits, output_file, whole, repeat (help {topic: "shaping"}).
 help {verb: "remove", what} gives a what's options, reply keys and an example.

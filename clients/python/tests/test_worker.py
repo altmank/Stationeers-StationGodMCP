@@ -12,11 +12,17 @@ def run(code, run_id="script-1"):
     return {"id": run_id, "code": code, "confirm": True, "face": "script", "limits": {"cut_bytes": 4096}}
 
 
+def saved(code, args=None, run_id="script-1"):
+    """A run of a saved script: the hub sends the script's source and calls its main(**args) (SPEC-NOTES 5b)."""
+    return {"id": run_id, "code": code, "call": "main", "args": args or {}, "confirm": True, "face": "script",
+            "limits": {"cut_bytes": 4096}}
+
+
 class WorkerCase(unittest.TestCase):
-    def serve_one(self, code, handler=None, exit_code=0):
+    def serve_one(self, code, handler=None, exit_code=0, message=None):
         """Runs code in a fresh worker (launched as the hub does); returns (hub, run_end) once the worker has exited.
         """
-        hub, process = FakeHub.with_worker(run(code), handler)
+        hub, process = FakeHub.with_worker(message or run(code), handler)
         try:
             code_seen = process.wait(30)
             hub.wait_for(lambda hub: hub.of_type("_eof"))
@@ -240,6 +246,40 @@ class ModuleLikeTests(WorkerCase):
         _, end = self.serve_one("x = 1\nyield x\n")
         self.assertEqual(("failed", "line 2: SyntaxError: 'yield' outside function: a run's code is a function body,"
                           " not a generator"), (end["state"], end["error"]))
+
+
+class SavedScriptRunTests(WorkerCase):
+    """A run of a saved script: the welcome carries call and args and the run is main's call (SPEC-NOTES 5b)."""
+
+    def test_main_is_called_with_the_arguments_and_its_return_value_is_the_run(self):
+        code = "def main(who, times=1):\n    print('hi', who)\n    return times * 2\n"
+
+        _, end = self.serve_one(code, message=saved(code, {"who": "lu", "times": 3}))
+
+        self.assertEqual(("done", 6, "hi lu\n"), (end["state"], end["returned"], end["printed"]))
+
+    def test_the_script_body_runs_first_and_a_missing_main_fails_with_a_clear_line(self):
+        code = "print('module body')\ndef other():\n    return 1\n"
+
+        _, end = self.serve_one(code, message=saved(code, {}))
+
+        self.assertEqual(("failed", "module body\n"), (end["state"], end["printed"]))
+        self.assertIn("LookupError: the script defines no main() to run", end["error"])
+
+    def test_a_missing_argument_fails_in_python_when_the_hub_did_not_check_it(self):
+        code = "def main(who):\n    return who\n"
+
+        _, end = self.serve_one(code, message=saved(code, {}))
+
+        self.assertEqual("failed", end["state"])
+        self.assertIn("TypeError", end["error"])
+
+    def test_a_list_argument_reaches_main_as_the_list_and_by_name(self):
+        code = "def main(ids):\n    return sorted(ids)\n"
+
+        _, end = self.serve_one(code, message=saved(code, {"ids": ["7", "2"]}))
+
+        self.assertEqual(("done", ["2", "7"]), (end["state"], end["returned"]))
 
 
 class VerbsModuleAnalysisTests(unittest.TestCase):
