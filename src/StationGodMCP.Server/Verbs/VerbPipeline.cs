@@ -248,12 +248,22 @@ public sealed partial class VerbPipeline
     {
         if (what.Key == "inspect.job")
         {
-            if (options["id"] is JsonArray ids && HoldsBulk(ids))
+            if (options["id"] is JsonArray ids)
             {
-                return await RowsAsync(call, what, options, ids, null, cancellation).ConfigureAwait(false);
-            }
+                // The normalised list a program or script face sends: the hub's own ids gathered as rows (the mod's
+                // asked one at a time), a run's refused (a pipeline holds no runs), every other id the mod's, which
+                // answers the whole list itself, one row per id.
+                if (HoldsBulk(ids))
+                {
+                    return await RowsAsync(call, what, options, ids, null, cancellation).ConfigureAwait(false);
+                }
 
-            if (OwnJob(options) is { } own)
+                if (HoldsRun(ids))
+                {
+                    return RunlessJob();
+                }
+            }
+            else if (OwnJob(options) is { } own)
             {
                 return own;
             }
@@ -267,18 +277,19 @@ public sealed partial class VerbPipeline
         return await ModAsync(call, what, options, cancellation).ConfigureAwait(false);
     }
 
-    // inspect job for an id the hub holds: a bulk write's view, or a run's, refused below when no run host is here.
+    // inspect job on the one id a direct caller gives: a bulk write's view, a run's refused (a pipeline holds no runs),
+    // every other id the mod's.
     private VerbReply? OwnJob(JsonObject options)
     {
         string? id = JsonNodes.Text(options["id"])?.Trim();
         if (id == null)
         {
-            return new VerbReply.Failed(VerbFailure.NotAvailable, $"inspect job with no id (the runs with notices) {RunlessHub}.");
+            return NoJobId();
         }
 
-        if (id.StartsWith("script-", StringComparison.OrdinalIgnoreCase))
+        if (IsRunId(id))
         {
-            return new VerbReply.Failed(VerbFailure.NotAvailable, $"inspect job for a script run {RunlessHub}.");
+            return RunlessJob();
         }
 
         if (BulkWrites.IsBulkId(id))
@@ -289,11 +300,34 @@ public sealed partial class VerbPipeline
         return null;
     }
 
+    private static VerbReply.Failed NoJobId() =>
+        new(VerbFailure.NotAvailable, $"inspect job with no id (the runs with notices) {RunlessHub}.");
+
+    private static VerbReply.Failed RunlessJob() =>
+        new(VerbFailure.NotAvailable, $"inspect job for a script run {RunlessHub}.");
+
+    // A run's id (script-N): the run host's, never the mod's.
+    private static bool IsRunId(string? id) =>
+        id != null && id.StartsWith("script-", StringComparison.OrdinalIgnoreCase);
+
     private static bool HoldsBulk(JsonArray ids)
     {
         foreach (JsonNode? id in ids)
         {
             if (BulkWrites.IsBulkId(JsonNodes.Text(id)))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool HoldsRun(JsonArray ids)
+    {
+        foreach (JsonNode? id in ids)
+        {
+            if (IsRunId(JsonNodes.Text(id)?.Trim()))
             {
                 return true;
             }
