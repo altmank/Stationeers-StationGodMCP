@@ -48,7 +48,7 @@ public sealed class C2bReviewTests
             foreach (GameCall call in game.Calls)
             {
                 JsonObject sent = call.Params();
-                Assert.True(what.Options.ContainsKey("confirm") && sent["confirm"] == null,
+                Assert.True(what.Options.ContainsKey("confirm") && (bool?)sent["confirm"] == false,
                     $"{key} sent {call.Method} {sent.ToJsonString()} under a report");
             }
         }
@@ -69,7 +69,7 @@ public sealed class C2bReviewTests
 
         List<GameCall> undos = game.CallsTo("undo").ToList();
         Same("""{"id":["place-41"],"confirm":true}""", undos[0].Params());
-        Same("""{"id":"place-42"}""", undos[1].Params());
+        Same("""{"id":"place-42","confirm":false}""", undos[1].Params());
         Assert.True((bool)game.Single("build").Params()["confirm"]!);
     }
 

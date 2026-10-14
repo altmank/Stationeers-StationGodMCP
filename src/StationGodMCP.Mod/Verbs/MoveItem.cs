@@ -18,7 +18,8 @@ namespace StationGodMCP.Verbs;
 /// SiloWithdrawals). The route (ItemMoveRoutes) is settled first: slot or moves make a slot move; a vault or silo as
 /// source or to makes a store move. Typed ids act at once; force (a cheat), every filter (a spread, prefab
 /// included) and a store move that names no things by typed ids or item lines report until confirm
-/// (ItemMoveGiven.Acts).
+/// (ItemMoveGiven.Acts). An explicit confirm: false asks for the report whatever the call names, typed ids and item
+/// lines included, and nothing acts (ReportConfirm.Asked, ItemMoveGiven.Acts).
 /// </summary>
 internal static class MoveItem
 {
@@ -84,7 +85,10 @@ internal static class MoveItem
         bool force = options.Force == true;
         if (orders.AnswersRows)
         {
-            return MoveEach(orders.Orders, label);
+            // A call that lists its moves (an id list, or moves[]) answers rows when it acts and a report when it only
+            // reports: the caller's confirm: false (ReportConfirm.Asked) reports here too, whatever the typed-ids-act
+            // rule says of the same call without it.
+            return report.Acts ? MoveEach(orders.Orders, label) : MoveEachReport(orders.Orders, label);
         }
 
         return WriteCheck<MovePlan>.Run(() =>
@@ -135,6 +139,48 @@ internal static class MoveItem
         }
 
         return new VerbOutcome.Answered(ItemMoveReplies.Routed(ItemMoveRoutes.Slot, batch.Build()));
+    }
+
+    // The same list planned and not made: every move a report target, every refused one a problem with its index, so
+    // the call changes nothing. Nothing here or in MovePlanner.TryPlan acts; only MovePlan.Apply does.
+    private static VerbOutcome MoveEachReport(List<SlotMoveOrder> orders, string label)
+    {
+        List<ReportTarget> targets = new List<ReportTarget>(orders.Count);
+        List<ReportProblem> problems = new List<ReportProblem>();
+        try
+        {
+            HostOnly.Require();
+        }
+        catch (ApiException refused)
+        {
+            problems.Add(new ReportProblem(null, null, VerbError.Of(refused)));
+            return new VerbOutcome.Answered(ItemMoveReplies.SlotReport(targets, problems));
+        }
+
+        foreach (SlotMoveOrder order in orders)
+        {
+            ThingId? item = null;
+            try
+            {
+                ItemMove move = Move(order, force: false, label);
+                item = move.Item;
+                if (MovePlanner.TryPlan(move, out MovePlan? plan, out ApiException? refusal))
+                {
+                    targets.Add(ItemMoveReplies.SlotTarget(new ThingId(plan!.Item.ReferenceId), plan.Item.DisplayName,
+                        plan.FromSlot, plan.ToSlot, plan.MergedInto, force: false));
+                }
+                else
+                {
+                    problems.Add(new ReportProblem(order.Index, item?.ToString(), VerbError.Of(refusal!)));
+                }
+            }
+            catch (ApiException refused)
+            {
+                problems.Add(new ReportProblem(order.Index, item?.ToString(), VerbError.Of(refused)));
+            }
+        }
+
+        return new VerbOutcome.Answered(ItemMoveReplies.SlotReport(targets, problems));
     }
 
     private static ItemMove Move(SlotMoveOrder order, bool force, string label) =>

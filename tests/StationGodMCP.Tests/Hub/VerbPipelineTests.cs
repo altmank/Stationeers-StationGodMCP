@@ -70,14 +70,14 @@ public sealed class VerbPipelineTests : IDisposable
     }
 
     [Fact]
-    public void AWriteActsWithConfirmTrueAndReportsWithoutIt()
+    public void AWriteActsWithConfirmTrueAndReportsWithConfirmFalse()
     {
         GameCall acted = Sent("write", "logic", """{"id":"1","logic":"On","value":1}""");
         FakeGameLink game = new();
         JsonNode? report = game.Pipeline().Call("remove", "pipe", """{"id":"1"}""").Done();
 
         Assert.True((bool)acted.Params()["confirm"]!);
-        Assert.Null(game.Single("remove").Params()["confirm"]);
+        Assert.Equal(false, (bool?)game.Single("remove").Params()["confirm"]);
         Assert.True((bool)report!["report_only"]!);
     }
 

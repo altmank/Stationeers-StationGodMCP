@@ -80,11 +80,38 @@ public sealed class MoveItemTests
         true)]
     [InlineData("out_of_silo", """{"source": "9", "prefab": "ItemIronOre", "quantity": 5, "to": "player"}""", false)]
     [InlineData("into_vault", """{"to": "9", "items": [{"id": "5", "quantity": 2}]}""", true)]
-    public void TypedIdsOrItemLinesActAndForceAKindOrAFilterReportsUntilConfirm(string route, string json, bool acts)
+    [InlineData("slot", """{"id": "1", "to": "2", "confirm": false}""", false)]
+    [InlineData("into_vault", """{"to": "9", "id": ["5", "6"], "confirm": false}""", false)]
+    [InlineData("into_vault", """{"to": "9", "items": [{"id": "5", "quantity": 2}], "confirm": false}""",
+        false)]
+    public void TypedIdsOrItemLinesActAndConfirmFalseOrAForceOrAFilterReports(string route, string json, bool acts)
     {
         MoveItemOptions options = Options(json);
 
         Assert.Equal(acts, ItemMoveGiven.Acts(route, options, ItemMoveGiven.Of(options)));
+    }
+
+    // The branch MoveItem.Slot takes for a call that lists its moves: an id list or moves[] answers rows when the call
+    // acts, so the same call with confirm: false must take move item's report branch instead, planning every move and
+    // applying none.
+    [Fact]
+    public void AListOfMovesWithConfirmFalseTakesTheReportBranchAndNotTheRowsBranch()
+    {
+        foreach (string json in new[]
+                 {
+                     """{"id": ["1", "2"], "to": "7", "confirm": false}""",
+                     """{"moves": [{"id": "1", "to": "7"}], "confirm": false}"""
+                 })
+        {
+            MoveItemOptions options = Options(json);
+            SlotMoveOrders orders = SlotMoveOrders.Of(options, new List<OptionProblem>(), out _)!;
+            ReportConfirm report = new ReportConfirm(true,
+                ItemMoveGiven.Acts(ItemMoveRoutes.Slot, options, ItemMoveGiven.Of(options)), options.Report.Rows);
+
+            Assert.True(options.Report.Asked);
+            Assert.True(orders.AnswersRows);
+            Assert.False(report.Acts);
+        }
     }
 
     [Theory]

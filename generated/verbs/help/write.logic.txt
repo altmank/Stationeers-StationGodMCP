@@ -6,7 +6,7 @@ Options:
 - writes (list): Separate writes, each {id, logic, value}, applied in order.
 - gateway (string, default world): "world" (default) or a gateway id: only devices on its data networks.
 - allow (list of lint): lint: a write that turns on or opens a vent, valve or pump runs the network lint rules (no oxidiser vented outdoors, fuel mix temperature) on the network it opens to, and is refused on a problem unless lint is allowed (passed lists it).
-- confirm (boolean, default false): true does it; left out, the call only reports what it would do.
+- confirm (boolean, default false): true acts; false only reports, whatever the call names (typed ids included). Left out, the write rule decides: typed ids act at once where the verb acts on them; a ref, network or spread reports.
 id or writes is required (missing_target names them); gateway only narrows where ids are looked up. A ref reports each target's current value until confirm: true. To write every device of a kind, find them with a limit above their count (has_more false), then pass the ref.
 Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the one-id reply; a bad id is a row with error.
 Reply: (one write) gateway_id, reference_id, logic_type {id, name}, requested_value, previous_value, current_value | (several) gateway_id, results [{index, ok, reference_id, logic_type, error, ok, reference_id, logic_type, value, ok, reference_id, logic_type, requested_value, previous_value, current_value, ok, error}], count, success_count, error_count

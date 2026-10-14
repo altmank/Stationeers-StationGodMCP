@@ -6,7 +6,8 @@ namespace StationGodMCP.Server;
 
 /// <summary>
 /// Writes: the one place the gate is asked (with the targets the x-target paths, refs and spreads resolve to), the act
-/// and report sends (confirm true acts; left out, the mod reports), and the bulk writes (write-N).
+/// and report sends (confirm as the gate decided: true acts, false reports; a what with no confirm option is sent
+/// without one), and the bulk writes (write-N).
 /// </summary>
 public sealed partial class VerbPipeline
 {
@@ -164,9 +165,9 @@ public sealed partial class VerbPipeline
     // ---- reports ---------------------------------------------------------------------------------------------------
 
     /// <summary>
-    /// The report a write gives instead of acting: the mod's own (the call sent without confirm), or, for a what with no
-    /// confirm (nothing it could be sent with reports), a row per target from the hub, nothing sent. Either way it is
-    /// report_only, and a ref's targets say where they came from (targets_from).
+    /// The report a write gives instead of acting: the mod's own (the call sent with confirm: false), or, for a what
+    /// with no confirm (nothing it could be sent with reports), a row per target from the hub, nothing sent. Either way
+    /// it is report_only, and a ref's targets say where they came from (targets_from).
     /// </summary>
     private async Task<VerbReply> ReportAsync(VerbCall call, WhatEntry what, JsonObject options, WriteTargets targets,
         CancellationToken cancellation)

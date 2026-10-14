@@ -12,7 +12,7 @@ Options:
 - include (list of notes): Parts to add to the reply.
 - rows (integer, default 5): Pieces listed per list.
 - verbose (boolean, default false): The long form of the reply.
-- confirm (boolean, default false): true does it; left out, the call only reports what it would do.
+- confirm (boolean, default false): true acts; false only reports, whatever the call names (typed ids included). Left out, the write rule decides: typed ids act at once where the verb acts on them; a ref, network or spread reports.
 - queue (boolean, default true): Wait in line behind a running job (up to 8) instead of answering busy.
 - max_wait (number, default 30): Seconds to wait for a confirmed job to finish before answering; 0 answers with its job id at once.
 Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the one-id reply; a bad id is a row with error.

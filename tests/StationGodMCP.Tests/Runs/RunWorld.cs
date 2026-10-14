@@ -227,9 +227,10 @@ internal sealed class RunWorld : IHubLink
     public static string KeyOf(GameCall call) =>
         JsonNode.Parse(call.Parameters.GetRawText())?["what"] is JsonValue what ? call.Method + "." + what : call.Method;
 
-    // A write sent without confirm, of a what that takes confirm, is a report: the mod's, changing nothing.
+    // A write whose confirm is not true (absent or false), of a what that takes confirm, is a report: the mod's,
+    // changing nothing. The hub sends confirm: false on every report path.
     private static bool Reports(GameCall call, JsonObject args) =>
-        args["confirm"] == null &&
+        (bool?)args["confirm"] != true &&
         VerbCatalogue.Embedded.Verb(call.Method)?.What((string?)args["what"]) is { Write: not null } what &&
         what.Options.ContainsKey("confirm");
 

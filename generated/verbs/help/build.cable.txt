@@ -23,7 +23,7 @@ Options:
 - rows (integer, default 5): Cells listed; 0 for none.
 - verbose (boolean, default false): The long form of the reply.
 - from_plan (string): A ref of a plan route or plan spot reply ("r9"; one spot: "r9.spots.2", default the first): build its build_arguments; options given here are added.
-- confirm (boolean, default false): true does it; left out, the call only reports what it would do.
+- confirm (boolean, default false): true acts; false only reports, whatever the call names (typed ids included). Left out, the write rule decides: typed ids act at once where the verb acts on them; a ref, network or spread reports.
 - queue (boolean, default true): Wait in line behind a running job (up to 8) instead of answering busy.
 - max_wait (number, default 30): Seconds to wait for a confirmed job to finish before answering; 0 answers with its job id at once.
 A build that pays from the player's inventory (materials left out, or "player") carries the warning materials_from_player. With from_plan, what may be left out: it comes from the plan.

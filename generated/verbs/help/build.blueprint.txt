@@ -5,7 +5,7 @@ Options:
 - blueprint (string, required): A blueprint in BlueprintMod's folder (.blueprint optional) or an absolute path.
 - at (list, required): World position of the blueprint's anchor.
 - turn (0 | 90 | 180 | 270, default 0): Degrees added to the copy angle.
-- confirm (boolean, default false): true does it; left out, the call only reports what it would do.
+- confirm (boolean, default false): true acts; false only reports, whatever the call names (typed ids included). Left out, the write rule decides: typed ids act at once where the verb acts on them; a ref, network or spread reports.
 Progress: inspect {what: "job", id: "paste"}; take it back: undo {id: "paste"}.
 placed: on a job reply the new ids (a run's log.placed, a structure job's result.placed; a brief poll counts them in log.placed_count), on a run report a count of the cells it would build.
 Reply: (BlueprintPasteStatus) known, active, complete, cancelled, created, failed, skipped, pasted, standing, fingerprint, file, entries, other_active | (BlueprintUndo) message | (BlueprintPasteReport) file, entries, at, turn, copy_y_angle, expected_duration_s, notes, problems [{code, message, index, reference_id}] | (BlueprintPasteStarted) job_id, file, entries, anchor, rotation, copy_y_angle, expected_duration_s

@@ -4,6 +4,7 @@ using System;
 using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using StationGodMCP.Server;
+using StationGodMCP.Tests.Hub;
 using Xunit;
 
 namespace StationGodMCP.Tests.Runs;
@@ -300,6 +301,25 @@ public sealed class RunRouteTests
 
         Assert.StartsWith("script-1 done\n", text);
         Assert.Equal(1, bench.World.Count("move.item"));
+    }
+
+    // Typed ids act at once left alone, so a report run has to say so on the wire: confirm: false reaches the mod and
+    // the call changes nothing.
+    [PythonFact]
+    public async Task AReportRunMovingItemsByTypedIdsReportsAndMovesNothing()
+    {
+        await using RunBench bench = new();
+        bench.World.Override = call => RunWorld.KeyOf(call) == "move.item"
+            ? FakeGameLink.Ok("""{"route":"into_vault","problems":[],"report_only":true,"targets":[{"id":"5200100","text":"[5200100, Iron Ore, 50 -> 30] [cannot undo: store move]","undo":"[cannot undo: store move]"}]}""")
+            : null;
+
+        string text = await bench.RunAsync("sg.move('item', id=['5200100'], to='999')");
+
+        Assert.StartsWith("script-1 REPORT\n", text);
+        Assert.Contains("REPORTED move item x1", text);
+        Assert.Contains("[5200100, Iron Ore, 50 -> 30]", text);
+        Assert.Contains(bench.World.Log, entry => entry == "report:move.item");
+        Assert.Equal(0, bench.World.Count("move.item"));
     }
 
     [PythonFact]

@@ -131,13 +131,19 @@ internal static class ItemMoveGiven
     }
 
     /// <summary>
-    /// Whether the call acts without confirm (PLAN 2.0; B2-2 c, d): force is a cheat and every filter a spread
-    /// (prefab whenever given, D-A1-9), so either reports until confirm; typed ids act at once. A store move that
-    /// names its things by neither typed ids nor item lines is a spread too, whatever location and category say:
-    /// naming things by kind (prefab, reagent, items "all", or nothing) picks every thing of that kind.
+    /// Whether the call acts without confirm (PLAN 2.0; B2-2 c, d): confirm: false asks for the report, so it never
+    /// acts; force is a cheat and every filter a spread (prefab whenever given, D-A1-9), so either reports until
+    /// confirm; typed ids act at once. A store move that names its things by neither typed ids nor item lines is a
+    /// spread too, whatever location and category say: naming things by kind (prefab, reagent, items "all", or nothing)
+    /// picks every thing of that kind.
     /// </summary>
     internal static bool Acts(string route, MoveItemOptions options, List<string> given)
     {
+        if (options.Report.Asked)
+        {
+            return false;
+        }
+
         if (options.Report.Confirm)
         {
             return true;

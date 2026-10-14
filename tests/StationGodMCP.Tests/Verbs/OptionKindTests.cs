@@ -276,6 +276,27 @@ public sealed class OptionKindTests
         Assert.Equal(3, ReportConfirm.Bind(Reader(BuildCableOptions.Spec, """{"rows": 3}""")).Rows);
     }
 
+    // confirm: false is the call asking for the report, typed ids included: the hub sends it on every report path.
+    [Fact]
+    public void AnExplicitConfirmFalseAsksForTheReportAndAnAbsentOneDoesNot()
+    {
+        ReportConfirm asked = ReportConfirm.Bind(Reader(BuildStructureOptions.Spec, """{"confirm": false}"""));
+        ReportConfirm absent = ReportConfirm.Bind(Reader(BuildStructureOptions.Spec, "{}"));
+        ReportConfirm confirmed = ReportConfirm.Bind(Reader(BuildStructureOptions.Spec, """{"confirm": true}"""));
+
+        Assert.True(asked.Asked);
+        Assert.False(asked.Acts);
+        Assert.False(absent.Asked);
+        Assert.False(absent.Acts);
+        Assert.False(confirmed.Asked);
+        Assert.True(confirmed.Acts);
+
+        // A what with no confirm option, and a decision the what makes itself (an undo's replay), never asked.
+        Assert.False(ReportConfirm.Bind(Reader(WriteChipOptions.Spec, "{}")).Asked);
+        Assert.False(ReportConfirm.Acting.Asked);
+        Assert.True(ReportConfirm.Acting.Acts);
+    }
+
     // ---- materials ----
 
     [Fact]

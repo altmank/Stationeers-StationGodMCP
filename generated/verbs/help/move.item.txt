@@ -20,7 +20,7 @@ Options:
 - radius (number): Metres around near.
 - category (any | ingot | ore | ice, default any): Into a vault: filter.
 - at_most (integer, default vault 256, silo 64): Into a store: move at most this many things, nearest first.
-- confirm (boolean, default false): Typed ids act at once; with a filter or a ref, true acts and left out reports.
+- confirm (boolean, default false): Typed ids act at once; with a filter or a ref, true acts and left out reports; false always reports.
 Which handler runs: with slot or moves, a slot move. Otherwise a vault or silo as to or source makes a store move; everything else is a slot move. The reply's first key route names it: slot, into_vault, out_of_vault, vault_to_vault, into_silo or out_of_silo.
 Filters (prefab parts, name, location, within, near, category) work for moves into a store; slot moves take ids.
 Out of a vault: move {what: "item", source: "4191359", prefab: "ItemIronIngot", quantity: 500, to: "player"}.

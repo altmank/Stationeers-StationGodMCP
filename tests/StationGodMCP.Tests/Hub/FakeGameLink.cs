@@ -19,9 +19,10 @@ internal sealed class FakeGameLink : IGameLink
 {
     public ConcurrentQueue<GameCall> Calls { get; } = new();
 
-    // A logic write's report answers each write as a report row; every other call answers {}.
+    // A logic write sent as a report (confirm not true: the hub sends confirm: false on its report path) answers each
+    // write as a report row; every other call answers {}.
     public Func<GameCall, GameReply> Answer { get; set; } = call =>
-        call.Method == "write" && (string?)call.Params()["what"] == "logic" && call.Params()["confirm"] == null
+        call.Method == "write" && (string?)call.Params()["what"] == "logic" && (bool?)call.Params()["confirm"] != true
             ? LogicReport(call)
             : Ok("{}");
 

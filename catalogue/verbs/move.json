@@ -88,7 +88,7 @@
         },
         "confirm": {
           "use": "confirm",
-          "description": "Typed ids act at once; with a filter or a ref, true acts and left out reports."
+          "description": "Typed ids act at once; with a filter or a ref, true acts and left out reports; false always reports."
         }
       },
       "id_list": "moves",

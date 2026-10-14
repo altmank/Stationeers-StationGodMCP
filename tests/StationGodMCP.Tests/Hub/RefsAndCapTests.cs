@@ -148,7 +148,7 @@ public sealed class RefsAndCapTests : IDisposable
         Assert.True((bool)report["report_only"]!);
         Assert.Equal(reference, (string)report["targets_from"]!["from"]!);
         Assert.True((bool)report["targets_from"]!["more_in_source"]!);
-        Assert.All(game.CallsTo("write"), call => Assert.Null(call.Params()["confirm"]));
+        Assert.All(game.CallsTo("write"), call => Assert.Equal(false, (bool?)call.Params()["confirm"]));
     }
 
     [Fact]

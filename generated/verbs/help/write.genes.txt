@@ -6,6 +6,6 @@ Options:
 - unit (integer): Which gene set; default the top.
 - genes (object, required): Gene name to new value, -1 to 1 ({"GrowthSpeedMultiplier": 1}).
 - allow (list of out_of_range): out_of_range: write values outside -1..1 too.
-- confirm (boolean, default false): true does it; left out, the call only reports what it would do.
+- confirm (boolean, default false): true acts; false only reports, whatever the call names (typed ids included). Left out, the write rule decides: typed ids act at once where the verb acts on them; a ref, network or spread reports.
 Reply: (BatchResult) results [{index, ok, error}], count, success_count, error_count | (GenesWritten) thing {reference_id, prefab_name, display_name}, holder, unit, is_top, results [{index, ok, gene, previous_value, error, ok, gene, previous_value, value, ok, ok, error}], count, success_count, error_count
 Example: write {what: "genes", id: "3311223", genes: {GrowthSpeedMultiplier: 1}, confirm: true}

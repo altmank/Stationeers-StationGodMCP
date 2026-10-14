@@ -7,6 +7,6 @@ Options:
 - to (string): Destination: beside this thing (an id).
 - to_player (string): Destination: beside this player (a name).
 - safe_ground (boolean, default false): Drop the point onto the highest safe surface, 4 m above it.
-- confirm (boolean, default false): true does it; left out, the call only reports what it would do.
+- confirm (boolean, default false): true acts; false only reports, whatever the call names (typed ids included). Left out, the write rule decides: typed ids act at once where the verb acts on them; a ref, network or spread reports.
 Reply: player {reference_id, prefab_name, display_name}, moved_by, before {position, room_id, room_type, outside}, after {position, room_id, room_type, outside}, destination {form, next_to, safe_ground}, distance_m, note
 Example: move {what: "player", to_player: "xceled", confirm: true}

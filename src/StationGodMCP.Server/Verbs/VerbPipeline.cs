@@ -432,13 +432,15 @@ public sealed partial class VerbPipeline
         return new VerbReply.Done(result);
     }
 
-    // The options a write is sent with: confirm true to act, no confirm to report (a what with no confirm acts as sent).
+    // The options a write is sent with: confirm as the gate decided it - true to act, false to report - for a what that
+    // takes confirm, so the mod reads the hub's decision and not its own route rule (an actor's explicit confirm: false
+    // reports too). A what with no confirm option is sent without it (it acts as sent).
     private static JsonObject Confirmed(WhatEntry what, JsonObject options, bool acting)
     {
         JsonObject sent = (JsonObject)options.DeepClone();
-        if (acting && what.Options.ContainsKey("confirm"))
+        if (what.Options.ContainsKey("confirm"))
         {
-            sent["confirm"] = true;
+            sent["confirm"] = acting;
         }
         else
         {

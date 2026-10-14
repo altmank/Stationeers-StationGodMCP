@@ -129,13 +129,39 @@ public sealed class WriteRuleTests
     {
         FakeGameLink game = new();
 
-        game.Pipeline().Call("write", "logic", """{"id":"1","logic":"On","value":1,"confirm":false}""").Done();
+        JsonNode? report = game.Pipeline().Call("write", "logic", """{"id":"1","logic":"On","value":1,"confirm":false}""").Done();
         game.Pipeline().Call("write", "logic", """{"id":"1","logic":"On","value":1}""").Done();
 
-        // The report is the mod's (the world's rules are in it); the second call acts.
+        // The report is the mod's (the world's rules are in it) and is sent as the report it is; the second call acts.
         List<GameCall> writes = game.CallsTo("write").ToList();
-        Same("""{"what":"logic","id":"1","logic":"On","value":1}""", writes[0].Params());
+        Same("""{"what":"logic","id":"1","logic":"On","value":1,"confirm":false}""", writes[0].Params());
         Same("""{"what":"logic","id":"1","logic":"On","value":1,"confirm":true}""", writes[1].Params());
+        Assert.True((bool)report!["report_only"]!);
+    }
+
+    // A move item by typed ids acts at once left alone, so its report has to say so on the wire: confirm: false is
+    // what stops the mod answering from its own route rule (the mod's confirm: false reports whatever the call names).
+    [Fact]
+    public void ATypedIdMoveItemReportReachesTheModAsTheReportAndKeepsItsTargets()
+    {
+        FakeGameLink game = new();
+        game.Answer = _ => FakeGameLink.Ok("""{"route":"into_vault","vault":{"reference_id":"9","display_name":"Ingot Vault"},"items":{"results":[{"index":0,"ok":true,"reference_id":"5","display_name":"Iron Ore","quantity":20,"left_in_source":30},{"index":1,"ok":true,"reference_id":"6","display_name":"Iron Ore","quantity":20,"left_in_source":30}]}}""");
+
+        JsonNode? report = game.Pipeline().Call("move", "item", """{"id":["5","6"],"to":"9","confirm":false}""").Done();
+
+        Same("""{"what":"item","id":["5","6"],"to":"9","confirm":false}""", game.Single("move").Params());
+        Assert.True((bool)report!["report_only"]!);
+        Assert.Equal("into_vault", (string)report["route"]!);
+        Assert.Equal(new[] { "5", "6" },
+            report["items"]!["results"]!.AsArray().Select(row => (string)row!["reference_id"]!).ToArray());
+
+        // The same call with no confirm of the caller's own, which the gate decides to report, is sent as a report too.
+        FakeGameLink gated = new();
+
+        gated.Pipeline(new ScriptedGate(new WriteDecision.Report()))
+            .Call("move", "item", """{"id":["5","6"],"to":"9"}""").Done();
+
+        Same("""{"what":"item","id":["5","6"],"to":"9","confirm":false}""", gated.Single("move").Params());
     }
 
     [Fact]
@@ -152,21 +178,21 @@ public sealed class WriteRuleTests
 
         List<GameCall> removes = game.CallsTo("remove").ToList();
         Same("""{"what":"cable","id":["5"],"confirm":true}""", removes[0].Params());
-        Same("""{"what":"pipe","id":["6"]}""", removes[1].Params());
+        Same("""{"what":"pipe","id":["6"],"confirm":false}""", removes[1].Params());
         Assert.True((bool)report!["report_only"]!);
     }
 
     // ---- reports -----------------------------------------------------------------------------------------------------
 
     [Fact]
-    public void AReportIsTheModsOwnSentWithoutConfirmAndMarkedReportOnly()
+    public void AReportIsTheModsOwnSentWithConfirmFalseAndMarkedReportOnly()
     {
         FakeGameLink game = new();
         game.Answer = _ => FakeGameLink.Ok("""{"targets":[{"id":"5","text":"[5, Cable (heavy), ? -> ?] [undo]"}],"to_remove":1}""");
 
         JsonNode? report = game.Pipeline().Call("remove", "cable", """{"id":["5"]}""").Done();
 
-        Same("""{"what":"cable","id":["5"]}""", game.Single("remove").Params());
+        Same("""{"what":"cable","id":["5"],"confirm":false}""", game.Single("remove").Params());
         Assert.True((bool)report!["report_only"]!);
         Assert.Equal(1, (int)report["to_remove"]!);
         Assert.Equal("[5, Cable (heavy), ? -> ?] [undo]", (string)report["targets"]![0]!["text"]!);
@@ -300,7 +326,7 @@ public sealed class WriteRuleTests
         Assert.Equal(1, (int)refused!["error_count"]!);
         Assert.Equal("cleanup", (string)refused["results"]![0]!["error"]!["code"]!);
         Assert.True((bool)report!["report_only"]!);
-        Assert.All(game.CallsTo("write"), call => Assert.Null(call.Params()["confirm"]));
+        Assert.All(game.CallsTo("write"), call => Assert.Equal(false, (bool?)call.Params()["confirm"]));
     }
 
     [Fact]
