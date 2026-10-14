@@ -2,6 +2,7 @@
 
 using System.Linq;
 using System.Text.Json.Nodes;
+using StationGodMCP.Client;
 using StationGodMCP.Server;
 using Xunit;
 
@@ -9,7 +10,8 @@ namespace StationGodMCP.Tests.Hub;
 
 /// <summary>
 /// OptionCheck: every problem of a call at once, as one invalid_argument in verb names with the nearest valid names;
-/// nothing is sent; the faces' rules (script: x-script drop refused, confirm belongs to the run; program: plus confirm).
+/// nothing is sent; the faces' rules (script: x-script drop refused, confirm belongs to the run; program: plus confirm
+/// and list_limits).
 /// </summary>
 public sealed class OptionCheckTests
 {
@@ -111,23 +113,35 @@ public sealed class OptionCheckTests
             Face.Script).Failed();
         VerbReply.Failed build = game.Pipeline().Call("build", "structure",
             """{"prefab":"StructureWallLight","at":[1,2,3],"queue":true,"max_wait":3}""", Face.Script).Failed();
-        VerbReply.Failed find = game.Pipeline().Call("find", "thing", """{"offset":8,"omit":["a"]}""", Face.Script).Failed();
+        VerbReply.Failed find = game.Pipeline().Call("find", "thing", """{"offset":8,"omit":["a"],"list_limits":{"things":5}}""",
+            Face.Script).Failed();
 
         Assert.Equal("confirm: confirm belongs to the run", Assert.Single(write.Problems()));
         Assert.Equal(new[] { "queue: not taken in a script", "max_wait: not taken in a script" }, build.Problems());
-        Assert.Equal(new[] { "offset: not taken in a script", "omit: not taken in a script" }, find.Problems());
+        Assert.Equal(new[] { "offset: not taken in a script", "omit: not taken in a script", "list_limits: not taken in a script" },
+            find.Problems());
         Assert.Empty(game.Calls);
     }
 
     [Fact]
-    public void TheProgramFaceTakesTheScriptOptionsPlusConfirm()
+    public void TheProgramFaceTakesTheScriptOptionsPlusConfirmAndListLimits()
     {
         FakeGameLink game = new();
 
         game.Pipeline().Call("write", "logic", """{"id":"1","logic":"On","value":1,"confirm":true}""", Face.Program).Done();
+        game.Pipeline().Call("find", "thing", """{"list_limits":{"things":5}}""", Face.Program).Done();
         VerbReply.Failed offset = game.Pipeline().Call("find", "thing", """{"offset":8}""", Face.Program).Failed();
 
         Assert.Equal("offset: not taken by a program", Assert.Single(offset.Problems()));
+    }
+
+    [Fact]
+    public void TheProgramFaceSendsListLimitsToTheModAsTheCallsShape()
+    {
+        GameCall sent = Verbs.Sent("find", "thing", """{"list_limits":{"things":5}}""", Face.Program);
+
+        Assert.Equal("""{"limit":{"things":5}}""", sent.Shape!.Value.GetRawText());
+        Assert.DoesNotContain("list_limits", sent.Params().ToJsonString());
     }
 
     [Fact]

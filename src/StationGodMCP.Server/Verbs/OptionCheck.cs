@@ -85,7 +85,8 @@ internal sealed class OptionProblem
 /// Checks a verb call before anything is sent: the verb, the what and every option against the what's schema (types,
 /// enum, bounds, list lengths, list items, required options), and the face's rules (hub.md, Faces): on the script face
 /// options marked x-script drop are refused, confirm with "confirm belongs to the run"; the program face takes those
-/// options' script set plus confirm. Every problem comes back at once, in verb names only.
+/// options' script set plus confirm and list_limits (a program's sg calls raise the mod's own list cuts). Every
+/// problem comes back at once, in verb names only.
 /// </summary>
 internal static class OptionCheck
 {
@@ -200,6 +201,11 @@ internal static class OptionCheck
         if (option.Name == "confirm")
         {
             return face == Face.Script ? ConfirmBelongsToTheRun : null;
+        }
+
+        if (face == Face.Program && option.Name == "list_limits")
+        {
+            return null;
         }
 
         return face == Face.Script ? "not taken in a script" : "not taken by a program";

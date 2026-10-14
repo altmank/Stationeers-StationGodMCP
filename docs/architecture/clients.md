@@ -166,7 +166,7 @@ sg.close()
   KeyError carries the keys it has.
 - Errors: `sg.Error(code, message, fix, maybe_ran, call)`; `sg.Stopped` (a BaseException: the run was stopped, or the
   write rule refused a call); a private pass-end exception for the end of a report pass.
-- Programs get the program face ([hub.md](hub.md), *Faces*): the stubs' options plus `confirm`.
+- Programs get the program face ([hub.md](hub.md), *Faces*): the stubs' options plus `confirm` and `list_limits`.
 - A second `sg.connect()` closes the first connection. The child hub ends with the program: its stdin is closed at
   exit, and on Windows it is in a Job Object with kill-on-close, made before the child starts.
 - Event handlers (`transport.on_event`) run on the reader thread and must not make sg calls.
