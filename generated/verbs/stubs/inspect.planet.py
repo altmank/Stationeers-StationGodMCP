@@ -5,7 +5,8 @@ def inspect(what: Literal['planet'], *,
     No options.
     Reply, one of:
     (PlanetNotLoaded)
-      terraforming_mod: {version: str | None, state: str | None, temperature_adjustment_k: float | None} | None
+      loaded: bool
+      terraforming_mod: {name: str, version: str | None, state: str | None, live: bool, temperature_adjustment_k: float | None} | None
     (Planet)
       loaded: bool
       world_time_s: float
@@ -40,6 +41,6 @@ def inspect(what: Literal['planet'], *,
           ice_clouds: {volume_l: float, liquid_l: float, amount_mol: float, contents: list[{gas: str, amount_mol: float}]} | None, ice_caps:
           {volume_l: float, liquid_l: float, amount_mol: float, contents: list[{gas: str, amount_mol: float}]} | None}
       starting_air: {per_cell_mol: float, mol: float, gases: list[{gas: str, amount_mol: float}]}
-      terraforming_mod: {version: str | None, state: str | None, temperature_adjustment_k: float | None} | None
+      terraforming_mod: {name: str, version: str | None, state: str | None, live: bool, temperature_adjustment_k: float | None} | None
     Example: sg.inspect('planet')
     """
