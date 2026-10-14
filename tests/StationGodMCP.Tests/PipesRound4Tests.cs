@@ -83,7 +83,7 @@ public sealed class PipesRound4Tests
         Assert.Equal("contents_would_move", refused!.Code);
         Assert.Equal(GuardLevel.Refusal, refused.Level);
         Assert.Contains("9.64 + 35.36 mol", refused.Message);
-        Assert.Contains("allow_contents", refused.Message);
+        Assert.Contains("allow: [\"contents\"]", refused.Message);
         Assert.NotNull(allowed);
         Assert.Equal(GuardLevel.Warning, allowed!.Level);
     }

@@ -40,7 +40,7 @@ public sealed class StructuresRound2Tests
     public void ARefundHolderTheRequestRemovesIsNamed()
     {
         string own = RemovalRule.HolderRemoved("Locker (StructureStorageLocker 2047)", null);
-        Assert.Contains("from_id Locker (StructureStorageLocker 2047) is removed by this request", own);
+        Assert.Contains("materials holder Locker (StructureStorageLocker 2047) is removed by this request", own);
         Assert.Contains("refund_to ground or none", own);
         string inside = RemovalRule.HolderRemoved("Iron Sheets (ItemIronSheets 12)", "Locker (StructureStorageLocker 2047)");
         Assert.Contains("is inside Locker (StructureStorageLocker 2047), which this request removes", inside);

@@ -277,20 +277,20 @@ internal static class RefundChainRule
             string? why = target.Kind switch
             {
                 RefundTarget.InventoryName when !reach.Player =>
-                    "inventory skipped: there is no player (a dedicated server; pass from_id " +
+                    "inventory skipped: there is no player (a dedicated server; pass materials " +
                         "of a player).",
                 RefundTarget.SourceName when !reach.SourceStack => "source skipped: " + reach.From switch
                 {
-                    RefundFrom.Absent => "there is no from_id to top up.",
-                    RefundFrom.Missing => "from_id names no thing.",
-                    _ => "from_id is not a stack to top up."
+                    RefundFrom.Absent => "there is no materials holder to top up.",
+                    RefundFrom.Missing => "materials names no thing.",
+                    _ => "materials is not a stack to top up."
                 },
                 RefundTarget.StorageName when !reach.Storage => "storage skipped: " + reach.From switch
                 {
-                    RefundFrom.Absent => "there is no from_id and no local player whose slots " +
+                    RefundFrom.Absent => "there is no materials holder and no local player whose slots " +
                         "could take it.",
-                    RefundFrom.Missing => "from_id names no thing.",
-                    _ => "from_id has no slot a refund could go into, and is stored in nothing " +
+                    RefundFrom.Missing => "materials names no thing.",
+                    _ => "materials has no slot a refund could go into, and is stored in nothing " +
                         "that has one."
                 },
                 _ => null

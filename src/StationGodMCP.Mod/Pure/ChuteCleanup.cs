@@ -21,7 +21,7 @@ internal enum DeadChuteReason
 /// <summary>The reply's names for the reasons and for what keeps a dead piece in place.</summary>
 internal static class ChuteCleanupNames
 {
-    internal const string KeepIds = "keep_ids";
+    internal const string KeepIds = "spare";
     internal const string ItemRiding = "item_riding";
     internal const string WouldDropItems = "would_drop_items";
     internal const string NoPlainPiece = "no_plain_piece";
@@ -39,7 +39,7 @@ internal static class ChuteCleanupNames
 /// <summary>
 /// The chute networks swap chute judges, on plain values: every piece of them (not only the selected ones, since a
 /// piece is dead or alive by what the whole network does), the device chute ports, which pieces may change, why
-/// some may not (keep_ids, an item riding in it, indestructible, rocket, no kit), which pieces carry an item now,
+/// some may not (spare, an item riding in it, indestructible, rocket, no kit), which pieces carry an item now,
 /// which devices let items fall out of a port left open, and whether a plain piece with given ends exists.
 /// </summary>
 internal sealed class ChuteCleanupScene
@@ -115,7 +115,7 @@ internal sealed class RemovedChute : ChuteVerdict
     internal DeadChuteReason Reason { get; }
 }
 
-/// <summary>Serves no path but stays: held (keep_ids, an item, ...) or kept so nothing drops items where it was.</summary>
+/// <summary>Serves no path but stays: held (spare, an item, ...) or kept so nothing drops items where it was.</summary>
 internal sealed class KeptDeadChute : ChuteVerdict
 {
     internal KeptDeadChute(PieceModel piece, DeadChuteReason reason, string heldBy, string? detail)
@@ -182,7 +182,7 @@ internal sealed class ChuteCleanupResult
 /// sources are device ports that push items in (role Output, and two-way ports) and pieces an item rides in now;
 /// consumers are device ports that take items (role Input, and two-way ports). An open end is neither: an item
 /// leaving through it falls to the floor, which is a leak, not a destination.
-/// Every selected piece that serves no path is dead and removed, unless it is held (keep_ids, an item riding in it,
+/// Every selected piece that serves no path is dead and removed, unless it is held (spare, an item riding in it,
 /// indestructible, rocket, no kit) or removing it would let items fall out of something that stays: a piece or a
 /// chute device whose end into it lets items out (or has no known direction). Such a dead piece stays (
 /// would_drop_items), and so, in turn, may the dead pieces behind it. The one exception is a junction, overflow or

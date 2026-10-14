@@ -50,7 +50,7 @@ public sealed class ItemsRound5Tests
     {
         Assert.Equal(
             "Slot 0 of TrayA is a plant slot, which a player fills only with a seed or plant; fertiliser goes into "
-            + "the grower's fertiliser slot 1, as a player's hand sends it: pass to_slot 1 or auto.",
+            + "the grower's fertiliser slot 1, as a player's hand sends it: pass slot 1 or auto.",
             GrowerRefusalText.NotPlant("Slot 0 of TrayA", "Fertilizer", GrowerItem.Fertiliser, 1));
         Assert.Equal(
             "Slot 0 of TrayA is a plant slot, which a player fills only with a seed or plant; Cable Coil does not go "

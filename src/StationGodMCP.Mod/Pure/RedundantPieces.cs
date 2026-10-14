@@ -19,7 +19,7 @@ internal sealed class KeptPiece
     internal long Id { get; }
 
     /// <summary>
-    /// device_port (it joins a device's port), keep_ids, blocked:&lt;why&gt; (a fuse mounted, no kit...), or needed
+    /// device_port (it joins a device's port), spare, blocked:&lt;why&gt; (a fuse mounted, no kit...), or needed
     /// (removing it would cut Devices off from the root, or split the network).
     /// </summary>
     internal string Reason { get; }
@@ -38,7 +38,7 @@ internal sealed class KeptPiece
             string devices = string.Join(", ", Devices);
             if (Reason == RedundantPieces.KeepIds)
             {
-                return "remove_redundant: it is in keep_ids, so it never goes.";
+                return "remove_redundant: it is in spare, so it never goes.";
             }
 
             if (Reason == RedundantPieces.DevicePort)
@@ -77,7 +77,7 @@ internal sealed class RedundancyResult
 /// <summary>
 /// remove_redundant on plain values: every candidate piece of a network whose removal keeps every remaining piece
 /// joined to the rest (so every device stays on one network with its root) is removed, oldest candidate first. A
-/// piece joined to a device port, a keep_ids piece and a blocked one never go. Devices never carry a network (a
+/// piece joined to a device port, a spare piece and a blocked one never go. Devices never carry a network (a
 /// device's two ports on one network do not join it), so the graph is the pieces and their links only; a device
 /// hangs on the pieces joined to its ports. Loops that pass through a port piece (an old and a new cable meeting at a
 /// device) are therefore ordinary loops here. Greedy with a work list: a candidate refused because it holds the
@@ -86,7 +86,7 @@ internal sealed class RedundancyResult
 internal static class RedundantPieces
 {
     internal const string DevicePort = "device_port";
-    internal const string KeepIds = "keep_ids";
+    internal const string KeepIds = "spare";
     internal const string Needed = "needed";
     internal const string BlockedPrefix = "blocked:";
 
@@ -94,7 +94,7 @@ internal static class RedundantPieces
     /// <param name="links">Links among pieces and between pieces and devices, either direction.</param>
     /// <param name="devices">The device ids among the links' ends.</param>
     /// <param name="candidates">Pieces that may go, oldest first.</param>
-    /// <param name="keep">keep_ids: never removed.</param>
+    /// <param name="keep">spare: never removed.</param>
     /// <param name="blocked">Pieces that cannot be removed, with why.</param>
     /// <param name="roots">Devices that feed the network; the part holding one counts as the network's own.</param>
     internal static RedundancyResult Find(IReadOnlyCollection<long> pieces, IEnumerable<Link> links,

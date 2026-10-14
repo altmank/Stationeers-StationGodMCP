@@ -209,8 +209,8 @@ internal static class PlacementLayout
                 System.FormattableString.Invariant($"{inKeepOut} of its cells stand in the keep-out of door {door} (its face and {facts.Band.Metres} m ") +
                 "either side, inside its rectangle)" +
                 (allow
-                    ? "; allowed (allow door_keepout)."
-                    : "; move it, or allow door_keepout."), door));
+                    ? "; allowed (allow: [\"door_keepout\"])."
+                    : "; move it, or allow: [\"door_keepout\"]."), door));
         }
 
         // Once per window: the wall sections a mounted piece rests on may have named it already.

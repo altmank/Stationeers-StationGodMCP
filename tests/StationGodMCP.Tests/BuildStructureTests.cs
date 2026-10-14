@@ -242,7 +242,7 @@ public sealed class RemovalRuleTests
         GuardFinding refused = RemovalRule.Judge(new RemovalFacts { Broken = true }, All).Single();
         Assert.Equal("broken", refused.Code);
         Assert.Equal(GuardLevel.Refusal, refused.Level);
-        Assert.Contains("pass allow_broken", refused.Message);
+        Assert.Contains("pass allow: [\"broken\"]", refused.Message);
         Assert.Contains("gives nothing back", refused.Message);
         Assert.DoesNotContain("repair it first", refused.Message);
 
@@ -290,7 +290,7 @@ public sealed class RemovalRuleTests
         List<GuardFinding> refused = RemovalRule.Judge(facts, None);
         Assert.Equal(new[] { "holds_items", "holds_gas" }, refused.Select(finding => finding.Code));
         Assert.Contains("ItemIronIngot x50", refused[0].Message);
-        Assert.Contains("allow_contents", refused[1].Message);
+        Assert.Contains("allow: [\"contents\"]", refused[1].Message);
 
         List<GuardFinding> allowed = RemovalRule.Judge(facts, All);
         Assert.Equal(new[] { "items_dropped", "gas_released" }, allowed.Select(finding => finding.Code));

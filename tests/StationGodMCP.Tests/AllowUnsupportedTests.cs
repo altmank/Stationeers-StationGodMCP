@@ -40,7 +40,7 @@ public sealed class AllowUnsupportedTests
         Assert.Equal("has_mounted", refused.Code);
         Assert.Equal(GuardLevel.Refusal, refused.Level);
         Assert.Contains(Panel, refused.Message);
-        Assert.Contains("pass allow_unsupported", refused.Message);
+        Assert.Contains("pass allow: [\"unsupported\"]", refused.Message);
         Assert.Contains("keeps working", refused.Message);
     }
 
@@ -62,7 +62,7 @@ public sealed class AllowUnsupportedTests
         Assert.Equal(RemovalRule.LeftUnsupported, warning.Code);
         Assert.Equal(GuardLevel.Warning, warning.Level);
         Assert.Contains(Panel, warning.Message);
-        Assert.Contains("allow_unsupported is set", warning.Message);
+        Assert.Contains("allow: [\"unsupported\"] is set", warning.Message);
         Assert.Contains("stays where it is and keeps working", warning.Message);
         Assert.Contains("cannot be rebuilt in place until something supports it again", warning.Message);
         Assert.Contains("not_replaceable", warning.Message);

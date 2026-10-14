@@ -115,5 +115,5 @@ internal sealed class LuaLogView : ITruncatingView
     public bool Truncated => LineCount > Lines.Count;
 
     public void NoteTruncations(string path) =>
-        Truncations.Capped(path + "lines", Lines.Count, LineCount, "log_lines", ReplyDefaults.LuaLogLinesMaximum);
+        Truncations.Capped(path + "lines", Lines.Count, LineCount, "log", ReplyDefaults.LuaLogLinesMaximum);
 }

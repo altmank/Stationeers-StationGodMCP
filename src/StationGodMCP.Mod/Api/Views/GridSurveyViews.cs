@@ -84,7 +84,7 @@ internal static class SurveyLegends
         "face (a frame's top face is the minimum plane of the cell above it), 'w' on a wall's plane, 'a' air " +
         "(plan route with style supported avoids 'a' cells); over those, 'x' a door's keep-out (its face and the " +
         "configured band either side inside its rectangle: the planners never route there without " +
-        "allow door_keepout; the floor slab under a threshold is not in it) and 'g' a window's face " +
+        "allow: [\"door_keepout\"]; the floor slab under a threshold is not in it) and 'g' a window's face " +
         "(routes pay extra, crosses_window). A door's face is no wall support. network_visibility counts each " +
         "listed network's cells the same way (inside, frame_surface, wall, air) and lists the floating (air) " +
         "ones.";

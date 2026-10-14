@@ -480,7 +480,7 @@ internal sealed class GasSide
                 throw ApiErrors.Refused("would_burst",
                     $"'{name}' {verb} {predicted:0.#} kPa against a limit of " +
                     $"{broken.LimitFor(predicted):0.#} kPa ({broken.Member}: {broken.MaxKpa:0.#} kPa across, " +
-                    $"{broken.OutsideKpa:0.#} kPa outside). allow burst moves it anyway.");
+                    $"{broken.OutsideKpa:0.#} kPa outside). allow: [\"burst\"] moves it anyway.");
             }
         }
     }
@@ -505,7 +505,7 @@ internal sealed class GasSide
                 $"'{name}': liquid would fill {ratio * 100.0:0.##}% of gas pipe network " +
                 $"{gasNetwork.Network!.ReferenceId}, over the {limit * 100.0:0.#}% a gas pipe holds without " +
                 "bursting. " +
-                "Move it into a liquid network or tank, or pass force to move it anyway.");
+                "Move it into a liquid network or tank, or pass allow: [\"burst\"] to move it anyway.");
         }
     }
 
@@ -524,7 +524,7 @@ internal sealed class GasSide
         {
             throw ApiErrors.Refused("would_burst",
                 $"'{name}': {frozen:0.#} mol would freeze at {after.TemperatureK():0.#} K, over the " +
-                $"{limit:0.#} mol a network of {after.VolumeL:0} L tolerates. allow burst moves " +
+                $"{limit:0.#} mol a network of {after.VolumeL:0} L tolerates. allow: [\"burst\"] moves " +
                 "it anyway.");
         }
     }
@@ -561,8 +561,8 @@ internal sealed class GasSide
         {
             throw ApiErrors.Refused("would_burst",
                 $"'{name}' is a room: {loss} (the game spawns ice only per cell of 50 mol and holds " +
-                "smaller amounts out of the air). Move liquids into a tank or liquid network, or pass force to move " +
-                "it anyway.");
+                "smaller amounts out of the air). Move liquids into a tank or liquid network, or pass " +
+                "allow: [\"burst\"] to move it anyway.");
         }
     }
 

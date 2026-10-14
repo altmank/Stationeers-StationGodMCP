@@ -11,7 +11,8 @@ namespace StationGodMCP.Api.Shared.Game.Upgrades;
 /// remove_loops: pieces that join parts of a network already joined another way are removed (LoopCutting): each loop
 /// loses the shortest run of plain two-ended pieces whose ends stay joined without it, again until it has no cycle.
 /// A run holding a piece linked to a device, a piece with a device mounted, an indestructible or rocket piece, or one
-/// no coil or kit places never goes; a loop holding a keep_ids piece is spared whole. The junctions a cut leaves with
+/// no coil or kit places never goes; a loop holding a piece the request spares is spared whole. The junctions a cut
+/// leaves with
 /// an open end become the piece with only their connected ends (as simplify_junctions does). Never by default: a loop
 /// may be redundancy kept on purpose against a burnt cable. A removed piece gives back what deconstructing it would.
 /// </summary>

@@ -1006,7 +1006,7 @@ internal static class RemovePlanner
                     (plan.Arguments.Allow.Contents ? plan.Warnings : plan.Problems).Add(new BuildIssueView(
                         issue.Code, plan.Arguments.Allow.Contents
                             ? $"remove {kind.Noun}'s check: {RemovalRule.AllowedContents(issue.Message)}"
-                            : message + " (allow: contents)", index, id));
+                            : message + " (allow: [\"contents\"])", index, id));
                     break;
                 case "cannot_remove" when index.HasValue && AlreadyRefused(plan, index.Value):
                     break;

@@ -137,7 +137,7 @@ public sealed class CablesRound5Tests
             port => now.TryGetValue(port, out PortPower found) ? found : null,
             port => dormant.TryGetValue(port, out PortPower found) ? found : null, split);
 
-    // cables-39: a candidate remove_redundant leaves is reported with remove_redundant's own reason (a keep_ids piece
+    // cables-39: a candidate remove_redundant leaves is reported with remove_redundant's own reason (a spared piece
     // was counted nowhere, a needed one got simplify_junctions' "minimal" wording).
     [Fact]
     public void KeptCandidatesSayWhyRemoveRedundantLeftThem()
@@ -148,7 +148,7 @@ public sealed class CablesRound5Tests
             new HashSet<long>());
 
         Assert.Equal(new List<long> { 1 }, kept.Removed);
-        Assert.Contains("keep_ids", kept.Kept.Find(static piece => piece.Id == 2)!.Message);
+        Assert.Contains("spare", kept.Kept.Find(static piece => piece.Id == 2)!.Message);
         Assert.Contains("(fuse)", kept.Kept.Find(static piece => piece.Id == 3)!.Message);
 
         KeptPiece needed = new KeptPiece(5, RedundantPieces.Needed, new List<long>(), 4);

@@ -207,13 +207,13 @@ internal sealed class GasCheckView
         if (planned > 0.0)
         {
             text += $" {Mol(planned)} mol went with the parts of split networks the job removed, as its plan said " +
-                    "(allow_contents).";
+                    "(allow: [\"contents\"]).";
         }
 
         if (release > 0.0)
         {
             text += $" Up to {Mol(release)} mol may leak out once the networks the plan leaves over their weakest " +
-                "pipe burst (allow_burst, will_burst); that release is expected and not put " +
+                "pipe burst (allow: [\"burst\"], will_burst); that release is expected and not put " +
                 "back.";
         }
 

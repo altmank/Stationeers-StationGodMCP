@@ -360,7 +360,7 @@ internal static class RoutePlanning
         OpeningGuard guard = new OpeningGuard(facts.Opening, EndCells(starts, end), allow,
             RouteLintRule.WindowsUnder(windows));
         notes.Add(allow
-            ? "allow door_keepout: the route may pass through doorways (their face and the band either side)."
+            ? "allow: [\"door_keepout\"]: the route may pass through doorways (their face and the band either side)."
             : FormattableString.Invariant($"Doors: the route keeps out of every door's face and {facts.Band.Metres} m either side of it inside ") +
               "the door's rectangle (jambs, top edge and threshold; not inside the floor slab).");
         notes.Add(guard.Windows switch

@@ -112,7 +112,7 @@ internal sealed class RunReportView : ITruncatingView
             if (network is RunChuteNetworkView chute && chute.Items != null && chute.Items.Count < chute.ItemsRiding)
             {
                 Truncations.Note(path + "networks_before[].items", chute.Items.Count, chute.ItemsRiding,
-                    "a network lists its first riding items only; survey area kinds " +
+                    "a network lists its first riding items only; survey area kind " +
                         "[\"chute\"] gives each chute's carries");
             }
         }

@@ -383,7 +383,7 @@ internal static class UpgradePlanner
             case PieceSelection.Box box:
                 return Capped(InBox(family, box));
             default:
-                throw ApiErrors.InvalidArgument("Pass network_id or reference_ids.");
+                throw ApiErrors.InvalidArgument("Pass network or id.");
         }
     }
 
@@ -392,7 +392,7 @@ internal static class UpgradePlanner
             ? members
             : throw ApiErrors.Refused("too_many_pieces",
                 $"{members.Count} pieces; at most {MaximumPieces} per run. Name them with " +
-                "reference_ids in parts.");
+                "id, in as many calls as it takes.");
 
     // Each small cell of the box once, every piece once however many cells it fills.
     internal static List<SmallGrid> InBox(UpgradeFamily family, PieceSelection.Box box)
@@ -545,7 +545,7 @@ internal static class UpgradePlanner
         {
             plan.Problem("no_local_player",
                 $"{player.Absence} Nothing to take coils from (or, with refund_to source, to " +
-                "give the refund to); pass from_id.");
+                "give the refund to); pass materials.");
         }
 
         return player.Player;

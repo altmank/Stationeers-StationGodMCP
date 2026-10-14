@@ -482,7 +482,7 @@ internal static class PlacePlanner
         }
     }
 
-    // above_floor_m measures from the floor below at (AtResolver.FloorBelow); with none within reach the placement is
+    // above_floor measures from the floor below at (AtResolver.FloorBelow); with none within reach the placement is
     // refused rather than measured from an invented one (structures-24).
     private static bool FloorFound(PlacePlan plan, PlannedPlacement placement)
     {
@@ -495,7 +495,7 @@ internal static class PlacePlanner
         }
 
         plan.Problem("cannot_place", string.Format(CultureInfo.InvariantCulture,
-            "above_floor_m: no floor below ({0:0.##}, {1:0.##}, {2:0.##}) within {3:0} m " +
+            "above_floor: no floor below ({0:0.##}, {1:0.##}, {2:0.##}) within {3:0} m " +
                 "(no floor plate on a plane down to y {4:0}, and no frame under one); give at as a point " +
                 "instead.", given.X, given.Y, given.Z, AtResolver.FloorSearchM,
             AtResolver.FirstPlaneBelow(given) - AtResolver.FloorSearchM + 2.0), placement.Index);

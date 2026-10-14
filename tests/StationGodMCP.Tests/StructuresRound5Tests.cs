@@ -99,9 +99,9 @@ public sealed class StructuresRound5Tests
     // pipes-28: an allowed pipe-tool contents refusal drops its "empty it first" advice.
     [Theory]
     [InlineData("Network 7 holds 3 mol and would split in 2; the game would divide the contents among the parts. " +
-                "Empty it first.", "among the parts; allow_contents is set, so it is removed anyway.")]
+                "Empty it first.", "among the parts; allow: [\"contents\"] is set, so it is removed anyway.")]
     [InlineData("Removing every pipe of network 7 would delete its 3 mol; empty it first.",
-        "delete its 3 mol; allow_contents is set, so it is removed anyway.")]
+        "delete its 3 mol; allow: [\"contents\"] is set, so it is removed anyway.")]
     public void AnAllowedContentsRefusalDropsItsAdvice(string message, string ending)
     {
         string allowed = RemovalRule.AllowedContents(message);

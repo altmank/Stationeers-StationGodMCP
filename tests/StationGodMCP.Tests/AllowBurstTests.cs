@@ -46,7 +46,7 @@ public sealed class AllowBurstTests
         Assert.Equal("would_burst", finding!.Code);
         Assert.Equal(GuardLevel.Refusal, finding.Level);
         Assert.Contains("17.5 %", finding.Message);
-        Assert.Contains("allow_burst", finding.Message);
+        Assert.Contains("allow: [\"burst\"]", finding.Message);
         Assert.False(new RemovalAllowance(true, true, true).Burst);
     }
 
@@ -64,7 +64,7 @@ public sealed class AllowBurstTests
         Assert.Contains("73688 kPa", finding.Message);
         Assert.Contains("rated 60795 kPa", finding.Message);
         Assert.Contains("pipe network 2679", finding.Message);
-        Assert.Contains("allow_burst is set", finding.Message);
+        Assert.Contains("allow: [\"burst\"] is set", finding.Message);
         Assert.Contains("StructurePipeStraight 2677 (outdoors, 9 kPa there)", finding.Message);
         Assert.Contains("StructurePipeStraight 2678 (room 812, 101.3 kPa there)", finding.Message);
         Assert.Contains("into outdoors or room 812", finding.Message);

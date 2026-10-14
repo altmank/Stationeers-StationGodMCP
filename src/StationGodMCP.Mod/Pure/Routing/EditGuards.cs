@@ -281,7 +281,7 @@ internal static class EditGuards
             problems.Add(new LayoutIssue(WouldSplit,
                 $"Network {split.Network} would fall into {split.Parts.Count} " +
                 $"networks.{SplitAnalysis.Describe(details[index], roots?.IsNamed ?? false)} Pass " +
-                "allow_split if that is meant.", null, split.Network));
+                "allow: [\"split\"] if that is meant.", null, split.Network));
         }
 
         foreach (ForecastPort port in forecast.Cut)
@@ -292,7 +292,7 @@ internal static class EditGuards
                 : string.Empty;
             problems.Add(new LayoutIssue(WouldSplit,
                 $"Port {port.Index} of device {port.DeviceId} would lose its connection to network " +
-                $"{port.NetworkBefore}.{cutNote} Pass allow_split if that is " +
+                $"{port.NetworkBefore}.{cutNote} Pass allow: [\"split\"] if that is " +
                 "meant.", null, port.DeviceId));
         }
 

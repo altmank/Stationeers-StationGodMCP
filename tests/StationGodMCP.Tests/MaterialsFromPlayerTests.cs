@@ -22,7 +22,7 @@ public sealed class MaterialsFromPlayerTests
         Assert.Equal("materials_from_player", finding!.Code);
         Assert.Equal(GuardLevel.Warning, finding.Level);
         Assert.Contains("Engineer's inventory (4021)", finding.Message);
-        Assert.Contains("from_id was left out", finding.Message);
+        Assert.Contains("materials was left out", finding.Message);
     }
 
     [Fact]
@@ -31,7 +31,7 @@ public sealed class MaterialsFromPlayerTests
         GuardFinding? finding = PayerRule.FromPlayer(pays: true, "Engineer", 4021, named: true);
 
         Assert.Equal("materials_from_player", finding!.Code);
-        Assert.Contains("whom from_id names", finding.Message);
+        Assert.Contains("whom materials names", finding.Message);
     }
 
     [Theory]

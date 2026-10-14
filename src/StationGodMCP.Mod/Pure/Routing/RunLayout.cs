@@ -577,7 +577,7 @@ internal static class RunLayoutPlanner
     }
 
     // A new piece in a free port's joining cell with no end towards the port leaves that port unusable: nothing else
-    // can stand there to join it. plan_*_route reserve_ports keeps such a cell out of a route.
+    // can stand there to join it. plan route reserve_ports keeps such a cell out of a route.
     private static void BlockedPorts(RunLayout layout, RunSurroundings around, LayoutCell entry)
     {
         if (entry.Action != CellAction.Place)
@@ -597,7 +597,7 @@ internal static class RunLayoutPlanner
                 layout.Warnings.Add(new LayoutIssue(BlocksPort,
                     $"Cell {entry.Cell} is where a piece joining port {port.Index} of device {port.DeviceId} stands; " +
                     $"the piece placed there has no end towards it ({step.Name}), so nothing can join that port " +
-                    "afterwards. Route around it (plan_*_route reserve_ports), or join it " +
+                    "afterwards. Route around it (plan route reserve_ports), or join it " +
                     "(extra_ends).",
                     entry.Cell, port.DeviceId));
             }

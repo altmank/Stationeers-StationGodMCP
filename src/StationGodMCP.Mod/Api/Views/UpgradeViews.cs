@@ -420,7 +420,7 @@ internal sealed class UpgradeCleanView
 
 /// <summary>
 /// A loop remove_loops found: pieces joined to the rest in more than one way. cut lists the pieces removed to break
-/// it; spared is true when keep_ids named one of its pieces; unbroken says why a cycle stays.
+/// it; spared is true when spare named one of its pieces; unbroken says why a cycle stays.
 /// </summary>
 internal sealed class UpgradeLoopView
 {
@@ -1479,14 +1479,14 @@ internal sealed class UpgradeRedundancyView
 
     public int KeptCount { get; }
 
-    /// <summary>device_port, keep_ids, blocked:(why), needed.</summary>
+    /// <summary>device_port, spare, blocked:(why), needed.</summary>
     public Dictionary<string, int> KeptByReason { get; }
 
     public List<UpgradeRedundantKeptView> Kept { get; }
 }
 
 /// <summary>
-/// A candidate remove_redundant keeps: device_port (devices: the ones whose port it joins), keep_ids, blocked:(why),
+/// A candidate remove_redundant keeps: device_port (devices: the ones whose port it joins), spare, blocked:(why),
 /// or needed (devices: those removing it would cut off from the root; pieces_cut_off: how many kept pieces with them).
 /// </summary>
 internal sealed class UpgradeRedundantKeptView

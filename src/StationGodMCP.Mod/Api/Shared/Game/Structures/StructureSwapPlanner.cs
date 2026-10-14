@@ -242,7 +242,7 @@ internal static class StructureSwapPlanner
         if (member.CurrentBuildStateIndex < 0 || member.BuildStates == null || member.BuildStates.Count == 0)
         {
             message = "It is broken (the game's broken state; the game cannot repair it, only deconstruct it); " +
-                "remove it with remove structure and allow: broken, and build a new one.";
+                "remove it with remove structure and allow: [\"broken\"], and build a new one.";
             return "broken";
         }
 

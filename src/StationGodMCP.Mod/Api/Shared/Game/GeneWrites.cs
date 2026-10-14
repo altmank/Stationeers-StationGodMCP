@@ -126,7 +126,7 @@ internal static class GeneWriter
             case GeneValueRefusal.OutOfRange:
                 return ApiErrors.Refused("out_of_range",
                     $"Gene {gene}: {value} is outside the game's range {GeneView.Minimum} to {GeneView.Maximum}; " +
-                    "allow out_of_range writes it anyway.");
+                    "allow: [\"out_of_range\"] writes it anyway.");
             default:
                 return null;
         }

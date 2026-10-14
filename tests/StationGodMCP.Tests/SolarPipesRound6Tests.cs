@@ -61,7 +61,7 @@ public sealed class SolarPipesRound6Tests
     {
         string warning = RemovalRule.SplitWarning(
             "Network 1349 would fall into 2 networks. Devices per part: []; []. No root is on it (pass root to name " +
-            "one). Pass allow_split if that is meant.");
+            "one). Pass allow: [\"split\"] if that is meant.");
         Assert.Equal(
             "Network 1349 would fall into 2 networks. Devices per part: []; []. No root is on it; remove structure " +
             "only warns of a split and removes it anyway (plan removal or remove pipe with root name the devices a " +
@@ -74,7 +74,7 @@ public sealed class SolarPipesRound6Tests
     public void ACutPortsSplitWarningLosesItsAdviceToo()
     {
         string warning = RemovalRule.SplitWarning(
-            "Port 0 of device 12 would lose its connection to network 7. Pass allow_split if that is meant.");
+            "Port 0 of device 12 would lose its connection to network 7. Pass allow: [\"split\"] if that is meant.");
         Assert.StartsWith("Port 0 of device 12 would lose its connection to network 7; remove structure", warning);
     }
 

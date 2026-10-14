@@ -297,7 +297,7 @@ internal static class PlacementReader
         double? above = item.OptionalDouble("above_floor_m");
         if (above.HasValue && (above.Value < 0 || above.Value > 20))
         {
-            throw ApiErrors.InvalidArgument($"{prefix}above_floor_m must be 0 " +
+            throw ApiErrors.InvalidArgument($"{prefix}above_floor must be 0 " +
                 "to 20.");
         }
 

@@ -38,7 +38,8 @@ internal sealed class RedundancyOptions
 /// remaining piece stays joined to the rest without it, oldest first. For pipes, removals that would take the last
 /// pipes of a network still holding gas or liquid are held back (holds_contents: the game's removal of a network's
 /// last pipe deletes its contents), as remove_dead_ends holds them. Candidates are the selected pieces, narrowed by
-/// only_ids and older_than_id; keep_ids never go, nor a piece joined to a device port, one with a device mounted, an
+/// only_ids and older_than_id; spared pieces never go, nor a piece joined to a device port, one with a device mounted,
+/// an
 /// indestructible or rocket piece, or one no coil or kit places. This finds what remove_loops cannot: a second path
 /// that meets the first at a device's port piece (an old and a new feed), since devices never join a network and
 /// such a loop is plain cable here. The junctions a removal leaves with an open end become the piece with only their

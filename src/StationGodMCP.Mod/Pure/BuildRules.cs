@@ -471,17 +471,18 @@ internal static class RemovalRule
             }
         }
 
-        return trimmed.TrimEnd('.') + "; allow_contents is set, so it is removed anyway.";
+        return trimmed.TrimEnd('.') + "; allow: [\"contents\"] is set, so it is removed anyway.";
     }
 
     /// <summary>
     /// A remove tool's would_split as remove structure warns it: the remove tool's advice names arguments
-    /// remove structure does not take (allow_split, root), so it is dropped and the warning says the split goes ahead.
+    /// remove structure does not take (allow: ["split"], root), so it is dropped and the warning says the split goes
+    /// ahead.
     /// </summary>
     internal static string SplitWarning(string message)
     {
         string trimmed = message.TrimEnd();
-        string advice = " Pass allow_split if that is meant.";
+        string advice = " Pass allow: [\"split\"] if that is meant.";
         if (trimmed.EndsWith(advice, StringComparison.Ordinal))
         {
             trimmed = trimmed.Substring(0, trimmed.Length - advice.Length);
@@ -515,7 +516,7 @@ internal static class RemovalRule
         Refuse(findings, facts.RocketMoving != null, "rocket_moving", facts.RocketMoving ?? string.Empty);
         if (facts.Broken)
         {
-            findings.Add(Allowable(allow.Broken, "broken", "broken_removed", BrokenWhat, "allow_broken",
+            findings.Add(Allowable(allow.Broken, "broken", "broken_removed", BrokenWhat, "allow: [\"broken\"]",
                 BrokenConsequence));
         }
 
@@ -527,14 +528,14 @@ internal static class RemovalRule
         {
             findings.Add(Allowable(allow.Unsupported, "has_mounted", LeftUnsupported,
                 $"{facts.Unsupported} is mounted on it or stands on it, with nothing else to rest on",
-                "allow_unsupported", UnsupportedConsequence));
+                "allow: [\"unsupported\"]", UnsupportedConsequence));
         }
 
         if (facts.Items.Count > 0)
         {
             findings.Add(Allowable(allow.Contents, "holds_items", "items_dropped",
                 $"it holds {string.Join(", ", facts.Items)}",
-                "allow_contents", "they drop where it stood"));
+                "allow: [\"contents\"]", "they drop where it stood"));
         }
 
         if (facts.GasMoles >= GasFloorMol && facts.GasRefusal != null)
@@ -558,14 +559,15 @@ internal static class RemovalRule
                     ? "the game deletes it with the device"
                     : "the game deletes it with the pieces removed";
             findings.Add(Allowable(allow.Contents, "holds_gas", released ? GasReleased : ContentsDeleted,
-                $"it holds {facts.GasMoles:0.###} mol of gas or liquid{facts.GasWhere}", "allow_contents", fate));
+                $"it holds {facts.GasMoles:0.###} mol of gas or liquid{facts.GasWhere}", "allow: [\"contents\"]",
+                fate));
         }
 
         if (facts.BreachKpa.HasValue && facts.BreachKpa.Value >= BreachKpa)
         {
             findings.Add(Allowable(allow.Breach, "would_breach", "breach",
                 $"removing it joins spaces whose pressures differ by {facts.BreachKpa.Value:0.#} kPa " +
-                $"({facts.BreachWhere})", "allow_breach", "the air will rush through"));
+                $"({facts.BreachWhere})", "allow: [\"breach\"]", "the air will rush through"));
         }
 
         return findings;
@@ -612,7 +614,7 @@ internal static class RemovalRule
         return new GuardFinding("would_burst", GuardLevel.Refusal, string.Format(CultureInfo.InvariantCulture,
             "removing it takes {0:0.#} L off pipe network {1} and {2}: {3:0.#} kPa now, {4:0.#} " +
                 "kPa after, over the weakest pipe left (rated {5:0.#} kPa), which would burst; take at least {6:0.#} " +
-                "% of its gas out first (move gas), or pass allow_burst where a burst is acceptable " +
+                "% of its gas out first (move gas), or pass allow: [\"burst\"] where a burst is acceptable " +
                 "(outdoors)", squeeze.RemovedL, squeeze.Network,
             where, squeeze.BeforeKpa, squeeze.AfterKpa, squeeze.LowestKpa.Value,
             Math.Ceiling(share * 10.0) / 10.0));
@@ -653,7 +655,7 @@ internal static class RemovalRule
                 squeeze.LeftL);
         string what = string.Format(CultureInfo.InvariantCulture,
             "removing it squeezes {0} to {1:0.#} kPa (now {2:0.#} kPa), over its weakest pipe " +
-                "(rated {3:0.#} kPa); allow_burst is set, so it goes " +
+                "(rated {3:0.#} kPa); allow: [\"burst\"] is set, so it goes " +
                 "ahead", left, squeeze.AfterKpa, squeeze.BeforeKpa,
             squeeze.LowestKpa ?? 0.0);
         if (!forecast.Bursts)
@@ -712,21 +714,21 @@ internal static class RemovalRule
         string consequence = $"the game divides the contents among them by volume: {string.Join(" + ", shares)} mol";
         return allow.Contents
             ? new GuardFinding("contents_would_move", GuardLevel.Warning,
-                $"{what}; allow_contents is set, so {consequence}")
+                $"{what}; allow: [\"contents\"] is set, so {consequence}")
             : new GuardFinding("contents_would_move", GuardLevel.Refusal,
-                $"{what}; {consequence}. Empty it first, or pass allow_contents to remove it " +
+                $"{what}; {consequence}. Empty it first, or pass allow: [\"contents\"] to remove it " +
                 "anyway");
     }
 
     /// <summary>
-    /// A refund holder (from_id) the request removes, or one held inside something it removes: the refund would be
+    /// A refund holder (materials) the request removes, or one held inside something it removes: the refund would be
     /// destroyed with it.
     /// </summary>
     internal static string HolderRemoved(string holder, string? removedContainer) =>
         (removedContainer == null
-            ? $"from_id {holder} is removed by this request"
-            : $"from_id {holder} is inside {removedContainer}, which this request removes") +
-        ", so the refund would be destroyed with it; pass another from_id, or refund_to " +
+            ? $"the materials holder {holder} is removed by this request"
+            : $"the materials holder {holder} is inside {removedContainer}, which this request removes") +
+        ", so the refund would be destroyed with it; pass another holder in materials, or refund_to " +
             "ground or none.";
 
     /// <summary>A container refund_to names that the request removes, or that is inside something it removes.</summary>
@@ -766,8 +768,8 @@ internal static class RemovalRule
 }
 
 /// <summary>
-/// materials_from_player: a build whose materials a player pays (from_id left out, so the player's inventory, or
-/// from_id naming a player first or among its further things) carries this warning, so a build meant to be paid from
+/// materials_from_player: a build whose materials a player pays (materials left out, so the player's inventory, or
+/// materials naming a player first or among its further things) carries this warning, so a build meant to be paid from
 /// storage shows where it took them before anyone counts the player's pockets.
 /// </summary>
 internal static class PayerRule
@@ -776,7 +778,7 @@ internal static class PayerRule
 
     /// <summary>
     /// The warning, or null. pays: the build takes materials (not free, a cost above 0). player and playerId: the
-    /// paying player, null when no payer is a player. named: from_id named the player; false when it was left out.
+    /// paying player, null when no payer is a player. named: materials named the player; false when it was left out.
     /// </summary>
     internal static GuardFinding? FromPlayer(bool pays, string? player, long playerId, bool named)
     {
@@ -786,8 +788,8 @@ internal static class PayerRule
         }
 
         return new GuardFinding(MaterialsFromPlayer, GuardLevel.Warning, named
-            ? $"Materials come from player {player} ({playerId}), whom from_id names."
-            : $"Materials come from player {player}'s inventory ({playerId}): from_id was left " +
+            ? $"Materials come from player {player} ({playerId}), whom materials names."
+            : $"Materials come from player {player}'s inventory ({playerId}): materials was left " +
               "out. Name a locker or other storage in it to pay from there.");
     }
 }

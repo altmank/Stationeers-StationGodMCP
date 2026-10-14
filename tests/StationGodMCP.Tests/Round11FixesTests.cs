@@ -12,10 +12,10 @@ using Xunit;
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// Fixes from round 11 of the headless live test (2026-09-29): a job that takes nothing needs no player or from_id;
-/// a skipped refund target says which case it is; a from_id the request removes is refused when the refund goes into
-/// it; an empty acknowledge_gas_lost is refused; the buy ledger's stock message names earlier lines only when they
-/// bought from that entry; a network a lone in-line tank leaves in one piece is kept whole.
+/// Fixes from round 11 of the headless live test (2026-09-29): a job that takes nothing needs no player or materials;
+/// a skipped refund target says which case it is; materials that names a holder the request removes is refused when the
+/// refund goes into it; an empty acknowledge_gas_lost is refused; the buy ledger's stock message names earlier lines
+/// only when they bought from that entry; a network a lone in-line tank leaves in one piece is kept whole.
 /// </summary>
 public sealed class Round11FixesTests
 {
@@ -41,32 +41,32 @@ public sealed class Round11FixesTests
         Assert.True(RefundChainRule.NeedsPlayer(1, Chain("268")));
     }
 
-    // cables-2: storage with a from_id that has no slots (a cable piece) was kept silently and fell to the ground.
+    // cables-2: storage with materials that has no slots (a cable piece) was kept silently and fell to the ground.
     [Fact]
     public void StorageWithAFromIdWithoutSlotsIsSkippedWithTheReason()
     {
         List<string> skipped = Skipped(Chain("storage"), new RefundReach(false, false, false, RefundFrom.Found));
 
-        Assert.Equal("storage skipped: from_id has no slot a refund could go into, and is stored in nothing that has " +
-                     "one.", Assert.Single(skipped));
+        Assert.Equal("storage skipped: materials has no slot a refund could go into, and is stored in nothing that " +
+                     "has one.", Assert.Single(skipped));
     }
 
-    // cables-4 and ps-4: the skip text said "there is no from_id" for one that does not exist, and "from_id is not a
-    // stack" when no from_id was passed.
+    // cables-4 and ps-4: the skip text said "there is no materials holder" for one that does not exist, and
+    // "materials is not a stack" when materials was not passed.
     [Fact]
     public void TheSkipTextTellsNoFromIdFromOneThatNamesNothing()
     {
-        Assert.Equal("source skipped: there is no from_id to top up.",
+        Assert.Equal("source skipped: there is no materials holder to top up.",
             Assert.Single(Skipped(Chain("source"), new RefundReach(false, false, false, RefundFrom.Absent))));
-        Assert.Equal(new[] { "source skipped: from_id names no thing.", "storage skipped: from_id names no thing." },
+        Assert.Equal(new[] { "source skipped: materials names no thing.", "storage skipped: materials names no thing." },
             Skipped(Chain("source", "storage"), new RefundReach(true, false, false, RefundFrom.Missing)));
-        Assert.Equal("storage skipped: there is no from_id and no local player whose slots could take it.",
+        Assert.Equal("storage skipped: there is no materials holder and no local player whose slots could take it.",
             Assert.Single(Skipped(Chain("storage"), new RefundReach(false, false, false, RefundFrom.Absent))));
-        Assert.Equal("source skipped: from_id is not a stack to top up.",
+        Assert.Equal("source skipped: materials is not a stack to top up.",
             Assert.Single(Skipped(Chain("source"), new RefundReach(false, false, true, RefundFrom.Found))));
     }
 
-    // cables-3: a from_id the request removes is refused when refund_to gives into it.
+    // cables-3: materials that names a thing the request removes is refused when refund_to gives into it.
     [Fact]
     public void TheRefundAsksForTheHolderWhenItNamesSourceOrStorage()
     {
