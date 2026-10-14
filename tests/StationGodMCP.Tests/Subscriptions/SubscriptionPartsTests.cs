@@ -23,9 +23,9 @@ public sealed class SubscriptionPartsTests
     {
         UpdateSlot<FakeReading> slot = new UpdateSlot<FakeReading>(A, new SubscriptionId(3), 0);
 
-        Assert.True(slot.Offer(new FakeReading(1, 0), 10, 1.0, 0.0, 0.0));
+        Assert.True(slot.Offer(new FakeReading(1, 0), 10, 1.0, 0.0));
         Assert.True(slot.TryTake(out SubscriptionUpdate<FakeReading> first));
-        Assert.True(slot.Offer(new FakeReading(2, 0), 11, 2.0, 0.0, 0.0));
+        Assert.True(slot.Offer(new FakeReading(2, 0), 11, 2.0, 0.0));
         Assert.True(slot.TryTake(out SubscriptionUpdate<FakeReading> second));
 
         Assert.Equal(1, first.Seq);
@@ -37,9 +37,9 @@ public sealed class SubscriptionPartsTests
     public void AnOfferWhileOneWaitsReplacesItsContentsAndKeepsItsSeq()
     {
         UpdateSlot<FakeReading> slot = new UpdateSlot<FakeReading>(A, new SubscriptionId(1), 0);
-        slot.Offer(new FakeReading(1, 0), 10, 1.0, 5.0, 0.0);
+        slot.Offer(new FakeReading(1, 0), 10, 1.0, 5.0);
 
-        Assert.False(slot.Offer(new FakeReading(2, 0), 12, 3.0, 0.0, 0.0));
+        Assert.False(slot.Offer(new FakeReading(2, 0), 12, 3.0, 0.0));
         Assert.True(slot.TryTake(out SubscriptionUpdate<FakeReading> update));
 
         Assert.Equal(1, update.Seq);
@@ -54,12 +54,12 @@ public sealed class SubscriptionPartsTests
     public void AClosedSlotTakesNoOfferAndWritesNothing()
     {
         UpdateSlot<FakeReading> slot = new UpdateSlot<FakeReading>(A, new SubscriptionId(1), 0);
-        slot.Offer(new FakeReading(1, 0), 10, 1.0, 0.0, 0.0);
+        slot.Offer(new FakeReading(1, 0), 10, 1.0, 0.0);
 
         slot.Close();
 
         Assert.False(slot.TryTake(out _));
-        Assert.False(slot.Offer(new FakeReading(2, 0), 11, 2.0, 0.0, 0.0));
+        Assert.False(slot.Offer(new FakeReading(2, 0), 11, 2.0, 0.0));
     }
 
     [Fact]
@@ -86,7 +86,7 @@ public sealed class SubscriptionPartsTests
         int enqueued = 0;
         for (int index = 0; index < 20000; index++)
         {
-            enqueued += slot.Offer(new FakeReading(index, 0), index, index, 0.0, 0.0) ? 1 : 0;
+            enqueued += slot.Offer(new FakeReading(index, 0), index, index, 0.0) ? 1 : 0;
         }
 
         Volatile.Write(ref done, true);

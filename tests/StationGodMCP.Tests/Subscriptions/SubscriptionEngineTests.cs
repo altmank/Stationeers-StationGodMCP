@@ -9,7 +9,8 @@ namespace StationGodMCP.Tests.Subscriptions;
 
 /// <summary>
 /// Stage 11's engine: updates only on change with the clock left out, seq without gaps under coalescing, resync,
-/// admission and its polling signal, world identity, and sampling on the game clock.
+/// admission and its polling signal, world identity, sampling on the game clock, and every due sample counted with what
+/// it cost changed or not.
 /// </summary>
 public sealed class SubscriptionEngineTests
 {
@@ -32,8 +33,8 @@ public sealed class SubscriptionEngineTests
         Assert.IsType<SubscribeOutcome<FakeReading>.Refused>(outcome).Refusal;
 
     private SubscriptionId Subscribe(SubscriptionEngine<FakeReading> engine, ConnectionId connection,
-        double intervalS = 1.0, double atS = 0.0) =>
-        Subscribed(engine.Subscribe(connection, Queries.Logic(), Queries.Interval(intervalS), At(atS, 0)))
+        double intervalS = 1.0, double atS = 0.0, long stream = 0) =>
+        Subscribed(engine.Subscribe(connection, Queries.Logic(), Queries.Interval(intervalS), At(atS, 0), stream))
             .Subscription;
 
     private int Poll(SubscriptionEngine<FakeReading> engine, double gameTimeS, long frame, ISamplingBudget? budget = null) =>
@@ -95,6 +96,21 @@ public sealed class SubscriptionEngineTests
 
         Assert.Equal(6, _reader.Reads);
         Assert.Empty(_events.Queue);
+    }
+
+    [Fact]
+    public void EveryDueSampleIsCountedWithWhatItCostChangedOrNot()
+    {
+        double ms = 0.0;
+        SubscriptionEngine<FakeReading> engine = Engine(clockMs: () => ms += 0.25);
+        Subscribe(engine, A, intervalS: 1.0, atS: 0.0, stream: 3);
+
+        Poll(engine, 1.0, 1);
+        _reader.Value = 1;
+        Poll(engine, 2.0, 2);
+
+        Assert.Equal(new[] { (A, 3L, 0.25), (A, 3L, 0.25) }, _events.Samples.ToArray());
+        Assert.Single(_events.Queue);  // the second sample changed, the first did not: both are samples either way
     }
 
     [Fact]
@@ -407,6 +423,7 @@ public sealed class SubscriptionEngineTests
         Assert.Equal(id, subscription);
         Assert.Same(failure, Assert.IsType<SubscriptionEnd.ReadFailed>(end).Failure);
         Assert.Equal(0, engine.CountOf(A));
+        Assert.Empty(_events.Samples);  // a read that throws is no sample
     }
 
     // ---- world identity ----

@@ -11,14 +11,14 @@ A run is one call of verb calls: sg.<verb>('what', **options) is the direct call
 - Undo: undo {id: "script-N"} reverts the whole run, newest first, to the values before it. A target changed since the run's last write is reported and not written unless allow: ["overwrite"]. Undo of a running run is refused. After a world change: undo_expired.
 - Calls: script calls mint no refs and are never cut. Iterating a reply dict raises TypeError naming its main list; a single for walks the main list by cursor, and len, an index, sorted or a second pass page in the rest. offset is refused; limit is the first n in order. A script call waits for its job.
 - Errors raise sg.Error(code, message, fix, maybe_ran); only write-rule stops and stops are sg.Stopped. A failed run's reply gives the line and its source, the exception, the sg call with its code and fix, a reply dict's keys (nearest first), the values on the line, then the footer.
-- The reply: state; returned value (return x or a final bare expression, 4 KB cut); printed output (4 KB cut); then the footer: writes by outcome, WARNINGS (driven_by, lint), PASSED, CONTESTED (a written value found changed), CLEANUP, undo with the classes, and the cost line (calls, calls/s, writes, game ms and ms/s, frames over budget, updates, tick held, wall time).
+- The reply: state; returned value (return x or a final bare expression, 4 KB cut); printed output (4 KB cut); then the footer: writes by outcome, WARNINGS (driven_by, lint), PASSED, CONTESTED (a written value found changed), CLEANUP, undo with the classes, and the cost line (calls, calls/s, writes, game ms and ms/s, frames over budget, samples and their ms, updates, tick held, wall time).
 
 What run replies look like:
 script-14 done
 returned: {'start_kpa': 2101.5, 'end_kpa': 8004.2}
 DONE write logic x2 (4612280 Open)
 undo script-14 (logic writes [undo])
-cost script-14 (ff = '4612280'): 243 calls, 1.0 calls/s, 2 writes, 6.2 game ms (0.03 ms/s), 0 frames over budget, 0 updates, held tick 0 ms, 251 s wall
+cost script-14 (ff = '4612280'): 243 calls, 1.0 calls/s, 2 writes, 6.2 game ms (0.03 ms/s), 0 frames over budget, 0 samples, 0.0 ms sampling, 0 updates, held tick 0 ms, 251 s wall
 
 script-15 REPORT: nothing changed; send the code again with confirm: true to act
 limits: reads after a reported write show the old value; a waiting loop runs once; writes on what this run builds are not shown

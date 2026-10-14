@@ -59,6 +59,9 @@ internal sealed class RecordingEvents : ISubscriptionEvents<FakeReading>
 {
     internal List<UpdateSlot<FakeReading>> Queue { get; } = new List<UpdateSlot<FakeReading>>();
 
+    internal List<(ConnectionId Connection, long Stream, double Ms)> Samples { get; } =
+        new List<(ConnectionId, long, double)>();
+
     internal List<(ConnectionId Connection, SubscriptionId Subscription, SubscriptionEnd End)> Ended { get; } =
         new List<(ConnectionId, SubscriptionId, SubscriptionEnd)>();
 
@@ -72,6 +75,8 @@ internal sealed class RecordingEvents : ISubscriptionEvents<FakeReading>
         new List<(ConnectionId, SubscriptionId, long, long, object)>();
 
     public void Enqueue(UpdateSlot<FakeReading> slot) => Queue.Add(slot);
+
+    public void Sampled(ConnectionId connection, long stream, double ms) => Samples.Add((connection, stream, ms));
 
     void ISubscriptionEvents<FakeReading>.Ended(ConnectionId connection, SubscriptionId subscription, SubscriptionEnd end) =>
         Ended.Add((connection, subscription, end));

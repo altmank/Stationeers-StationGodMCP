@@ -6,7 +6,7 @@ namespace StationGodMCP.Pure.Subscriptions;
 internal readonly struct SubscriptionUpdate<TReading> where TReading : class
 {
     internal SubscriptionUpdate(SubscriptionId subscription, long seq, TReading reading, long frame, double gameTimeS,
-        double lateMs, double sampleMs)
+        double lateMs)
     {
         Subscription = subscription;
         Seq = seq;
@@ -14,7 +14,6 @@ internal readonly struct SubscriptionUpdate<TReading> where TReading : class
         Frame = frame;
         GameTimeS = gameTimeS;
         LateMs = lateMs;
-        SampleMs = sampleMs;
     }
 
     internal SubscriptionId Subscription { get; }
@@ -29,11 +28,6 @@ internal readonly struct SubscriptionUpdate<TReading> where TReading : class
     internal double GameTimeS { get; }
 
     internal double LateMs { get; }
-
-    /// <summary>
-    /// What reading this update's values cost the main thread; stream_costs' update_ms adds its line's serialisation.
-    /// </summary>
-    internal double SampleMs { get; }
 }
 
 /// <summary>
@@ -56,9 +50,9 @@ internal sealed class UpdateSlot<TReading> where TReading : class
     private long _frame;
     private double _gameTimeS;
     private double _lateMs;
-    private double _sampleMs;
 
-    /// <summary>stream is the stream of the call that made the subscription, for stream_costs' update counts.</summary>
+    /// <summary>stream is the stream of the call that made the subscription, for stream_costs' sample and update
+    /// counts.</summary>
     internal UpdateSlot(ConnectionId connection, SubscriptionId subscription, long stream)
     {
         Connection = connection;
@@ -99,10 +93,9 @@ internal sealed class UpdateSlot<TReading> where TReading : class
 
     /// <summary>
     /// Main thread. True when the update is new and the slot must be put in the outbound queue; false when it merged
-    /// into the update already waiting there, or the subscription has ended. sampleMs is what the reading cost the main
-    /// thread (it travels with the update: the writer counts it with the line's own serialisation).
+    /// into the update already waiting there, or the subscription has ended.
     /// </summary>
-    internal bool Offer(TReading reading, long frame, double gameTimeS, double lateMs, double sampleMs)
+    internal bool Offer(TReading reading, long frame, double gameTimeS, double lateMs)
     {
         lock (_gate)
         {
@@ -115,7 +108,6 @@ internal sealed class UpdateSlot<TReading> where TReading : class
             _frame = frame;
             _gameTimeS = gameTimeS;
             _lateMs = lateMs;
-            _sampleMs = sampleMs;
             if (_waiting)
             {
                 return false;
@@ -144,8 +136,7 @@ internal sealed class UpdateSlot<TReading> where TReading : class
                 return false;
             }
 
-            update = new SubscriptionUpdate<TReading>(Subscription, _seq, _reading, _frame, _gameTimeS, _lateMs,
-                _sampleMs);
+            update = new SubscriptionUpdate<TReading>(Subscription, _seq, _reading, _frame, _gameTimeS, _lateMs);
             _waiting = false;
             return true;
         }

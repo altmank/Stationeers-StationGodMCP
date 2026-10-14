@@ -551,7 +551,8 @@ public sealed class GameLink : IHubLink, IAsyncDisposable
         foreach (JsonElement entry in entries.EnumerateArray())
         {
             costs[index++] = new StreamCost(Whole(entry, "stream"), Whole(entry, "calls"), Number(entry, "main_thread_ms"),
-                Whole(entry, "over_budget_frames"), Whole(entry, "updates"), Number(entry, "update_ms"));
+                Whole(entry, "over_budget_frames"), Whole(entry, "samples"), Number(entry, "sample_ms"),
+                Whole(entry, "updates"), Number(entry, "update_ms"));
         }
 
         return costs;

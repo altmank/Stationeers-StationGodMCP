@@ -17,9 +17,10 @@ namespace StationGodMCP.Tests.Scheduling;
 /// <summary>
 /// Per-stream cost counters (protocol.md, Protocol methods, stream_costs): calls and whole main-thread ms add up per
 /// (owner, stream), serialising included; a frame over budget counts once per stream; a stream's end clears its counts
-/// and a world change does not; the lane scheduler times each call on its clock; a subscription's update events are
-/// counted too (updates, update_ms), written from connection writer threads; stream_costs answers the caller's own
-/// owner only, across a resume; and a counted call allocates nothing once its stream has an entry.
+/// and a world change does not; the lane scheduler times each call on its clock; a subscription's samples are counted
+/// where they are taken (samples, sample_ms) and its update events where their lines are serialised (updates,
+/// update_ms), the latter written from connection writer threads; stream_costs answers the caller's own owner only,
+/// across a resume; and a counted call or sample allocates nothing once its stream has an entry.
 /// </summary>
 public sealed class StreamCostsTests
 {
@@ -69,6 +70,58 @@ public sealed class StreamCostsTests
         costs.Record(CallContext.None, 4.0, true, 1);
 
         Assert.Equal(0, costs.Count);
+    }
+
+    [Fact]
+    public void SubscriptionSamplesAndTheirMillisecondsAddUpPerStream()
+    {
+        StreamCosts costs = new StreamCosts();
+        CallContext run = new CallContext("c1", 2);
+
+        costs.Record(run, 1.5, false, 1);
+        costs.RecordSample(run, 0.4);
+        costs.RecordSample(run, 0.6);
+        costs.RecordSample(new CallContext("c1", 3), 9.0);
+        costs.RecordSample(CallContext.None, 1.0);
+
+        StreamCost cost = costs.Of(run);
+        Assert.Equal(1, cost.Calls);  // a sample is not a call
+        Assert.Equal(2, cost.Samples);
+        Assert.Equal(1.0, cost.SampleMs, 9);
+        Assert.Equal(1, costs.Of(new CallContext("c1", 3)).Samples);
+        Assert.Equal(0, costs.Of(CallContext.None).Samples);
+    }
+
+    [Fact]
+    public void AStreamWithOnlySamplesIsListedForItsOwner()
+    {
+        StreamCosts costs = new StreamCosts();
+        costs.RecordSample(new CallContext("r1", 4), 0.5);
+        List<StreamCost> listed = new List<StreamCost>();
+
+        costs.Of("r1", listed);
+
+        StreamCost only = Assert.Single(listed);
+        Assert.Equal(4, only.Stream);
+        Assert.Equal(0, only.Calls);
+        Assert.Equal(1, only.Samples);
+        Assert.Equal(0.5, only.SampleMs, 9);
+    }
+
+    [Fact]
+    public void AStreamsEndClearsItsSamplesAndAWorldChangeKeepsThem()
+    {
+        StreamCosts costs = new StreamCosts();
+        costs.RecordSample(new CallContext("c1", 2), 0.5);
+        costs.RecordSample(new CallContext("c2", 2), 0.5);
+
+        costs.Ended(StreamEnd.World);
+        Assert.Equal(1, costs.Of(new CallContext("c1", 2)).Samples);
+
+        costs.Ended(StreamEnd.Of("c1", 2));
+
+        Assert.Equal(0, costs.Of(new CallContext("c1", 2)).Samples);
+        Assert.Equal(1, costs.Of(new CallContext("c2", 2)).Samples);
     }
 
     [Fact]
@@ -195,6 +248,7 @@ public sealed class StreamCostsTests
             for (int call = 0; call < 10000; call++)
             {
                 costs.Record(contexts[call % contexts.Length], 0.1, call % 3 == 0, call / 8);
+                costs.RecordSample(contexts[call % contexts.Length], 0.1);
             }
         });
 
@@ -261,7 +315,9 @@ public sealed class StreamCostsTests
         Assert.Equal(10.0, (double)streams[0]["main_thread_ms"]!);
         Assert.Equal(0.0, (double)streams[1]["main_thread_ms"]!);
         Assert.Equal(2, (long)streams[0]["over_budget_frames"]!);
-        Assert.Equal(0, (long)streams[0]["updates"]!);       // no subscription here
+        Assert.Equal(0, (long)streams[0]["samples"]!);       // no subscription here
+        Assert.Equal(0.0, (double)streams[0]["sample_ms"]!);
+        Assert.Equal(0, (long)streams[0]["updates"]!);
         Assert.Equal(0.0, (double)streams[0]["update_ms"]!);
         Assert.Equal(1, (long)streams[1]["calls"]!);
         Assert.Equal(0, (long)streams[1]["over_budget_frames"]!);

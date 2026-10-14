@@ -138,11 +138,11 @@ public sealed class ResumeSubscriptionTests
     public void ARequeuedSlotUsesTheWaitingUpdatesSeqAgainAndItsOldQueueEntryWritesNothing()
     {
         UpdateSlot<string> slot = new UpdateSlot<string>(new ConnectionId("r1"), new SubscriptionId(1), 0);
-        Assert.True(slot.Offer("a", 1, 1.0, 0, 0.0));
+        Assert.True(slot.Offer("a", 1, 1.0, 0));
         int old = slot.Epoch;
 
         slot.Requeue();
-        Assert.True(slot.Offer("b", 2, 2.0, 0, 0.0));
+        Assert.True(slot.Offer("b", 2, 2.0, 0));
 
         Assert.False(slot.TryTake(old, out _));
         Assert.True(slot.TryTake(slot.Epoch, out SubscriptionUpdate<string> update));

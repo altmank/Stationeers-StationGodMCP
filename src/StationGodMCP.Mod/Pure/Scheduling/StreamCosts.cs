@@ -18,11 +18,11 @@ namespace StationGodMCP.Pure.Scheduling;
 /// thread only. A stream's entry is allocated at its first call; every later call or slice is a dictionary lookup and
 /// three additions.
 /// <para>
-/// A subscription's update events are counted too, in their own table under one small lock: the sampling reader
-/// (SubscriptionEngine.Sample) times its main-thread read and a connection's writer thread (SubscriptionHub) times the
-/// update line's serialisation, and the one that writes the event adds both and one update. So `updates` counts the
-/// events a stream's subscriptions sent, and `update_ms` what producing each of them cost, sampling and serialising
-/// included. The call counters stay lock-free.
+/// A subscription's samples and update events are counted too, and apart from each other. Every due sample is counted
+/// where it is paid, on the main thread and in the same lock-free table as the calls: the engine times its read and the
+/// transport (SubscriptionHub) records one sample of the (owner, stream) with the read's ms, changed or not. The events
+/// a subscription sent are counted in their own table under one small lock, on the connection's writer thread: one
+/// update and the update line's serialisation only, the sample's own time being counted when it was taken.
 /// </para>
 /// </summary>
 internal sealed class StreamCosts : IStreamStore
@@ -52,9 +52,31 @@ internal sealed class StreamCosts : IStreamStore
         Add(context, 0, ms, overBudget, frame);
 
     /// <summary>
-    /// One subscription update was written to the context's client: ms is the sample's main-thread time plus the time
-    /// the update line took to serialise. Called from a connection's writer thread, so it takes the lock that guards
-    /// the update counts (a few updates a second per subscription). A call with no context (None) is not counted.
+    /// One due sample of a subscription of the context's stream took ms on the main thread, changed or not. Called on
+    /// the main thread, so it is stored with the call counters, lock-free. A call with no context (None) is not counted.
+    /// </summary>
+    internal void RecordSample(CallContext context, double ms)
+    {
+        if (context.IsNone)
+        {
+            return;
+        }
+
+        if (!_byStream.TryGetValue(context, out Counters? counters) || counters == null)
+        {
+            counters = new Counters();
+            _byStream.Add(context, counters);
+        }
+
+        counters.Samples++;
+        counters.SampleMs += ms;
+    }
+
+    /// <summary>
+    /// One subscription update was written to the context's client: ms is what the update line took to serialise (the
+    /// reading's own sample was counted when it was taken). Called from a connection's writer thread, so it takes the
+    /// lock that guards the update counts (a few updates a second per subscription). A call with no context (None) is
+    /// not counted.
     /// </summary>
     internal void RecordUpdate(CallContext context, double ms)
     {
@@ -98,7 +120,7 @@ internal sealed class StreamCosts : IStreamStore
         }
     }
 
-    /// <summary>The stream's counts; all 0 for a stream with no call counted, or one that has ended.</summary>
+    /// <summary>The stream's counts; all 0 for a stream with no call or sample counted, or one that has ended.</summary>
     internal StreamCost Of(CallContext context)
     {
         _byStream.TryGetValue(context, out Counters? counters);
@@ -109,10 +131,11 @@ internal sealed class StreamCosts : IStreamStore
         }
 
         return new StreamCost(context.Stream, counters?.Calls ?? 0, counters?.MainThreadMs ?? 0.0,
-            counters?.OverBudgetFrames ?? 0, updates?.Updates ?? 0, updates?.UpdateMs ?? 0.0);
+            counters?.OverBudgetFrames ?? 0, counters?.Samples ?? 0, counters?.SampleMs ?? 0.0, updates?.Updates ?? 0,
+            updates?.UpdateMs ?? 0.0);
     }
 
-    /// <summary>Every stream of the owner with counters, calls or updates, in stream order.</summary>
+    /// <summary>Every stream of the owner with counters, calls, samples or updates, in stream order.</summary>
     internal void Of(string owner, List<StreamCost> into)
     {
         _ownerStreams.Clear();
@@ -194,6 +217,10 @@ internal sealed class StreamCosts : IStreamStore
         internal long OverBudgetFrames { get; set; }
 
         internal long LastOverBudgetFrame { get; set; } = -1;
+
+        internal long Samples { get; set; }
+
+        internal double SampleMs { get; set; }
     }
 
     private sealed class UpdateCounters
@@ -204,17 +231,20 @@ internal sealed class StreamCosts : IStreamStore
     }
 }
 
-/// <summary>One stream's counts as stream_costs reports them: calls, their main-thread ms, frames over budget, and the
-/// update events its subscriptions sent with what producing them cost (sampling and serialising included).</summary>
+/// <summary>One stream's counts as stream_costs reports them: calls, their main-thread ms, frames over budget, the
+/// subscription samples taken with the main-thread ms they cost, and the update events sent with what their
+/// serialisation cost.</summary>
 internal readonly struct StreamCost
 {
-    internal StreamCost(long stream, long calls, double mainThreadMs, long overBudgetFrames, long updates,
-        double updateMs)
+    internal StreamCost(long stream, long calls, double mainThreadMs, long overBudgetFrames, long samples,
+        double sampleMs, long updates, double updateMs)
     {
         Stream = stream;
         Calls = calls;
         MainThreadMs = mainThreadMs;
         OverBudgetFrames = overBudgetFrames;
+        Samples = samples;
+        SampleMs = sampleMs;
         Updates = updates;
         UpdateMs = updateMs;
     }
@@ -226,6 +256,10 @@ internal readonly struct StreamCost
     internal double MainThreadMs { get; }
 
     internal long OverBudgetFrames { get; }
+
+    internal long Samples { get; }
+
+    internal double SampleMs { get; }
 
     internal long Updates { get; }
 

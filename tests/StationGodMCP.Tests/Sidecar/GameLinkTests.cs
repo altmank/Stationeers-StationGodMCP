@@ -381,7 +381,7 @@ public sealed class GameLinkTests
     {
         await using FakeGame game = HubGame();
         game.Answer = call => Task.FromResult<string?>(call.Method == "stream_costs"
-            ? call.Ok("""{"streams":[{"stream":4,"calls":3,"main_thread_ms":1.25,"over_budget_frames":1},{"stream":7,"calls":0,"main_thread_ms":0,"over_budget_frames":0}]}""")
+            ? call.Ok("""{"streams":[{"stream":4,"calls":3,"main_thread_ms":1.25,"over_budget_frames":1,"samples":5,"sample_ms":2.5,"updates":2,"update_ms":0.6},{"stream":7,"calls":0,"main_thread_ms":0,"over_budget_frames":0}]}""")
             : call.Ok("{}"));
         await using GameLink link = new(new ClientOptions(game.Target));
 
@@ -390,7 +390,9 @@ public sealed class GameLinkTests
         Assert.Equal("""{"streams":[4,7]}""", Assert.Single(game.CallsTo("stream_costs")).Params.GetRawText());
         Assert.Equal(2, costs.Length);
         Assert.Equal((4L, 3L, 1.25, 1L), (costs[0].Stream, costs[0].Calls, costs[0].MainThreadMs, costs[0].OverBudgetFrames));
+        Assert.Equal((5L, 2.5, 2L, 0.6), (costs[0].Samples, costs[0].SampleMs, costs[0].Updates, costs[0].UpdateMs));
         Assert.Equal((7L, 0L, 0.0, 0L), (costs[1].Stream, costs[1].Calls, costs[1].MainThreadMs, costs[1].OverBudgetFrames));
+        Assert.Equal((0L, 0.0, 0L, 0.0), (costs[1].Samples, costs[1].SampleMs, costs[1].Updates, costs[1].UpdateMs));
     }
 
     [Fact]

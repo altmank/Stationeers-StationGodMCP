@@ -82,7 +82,7 @@ internal sealed class RunWorld : IHubLink
     /// <summary>Called at each stream_costs (a run's end reads its costs there).</summary>
     public Action? OnStreamCosts { get; set; }
 
-    public StreamCost Cost { get; set; } = new(0, 12, 48.0, 2, 2, 0.6);
+    public StreamCost Cost { get; set; } = new(0, 12, 48.0, 2, 3, 0.9, 2, 0.6);
 
     public List<long> Ended { get; } = new();
 
@@ -416,7 +416,7 @@ internal sealed class RunWorld : IHubLink
         OnStreamCosts?.Invoke();
 
         return Task.FromResult(new[] { new StreamCost(streams[0], Cost.Calls, Cost.MainThreadMs, Cost.OverBudgetFrames,
-            Cost.Updates, Cost.UpdateMs) });
+            Cost.Samples, Cost.SampleMs, Cost.Updates, Cost.UpdateMs) });
     }
 
     public Task<JsonElement?> WaitJobAsync(string jobId, TimeSpan timeout, CancellationToken cancellation) =>

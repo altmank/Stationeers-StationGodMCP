@@ -23,7 +23,7 @@ namespace StationGodMCP.Tests.Subscriptions;
 /// Subscriptions over version 2 on a real pipe, with the lane scheduler's frames run by the test: subscribe answers
 /// the first reading, updates come only on a change and carry a later frame, unsubscribe and unknown ids, the world
 /// topic's events, a new world ending devices subscriptions, limits, a closed connection dropping its subscriptions,
-/// and each update counted for its stream with its sampling and serialisation milliseconds.
+/// and each sample and update counted for its stream with its main-thread ms.
 /// </summary>
 public sealed class SubscriptionWireTests
 {
@@ -353,8 +353,9 @@ public sealed class SubscriptionWireTests
     [Fact]
     public async Task AnUpdateIsCountedForItsStreamWithItsSamplingAndSerialisationMilliseconds()
     {
-        // The reader costs the clock 0.75 ms per read, so the sample's own time is known and the writer adds its own
-        // (0, since nothing moves the clock between the two reads of the serialisation).
+        // The reader costs the clock 0.75 ms per read, so each sample's own time is known: the one due sample counts
+        // 0.75 ms where it is taken, and the writer's serialisation of its line counts 0, since nothing moves the
+        // clock between the two reads of it.
         FakeClock clock = new FakeClock();
         StreamCosts costs = new StreamCosts();
         SubscriptionHub hub = new SubscriptionHub(new ClockedReader(_reader, clock, 0.75), NoLogic.Instance,
@@ -369,9 +370,36 @@ public sealed class SubscriptionWireTests
         Assert.Equal("update", (string?)client.Next()["event"]);
 
         var cost = costs.Of(new CallContext(ClientId(client), 0));
+        Assert.Equal(1, cost.Samples);
+        Assert.Equal(0.75, cost.SampleMs, 9);
         Assert.Equal(1, cost.Updates);
-        Assert.Equal(0.75, cost.UpdateMs, 9);
+        Assert.Equal(0.0, cost.UpdateMs, 9);
         Assert.Equal(0, cost.Calls);  // the call itself is the lane scheduler's own store
+    }
+
+    [Fact]
+    public async Task AnUnchangedSubscriptionStillCountsEverySampleAndWritesNoEvent()
+    {
+        // A sample is paid for whether or not the value changed: two due samples cost the main thread 1.5 ms, no
+        // update is sent, and only the serialisation of a sent update would count against updates.
+        FakeClock clock = new FakeClock();
+        StreamCosts costs = new StreamCosts();
+        SubscriptionHub hub = new SubscriptionHub(new ClockedReader(_reader, clock, 0.75), NoLogic.Instance,
+            SubscriptionLimits.Default, costs, clock);
+        using PipeRig rig = new PipeRig(mainThread: false, subscriptions: hub,
+            tick: () => new SamplingTick(_frame, _gameTimeS));
+        using V2Client client = await V2Client.Connect(rig);
+
+        Call(rig, client, "1", "subscribe", DeviceParams());
+        Frame(rig, atS: 1.0);
+        Frame(rig, atS: 2.0);
+
+        Assert.Null(client.NextOrNull(200));
+        var cost = costs.Of(new CallContext(ClientId(client), 0));
+        Assert.Equal(2, cost.Samples);
+        Assert.Equal(1.5, cost.SampleMs, 9);
+        Assert.Equal(0, cost.Updates);
+        Assert.Equal(0.0, cost.UpdateMs, 9);
     }
 
     private static JObject DeviceParams() => new JObject

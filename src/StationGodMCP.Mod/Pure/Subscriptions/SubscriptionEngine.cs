@@ -85,7 +85,7 @@ internal sealed class SubscriptionEngine<TReading> where TReading : class
 
     /// <summary>
     /// clockMs is the process clock in milliseconds, read before and after each sample for what one sample of a
-    /// subscription cost the main thread (stream_costs' update_ms); the host passes its own clock.
+    /// subscription cost the main thread (stream_costs' sample_ms); the host passes its own clock.
     /// </summary>
     internal SubscriptionEngine(IDeviceReader<TReading> reader, IReadingComparer<TReading> comparer,
         SubscriptionLimits limits, Func<double> clockMs)
@@ -423,6 +423,8 @@ internal sealed class SubscriptionEngine<TReading> where TReading : class
             return;
         }
 
+        // The read succeeded: the due sample is paid for now, changed or not.
+        events.Sampled(held.Connection, subscription.Stream, sampleMs);
         subscription.NextDueS = NextDue(dueS, subscription.Interval.Seconds, tick.GameTimeS);
         bool changed = subscription.ForceNext || !_comparer.SameValues(subscription.Baseline, reading);
         if (!changed)
@@ -433,7 +435,7 @@ internal sealed class SubscriptionEngine<TReading> where TReading : class
         subscription.ForceNext = false;
         subscription.Baseline = reading;
         double lateMs = double.IsNegativeInfinity(dueS) ? 0.0 : Math.Max(0.0, (tick.GameTimeS - dueS) * 1000.0);
-        if (subscription.Slot.Offer(reading, tick.Frame, tick.GameTimeS, lateMs, sampleMs))
+        if (subscription.Slot.Offer(reading, tick.Frame, tick.GameTimeS, lateMs))
         {
             events.Enqueue(subscription.Slot);
         }

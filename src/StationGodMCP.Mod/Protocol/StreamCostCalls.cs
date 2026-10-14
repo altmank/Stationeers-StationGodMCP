@@ -14,10 +14,10 @@ namespace StationGodMCP.Protocol;
 /// <summary>
 /// stream_costs on the wire (protocol.md, Protocol methods): a call run on the main thread that answers what the
 /// caller's own streams have cost the main thread so far (StreamCosts), {streams: [{stream, calls, main_thread_ms,
-/// over_budget_frames, updates, update_ms}]}. Without streams it lists every stream of the caller's owner that has
-/// counts, in stream order; with streams, each one asked, in the order asked, with 0s for a stream that has none (no
-/// call yet, or ended). Another owner's streams are never read. The call's own cost is counted after its reply is
-/// built, so it is not in it.
+/// over_budget_frames, samples, sample_ms, updates, update_ms}]}. Without streams it lists every stream of the caller's
+/// owner that has counts, in stream order; with streams, each one asked, in the order asked, with 0s for a stream that
+/// has none (no call yet, or ended). Another owner's streams are never read. The call's own cost is counted after its
+/// reply is built, so it is not in it.
 /// </summary>
 internal sealed class StreamCostCalls
 {
@@ -153,8 +153,9 @@ internal sealed class StreamCostsView
     }
 }
 
-/// <summary>One stream's counts: calls, their whole main-thread ms (serialising included), frames over budget, and the
-/// update events its subscriptions sent with what producing them cost (sampling and serialising included).</summary>
+/// <summary>One stream's counts: calls, their whole main-thread ms (serialising included), frames over budget, the
+/// subscription samples taken with the main-thread ms they cost, and the update events sent with what serialising their
+/// lines cost.</summary>
 internal sealed class StreamCostView
 {
     internal StreamCostView(StreamCost cost)
@@ -163,6 +164,8 @@ internal sealed class StreamCostView
         Calls = cost.Calls;
         MainThreadMs = Math.Round(cost.MainThreadMs, 2);
         OverBudgetFrames = cost.OverBudgetFrames;
+        Samples = cost.Samples;
+        SampleMs = Math.Round(cost.SampleMs, 2);
         Updates = cost.Updates;
         UpdateMs = Math.Round(cost.UpdateMs, 2);
     }
@@ -174,6 +177,10 @@ internal sealed class StreamCostView
     public double MainThreadMs { get; }
 
     public long OverBudgetFrames { get; }
+
+    public long Samples { get; }
+
+    public double SampleMs { get; }
 
     public long Updates { get; }
 

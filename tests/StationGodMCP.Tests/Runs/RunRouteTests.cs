@@ -239,7 +239,7 @@ public sealed class RunRouteTests
         string text = await bench.RunAsync("x = 1", confirm: true);
 
         Assert.Matches(@"cost script-1 \(x = 1\): 12 calls, [0-9.]+ calls/s, 0 writes, 48 game ms, [0-9.]+ ms/s, " +
-                       @"2 frames over budget, 2 updates, tick held 0 ms, [0-9.]+ s wall$", text);
+                       @"2 frames over budget, 3 samples, 0.9 ms sampling, 2 updates, tick held 0 ms, [0-9.]+ s wall$", text);
         var log = bench.World.Log;
         Assert.True(log.LastIndexOf("stream_costs") < log.IndexOf("stream_end"));
     }

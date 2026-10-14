@@ -185,16 +185,19 @@ public abstract class GameReply
     }
 }
 
-/// <summary>One stream's main-thread cost from stream_costs: its calls, and the update events its subscriptions sent.</summary>
+/// <summary>One stream's main-thread cost from stream_costs: its calls, the samples its subscriptions took and the
+/// update events they sent.</summary>
 public sealed class StreamCost
 {
-    public StreamCost(long stream, long calls, double mainThreadMs, long overBudgetFrames, long updates,
-        double updateMs)
+    public StreamCost(long stream, long calls, double mainThreadMs, long overBudgetFrames, long samples,
+        double sampleMs, long updates, double updateMs)
     {
         Stream = stream;
         Calls = calls;
         MainThreadMs = mainThreadMs;
         OverBudgetFrames = overBudgetFrames;
+        Samples = samples;
+        SampleMs = sampleMs;
         Updates = updates;
         UpdateMs = updateMs;
     }
@@ -207,9 +210,15 @@ public sealed class StreamCost
 
     public long OverBudgetFrames { get; }
 
+    /// <summary>The due samples of this stream's subscriptions, changed or not, each counted when it was taken.</summary>
+    public long Samples { get; }
+
+    /// <summary>What taking them cost the main thread.</summary>
+    public double SampleMs { get; }
+
     /// <summary>The update events written to this stream, each counted as its line was serialised.</summary>
     public long Updates { get; }
 
-    /// <summary>What producing them cost: each sample's main-thread ms plus its line's serialisation.</summary>
+    /// <summary>What serialising their lines cost.</summary>
     public double UpdateMs { get; }
 }

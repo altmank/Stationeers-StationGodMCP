@@ -48,7 +48,8 @@ internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, IS
     private readonly Dictionary<SampleRun<BatchItemView>, SampleWatch> _runs =
         new Dictionary<SampleRun<BatchItemView>, SampleWatch>();
 
-    // Where each stream's update events are counted (stream_costs' updates and update_ms); null when nobody asks.
+    // Where each stream's samples and update events are counted (stream_costs' samples/sample_ms and
+    // updates/update_ms); null when nobody asks.
     private readonly StreamCosts? _costs;
     private readonly IMonotonicClock _clock;
     private SamplingTick _tick;
@@ -319,6 +320,10 @@ internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, IS
         }
     }
 
+    // On the main thread where the sample was taken, so it is stored with the call counters.
+    void ISubscriptionEvents<ReadDevicesView>.Sampled(ConnectionId connection, long stream, double ms) =>
+        _costs?.RecordSample(new CallContext(connection.Value, stream), ms);
+
     void ISubscriptionEvents<ReadDevicesView>.Ended(ConnectionId connection, SubscriptionId subscription, SubscriptionEnd end)
     {
         if (end is SubscriptionEnd.ReadFailed failed)
@@ -451,9 +456,9 @@ internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, IS
 
     /// <summary>
     /// An update in the outbound queue: written as the slot holds it when the writer reaches it, unless the slot was
-    /// requeued on another connection since (a resume), when this entry writes nothing. Writing it is where the update
-    /// is counted for its stream (stream_costs): the line's serialisation is added to the sample's own main-thread ms,
-    /// which came with the update.
+    /// requeued on another connection since (a resume), when this entry writes nothing. Writing it is where the
+    /// update's serialisation is counted for its stream (stream_costs): one update of the (owner, stream) and the
+    /// line's own milliseconds. The sample's own time was counted when it was taken, changed or not.
     /// </summary>
     private sealed class UpdateLine : IOutboundLine
     {
@@ -476,8 +481,7 @@ internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, IS
             {
                 double startedMs = _clock.NowMs;
                 line = EventLine(UpdateEventView.Of(update));
-                _costs?.RecordUpdate(new CallContext(_slot.Connection.Value, _slot.Stream),
-                    update.SampleMs + (_clock.NowMs - startedMs));
+                _costs?.RecordUpdate(new CallContext(_slot.Connection.Value, _slot.Stream), _clock.NowMs - startedMs);
                 return true;
             }
 
