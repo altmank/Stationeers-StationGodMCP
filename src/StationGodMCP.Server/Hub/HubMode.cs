@@ -15,7 +15,7 @@ internal static class HubMode
         // The --hub face serves no runs, but it answers the four script whats (and help) itself: it gets the store.
         VerbPipeline pipeline = new(link, recorder: recorder,
             scripts: ScriptStore.For(options, WorkerPool.ShippedSgRoot));
-        HubSession session = new(link, pipeline, new HubSessionSettings(Face.Program) { PassThrough = true, EndsLinkSession = true });
+        HubSession session = new(link, pipeline, Settings(pipeline));
         try
         {
             await session.RunAsync(input, output, CancellationToken.None).ConfigureAwait(false);
@@ -25,6 +25,18 @@ internal static class HubMode
             await OnInputEndedAsync(session, link).ConfigureAwait(false);
         }
     }
+
+    /// <summary>
+    /// The --hub caller's session settings: the program face, pass-through, and the extras that serve `more` over the
+    /// pipeline's own hub cursors. Its session_end ends the link's session too: it is the only caller on that link.
+    /// </summary>
+    internal static HubSessionSettings Settings(VerbPipeline pipeline) =>
+        new(Face.Program)
+        {
+            PassThrough = true,
+            EndsLinkSession = true,
+            Extras = new ProgramFaceExtras(pipeline)
+        };
 
     /// <summary>
     /// The one place the caller's end is handled (hub.md, Session end): session_end (unless the caller sent it), then the

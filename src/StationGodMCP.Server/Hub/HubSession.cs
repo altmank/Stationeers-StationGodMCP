@@ -777,6 +777,9 @@ public sealed partial class HubSession
             ForgetStream(hubStream);
         }
 
+        // The walk cursors this stream's replies carried go with it: nothing can walk them on, as at a run's end.
+        _pipeline.EndStream(hubStream);
+
         // Not awaited: with the game down the link reconnects first, and the caller's next message must not wait.
         _ = _link.EndStreamAsync(hubStream);
         return null;

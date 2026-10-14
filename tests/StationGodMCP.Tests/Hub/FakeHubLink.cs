@@ -156,9 +156,10 @@ internal sealed class HubCaller : IAsyncDisposable
     private readonly StreamReader _reader;
     private bool _inputClosed;
 
-    private HubCaller(HubSession session)
+    private HubCaller(HubSession session, VerbPipeline pipeline)
     {
         Session = session;
+        Pipeline = pipeline;
         _sessionInput = new AnonymousPipeClientStream(PipeDirection.In, _toSession.ClientSafePipeHandle);
         _fromSession = new AnonymousPipeClientStream(PipeDirection.In, _sessionOutput.ClientSafePipeHandle);
         _reader = new StreamReader(_fromSession, new UTF8Encoding(false));
@@ -167,14 +168,25 @@ internal sealed class HubCaller : IAsyncDisposable
 
     public HubSession Session { get; }
 
+    /// <summary>The pipeline the session calls: its hub cursors are a walk's state.</summary>
+    public VerbPipeline Pipeline { get; }
+
     public Task<HubSessionEnd> Running { get; }
 
+    /// <summary>
+    /// asHubMode: wire the session as the --hub program face does (HubMode.Settings: the extras that serve `more`
+    /// over this pipeline's cursors). The settings without it answer all four pipeline methods not_available.
+    /// </summary>
     public static HubCaller Start(FakeHubLink link, HubSessionSettings? settings = null, IWriteGate? gate = null,
-        TimeSpan? slowAfter = null) =>
-        new(new HubSession(link, new VerbPipeline(link, gate) { PollInterval = TimeSpan.Zero }, settings ?? new HubSessionSettings(Face.Program) { PassThrough = true })
-        {
-            SlowClientAfter = slowAfter ?? TimeSpan.FromSeconds(35)
-        });
+        TimeSpan? slowAfter = null, bool asHubMode = false)
+    {
+        VerbPipeline pipeline = new(link, gate) { PollInterval = TimeSpan.Zero };
+        HubSessionSettings wired = settings ?? (asHubMode
+            ? HubMode.Settings(pipeline)
+            : new HubSessionSettings(Face.Program) { PassThrough = true });
+        return new(new HubSession(link, pipeline, wired) { SlowClientAfter = slowAfter ?? TimeSpan.FromSeconds(35) },
+            pipeline);
+    }
 
     /// <summary>Reads and drops every line the session writes from now on, until its output closes.</summary>
     public Task StartDraining() => Task.Run(async () =>

@@ -139,6 +139,71 @@ public sealed class HubModeTests
         Assert.IsType<SidecarOptions.Parsed.Invalid>(SidecarOptions.Parse(["--python", ""], _ => null));
     }
 
+    [Fact]
+    public async Task TheProgramFaceWalksAMainListWithMoreRefusesAnEndedCursorAndStillRefusesRef()
+    {
+        await using FakeGame game = FakeGame.OnPipe();
+        game.Answer = call => Task.FromResult<string?>(call.Method switch
+        {
+            "find" => call.Params.TryGetProperty("cursor", out JsonElement cursor) && cursor.GetString() == "k7"
+                ? call.Ok("""{"devices":[{"reference_id":"2"}],"has_more":false}""")
+                : call.Ok("""{"devices":[{"reference_id":"1"}],"offset":0,"has_more":true,"cursor_id":"k7"}"""),
+            _ => call.Ok("""{"value":1}""")
+        });
+        StringBuilder errors = new();
+        using Process hub = StartHub(((GameTarget.Pipe)game.Target).Name, errors);
+        try
+        {
+            StreamWriter input = hub.StandardInput;
+            input.AutoFlush = true;
+            input.NewLine = "\n";
+
+            await input.WriteLineAsync(HubCaller.Hello);
+            await NextAsync(hub, errors);
+            await input.WriteLineAsync(HubCaller.Call("1", "verb", """{"verb":"find","what":"device","args":{}}"""));
+            JsonElement first = await NextAsync(hub, errors);
+            string cursor = first.GetProperty("result").GetProperty("cursor").GetString()!;
+
+            await input.WriteLineAsync(HubCaller.Call("2", "more", More(cursor)));
+            JsonElement page = await NextAsync(hub, errors);
+            await input.WriteLineAsync(HubCaller.Call("3", "more", More(cursor)));
+            JsonElement expired = await NextAsync(hub, errors);
+            await input.WriteLineAsync(HubCaller.Call("4", "ref", """{"id":"r1"}"""));
+            JsonElement refused = await NextAsync(hub, errors);
+            input.Close();
+
+            Assert.True(hub.WaitForExit((int)Patience.TotalMilliseconds), "The hub did not exit after stdin closed.");
+            Assert.True(first.GetProperty("result").GetProperty("has_more").GetBoolean());
+            Assert.Equal("devices", first.GetProperty("result").GetProperty("main").GetString());
+            Assert.Equal(new[] { "1" }, Refs(first));
+            Assert.Equal(new[] { "2" }, Refs(page));
+            Assert.False(page.GetProperty("result").TryGetProperty("cursor", out _));
+            Assert.Equal("cursor_expired", expired.GetProperty("error").GetProperty("code").GetString());
+            Assert.Equal("not_available", refused.GetProperty("error").GetProperty("code").GetString());
+            // The mod's walk: the first page was asked for its cursor, the page after it walked on the one it gave.
+            Assert.Equal(2, game.CallsTo("find").Count());
+        }
+        finally
+        {
+            if (!hub.HasExited)
+            {
+                hub.Kill(entireProcessTree: true);
+            }
+        }
+    }
+
+    private static string More(string cursor) => "{\"cursor\":\"" + cursor + "\"}";
+
+    // The reference ids of a list reply's page: the what's main list, named where the page is a walk's page.
+    private static string[] Refs(JsonElement reply)
+    {
+        JsonElement result = reply.GetProperty("result");
+        JsonElement list = result.TryGetProperty("devices", out JsonElement devices)
+            ? devices
+            : result.GetProperty("entries");
+        return list.EnumerateArray().Select(entry => entry.GetProperty("reference_id").GetString()!).ToArray();
+    }
+
     // The built server, run with --hub against the pipe, its stderr gathered.
     private static Process StartHub(string pipe, StringBuilder errors)
     {

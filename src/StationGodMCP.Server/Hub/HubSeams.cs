@@ -57,17 +57,66 @@ public sealed class NoPipelineExtras : IPipelineExtras
     {
     }
 
-    public Task<VerbReply> RefAsync(PipelineRequest request, CancellationToken cancellation) => NotAvailable(request);
+    public Task<VerbReply> RefAsync(PipelineRequest request, CancellationToken cancellation) =>
+        PipelineExtras.NotAvailable(request);
 
-    public Task<VerbReply> MoreAsync(PipelineRequest request, CancellationToken cancellation) => NotAvailable(request);
+    public Task<VerbReply> MoreAsync(PipelineRequest request, CancellationToken cancellation) =>
+        PipelineExtras.NotAvailable(request);
 
-    public Task<VerbReply> WaitAsync(PipelineRequest request, CancellationToken cancellation) => NotAvailable(request);
+    public Task<VerbReply> WaitAsync(PipelineRequest request, CancellationToken cancellation) =>
+        PipelineExtras.NotAvailable(request);
 
-    public Task<VerbReply> HoldAsync(PipelineRequest request, CancellationToken cancellation) => NotAvailable(request);
+    public Task<VerbReply> HoldAsync(PipelineRequest request, CancellationToken cancellation) =>
+        PipelineExtras.NotAvailable(request);
+}
 
-    private static Task<VerbReply> NotAvailable(PipelineRequest request) =>
+/// <summary>
+/// The answer a face gives for a pipeline method nothing there serves (hub.md, The hub protocol): not_available,
+/// naming the method the caller sent.
+/// </summary>
+internal static class PipelineExtras
+{
+    internal static Task<VerbReply> NotAvailable(PipelineRequest request) =>
         Task.FromResult<VerbReply>(new VerbReply.Failed(VerbFailure.NotAvailable,
             $"{request.Method} is not served by this hub yet."));
+}
+
+/// <summary>
+/// The program face's pipeline methods (hub.md, Faces): a `--hub` caller walks a reply's main list with `more` through
+/// the pipeline's own hub cursors, the same cursors a run walks, so a program pages a list exactly as a run does (the
+/// pipeline answers an unknown or freed cursor cursor_expired, and frees the cursor when the walk ends). ref, wait and
+/// hold belong to a run and have no program caller, so they keep the shared not_available answer.
+/// </summary>
+public sealed class ProgramFaceExtras : IPipelineExtras
+{
+    private readonly VerbPipeline _pipeline;
+
+    public ProgramFaceExtras(VerbPipeline pipeline)
+    {
+        _pipeline = pipeline;
+    }
+
+    public Task<VerbReply> RefAsync(PipelineRequest request, CancellationToken cancellation) =>
+        PipelineExtras.NotAvailable(request);
+
+    public Task<VerbReply> WaitAsync(PipelineRequest request, CancellationToken cancellation) =>
+        PipelineExtras.NotAvailable(request);
+
+    public Task<VerbReply> HoldAsync(PipelineRequest request, CancellationToken cancellation) =>
+        PipelineExtras.NotAvailable(request);
+
+    /// <summary>{cursor, limit?}: the next entries of a reply's main list, as a run's more answers.</summary>
+    public Task<VerbReply> MoreAsync(PipelineRequest request, CancellationToken cancellation)
+    {
+        if (JsonNodes.Text(request.Parameters["cursor"]) is not { } cursor)
+        {
+            return Task.FromResult<VerbReply>(new VerbReply.Failed(VerbFailure.InvalidArgument,
+                "more needs cursor: the hub cursor a reply carried."));
+        }
+
+        int? limit = JsonNodes.Number(request.Parameters["limit"]) is { } most ? (int)most : null;
+        return _pipeline.MoreAsync(request.Stream, cursor, limit, cancellation);
+    }
 }
 
 /// <summary>

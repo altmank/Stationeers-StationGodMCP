@@ -314,6 +314,82 @@ public sealed class HubSessionTests
         Assert.Empty(link.Calls);
     }
 
+    private const string FindThing = """{"verb":"find","what":"thing","args":{}}""";
+
+    // A mod answering a two-page find thing walk: the first page carries the mod's own walk cursor k7, and a call
+    // naming k7 gets the page after it (the offsets the pipeline also sends are not read here).
+    private static FakeHubLink WalkLink() => new()
+    {
+        Answer = (call, _) => Task.FromResult(
+            call.Parameters.GetRawText().Contains("\"k7\"", StringComparison.Ordinal)
+                ? FakeGameLink.Ok("""{"things":[{"reference_id":"3"}],"has_more":false}""")
+                : FakeGameLink.Ok("""{"things":[{"reference_id":"1"}],"offset":0,"has_more":true,"cursor_id":"k7"}"""))
+    };
+
+    [Fact]
+    public async Task TheProgramFaceWalksAPageWithMoreAndFreesTheCursorAtTheWalksEnd()
+    {
+        FakeHubLink link = WalkLink();
+        await using HubCaller caller = HubCaller.Start(link, asHubMode: true);
+        await caller.HelloAsync();
+
+        JsonElement first = await caller.CallAsync("1", "verb", FindThing);
+        string cursor = first.GetProperty("result").GetProperty("cursor").GetString()!;
+        JsonElement page = await caller.CallAsync("2", "more", "{\"cursor\":\"" + cursor + "\"}");
+        JsonElement again = await caller.CallAsync("3", "more", "{\"cursor\":\"" + cursor + "\"}");
+        JsonElement noCursor = await caller.CallAsync("4", "more", "{}");
+        JsonElement wait = await caller.CallAsync("5", "wait", """{"s":1,"kind":"wait","in_loop":false}""");
+
+        Assert.Equal("things", first.GetProperty("result").GetProperty("main").GetString());
+        Assert.Equal("3", page.GetProperty("result").GetProperty("entries")[0].GetProperty("reference_id").GetString());
+        Assert.False(page.GetProperty("result").TryGetProperty("cursor", out _));
+        Assert.Equal("cursor_expired", again.GetProperty("error").GetProperty("code").GetString());
+        Assert.Equal("invalid_argument", noCursor.GetProperty("error").GetProperty("code").GetString());
+        Assert.Equal("not_available", wait.GetProperty("error").GetProperty("code").GetString());
+        Assert.Equal(0, caller.Pipeline.Cursors.Count);
+        // The walk went on the mod's own cursor: the first page asked for it, the page walked on it.
+        Assert.Equal(2, link.CallsTo("find").Count);
+    }
+
+    [Fact]
+    public async Task AStreamEndFreesTheStreamsCursorsAndItsCallsAnswerStreamEnded()
+    {
+        FakeHubLink link = WalkLink();
+        await using HubCaller caller = HubCaller.Start(link, asHubMode: true);
+        await caller.HelloAsync();
+
+        JsonElement first = await caller.CallAsync("1", "verb", FindThing, stream: 3);
+        string cursor = first.GetProperty("result").GetProperty("cursor").GetString()!;
+        long hubStream = Assert.Single(link.CallsTo("find")).Stream;
+
+        caller.Send("""{"type":"stream_end","stream":3}""");
+        JsonElement ended = await caller.CallAsync("2", "more", "{\"cursor\":\"" + cursor + "\"}", stream: 3);
+        JsonElement otherStream = await caller.CallAsync("3", "more", "{\"cursor\":\"" + cursor + "\"}");
+
+        Assert.Equal("stream_ended", ended.GetProperty("error").GetProperty("code").GetString());
+        Assert.Equal("cursor_expired", otherStream.GetProperty("error").GetProperty("code").GetString());
+        Assert.Equal(0, caller.Pipeline.Cursors.Count);
+        Assert.Contains(hubStream, link.EndedStreams);
+    }
+
+    [Fact]
+    public async Task ClosingTheSessionFreesItsStreamsCursors()
+    {
+        FakeHubLink link = WalkLink();
+        HubCaller caller = HubCaller.Start(link, asHubMode: true);
+        await caller.HelloAsync();
+        await caller.CallAsync("1", "verb", FindThing, stream: 2);
+        long hubStream = Assert.Single(link.CallsTo("find")).Stream;
+        Assert.Equal(1, caller.Pipeline.Cursors.Count);
+
+        HubSessionEnd end = await caller.EndAsync();
+
+        Assert.Equal(HubSessionEnd.InputEnded, end);
+        Assert.Equal(0, caller.Pipeline.Cursors.Count);
+        Assert.Contains(hubStream, link.EndedStreams);
+        await caller.DisposeAsync();
+    }
+
     [Fact]
     public async Task RunMessagesAreAProtocolErrorWithoutARunChannel()
     {

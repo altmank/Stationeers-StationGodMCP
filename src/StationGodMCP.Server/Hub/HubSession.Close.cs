@@ -11,8 +11,8 @@ public sealed partial class HubSession
 
     /// <summary>
     /// Ends the session: calls still in flight are cancelled (their replies dropped, the caller is gone), each relayed
-    /// subscription is unsubscribed, the hub streams the session made that carried a call are ended, and the lines
-    /// queued are let out.
+    /// subscription is unsubscribed, the hub streams the session made that carried a call are ended with their hub
+    /// cursors, and the lines queued are let out.
     /// </summary>
     public async Task CloseAsync()
     {
@@ -60,6 +60,9 @@ public sealed partial class HubSession
         foreach (long stream in streams)
         {
             await _link.EndStreamIfConnectedAsync(stream).ConfigureAwait(false);
+
+            // The stream's hub cursors go with it: a caller that left without stream_end leaks no walk.
+            _pipeline.EndStream(stream);
         }
 
         if (_output != null)
