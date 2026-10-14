@@ -208,6 +208,26 @@ public sealed class ScriptRunTests : IDisposable
     }
 
     [PythonFact]
+    public async Task AReportRunOfALoadedWaitingLoopEndsItsPass()
+    {
+        await using RunBench bench = new(scripts: _store);
+        // The waiting loop is the loaded script's own: its lines are its own file's, so the waits inside it are loop
+        // waits and the report pass ends there rather than running the loop on to the client's limit. The script is a
+        // world script: its id literal is one a shared script may not carry.
+        Done(await SaveAsync(bench, "poll", "def main() -> None:\n" +
+           "    sg.write('logic', id='1', logic='On', value=1)\n" +
+           "    while True:\n" +
+           "        sg.wait(1)\n", scope: "world"));
+
+        string text = await bench.RunAsync("from sg.lib import poll\npoll.main()\n");
+
+        Assert.StartsWith("script-1 REPORT\n", text);
+        Assert.Contains("the pass ended at line 2", text);
+        Assert.Contains("REPORTED write logic x1", text);
+        Assert.Equal(0, bench.World.Count("write.logic"));
+    }
+
+    [PythonFact]
     public async Task ARunFromAHubWithoutAStoreCannotImportASavedScript()
     {
         await using RunBench bench = new();

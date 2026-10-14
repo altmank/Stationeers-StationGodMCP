@@ -71,8 +71,10 @@ public sealed class NoPipelineExtras : IPipelineExtras
 }
 
 /// <summary>
-/// The run a worker's session serves (hub.md, Runs): it takes the worker's run_analysis (the first only; the session
-/// refuses later ones) and its run_end. A session without one refuses both messages with protocol_error.
+/// The run a worker's session serves (hub.md, Runs): it takes the worker's run_analysis - one for the run's own code
+/// and one for each saved script the code loads, each merged into the run by Run.AnalysisAsync - and its run_end. A
+/// session refuses run_analysis only after run_end; a session without a channel refuses both messages with
+/// protocol_error.
 /// </summary>
 public interface IRunChannel
 {

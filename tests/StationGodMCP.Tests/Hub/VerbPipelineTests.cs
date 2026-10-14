@@ -18,7 +18,7 @@ namespace StationGodMCP.Tests.Hub;
 /// <summary>
 /// The pipeline: every call goes to the mod as its verb ({method: verb, params: {what, ...options}}) without the hub's own
 /// options, a list for a one-id write is refused naming run_script, the faces' per-id lists, help pages and stubs, the
-/// recording, the write gate, job waits and the placeholders for the pieces to come.
+/// recording, the write gate, job waits and the refusals a hub that holds no runs gives.
 /// </summary>
 public sealed class VerbPipelineTests : IDisposable
 {
@@ -282,21 +282,21 @@ public sealed class VerbPipelineTests : IDisposable
         Assert.Single(game.Calls);
     }
 
-    // ---- what other pieces bring -----------------------------------------------------------------------------------
+    // ---- the calls a hub without runs refuses ------------------------------------------------------------------
 
     [Theory]
-    [InlineData("run_script", null, """{"code":"return 1"}""", "run_script lands with the runs piece.")]
-    [InlineData("inspect", "job", """{"id":"script-4"}""", "runs piece")]
-    [InlineData("server", "stop", """{"id":"script-4"}""", "runs piece")]
-    [InlineData("undo", null, """{"id":"script-4"}""", "runs piece")]
-    public void WhatALaterPieceBringsIsNotAvailable(string verb, string? what, string options, string message)
+    [InlineData("run_script", null, """{"code":"return 1"}""")]
+    [InlineData("inspect", "job", """{"id":"script-4"}""")]
+    [InlineData("server", "stop", """{"id":"script-4"}""")]
+    [InlineData("undo", null, """{"id":"script-4"}""")]
+    public void AHubWithoutRunsRefusesTheRunCalls(string verb, string? what, string options)
     {
         FakeGameLink game = new();
 
         VerbReply.Failed failed = game.Pipeline().Call(verb, what, options).Failed();
 
         Assert.Equal("not_available", failed.Code);
-        Assert.Contains(message, failed.Message);
+        Assert.Contains("serves no runs", failed.Message);
         Assert.Empty(game.Calls);
     }
 

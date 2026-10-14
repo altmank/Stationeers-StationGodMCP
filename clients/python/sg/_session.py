@@ -13,18 +13,25 @@ SCRIPT_FILENAME = "<script>"
 
 
 class Run:
-    """What sg needs to know about the run in progress: its id, the lines inside a while body (a wait there counts
-    as a loop wait in a report run), the script store it may load saved scripts from (scripts_dir and world, from the
-    welcome's run key; None in a session whose hub gave it no store), and the stop (Stopped or _PassEnd) the hub
-    delivered, if any. A delivered stop decides the run's end state even when the code swallowed it; an sg.Stopped the
-    code raises itself is not one."""
+    """What sg needs to know about the run in progress: its id, the lines inside a while body, per file - the run's
+    own file and every saved script it loads, each under the name its code was compiled with (a wait inside any of them
+    counts as a loop wait in a report run) - the script store it may load saved scripts from (scripts_dir and world,
+    from the welcome's run key; None in a session whose hub gave it no store), and the stop (Stopped or _PassEnd) the
+    hub delivered, if any. A delivered stop decides the run's end state even when the code swallowed it; an sg.Stopped
+    the code raises itself is not one."""
 
     def __init__(self, run_id=None, while_lines=(), scripts_dir=None, world=None):
         self.id = run_id
-        self.while_lines = frozenset(while_lines)
+        self.while_lines = {SCRIPT_FILENAME: frozenset(while_lines)}
         self.scripts_dir = scripts_dir
         self.world = world
         self.stop = None
+
+    def add_while_lines(self, filename, lines):
+        """Registers another file's while-body lines under the name its code is compiled with (a saved script the run
+        loaded; its frames name that name alone). A name registered twice (a script saved again and loaded again)
+        keeps both sets: a frame cannot say which of the two files it is."""
+        self.while_lines[filename] = self.while_lines.get(filename, frozenset()) | frozenset(lines)
 
     @property
     def stopped(self):
@@ -76,12 +83,18 @@ def calling_line():
 
 
 def in_loop():
-    """True when any frame of the run's code on the stack is on a line inside a while body: a wait in a function
-    that a while loop calls counts too. Loops made by recursion or by `for` over an endless iterator
-    (itertools.count) are not seen."""
+    """True when a frame of the run's code, or of a saved script it loaded, stands on a line inside a while body of
+    its own file: a wait in a function that a while loop calls counts too. Loops made by recursion or by `for` over an
+    endless iterator (itertools.count) are not seen."""
     if _run is None:
         return False
-    return any(frame.f_lineno in _run.while_lines for frame in _script_frames())
+    frame = sys._getframe(1)
+    while frame is not None:
+        lines = _run.while_lines.get(frame.f_code.co_filename)
+        if lines is not None and frame.f_lineno in lines:
+            return True
+        frame = frame.f_back
+    return False
 
 
 def _replaces(recorded, delivered):

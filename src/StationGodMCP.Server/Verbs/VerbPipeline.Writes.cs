@@ -52,18 +52,18 @@ public sealed partial class VerbPipeline
         }
     }
 
-    // server stop and undo of a script run are the runs piece's.
+    // server stop and undo of a script run are the runs': refused below when no run host is here.
     private static VerbReply? RunsWrite(WhatEntry what, JsonObject options)
     {
         if (what.Key == "server.stop")
         {
-            return new VerbReply.Failed(VerbFailure.NotAvailable, $"server stop {RunsPiece}.");
+            return new VerbReply.Failed(VerbFailure.NotAvailable, $"server stop {RunlessHub}.");
         }
 
         if (what.Key == "undo" && JsonNodes.Text(options["id"])?.Trim() is { } id &&
             id.StartsWith("script-", StringComparison.OrdinalIgnoreCase))
         {
-            return new VerbReply.Failed(VerbFailure.NotAvailable, $"undo of a script run {RunsPiece}.");
+            return new VerbReply.Failed(VerbFailure.NotAvailable, $"undo of a script run {RunlessHub}.");
         }
 
         return null;

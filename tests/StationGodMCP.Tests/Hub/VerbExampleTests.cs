@@ -12,14 +12,14 @@ namespace StationGodMCP.Tests.Hub;
 /// <summary>
 /// Every what's catalogue example goes through the pipeline on the direct face and reaches the mod as one call of its
 /// verb: params {what, ...the example's options}, without the hub's own options. The few the hub answers itself (help,
-/// what the runs piece brings, a ref no reply minted) send nothing, each named here with why.
+/// what a runless hub refuses, a ref no reply minted) send nothing, each named here with why.
 /// </summary>
 public sealed class VerbExampleTests
 {
     // What the hub answers itself, by what, with the code it answers.
     private static readonly Dictionary<string, (string Code, string Why)> Hub = new()
     {
-        ["server.stop"] = ("not_available", "runs piece"),
+        ["server.stop"] = ("not_available", "serves no runs"),
         ["check.replaceable"] = ("invalid_argument", "no ref 'r12'")
     };
 

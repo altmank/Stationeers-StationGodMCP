@@ -10,17 +10,22 @@ namespace StationGodMCP.Server;
 /// targets, check it (OptionCheck), let the write gate decide on a write with its resolved targets (act, report, refuse,
 /// stop), and send it to the mod as the verb itself: {method: verb, params: {what, ...options}}, without the options
 /// the hub answers (shaping, refs, repeat, job waits, file paths). Direct replies get refs and the cap; script and
-/// program list replies get a hub cursor. help is answered from the generated pages; run_script and script runs are the
-/// runs piece's.
+/// program list replies get a hub cursor. help is answered from the generated pages; run_script and the calls naming a
+/// run (inspect job, server stop, undo of a script run) are refused here, since a pipeline holds no runs: the runs
+/// belong to the MCP server face, whose client session owns them.
 /// </summary>
 public sealed partial class VerbPipeline
 {
-    internal const string RunScriptPlaceholder = "run_script lands with the runs piece";
+    /// <summary>Why a pipeline with no run host refuses the calls that name a run (a --hub child serves the game and
+    /// the four script whats, but holds no runs).</summary>
+    private const string RunlessHub =
+        "belongs to the MCP server face, whose client session owns the runs; this hub serves no runs";
+
+    /// <summary>run_script's refusal: the runs' own verb, refused on the face that serves the store's four whats.</summary>
+    internal const string RunScriptRefusal = $"run_script {RunlessHub} (the four script whats work here).";
 
     /// <summary>The code a drifted target's undo row carries (catalogue/verbs/_errors.json).</summary>
     internal const string DriftedCode = "target_drifted";
-
-    private const string RunsPiece = "lands with the runs piece";
 
     private const double DefaultMaxWaitSeconds = 30;
 
@@ -153,7 +158,7 @@ public sealed partial class VerbPipeline
     {
         if (call.Verb == "run_script")
         {
-            return new VerbReply.Failed(VerbFailure.NotAvailable, RunScriptPlaceholder + ".");
+            return new VerbReply.Failed(VerbFailure.NotAvailable, RunScriptRefusal);
         }
 
         if (call.Verb == "help" && call.What != null)
@@ -262,18 +267,18 @@ public sealed partial class VerbPipeline
         return await ModAsync(call, what, options, cancellation).ConfigureAwait(false);
     }
 
-    // inspect job for an id the hub holds: a bulk write's view, or the runs piece's.
+    // inspect job for an id the hub holds: a bulk write's view, or a run's, refused below when no run host is here.
     private VerbReply? OwnJob(JsonObject options)
     {
         string? id = JsonNodes.Text(options["id"])?.Trim();
         if (id == null)
         {
-            return new VerbReply.Failed(VerbFailure.NotAvailable, $"inspect job with no id (the runs with notices) {RunsPiece}.");
+            return new VerbReply.Failed(VerbFailure.NotAvailable, $"inspect job with no id (the runs with notices) {RunlessHub}.");
         }
 
         if (id.StartsWith("script-", StringComparison.OrdinalIgnoreCase))
         {
-            return new VerbReply.Failed(VerbFailure.NotAvailable, $"inspect job for a script run {RunsPiece}.");
+            return new VerbReply.Failed(VerbFailure.NotAvailable, $"inspect job for a script run {RunlessHub}.");
         }
 
         if (BulkWrites.IsBulkId(id))

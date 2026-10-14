@@ -372,6 +372,19 @@ class SavedScriptCompositionTests(WorkerCase):
         self.assertEqual([2, 2, 2], [params["line"] for _, params in hub.calls])
         self.assertEqual("write", [params["verb"] for method, params in hub.calls if method == "verb"][0])
 
+    def test_a_loaded_scripts_wait_in_its_own_while_is_a_loop_wait(self):
+        write_script(self.root, "poller", "def main() -> None:\n"
+                                         "    while True:\n"
+                                         "        sg.wait(1)\n"
+                                         "        break\n")
+
+        hub, end = self.serve_composed("from sg.lib import poller\npoller.main()\n")
+
+        self.assertEqual("done", end["state"])
+        # The run's own while lines say nothing about the loaded script's loop: the script's own do, and the line
+        # reported is still the run's call site.
+        self.assertEqual([("wait", {"s": 1.0, "kind": "wait", "in_loop": True, "line": 2})], hub.calls)
+
     def test_a_wrong_call_fails_in_python_the_hub_checked_nothing(self):
         write_script(self.root, "greeting", "def main(who):\n    return who\n")
 

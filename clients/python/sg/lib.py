@@ -7,7 +7,8 @@ carrying the store's header over its code; the code below the header is the modu
 
 ``load(name)`` reads, parses and runs a script once per worker and caches the module by its file, so two imports (or
 an import and ``sg.script``) share one module. The script's ``run_analysis`` goes to the hub as the run's own did: its
-literals count as written for the run's gate, and a script that writes makes the run one that writes. Its ``main(...)``
+literals count as written for the run's gate, a script that writes makes the run one that writes, and its while lines
+are known to the run's session, so a wait in the script's own loop is a loop wait. Its ``main(...)``
 runs in this run's session, so report, the seen rule, held restores, stop and undo cover the whole call tree.
 
 Errors are ``sg.Error`` with the store's codes: ``script_not_found``, ``script_world``, ``script_invalid``. A name
@@ -64,6 +65,7 @@ def load(name):
         raise Error("script_invalid", f"{path} does not parse: {analysis.syntax_error}",
                     "save it again from code that parses (write script)")
     _session.current_transport().send(analysis.message())
+    run.add_while_lines(_compiled_name(name), analysis.while_lines)
     module = _execute(name, path, code)
     _modules[path] = module
     return module
@@ -156,13 +158,19 @@ def _body(text):
     return None
 
 
+def _compiled_name(name):
+    """The file name a script's code is compiled under: its tracebacks, and the name the run's session knows its
+    frames by (the loop lines above are kept under it)."""
+    return f"<script {name}>"
+
+
 def _execute(name, path, code):
     """The code as the module named name: the run's own view of a script (sg, print) and its file. The module must
     define the entry point main(...), as a saved script always does."""
     module = types.ModuleType(name)
     module.__file__ = path
     module.__dict__.update({"__builtins__": builtins, "sg": sg, "print": run_print})
-    exec(compile(code, f"<script {name}>", "exec"), module.__dict__)
+    exec(compile(code, _compiled_name(name), "exec"), module.__dict__)
     if not callable(module.__dict__.get("main")):
         raise Error("script_invalid", f"{path} defines no main(...): a saved script's entry point is main",
                     "save it again with a def main(...) (write script)")
