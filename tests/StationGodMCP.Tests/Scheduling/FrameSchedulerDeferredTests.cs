@@ -332,7 +332,7 @@ public sealed class FrameSchedulerDeferredTests
             _call = call;
         }
 
-        public bool RunNextDueSample()
+        public bool RunNextDueSample(double untilMs)
         {
             if (_call == null)
             {

@@ -62,7 +62,17 @@ internal static class ServerInfo
             counters ? Counters() : null, shape,
             counters ? StationGodMod.Updates.Read(UnityEngine.Time.frameCount) : null,
             new FactsView(WorldModel.FrameFaces.View(), WorldModel.DamagedThings.View(),
-                Api.Shared.Game.GatewayMaps.View()));
+                Api.Shared.Game.GatewayMaps.View()), Subscriptions());
+
+    private static SubscriptionsView Subscriptions()
+    {
+        Protocol.SubscriptionHub? hub = StationGodMod.Hub;
+        Pure.Subscriptions.SampleReads reads = StationGodMCP.Subscriptions.ReadDevicesReader.Instance.Shared;
+        return hub == null
+            ? SubscriptionsView.None
+            : new SubscriptionsView(hub.ProjectedMsPerSecond, reads.Made, reads.Shared, hub.FindQueries,
+                hub.FindEvaluations);
+    }
 
     private static GameCountersView Counters() =>
         new GameCountersView(new JobHoldsView(HeldTickJobs.HoldCounts()),

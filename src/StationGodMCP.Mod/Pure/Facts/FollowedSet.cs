@@ -24,6 +24,7 @@ internal sealed class FollowedSet<T> where T : class
     private List<T> _spare = new List<T>();
     private int _spareFiled;
     private long _filed;
+    private long _moved;
 
     /// <summary>holds: whether a thing holds the property now (main thread).</summary>
     internal FollowedSet(Func<T, bool> holds)
@@ -36,6 +37,9 @@ internal sealed class FollowedSet<T> where T : class
 
     /// <summary>Things filed since the mod loaded.</summary>
     internal long Filed => _filed;
+
+    /// <summary>Times a thing joined or left the set since the mod loaded (a find subscription's news). Main thread.</summary>
+    internal long Moved => _moved;
 
     /// <summary>Things waiting to be filed.</summary>
     internal int Waiting
@@ -109,7 +113,13 @@ internal sealed class FollowedSet<T> where T : class
     }
 
     /// <summary>Drops a thing the world no longer holds. Main thread.</summary>
-    internal void Remove(T thing) => _members.TryRemove(thing, out _);
+    internal void Remove(T thing)
+    {
+        if (_members.TryRemove(thing, out _))
+        {
+            _moved++;
+        }
+    }
 
     /// <summary>A world left: empty, nothing waits.</summary>
     internal void Clear()
@@ -128,13 +138,9 @@ internal sealed class FollowedSet<T> where T : class
     {
         _filed++;
         bool holds = _holds(thing);
-        if (holds)
+        if (holds ? _members.TryAdd(thing, 0) : _members.TryRemove(thing, out _))
         {
-            _members.TryAdd(thing, 0);
-        }
-        else
-        {
-            _members.TryRemove(thing, out _);
+            _moved++;
         }
 
         // A change point that ran between the read and the update saw the set as it was: read again.

@@ -162,6 +162,14 @@ on the mod's schedule, so it has its own limits (`Pure/Subscriptions/Subscriptio
   subscription's measured load per game second together would pass half the subscription lane's share at 30 frames a
   second — 22.5 ms of sampling per second with the defaults (`SubscriptionLimits.cs`;
   `Pure/DeviceReads/DeviceReadRequest.cs:17-22`). A refused read keeps nothing.
+- **Find subscriptions.** A find query (topic `find`) is evaluated once for all its subscribers by the find verb's
+  own handler, page by page, each page's work stepped as a call's; the first evaluation is the subscribe call's own
+  deferred work (the slice lane), every later one runs in the subscription lane after the devices samples, one step per
+  turn, so the lane's share bounds what finds cost a frame. One evaluation runs at a time; the query due longest goes
+  first: due every interval, or earlier (at most once a game second) when the world model tells of a change on its
+  channels (`Pure/Subscriptions/FindSubscriptions.cs`). Its measured evaluation ms per game second at its interval is
+  its load. The diff a subscriber is sent is made by its connection's writer thread, never the game's
+  (`FindSlot`).
 - **A refused client polls** the same items with `read logic` at the same interval instead, which is what `sg.watch`
   and `sg.changes` do ([clients.md](clients.md)).
 

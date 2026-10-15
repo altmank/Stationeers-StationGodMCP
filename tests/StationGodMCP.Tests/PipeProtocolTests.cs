@@ -306,7 +306,7 @@ internal sealed class PipeRig : IDisposable
                 new StationGodMCP.Pure.Verbs.VerbDispatcher(new[] { ReadSample.Handler(() => subscriptions) }),
                 ProtocolSettings.DefaultMaxReplyBytes, () => 1);
             Mod.CallHook = (call, queueMs) => SubscriptionHub.Handles(call.Request.Method)
-                ? new CallOutcome(subscriptions.Run(call, queueMs), call.Request.Method)
+                ? subscriptions.Run(call, queueMs)
                 : IsSampleRun(call.Request)
                     ? VerbCalls.Run(sampling, call, queueMs)
                     : null;

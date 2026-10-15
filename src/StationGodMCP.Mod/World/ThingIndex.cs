@@ -235,6 +235,12 @@ internal static class ThingIndex
         return found;
     }
 
+    /// <summary>
+    /// Things filed under or taken out of the class since the mod loaded: moves when the class's members changed (a
+    /// find subscription's news, WorldNews). Filing runs each frame (Tick), so a change shows within a frame or two.
+    /// </summary>
+    internal static long ChangesOf(WorldClass worldClass) => Index.ClassChanges((int)worldClass);
+
     /// <summary>The things of one class its list holds.</summary>
     internal static List<Thing> OfClass(WorldClass worldClass)
     {

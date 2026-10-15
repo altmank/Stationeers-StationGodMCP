@@ -270,7 +270,7 @@ internal sealed class FrameScheduler<TCall> where TCall : class
 
         int taken = 0;
         using ProfScope lane = Prof.Scope(ProfId.SubscriptionLane);
-        while ((taken == 0 || _clock.NowMs - startMs < shareMs) && samples.RunNextDueSample())
+        while ((taken == 0 || _clock.NowMs - startMs < shareMs) && samples.RunNextDueSample(startMs + shareMs))
         {
             taken++;
         }

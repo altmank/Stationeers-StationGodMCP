@@ -144,7 +144,7 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
         {
             if (Subscriptions != null && SubscriptionHub.Handles(call.Request.Method))
             {
-                return new CallOutcome(Subscriptions.Run(call, queueWaitMs), call.Request.Method);
+                return Subscriptions.Run(call, queueWaitMs);
             }
 
             if (JobDropCalls.Handles(call.Request.Method))

@@ -54,6 +54,7 @@ internal sealed class WorldIndex<T> where T : class
     private long _generation;
     private long _arrivedTotal;
     private long _leftTotal;
+    private readonly long[] _classChanges = new long[MaximumClasses];
 
     /// <summary>
     /// nameOf: a thing's prefab name now; classesOf: its class bits, read once per thing; filed: told once per thing
@@ -125,6 +126,19 @@ internal sealed class WorldIndex<T> where T : class
         lock (_gate)
         {
             return bucket.Count;
+        }
+    }
+
+    /// <summary>
+    /// Things filed under or taken out of one class since the index was made (a find subscription's news, cost design
+    /// A6): it moves whenever the class's bucket changed. A Reset keeps the count.
+    /// </summary>
+    internal long ClassChanges(int classNumber)
+    {
+        int index = ClassIndex(classNumber);
+        lock (_gate)
+        {
+            return _classChanges[index];
         }
     }
 
@@ -454,6 +468,7 @@ internal sealed class WorldIndex<T> where T : class
             if ((classes & (1 << index)) != 0)
             {
                 _byClass[index].Add(thing);
+                _classChanges[index]++;
             }
         }
 
@@ -495,6 +510,7 @@ internal sealed class WorldIndex<T> where T : class
             if ((filed.Classes & (1 << index)) != 0)
             {
                 _byClass[index].Remove(thing);
+                _classChanges[index]++;
             }
         }
     }

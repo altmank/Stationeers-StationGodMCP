@@ -641,7 +641,7 @@ public sealed class ProtocolV2Tests
 
         internal OneSample(List<string> order) => _order = order;
 
-        public bool RunNextDueSample()
+        public bool RunNextDueSample(double untilMs)
         {
             if (_taken)
             {

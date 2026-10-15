@@ -46,6 +46,20 @@ internal abstract class SubscribeRequest
         internal SamplingInterval Interval { get; }
     }
 
+    /// <summary>A find subscription: the query (its what and options) and how often its live facts are read again.</summary>
+    internal sealed class Find : SubscribeRequest
+    {
+        internal Find(FindQuery query, SamplingInterval interval)
+        {
+            Query = query;
+            Interval = interval;
+        }
+
+        internal FindQuery Query { get; }
+
+        internal SamplingInterval Interval { get; }
+    }
+
     internal sealed class World : SubscribeRequest
     {
         internal static readonly World Instance = new World();
@@ -86,14 +100,29 @@ internal abstract class SubscribeRequest
 
     private static readonly string[] OwnKeys = { "topic", "interval_s" };
 
+    /// <summary>A find subscription's interval when none is given, in game seconds.</summary>
+    internal const double FindDefaultIntervalS = 10.0;
+
+    /// <summary>A find subscription's shortest interval: an evaluation is a find's whole walk.</summary>
+    internal const double FindMinimumIntervalS = 1.0;
+
+    // A find subscription holds the whole list: the paging options have nothing to say.
+    private static readonly string[] FindPagingKeys = { "limit", "offset", "cursor", "order" };
+
     /// <summary>
     /// The params as protocol.md defines them: topic and interval_s, and for devices read logic's options (id, logic,
-    /// reads, gateway, include). Unknown keys are refused; a world or jobs subscription takes topic alone. The item and
-    /// value bounds of one read are a subscription limit here, not an invalid argument.
+    /// reads, gateway, include), for find the find's what and its options but paging. Unknown keys are refused; a world
+    /// or jobs subscription takes topic alone. The item and value bounds of one read are a subscription limit here, not
+    /// an invalid argument.
     /// </summary>
     internal static SubscribeRequest Of(JObject? parameters)
     {
         JObject given = parameters ?? new JObject();
+        if (Present(given["topic"]) is JToken named && named.Type == JTokenType.String && Is(named, FindTopicName))
+        {
+            return OfFind(given);
+        }
+
         foreach (JProperty property in given.Properties())
         {
             if (Array.IndexOf(OwnKeys, property.Name) < 0 && !ReadLogicOptions.Spec.Takes(property.Name))
@@ -108,7 +137,7 @@ internal abstract class SubscribeRequest
         if (topic != null && (topic.Type != JTokenType.String ||
                               !(Is(topic, "devices") || Is(topic, WorldTopic) || Is(topic, JobsTopic))))
         {
-            return new Invalid("Argument 'topic' must be \"devices\", \"world\" or \"jobs\".");
+            return new Invalid("Argument 'topic' must be \"devices\", \"world\", \"jobs\" or \"find\".");
         }
 
         if (topic != null && Is(topic, WorldTopic))
@@ -122,6 +151,71 @@ internal abstract class SubscribeRequest
     private const string WorldTopic = "world";
 
     private const string JobsTopic = "jobs";
+
+    private const string FindTopicName = "find";
+
+    // topic "find": what (a FindTopic), interval_s (1 to 3600, 10 by default), and the find's own options, checked as a
+    // find call's are; paging refused.
+    private static SubscribeRequest OfFind(JObject given)
+    {
+        JToken? whatToken = Present(given["what"]);
+        FindTopic? topic = whatToken?.Type == JTokenType.String ? FindTopic.Of(whatToken.Value<string>()?.Trim()) : null;
+        if (topic == null)
+        {
+            return new Invalid($"The find topic takes what: one of {string.Join(", ", FindTopic.Whats)}.");
+        }
+
+        JToken? intervalToken = Present(given["interval_s"]);
+        SamplingInterval interval = SamplingInterval.Default;
+        bool intervalOk = intervalToken == null
+            ? SamplingInterval.TryOf(FindDefaultIntervalS, out interval)
+            : (intervalToken.Type == JTokenType.Integer || intervalToken.Type == JTokenType.Float) &&
+              intervalToken.Value<double>() >= FindMinimumIntervalS &&
+              SamplingInterval.TryOf(intervalToken.Value<double>(), out interval);
+        if (!intervalOk)
+        {
+            return new Invalid(
+                $"interval_s must be a number from {FindMinimumIntervalS} to {SamplingInterval.MaximumSeconds} " +
+                "(game seconds) for the find topic.");
+        }
+
+        JObject call = new JObject();
+        JObject options = new JObject();
+        foreach (JProperty property in given.Properties())
+        {
+            if (Array.IndexOf(OwnKeys, property.Name) >= 0)
+            {
+                continue;
+            }
+
+            if (Array.IndexOf(FindPagingKeys, property.Name) >= 0)
+            {
+                return new Invalid(
+                    $"A find subscription holds the whole list: it takes no '{property.Name}' " +
+                    $"({string.Join(", ", FindPagingKeys)} page a find call).");
+            }
+
+            if (VerbSurface.ShapingOption(property.Name) != null)
+            {
+                return new Invalid(
+                    $"A find subscription sends whole entries and only what changed: it takes no '{property.Name}'.");
+            }
+
+            call[property.Name] = property.Value.DeepClone();
+            if (property.Name != "what")
+            {
+                options[property.Name] = property.Value.DeepClone();
+            }
+        }
+
+        call["what"] = topic.What;
+        if (OptionCheck.Check(VerbSurface.Verb(FindTopicName)!, call, out _) is { } refused)
+        {
+            return new Invalid(refused.Message);
+        }
+
+        return new Find(new FindQuery(topic, options), interval);
+    }
 
     // The world and jobs topics take topic alone.
     private static SubscribeRequest TopicAlone(JObject given, string topic, SubscribeRequest request)

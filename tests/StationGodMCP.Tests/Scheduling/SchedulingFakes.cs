@@ -123,7 +123,7 @@ internal sealed class FakeSamples : ISampleLane
 
     internal int Due { get; set; }
 
-    public bool RunNextDueSample()
+    public bool RunNextDueSample(double untilMs)
     {
         if (Due == 0)
         {

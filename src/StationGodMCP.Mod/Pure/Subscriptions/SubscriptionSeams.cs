@@ -111,6 +111,9 @@ internal interface ISubscriptionEvents<TReading> where TReading : class
     /// <summary>A new update waits in the slot: put the slot at the back of the connection's outbound queue.</summary>
     void Enqueue(UpdateSlot<TReading> slot);
 
+    /// <summary>A find query's new result waits in the slot: put the slot at the back of its connection's queue.</summary>
+    void EnqueueFind(FindSlot slot);
+
     /// <summary>
     /// One due sample of a devices subscription of the stream was read on the main thread and took ms, changed or
     /// not: stream_costs' samples and sample_ms count every sample where it is paid, whether or not an update follows.

@@ -56,6 +56,9 @@ internal interface ISliceLane
 /// </summary>
 internal interface ISampleLane
 {
-    /// <summary>Takes and runs the next due sample; false when nothing is due.</summary>
-    bool RunNextDueSample();
+    /// <summary>
+    /// Takes and runs the next due sample, or a step of a find subscription's evaluation that goes on until untilMs
+    /// (the lane's share's end); false when nothing is due.
+    /// </summary>
+    bool RunNextDueSample(double untilMs);
 }

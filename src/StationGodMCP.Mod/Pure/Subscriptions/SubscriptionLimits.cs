@@ -34,6 +34,34 @@ internal readonly struct SamplingInterval
 }
 
 /// <summary>
+/// When a subscription (or a shared find query) is next due: the first point of its grid after now. Its grid is
+/// due + k * interval, so a late sample does not make the next ones late too and a frame that missed several points
+/// takes one sample, not a burst. With no due time yet (a new subscription, a resync) the grid is the interval's own
+/// (k * interval game seconds), the one every subscription with that interval is on, so they come due in the same frame
+/// and share their reads (SampleReads).
+/// </summary>
+internal static class SubscriptionGrid
+{
+    internal static double NextDue(double dueS, double intervalS, double nowS)
+    {
+        if (double.IsNegativeInfinity(dueS))
+        {
+            double point = (Math.Floor(nowS / intervalS) + 1.0) * intervalS;
+            return point > nowS ? point : point + intervalS;
+        }
+
+        if (dueS + intervalS > nowS)
+        {
+            return dueS + intervalS;
+        }
+
+        double missed = Math.Floor((nowS - dueS) / intervalS) + 1.0;
+        double next = dueS + missed * intervalS;
+        return next > nowS ? next : next + intervalS;
+    }
+}
+
+/// <summary>
 /// What one sample of a devices subscription reads: the values read logic counts (a slot without logic counts
 /// DeviceReadBounds.AllSlotValuesWeight) and the items. What it costs is measured, not guessed (MeasuredCost).
 /// </summary>

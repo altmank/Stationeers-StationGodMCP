@@ -74,7 +74,27 @@ internal sealed class RecordingEvents : ISubscriptionEvents<FakeReading>
     internal List<(ConnectionId Connection, SubscriptionId Subscription, long Seq, long Frame, object Job)> Jobs { get; } =
         new List<(ConnectionId, SubscriptionId, long, long, object)>();
 
+    internal List<FindSlot> FindQueue { get; } = new List<FindSlot>();
+
     public void Enqueue(UpdateSlot<FakeReading> slot) => Queue.Add(slot);
+
+    public void EnqueueFind(FindSlot slot) => FindQueue.Add(slot);
+
+    /// <summary>The writer for find slots: takes every queued one in order, as a client would receive them.</summary>
+    internal List<FindUpdate> DrainFinds()
+    {
+        List<FindUpdate> written = new List<FindUpdate>();
+        foreach (FindSlot slot in FindQueue)
+        {
+            if (slot.TryTake(slot.Epoch, out FindUpdate update))
+            {
+                written.Add(update);
+            }
+        }
+
+        FindQueue.Clear();
+        return written;
+    }
 
     public void Sampled(ConnectionId connection, long stream, double ms) => Samples.Add((connection, stream, ms));
 

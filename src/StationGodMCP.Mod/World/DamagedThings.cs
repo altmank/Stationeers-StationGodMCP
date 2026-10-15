@@ -49,6 +49,9 @@ internal static class DamagedThings
         }
     }
 
+    /// <summary>Times a thing joined or left the damaged set (a find subscription's news, WorldNews). Main thread.</summary>
+    internal static long Moved => Set.Moved;
+
     /// <summary>The world index filed the thing for the first time: read it at the next filing. Main thread.</summary>
     internal static void Filed(Thing thing) => Set.Queue(thing);
 

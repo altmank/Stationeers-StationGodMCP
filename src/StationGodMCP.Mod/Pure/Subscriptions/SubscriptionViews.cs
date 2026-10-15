@@ -1,7 +1,9 @@
 #nullable enable
 
 using System;
+using System.Collections.Generic;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace StationGodMCP.Pure.Subscriptions;
 
@@ -33,6 +35,47 @@ internal sealed class SubscribeReplyView
     /// <summary>A full read logic result; absent for the world topic.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public object? Result { get; }
+}
+
+/// <summary>
+/// A find subscribe's result: {subscription, topic: "find", what, interval_s, frame, as_of_s, cost_ms, keyed, result}.
+/// result is the find's reply with every list whole and no paging keys; keyed names each list whose entries later
+/// updates change one by one, with the field that keys them (empty for a list with no entries yet). Made on the
+/// connection's writer thread (the result's text form is made there).
+/// </summary>
+internal sealed class FindSubscribeReplyView
+{
+    internal FindSubscribeReplyView(FindSubscribeOutcome.Subscribed subscribed, string what)
+    {
+        RenderedFind rendered = subscribed.Result.Rendered;
+        Subscription = subscribed.Subscription.ToString();
+        What = what;
+        IntervalS = subscribed.Interval.Seconds;
+        Frame = subscribed.Frame;
+        AsOfS = Math.Round(subscribed.Result.AsOfS, 3);
+        CostMs = Math.Round(subscribed.Result.CostMs, 2);
+        Keyed = FindUpdateEventView.KeyedOf(rendered);
+        Result = rendered.Whole;
+    }
+
+    public string Subscription { get; }
+
+    public string Topic => "find";
+
+    public string What { get; }
+
+    public double IntervalS { get; }
+
+    public long Frame { get; }
+
+    public double AsOfS { get; }
+
+    /// <summary>The main-thread milliseconds the evaluation took, every step summed.</summary>
+    public double CostMs { get; }
+
+    public Dictionary<string, string> Keyed { get; }
+
+    public JObject Result { get; }
 }
 
 /// <summary>unsubscribe's result: {subscription, ended: true}.</summary>
@@ -82,6 +125,95 @@ internal sealed class UpdateEventView
     public double LateMs { get; }
 
     public object Result { get; }
+}
+
+/// <summary>
+/// A find subscription's event: {event: "find_update", subscription, seq, frame, as_of_s, keyed, lists, rest} with what
+/// changed since the result this subscriber was last sent: per keyed list its added and changed entries (whole) and the
+/// keys removed; rest (every other key of the reply, whole) only when it changed. A whole update (after a resume)
+/// carries {whole: true, result} instead of lists and rest. as_of_s is when the evaluation began (game time).
+/// </summary>
+internal sealed class FindUpdateEventView
+{
+    private FindUpdateEventView(FindUpdate update)
+    {
+        RenderedFind rendered = update.Result.Rendered;
+        Subscription = update.Subscription.ToString();
+        Seq = update.Seq;
+        Frame = update.Result.Frame;
+        AsOfS = Math.Round(update.Result.AsOfS, 3);
+        Keyed = KeyedOf(rendered);
+        if (update.Change is FindChange change)
+        {
+            Lists = new Dictionary<string, ListChangeView>(StringComparer.Ordinal);
+            foreach (KeyValuePair<string, FindListChange> list in change.Lists)
+            {
+                Lists.Add(list.Key, new ListChangeView(list.Value));
+            }
+
+            Rest = change.Rest;
+        }
+        else
+        {
+            Whole = true;
+            Result = rendered.Whole;
+        }
+    }
+
+    internal static FindUpdateEventView Of(FindUpdate update) => new FindUpdateEventView(update);
+
+    internal static Dictionary<string, string> KeyedOf(RenderedFind rendered)
+    {
+        Dictionary<string, string> keyed = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (KeyValuePair<string, KeyedList> list in rendered.Lists)
+        {
+            keyed.Add(list.Key, list.Value.Field);
+        }
+
+        return keyed;
+    }
+
+    [JsonProperty(Order = -2)]
+    public string Event => "find_update";
+
+    public string Subscription { get; }
+
+    public long Seq { get; }
+
+    public long Frame { get; }
+
+    public double AsOfS { get; }
+
+    public Dictionary<string, string> Keyed { get; }
+
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public Dictionary<string, ListChangeView>? Lists { get; }
+
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public JObject? Rest { get; }
+
+    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
+    public bool Whole { get; }
+
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public JObject? Result { get; }
+
+    /// <summary>One keyed list's change: {added, changed, removed}.</summary>
+    internal sealed class ListChangeView
+    {
+        internal ListChangeView(FindListChange change)
+        {
+            Added = change.Added;
+            Changed = change.Changed;
+            Removed = change.Removed;
+        }
+
+        public List<JToken> Added { get; }
+
+        public List<JToken> Changed { get; }
+
+        public List<string> Removed { get; }
+    }
 }
 
 /// <summary>{event: "subscription_ended", subscription, reason}.</summary>

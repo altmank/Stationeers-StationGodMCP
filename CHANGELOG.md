@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **A find can be subscribed to.** `subscribe {topic: "find", what, ...the find's options, interval_s}` (thing,
+  item, device, container, frame, damaged, pad, water, food, plant, room, gateway; no paging or shaping options)
+  answers the whole list once, then sends `find_update` events with only what changed: entries added, changed and
+  removed by key, and the reply's other keys when they changed. One evaluation of a query serves every subscriber of
+  it; it runs again every `interval_s` (default 10 game seconds) and earlier when the world model sees a change on
+  its channels. Replies and updates carry `as_of_s`. `server info` gains `runtime.subscriptions` (measured load,
+  shared reads, find queries and evaluations).
 - **Subscriptions share their reads and are admitted by what they cost.** Every subscription sampled in a frame
   reads a device's value once, whoever subscribed to it (any connection, any hub session), and subscriptions with the
   same interval are sampled on one grid of game time (multiples of the interval), so they come due together. A

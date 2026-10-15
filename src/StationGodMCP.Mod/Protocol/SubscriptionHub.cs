@@ -27,8 +27,11 @@ namespace StationGodMCP.Protocol;
 /// connection, or its resume token): a stream's end (stream_end, a slow client, a closed connection, a resume window
 /// that passed) ends them at the start of the next frame, and the slice lane answers a waiting call cancelled. A
 /// sample run also ends when its owner's connection closes, since its reply cannot be delivered. While a resume token is held its subscriptions take no samples; when a connection resumes it,
-/// their events go to that connection and each devices subscription's next sample is sent whole. Main thread only,
-/// apart from Closed, StreamEnded, Held and Resumed, which connection threads call.
+/// their events go to that connection and each devices subscription's next sample is sent whole. A find subscription
+/// (topic find) whose query nobody holds yet waits, as a deferred call, for its first evaluation (FindSubscribeWork,
+/// stepped in the slice lane); later evaluations run in this lane after the samples, a step per turn, and each
+/// subscriber's FindSlot is written by its connection's writer as what changed. Main thread only, apart from Closed,
+/// StreamEnded, Held and Resumed, which connection threads call.
 /// </summary>
 internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, ISampleEvents<BatchItemView>, ISampleLane
 {
@@ -57,11 +60,12 @@ internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, IS
     private RealTimeTick _real;
 
     internal SubscriptionHub(IDeviceReader<ReadDevicesView> reader, ILogicSampleReader<BatchItemView> logicReader,
-        SubscriptionLimits limits, StreamCosts? costs = null, IMonotonicClock? clock = null)
+        SubscriptionLimits limits, StreamCosts? costs = null, IMonotonicClock? clock = null,
+        IFindEvaluator? finds = null, IWorldNews? news = null)
     {
         _clock = clock ?? StopwatchClock.Instance;
         _engine = new SubscriptionEngine<ReadDevicesView>(reader, ReadDevicesComparer.Instance, limits,
-            () => _clock.NowMs);
+            () => _clock.NowMs, finds, news);
         _sampler = new LogicSampler<BatchItemView>(logicReader, LogicResultComparer.Instance);
         _costs = costs;
     }
@@ -70,6 +74,15 @@ internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, IS
     internal int SampleRuns => _sampler.Active;
 
     internal SubscriptionLimits Limits => _engine.Limits;
+
+    /// <summary>Every subscription's measured load, ms per game second (server info).</summary>
+    internal double ProjectedMsPerSecond => _engine.ProjectedMsPerSecond();
+
+    /// <summary>Shared find queries held (server info).</summary>
+    internal int FindQueries => _engine.FindQueryCount;
+
+    /// <summary>Find evaluations ended after the first ones (server info).</summary>
+    internal long FindEvaluations => _engine.FindEvaluations;
 
     /// <summary>Subscriptions the owner holds (server info, the console: a connection's Owner).</summary>
     internal int CountOf(string owner) => _engine.CountOf(new ConnectionId(owner));
@@ -100,7 +113,7 @@ internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, IS
                 case EndingKind.Resumed:
                     ConnectionId resumed = new ConnectionId(ending.Owner!);
                     _connections[resumed] = ending.Connection!;
-                    _engine.Resume(resumed);
+                    _engine.Resume(resumed, this);
                     break;
                 default:
                     StreamsEnded(ending.End);
@@ -238,9 +251,10 @@ internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, IS
 
     /// <summary>
     /// subscribe or unsubscribe, run on the main thread: the reply message. Each method answers its result, or an
-    /// ErrorView for an error that carries data (subscription_limit); a read that is refused throws ApiException.
+    /// ErrorView for an error that carries data (subscription_limit); a read that is refused throws ApiException. A find
+    /// subscribe whose query must be evaluated first goes on over frames (FindSubscribeWork).
     /// </summary>
-    internal string Run(ProtocolCall call, double queueWaitMs)
+    internal CallOutcome Run(ProtocolCall call, double queueWaitMs)
     {
         Stopwatch watch = Stopwatch.StartNew();
         CallRequest request = call.Request;
@@ -248,8 +262,14 @@ internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, IS
         object result;
         try
         {
-            result = request.Method == SubscribeMethod
-                ? Subscribe((Connection)call.Source!, request.Params, call.Context)
+            SubscribeRequest? subscribe = request.Method == SubscribeMethod ? SubscribeRequest.Of(request.Params) : null;
+            if (subscribe is SubscribeRequest.Find find)
+            {
+                return SubscribeFind((Connection)call.Source!, call, find, watch, queueMs);
+            }
+
+            result = subscribe != null
+                ? Subscribe((Connection)call.Source!, subscribe, call.Context)
                 : Unsubscribe(call.Context, request.Params);
         }
         catch (ApiException refused)
@@ -259,17 +279,90 @@ internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, IS
         catch (Exception exception)
         {
             // The request boundary: a bug in the read path answers this call, never the frame.
-            return ApiJson.WriteShared(CallReplyView.Failed(request.Id, new ErrorView("internal_error", exception.Message),
-                Elapsed(watch), queueMs, _tick.Frame, BudgetHit()));
+            return Answer(request.Id, new ErrorView("internal_error", exception.Message), watch, queueMs);
         }
 
-        bool budgetHit = BudgetHit();
-        return ApiJson.WriteShared(result is ErrorView error
-            ? CallReplyView.Failed(request.Id, error, Elapsed(watch), queueMs, _tick.Frame, budgetHit)
-            : CallReplyView.Of(request.Id, result, false, Elapsed(watch), queueMs, _tick.Frame, budgetHit));
+        return Answer(request.Id, result, watch, queueMs);
     }
 
-    public bool RunNextDueSample()
+    // The reply message of a subscribe or unsubscribe that answers now.
+    private CallOutcome Answer(string id, object result, Stopwatch watch, double queueMs)
+    {
+        bool budgetHit = BudgetHit();
+        return new CallOutcome(ApiJson.WriteShared(result is ErrorView error
+            ? CallReplyView.Failed(id, error, Elapsed(watch), queueMs, _tick.Frame, budgetHit)
+            : CallReplyView.Of(id, result, false, Elapsed(watch), queueMs, _tick.Frame, budgetHit)), SubscribeMethod);
+    }
+
+    // A find subscribe: joined to a query held already (its reply's list made by the writer thread), refused, or its
+    // first evaluation run over frames as a deferred call.
+    private CallOutcome SubscribeFind(Connection connection, ProtocolCall call, SubscribeRequest.Find find,
+        Stopwatch watch, double queueMs)
+    {
+        if (!_engine.ServesFinds)
+        {
+            return Answer(call.Request.Id, new ErrorView("invalid_argument", "This game serves no find topic."), watch,
+                queueMs);
+        }
+
+        ConnectionId owner = new ConnectionId(call.Context.Owner!);
+        switch (_engine.SubscribeFind(owner, find.Query, find.Interval, _tick, call.Context.Stream))
+        {
+            case FindSubscribeOutcome.Subscribed subscribed:
+                _connections[owner] = connection;
+                return new CallOutcome(FindReply(call.Request.Id, subscribed, find, Elapsed(watch), queueMs),
+                    SubscribeMethod);
+            case FindSubscribeOutcome.Refused refused:
+                return Answer(call.Request.Id, new ErrorView(SubscriptionRefusal.ErrorCode, refused.Refusal.Message,
+                    refused.Refusal.Data), watch, queueMs);
+            case FindSubscribeOutcome.Evaluate first:
+                return CallOutcome.Continued(new FindSubscribeWork(this, connection, call, find, first.Evaluation,
+                    Elapsed(watch), queueMs), SubscribeMethod);
+            default:
+                throw new InvalidOperationException("Unknown find subscribe outcome.");
+        }
+    }
+
+    /// <summary>The first evaluation of a find subscribe ended: the subscription made (or refused), and the reply.</summary>
+    private ReplyLine CompleteFind(Connection connection, ProtocolCall call, SubscribeRequest.Find find,
+        IFindEvaluation evaluation, double elapsedMs, double queueMs)
+    {
+        string id = call.Request.Id;
+        if (evaluation.Failure is FindFailure failure)
+        {
+            return ApiJson.WriteShared(CallReplyView.Failed(id, new ErrorView(failure.Code, failure.Message), elapsedMs,
+                queueMs, _tick.Frame, BudgetHit()));
+        }
+
+        if (connection.IsStopping)
+        {
+            // The connection is going: nothing is subscribed for it, and the reply is never read.
+            return ApiJson.WriteShared(CallReplyView.Failed(id, new ErrorView("cancelled", "The connection closed."),
+                elapsedMs, queueMs, _tick.Frame, BudgetHit()));
+        }
+
+        ConnectionId owner = new ConnectionId(call.Context.Owner!);
+        switch (_engine.CompleteFind(owner, find.Query, find.Interval, _tick, call.Context.Stream, evaluation.Result!,
+                    this))
+        {
+            case FindSubscribeOutcome.Subscribed subscribed:
+                _connections[owner] = connection;
+                return FindReply(id, subscribed, find, elapsedMs, queueMs);
+            case FindSubscribeOutcome.Refused refused:
+                return ApiJson.WriteShared(CallReplyView.Failed(id, new ErrorView(SubscriptionRefusal.ErrorCode,
+                    refused.Refusal.Message, refused.Refusal.Data), elapsedMs, queueMs, _tick.Frame, BudgetHit()));
+            default:
+                throw new InvalidOperationException("Unknown find subscribe outcome.");
+        }
+    }
+
+    // The find subscribe's reply, written by the connection's writer thread, where its result's text form is made.
+    private ReplyLine FindReply(string id, FindSubscribeOutcome.Subscribed subscribed, SubscribeRequest.Find find,
+        double elapsedMs, double queueMs) =>
+        ReplyLine.Of(new FindReplyLine(id, subscribed, find.Query.Topic.What, elapsedMs, queueMs, _tick.Frame,
+            BudgetHit()));
+
+    public bool RunNextDueSample(double untilMs)
     {
         _one.Reset();
         if (_sampler.Active > 0 && _sampler.Poll(_real, _one, this) > 0)
@@ -278,7 +371,7 @@ internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, IS
         }
 
         _one.Reset();
-        return _engine.Poll(_tick, _one, this) > 0;
+        return _engine.Poll(_tick, _one, this) > 0 || _engine.StepFinds(_tick, untilMs, this);
     }
 
     /// <summary>read sample's targets read once, before its run starts: the misses refuse the call.</summary>
@@ -314,6 +407,14 @@ internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, IS
         }
     }
 
+    void ISubscriptionEvents<ReadDevicesView>.EnqueueFind(FindSlot slot)
+    {
+        if (_connections.TryGetValue(slot.Connection, out Connection? connection))
+        {
+            connection.Send(new FindUpdateLine(slot, slot.Epoch));
+        }
+    }
+
     // On the main thread where the sample was taken, so it is stored with the call counters.
     void ISubscriptionEvents<ReadDevicesView>.Sampled(ConnectionId connection, long stream, double ms) =>
         _costs?.RecordSample(new CallContext(connection.Value, stream), ms);
@@ -344,11 +445,11 @@ internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, IS
         return "{\"type\":\"event\"," + keys.Substring(1);
     }
 
-    private object Subscribe(Connection connection, JObject? parameters, CallContext context)
+    private object Subscribe(Connection connection, SubscribeRequest request, CallContext context)
     {
         ConnectionId id = new ConnectionId(context.Owner!);
         long stream = context.Stream;
-        SubscribeOutcome<ReadDevicesView> outcome = SubscribeRequest.Of(parameters) switch
+        SubscribeOutcome<ReadDevicesView> outcome = request switch
         {
             SubscribeRequest.Devices devices => _engine.Subscribe(id, devices.Query, devices.Interval, _tick, stream),
             SubscribeRequest.World _ => _engine.SubscribeWorld(id, _tick, stream),
@@ -428,6 +529,100 @@ internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, IS
         internal string? Owner { get; }
 
         internal StreamEnd End { get; }
+    }
+
+    /// <summary>
+    /// A find subscribe's first evaluation, stepped in the slice lane as a deferred call's work, then the subscription
+    /// made (CompleteFind) and its reply. Dropping it (the stream ended) lets go of the evaluation's walk.
+    /// </summary>
+    private sealed class FindSubscribeWork : IDeferredWork
+    {
+        private readonly SubscriptionHub _hub;
+        private readonly Connection _connection;
+        private readonly ProtocolCall _call;
+        private readonly SubscribeRequest.Find _find;
+        private readonly IFindEvaluation _evaluation;
+        private readonly double _queueMs;
+        private readonly double _startedMs;
+
+        internal FindSubscribeWork(SubscriptionHub hub, Connection connection, ProtocolCall call,
+            SubscribeRequest.Find find, IFindEvaluation evaluation, double startedMs, double queueMs)
+        {
+            _hub = hub;
+            _connection = connection;
+            _call = call;
+            _find = find;
+            _evaluation = evaluation;
+            _startedMs = startedMs;
+            _queueMs = queueMs;
+        }
+
+        public bool Step(double untilMs) => _evaluation.Step(untilMs);
+
+        public ReplyLine Finish()
+        {
+            double elapsedMs = Math.Round(_startedMs + (_evaluation.Result?.CostMs ?? 0.0), 2);
+            return _hub.CompleteFind(_connection, _call, _find, _evaluation, elapsedMs, _queueMs);
+        }
+    }
+
+    /// <summary>A find subscribe's reply in the outbound queue, its result's text made by the writer that writes it.</summary>
+    private sealed class FindReplyLine : IOutboundLine
+    {
+        private readonly string _id;
+        private readonly FindSubscribeOutcome.Subscribed _subscribed;
+        private readonly string _what;
+        private readonly double _elapsedMs;
+        private readonly double _queueMs;
+        private readonly long _frame;
+        private readonly bool _budgetHit;
+
+        internal FindReplyLine(string id, FindSubscribeOutcome.Subscribed subscribed, string what, double elapsedMs,
+            double queueMs, long frame, bool budgetHit)
+        {
+            _id = id;
+            _subscribed = subscribed;
+            _what = what;
+            _elapsedMs = elapsedMs;
+            _queueMs = queueMs;
+            _frame = frame;
+            _budgetHit = budgetHit;
+        }
+
+        public bool TryTake(out string line)
+        {
+            line = ApiJson.WriteShared(CallReplyView.Of(_id, new FindSubscribeReplyView(_subscribed, _what), false,
+                _elapsedMs, _queueMs, _frame, _budgetHit));
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// A find_update in the outbound queue: what changed since this subscriber's last result, worked out when the writer
+    /// reaches it (FindSlot.TryTake); nothing is written when nothing changed or the slot was requeued since.
+    /// </summary>
+    private sealed class FindUpdateLine : IOutboundLine
+    {
+        private readonly FindSlot _slot;
+        private readonly int _epoch;
+
+        internal FindUpdateLine(FindSlot slot, int epoch)
+        {
+            _slot = slot;
+            _epoch = epoch;
+        }
+
+        public bool TryTake(out string line)
+        {
+            if (_slot.TryTake(_epoch, out FindUpdate update))
+            {
+                line = EventLine(FindUpdateEventView.Of(update));
+                return true;
+            }
+
+            line = string.Empty;
+            return false;
+        }
     }
 
     /// <summary>The lane asks for one sample at a time: the first offer is taken, the next refused.</summary>

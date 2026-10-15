@@ -57,6 +57,8 @@ public sealed class RuntimeWireTests
             "\"differences\":0}," +
             "\"gateway_maps\":{\"ready\":false,\"verify\":false,\"kept\":0,\"built\":0,\"reused\":0," +
             "\"network_changes\":0,\"verified\":0,\"differences\":0}}," +
+            "\"subscriptions\":{\"projected_ms_per_s\":0.0,\"sample_reads\":0,\"shared_reads\":0,\"find_queries\":0," +
+            "\"find_evaluations\":0}," +
             "\"world_index\":{\"ready\":false,\"verify\":false,\"things\":0,\"names\":0,\"classes\":{},\"verified\":0," +
             "\"differences\":0}}",
             WireCheck.New(view));

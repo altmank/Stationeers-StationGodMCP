@@ -132,7 +132,7 @@ public sealed class StationGodMod : ModBehaviour
             _dispatcher = new StationGodRequestDispatcher(Deadlines, scheduler);
             _subscriptions = new SubscriptionHub(Subscriptions.ReadDevicesReader.Instance,
                 Subscriptions.SampleReader.Instance, SubscriptionLimits.From(PerformanceSettings.Scheduler.SubscriptionBudgetMs, PerformanceSettings.RequestBudgetMs),
-                scheduler.Costs);
+                scheduler.Costs, finds: Subscriptions.FindEvaluator.Instance, news: WorldModel.WorldNews.Instance);
             _dispatcher.Subscriptions = _subscriptions;
             Hub = _subscriptions;
             SubscriptionHub jobsHub = _subscriptions;

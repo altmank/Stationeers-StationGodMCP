@@ -23,10 +23,12 @@ internal sealed class RuntimeView : ITruncatingView
     internal RuntimeView(double uptimeS, long worldEpoch, FrameBudget budget, DispatchSnapshot frames,
         MemoryView memory, List<MethodTiming> methods, List<ConnectionView>? connections = null,
         ProfilingSummaryView? profiling = null, JobSettlesView? jobSettles = null, WorldIndexView? worldIndex = null,
-        GameCountersView? counters = null, ShapeRequest? shape = null, UpdateReading? updates = null, FactsView? facts = null)
+        GameCountersView? counters = null, ShapeRequest? shape = null, UpdateReading? updates = null, FactsView? facts = null,
+        SubscriptionsView? subscriptions = null)
     {
         WorldIndex = worldIndex ?? new WorldIndexView(false, false, 0, 0, WorldIndexView.NoClasses, 0, 0);
         Facts = facts ?? FactsView.Off;
+        Subscriptions = subscriptions ?? SubscriptionsView.None;
         JobHolds = counters?.JobHolds;
         PrintLog = counters?.PrintLog;
         LintChipPrograms = counters?.LintChipPrograms;
@@ -82,6 +84,9 @@ internal sealed class RuntimeView : ITruncatingView
 
     /// <summary>The followed facts' keepers (cost design A2).</summary>
     public FactsView Facts { get; }
+
+    /// <summary>The standing questions (cost design A6): their load, shared reads, find queries.</summary>
+    public SubscriptionsView Subscriptions { get; }
 
     public WorldIndexView WorldIndex { get; }
 
@@ -394,6 +399,37 @@ internal sealed class WorldIndexView
 
     [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
     public long? Left { get; }
+}
+
+/// <summary>
+/// server info runtime.subscriptions (cost design A6): every subscription's measured load in ms per game second
+/// (projected_ms_per_s, what admission compares with the limit), the reads subscription samples made and those taken
+/// from a read another sample made in the same frame (sample_reads, shared_reads), the find queries held (shared by
+/// their subscribers) and their evaluations after the first (find_queries, find_evaluations).
+/// </summary>
+internal sealed class SubscriptionsView
+{
+    internal static readonly SubscriptionsView None = new SubscriptionsView(0.0, 0, 0, 0, 0);
+
+    internal SubscriptionsView(double projectedMsPerS, long sampleReads, long sharedReads, int findQueries,
+        long findEvaluations)
+    {
+        ProjectedMsPerS = System.Math.Round(projectedMsPerS, 3);
+        SampleReads = sampleReads;
+        SharedReads = sharedReads;
+        FindQueries = findQueries;
+        FindEvaluations = findEvaluations;
+    }
+
+    public double ProjectedMsPerS { get; }
+
+    public long SampleReads { get; }
+
+    public long SharedReads { get; }
+
+    public int FindQueries { get; }
+
+    public long FindEvaluations { get; }
 }
 
 /// <summary>

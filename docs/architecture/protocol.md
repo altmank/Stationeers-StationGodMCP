@@ -308,13 +308,26 @@ A subscription asks the mod to read a set of device values at an interval and pu
 
 | Key | Type | Meaning |
 | --- | --- | --- |
-| `topic` | `devices` (default), `world` or `jobs` | What to watch. |
+| `topic` | `devices` (default), `world`, `jobs` or `find` | What to watch. |
 | `id`, `logic`, `reads`, `gateway`, `include` | as read logic's options | For `devices`: the same parts and bounds as one read logic call (at most 1,024 values). |
-| `interval_s` | number 0.5 to 3600 | For `devices`: how often to read, in game seconds; default 1. Game time stops while the game is paused, so a paused game sends nothing. |
+| `what` and the find's options | as a `find` call's | For `find`: `thing`, `item`, `device`, `container`, `frame`, `damaged`, `pad`, `water`, `food`, `plant`, `room` or `gateway`, with that find's options but its paging (`limit`, `offset`, `cursor`, `order`) and the shaping ones (`fields`, `omit`, ...), which are refused: the subscription holds the whole list. |
+| `interval_s` | number 0.5 to 3600 | For `devices`: how often to read, in game seconds; default 1. For `find`: how often its live facts are read again, 1 to 3600, default 10. Game time stops while the game is paused, so a paused game sends nothing. |
 
 The reply is `{subscription: "s3", interval_s: 1.0, values: 412, frame: 81250, result: <a full read logic result>}`
 (`Pure/Subscriptions/SubscriptionViews.cs:9-32`). The `world` and `jobs` topics take `topic` alone
 (`Pure/Subscriptions/SubscribeRequest.cs:105-133`).
+
+A `find` subscription's reply is `{subscription, topic: "find", what, interval_s, frame, as_of_s, cost_ms, keyed,
+result}`: `result` is the find's reply with every list whole (a walk's pages joined) and no paging keys, `as_of_s` the
+game time its evaluation began, `cost_ms` the main-thread milliseconds it took, and `keyed` names each list whose
+entries carry a key (`reference_id`, else `gateway_id`, `room_id`, `atmosphere_id`) with that field. The reply may come
+some frames after the call: a query nobody holds yet is evaluated first, over frames, as a `find` call is
+(`Protocol/SubscriptionHub.cs`, `Subscriptions/FindEvaluation.cs`).
+
+A find query is evaluated once for all its subscribers, on any connection: again every `interval_s` (the shortest of
+its subscribers'), since every find carries live facts (quantities, paint, damage values, growth), and earlier, at most
+once a game second, when the world model tells of a change on its channels (things of its class filed or gone, cells
+whose air, room or terrain changed, the damaged set, data networks; `Pure/Subscriptions/FindTopic.cs`).
 
 Events, all as `{"type":"event","event":"<name>",...}`:
 
@@ -322,19 +335,28 @@ Events, all as `{"type":"event","event":"<name>",...}`:
   sent only when some value other than the clock differs from the last one sent; the clock rides along in every event
   that is sent. At most one update per subscription waits in the outbound queue, so a slow client simply sees fewer,
   fresher events and `seq` never has gaps (`SubscriptionViews.cs:55-85`, `Pure/Subscriptions/UpdateSlot.cs:34-39`).
+- `find_update`: `subscription`, `seq`, `frame`, `as_of_s`, `keyed`, and what changed since the result this subscriber
+  was last sent: `lists` (per keyed list `{added, changed, removed}`: whole entries added and changed, keys removed)
+  and `rest` (every other key of the reply, whole, only when it changed). An evaluation that changed nothing sends
+  nothing and takes no `seq`. A client applies an update by dropping the removed keys, replacing the changed entries,
+  appending the added ones, and taking `rest` as the reply's other keys. After a resume the next update is whole:
+  `whole: true` and `result` in place of `lists` and `rest` (`Pure/Subscriptions/FindSlot.cs`, `FindResult.cs`).
 - `job_ended`: `subscription`, `seq`, `frame`, `job`: a held-tick job's final facts (`job_id`, `tool`, `status`,
   `error` and the lists undo plans from), sent once per job from the frame it ends in
   (`SubscriptionViews.cs:135-155`, `Protocol/SubscriptionHub.cs:216-240`). Jobs are global: every `jobs`
   subscription hears of every job.
 - `world_changed` and `game_state`: for the `world` topic only; a new world finishes loading, or the game state
   changes (`SubscriptionViews.cs:105-131,158-175`).
-- `subscription_ended`: `subscription`, `reason` (`world_changed` or `limit`), when the mod ends it
+- `subscription_ended`: `subscription`, `reason` (`world_changed`, `limit`, or `read_failed` when a sample's read or a
+  find's evaluation failed: a gateway gone, a find refused), when the mod ends it
   (`SubscriptionViews.cs:88-102`).
 
-Limits: at most `limits.max_subscriptions` (64) per connection and `limits.max_subscription_values` (8,192 values
-across them), counted over the connection's streams together; a subscription past a limit is refused
-`subscription_limit` (`Pure/Subscriptions/SubscriptionLimits.cs:88-116`). A client so refused polls the same items
-with read logic at the same interval instead.
+Limits: at most `limits.max_subscriptions` (64) per connection, every topic, and `limits.max_subscription_values`
+(8,192 values across its devices subscriptions), counted over the connection's streams together; and every
+subscription's measured load together (a devices subscription's sample ms, a find query's evaluation ms, per game
+second at its interval) at most half the subscription lane's share at 30 frames a second. A subscription past a limit
+is refused `subscription_limit` (`Pure/Subscriptions/SubscriptionLimits.cs`). A client so refused polls the same items
+with read logic (or the same find) at the same interval instead.
 
 Ending: a subscription belongs to the stream of the `subscribe` call that made it; any stream of the connection may
 unsubscribe it. It ends when the client unsubscribes, when its stream ends or the connection closes (both without
