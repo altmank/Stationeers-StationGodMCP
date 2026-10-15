@@ -287,9 +287,15 @@ and their final statuses alone. Those are kept in two stores with a memory budge
 both: `release` of a stream drops the pins, so memory may evict them, and `undo` of an evicted job answers
 `undo_expired` (`Pure/Jobs/KeptJobs.cs:9-44`, `KeptJobStore.cs:12-16`, `Protocol/ClientMessage.cs:439-460`).
 
-A paged `find` may open a walk: with the wire option `cursor` the rest of the list stays under a cursor
-(`cursor_id`) when more follows, and later pages with that id are taken with no scan, skipped entries counted and no
-filter checked again (`Verbs/FindThing.cs:22-29`). A cursor belongs to the (owner, stream) that opened it, is freed
+Every paged list pages one way (cost design A4): the first page takes the matching entries' keys in order, describes
+only its own entries, and with the wire option `cursor` keeps the rest under a cursor (`cursor_id`) when more follows;
+later pages with that id are taken from the kept keys with no scan, gone entries skipped and counted and no filter
+checked again (`Api/Shared/WalkRequest.cs`). The world's lists (`find` thing, item, device, container, frame,
+damaged; `inspect health`; `survey` area and network) are taken over frames (`Verbs/ThingListPage.cs`); one thing's
+list (`inspect screen`, `read flight_log`, the silo store in `inspect contents`) at once, and only for a call naming
+one id: a call naming several pages each by offset and keeps no cursor (`Api/Shared/KeyedPage.cs`). A key is a
+reference id, or for entries that are not things their place: a cell (`Pure/Paging/CellKey.cs`), a screen element, a
+sample's sequence number, a silo entry, a `find item` row or group (whose records the cursor keeps). A cursor belongs to the (owner, stream) that opened it, is freed
 when the page that takes its last ids answers, by `{"type":"cursor_close","cursor_id":"..."}` from that connection
 (no reply), when its stream or connection ends, on a world change, and by the bounds: 1,000,000 ids and 1,024
 cursors in all, the least recently used evicted first; using a freed, evicted or another stream's cursor is

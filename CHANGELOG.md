@@ -80,6 +80,12 @@
   stock). The loaded prefabs' catalogues (what kits build, swap targets, each family's kits, the ignition table) are
   built once per load instead of per call; logic-type names are one lookup; the lint rule file is looked at once per
   frame at most.
+- **Every paged list walks under a cursor.** `find device`, `find item`, `survey area`, `survey network`, `inspect
+  screen`, `read flight_log` and a silo's store in `inspect contents` now keep their first page's entries under a
+  cursor like `find thing` (`cursor_id` on the wire), describe only the page's entries, and take later pages from the
+  kept entries instead of searching again. One thing's list (screen, flight log, silo store) walks for a call that
+  names one id; a call naming several pages each by offset. A later `read flight_log` page's `offset` counts the rows
+  its walk passed.
 
 ## 1.33.2
 
