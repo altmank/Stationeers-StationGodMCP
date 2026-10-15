@@ -275,12 +275,20 @@ internal static class Connectivity
         return links;
     }
 
-    /// <summary>LinksTouching spread over frames (a Work body): one model's ends per step, into links.</summary>
+    /// <summary>
+    /// LinksTouching spread over frames (a Work body): the models indexed by cell a batch per step, then one model's
+    /// ends per step, into links.
+    /// </summary>
     internal static IEnumerable<object?> LinksTouchingSteps(IReadOnlyList<PieceModel> models, HashSet<long> focus,
         HashSet<Link> links)
     {
-        Dictionary<GridCell, List<PieceModel>> byCell = IndexByCell(models);
-        yield return null;
+        Dictionary<GridCell, List<PieceModel>> byCell = new Dictionary<GridCell, List<PieceModel>>();
+        for (int from = 0; from < models.Count; from += ModelsIndexedAStep)
+        {
+            IndexByCell(models, from, Math.Min(from + ModelsIndexedAStep, models.Count), byCell);
+            yield return null;
+        }
+
         for (int index = 0; index < models.Count; index++)
         {
             PieceModel from = models[index];
@@ -305,10 +313,13 @@ internal static class Connectivity
         }
     }
 
-    private static Dictionary<GridCell, List<PieceModel>> IndexByCell(IReadOnlyList<PieceModel> models)
+    // Models indexed by cell per step of LinksTouchingSteps (a long network's run holds thousands).
+    private const int ModelsIndexedAStep = 128;
+
+    private static void IndexByCell(IReadOnlyList<PieceModel> models, int from, int until,
+        Dictionary<GridCell, List<PieceModel>> byCell)
     {
-        Dictionary<GridCell, List<PieceModel>> byCell = new Dictionary<GridCell, List<PieceModel>>();
-        for (int index = 0; index < models.Count; index++)
+        for (int index = from; index < until; index++)
         {
             PieceModel model = models[index];
             for (int cellIndex = 0; cellIndex < model.Cells.Count; cellIndex++)
@@ -326,8 +337,6 @@ internal static class Connectivity
                 }
             }
         }
-
-        return byCell;
     }
 
     /// <summary>

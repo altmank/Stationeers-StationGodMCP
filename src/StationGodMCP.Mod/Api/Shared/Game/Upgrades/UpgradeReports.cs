@@ -52,8 +52,13 @@ internal static class UpgradeReports
             yield return null;
         }
 
-        UpgradeLists lists = new UpgradeLists(plan.Problems, pieces, ByPrefab(plan), Skipped(plan.Kept, shown),
-            Skipped(plan.Unmatched, shown), plan.Warnings);
+        // Each pass over the whole plan (thousands of swaps on a long network) is a step of its own.
+        List<object> byPrefab = ByPrefab(plan);
+        yield return null;
+        List<UpgradeSkippedView> kept = Skipped(plan.Kept, shown);
+        yield return null;
+        UpgradeLists lists = new UpgradeLists(plan.Problems, pieces, byPrefab, kept, Skipped(plan.Unmatched, shown),
+            plan.Warnings);
         yield return null;
         List<object> networks = new List<object>(plan.Networks.Count);
         foreach (NetworkRecord record in plan.Networks)
@@ -69,12 +74,20 @@ internal static class UpgradeReports
             yield return null;
         }
 
+        List<UpgradeCoilView> coils = Coils(plan);
+        yield return null;
+        List<UpgradeAmountView> refunds = RefundTotals(plan);
+        yield return null;
         UpgradeResources resources = new UpgradeResources(
-            plan.From != null ? GameLookup.ViewOf(plan.From) : null, Coils(plan), request.Refund, RefundTotals(plan),
+            plan.From != null ? GameLookup.ViewOf(plan.From) : null, coils, request.Refund, refunds,
             networks, Refunds.Forecast(plan.Refunds, RefundItems(plan)));
         yield return null;
-        answer.Value = new UpgradeReportView(header, counts, lists, resources, plan.Links?.View(),
-            DeadEnds(plan, shown), Loops(plan), Redundant(plan, shown), Riding(plan, shown));
+        UpgradeConnectivityView? links = plan.Links?.View();
+        yield return null;
+        UpgradeDeadEnds? deadEnds = DeadEnds(plan, shown);
+        yield return null;
+        answer.Value = new UpgradeReportView(header, counts, lists, resources, links, deadEnds, Loops(plan),
+            Redundant(plan, shown), Riding(plan, shown));
     }
 
     private static UpgradeRidingList? Riding(UpgradePlan plan, int limit)
@@ -210,6 +223,8 @@ internal static class UpgradeReports
 
     private static List<object> ByPrefab(UpgradePlan plan)
     {
+        // Each mapping by its source and target prefab hashes, first seen first.
+        Dictionary<long, int> places = new Dictionary<long, int>();
         List<PlannedSwap> firsts = new List<PlannedSwap>();
         List<int> counts = new List<int>();
         foreach (PlannedSwap swap in plan.Swaps)
@@ -219,16 +234,16 @@ internal static class UpgradeReports
                 continue;
             }
 
-            int at = firsts.FindIndex(first =>
-                first.Old.PrefabHash == swap.Old.PrefabHash && first.First!.Prefab == swap.First.Prefab);
-            if (at < 0)
+            long key = ((long)swap.Old.PrefabHash << 32) | (uint)swap.First.Prefab.PrefabHash;
+            if (places.TryGetValue(key, out int at))
             {
-                firsts.Add(swap);
-                counts.Add(1);
+                counts[at]++;
             }
             else
             {
-                counts[at]++;
+                places.Add(key, firsts.Count);
+                firsts.Add(swap);
+                counts.Add(1);
             }
         }
 

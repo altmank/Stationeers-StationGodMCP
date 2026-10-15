@@ -210,6 +210,7 @@ internal static class SwapNetworks
     {
         List<ReportProblem> problems = new List<ReportProblem>(unread);
         problems.AddRange(JobReports.Problems(plan.Problems, named));
+        yield return null;
         GasHold.Preview(pipes, acknowledge);
         if (GasHold.Judge(pipes, acknowledge) is GasHoldVerdict.Refusing refusing)
         {

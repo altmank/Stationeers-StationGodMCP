@@ -303,7 +303,7 @@ internal abstract class NetworkRecord
 internal sealed class CableNetworkRecord : NetworkRecord
 {
     // Cables read per step, recording or reporting (a network can hold thousands).
-    private const int CablesAStep = 256;
+    private const int CablesAStep = 128;
 
     private readonly CableNetwork _network;
     private int _cablesBefore;
