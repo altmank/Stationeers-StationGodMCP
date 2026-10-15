@@ -29,6 +29,18 @@ public sealed class NestedKeyTests
         Assert.Equal("spread.stride", Assert.Single(problems).Path);
     }
 
+    [Fact]
+    public void AnUnknownKeyInATopLevelAtIsAProblemAtItsOwnPath()
+    {
+        // found live: it was reported at prefab
+        List<OptionProblem> problems = new();
+
+        StructureBuildOrder.Of(BuildStructureOptions.Bind(new OptionReader(BuildStructureOptions.Spec, JObject.Parse(
+            """{"prefab": "StructureWallLight", "at": {"relative_to": "1378", "rihgt": 1}}"""))), problems, out _);
+
+        Assert.Equal("at.rihgt", Assert.Single(problems).Path);
+    }
+
     [Theory]
     [InlineData("""{"start": {"at": [0, 0, 0], "prot": 1}, "end": {"at": [4, 0, 0]}}""", "start.prot", "port")]
     [InlineData("""{"start": [{"at": [0, 0, 0]}, {"id": "5", "ports": [0], "netwrok": "3"}], "end": {"at": [4, 0, 0]}}""",

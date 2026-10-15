@@ -10,14 +10,19 @@ namespace StationGodMCP.Pure;
 /// What identifies a long frame (review D, R-D-28), always on and cheap: each frame StationGod notes the time of its
 /// Update's parts (Section) and the calls the scheduler ran in it (Call: method and ms; the first CallCapacity, the
 /// rest counted), in fixed arrays. At the next frame's start the game's whole frame time is known (Unity's
-/// unscaledDeltaTime); Check then gives a log line when that frame ran at least WholeFrameMs, or StationGod's own Update
-/// at least OwnMs: the frame, its whole ms, StationGod's ms by part, its calls and the GC collections since the frame
+/// unscaledDeltaTime); Check then gives a log line when that frame ran at least WholeFrameMs and TypicalTimes the
+/// typical frame (a running average: a dedicated server's ordinary frame is about 50 ms), or StationGod's own Update at
+/// least OwnMs: the frame, its whole ms, StationGod's ms by part, its calls and the GC collections since the frame
 /// before, so a reader can tell StationGod's frame from the game's or a collection's. At most one line per
 /// MinimumGapS. Main thread only; nothing is allocated unless a line is written.
 /// </summary>
 internal sealed class LongFrames
 {
     internal const double WholeFrameMs = 50.0;
+    internal const double TypicalTimes = 2.5;
+
+    // The running average's weight of a new frame.
+    private const double Weight = 0.02;
     internal const double OwnMs = 16.0;
     internal const double MinimumGapS = 10.0;
     internal const int CallCapacity = 16;
@@ -33,6 +38,7 @@ internal sealed class LongFrames
     private int _gcBefore;
     private int _gcAfter;
     private double _lastLoggedS = double.NegativeInfinity;
+    private double _typicalMs = double.NaN;
 
     /// <summary>The mod's notes, which the scheduler tells each call it runs; null (nothing noted) in tests.</summary>
     internal static LongFrames? Main { get; set; }
@@ -84,7 +90,12 @@ internal sealed class LongFrames
     /// </summary>
     internal string? Check(double wholeMs, int gcNow, double nowS)
     {
-        if (_frame < 0 || (wholeMs < WholeFrameMs && _updateMs < OwnMs) || nowS - _lastLoggedS < MinimumGapS)
+        bool longWhole = wholeMs >= WholeFrameMs && !double.IsNaN(_typicalMs) && wholeMs >= TypicalTimes * _typicalMs;
+        // A long frame moves the average only as far as twice it, so one stall does not hide the next.
+        _typicalMs = double.IsNaN(_typicalMs)
+            ? wholeMs
+            : _typicalMs + Weight * (Math.Min(wholeMs, 2.0 * _typicalMs) - _typicalMs);
+        if (_frame < 0 || (!longWhole && _updateMs < OwnMs) || nowS - _lastLoggedS < MinimumGapS)
         {
             return null;
         }

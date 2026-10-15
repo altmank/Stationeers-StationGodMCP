@@ -107,9 +107,17 @@ internal static class PlacementOrders
     }
 
     // Whether the message's first word names the option it is about: a placement item's path (placements[2].at), or
-    // one of the what's own options (at) for the placement given at the top level.
-    private static bool Named(string word, string path, WhatSpec? what) =>
-        path.Length > 0
-            ? word.StartsWith(path, StringComparison.Ordinal)
-            : what != null && what.Option(word) != null;
+    // one of the what's own options, or a path inside one (at, at.right), for the placement given at the top level.
+    private static bool Named(string word, string path, WhatSpec? what)
+    {
+        if (path.Length > 0)
+        {
+            return word.StartsWith(path, StringComparison.Ordinal);
+        }
+
+        int end = word.IndexOfAny(PathMarks);
+        return what != null && what.Option(end < 0 ? word : word.Substring(0, end)) != null;
+    }
+
+    private static readonly char[] PathMarks = { '.', '[' };
 }

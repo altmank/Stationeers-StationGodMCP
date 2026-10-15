@@ -15,6 +15,7 @@ public sealed class LongFrameTests
     public void AWholeFrameOverFiftyMsIsNamedWithStationGodsPartsCallsAndCollections()
     {
         LongFrames notes = new LongFrames("world model", "requests");
+        Assert.Null(notes.Check(16.0, 16, 0.0)); // the first frame only sets the typical frame
         notes.Begin(81250, gcCollections: 16);
         notes.Section(0, 0.3);
         notes.Section(1, 2.2);
@@ -41,6 +42,22 @@ public sealed class LongFrameTests
         Assert.NotNull(notes.Check(21.0, 0, 20.0));
         Assert.Null(notes.Check(90.0, 0, 20.0 + LongFrames.MinimumGapS / 2));
         Assert.NotNull(notes.Check(90.0, 0, 20.0 + LongFrames.MinimumGapS));
+    }
+
+    [Fact]
+    public void AServersOrdinaryFiftyMsFramesAreNotLongButAStallIs()
+    {
+        LongFrames notes = new LongFrames("requests");
+        for (int frame = 0; frame < 200; frame++)
+        {
+            notes.Begin(frame, 0);
+            notes.End(1.0, 0);
+            Assert.Null(notes.Check(50.0 + frame % 5, 0, frame * 20.0));
+        }
+
+        notes.Begin(200, 0);
+        notes.End(1.0, 0);
+        Assert.NotNull(notes.Check(140.0, 0, 5000.0));
     }
 
     [Fact]

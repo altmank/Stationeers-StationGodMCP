@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- **A long frame is logged with what identifies it.** When the game's whole frame ran 50 ms or more, or StationGod's
+- **A long frame is logged with what identifies it.** When the game's whole frame ran 50 ms or more and 2.5 times the typical frame (a running average), or StationGod's
   own Update 16 ms or more, the log says (at most once per 10 s) the frame, its whole ms, StationGod's ms by part
   (world stores, subscriptions and facts, world model, requests and jobs, previews), the calls it ran with their ms,
   and the GC collections in or after it. Always on; nothing is allocated unless a line is written.
