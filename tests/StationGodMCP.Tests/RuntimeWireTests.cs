@@ -45,7 +45,7 @@ public sealed class RuntimeWireTests
             "\"expired\":1}," +
             "\"memory\":{\"gc_collections\":31,\"gc_max_generation\":0,\"gc_total_memory_bytes\":123456789," +
             "\"mono_used_bytes\":100000000,\"mono_heap_bytes\":null}," +
-            "\"methods\":[{\"method\":\"inspect_slots\",\"calls\":2,\"errors\":1,\"main_thread_ms\":1.0," +
+            "\"methods\":[{\"method\":\"inspect_slots\",\"calls\":2,\"errors\":1,\"main_thread_ms\":0.6," +
             "\"handler_ms\":{\"total\":0.6,\"mean\":0.3,\"max\":0.4}," +
             "\"serialize_ms\":{\"total\":0.4,\"mean\":0.2,\"max\":0.3}," +
             "\"queue_wait_ms\":{\"total\":24.0,\"mean\":12.0,\"max\":15.0}," +

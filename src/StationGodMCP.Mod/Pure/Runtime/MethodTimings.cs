@@ -54,7 +54,7 @@ internal sealed class MethodTiming
     /// <summary>Main thread: parsing, the argument check and the tool, up to the reply object.</summary>
     internal Tally Handler { get; }
 
-    /// <summary>Main thread: the reply object to its JSON text.</summary>
+    /// <summary>The connection's writer thread: the plain reply to its JSON text (off the game's thread).</summary>
     internal Tally Serialize { get; }
 
     /// <summary>From the listener queueing the request to the main thread starting it (frame wait included).</summary>
@@ -63,8 +63,8 @@ internal sealed class MethodTiming
     /// <summary>The reply line's UTF-8 size, counted on the listener thread that writes it.</summary>
     internal Tally ReplyBytes { get; }
 
-    /// <summary>What the method costs the main thread: handler and serialisation.</summary>
-    internal double MainThreadMs => Handler.Total + Serialize.Total;
+    /// <summary>What the method costs the main thread: its handler (the reply is written on the writer thread).</summary>
+    internal double MainThreadMs => Handler.Total;
 
     internal static MethodTiming None(string method) =>
         new MethodTiming(method, 0, 0, default, default, default, default);

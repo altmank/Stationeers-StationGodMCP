@@ -293,7 +293,8 @@ envelope carries `"shaped": true`; errors are never shaped. The method's own pag
 well and are better than `limit` where a method has them.
 
 `server info` also has a `runtime` section (1.9.1+) that shows what the mod costs the game since it loaded. Per method
-called: the main-thread time of the tool (`handler_ms`) and of turning its reply into text (`serialize_ms`), the wait
+called: the main-thread time of the tool (`handler_ms`, which is also `main_thread_ms`), the time the connection's
+writer thread took to turn its reply into text (`serialize_ms`, off the game's thread), the wait
 for the next frame (`queue_wait_ms`) and the reply's size (`reply_bytes`), each as total, mean and max. Per frame: how
 many requests were answered and how long they took (`frames`), and how often the request budget left some for the
 next frame (`budget_stops`). And the game's garbage collector and Mono heap (`memory`). A frame spends at most
