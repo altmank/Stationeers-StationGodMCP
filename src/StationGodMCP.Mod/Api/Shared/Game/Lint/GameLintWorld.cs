@@ -83,7 +83,7 @@ internal sealed class GameLintWorld : ILintWorld
 
     internal GridFacts Facts { get; }
 
-    internal BuildCatalogue Catalogue => _catalogue ??= BuildCatalogue.Load();
+    internal BuildCatalogue Catalogue => _catalogue ??= WorldModel.Prefabs.Build;
 
     internal int Cells { get; private set; }
 

@@ -268,8 +268,9 @@ internal sealed class Kit
 }
 
 /// <summary>
-/// Every kit of one family, found from Prefab.AllPrefabs by what the kits place, never by name. When two kits place
+/// Every kit of one family, found from the loaded prefabs by what the kits place, never by name. When two kits place
 /// pieces of one grade, the one with the most pieces is that grade's kit; a tie is ambiguous and that grade has none.
+/// Built once per load and family (WorldModel.Prefabs.KitsOf); read only once built.
 /// </summary>
 internal sealed class KitCatalogue
 {
@@ -282,11 +283,11 @@ internal sealed class KitCatalogue
         _ambiguous = ambiguous;
     }
 
-    internal static KitCatalogue Of(UpgradeFamily family)
+    internal static KitCatalogue Of(UpgradeFamily family, IReadOnlyList<Thing> prefabs)
     {
         List<Kit> kits = new List<Kit>();
         List<Grade> ambiguous = new List<Grade>();
-        foreach (Thing prefab in Prefab.AllPrefabs)
+        foreach (Thing prefab in prefabs)
         {
             Kit? kit = prefab is MultiConstructor item && family.BuildsWith(item) ? Classify(family, item) : null;
             if (kit != null)

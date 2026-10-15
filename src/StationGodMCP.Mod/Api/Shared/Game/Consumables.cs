@@ -25,7 +25,7 @@ internal static class Consumables
     internal static ConsumableTally Take()
     {
         PlayerOrigin origin = PlayerOrigin.Current();
-        List<Item> items = WorldItems.All();
+        List<Item> items = WorldItems.Consumables();
         List<ItemRecord> records = new List<ItemRecord>(items.Count);
         for (int index = 0; index < items.Count; index++)
         {

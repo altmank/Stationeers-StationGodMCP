@@ -13,6 +13,7 @@ using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using UnityEngine;
+using World = StationGodMCP.WorldModel.World;
 
 namespace StationGodMCP.Api.Shared.Game;
 
@@ -156,7 +157,7 @@ internal sealed class HealthScanned
 }
 
 /// <summary>
-/// A scan of every damaged thing registered in OcclusionManager.AllThings, broken first, then worst first; broken
+/// A scan of every damaged thing registered (World.Things), broken first, then worst first; broken
 /// things are listed whatever their (healed) numbers say. It leaves out things being destroyed, indestructible damage
 /// states, entities and organs.
 /// </summary>
@@ -164,7 +165,7 @@ internal static class HealthScanner
 {
     internal static HealthScanned Scan(HealthScanFilter scan, PlayerOrigin origin)
     {
-        List<Thing> things = Pools.Snapshot(OcclusionManager.AllThings);
+        List<Thing> things = World.Things();
         List<HealthRow> rows = new List<HealthRow>();
         int structures = 0;
         int broken = 0;

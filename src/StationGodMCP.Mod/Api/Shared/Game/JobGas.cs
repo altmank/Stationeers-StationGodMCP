@@ -14,6 +14,7 @@ using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Profiling;
 using StationGodMCP.Pure.Protocol;
+using World = StationGodMCP.WorldModel.World;
 
 namespace StationGodMCP.Api.Shared.Game;
 
@@ -236,7 +237,7 @@ internal static class PipeGasQueue
     internal static bool ApplyAll()
     {
         HandleQueues();
-        foreach (PipeNetwork network in PipeNetwork.AllPipeNetworks.Active())
+        foreach (PipeNetwork network in World.PipeNetworks())
         {
             network?.Atmosphere?.UpdateCache();
         }
@@ -251,7 +252,7 @@ internal static class PipeGasQueue
     internal static bool ApplyQueued()
     {
         List<Atmosphere> touched = new List<Atmosphere>();
-        foreach (PipeNetwork network in PipeNetwork.AllPipeNetworks.Active())
+        foreach (PipeNetwork network in World.PipeNetworks())
         {
             if (network?.Atmosphere is { IsAwaitingEvent: true } atmosphere)
             {
@@ -321,7 +322,7 @@ internal static class PipeGasQueue
     private static bool AnyAtmosphereAwaiting()
     {
         using ProfScope walking = Prof.Scope(ProfId.JobGasWalk);
-        foreach (PipeNetwork network in PipeNetwork.AllPipeNetworks.Active())
+        foreach (PipeNetwork network in World.PipeNetworks())
         {
             if (network?.Atmosphere is { IsAwaitingEvent: true })
             {
@@ -427,7 +428,7 @@ internal sealed class PipeGasReading
     {
         using ProfScope walking = Prof.Scope(ProfId.JobGasWalk);
         List<PipeNetwork> networks = new List<PipeNetwork>();
-        foreach (PipeNetwork network in PipeNetwork.AllPipeNetworks.Active())
+        foreach (PipeNetwork network in World.PipeNetworks())
         {
             if (network != null)
             {
@@ -444,7 +445,7 @@ internal sealed class PipeGasReading
     {
         HashSet<PipeNetwork> known = new HashSet<PipeNetwork>(listed);
         List<PipeNetwork> orphans = new List<PipeNetwork>();
-        foreach (Thing thing in AtmosphericsManager.AtmosphericThings.Active())
+        foreach (Thing thing in World.AtmosphericThings())
         {
             if (thing is Pipe pipe && pipe != null && !pipe.IsBeingDestroyed && pipe.PipeNetwork != null &&
                 known.Add(pipe.PipeNetwork))

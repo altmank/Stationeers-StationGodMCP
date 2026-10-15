@@ -10,6 +10,7 @@ using Networks;
 using Objects.Electrical;
 using StationGodMCP.Pure;
 using Trading;
+using World = StationGodMCP.WorldModel.World;
 
 namespace StationGodMCP.Api.Shared.Game.Trading;
 
@@ -50,9 +51,9 @@ internal sealed class HeldGoods
     internal static List<LandingPadNetwork> EveryPadNetwork()
     {
         List<LandingPadNetwork> networks = new List<LandingPadNetwork>();
-        foreach (Structure structure in GridController.AllStructuresPool.ToList())
+        foreach (LandingPadCenter center in World.Pads())
         {
-            if (structure is LandingPadCenter center && !center.IsCursor && !center.IsBeingDestroyed
+            if (center != null && !center.IsCursor && !center.IsBeingDestroyed
                 && center.LandingPadNetwork != null && !networks.Contains(center.LandingPadNetwork))
             {
                 networks.Add(center.LandingPadNetwork);

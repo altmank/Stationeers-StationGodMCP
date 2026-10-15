@@ -14,6 +14,7 @@ using StationGodMCP.Api.Shared.Game.Trading;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure.Verbs;
 using UnityEngine;
+using World = StationGodMCP.WorldModel.World;
 
 namespace StationGodMCP.Verbs;
 
@@ -36,9 +37,9 @@ internal static class TradeContacts
         }
 
         List<DishView> dishes = new List<DishView>();
-        foreach (Device device in Device.AllDevices.ToList())
+        foreach (SatelliteDish dish in World.Dishes())
         {
-            if (device is SatelliteDish dish && dish != null)
+            if (dish != null)
             {
                 dishes.Add(DishViewOf(dish));
             }

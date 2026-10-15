@@ -10,6 +10,7 @@ using Objects.Electrical;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
 using UnityEngine;
+using World = StationGodMCP.WorldModel.World;
 
 namespace StationGodMCP.Api.Shared.Game;
 
@@ -40,9 +41,10 @@ internal static class LandingPads
     /// <summary>Every landing pad centre in the world, described against the contacts in the sky now.</summary>
     internal static List<LandingPadView> All()
     {
-        List<Structure> structures = GridController.AllStructuresPool.ToList();
+        List<LandingPadCenter> centers = World.Pads();
+        centers.Sort(static (a, b) => a.ReferenceId.CompareTo(b.ReferenceId));
         List<TraderContact> contacts = new List<TraderContact>();
-        foreach (TraderContact contact in TraderContact.AllStationContacts)
+        foreach (TraderContact contact in World.TraderContacts)
         {
             if (contact != null)
             {
@@ -51,9 +53,10 @@ internal static class LandingPads
         }
 
         List<LandingPadView> pads = new List<LandingPadView>();
-        for (int index = 0; index < structures.Count; index++)
+        for (int index = 0; index < centers.Count; index++)
         {
-            if (structures[index] is LandingPadCenter center && !center.IsCursor && !center.IsBeingDestroyed)
+            LandingPadCenter center = centers[index];
+            if (center != null && !center.IsCursor && !center.IsBeingDestroyed)
             {
                 pads.Add(LandingPadProbe.Describe(center, contacts));
             }

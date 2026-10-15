@@ -8,6 +8,7 @@ using Objects.Electrical;
 using StationGodMCP.Pure;
 using Trading.Waypoints;
 using UnityEngine;
+using World = StationGodMCP.WorldModel.World;
 
 namespace StationGodMCP.Api.Shared.Game.Build;
 
@@ -120,7 +121,7 @@ internal static class PadApproachGuard
     private static List<Pad> Corridors()
     {
         List<Pad> pads = new List<Pad>();
-        List<IWaypoint> waypoints = WaypointManager.AllWaypoints;
+        IReadOnlyList<IWaypoint> waypoints = World.Waypoints;
         for (int index = 0; index < waypoints.Count; index++)
         {
             if (!(waypoints[index] is LandingPadCenter center) || center == null || center.IsCursor ||
@@ -221,7 +222,7 @@ internal static class PadApproachGuard
     /// and RunwayStart waypoints at the threshold's own position beside them (:87-90), so that many hops cannot cut a
     /// chain short, while a chain a broken save left in a loop stops rather than walking forever.
     /// </summary>
-    private static int ChainSteps => WaypointManager.AllWaypoints.Count + 2;
+    private static int ChainSteps => World.Waypoints.Count + 2;
 
     // The pad's first approach waypoint, or null when it has none: the game's own read walks PreviousWaypoint to its
     // end and takes that piece as where the traders come down (GetFirstApproachWaypoint,

@@ -209,7 +209,7 @@ internal static class PlacePlanner
         }
 
         Source(plan);
-        BuildCatalogue catalogue = BuildCatalogue.Load();
+        BuildCatalogue catalogue = WorldModel.Prefabs.Build;
         List<ColorSwatch> swatches = Singleton<GameManager>.Instance != null
             ? Singleton<GameManager>.Instance.CustomColors
             : new List<ColorSwatch>();

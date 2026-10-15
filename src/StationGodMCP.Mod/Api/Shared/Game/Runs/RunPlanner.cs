@@ -264,7 +264,7 @@ internal static class RunPlanner
     private static void LayOut(RunPlan plan, RunBuild build)
     {
         RunKind kind = plan.Request.Kind;
-        KitCatalogue kits = KitCatalogue.Of(kind.Family);
+        KitCatalogue kits = WorldModel.Prefabs.KitsOf(kind.Family);
         Kit? kit = kits.For(build.Grade);
         if (kit == null || kit.Pieces.Count == 0)
         {

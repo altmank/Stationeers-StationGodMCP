@@ -9,6 +9,7 @@ using Assets.Scripts.Objects.Items;
 using Assets.Scripts.Objects.Pipes;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
+using World = StationGodMCP.WorldModel.World;
 
 namespace StationGodMCP.Api.Shared.Game;
 
@@ -49,7 +50,7 @@ internal static class Plants
     internal static List<Plant> All(bool includeUnplanted)
     {
         HashSet<Plant> growing = new HashSet<Plant>();
-        foreach (Plant plant in Plant.AllPlants)
+        foreach (Plant plant in World.GrowingPlants)
         {
             if (plant != null)
             {
@@ -59,10 +60,10 @@ internal static class Plants
 
         List<Plant> plants = new List<Plant>();
         HashSet<Plant> listed = new HashSet<Plant>();
-        List<DynamicThing> things = Pools.Snapshot(OcclusionManager.AllDynamicThings);
-        foreach (DynamicThing thing in things)
+        List<Plant> items = World.Plants();
+        foreach (Plant plant in items)
         {
-            if (thing is Plant plant && !plant.IsCursor && !plant.IsBeingDestroyed &&
+            if (plant != null && !plant.IsCursor && !plant.IsBeingDestroyed &&
                 (includeUnplanted || plant.IsPlanted || growing.Contains(plant)) && listed.Add(plant))
             {
                 plants.Add(plant);

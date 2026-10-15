@@ -75,21 +75,19 @@ internal static class XRay
             return null;
         }
 
-        foreach (Thing prefab in Prefab.AllPrefabs)
+        // The T-Ray's prefab (the game loads one SPUMesonScanner).
+        if (WorldModel.Prefabs.FirstOf<SPUMesonScanner>() is { } scanner &&
+            GameMembers.MesonScannerMaterial.GetValue(scanner) is Material material && material != null)
         {
-            if (prefab is SPUMesonScanner scanner &&
-                GameMembers.MesonScannerMaterial.GetValue(scanner) is Material material && material != null)
+            Material copy = new Material(material) { renderQueue = Overlay, enableInstancing = true };
+            if (copy.HasProperty("_ZTest"))
             {
-                Material copy = new Material(material) { renderQueue = Overlay, enableInstancing = true };
-                if (copy.HasProperty("_ZTest"))
-                {
-                    copy.SetInt("_ZTest", (int)CompareFunction.Always);
-                }
-
-                Instanced = true;
-                _meshSource = $"t-ray ({material.shader.name})";
-                return copy;
+                copy.SetInt("_ZTest", (int)CompareFunction.Always);
             }
+
+            Instanced = true;
+            _meshSource = $"t-ray ({material.shader.name})";
+            return copy;
         }
 
         return null;

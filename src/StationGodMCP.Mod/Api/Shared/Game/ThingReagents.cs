@@ -5,6 +5,7 @@ using Assets.Scripts.Objects;
 using Reagents;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
+using World = StationGodMCP.WorldModel.World;
 
 namespace StationGodMCP.Api.Shared.Game;
 
@@ -43,7 +44,7 @@ internal static class ThingReagents
             return reagents;
         }
 
-        foreach (Reagent reagent in Reagent.AllReagents)
+        foreach (Reagent reagent in World.Reagents)
         {
             double quantity = mixture.Get(reagent);
             if (quantity > TraceAmount)

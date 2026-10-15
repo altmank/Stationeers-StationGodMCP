@@ -11,6 +11,7 @@ using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using UnityEngine;
+using World = StationGodMCP.WorldModel.World;
 
 namespace StationGodMCP.Api.Shared.Game;
 
@@ -77,14 +78,16 @@ internal sealed class FrameCensus
 
     internal int TotalOuter { get; private set; }
 
-    // GridController.AllStructuresPool holds every registered structure; frames are the Frame ones.
+    // Every registered frame (World.Frames: the Frame structures of the structures' pool), by reference id.
     internal static FrameCensus Take(CellAir air, PlayerOrigin origin, double? near, bool includeInner)
     {
         FrameCensus census = new FrameCensus();
-        List<Structure> structures = GridController.AllStructuresPool.ToList();
-        for (int index = 0; index < structures.Count; index++)
+        List<Frame> frames = World.Frames();
+        frames.Sort(static (a, b) => a.ReferenceId.CompareTo(b.ReferenceId));
+        for (int index = 0; index < frames.Count; index++)
         {
-            if (structures[index] is Frame frame && !frame.IsCursor && !frame.IsBeingDestroyed)
+            Frame frame = frames[index];
+            if (frame != null && !frame.IsCursor && !frame.IsBeingDestroyed)
             {
                 census.Add(frame, air, origin, near, includeInner);
             }

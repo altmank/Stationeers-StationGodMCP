@@ -11,6 +11,7 @@ using Assets.Scripts.Objects.Items;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using World = StationGodMCP.WorldModel.World;
 
 namespace StationGodMCP.Api.Shared.Game;
 
@@ -18,9 +19,9 @@ namespace StationGodMCP.Api.Shared.Game;
 /// Water sources: every thing and pipe network in the world whose atmosphere holds water, polluted water or steam.
 /// Read only.
 ///
-/// Found through AtmosphericsManager.AllAtmospheres, the game's own list of every atmosphere: Thing-mode atmospheres
-/// (a thing's own) and Network-mode ones (a pipe network's), and PipeNetwork.AllPipeNetworks for a network whose
-/// atmosphere the game has not listed yet. Room and world air is left out, and so are organs and
+/// Found through the game's own list of every atmosphere (World.Atmospheres): Thing-mode atmospheres (a thing's own)
+/// and Network-mode ones (a pipe network's), and the pipe networks (World.PipeNetworks) for a network whose atmosphere
+/// the game has not listed yet; only atmospheres holding at least the minimum are taken from either. Room and world air is left out, and so are organs and
 /// bodies (a stomach holds water too). Largest liquid water first. A call that holds the main thread over
 /// WaterSourcesWarning.ThresholdMs logs where the time went (rate-limited).
 /// </summary>
@@ -34,7 +35,7 @@ internal static class WaterSources
         long started = Stopwatch.GetTimestamp();
         int collections = GC.CollectionCount(0);
         PlayerOrigin origin = PlayerOrigin.Current();
-        Listed listed = Atmospheres();
+        Listed listed = Atmospheres(minimum);
         List<Atmosphere> atmospheres = listed.Atmospheres;
         long scanStarted = Stopwatch.GetTimestamp();
         List<WaterRow> rows = new List<WaterRow>();
@@ -84,21 +85,23 @@ internal static class WaterSources
 
     private static double Ms(long ticks) => ticks * 1000.0 / Stopwatch.Frequency;
 
-    // AtmosphericsManager.AllAtmospheres, plus every pipe network's atmosphere: a network made since the last
-    // atmospherics tick (or while paused) has its atmosphere only queued (AtmosphericsManager.RegisterFromMainThread)
-    // until HandleMainThreadRegistrations adds it to the list on the next tick. Each list is copied under its own lock,
-    // timed (WaterSourcesTiming).
-    private static Listed Atmospheres()
+    // The game's atmospheres holding at least minimum, plus every such pipe network's atmosphere: a network made since
+    // the last atmospherics tick (or while paused) has its atmosphere only queued
+    // (AtmosphericsManager.RegisterFromMainThread) until HandleMainThreadRegistrations adds it to the list on the next
+    // tick. Each pool is read under its own lock, timed (WaterSourcesTiming).
+    private static Listed Atmospheres(double minimum)
     {
         long started = Stopwatch.GetTimestamp();
-        List<Atmosphere> atmospheres = Pools.Snapshot(AtmosphericsManager.AllAtmospheres, out double atmosphereLockMs);
+        List<Atmosphere> atmospheres =
+            World.Atmospheres(atmosphere => Holds(atmosphere, minimum), out double atmosphereLockMs);
         long networksStarted = Stopwatch.GetTimestamp();
         HashSet<Atmosphere> listed = new HashSet<Atmosphere>(atmospheres);
-        List<PipeNetwork> networks = Pools.Snapshot(PipeNetwork.AllPipeNetworks, out double networkLockMs);
+        List<PipeNetwork> networks =
+            World.PipeNetworks(network => Holds(network.Atmosphere, minimum), out double networkLockMs);
         foreach (PipeNetwork network in networks)
         {
-            Atmosphere? atmosphere = network?.Atmosphere;
-            if (atmosphere != null && listed.Add(atmosphere))
+            Atmosphere atmosphere = network.Atmosphere;
+            if (listed.Add(atmosphere))
             {
                 atmospheres.Add(atmosphere);
             }
@@ -130,6 +133,19 @@ internal static class WaterSources
         internal double NetworkLockMs { get; }
 
         internal double NetworkListMs { get; }
+    }
+
+    // Water, polluted water and steam together at least minimum mol (WaterRow.Total).
+    private static bool Holds(Atmosphere? atmosphere, double minimum)
+    {
+        if (atmosphere == null || atmosphere.BeingDestroyed)
+        {
+            return false;
+        }
+
+        GasMixture mixture = atmosphere.GasMixture;
+        return mixture.Water.Quantity.ToDouble() + mixture.PollutedWater.Quantity.ToDouble() +
+            mixture.Steam.Quantity.ToDouble() >= minimum;
     }
 
     // A thing's own atmosphere, not a body's or an organ's; or a pipe network's.

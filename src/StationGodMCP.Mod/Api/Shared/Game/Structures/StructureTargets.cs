@@ -9,7 +9,7 @@ namespace StationGodMCP.Api.Shared.Game.Structures;
 /// The prefabs a swap may build: loaded (Prefab.Find), buildable from some kit (listed in a MultiConstructor's
 /// Constructables), not a placement cursor, with build states, and of the family's plain class. Always the registered
 /// prefab from Prefab.Find: a Constructables entry is the source asset, whose GridBounds is empty (Prefab.Register
-/// computes it on the registered copy only).
+/// computes it on the registered copy only). Built once per load from the loaded prefabs (WorldModel.Prefabs.Targets).
 /// </summary>
 internal sealed class StructureTargets
 {
@@ -20,10 +20,10 @@ internal sealed class StructureTargets
         _kitPlaced = kitPlaced;
     }
 
-    internal static StructureTargets Load()
+    internal static StructureTargets Load(IReadOnlyList<Thing> prefabs)
     {
         HashSet<int> placed = new HashSet<int>();
-        foreach (Thing prefab in Prefab.AllPrefabs)
+        foreach (Thing prefab in prefabs)
         {
             if (!(prefab is MultiConstructor kit) || kit.Constructables == null)
             {

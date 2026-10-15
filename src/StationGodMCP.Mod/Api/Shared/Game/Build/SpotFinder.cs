@@ -35,7 +35,7 @@ internal static class SpotFinder
     internal static PlanSpotView Find(SpotOrder order)
     {
         GridFacts facts = new GridFacts(new CableRunKind(), SmallGridBlock.None, new HashSet<long>());
-        BuildCatalogue catalogue = BuildCatalogue.Load();
+        BuildCatalogue catalogue = WorldModel.Prefabs.Build;
         Structure? found = catalogue.Find(order.Prefab, out string? issue);
         if (found == null)
         {

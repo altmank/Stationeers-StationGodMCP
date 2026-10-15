@@ -341,7 +341,7 @@ internal static class UpgradePlanner
         UpgradePlan plan = new UpgradePlan(request);
         List<SmallGrid> members = Members(request, plan);
         plan.Total = members.Count;
-        PlanContext context = new PlanContext(plan, KitCatalogue.Of(request.Family), new TwinFinder());
+        PlanContext context = new PlanContext(plan, WorldModel.Prefabs.KitsOf(request.Family), new TwinFinder());
         foreach (SmallGrid member in members)
         {
             request.Goal.Classify(context, member);

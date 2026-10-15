@@ -8,6 +8,7 @@ using Assets.Scripts.Objects.Entities;
 using Objects.Structures;
 using StationGodMCP.Pure;
 using UnityEngine;
+using World = StationGodMCP.WorldModel.World;
 
 namespace StationGodMCP.Api.Shared.Game.Structures;
 
@@ -161,7 +162,7 @@ internal sealed class FrameFamily : StructureFamily
 
     private static string? DynamicOccupant(Vector3 centre)
     {
-        foreach (Human human in new List<Human>(Human.AllHumans))
+        foreach (Human human in World.Humans)
         {
             if (human != null && !human.IsBeingDestroyed && Inside(human.Position, centre))
             {

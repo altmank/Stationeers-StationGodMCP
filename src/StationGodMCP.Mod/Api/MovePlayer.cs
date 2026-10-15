@@ -17,6 +17,7 @@ using StationGodMCP.Pure.RemoteView;
 using StationGodMCP.Pure.Verbs;
 using TerrainSystem;
 using UnityEngine;
+using World = StationGodMCP.WorldModel.World;
 
 namespace StationGodMCP.Api;
 
@@ -161,7 +162,7 @@ internal static class MovablePlayers
     internal static Human Find(string wanted)
     {
         List<NamedPlayer<Human>> players = new List<NamedPlayer<Human>>();
-        foreach (Human human in new List<Human>(Human.AllHumans))
+        foreach (Human human in World.Humans)
         {
             if (human != null && !human.IsBeingDestroyed)
             {

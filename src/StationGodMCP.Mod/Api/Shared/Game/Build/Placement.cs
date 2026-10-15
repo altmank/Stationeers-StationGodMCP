@@ -19,6 +19,7 @@ namespace StationGodMCP.Api.Shared.Game.Build;
 /// BuildStructure or a MultiConstructor's Constructables), and the game's placement cursor for each
 /// (InventoryManager._constructionCursors, one instance per structure prefab, made when the inventory manager sets
 /// up). Always the registered prefab (Prefab.Find): a kit's entry is the source asset, whose GridBounds is empty.
+/// Built once per load from the loaded prefabs (WorldModel.Prefabs.Build).
 /// </summary>
 internal sealed class BuildCatalogue
 {
@@ -33,11 +34,12 @@ internal sealed class BuildCatalogue
         _cursors = cursors;
     }
 
-    internal static BuildCatalogue Load()
+    /// <summary>The catalogue of these prefabs, with the game's placement cursors by name (null: none made yet).</summary>
+    internal static BuildCatalogue Load(IReadOnlyList<Thing> prefabs, Dictionary<string, Structure>? cursorsByName)
     {
         HashSet<int> built = new HashSet<int>();
         HashSet<int> mergeBuilt = new HashSet<int>();
-        foreach (Thing prefab in Prefab.AllPrefabs)
+        foreach (Thing prefab in prefabs)
         {
             switch (prefab)
             {
@@ -62,10 +64,9 @@ internal sealed class BuildCatalogue
         }
 
         Dictionary<int, Structure> cursors = new Dictionary<int, Structure>();
-        if (GameMembers.ConstructionCursors.TryResolve() &&
-            GameMembers.ConstructionCursors.GetValue(null) is Dictionary<string, Structure> byName)
+        if (cursorsByName != null)
         {
-            foreach (Structure cursor in byName.Values)
+            foreach (Structure cursor in cursorsByName.Values)
             {
                 if (cursor != null)
                 {
@@ -131,20 +132,7 @@ internal sealed class BuildCatalogue
     private static Thing? ByName(string name)
     {
         Thing exact = Prefab.Find(name);
-        return exact != null ? exact : FindIgnoringCase(name);
-    }
-
-    private static Thing? FindIgnoringCase(string name)
-    {
-        foreach (Thing prefab in Prefab.AllPrefabs)
-        {
-            if (prefab != null && string.Equals(prefab.PrefabName, name, StringComparison.OrdinalIgnoreCase))
-            {
-                return prefab;
-            }
-        }
-
-        return null;
+        return exact != null ? exact : WorldModel.Prefabs.NamedIgnoringCase(name);
     }
 }
 

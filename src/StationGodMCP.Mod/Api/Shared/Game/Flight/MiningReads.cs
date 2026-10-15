@@ -12,6 +12,7 @@ using Objects.Rockets.Scanning;
 using Reagents;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure.Rockets;
+using World = StationGodMCP.WorldModel.World;
 
 namespace StationGodMCP.Api.Shared.Game.Flight;
 
@@ -131,9 +132,9 @@ internal static class MiningReads
     internal static List<SiteRead> AllSites()
     {
         List<SiteRead> sites = new List<SiteRead>(32);
-        for (int index = 0; index < SpaceMapNode.AllSpaceMapNodes.Count; index++)
+        for (int index = 0; index < World.SpaceMapNodes.Count; index++)
         {
-            SpaceMapNode node = SpaceMapNode.AllSpaceMapNodes[index];
+            SpaceMapNode node = World.SpaceMapNodes[index];
             SiteRead? site = node != null && node.IsCharted ? SiteOf(node) : null;
             if (site != null)
             {
@@ -192,7 +193,7 @@ internal static class MiningReads
         }
 
         Dictionary<string, double> reagents = new Dictionary<string, double>(4);
-        foreach (Reagent reagent in Reagent.AllReagents)
+        foreach (Reagent reagent in World.Reagents)
         {
             double quantity = mixture.Get(reagent);
             if (quantity > 1e-6)

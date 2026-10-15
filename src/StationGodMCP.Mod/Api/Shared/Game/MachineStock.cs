@@ -8,6 +8,7 @@ using Assets.Scripts.Objects.Items;
 using Reagents;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using World = StationGodMCP.WorldModel.World;
 
 namespace StationGodMCP.Api.Shared.Game;
 
@@ -18,7 +19,7 @@ namespace StationGodMCP.Api.Shared.Game;
 /// fabricator: a FabricatorBase (Autolathe, Electronics Printer, Pipe Bender, Tool Manufactory...). Ingots put in
 /// become its stock and stop being items. Opening it ejects the stock again (SimpleFabricatorBase.OnServerExportTick,
 /// Thing.DropReagent: one reagent at a time, (int) of its quantity as ingots, 1 reagent unit = 1 ingot), as the ingot
-/// SimpleFabricatorBase.GetPrefabHashFromReagentHash names: the first Ingot.AllIngotPrefabs entry whose
+/// SimpleFabricatorBase.GetPrefabHashFromReagentHash names: the first ingot prefab (WorldModel.Prefabs) whose
 /// CreatedReagentMixture contains that reagent. So fabricator stock counts under that ingot's prefab.
 ///
 /// processing: any other structure with reagents (a furnace's or arc furnace's melted load, a centrifuge's, a
@@ -34,7 +35,7 @@ internal static class MachineStock
     /// <summary>Amounts at or below this are rounding left in the mixture (ThingReagents' rule).</summary>
     private const double TraceAmount = 1e-6;
 
-    /// <summary>Every stock entry the filter keeps, one per machine and reagent, in structure order.</summary>
+    /// <summary>Every stock entry the filter keeps, one per machine and reagent, machines by reference id.</summary>
     internal static List<StockRecord> Collect(ItemFilter filter, PlayerOrigin origin)
     {
         List<StockRecord> records = new List<StockRecord>();
@@ -43,13 +44,14 @@ internal static class MachineStock
             return records;
         }
 
-        Dictionary<Reagent, Ingot> ingots = IngotsByReagent();
+        IReadOnlyDictionary<Reagent, Ingot> ingots = WorldModel.Prefabs.IngotsByReagent;
         if (!CanKeepAny(filter, ingots))
         {
             return records;
         }
 
-        List<Structure> structures = GridController.AllStructuresPool.ToList();
+        List<Structure> structures = World.ReagentHolders();
+        structures.Sort(static (a, b) => a.ReferenceId.CompareTo(b.ReferenceId));
         for (int index = 0; index < structures.Count; index++)
         {
             Structure machine = structures[index];
@@ -67,12 +69,14 @@ internal static class MachineStock
     }
 
     private static void AddMachine(List<StockRecord> records, Structure machine, ReagentMixture mixture,
-        Dictionary<Reagent, Ingot> ingots, ItemFilter filter, PlayerOrigin origin)
+        IReadOnlyDictionary<Reagent, Ingot> ingots, ItemFilter filter, PlayerOrigin origin)
     {
         bool fabricator = machine is FabricatorBase;
         double? distance = origin.ExactDistanceTo(machine.Position);
-        foreach (Reagent reagent in Reagent.AllReagents)
+        IReadOnlyList<Reagent> reagents = World.Reagents;
+        for (int index = 0; index < reagents.Count; index++)
         {
+            Reagent reagent = reagents[index];
             double quantity = mixture.Get(reagent);
             if (!(quantity > TraceAmount))
             {
@@ -91,8 +95,8 @@ internal static class MachineStock
     }
 
     // A stock entry counts under an ingot's prefab or under none (StockRecord.IngotPrefab), so a prefab filter that
-    // keeps none of those names keeps no stock, and the walk over every structure is skipped.
-    private static bool CanKeepAny(ItemFilter filter, Dictionary<Reagent, Ingot> ingots)
+    // keeps none of those names keeps no stock, and the machines are not read.
+    private static bool CanKeepAny(ItemFilter filter, IReadOnlyDictionary<Reagent, Ingot> ingots)
     {
         if (filter.Prefab == null)
         {
@@ -108,27 +112,6 @@ internal static class MachineStock
         }
 
         return false;
-    }
-
-    // SimpleFabricatorBase.GetPrefabHashFromReagentHash: the first ingot prefab whose CreatedReagentMixture contains
-    // the reagent. Built per call: a few dozen ingots and reagents.
-    private static Dictionary<Reagent, Ingot> IngotsByReagent()
-    {
-        Dictionary<Reagent, Ingot> ingots = new Dictionary<Reagent, Ingot>();
-        foreach (Reagent reagent in Reagent.AllReagents)
-        {
-            foreach (Ingot ingot in Ingot.AllIngotPrefabs)
-            {
-                if (ingot != null && ingot.CreatedReagentMixture != null &&
-                    ingot.CreatedReagentMixture.Contains(reagent))
-                {
-                    ingots[reagent] = ingot;
-                    break;
-                }
-            }
-        }
-
-        return ingots;
     }
 }
 

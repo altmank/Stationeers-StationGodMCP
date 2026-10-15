@@ -7,6 +7,7 @@ using Assets.Scripts.Objects.Entities;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Pure.RemoteView;
 using UnityEngine;
+using World = StationGodMCP.WorldModel.World;
 
 namespace StationGodMCP.Net;
 
@@ -148,7 +149,7 @@ internal static class RemoteViews
     // Lazy: read only when the client's registered human is missing or no longer its own.
     private static IEnumerable<ClientHuman<Human>> Humans()
     {
-        foreach (Human human in Human.AllHumans)
+        foreach (Human human in World.Humans)
         {
             if (human != null && !human.IsBeingDestroyed)
             {

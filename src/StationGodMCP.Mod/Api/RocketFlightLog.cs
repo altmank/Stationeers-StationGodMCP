@@ -13,6 +13,7 @@ using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Rockets;
 using StationGodMCP.Pure.Shaping;
 using UnityEngine;
+using World = StationGodMCP.WorldModel.World;
 
 namespace StationGodMCP.Api;
 
@@ -213,9 +214,9 @@ internal static class RocketFlightRecorder
 
     private static Rocket? Find(long id)
     {
-        for (int index = 0; index < Rocket.AllRockets.Count; index++)
+        for (int index = 0; index < World.Rockets.Count; index++)
         {
-            Rocket rocket = Rocket.AllRockets[index];
+            Rocket rocket = World.Rockets[index];
             if (rocket != null && rocket.ReferenceId == id && !rocket.BeingDestroyed && rocket.RocketNetwork != null)
             {
                 return rocket;

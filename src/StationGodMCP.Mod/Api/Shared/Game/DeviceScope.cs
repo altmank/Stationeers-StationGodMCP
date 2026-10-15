@@ -56,7 +56,7 @@ internal sealed class DeviceScope
             // OnDeregistered) whether or not it is cabled or powered. Walking CableNetwork.AllCableNetworks'
             // DataDeviceList would miss a device with no cable at all, such as an airlock door whose cable was
             // destroyed.
-            foreach (Device device in Device.AllDevices.ToList())
+            foreach (Device device in StationGodMCP.WorldModel.World.Devices())
             {
                 Add(devices, ScopedTarget.From(device));
             }
@@ -162,7 +162,7 @@ internal sealed class DeviceScope
     internal static int CountWorld()
     {
         HashSet<long> ids = new HashSet<long>();
-        foreach (Device device in Device.AllDevices.ToList())
+        foreach (Device device in StationGodMCP.WorldModel.World.Devices())
         {
             Thing? thing = device != null ? ((ILogicable)device).GetAsThing : null;
             if (thing != null)

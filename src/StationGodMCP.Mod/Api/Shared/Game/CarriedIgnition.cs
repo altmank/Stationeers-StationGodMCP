@@ -32,6 +32,9 @@ internal static class CarriedIgnition
     private const string InternalAir = "internal";
     private const string NoAir = "none";
 
+    private static List<PrefabIgnitionView>? _prefabs;
+    private static long _prefabsGeneration = -1;
+
     internal static IgnitionRiskView Read(bool includePrefabs)
     {
         PlayerOrigin origin = PlayerOrigin.Current();
@@ -132,11 +135,27 @@ internal static class CarriedIgnition
 
     private static double? Positive(double kelvin) => kelvin > 0.0 ? kelvin : null;
 
+    // The loaded prefabs' ignition points: static data, worked out once per WorldModel.Prefabs generation; each reply
+    // gets its own list of the kept views.
     private static List<PrefabIgnitionView> Prefabs()
     {
-        List<PrefabIgnitionView> views = new List<PrefabIgnitionView>();
-        foreach (Thing prefab in new List<Thing>(Prefab.AllPrefabs))
+        long generation = WorldModel.Prefabs.Generation;
+        if (_prefabs == null || _prefabsGeneration != generation)
         {
+            _prefabs = IgnitionPoints();
+            _prefabsGeneration = generation;
+        }
+
+        return new List<PrefabIgnitionView>(_prefabs);
+    }
+
+    private static List<PrefabIgnitionView> IgnitionPoints()
+    {
+        List<PrefabIgnitionView> views = new List<PrefabIgnitionView>();
+        IReadOnlyList<Thing> prefabs = WorldModel.Prefabs.All;
+        for (int index = 0; index < prefabs.Count; index++)
+        {
+            Thing prefab = prefabs[index];
             if (prefab == null)
             {
                 continue;

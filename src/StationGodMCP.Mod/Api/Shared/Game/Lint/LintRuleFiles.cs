@@ -27,6 +27,7 @@ internal static class LintRuleFiles
     private static string? _key;
     private static LintRuleSet? _set;
     private static string? _builtIn;
+    private static int _lookedFrame = -1;
 
     /// <summary>The save's rule file path (it may not exist); null with no save loaded.</summary>
     internal static string? SaveFile
@@ -41,9 +42,19 @@ internal static class LintRuleFiles
         }
     }
 
-    /// <summary>The effective rule set, compiled once per change of the save's file.</summary>
+    /// <summary>
+    /// The effective rule set, compiled once per change of the save's file; the file is looked at once per frame at
+    /// most (cost design A1), so the calls and job steps of one frame share one look. Main thread.
+    /// </summary>
     internal static LintRuleSet Current()
     {
+        int frame = UnityEngine.Time.frameCount;
+        if (_set != null && frame == _lookedFrame)
+        {
+            return _set;
+        }
+
+        _lookedFrame = frame;
         string? save = SaveFile;
         string key = save != null ? Stamp(save) : "-";
         if (_set != null && key == _key)

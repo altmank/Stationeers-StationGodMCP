@@ -74,7 +74,12 @@
   add and remove paths; calls ask it instead of copying the game's lists. `server info` `runtime.prefab_index` is now
   `runtime.world_index`, with `classes` (things filed per class). When a game update breaks its hooks, world queries
   refuse `game_changed` instead of walking everything. The `[Performance]` debug switch `VerifyPrefabIndex` is now
-  `VerifyWorldIndex` and checks every class query too.
+  `VerifyWorldIndex` and checks every class query too. Every call now reads the world through it: no call copies a
+  game list any more, `find food` reads only food and drink, `find pad` only pad centres, machine stock only machines
+  that hold reagents. Lists the game kept in its own order now come by reference id (silos, pads, frames, machine
+  stock). The loaded prefabs' catalogues (what kits build, swap targets, each family's kits, the ignition table) are
+  built once per load instead of per call; logic-type names are one lookup; the lint rule file is looked at once per
+  frame at most.
 
 ## 1.33.2
 

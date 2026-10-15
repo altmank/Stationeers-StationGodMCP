@@ -13,6 +13,7 @@ using Assets.Scripts.UI.ImGuiUi;
 using Reagents;
 using StationeersMods.Interface;
 using UnityEngine;
+using World = StationGodMCP.WorldModel.World;
 
 namespace StationGodMCP;
 
@@ -293,7 +294,7 @@ internal static class PrefabRegistrar
         ElectronicsPrinter.RecipeComparable.AddRecipe(recipeData, null);
         ElectronicsPrinter.RecipeComparable.GenerateRecipieList();
         SynchronizeRecipeReferenceList(ElectronicReader.ElectronicsPrinterRecipes, kit, recipe);
-        SynchronizeRecipeReferenceList(ElectronicReader.AllRecipes, kit, recipe);
+        SynchronizeRecipeReferenceList(World.ReaderRecipes, kit, recipe);
     }
 
     private static void SynchronizeRecipeReferenceList(List<RecipeReference> recipes, MultiConstructor kit,

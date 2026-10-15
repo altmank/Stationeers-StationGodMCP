@@ -13,6 +13,7 @@ using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Protocol;
 using UnityEngine;
+using World = StationGodMCP.WorldModel.World;
 
 namespace StationGodMCP.Api.Shared.Game;
 
@@ -65,7 +66,7 @@ internal static class ClosedRooms
 
     internal static List<Room> LiveRooms()
     {
-        List<Room> all = new List<Room>(Room.AllRooms);
+        IReadOnlyList<Room> all = World.Rooms;
         List<Room> live = new List<Room>(all.Count);
         foreach (Room room in all)
         {
@@ -118,7 +119,7 @@ internal static class ClosedRooms
     private static Dictionary<long, List<ThingView>> DevicesByRoom(RoomController rooms)
     {
         Dictionary<long, List<ThingView>> byRoom = new Dictionary<long, List<ThingView>>();
-        foreach (Device device in Device.AllDevices.ToList())
+        foreach (Device device in World.Devices())
         {
             if (device == null || device.IsCursor || device.IsBeingDestroyed || device.WorldGrid == WorldGrid.INVALID)
             {

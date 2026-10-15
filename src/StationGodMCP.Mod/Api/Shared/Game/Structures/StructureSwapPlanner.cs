@@ -37,14 +37,14 @@ internal static class StructureSwapPlanner
         StructureSwapPlan plan = new StructureSwapPlan(request);
         List<Structure> members = Members(request, plan);
         plan.Total = members.Count;
-        StructureTargets targets = StructureTargets.Load();
+        StructureTargets targets = WorldModel.Prefabs.Targets;
         Structure? named = NamedTarget(request, targets, plan);
         if (request.Arguments.To != null && named == null)
         {
             return plan;
         }
 
-        BuildCatalogue catalogue = BuildCatalogue.Load();
+        BuildCatalogue catalogue = WorldModel.Prefabs.Build;
         foreach (Structure member in members)
         {
             Classify(plan, targets, catalogue, named, member);

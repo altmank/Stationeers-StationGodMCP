@@ -17,6 +17,7 @@ using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using TraderUI;
 using Trading;
+using World = StationGodMCP.WorldModel.World;
 
 namespace StationGodMCP.Api.Shared.Game.Trading;
 
@@ -216,7 +217,7 @@ internal static class TradeSession
     internal static TraderContact RequireTradingContact(ThingId id)
     {
         TraderContact? contact = null;
-        foreach (TraderContact candidate in TraderContact.AllStationContacts)
+        foreach (TraderContact candidate in World.TraderContacts)
         {
             if (candidate != null && candidate.ReferenceId == id.Value)
             {
@@ -254,7 +255,7 @@ internal static class TradeSession
 
     private static string LandedNow()
     {
-        foreach (TraderContact candidate in TraderContact.AllStationContacts)
+        foreach (TraderContact candidate in World.TraderContacts)
         {
             if (candidate != null && IsLandedAt(candidate, candidate.ConnectedPad))
             {

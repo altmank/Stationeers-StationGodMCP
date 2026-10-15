@@ -7,6 +7,7 @@ using Assets.Scripts.Atmospherics;
 using Assets.Scripts.GridSystem;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using World = StationGodMCP.WorldModel.World;
 
 namespace StationGodMCP.Api.Shared.Game.Structures;
 
@@ -417,7 +418,7 @@ internal sealed class StructureAirRecord
     private static Dictionary<long, Room> LiveRoomsById()
     {
         Dictionary<long, Room> byId = new Dictionary<long, Room>();
-        foreach (Room room in new List<Room>(Room.AllRooms))
+        foreach (Room room in World.Rooms)
         {
             if (room != null && !room.IsDeletionCandidate && room.IsValid())
             {

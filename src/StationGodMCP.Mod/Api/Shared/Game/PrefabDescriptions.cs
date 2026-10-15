@@ -31,7 +31,7 @@ internal static class PrefabDescriptions
     /// <summary>The prefab named, every small cell's offset with withCells; invalid_prefab when none is loaded.</summary>
     internal static DescribePrefabView Describe(PrefabRef reference, bool withCells)
     {
-        BuildCatalogue catalogue = BuildCatalogue.Load();
+        BuildCatalogue catalogue = WorldModel.Prefabs.Build;
         Structure? found = catalogue.Find(reference, out string? issue);
         if (found == null)
         {

@@ -16,6 +16,7 @@ using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Shaping;
 using StationGodMCP.Pure;
 using UnityEngine;
+using World = StationGodMCP.WorldModel.World;
 
 namespace StationGodMCP.Api.Shared.Game;
 
@@ -208,7 +209,7 @@ internal sealed class DepositPlan
         }
 
         ReagentMixture created = ((Ingot)Item).CreatedReagentMixture;
-        foreach (Reagent reagent in Reagent.AllReagents)
+        foreach (Reagent reagent in World.Reagents)
         {
             double amount = created.Get(reagent);
             if (amount > 0.0)

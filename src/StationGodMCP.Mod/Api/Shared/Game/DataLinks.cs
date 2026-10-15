@@ -7,6 +7,7 @@ using Assets.Scripts.Objects.Motherboards;
 using Assets.Scripts.Objects.Pipes;
 using StationGodMCP.Api.Shared.Game.Build;
 using StationGodMCP.Api.Views;
+using World = StationGodMCP.WorldModel.World;
 
 namespace StationGodMCP.Api.Shared.Game;
 
@@ -24,7 +25,7 @@ internal static class DataLinks
 
     internal static UplinkView LinkOf(RocketDataUpLink uplink)
     {
-        List<ILogicable> all = new List<ILogicable>(RocketDataDownLink.AllITransmitDataNetworkDevices);
+        IReadOnlyList<ILogicable> all = World.DataTransmitters;
         List<DownlinkView> choices = new List<DownlinkView>(all.Count);
         foreach (ILogicable candidate in all)
         {
@@ -73,7 +74,7 @@ internal static class DataLinks
     /// <summary>The downlink with that id when a screwdriver press could select it for this uplink; null otherwise.</summary>
     internal static ITransmitDataNetworkDevices? ChoiceById(RocketDataUpLink uplink, long referenceId)
     {
-        List<ILogicable> all = new List<ILogicable>(RocketDataDownLink.AllITransmitDataNetworkDevices);
+        IReadOnlyList<ILogicable> all = World.DataTransmitters;
         foreach (ILogicable candidate in all)
         {
             if (candidate is ITransmitDataNetworkDevices transmitter && transmitter.ReferenceId == referenceId &&

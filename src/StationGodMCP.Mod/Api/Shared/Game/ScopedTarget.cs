@@ -6,6 +6,7 @@ using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Entities;
 using Assets.Scripts.Objects.Motherboards;
 using Assets.Scripts.Objects.Pipes;
+using World = StationGodMCP.WorldModel.World;
 
 namespace StationGodMCP.Api.Shared.Game;
 
@@ -73,7 +74,7 @@ internal sealed class ScopedTarget
     internal static List<ScopedTarget> Worn()
     {
         List<ScopedTarget> worn = new List<ScopedTarget>();
-        foreach (Human human in new List<Human>(Human.AllHumans))
+        foreach (Human human in World.Humans)
         {
             if (human == null)
             {

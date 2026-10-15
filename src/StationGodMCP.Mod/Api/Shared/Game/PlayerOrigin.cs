@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using Assets.Scripts.Objects.Entities;
 using StationGodMCP.Pure;
 using UnityEngine;
+using World = StationGodMCP.WorldModel.World;
 
 namespace StationGodMCP.Api.Shared.Game;
 
@@ -84,7 +85,7 @@ internal abstract class PlayerOrigin
     private static List<PlayerCandidate<Human>> Candidates()
     {
         List<PlayerCandidate<Human>> candidates = new List<PlayerCandidate<Human>>();
-        foreach (Human human in new List<Human>(Human.AllHumans))
+        foreach (Human human in World.Humans)
         {
             if (human == null || human.IsBeingDestroyed)
             {

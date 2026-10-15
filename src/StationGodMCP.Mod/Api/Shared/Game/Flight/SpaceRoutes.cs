@@ -8,6 +8,7 @@ using Assets.Scripts.Serialization;
 using Objects.Rockets;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure.Protocol;
+using World = StationGodMCP.WorldModel.World;
 
 namespace StationGodMCP.Api.Shared.Game.Flight;
 
@@ -16,10 +17,10 @@ internal static class RocketLocator
 {
     internal static List<Rocket> All()
     {
-        List<Rocket> rockets = new List<Rocket>(Rocket.AllRockets.Count);
-        for (int index = 0; index < Rocket.AllRockets.Count; index++)
+        List<Rocket> rockets = new List<Rocket>(World.Rockets.Count);
+        for (int index = 0; index < World.Rockets.Count; index++)
         {
-            Rocket rocket = Rocket.AllRockets[index];
+            Rocket rocket = World.Rockets[index];
             if (rocket != null && !rocket.BeingDestroyed && rocket.RocketNetwork != null)
             {
                 rockets.Add(rocket);
@@ -171,9 +172,9 @@ internal static class SpaceRoutes
     internal static List<SpaceMapNode> Pads()
     {
         List<SpaceMapNode> pads = new List<SpaceMapNode>(2);
-        for (int index = 0; index < SpaceMapNode.AllSpaceMapNodes.Count; index++)
+        for (int index = 0; index < World.SpaceMapNodes.Count; index++)
         {
-            SpaceMapNode node = SpaceMapNode.AllSpaceMapNodes[index];
+            SpaceMapNode node = World.SpaceMapNodes[index];
             if (IsPad(node) && node.Owner != null && !node.BeingDestroyed)
             {
                 pads.Add(node);
@@ -199,9 +200,9 @@ internal static class SpaceRoutes
 
         List<SpaceMapNode> found = new List<SpaceMapNode>(2);
         bool number = ulong.TryParse(wanted, NumberStyles.None, CultureInfo.InvariantCulture, out ulong value);
-        for (int index = 0; index < SpaceMapNode.AllSpaceMapNodes.Count; index++)
+        for (int index = 0; index < World.SpaceMapNodes.Count; index++)
         {
-            SpaceMapNode node = SpaceMapNode.AllSpaceMapNodes[index];
+            SpaceMapNode node = World.SpaceMapNodes[index];
             if (node == null || node.BeingDestroyed)
             {
                 continue;

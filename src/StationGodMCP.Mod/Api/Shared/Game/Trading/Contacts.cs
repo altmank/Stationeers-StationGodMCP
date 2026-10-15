@@ -7,6 +7,7 @@ using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Views;
 using Trading;
 using UnityEngine;
+using World = StationGodMCP.WorldModel.World;
 
 namespace StationGodMCP.Api.Shared.Game.Trading;
 
@@ -20,8 +21,8 @@ internal static class Contacts
     /// <summary>Every contact in the sky, by reference id.</summary>
     internal static List<TraderContact> All()
     {
-        List<TraderContact> contacts = new List<TraderContact>(TraderContact.AllStationContacts.Count);
-        foreach (TraderContact contact in TraderContact.AllStationContacts)
+        List<TraderContact> contacts = new List<TraderContact>(World.TraderContacts.Count);
+        foreach (TraderContact contact in World.TraderContacts)
         {
             if (contact != null)
             {
@@ -35,7 +36,7 @@ internal static class Contacts
 
     internal static TraderContact? Find(long id)
     {
-        foreach (TraderContact contact in TraderContact.AllStationContacts)
+        foreach (TraderContact contact in World.TraderContacts)
         {
             if (contact != null && contact.ReferenceId == id)
             {

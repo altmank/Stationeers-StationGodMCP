@@ -91,7 +91,7 @@ internal static class RoutePlanning
                 ? RouteEnds.Target(order.End, "end", kind, type, ignore)
                 : null;
         RouteMain main = end != null ? new RouteMain.ToTarget(end) : new RouteMain.Trunk(trunk!);
-        Kit kit = KitCatalogue.Of(kind.Family).For(grade) ??
+        Kit kit = WorldModel.Prefabs.KitsOf(kind.Family).For(grade) ??
                   throw ApiErrors.Refused("no_kit", $"No coil or kit places {kind.NameOf(grade)} pieces.");
         SmallGridBlock mask = kit.Pieces.Count > 0 && kit.Pieces[0] is SmallGrid first
             ? first.SmallCollisionType

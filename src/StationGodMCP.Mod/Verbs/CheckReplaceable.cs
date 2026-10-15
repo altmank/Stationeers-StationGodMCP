@@ -38,7 +38,7 @@ internal static class CheckReplaceable
             throw ApiErrors.Refused("not_ready", $"{label}: the world grid is not loaded.");
         }
 
-        BuildCatalogue catalogue = BuildCatalogue.Load();
+        BuildCatalogue catalogue = WorldModel.Prefabs.Build;
         return IdAnswers.Things(ids, label, id => One(id, catalogue));
     }
 
