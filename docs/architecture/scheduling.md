@@ -58,6 +58,17 @@ rebuilt), and the swaps and changed pieces of a chute network (`Chute.OnDestroy`
 whatever was done first). A caller that runs a call itself and needs its answer at once (undo's replay) takes it to
 its end in one frame (`VerbOutcome.Settled`).
 
+A pending result may answer another pending outcome: the work goes on with it (`PendingVerbCall` steps into it in the
+same slice while time is left), so a write's report is described over frames after its plan (swap's
+`Describing`/`UpgradeReports.Building`, `StructureReports.Building`). A step longer than `WorkSteps.LongStepMs` (1 ms)
+breaks the bound a step promises and is logged with its body, at most once a second.
+
+The reply is never written in the frame (cost design A5): the game's thread hands the plain views to the
+connection's writer thread (`Protocol/CallReplyLine.cs`), which writes the text once, shaped and capped as it goes.
+`main_thread_ms` counts the handler; `serialize_ms` is the writer thread's. After a load, `World/LoadWarmup.cs`
+compiles the mod's methods and the ones they call directly (`CalledMethods`), 1 ms of each frame, so a first call
+does not pay for compiling them.
+
 ## Order on a stream
 
 A call carries a stream number; calls on different streams never wait for each other, and calls on one stream keep
