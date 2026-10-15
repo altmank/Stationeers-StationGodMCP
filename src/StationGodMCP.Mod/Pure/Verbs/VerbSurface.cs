@@ -200,18 +200,24 @@ internal sealed class WriteSpec
 
 /// <summary>
 /// A what's cost (x-cost, or x-cost-report for a report call): its class (world, plan and job are heavy by nature), the
-/// options whose list lengths count its items (per), and the option that sets how long it runs (duration).
+/// options whose list lengths count its items (per), the option that sets how long it runs (duration), and the class a
+/// call has when it gives an option that narrows it (x-cost-when: find device with a prefab or a name is bounded).
 /// </summary>
 internal sealed class WhatCost
 {
-    internal WhatCost(CostClass @class, IReadOnlyList<string>? per = null, CostDuration? duration = null)
+    internal WhatCost(CostClass @class, IReadOnlyList<string>? per = null, CostDuration? duration = null,
+        IReadOnlyList<CostWhen>? when = null)
     {
         Class = @class;
         Per = per;
         Duration = duration;
+        When = when;
     }
 
     public CostClass Class { get; }
+
+    /// <summary>The classes the call's options give, the first that applies; null where the catalogue states none.</summary>
+    public IReadOnlyList<CostWhen>? When { get; }
 
     public IReadOnlyList<string>? Per { get; }
 
@@ -219,7 +225,10 @@ internal sealed class WhatCost
 
     internal static WhatCost Unstated { get; } = new WhatCost(CostClass.Bounded);
 
-    /// <summary>The cost at these options: the class, with the per options' list lengths added (at least 1).</summary>
+    /// <summary>
+    /// The cost at these options: the class (the first x-cost-when the options give, else the what's own), with the
+    /// per options' list lengths added (at least 1).
+    /// </summary>
     internal CallCost At(JObject? options)
     {
         int items = 0;
@@ -228,11 +237,43 @@ internal sealed class WhatCost
             items += options?[option] is JArray list ? list.Count : 0;
         }
 
-        return new CallCost(Class, Math.Max(items, 1));
+        return new CallCost(ClassAt(options), Math.Max(items, 1));
+    }
+
+    private CostClass ClassAt(JObject? options)
+    {
+        if (When == null || options == null)
+        {
+            return Class;
+        }
+
+        for (int index = 0; index < When.Count; index++)
+        {
+            if (options[When[index].Given] is { Type: not JTokenType.Null })
+            {
+                return When[index].Class;
+            }
+        }
+
+        return Class;
     }
 
     /// <summary>The milliseconds a call runs for, which its deadline adds; 0 for a what with no duration.</summary>
     internal int DurationMs(JObject? options) => Duration?.Ms(options) ?? 0;
+}
+
+/// <summary>One x-cost-when rule: a call that gives this option has this class.</summary>
+internal sealed class CostWhen
+{
+    internal CostWhen(string given, CostClass @class)
+    {
+        Given = given;
+        Class = @class;
+    }
+
+    public string Given { get; }
+
+    public CostClass Class { get; }
 }
 
 /// <summary>

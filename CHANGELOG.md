@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **find device with a prefab or a name, and find room with an id, are scheduled as bounded again** (1.33.2's
+  `x-cost-when`, by the call's arguments): they go to the light lane by their measured cost instead of always waiting
+  in the heavy lane.
 - **The default list caps are back** (1.33.2's `x-default-limits`, lost in the verb move): find plant (plants 15),
   room (10), water (sources 15), food (3 each, not_counted 5), check ignition (items 12), inspect slots (5), inspect
   chip (stable_selectors 12), plan mining (sites 3), trade inventory (contacts 2), server info (methods and

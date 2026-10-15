@@ -309,6 +309,34 @@ public sealed class VerbCatalogueTests
     }
 
     /// <summary>
+    /// The classes a call's options give (x-cost-when, review D R-D-3, 1.33.2's rule): each rule names an option of its
+    /// what and a cost class; find device with a prefab or a name and find room with an id are bounded.
+    /// </summary>
+    [Fact]
+    public void EveryCostWhenNamesAnOptionOfItsWhatAndAClass()
+    {
+        string[] classes = { "instant", "bounded", "world", "plan", "job", "stream" };
+        List<string> stated = new();
+        foreach ((string verb, string what, JsonObject source) in VerbCatalogue.Whats())
+        {
+            if (source["x-cost-when"] is not JsonArray rules)
+            {
+                continue;
+            }
+
+            foreach (JsonNode? rule in rules)
+            {
+                Assert.True(rule is JsonObject { Count: 2 }, $"{verb} {what}: x-cost-when rule keys");
+                Assert.True(source["options"]?[(string)rule!["given"]!] != null, $"{verb} {what}: x-cost-when option");
+                Assert.Contains((string)rule["class"]!, classes);
+                stated.Add($"{verb}.{what}.{(string)rule["given"]!}={(string)rule["class"]!}");
+            }
+        }
+
+        Assert.Equal(new[] { "find.device.prefab=bounded", "find.device.name=bounded", "find.room.id=bounded" }, stated);
+    }
+
+    /// <summary>
     /// What a report call of each what counts as (x-cost-report): every confirm-route what states one and no other
     /// what does, it has x-cost's shape and one of its classes, and it is the class the what's old method reported by
     /// (dry_run absent or true; finish, the blueprints' paste, move gas and player, trade, write memory and battery

@@ -275,9 +275,10 @@ internal static class VerbOptionsCode
         return spec.Append(')').ToString();
     }
 
-    // x-cost: new WhatCost(CostClass.World), with the per options and the duration where it states them.
+    // x-cost: new WhatCost(CostClass.World), with the per options, the duration and the classes its options give
+    // (x-cost-when) where it states them.
     private static string CostSpec(JsonObject source) =>
-        source["x-cost"] is JsonObject cost ? CostCode(cost) : "null";
+        source["x-cost"] is JsonObject cost ? CostCode(cost, source["x-cost-when"] as JsonArray) : "null";
 
     // x-cost-report: what a report call of the what counts as; null where the what states none (a report counts as
     // x-cost then).
@@ -292,7 +293,7 @@ internal static class VerbOptionsCode
                 "[" + Literal(limit.Key) + "] = " + ((int)limit.Value!).ToString(CultureInfo.InvariantCulture))) + " }"
             : "null";
 
-    private static string CostCode(JsonObject cost)
+    private static string CostCode(JsonObject cost, JsonArray? when = null)
     {
         StringBuilder spec = new StringBuilder("new WhatCost(CostClass.").Append(Pascal((string)cost["class"]!));
         List<string> per = cost["per"] switch
@@ -311,6 +312,13 @@ internal static class VerbOptionsCode
             spec.Append(per.Count > 0 ? ", " : ", null, ").Append("new CostDuration(")
                 .Append(Literal((string)duration["option"]!)).Append(", ")
                 .Append(((double)duration["max_s"]!).ToString("R", CultureInfo.InvariantCulture)).Append(')');
+        }
+
+        if (when is { Count: > 0 })
+        {
+            spec.Append(", when: new[] { ").Append(string.Join(", ", when.Select(rule =>
+                "new CostWhen(" + Literal((string)rule!["given"]!) + ", CostClass." + Pascal((string)rule["class"]!) +
+                ")"))).Append(" }");
         }
 
         return spec.Append(')').ToString();

@@ -96,6 +96,23 @@ public sealed class OptionKindTests
         Assert.Equal("undo", UndoOptions.Spec.Key);
     }
 
+    [Theory]
+    [InlineData("""{"what": "device"}""", "World")]
+    [InlineData("""{"what": "device", "prefab": "StructureBatteryLarge"}""", "Bounded")]
+    [InlineData("""{"what": "device", "name": "Tank"}""", "Bounded")]
+    [InlineData("""{"what": "device", "name": null}""", "World")]
+    [InlineData("""{"what": "room"}""", "World")]
+    [InlineData("""{"what": "room", "id": "17"}""", "Bounded")]
+    public void ANarrowingOptionGivesTheCallItsClass(string arguments, string expected)
+    {
+        // review D, R-D-3: x-cost-when, read when the call is profiled for the scheduler
+        JObject given = JObject.Parse(arguments);
+        WhatSpec what = (string)given["what"]! == "device" ? FindDeviceOptions.Spec : FindRoomOptions.Spec;
+
+        Assert.Equal(expected, StationGodMCP.Pure.Scheduling.CallProfile.Of(VerbSurface.Verb("find")!, what, given).Cost
+            .ToString());
+    }
+
     [Fact]
     public void AReportCallCountsAsTheWhatsReportCostAndAWhatThatStatesNoneAsItsCost()
     {

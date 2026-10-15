@@ -193,6 +193,7 @@
       ],
       "example": {"prefab": "*GasSensor*"},
       "x-cost": {"class": "world", "growth": "index"},
+      "x-cost-when": [{"given": "prefab", "class": "bounded"}, {"given": "name", "class": "bounded"}],
       "reply": {
         "list": "devices",
         "variants": [
@@ -476,6 +477,7 @@
       ],
       "example": {"id": "4820585"},
       "x-cost": {"class": "world", "growth": "index"},
+      "x-cost-when": [{"given": "id", "class": "bounded"}],
       "x-default-limits": {"rooms": 10},
       "reply": {
         "list": "rooms",
