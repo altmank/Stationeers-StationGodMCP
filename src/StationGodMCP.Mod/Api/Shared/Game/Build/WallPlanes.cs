@@ -15,9 +15,9 @@ using UnityEngine;
 namespace StationGodMCP.Api.Shared.Game.Build;
 
 /// <summary>A face plane seen from one side, with the axes a viewer there reads as right and up.</summary>
-internal sealed class PlaneView
+internal sealed class SidedPlane
 {
-    internal PlaneView(FacePlane plane, GridStep side)
+    internal SidedPlane(FacePlane plane, GridStep side)
     {
         Plane = plane;
         Side = side;
@@ -82,7 +82,7 @@ internal sealed class PlaneView
     /// or the face the look ray hits (looking). Also the point the look ray hits, which the map centres on when the
     /// call names no point.
     /// </summary>
-    internal static PlaneView Of(bool looking, string? planeText, string? sideText, Vec3? around, GridFacts facts,
+    internal static SidedPlane Of(bool looking, string? planeText, string? sideText, Vec3? around, GridFacts facts,
         CameraUse camera, out Vec3? looked)
     {
         looked = null;
@@ -99,7 +99,7 @@ internal sealed class PlaneView
 
             double along = point[outward.Value.Axis];
             looked = point;
-            return new PlaneView(
+            return new SidedPlane(
                 FacePlane.Of(outward.Value.Axis, (int)System.Math.Round(System.Math.Round(along / 2.0) * 20.0)),
                 outward.Value);
         }
@@ -121,7 +121,7 @@ internal sealed class PlaneView
             side = RoomSide(plane, around, facts);
         }
 
-        return new PlaneView(plane, side);
+        return new SidedPlane(plane, side);
     }
 
     internal static FacePlane ParsePlane(string text)

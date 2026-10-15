@@ -18,7 +18,7 @@ namespace StationGodMCP.Api.Shared.Game.Show;
 /// through walls, frames and terrain with (Highlights, the T-Ray SPU's material). Things by id and a network's pieces
 /// are drawn with their own meshes, tinted; a world point gets a beam and, out of view, an arrow at the screen's edge
 /// with its distance and bearing. Each target's reply row says what it drew and where it is from the camera. Drawn on
-/// the player's screen (PlayerView): this game's, or a remote player's through their StationGod. Nothing in the world
+/// the player's screen (PlayerSight): this game's, or a remote player's through their StationGod. Nothing in the world
 /// changes.
 /// </summary>
 internal static class HighlightScreen
@@ -29,7 +29,7 @@ internal static class HighlightScreen
     /// <summary>clear: every mark drawn for the player so far goes; nothing is found and nothing drawn.</summary>
     internal static HighlightView Clear()
     {
-        PlayerView player = PlayerView.Current();
+        PlayerSight player = PlayerSight.Current();
         PlayerScreen shown = player.ScreenOrLocal();
         return new HighlightView(new List<HighlightTargetView>(), shown.ClearHighlights(), 0.0, shown.Renderer,
             new List<string> { "Cleared." }, shown.DrawnOn, player.Source);
@@ -39,7 +39,7 @@ internal static class HighlightScreen
     /// already showed with keep.</summary>
     internal static HighlightView Show(HighlightRequest request)
     {
-        CameraView camera = PlayerView.Current().Require("show highlight");
+        CameraSight camera = PlayerSight.Current().Require("show highlight");
         Vec3 eye = camera.Eye;
         List<HighlightTargetView> views = new List<HighlightTargetView>(request.Targets.Count);
         List<ScreenMark> marks = new List<ScreenMark>(request.Targets.Count);

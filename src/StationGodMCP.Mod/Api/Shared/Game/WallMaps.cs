@@ -13,7 +13,7 @@ using StationGodMCP.Pure;
 namespace StationGodMCP.Api.Shared.Game;
 
 /// <summary>
-/// Wall maps: a text elevation of one face plane as seen from one side (PlaneView), 0.5 m per character: the face behind
+/// Wall maps: a text elevation of one face plane as seen from one side (SidedPlane), 0.5 m per character: the face behind
 /// each small cell (W wall, G window, D door, F a frame with no plate, '.' open), what stands in it or right in front of
 /// it (a device's key, c cable, p pipe, b both, h chute), 'x' in a door's keep-out; a ruler row marks the 2 m seams.
 /// A device's key covers every cell its mesh box covers by more than 0.1 m, not only the small cells it is registered in.
@@ -34,7 +34,7 @@ internal static class WallMaps
     /// The map of a plane within halfWidth metres of around (else the point the look ray hit), with its sections, its
     /// things by key and, with a request, where a rectangle fits.
     /// </summary>
-    internal static WallMapView Map(PlaneView plane, Vec3 around, double halfWidth, FreeRectRequest? request,
+    internal static WallMapView Map(SidedPlane plane, Vec3 around, double halfWidth, FreeRectRequest? request,
         GridFacts facts, CameraUse camera)
     {
         WallMap map = Build(plane, around, halfWidth, facts, out Dictionary<long, char> keys, out List<SmallGrid> things);
@@ -46,7 +46,7 @@ internal static class WallMaps
     }
 
     /// <summary>The map of the plane within radius of a point (as the viewer sees it), with the things keyed.</summary>
-    internal static WallMap Build(PlaneView plane, Vec3 around, double radius, GridFacts facts,
+    internal static WallMap Build(SidedPlane plane, Vec3 around, double radius, GridFacts facts,
         out Dictionary<long, char> keys, out List<SmallGrid> things)
     {
         (double u, double v) = plane.Project(around);
@@ -88,7 +88,7 @@ internal static class WallMaps
 
     // A body's mesh over map cells: the cells its mesh box covers by more than the clash tolerance show its key, even
     // those outside the small cells the game registers it in (a console's frame overhangs its 1 x 1 m of cells).
-    private static void Cover(PlaneView plane, NearBody body, WallCell[,] cells, double uStart, double uStep,
+    private static void Cover(SidedPlane plane, NearBody body, WallCell[,] cells, double uStart, double uStep,
         double vTop, Dictionary<long, char> keys, List<SmallGrid> things)
     {
         for (int row = 0; row < cells.GetLength(0); row++)
@@ -99,13 +99,13 @@ internal static class WallMaps
                 double v = vTop - row * 0.5;
                 if (!cells[row, column].HoldsBody && PlaneCells.Covers(body.Render, plane.CellBox(u, v)))
                 {
-                    cells[row, column] = cells[row, column].WithBody(PlaneView.KeyOf(body.Thing, keys, things));
+                    cells[row, column] = cells[row, column].WithBody(SidedPlane.KeyOf(body.Thing, keys, things));
                 }
             }
         }
     }
 
-    private static List<WallSectionView> Sections(PlaneView plane, WallMap map, GridFacts facts)
+    private static List<WallSectionView> Sections(SidedPlane plane, WallMap map, GridFacts facts)
     {
         List<WallSectionView> sections = new List<WallSectionView>();
         HashSet<GridCell> seen = new HashSet<GridCell>();
@@ -128,7 +128,7 @@ internal static class WallMaps
         return sections;
     }
 
-    private static List<FreeRectView> FreeRects(FreeRectRequest request, PlaneView plane, WallMap map)
+    private static List<FreeRectView> FreeRects(FreeRectRequest request, SidedPlane plane, WallMap map)
     {
         int wide = System.Math.Max(1, (int)System.Math.Ceiling(request.W * 2.0 - 1e-6));
         int high = System.Math.Max(1, (int)System.Math.Ceiling(request.H * 2.0 - 1e-6));

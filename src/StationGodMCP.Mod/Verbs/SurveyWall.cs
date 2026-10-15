@@ -53,7 +53,7 @@ internal static class SurveyWall
 
         GridFacts facts = AreaSurvey.Facts();
         CameraUse camera = new CameraUse();
-        PlaneView plane = PlaneView.Of(looking, options.Plane, options.Side, at, facts, camera, out Vec3? looked);
+        SidedPlane plane = SidedPlane.Of(looking, options.Plane, options.Side, at, facts, camera, out Vec3? looked);
         WallMapView map = WallMaps.Map(plane, at ?? looked ?? Vec3.Zero, options.HalfWidth ?? 0.0, request, facts,
             camera);
         return new VerbOutcome.Answered(ReplyFields.Of(("plane", map.Plane), ("side", map.Side), ("right", map.Right),

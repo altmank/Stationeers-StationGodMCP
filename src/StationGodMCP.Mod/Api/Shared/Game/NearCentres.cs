@@ -34,7 +34,7 @@ internal static class NearCentres
 
     private static Thing Crosshair(string label)
     {
-        Thing? thing = PlayerView.Current().Require(label).Target;
+        Thing? thing = PlayerSight.Current().Require(label).Target;
         return thing != null
             ? thing
             : throw ApiErrors.Refused("thing_not_found", $"{label}: nothing is under the crosshair for near \"looking_at\".");

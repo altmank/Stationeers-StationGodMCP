@@ -31,7 +31,7 @@ namespace StationGodMCP.Api.Shared.Game;
 ///
 /// view is the camera the cursor's ray starts from, and hit casts that same ray on the cursor's layers
 /// (CursorManager.CursorHitMask) up to max_distance_m, so it also finds a wall or floor past the game's 3 m reach, and
-/// reads the grid where it lands. The camera is the player's (PlayerView): this game's own, or on a dedicated server
+/// reads the grid where it lands. The camera is the player's (PlayerSight): this game's own, or on a dedicated server
 /// the view the player's StationGod sent, read there the same way.
 /// </summary>
 internal static class LookingAt
@@ -55,7 +55,7 @@ internal static class LookingAt
     internal static LookingAtView Read(LookParts parts, double reach, string label)
     {
         PlayerOrigin origin = PlayerOrigin.Current();
-        CameraView camera = PlayerView.Current().Require(label);
+        CameraSight camera = PlayerSight.Current().Require(label);
         Thing? thing = camera.Target;
         LookView view = new LookView(camera.Eye, camera.Basis, camera.ThirdPerson, camera.Seated, camera.Source);
         CameraHit? found = camera.HitWithin(reach);

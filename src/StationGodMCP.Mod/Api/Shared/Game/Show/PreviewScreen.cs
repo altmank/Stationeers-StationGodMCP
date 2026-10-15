@@ -16,7 +16,7 @@ namespace StationGodMCP.Api.Shared.Game.Show;
 /// reports no lint problems) and draws each placement's footprint (green, red when it has a problem), its render box
 /// (white) and its ports' joining cells (cyan, red when blocked), then the call's own cells and boxes. The plan's
 /// report is the reply's plan: build structure's own report of the placements, without the keys a job reply has and a
-/// report does not (tool, status, job_id). Drawn on the player's screen (PlayerView): this game's, or a remote
+/// report does not (tool, status, job_id). Drawn on the player's screen (PlayerSight): this game's, or a remote
 /// player's through their StationGod. Nothing in the world changes.
 /// </summary>
 internal static class PreviewScreen
@@ -24,7 +24,7 @@ internal static class PreviewScreen
     /// <summary>clear: every box drawn for the player so far goes; nothing is planned and nothing drawn.</summary>
     internal static ShowPreviewView Clear()
     {
-        PlayerView player = PlayerView.Current();
+        PlayerSight player = PlayerSight.Current();
         PlayerScreen shown = player.ScreenOrLocal();
         return new ShowPreviewView(0, shown.ClearPreviews(), 0.0, null, new List<string> { "Cleared." },
             shown.DrawnOn, player.Source);
@@ -33,7 +33,7 @@ internal static class PreviewScreen
     /// <summary>The call's boxes: the plan's, then the cells and boxes it gave.</summary>
     internal static ShowPreviewView Show(PreviewOrder order)
     {
-        PlayerView player = PlayerView.Current();
+        PlayerSight player = PlayerSight.Current();
         PlayerScreen screen = player.RequireScreen("show preview");
         float seconds = (float)order.Seconds;
         List<PreviewBox> boxes = new List<PreviewBox>();

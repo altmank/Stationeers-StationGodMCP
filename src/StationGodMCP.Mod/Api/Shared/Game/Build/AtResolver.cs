@@ -351,14 +351,14 @@ internal static class AtResolver
 }
 
 /// <summary>
-/// The player's camera for one request, read the first time a step needs it (PlayerView: no_view or view_stale when
+/// The player's camera for one request, read the first time a step needs it (PlayerSight: no_view or view_stale when
 /// there is none to trust), and the view it was, for the reply.
 /// </summary>
 internal sealed class CameraUse
 {
-    private CameraView? _camera;
+    private CameraSight? _camera;
 
-    internal CameraView Require(string name) => _camera ??= PlayerView.Current().Require(name);
+    internal CameraSight Require(string name) => _camera ??= PlayerSight.Current().Require(name);
 
     /// <summary>The view read; null when no step needed one.</summary>
     internal ViewSourceView? Source => _camera?.Source;

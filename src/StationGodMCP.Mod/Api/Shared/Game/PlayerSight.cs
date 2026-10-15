@@ -20,36 +20,36 @@ namespace StationGodMCP.Api.Shared.Game;
 /// (RemoteViews). Every camera tool asks here, so a dedicated server answers for its player as the player's own game
 /// would, and refuses, saying why, when it cannot.
 /// </summary>
-internal abstract class PlayerView
+internal abstract class PlayerSight
 {
-    private PlayerView()
+    private PlayerSight()
     {
     }
 
-    internal sealed class Seen : PlayerView
+    internal sealed class Seen : PlayerSight
     {
-        internal Seen(CameraView camera)
+        internal Seen(CameraSight camera)
         {
             Camera = camera;
         }
 
-        internal CameraView Camera { get; }
+        internal CameraSight Camera { get; }
     }
 
-    internal sealed class Stale : PlayerView
+    internal sealed class Stale : PlayerSight
     {
-        internal Stale(CameraView camera, string reason)
+        internal Stale(CameraSight camera, string reason)
         {
             Camera = camera;
             Reason = reason;
         }
 
-        internal CameraView Camera { get; }
+        internal CameraSight Camera { get; }
 
         internal string Reason { get; }
     }
 
-    internal sealed class Unseen : PlayerView
+    internal sealed class Unseen : PlayerSight
     {
         internal Unseen(string reason)
         {
@@ -60,7 +60,7 @@ internal abstract class PlayerView
         internal string Reason { get; }
     }
 
-    internal static PlayerView Current()
+    internal static PlayerSight Current()
     {
         PlayerOrigin origin = PlayerOrigin.Current();
         Human? player = origin.Player;
@@ -71,7 +71,7 @@ internal abstract class PlayerView
 
         if (player == PlayerOrigin.Local())
         {
-            CameraView? local = CameraView.Local.Find(player);
+            CameraSight? local = CameraSight.Local.Find(player);
             return local != null
                 ? new Seen(local)
                 : new Unseen("This game has no camera yet (the world is still loading).");
@@ -81,7 +81,7 @@ internal abstract class PlayerView
     }
 
     /// <summary>The camera to read; no_view or view_stale, saying why, when there is none to trust.</summary>
-    internal CameraView Require(string name) => this switch
+    internal CameraSight Require(string name) => this switch
     {
         Seen seen => seen.Camera,
         Stale stale => throw ApiErrors.Refused("view_stale",
@@ -117,7 +117,7 @@ internal abstract class PlayerView
         _ => null
     };
 
-    private static PlayerView Remote(Human player)
+    private static PlayerSight Remote(Human player)
     {
         string name = player.DisplayName;
         (ReceivedView View, long ConnectionId)? held = RemoteViews.Find(player);
@@ -128,7 +128,7 @@ internal abstract class PlayerView
 
         ReceivedView view = held.Value.View;
         double age = view.AgeAt(RemoteViews.Now);
-        CameraView camera = new CameraView.Remote(view.Report, age, name, held.Value.ConnectionId);
+        CameraSight camera = new CameraSight.Remote(view.Report, age, name, held.Value.ConnectionId);
         return ViewFreshness.Judge(view.Report.PlayerPosition, Bodies.V(player.Position), age) switch
         {
             ViewFreshness.Stale stale => new Stale(camera, stale.Reason),
@@ -181,9 +181,9 @@ internal sealed class CameraHit
 /// A player's camera as the tools read it: the eye and basis of the cursor's ray, the camera mode, the thing and
 /// interactable under the cursor, the first surface the ray hits within a reach, and the screen to draw on.
 /// </summary>
-internal abstract class CameraView
+internal abstract class CameraSight
 {
-    private CameraView()
+    private CameraSight()
     {
     }
 
@@ -214,7 +214,7 @@ internal abstract class CameraView
     /// This game's own camera: InputHelpers.GetCameraRay (CameraController.CameraOrigin, moved up to the player in
     /// third person as the game's own ray is, and MainCameraForward) with the camera's up, and CursorManager.
     /// </summary>
-    internal sealed class Local : CameraView
+    internal sealed class Local : CameraSight
     {
         private static readonly ViewSourceView LocalSource = new ViewSourceView("local", 0.0);
 
@@ -291,7 +291,7 @@ internal abstract class CameraView
     }
 
     /// <summary>The view a remote player's StationGod sent: their own game's cursor, read there (ViewReporter).</summary>
-    internal sealed class Remote : CameraView
+    internal sealed class Remote : CameraSight
     {
         private readonly ViewReport _report;
         private readonly long _connectionId;

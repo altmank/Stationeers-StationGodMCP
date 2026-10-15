@@ -53,7 +53,7 @@ internal static class SpotFinder
         Vec3 near = Near(order.Near, camera);
         double radius = order.RadiusM;
         SpotRequirements require = order.Require;
-        List<PlaneView> planes = Planes(order, facts, camera, out Room? room, out PlaneView? named);
+        List<SidedPlane> planes = Planes(order, facts, camera, out Room? room, out SidedPlane? named);
         int limit = order.Limit;
         int maxChecks = order.MaxChecks;
         GridStep? facing = order.Facing;
@@ -64,7 +64,7 @@ internal static class SpotFinder
         // the room (under its floor, over its ceiling), its spots are those with the room behind them.
         List<(PlaneSpots Plane, double U, double V, double Distance)> tries =
             new List<(PlaneSpots, double, double, double)>();
-        foreach (PlaneView plane in planes)
+        foreach (SidedPlane plane in planes)
         {
             PlaneSpots search = new PlaneSpots(plane, TurnFor(prefab, plane, facing));
             (double qu, double qv) = plane.Project(near);
@@ -161,7 +161,7 @@ internal static class SpotFinder
     }
 
     // The search window on the plane, a metre deep either side: where the things a spot could clash with stand.
-    private static Box3 Region(PlaneView plane, Vec3 near, double radius)
+    private static Box3 Region(SidedPlane plane, Vec3 near, double radius)
     {
         (double u, double v) = plane.Project(near);
         Vec3 depth = Vec3.Of(plane.Side);
@@ -171,13 +171,13 @@ internal static class SpotFinder
     // One plane of the search: the turn its spots are tried in, and the bodies near it once a spot there is aimed.
     private sealed class PlaneSpots
     {
-        internal PlaneSpots(PlaneView view, CubeRotation turn)
+        internal PlaneSpots(SidedPlane view, CubeRotation turn)
         {
             View = view;
             Turn = turn;
         }
 
-        internal PlaneView View { get; }
+        internal SidedPlane View { get; }
 
         internal CubeRotation Turn { get; }
 
@@ -196,14 +196,14 @@ internal static class SpotFinder
 
     // One plane (plane and side, or looking) or the walls of a room: every face of a room cell toward a cell outside
     // the room that carries a wall or window, seen from inside.
-    private static List<PlaneView> Planes(SpotOrder order, GridFacts facts, CameraUse camera, out Room? room,
-        out PlaneView? named)
+    private static List<SidedPlane> Planes(SpotOrder order, GridFacts facts, CameraUse camera, out Room? room,
+        out SidedPlane? named)
     {
         room = null;
         named = null;
         if (order.Room is not { } id)
         {
-            return new List<PlaneView> { PlaneOf(order, facts, camera) };
+            return new List<SidedPlane> { PlaneOf(order, facts, camera) };
         }
 
         Room found = StructureAirRecord.FindRoom(id) ??
@@ -215,7 +215,7 @@ internal static class SpotFinder
             cells.Add(Upgrades.PieceShapes.Cell(grid.Value));
         }
 
-        List<PlaneView> planes = new List<PlaneView>();
+        List<SidedPlane> planes = new List<SidedPlane>();
         HashSet<(int, int, int)> seen = new HashSet<(int, int, int)>();
         foreach (GridCell cell in cells)
         {
@@ -236,14 +236,14 @@ internal static class SpotFinder
                 int coordinate = FacePlane.Component(cell, step.Axis) + (step.Dx + step.Dy + step.Dz) * 10;
                 if (seen.Add((step.Axis, coordinate, step.Opposite.Index)))
                 {
-                    planes.Add(new PlaneView(FacePlane.Of(step.Axis, coordinate), step.Opposite));
+                    planes.Add(new SidedPlane(FacePlane.Of(step.Axis, coordinate), step.Opposite));
                 }
             }
         }
 
         if (order.NamesPlane)
         {
-            PlaneView asked = NamedPlane(order, facts, cells, id, camera);
+            SidedPlane asked = NamedPlane(order, facts, cells, id, camera);
             named = planes.Find(plane => plane.Plane.Axis == asked.Plane.Axis &&
                                          plane.Plane.Coordinate == asked.Plane.Coordinate &&
                                          plane.Side.Index == asked.Side.Index);
@@ -258,12 +258,12 @@ internal static class SpotFinder
         return planes;
     }
 
-    private static PlaneView PlaneOf(SpotOrder order, GridFacts facts, CameraUse camera) =>
-        PlaneView.Of(order.Looking, order.Plane, order.Side, order.Around, facts, camera, out _);
+    private static SidedPlane PlaneOf(SpotOrder order, GridFacts facts, CameraUse camera) =>
+        SidedPlane.Of(order.Looking, order.Plane, order.Side, order.Around, facts, camera, out _);
 
     // plane (or looking) with room: that plane too, e.g. the room's floor or ceiling. Seen from side when given, else
     // from the room's side of it; a plane no room cell touches is refused.
-    private static PlaneView NamedPlane(SpotOrder order, GridFacts facts, HashSet<GridCell> cells, long room,
+    private static SidedPlane NamedPlane(SpotOrder order, GridFacts facts, HashSet<GridCell> cells, long room,
         CameraUse camera)
     {
         if (order.Side != null || order.Looking)
@@ -272,14 +272,14 @@ internal static class SpotFinder
         }
 
         string text = order.Plane!;
-        FacePlane plane = PlaneView.ParsePlane(text);
+        FacePlane plane = SidedPlane.ParsePlane(text);
         GridStep plus = GridStep.All[plane.Axis * 2];
         foreach (GridCell cell in cells)
         {
             int component = FacePlane.Component(cell, plane.Axis);
             if (component - 10 == plane.Coordinate || component + 10 == plane.Coordinate)
             {
-                return new PlaneView(plane, component > plane.Coordinate ? plus : plus.Opposite);
+                return new SidedPlane(plane, component > plane.Coordinate ? plus : plus.Opposite);
             }
         }
 
@@ -290,7 +290,7 @@ internal static class SpotFinder
     // The turn a spot is tried in. A mounted piece faces out of the plane (or facing), its top up. A grid-placed piece
     // stands: on a floor its top is the plane's side and it faces facing (default +z); against a wall its top is +y
     // and it faces out of the wall (or facing).
-    private static CubeRotation TurnFor(Structure prefab, PlaneView plane, GridStep? facing)
+    private static CubeRotation TurnFor(Structure prefab, SidedPlane plane, GridStep? facing)
     {
         if (prefab.PlacementType != PlacementSnap.Grid)
         {
@@ -305,7 +305,7 @@ internal static class SpotFinder
 
     private sealed class Candidate
     {
-        private Candidate(PlaneView plane, CubeRotation turn, Quaternion rotation, Vector3 position,
+        private Candidate(SidedPlane plane, CubeRotation turn, Quaternion rotation, Vector3 position,
             List<GridCell> cells, double distance, List<string> failed)
         {
             Plane = plane;
@@ -317,7 +317,7 @@ internal static class SpotFinder
             Failed = failed;
         }
 
-        internal PlaneView Plane { get; }
+        internal SidedPlane Plane { get; }
 
         internal CubeRotation Turn { get; }
 
@@ -335,7 +335,7 @@ internal static class SpotFinder
 
         internal List<LayoutConflict> Conflicts { get; private set; } = new List<LayoutConflict>();
 
-        internal static Candidate? At(Structure prefab, Structure cursor, PlaneView plane, CubeRotation turn, double u,
+        internal static Candidate? At(Structure prefab, Structure cursor, SidedPlane plane, CubeRotation turn, double u,
             double v, Vec3 near, GridFacts facts, SpotRequirements require, HashSet<Vector3> seen,
             List<NearBody> bodies)
         {

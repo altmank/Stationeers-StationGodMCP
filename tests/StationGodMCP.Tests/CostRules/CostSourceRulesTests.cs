@@ -20,7 +20,10 @@ namespace StationGodMCP.Tests.CostRules;
 /// compile here):
 ///   1. the game's global collections (GameCollections.txt) are read only inside src/StationGodMCP.Mod/World/;
 ///   2. none of them is copied (ToList, ToArray, CopyTo, AddRange of one, a collection built from one), anywhere;
-///   3. a loop over one of them, or over a World member, yields (a resumable step, A3), anywhere.
+///   3. a loop over one of them, or over a World member, yields (a resumable step, A3), anywhere;
+///   4. a reply view (a class or struct named *View, or any type under Api/Views/) holds no game type in a field or
+///      property (GameTypes.txt: the decompile's types and the engine's), so the connection's writer thread can write
+///      it off the game's thread (A5). Names the mod declares itself are its own types, not the game's.
 /// Rule 3 sees only loops written over the collection itself; a loop over a copy, or in a helper over a list passed
 /// in, is not seen. The measured gate (scoreboard drivers/gate.py) covers the rest: any call whose worst StationGod
 /// frame passes the request budget on the large world fails it, whoever loops.
@@ -39,6 +42,8 @@ public sealed class CostSourceRulesTests
         { "List", "HashSet", "Dictionary", "SortedDictionary", "Queue", "Stack", "LinkedList", "SortedSet" };
 
     private static readonly Lazy<List<string[]>> Collections = new Lazy<List<string[]>>(LoadCollections);
+
+    private static readonly Lazy<HashSet<string>> GameTypes = new Lazy<HashSet<string>>(LoadGameTypes);
 
     private readonly ITestOutputHelper _output;
 
@@ -60,6 +65,32 @@ public sealed class CostSourceRulesTests
     [Fact]
     public void ALoopOverAGameCollectionOrTheWorldYields() =>
         Check("unyielded-world-loops", file => file.Root.DescendantNodes().Count(IsUnyieldedLoop));
+
+    [Fact]
+    public void ReplyViewsHoldNoGameType() =>
+        Check("view-game-types", file => ViewMembers(file).Count(HoldsGameType));
+
+    [Fact]
+    public void TheViewRuleSeesAGameTypeInAViewOnly()
+    {
+        SyntaxNode root = CSharpSyntaxTree.ParseText("""
+            class ThingNameView
+            {
+                public string Name { get; }
+                public Thing Held { get; }
+                private readonly List<Device> _devices;
+                public Dictionary<string, Vector3> Places { get; }
+                public static Thing Shared;
+            }
+
+            class Reader
+            {
+                public Thing Held { get; }
+            }
+            """).GetRoot();
+
+        Assert.Equal(3, ViewMembers(new SourceFile("Api/Shared/X.cs", root)).Count(HoldsGameType));
+    }
 
     [Fact]
     public void TheLinqBanIsAnError()
@@ -234,6 +265,73 @@ public sealed class CostSourceRulesTests
         node.DescendantNodesAndSelf().OfType<MemberAccessExpressionSyntax>().Any(access =>
             access.Expression is IdentifierNameSyntax { Identifier.Text: "World" } ||
             Normalized(access.Expression).EndsWith("StationGodMCP.WorldModel.World", StringComparison.Ordinal));
+
+    // The instance fields and properties of the file's reply views: types named *View, and every type under Api/Views/.
+    private static IEnumerable<TypeSyntax> ViewMembers(SourceFile file)
+    {
+        bool viewsFolder = file.Path.StartsWith("Api/Views/", StringComparison.Ordinal);
+        foreach (TypeDeclarationSyntax type in file.Root.DescendantNodes().OfType<TypeDeclarationSyntax>())
+        {
+            if (!(type is ClassDeclarationSyntax || type is StructDeclarationSyntax) ||
+                !(viewsFolder || type.Identifier.Text.EndsWith("View", StringComparison.Ordinal)))
+            {
+                continue;
+            }
+
+            foreach (MemberDeclarationSyntax member in type.Members)
+            {
+                if (member.Modifiers.Any(modifier => modifier.IsKind(SyntaxKind.StaticKeyword) ||
+                                                     modifier.IsKind(SyntaxKind.ConstKeyword)))
+                {
+                    continue;
+                }
+
+                switch (member)
+                {
+                    case PropertyDeclarationSyntax property:
+                        yield return property.Type;
+                        break;
+                    case FieldDeclarationSyntax field:
+                        yield return field.Declaration.Type;
+                        break;
+                }
+            }
+        }
+    }
+
+    // A member type naming a game type anywhere in it (List<Device>, Thing?, Dictionary<string, Vector3>).
+    private static bool HoldsGameType(TypeSyntax type) =>
+        type.DescendantNodesAndSelf().Any(node => node switch
+        {
+            IdentifierNameSyntax name => GameTypes.Value.Contains(name.Identifier.Text),
+            GenericNameSyntax generic => GameTypes.Value.Contains(generic.Identifier.Text),
+            _ => false
+        });
+
+    // The game's type names, but those the mod declares itself at the top of a namespace (a nested type of the same
+    // name, Selector.Thing, does not hide the game's elsewhere).
+    private static HashSet<string> LoadGameTypes()
+    {
+        HashSet<string> names = new HashSet<string>(File.ReadAllLines(Path.Combine(Here(), "GameTypes.txt"))
+            .Where(line => line.Length > 0 && !line.StartsWith('#')), StringComparer.Ordinal);
+        foreach (SourceFile file in ModSource.Instance.Files)
+        {
+            foreach (BaseTypeDeclarationSyntax type in file.Root.DescendantNodes().OfType<BaseTypeDeclarationSyntax>())
+            {
+                if (type.Parent is BaseNamespaceDeclarationSyntax or CompilationUnitSyntax)
+                {
+                    names.Remove(type.Identifier.Text);
+                }
+            }
+        }
+
+        foreach (string generic in CollectionTypes)
+        {
+            names.Remove(generic);
+        }
+
+        return names;
+    }
 
     private static List<string[]> LoadCollections() =>
         File.ReadAllLines(Path.Combine(Here(), "GameCollections.txt"))

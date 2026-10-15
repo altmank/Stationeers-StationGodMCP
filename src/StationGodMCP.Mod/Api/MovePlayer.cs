@@ -264,7 +264,7 @@ internal abstract class PlayerMover
         {
             throw ApiErrors.Refused("client_cannot_move",
                 $"{player.DisplayName}'s game owns their movement, and this server cannot reach it: " +
-                PlayerView.NoRemoteView(player, player.DisplayName) + " Nothing was moved.");
+                PlayerSight.NoRemoteView(player, player.DisplayName) + " Nothing was moved.");
         }
 
         return new OwningClient(held.Value.ConnectionId);
