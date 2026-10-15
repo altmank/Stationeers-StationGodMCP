@@ -35,6 +35,21 @@ internal static class BrokenNeighbourSearch
     internal static List<BrokenNeighbour<T>> Find<T>(IReadOnlyList<T> members, Func<T, long> idOf,
         Func<T, IEnumerable<T>> attachedTo, Func<T, bool> isBroken)
     {
+        List<BrokenNeighbour<T>> found = new List<BrokenNeighbour<T>>();
+        foreach (object? _ in Steps(members, idOf, attachedTo, isBroken, found))
+        {
+        }
+
+        return found;
+    }
+
+    /// <summary>
+    /// The search spread over frames (a Work body): one thing taken from the frontier per step, each piece found added
+    /// to found in the order found.
+    /// </summary>
+    internal static IEnumerable<object?> Steps<T>(IReadOnlyList<T> members, Func<T, long> idOf,
+        Func<T, IEnumerable<T>> attachedTo, Func<T, bool> isBroken, List<BrokenNeighbour<T>> found)
+    {
         HashSet<long> seen = new HashSet<long>();
         Queue<T> frontier = new Queue<T>(members.Count);
         foreach (T member in members)
@@ -43,7 +58,7 @@ internal static class BrokenNeighbourSearch
             frontier.Enqueue(member);
         }
 
-        List<BrokenNeighbour<T>> found = new List<BrokenNeighbour<T>>();
+        yield return null;
         while (frontier.Count > 0)
         {
             T from = frontier.Dequeue();
@@ -57,9 +72,9 @@ internal static class BrokenNeighbourSearch
                 found.Add(new BrokenNeighbour<T>(next, from));
                 frontier.Enqueue(next);
             }
-        }
 
-        return found;
+            yield return null;
+        }
     }
 
     /// <summary>

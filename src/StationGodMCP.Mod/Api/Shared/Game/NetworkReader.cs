@@ -13,6 +13,8 @@ using Networks;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Paging;
+using StationGodMCP.Pure.Scheduling;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Api.Shared.Game;
@@ -35,34 +37,12 @@ internal static class NetworkReader
 
     /// <summary>
     /// The members the filter keeps, by reference id in the network's order (pieces, then devices), with the network's
-    /// summary and counts (the head a walk's every page answers) and the open ends found for each kept member.
+    /// summary and counts (the head a walk's every page answers) and the open ends found for each kept member: the
+    /// network found now (refused network_not_found), then a scan spread over frames (MembersScan.Scan, a ScanBuild
+    /// body in scan order).
     /// </summary>
-    internal static MembersScan Scan(string kind, ThingId id, NetworkMemberFilter filter)
-    {
-        Found network = Find(kind, id);
-        NetworkMembers members = network.Members;
-        List<long> ids = new List<long>(members.All.Count);
-        Dictionary<long, List<int>?> openEnds = new Dictionary<long, List<int>?>();
-        foreach (Thing member in members.All)
-        {
-            if (!Keeps(filter, member))
-            {
-                continue;
-            }
-
-            List<int>? open = filter.OpenEndsOnly ? OpenEnds(member, kind) : null;
-            if (open == null || open.Count > 0)
-            {
-                ids.Add(member.ReferenceId);
-                openEnds[member.ReferenceId] = open;
-            }
-        }
-
-        MembersHead head = new MembersHead(new NetworkRefView(kind, id), network.Summary, members.StructureCount,
-            members.All.Count - members.StructureCount,
-            BrokenNeighbours.WarningFor(kind, members.All, "members", "broken_neighbours with summarize true"));
-        return new MembersScan(head, ids.ToArray(), members.All.Count, openEnds);
-    }
+    internal static MembersScan Scan(string kind, ThingId id, NetworkMemberFilter filter) =>
+        new MembersScan(kind, id, Find(kind, id), filter);
 
     /// <summary>
     /// A member of a network of kind as a page lists it, as it is now; null when it is gone. open: its open ends as the
@@ -90,12 +70,20 @@ internal static class NetworkReader
 
     /// <summary>
     /// The ids of every piece of the kinds named (all three when kind is null) standing in the box with an end of its
-    /// kind that nothing is attached at, across every network: cells by y, then z, then x, kinds cable, pipe, chute.
+    /// kind that nothing is attached at, across every network: cells by y, then z, then x, kinds cable, pipe, chute. The
+    /// box is checked now (refused over MaximumBoxCells); the walk is a ScanBuild body in scan order, a row of the box's
+    /// small cells or a piece per step.
     /// </summary>
-    internal static long[] OpenEndsIn(BoxCorners corners, string? kind, NetworkMemberFilter filter)
+    internal static Func<ScanKeys, IEnumerable<object?>> OpenEndsIn(BoxCorners corners, string? kind,
+        NetworkMemberFilter filter)
     {
         PieceSelection.Box box = BoxOf(corners);
-        List<long> found = new List<long>();
+        return keys => OpenEndSteps(box, kind, filter, keys);
+    }
+
+    private static IEnumerable<object?> OpenEndSteps(PieceSelection.Box box, string? kind, NetworkMemberFilter filter,
+        ScanKeys keys)
+    {
         foreach (UpgradeFamily family in OpenEndFamilies)
         {
             if (kind != null && family.NetworkKind != kind)
@@ -103,17 +91,24 @@ internal static class NetworkReader
                 continue;
             }
 
-            foreach (SmallGrid piece in UpgradePlanner.InBox(family, box))
+            List<SmallGrid> pieces = new List<SmallGrid>();
+            foreach (object? step in UpgradePlanner.InBoxSteps(family, box, pieces))
             {
+                yield return step;
+            }
+
+            foreach (SmallGrid piece in pieces)
+            {
+                keys.Candidates++;
                 if (filter.KeepsPrefab(piece.PrefabName, piece.PrefabHash) &&
                     OpenEnds(piece, family.NetworkKind).Count > 0)
                 {
-                    found.Add(piece.ReferenceId);
+                    keys.Add(new ListKey(null, null, 0, piece.ReferenceId));
                 }
+
+                yield return null;
             }
         }
-
-        return found.ToArray();
     }
 
     /// <summary>A piece OpenEndsIn found, as it is now (its network and open ends); null when it is gone.</summary>
@@ -157,11 +152,19 @@ internal static class NetworkReader
 
     /// <summary>
     /// summarize: the members the filters keep counted by prefab and colour, and the first limit of its devices and
-    /// of its members with an open end.
+    /// of its members with an open end. The network is found now (refused network_not_found); the count is a Work body,
+    /// a member per step, then the broken neighbours' search.
     /// </summary>
-    internal static NetworkOverviewView Overview(string kind, ThingId id, int limit, NetworkMemberFilter filter)
+    internal static Func<Answer<NetworkOverviewView>, IEnumerable<object?>> Overview(string kind, ThingId id, int limit,
+        NetworkMemberFilter filter)
     {
         Found network = Find(kind, id);
+        return answer => OverviewSteps(kind, id, network, limit, filter, answer);
+    }
+
+    private static IEnumerable<object?> OverviewSteps(string kind, ThingId id, Found network, int limit,
+        NetworkMemberFilter filter, Answer<NetworkOverviewView> answer)
+    {
         List<ColorSwatch> swatches = ThingColors.Swatches();
         MemberTally tally = new MemberTally();
         List<NetworkMemberView> devices = new List<NetworkMemberView>();
@@ -173,6 +176,7 @@ internal static class NetworkReader
         {
             if (!Keeps(filter, member))
             {
+                yield return null;
                 continue;
             }
 
@@ -201,14 +205,22 @@ internal static class NetworkReader
                     openEnds.Add(MemberView(member, role, open, color));
                 }
             }
+
+            yield return null;
         }
 
-        return new NetworkOverviewView(new NetworkRefView(kind, id), network.Summary, structureCount, deviceCount,
-            tally.MostFirst().ConvertAll(static count => new PrefabCountView(count)), devices, openEnds, openEndCount,
-            BrokenNeighbours.Around(kind, network.Members.All, "by_prefab"));
+        List<BrokenNeighbour<Thing>> broken = new List<BrokenNeighbour<Thing>>();
+        foreach (object? step in BrokenNeighbours.Steps(kind, network.Members.All, broken))
+        {
+            yield return step;
+        }
+
+        answer.Value = new NetworkOverviewView(new NetworkRefView(kind, id), network.Summary, structureCount,
+            deviceCount, tally.MostFirst().ConvertAll(static count => new PrefabCountView(count)), devices, openEnds,
+            openEndCount, BrokenNeighbours.ReportOf(kind, broken, "by_prefab"));
     }
 
-    private static Found Find(string kind, ThingId id)
+    internal static Found Find(string kind, ThingId id)
     {
         switch (kind)
         {
@@ -227,7 +239,7 @@ internal static class NetworkReader
         }
     }
 
-    private static bool Keeps(NetworkMemberFilter filter, Thing member) =>
+    internal static bool Keeps(NetworkMemberFilter filter, Thing member) =>
         filter.KeepsPrefab(member.PrefabName, member.PrefabHash) &&
         filter.KeepsPosition(new Vec3(member.Position.x, member.Position.y, member.Position.z));
 
@@ -371,7 +383,7 @@ internal static class NetworkReader
     };
 
     /// <summary>A network's members and its summary.</summary>
-    private readonly struct Found
+    internal readonly struct Found
     {
         internal Found(NetworkMembers members, object? summary)
         {
@@ -384,7 +396,7 @@ internal static class NetworkReader
         internal object? Summary { get; }
     }
     /// <summary>A network's things, each once (a HashSet of ids), in the order found.</summary>
-    private sealed class NetworkMembers
+    internal sealed class NetworkMembers
     {
         private readonly HashSet<long> _seen = new HashSet<long>();
 
@@ -428,19 +440,56 @@ internal sealed class MembersHead
 /// <summary>A network's kept members: the head, their ids in order, the members read, and each one's open ends.</summary>
 internal sealed class MembersScan
 {
-    internal MembersScan(MembersHead head, long[] ids, int scanned, Dictionary<long, List<int>?> openEnds)
+    private readonly string _kind;
+    private readonly ThingId _id;
+    private readonly NetworkReader.Found _network;
+    private readonly NetworkMemberFilter _filter;
+
+    internal MembersScan(string kind, ThingId id, NetworkReader.Found network, NetworkMemberFilter filter)
     {
-        Head = head;
-        Ids = ids;
-        Scanned = scanned;
-        OpenEnds = openEnds;
+        _kind = kind;
+        _id = id;
+        _network = network;
+        _filter = filter;
     }
 
-    internal MembersHead Head { get; }
+    /// <summary>The head a walk's every page answers, once the scan has ended.</summary>
+    internal MembersHead? Head { get; private set; }
 
-    internal long[] Ids { get; }
+    /// <summary>The open ends found for each kept member (null: not asked).</summary>
+    internal Dictionary<long, List<int>?> OpenEnds { get; } = new Dictionary<long, List<int>?>();
 
-    internal int Scanned { get; }
+    /// <summary>
+    /// The scan (a ScanBuild body, in the network's order): a member per step, then the broken neighbours' search for
+    /// the head's warning.
+    /// </summary>
+    internal IEnumerable<object?> Scan(ScanKeys keys)
+    {
+        NetworkReader.NetworkMembers members = _network.Members;
+        foreach (Thing member in members.All)
+        {
+            keys.Candidates++;
+            if (NetworkReader.Keeps(_filter, member))
+            {
+                List<int>? open = _filter.OpenEndsOnly ? NetworkReader.OpenEnds(member, _kind) : null;
+                if (open == null || open.Count > 0)
+                {
+                    keys.Add(new ListKey(null, null, 0, member.ReferenceId));
+                    OpenEnds[member.ReferenceId] = open;
+                }
+            }
 
-    internal Dictionary<long, List<int>?> OpenEnds { get; }
+            yield return null;
+        }
+
+        List<BrokenNeighbour<Thing>> broken = new List<BrokenNeighbour<Thing>>();
+        foreach (object? step in BrokenNeighbours.Steps(_kind, members.All, broken))
+        {
+            yield return step;
+        }
+
+        Head = new MembersHead(new NetworkRefView(_kind, _id), _network.Summary, members.StructureCount,
+            members.All.Count - members.StructureCount,
+            BrokenNeighbourSearch.Warning(broken.Count, _kind, "members", "broken_neighbours with summarize true"));
+    }
 }

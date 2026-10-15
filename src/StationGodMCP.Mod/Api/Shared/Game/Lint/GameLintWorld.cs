@@ -13,6 +13,7 @@ using StationGodMCP.Api.Shared.Game.Structures;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Lint;
+using StationGodMCP.Pure.Scheduling;
 using UnityEngine;
 
 namespace StationGodMCP.Api.Shared.Game.Lint;
@@ -69,6 +70,7 @@ internal sealed class GameLintWorld : ILintWorld
     private readonly Dictionary<string, List<ILintObject>> _sets = new Dictionary<string, List<ILintObject>>();
     private readonly HashSet<string> _planned = new HashSet<string>();
     private readonly List<Structure> _doors = new List<Structure>();
+    private readonly HashSet<long> _doorIds = new HashSet<long>();
     private readonly HashSet<long> _gone;
     private readonly HashSet<long> _added = new HashSet<long>();
     private WorldSubject? _world;
@@ -92,11 +94,28 @@ internal sealed class GameLintWorld : ILintWorld
     /// <summary>The things standing in the 2 m cells: the region an audit checks.</summary>
     internal static GameLintWorld Audit(List<GridCell> region)
     {
+        Answer<GameLintWorld> answer = new Answer<GameLintWorld>();
+        foreach (object? _ in AuditSteps(region, answer))
+        {
+        }
+
+        return answer.Value;
+    }
+
+    /// <summary>Audit spread over frames (a Work body): one 2 m cell gathered per step, then the sets sorted.</summary>
+    internal static IEnumerable<object?> AuditSteps(List<GridCell> region, Answer<GameLintWorld> answer)
+    {
         GameLintWorld world = new GameLintWorld(new HashSet<long>());
-        world.Gather(region);
+        world.BeginGather();
+        foreach (GridCell large in region)
+        {
+            world.GatherCell(large);
+            yield return null;
+        }
+
         world.Cells = region.Count;
         world.Finish();
-        return world;
+        answer.Value = world;
     }
 
     /// <summary>
@@ -298,13 +317,24 @@ internal sealed class GameLintWorld : ILintWorld
     // Every piece, device and 2 m structure in the cells, the doors on their faces, then the sets built from them.
     private void Gather(List<GridCell> region)
     {
+        BeginGather();
+        foreach (GridCell large in region)
+        {
+            GatherCell(large);
+        }
+    }
+
+    private void BeginGather()
+    {
         foreach (string set in new[] { "pieces", "devices", "structures", "things" })
         {
             _sets[set] = new List<ILintObject>();
         }
+    }
 
-        HashSet<long> doors = new HashSet<long>();
-        foreach (GridCell large in region)
+    // One 2 m cell's things and the doors on its faces (each door once).
+    private void GatherCell(GridCell large)
+    {
         {
             Cell? standing = GridController.World.GetCell(new Vector3(large.X / 10f, large.Y / 10f, large.Z / 10f));
             if (standing?.AllStructures != null)
@@ -327,7 +357,7 @@ internal sealed class GameLintWorld : ILintWorld
                         AddThing(structure);
                     }
 
-                    if (Openings.IsDoor(structure) && doors.Add(structure.ReferenceId))
+                    if (Openings.IsDoor(structure) && _doorIds.Add(structure.ReferenceId))
                     {
                         _doors.Add(structure);
                     }

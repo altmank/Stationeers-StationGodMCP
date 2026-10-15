@@ -85,9 +85,9 @@ internal static class SurveyNetwork
         if (selector.Network is not { } network)
         {
             NetworkMemberFilter pieces = NetworkMemberFilter.Of(selector.Prefab, true, PointArea.Anywhere);
-            long[] found = NetworkReader.OpenEndsIn(selector.Box!, options.Kind, pieces);
+            ScanBuild ends = ScanBuild.InScanOrder(NetworkReader.OpenEndsIn(selector.Box!, options.Kind, pieces));
             List<ColorSwatch> swatches = ThingColors.Swatches();
-            return ThingListPage<NetworkMemberView, object>.First(walk, paging, found, found.Length, NoHead,
+            return ThingListPage<NetworkMemberView, object>.Scan(walk, paging, ends, static () => NoHead,
                 id => NetworkReader.OpenEndOf(id, swatches), Cost, (page, cursorId, _) => OpenEnds(page, cursorId));
         }
 
@@ -99,13 +99,14 @@ internal static class SurveyNetwork
                 : selector.AreaAround(null));
         if (options.Summarize == true)
         {
-            return new VerbOutcome.Answered(
-                Overview(NetworkReader.Overview(family.NetworkKind, id, paging.Limit ?? int.MaxValue, filter)));
+            return WorkResult<NetworkOverviewView>.Of(
+                NetworkReader.Overview(family.NetworkKind, id, paging.Limit ?? int.MaxValue, filter), Overview);
         }
 
         MembersScan scan = NetworkReader.Scan(family.NetworkKind, id, filter);
         List<ColorSwatch> shown = ThingColors.Swatches();
-        return ThingListPage<NetworkMemberView, MembersHead>.First(walk, paging, scan.Ids, scan.Scanned, scan.Head,
+        return ThingListPage<NetworkMemberView, MembersHead>.Scan(walk, paging, ScanBuild.InScanOrder(scan.Scan),
+            () => scan.Head!,
             member => NetworkReader.MemberOf(member, family.NetworkKind, filter.OpenEndsOnly,
                 scan.OpenEnds.TryGetValue(member, out List<int>? open) ? open : null, shown),
             Cost, (page, cursorId, head) => Members(page, cursorId, head!));

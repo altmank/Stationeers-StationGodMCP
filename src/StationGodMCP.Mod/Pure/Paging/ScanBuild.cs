@@ -23,29 +23,42 @@ internal sealed class ScanKeys
 /// A walk's ordered ids from a scan spread over frames (A3): a Work body walks its candidates one per step (a class of
 /// the world index, a network's members, an area's cells), adding the key of each one it keeps, then the keys are
 /// sorted in bounded steps (KeySort). Run takes steps until the clock reaches the slice's end, at least one, and stops
-/// at the call's stop (WorkStop). The ids come out as a one-shot sort of the same keys gives them. Main thread only.
+/// at the call's stop (WorkStop). The ids come out as a one-shot sort of the same keys gives them, or, for a list whose
+/// scan already walks it in order (InScanOrder: an area's cells, a network's members), as the scan kept them. Main thread
+/// only.
 /// </summary>
 internal sealed class ScanBuild : IWalkBuild
 {
     private readonly Work<ScanKeys> _scan;
-    private readonly Comparison<ListKey> _compare;
+    private readonly Comparison<ListKey>? _compare;
     private KeySort? _sort;
+    private int _count;
+
+    private static readonly Comparison<ListKey> NoOrder = static (_, _) => 0;
 
     internal ScanBuild(Func<ScanKeys, IEnumerable<object?>> body, Comparison<ListKey> compare)
+        : this(body, compare ?? throw new ArgumentNullException(nameof(compare)), true)
     {
-        if (body == null)
-        {
-            throw new ArgumentNullException(nameof(body));
-        }
-
-        _compare = compare ?? throw new ArgumentNullException(nameof(compare));
-        _scan = new Work<ScanKeys>(answer => Scanned(body, answer));
     }
 
     internal ScanBuild(Func<ScanKeys, IEnumerable<object?>> body, ListOrder order)
         : this(body, KeySort.Of(order))
     {
     }
+
+    private ScanBuild(Func<ScanKeys, IEnumerable<object?>> body, Comparison<ListKey>? compare, bool _)
+    {
+        if (body == null)
+        {
+            throw new ArgumentNullException(nameof(body));
+        }
+
+        _compare = compare;
+        _scan = new Work<ScanKeys>(answer => Scanned(body, answer));
+    }
+
+    /// <summary>A build whose ids are the scan's keys in the order the scan kept them: no sort.</summary>
+    internal static ScanBuild InScanOrder(Func<ScanKeys, IEnumerable<object?>> body) => new ScanBuild(body, null, true);
 
     public bool Done => _sort != null && _sort.Done;
 
@@ -64,7 +77,11 @@ internal sealed class ScanBuild : IWalkBuild
                 }
 
                 List<ListKey> keys = _scan.Value.Keys;
-                _sort = new KeySort(keys.ToArray(), keys.Count, _compare);
+                _sort = new KeySort(keys.ToArray(), _compare == null ? 0 : keys.Count, _compare ?? NoOrder);
+                if (_compare == null)
+                {
+                    _count = keys.Count;
+                }
             }
             else
             {
@@ -87,7 +104,7 @@ internal sealed class ScanBuild : IWalkBuild
             throw new InvalidOperationException("The walk's ids are not in order yet.");
         }
 
-        return KeyIds.Of(_sort!.Keys, _sort.Count);
+        return KeyIds.Of(_sort!.Keys, _compare == null ? _count : _sort.Count);
     }
 
     private static IEnumerable<object?> Scanned(Func<ScanKeys, IEnumerable<object?>> body, Answer<ScanKeys> answer)

@@ -23,9 +23,21 @@ internal static class BrokenNeighbours
     /// The report for a network of the kind, whose members are its pieces and devices: the count, the first
     /// ReplyDefaults.BrokenNeighbours of them (the rest noted as truncated) and the warning about the list named listed.
     /// </summary>
-    internal static BrokenNeighbourReport Around(string kind, IReadOnlyList<Thing> members, string listed)
+    internal static BrokenNeighbourReport Around(string kind, IReadOnlyList<Thing> members, string listed) =>
+        ReportOf(kind, Find(kind, members), listed);
+
+    /// <summary>The search spread over frames (a Work body): the broken neighbours of the members into found.</summary>
+    internal static IEnumerable<object?> Steps(string kind, IReadOnlyList<Thing> members,
+        List<BrokenNeighbour<Thing>> found)
     {
-        List<BrokenNeighbour<Thing>> found = Find(kind, members);
+        NetworkType types = NetworkReader.EndTypesOf(kind);
+        return BrokenNeighbourSearch.Steps(members, static thing => thing.ReferenceId,
+            thing => AttachedAt(thing, types), static thing => !thing.IsBeingDestroyed && Wrecks.IsBroken(thing), found);
+    }
+
+    /// <summary>Around's report from a search already made (Steps).</summary>
+    internal static BrokenNeighbourReport ReportOf(string kind, List<BrokenNeighbour<Thing>> found, string listed)
+    {
         if (found.Count == 0)
         {
             return BrokenNeighbourReport.None;

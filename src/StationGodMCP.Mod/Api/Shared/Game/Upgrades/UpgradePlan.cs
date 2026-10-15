@@ -398,6 +398,16 @@ internal static class UpgradePlanner
     internal static List<SmallGrid> InBox(UpgradeFamily family, PieceSelection.Box box)
     {
         List<SmallGrid> pieces = new List<SmallGrid>();
+        foreach (object? _ in InBoxSteps(family, box, pieces))
+        {
+        }
+
+        return pieces;
+    }
+
+    /// <summary>InBox spread over frames (a Work body): one row of the box's small cells per step, into pieces.</summary>
+    internal static IEnumerable<object?> InBoxSteps(UpgradeFamily family, PieceSelection.Box box, List<SmallGrid> pieces)
+    {
         HashSet<long> seen = new HashSet<long>();
         GridController world = GridController.World;
         for (int y = box.Min.Y; y <= box.Max.Y; y += GridStep.CellSize)
@@ -414,10 +424,10 @@ internal static class UpgradePlanner
                         pieces.Add(piece);
                     }
                 }
+
+                yield return null;
             }
         }
-
-        return pieces;
     }
 
     private static List<SmallGrid> Listed(UpgradeFamily family, List<ThingId> ids, UpgradePlan plan)

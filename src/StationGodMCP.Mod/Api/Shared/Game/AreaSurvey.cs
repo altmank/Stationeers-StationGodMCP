@@ -17,6 +17,8 @@ using StationGodMCP.Api.Shared.Game.Structures;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Paging;
+using StationGodMCP.Pure.Scheduling;
 using StationGodMCP.Pure.Verbs;
 using UnityEngine;
 
@@ -37,21 +39,27 @@ internal static class AreaSurvey
     /// <summary>What the grid holds, as a survey reads it.</summary>
     internal static GridFacts Facts() => new GridFacts(new CableRunKind(), SmallGridBlock.None, new HashSet<long>());
 
-    /// <summary>A page's cells as views: what occupies each, or each in full.</summary>
-    internal static List<SurveyCell> CellViews(GridFacts facts, IReadOnlyList<GridCell> cells, SurveyCellDetail detail)
+    /// <summary>A cell as a page's view: what occupies it, or it in full.</summary>
+    internal static SurveyCell CellView(GridFacts facts, GridCell cell, SurveyCellDetail detail) =>
+        detail == SurveyCellDetail.Full ? CellView(facts, cell) : OccupancyView(facts, cell);
+
+    /// <summary>
+    /// The cells' keys (CellKey) in their order, as a scan spread over frames (a ScanBuild body, one cell per step): with
+    /// occupiedOnly only the cells that hold a frame, a structure on one of their faces, or anything in their small cells.
+    /// </summary>
+    internal static IEnumerable<object?> Scan(GridFacts facts, List<GridCell> cells, bool occupiedOnly, ScanKeys keys)
     {
-        List<SurveyCell> views = new List<SurveyCell>(cells.Count);
-        foreach (GridCell cell in cells)
+        for (int index = 0; index < cells.Count; index++)
         {
-            views.Add(detail == SurveyCellDetail.Full ? CellView(facts, cell) : OccupancyView(facts, cell));
+            keys.Candidates++;
+            if (!occupiedOnly || Holds(facts, cells[index]))
+            {
+                keys.Add(new ListKey(null, null, 0, CellKey.Of(cells[index])));
+            }
+
+            yield return null;
         }
-
-        return views;
     }
-
-    /// <summary>The cells that hold a frame, a structure on one of their faces, or anything in their small cells.</summary>
-    internal static List<GridCell> Occupied(GridFacts facts, List<GridCell> cells) =>
-        cells.FindAll(cell => Holds(facts, cell));
 
     /// <summary>
     /// The networks a list names, each resolved: a network's id, or a cable, pipe or chute piece on it. path names the
@@ -222,8 +230,8 @@ internal static class AreaSurvey
         return zones;
     }
 
-    // Every door on a face of the page's cells, once.
-    private static List<SurveyDoorView> Doors(GridFacts facts, List<GridCell> cells)
+    // Every door on a face of the page's cells, once: a cell per step, then a door per step.
+    private static IEnumerable<object?> Doors(GridFacts facts, List<GridCell> cells, List<SurveyDoorView> views)
     {
         Dictionary<long, Structure> doors = new Dictionary<long, Structure>();
         foreach (GridCell cell in cells)
@@ -238,11 +246,12 @@ internal static class AreaSurvey
                     }
                 }
             }
+
+            yield return null;
         }
 
         List<long> ids = new List<long>(doors.Keys);
         ids.Sort();
-        List<SurveyDoorView> views = new List<SurveyDoorView>(ids.Count);
         foreach (long id in ids)
         {
             Structure door = doors[id];
@@ -253,18 +262,19 @@ internal static class AreaSurvey
             views.Add(new SurveyDoorView(GameLookup.ViewOf(door),
                 faces.ConvertAll(face => GameLookup.ViewOf(PieceShapes.CentreOf(face))), plane, facts.Band.Metres,
                 ports.ConvertAll(port => GameLookup.ViewOf(PieceShapes.CentreOf(port)))));
+            yield return null;
         }
-
-        return views;
     }
 
     /// <summary>
     /// What stands in a page's cells, as sections asks for it: the pieces, devices, networks, network visibility and
     /// doors; includeNetworks the networks of the pieces, includeRefund each piece's removal refund, includePieceCells
-    /// every small cell of a long piece.
+    /// every small cell of a long piece. A Work body, spread over frames: a cell, a piece, a device, a network or a door
+    /// per step.
     /// </summary>
-    internal static SurveyContents Contents(GridFacts facts, List<GridCell> cells, SurveySections sections,
-        SurveyFilter filter, bool includeNetworks, bool includeRefund, bool includePieceCells)
+    internal static IEnumerable<object?> Contents(GridFacts facts, List<GridCell> cells, SurveySections sections,
+        SurveyFilter filter, bool includeNetworks, bool includeRefund, bool includePieceCells,
+        Answer<SurveyContents> answer)
     {
         Dictionary<long, SmallGrid> pieces = new Dictionary<long, SmallGrid>();
         Dictionary<long, Device> devices = new Dictionary<long, Device>();
@@ -286,6 +296,8 @@ internal static class AreaSurvey
                     devices[small.Device.ReferenceId] = small.Device;
                 }
             }
+
+            yield return null;
         }
 
         List<long> ids = new List<long>(pieces.Keys);
@@ -293,6 +305,7 @@ internal static class AreaSurvey
         List<SurveyPieceView> pieceViews = new List<SurveyPieceView>(ids.Count);
         Dictionary<long, IReferencable> networks = new Dictionary<long, IReferencable>();
         ChuteFlowResult? flow = ChuteFlowOf(pieces.Values);
+        yield return null;
         NetworkTallies tallies = new NetworkTallies(facts, includeRefund);
         bool tally = sections.Includes(SurveySection.NetworkVisibility);
         foreach (long id in ids)
@@ -303,11 +316,19 @@ internal static class AreaSurvey
             {
                 tallies.Add(pieces[id], view);
             }
+
+            yield return null;
         }
 
-        List<SurveyDeviceView> deviceViews = sections.Includes(SurveySection.Devices)
-            ? DeviceViews(devices, filter)
-            : new List<SurveyDeviceView>();
+        List<SurveyDeviceView> deviceViews = new List<SurveyDeviceView>();
+        if (sections.Includes(SurveySection.Devices))
+        {
+            foreach (object? step in DeviceViews(devices, filter, deviceViews))
+            {
+                yield return step;
+            }
+        }
+
         List<object> networkViews = new List<object>();
         if (includeNetworks && sections.Includes(SurveySection.Networks))
         {
@@ -321,32 +342,41 @@ internal static class AreaSurvey
                     PipeNetwork pipes => RunNetworks.PipeSummary(pipes),
                     IReferencable chutes => new ChuteRunKind().Summary(chutes)
                 });
+                yield return null;
             }
         }
 
-        List<SurveyDoorView> doors = sections.Includes(SurveySection.Doors)
-            ? Doors(facts, cells)
-            : new List<SurveyDoorView>();
-        return new SurveyContents(pieceViews, deviceViews, networkViews, tallies.Views(), doors);
+        List<SurveyDoorView> doors = new List<SurveyDoorView>();
+        if (sections.Includes(SurveySection.Doors))
+        {
+            foreach (object? step in Doors(facts, cells, doors))
+            {
+                yield return step;
+            }
+        }
+
+        answer.Value = new SurveyContents(pieceViews, deviceViews, networkViews, tallies.Views(), doors);
     }
 
-    // The devices by id, those with a port on a network the filter names (every device when it names none).
-    private static List<SurveyDeviceView> DeviceViews(Dictionary<long, Device> devices, SurveyFilter filter)
+    // The devices by id, those with a port on a network the filter names (every device when it names none); one per
+    // step.
+    private static IEnumerable<object?> DeviceViews(Dictionary<long, Device> devices, SurveyFilter filter,
+        List<SurveyDeviceView> views)
     {
         List<long> ids = new List<long>(devices.Keys);
         ids.Sort();
-        List<SurveyDeviceView> views = new List<SurveyDeviceView>(ids.Count);
         foreach (long id in ids)
         {
             SurveyDeviceView view = DeviceView(devices[id]);
-            if (filter.AdmitsDevice(devices[id].PrefabName, devices[id].PrefabHash, view.Ports.ConvertAll(static port => port.NetworkId),
+            if (filter.AdmitsDevice(devices[id].PrefabName, devices[id].PrefabHash,
+                    view.Ports.ConvertAll(static port => port.NetworkId),
                     view.Ports.ConvertAll(static port => (string?)port.Type)))
             {
                 views.Add(view);
             }
-        }
 
-        return views;
+            yield return null;
+        }
     }
 
     private static void AddPiece(Dictionary<long, SmallGrid> pieces, SmallGrid? piece, SurveyFilter filter)

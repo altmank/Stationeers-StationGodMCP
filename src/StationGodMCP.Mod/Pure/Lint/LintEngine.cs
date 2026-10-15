@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using StationGodMCP.Pure.Scheduling;
 
 namespace StationGodMCP.Pure.Lint;
 
@@ -77,6 +78,20 @@ internal static class LintEngine
 
     internal static LintRun Run(LintRuleSet set, ILintWorld world, string phase)
     {
+        Answer<LintRun> answer = new Answer<LintRun>();
+        foreach (object? _ in Steps(set, world, phase, answer))
+        {
+        }
+
+        return answer.Value;
+    }
+
+    /// <summary>
+    /// Run spread over frames (a Work body): one subject judged per step. The run's milliseconds count only its steps,
+    /// not the frames between them.
+    /// </summary>
+    internal static IEnumerable<object?> Steps(LintRuleSet set, ILintWorld world, string phase, Answer<LintRun> answer)
+    {
         System.Diagnostics.Stopwatch clock = System.Diagnostics.Stopwatch.StartNew();
         LintContext context = new LintContext(world);
         List<LintFinding> findings = new List<LintFinding>();
@@ -91,7 +106,9 @@ internal static class LintEngine
             }
 
             int errors = 0, count = 0;
-            foreach (LintSubjectRef subject in SubjectsOf(rule, world, context, phase == "report", ref errors, findings, order))
+            IEnumerable<LintSubjectRef> subjects =
+                SubjectsOf(rule, world, context, phase == "report", ref errors, findings, order);
+            foreach (LintSubjectRef subject in subjects)
             {
                 count++;
                 LintVerdict verdict = Judge(rule, subject, context, false, true);
@@ -103,13 +120,17 @@ internal static class LintEngine
                 {
                     findings.Add(ErrorFinding(rule, order, subject, verdict.Error!));
                 }
+
+                clock.Stop();
+                yield return null;
+                clock.Start();
             }
 
             ruleErrors += errors;
             checkedCounts[rule.Id] = count;
         }
 
-        return new LintRun(findings, checkedCounts, ruleErrors, clock.Elapsed.TotalMilliseconds);
+        answer.Value = new LintRun(findings, checkedCounts, ruleErrors, clock.Elapsed.TotalMilliseconds);
     }
 
     /// <summary>One rule on one subject. where: whether the select's where is asked first (explain asks it too).</summary>

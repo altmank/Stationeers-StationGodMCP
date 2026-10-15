@@ -11,6 +11,7 @@ using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Lint;
 using StationGodMCP.Pure.Shaping;
+using StationGodMCP.Pure.Scheduling;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Verbs;
@@ -36,8 +37,28 @@ internal static class CheckLayout
 
         List<GridCell> region = Cells(check.Region, out string described);
         LintRuleSet rules = LintRuleFiles.Current();
-        GameLintWorld world = GameLintWorld.Audit(region);
-        LintRun run = LintEngine.Run(rules, world, "audit");
+        return WorkResult<VerbOutcome>.Of(answer => Checked(check, region, described, rules, answer), static outcome => outcome);
+    }
+
+    // The audit over frames: the region's things gathered a cell per step (GameLintWorld.AuditSteps), the rules judged a
+    // subject per step (LintEngine.Steps), then the findings kept, ordered and listed.
+    private static IEnumerable<object?> Checked(LayoutCheck check, List<GridCell> region, string described,
+        LintRuleSet rules, Answer<VerbOutcome> answer)
+    {
+        Answer<GameLintWorld> gathered = new Answer<GameLintWorld>();
+        foreach (object? step in GameLintWorld.AuditSteps(region, gathered))
+        {
+            yield return step;
+        }
+
+        GameLintWorld world = gathered.Value;
+        Answer<LintRun> judged = new Answer<LintRun>();
+        foreach (object? step in LintEngine.Steps(rules, world, "audit", judged))
+        {
+            yield return step;
+        }
+
+        LintRun run = judged.Value;
         List<LintFinding> ordered = check.Things.Keep(check.Codes.Keep(Pure.LintReport.Ordered(run.Findings)));
         int limit = check.Limit ?? ordered.Count;
         List<LintFindingView> views = new List<LintFindingView>(System.Math.Min(limit, ordered.Count));
@@ -47,7 +68,7 @@ internal static class CheckLayout
         }
 
         Truncations.Capped("findings", views.Count, ordered.Count, "limit", MaximumLimit);
-        return Answer.Of(new LintLayoutView(described, region.Count, world.Subjects("pieces").Count,
+        answer.Value = Answer.Of(new LintLayoutView(described, region.Count, world.Subjects("pieces").Count,
             world.Subjects("devices").Count, world.Subjects("structures").Count, world.Doors,
             Pure.LintReport.Counts(run.Findings), views, ordered.Count, new LintRuleSourceView(rules), run.Milliseconds,
             check.Codes.Narrows || check.Things.Narrows ? run.Findings.Count - ordered.Count : null));
