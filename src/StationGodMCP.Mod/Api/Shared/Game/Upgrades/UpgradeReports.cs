@@ -19,7 +19,7 @@ internal static class UpgradeReports
     internal const string Refused = "refused";
 
     /// <summary>How many pieces' views one step of Building describes.</summary>
-    internal const int PiecesAStep = 32;
+    internal const int PiecesAStep = 8;
 
     /// <summary>The plan's report; limit, when given, is how many entries each list shows instead of the request's.</summary>
     [Profiled]
@@ -55,9 +55,16 @@ internal static class UpgradeReports
         UpgradeLists lists = new UpgradeLists(plan.Problems, pieces, ByPrefab(plan), Skipped(plan.Kept, shown),
             Skipped(plan.Unmatched, shown), plan.Warnings);
         yield return null;
+        List<object> networks = new List<object>(plan.Networks.Count);
+        foreach (NetworkRecord record in plan.Networks)
+        {
+            networks.Add(Network(record));
+            yield return null;
+        }
+
         UpgradeResources resources = new UpgradeResources(
             plan.From != null ? GameLookup.ViewOf(plan.From) : null, Coils(plan), request.Refund, RefundTotals(plan),
-            Networks(plan), Refunds.Forecast(plan.Refunds, RefundItems(plan)));
+            networks, Refunds.Forecast(plan.Refunds, RefundItems(plan)));
         yield return null;
         answer.Value = new UpgradeReportView(header, counts, lists, resources, plan.Links?.View(),
             DeadEnds(plan, shown), Loops(plan), Redundant(plan, shown), Riding(plan, shown));
@@ -316,16 +323,11 @@ internal static class UpgradeReports
         return views;
     }
 
+    // One network's report as the plan's resources list it: without its devices.
     [Profiled]
-    private static List<object> Networks(UpgradePlan plan)
+    private static object Network(NetworkRecord record)
     {
-        List<object> networks = new List<object>(plan.Networks.Count);
-        foreach (NetworkRecord record in plan.Networks)
-        {
-            object report = record.Report();
-            networks.Add(report is IListsDevices listing ? listing.WithoutDevices() : report);
-        }
-
-        return networks;
+        object report = record.Report();
+        return report is IListsDevices listing ? listing.WithoutDevices() : report;
     }
 }
