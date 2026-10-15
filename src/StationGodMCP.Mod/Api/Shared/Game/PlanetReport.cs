@@ -7,6 +7,7 @@ using Assets.Scripts.Atmospherics;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Profiling;
 using UnityEngine;
 using Weather;
 
@@ -56,28 +57,53 @@ internal static class PlanetReport
 
     private static Chemistry.GasType[]? _gasTypes;
 
-    /// <summary>The planet's air, or what is known while no world is loaded (PlanetNotLoadedView).</summary>
-    internal static object Read()
+    /// <summary>How many sun angles one step of a sweep reads (each a game temperature solve, about 7 us).</summary>
+    internal const int AnglesAStep = 32;
+
+    /// <summary>
+    /// The planet's air, or what is known while no world is loaded (PlanetNotLoadedView), as work over frames (A3): the
+    /// three sun-angle sweeps (543 temperature solves, about 4 ms) a batch of angles a step, the rest a step.
+    /// </summary>
+    [Profiled]
+    internal static IEnumerable<object?> Reading(Pure.Scheduling.Answer<object> answer)
     {
         GlobalGasMix tank = PlanetaryAtmosphereSimulation.GetGlobalGasMix();
         GlobalAtmosphereData? data = WorldSetting.Current?.Data?.GlobalAtmosphereData;
         if (tank == null || data == null)
         {
-            return new PlanetNotLoadedView(TerraformingModReader.Read());
+            answer.Value = new PlanetNotLoadedView(TerraformingModReader.Read());
+            yield break;
         }
 
-        return Read(tank, data);
+        OrbitalSimulation orbit = OrbitalSimulation.System;
+        float energyNow = orbit.GetSolarEnergyPercentClamped(orbit.GetSolarEnergy(), orbit.CalculateSolarIrradiance());
+        Pure.Scheduling.Answer<TemperatureSweepView> today = new Pure.Scheduling.Answer<TemperatureSweepView>();
+        Pure.Scheduling.Answer<TemperatureSweepView> far = new Pure.Scheduling.Answer<TemperatureSweepView>();
+        Pure.Scheduling.Answer<TemperatureSweepView> near = new Pure.Scheduling.Answer<TemperatureSweepView>();
+        foreach (object? step in Sweeping(tank, data, energyNow, today))
+        {
+            yield return step;
+        }
+
+        foreach (object? step in Sweeping(tank, data, FarthestSolarEnergyPercent, far))
+        {
+            yield return step;
+        }
+
+        foreach (object? step in Sweeping(tank, data, NearestSolarEnergyPercent, near))
+        {
+            yield return step;
+        }
+
+        answer.Value = Read(tank, data, energyNow, today.Value, far.Value, near.Value);
     }
 
-    private static PlanetView Read(GlobalGasMix tank, GlobalAtmosphereData data)
+    [Profiled]
+    private static PlanetView Read(GlobalGasMix tank, GlobalAtmosphereData data, float energyNow,
+        TemperatureSweepView today, TemperatureSweepView far, TemperatureSweepView near)
     {
         PlanetTank tankReading = ReadTank(tank, data);
         double temperature = PlanetaryAtmosphereSimulation.AggregateTemperature.ToDouble();
-        OrbitalSimulation orbit = OrbitalSimulation.System;
-        float energyNow = orbit.GetSolarEnergyPercentClamped(orbit.GetSolarEnergy(), orbit.CalculateSolarIrradiance());
-        TemperatureSweepView today = Sweep(tank, data, energyNow);
-        TemperatureSweepView far = Sweep(tank, data, FarthestSolarEnergyPercent);
-        TemperatureSweepView near = Sweep(tank, data, NearestSolarEnergyPercent);
         double orbitMin = Math.Min(today.MinK, Math.Min(far.MinK, near.MinK));
         double orbitMax = Math.Max(today.MaxK, Math.Max(far.MaxK, near.MaxK));
         TemperatureRangeView range = new TemperatureRangeView(today, orbitMin, orbitMax);
@@ -93,6 +119,7 @@ internal static class PlanetReport
             TerraformingModReader.Read());
     }
 
+    [Profiled]
     private static StartingAirView ReadStartingAir(GlobalAtmosphereData data, PlanetTank tank)
     {
         List<ReservoirGasView> gases = new List<ReservoirGasView>();
@@ -118,6 +145,7 @@ internal static class PlanetReport
         return new PlanetClock((WorldManager.DaysPast + (double)OrbitalSimulation.TimeOfDay) * dayLength, dayLength);
     }
 
+    [Profiled]
     private static PlanetTank ReadTank(GlobalGasMix tank, GlobalAtmosphereData data)
     {
         double volume = tank.Volume.ToDouble();
@@ -137,6 +165,7 @@ internal static class PlanetReport
             sea);
     }
 
+    [Profiled]
     private static PlanetWeather ReadWeather(PlanetTank tank, double temperature, float energyNow,
         TemperatureRangeView range)
     {
@@ -160,6 +189,7 @@ internal static class PlanetReport
             storm == null ? null : new StormView(storm.Id));
     }
 
+    [Profiled]
     private static PlanetAir ReadAir(GlobalGasMix tank, PlanetTank reading, double temperature)
     {
         double gasMoles = reading.GasMoles;
@@ -182,18 +212,27 @@ internal static class PlanetReport
         return sum;
     }
 
-    // Every sun angle from 0 (overhead) to 180 at one solar energy percent.
-    private static TemperatureSweepView Sweep(GlobalGasMix tank, GlobalAtmosphereData data, float energyPercent)
+    // Every sun angle from 0 (overhead) to 180 at one solar energy percent, AnglesAStep angles a step.
+    private static IEnumerable<object?> Sweeping(GlobalGasMix tank, GlobalAtmosphereData data, float energyPercent,
+        Pure.Scheduling.Answer<TemperatureSweepView> answer)
     {
         TemperatureSweep sweep = new TemperatureSweep();
         for (int angle = 0; angle <= LastSunAngle; angle++)
         {
-            sweep.Add(angle, tank.GetGlobalGasMixTemperature(data, angle, energyPercent).ToDouble());
+            sweep.Add(angle, Temperature(tank, data, angle, energyPercent));
+            if (angle % AnglesAStep == AnglesAStep - 1)
+            {
+                yield return null;
+            }
         }
 
-        return new TemperatureSweepView(sweep.MinK, sweep.MinAngle, sweep.MaxK, sweep.MaxAngle);
+        answer.Value = new TemperatureSweepView(sweep.MinK, sweep.MinAngle, sweep.MaxK, sweep.MaxAngle);
     }
 
+    private static double Temperature(GlobalGasMix tank, GlobalAtmosphereData data, int angle, float energyPercent) =>
+        tank.GetGlobalGasMixTemperature(data, angle, energyPercent).ToDouble();
+
+    [Profiled]
     private static List<PlanetGasView> ReadGases(GlobalGasMix tank, PlanetTank reading, double temperature,
         double todayMin, double orbitMin)
     {
@@ -248,6 +287,7 @@ internal static class PlanetReport
             + GlobalGasMix.GlobalTemperatureStateChangeOffset.ToDouble();
     }
 
+    [Profiled]
     private static ReservoirsView ReadReservoirs() =>
         new ReservoirsView(
             ReadReservoir(GameMembers.PlanetLiquidClouds),
@@ -307,6 +347,7 @@ internal static class PlanetReport
 /// </summary>
 internal static class TerraformingModReader
 {
+    [Profiled]
     internal static TerraformingModView? Read()
     {
         if (GameMembers.TerraformingGate.OrNull == null)

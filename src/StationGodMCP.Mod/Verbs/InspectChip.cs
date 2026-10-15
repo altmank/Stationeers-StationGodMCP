@@ -3,6 +3,7 @@
 using System.Collections.Generic;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
+using StationGodMCP.Pure.Profiling;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Verbs;
@@ -16,6 +17,7 @@ namespace StationGodMCP.Verbs;
 /// </summary>
 internal static class InspectChip
 {
+    [Profiled]
     internal static VerbOutcome Run(InspectChipOptions options)
     {
         string label = InspectChipOptions.Spec.Label;

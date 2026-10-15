@@ -11,6 +11,7 @@ using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Shared.Game.Trading;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure.Profiling;
 using StationGodMCP.Pure.Scheduling;
 using StationGodMCP.Pure.Verbs;
 using Trading;
@@ -34,6 +35,7 @@ namespace StationGodMCP.Verbs;
 /// </summary>
 internal static class TradeInventory
 {
+    [Profiled]
     internal static VerbOutcome Run(TradeInventoryOptions options)
     {
         TradeStockOrder order = TradeStockOrder.Of(options);

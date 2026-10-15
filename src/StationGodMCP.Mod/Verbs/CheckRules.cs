@@ -12,6 +12,7 @@ using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Lint;
+using StationGodMCP.Pure.Profiling;
 using StationGodMCP.Pure.Shaping;
 using StationGodMCP.Pure.Verbs;
 using UnityEngine;
@@ -29,6 +30,7 @@ internal static class CheckRules
 {
     private const int MaximumExplained = 10;
 
+    [Profiled]
     internal static VerbOutcome Run(CheckRulesOptions options)
     {
         List<OptionProblem> problems = new List<OptionProblem>();

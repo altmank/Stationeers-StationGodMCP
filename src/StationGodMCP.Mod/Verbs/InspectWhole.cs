@@ -18,7 +18,8 @@ internal static class InspectPlayer
 /// </summary>
 internal static class InspectPlanet
 {
-    internal static VerbOutcome Run(InspectPlanetOptions options) => Answer.Of(PlanetReport.Read());
+    internal static VerbOutcome Run(InspectPlanetOptions options) =>
+        WorkResult<object>.Of(PlanetReport.Reading, static view => view);
 }
 
 /// <summary>inspect weather (catalogue inspect.json): the storm schedule, the world's events and the season (WeatherReport). Read only.</summary>

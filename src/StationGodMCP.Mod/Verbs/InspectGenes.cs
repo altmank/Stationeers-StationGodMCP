@@ -1,6 +1,7 @@
 #nullable enable
 
 using StationGodMCP.Api.Shared.Game;
+using StationGodMCP.Pure.Profiling;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Verbs;
@@ -14,6 +15,7 @@ internal static class InspectGenes
 {
     private const string Notes = "notes";
 
+    [Profiled]
     internal static VerbOutcome Run(InspectGenesOptions options)
     {
         PerIdList ids = options.Selector.Ids!;

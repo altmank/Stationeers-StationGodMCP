@@ -1,6 +1,7 @@
 #nullable enable
 
 using StationGodMCP.Api.Shared.Game;
+using StationGodMCP.Pure.Profiling;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Verbs;
@@ -11,6 +12,7 @@ namespace StationGodMCP.Verbs;
 /// </summary>
 internal static class InspectSlots
 {
+    [Profiled]
     internal static VerbOutcome Run(InspectSlotsOptions options)
     {
         DeviceScope scope = Devices.Scope(options.Gateway);

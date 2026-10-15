@@ -6,6 +6,7 @@ using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Shared.Game.Build;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure.Profiling;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Verbs;
@@ -20,6 +21,7 @@ internal static class InspectDevice
 {
     private const string LogicTypesPart = "logic_types";
 
+    [Profiled]
     internal static VerbOutcome Run(InspectDeviceOptions options)
     {
         DeviceScope scope = Devices.Scope(options.Gateway);
@@ -28,6 +30,7 @@ internal static class InspectDevice
             id => IdAnswers.Device(scope, id, device => Describe(scope, device, listed)));
     }
 
+    [Profiled]
     private static DescribeDeviceView Describe(DeviceScope scope, ScopedTarget device, bool listed)
     {
         List<LogicAccessView> types = new List<LogicAccessView>();

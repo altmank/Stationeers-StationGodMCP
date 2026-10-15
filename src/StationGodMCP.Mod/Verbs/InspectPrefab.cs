@@ -2,6 +2,7 @@
 
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
+using StationGodMCP.Pure.Profiling;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Verbs;
@@ -15,6 +16,7 @@ internal static class InspectPrefab
 {
     private const string SmallCells = "small_cells";
 
+    [Profiled]
     internal static VerbOutcome Run(InspectPrefabOptions options)
     {
         PrefabRef? reference = options.Selector.Prefab?.Patterns[0] switch

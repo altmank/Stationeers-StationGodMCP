@@ -6,6 +6,7 @@ using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure.Paging;
+using StationGodMCP.Pure.Profiling;
 using StationGodMCP.Pure.Shaping;
 using StationGodMCP.Pure.Verbs;
 
@@ -24,6 +25,7 @@ internal static class InspectHealth
     private const string Option = "network";
 
 
+    [Profiled]
     internal static VerbOutcome Run(InspectHealthOptions options)
     {
         Selector selector = options.Selector;
