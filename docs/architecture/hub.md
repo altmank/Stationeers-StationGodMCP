@@ -102,8 +102,9 @@ On the script and program faces a list reply's first page is the handler's first
 entries, D3); when more remain, the reply's top level carries `"cursor": "<hub cursor>"` and the main list's key is
 named in `"main": "<key>"`. `sg`'s main list (a list subclass, note 23) is the page the call answered: `walk()` goes on
 page by page with `more` and `all()` pages in the rest; nothing else fetches a page. The hub backs a cursor with the
-mod's walk cursor (every paged list keeps one, cost design A4) and opens none when the mod kept no walk (the reply
-says `rest_unreachable`). Hub cursors are bounded: 256 per hub, the least recently used evicted first, and none kept
+mod's walk cursor (the world's thing lists keep one, cost design A4) and opens none when the mod kept no walk (the
+reply says `rest_unreachable`): the limit-only lists (check layout, read snapshot, find ore, plan spot) and a call
+naming several ids (`KeyedPage`) keep no cursor, and their rest is reached by narrowing the call. Hub cursors are bounded: 256 per hub, the least recently used evicted first, and none kept
 idle past ten minutes (`Verbs/HubCursors.cs`); a dropped one answers `cursor_expired`.
 
 The program face is a reading: PLAN names programs as `sg` users but gives no write rule for them; they get the

@@ -57,7 +57,10 @@ internal sealed class SchedulerSettings
     /// <summary>[Performance] RequestBudgetMs; 0 is unlimited.</summary>
     internal double RequestBudgetMs { get; }
 
-    /// <summary>[Performance] SubscriptionBudgetMs; 0 leaves the subscription lane one sample per frame.</summary>
+    /// <summary>
+    /// [Performance] SubscriptionBudgetMs, the subscription lane's share; 0 turns subscriptions off (subscribe is refused
+    /// subscription_limit, SubscriptionLimits.From), though a read sample's due sample still runs one a frame.
+    /// </summary>
     internal double SubscriptionBudgetMs { get; }
 
     /// <summary>[Performance] HeavyThresholdMs: a call predicted above it goes to the heavy lane.</summary>

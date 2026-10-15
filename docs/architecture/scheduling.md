@@ -37,9 +37,12 @@ from `StationGodMod.Update`, which calls the frame once per frame on the host
 The budget is `[Performance] RequestBudgetMs`, 4 ms by default; 0 means unlimited. While a building job holds the
 game tick the budget is at most 2 ms, because every extra request millisecond lengthens the pause the job asked for
 (`Pure/Runtime/FrameBudget.cs:12-19`, `:33-37`; `Api/Shared/Game/HeldTickJobs.cs:38-70`). The subscription lane's
-share is `SubscriptionBudgetMs` (1.5 ms), capped at half the frame's budget; so with the defaults subscriptions get
-up to 1.5 ms and light calls at least 2.5 ms, and while a job holds the tick at most 1 ms and 1 ms
-(`Pure/Scheduling/SchedulerSettings.cs:94-117`).
+share is `SubscriptionBudgetMs` (1.5 ms), capped at half the frame's budget (`Pure/Scheduling/SchedulerSettings.cs:94-117`).
+The shares are not a split of the budget: the sample lane counts its share from its own start and always takes its
+first due sample (or find step) whatever it costs; the light lane counts the budget from the frame's start, so
+StationGod's work before the scheduler (the world facts, the warm-up) and what the sample lane really used come out of
+it, and it always runs at least one call (`Pure/Scheduling/FrameScheduler.cs:252-315`). With the defaults the
+subscriptions take up to about 1.5 ms of a frame and the light calls what is left of the 4 ms, at least one call.
 
 ## Work over frames
 

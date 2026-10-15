@@ -287,7 +287,9 @@ and their final statuses alone. Those are kept in two stores with a memory budge
 both: `release` of a stream drops the pins, so memory may evict them, and `undo` of an evicted job answers
 `undo_expired` (`Pure/Jobs/KeptJobs.cs:9-44`, `KeptJobStore.cs:12-16`, `Protocol/ClientMessage.cs:439-460`).
 
-Every paged list pages one way (cost design A4): the first page takes the matching entries' keys in order, describes
+Every list that keeps a cursor pages one way (cost design A4; the limit-only lists, check layout, read snapshot, find
+ore and plan spot, keep none, and their rest is reached by narrowing the call): the first page takes the matching
+entries' keys in order, describes
 only its own entries, and with the wire option `cursor` keeps the rest under a cursor (`cursor_id`) when more follows;
 later pages with that id are taken from the kept keys with no scan, gone entries skipped and counted and no filter
 checked again (`Api/Shared/WalkRequest.cs`). The world's lists (`find` thing, item, device, container, frame,
@@ -310,7 +312,7 @@ A subscription asks the mod to read a set of device values at an interval and pu
 | --- | --- | --- |
 | `topic` | `devices` (default), `world`, `jobs` or `find` | What to watch. |
 | `id`, `logic`, `reads`, `gateway`, `include` | as read logic's options | For `devices`: the same parts and bounds as one read logic call (at most 1,024 values). |
-| `what` and the find's options | as a `find` call's | For `find`: `thing`, `item`, `device`, `container`, `frame`, `damaged`, `pad`, `water`, `food`, `plant`, `room` or `gateway`, with that find's options but its paging (`limit`, `offset`, `cursor`, `order`) and the shaping ones (`fields`, `omit`, ...), which are refused: the subscription holds the whole list. |
+| `what` and the find's options | as a `find` call's | For `find`: `thing`, `item`, `device`, `container`, `frame`, `damaged`, `pad`, `water`, `food`, `plant`, `room` or `gateway`, with that find's options but its paging (`limit`, `offset`, `cursor`, `order`) and the shaping ones (`fields`, `omit`, ...), which are refused: the subscription holds the whole list. (The step 6 plan had `fields` shape the entries as on the call; it was not built, because an update's change is keyed on whole entries. A recorded deviation, review D R-D-27.) |
 | `interval_s` | number 0.5 to 3600 | For `devices`: how often to read, in game seconds; default 1. For `find`: how often its live facts are read again, 1 to 3600, default 10. Game time stops while the game is paused, so a paused game sends nothing. |
 
 The reply is `{subscription: "s3", interval_s: 1.0, values: 412, frame: 81250, result: <a full read logic result>}`

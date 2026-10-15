@@ -6,7 +6,7 @@ rest, so nothing is lost and nothing is silently held back (`src/StationGodMCP.S
 `VerbPipeline.Refs.cs:246-300`). The cut exists because the reply lands in the agent's context: a scan that lists
 5,000 things is useless as context even when every entry is useful in principle, while a ref and an offset let the
 caller take exactly what it wants. Script and program replies are not cut; a run's returned and printed values have
-a fourth-KB cut of their own, and the sidecar has a last-resort file at 200 KB.
+a 4 KB cut of their own, and the sidecar has a last-resort file at 200 KB.
 
 ## The 12 KB cap
 
