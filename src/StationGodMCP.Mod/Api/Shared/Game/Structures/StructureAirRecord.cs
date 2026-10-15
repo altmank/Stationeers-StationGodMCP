@@ -421,13 +421,11 @@ internal sealed class StructureAirRecord
 
     private static Dictionary<long, Room> LiveRoomsById()
     {
-        Dictionary<long, Room> byId = new Dictionary<long, Room>();
-        foreach (Room room in World.Rooms)
+        List<Room> live = ClosedRooms.LiveRooms();
+        Dictionary<long, Room> byId = new Dictionary<long, Room>(live.Count);
+        foreach (Room room in live)
         {
-            if (room != null && !room.IsDeletionCandidate && room.IsValid())
-            {
-                byId[room.RoomId] = room;
-            }
+            byId[room.RoomId] = room;
         }
 
         return byId;

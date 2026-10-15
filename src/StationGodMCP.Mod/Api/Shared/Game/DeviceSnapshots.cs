@@ -8,6 +8,7 @@ using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Profiling;
+using StationGodMCP.Pure.Scheduling;
 
 namespace StationGodMCP.Api.Shared.Game;
 
@@ -23,17 +24,26 @@ internal static class DeviceSnapshots
 
     /// <summary>
     /// The devices kept: by prefab (null: any), part of the shown name, and the ids (null: any); logic the types to
-    /// read (null: every readable one).
+    /// read (null: every readable one). A Work body: the scope's devices gathered over steps (DeviceScope.Scan), a
+    /// device matched, then read, per step.
     /// </summary>
-    [Profiled]
-    internal static NetworkSnapshotView Read(DeviceScope scope, Pure.Verbs.PrefabFilter? prefab, string? name,
-        HashSet<long>? ids, JArray? logic, bool keepZeroRatios, int maximum)
+    internal static IEnumerable<object?> Reading(DeviceScope scope, Pure.Verbs.PrefabFilter? prefab, string? name,
+        HashSet<long>? ids, JArray? logic, bool keepZeroRatios, int maximum, Answer<NetworkSnapshotView> answer)
     {
         List<LogicType>? requested = logic != null ? Types(logic) : null;
         bool skipZeroRatios = requested == null && !keepZeroRatios;
 
+        Dictionary<long, ScopedTarget> map = new Dictionary<long, ScopedTarget>();
+        foreach (object? step in scope.Scan(map))
+        {
+            yield return step;
+        }
+
+        List<ScopedTarget> sorted = new List<ScopedTarget>(map.Values);
+        sorted.Sort(static (a, b) => a.ReferenceId.CompareTo(b.ReferenceId));
+        yield return null;
         List<ScopedTarget> matches = new List<ScopedTarget>();
-        foreach (ScopedTarget device in scope.SortedDevices())
+        foreach (ScopedTarget device in sorted)
         {
             if ((prefab == null || prefab.Keeps(device.PrefabName, device.PrefabHash)) &&
                 (ids == null || ids.Contains(device.ReferenceId)) &&
@@ -41,6 +51,8 @@ internal static class DeviceSnapshots
             {
                 matches.Add(device);
             }
+
+            yield return null;
         }
 
         List<DeviceSnapshotView> snapshots = new List<DeviceSnapshotView>(Math.Min(maximum, matches.Count));
@@ -51,10 +63,11 @@ internal static class DeviceSnapshots
                 out int zeroRatios);
             snapshots.Add(new DeviceSnapshotView(Devices.ViewOf(device, scope), values,
                 skipZeroRatios ? zeroRatios : null));
+            yield return null;
         }
 
         Pure.Shaping.Truncations.Capped("devices", snapshots.Count, matches.Count, "limit", MaximumLimit);
-        return new NetworkSnapshotView(scope.Id, snapshots, matches.Count);
+        answer.Value = new NetworkSnapshotView(scope.Id, snapshots, matches.Count);
     }
 
     // Each type once, in the order given.

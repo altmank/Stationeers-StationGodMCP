@@ -7,6 +7,7 @@ using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure.Verbs;
+using StationGodMCP.Pure.Scheduling;
 
 namespace StationGodMCP.Verbs;
 
@@ -23,8 +24,39 @@ internal static class FindRoom
 
     internal static VerbOutcome Run(FindRoomOptions options)
     {
-        RoomMeasure measure = ClosedRooms.Measuring(options.Fields.Includes("cells"), options.Fields.Includes("devices"));
+        bool cells = options.Fields.Includes("cells");
+        bool devices = options.Fields.Includes("devices");
         PerIdList? ids = options.Selector.Ids;
+        return WorkResult<Found>.Of(answer => Finding(cells, devices, ids, answer), found => Answered(found, ids));
+    }
+
+    // The measuring (its devices over steps), then, without ids, every room (a room a step).
+    private static IEnumerable<object?> Finding(bool cells, bool devices, PerIdList? ids, Answer<Found> answer)
+    {
+        Answer<RoomMeasure> measure = new Answer<RoomMeasure>();
+        foreach (object? step in ClosedRooms.Measuring(cells, devices, measure))
+        {
+            yield return step;
+        }
+
+        List<RoomView>? rooms = null;
+        if (ids == null)
+        {
+            Answer<List<RoomView>> all = new Answer<List<RoomView>>();
+            foreach (object? step in ClosedRooms.All(measure.Value, all))
+            {
+                yield return step;
+            }
+
+            rooms = all.Value;
+        }
+
+        answer.Value = new Found(measure.Value, rooms);
+    }
+
+    private static VerbOutcome Answered(Found found, PerIdList? ids)
+    {
+        RoomMeasure measure = found.Measure;
         if (ids is { AnswersRows: true })
         {
             JsonSerializer serializer = ApiJson.Fresh();
@@ -37,10 +69,22 @@ internal static class FindRoom
             return new VerbOutcome.Answered(rows.Reply(ReplyFields.Of((PlayerRoom, measure.PlayerRoomId))));
         }
 
-        List<RoomView> rooms = ids != null
-            ? new List<RoomView> { RoomOf(ids.Ids[0], measure) }
-            : ClosedRooms.All(measure);
+        List<RoomView> rooms = found.Rooms ?? new List<RoomView> { RoomOf(ids!.Ids[0], measure) };
         return new VerbOutcome.Answered(RoomsReply(rooms, measure));
+    }
+
+    // The measuring and, without ids, every room.
+    private sealed class Found
+    {
+        internal Found(RoomMeasure measure, List<RoomView>? rooms)
+        {
+            Measure = measure;
+            Rooms = rooms;
+        }
+
+        internal RoomMeasure Measure { get; }
+
+        internal List<RoomView>? Rooms { get; }
     }
 
     // The rooms, whole, as one page.

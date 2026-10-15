@@ -7,6 +7,7 @@ using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Motherboards;
 using Assets.Scripts.Objects.Pipes;
 using StationGodMCP.WorldModel;
+using StationGodMCP.Pure.Scheduling;
 
 namespace StationGodMCP.Api.Shared.Game;
 
@@ -17,6 +18,9 @@ namespace StationGodMCP.Api.Shared.Game;
 /// </summary>
 internal sealed class DeviceScope
 {
+    // Device class candidates CountingWorld checks per step.
+    private const int CandidatesPerStep = 256;
+
     internal const string WorldId = "world";
 
     private readonly bool _isWorld;
@@ -47,37 +51,12 @@ internal sealed class DeviceScope
     internal bool IsGatewayItself(ScopedTarget device) =>
         _isWorld ? device.Thing is StationGodGateway : ReferenceEquals(device.Thing, Gateway);
 
-    /// <summary>Every target in the scope by reference id.</summary>
+    /// <summary>Every target in the scope by reference id (Scan taken to its end).</summary>
     internal Dictionary<long, ScopedTarget> DeviceMap()
     {
         Dictionary<long, ScopedTarget> devices = new Dictionary<long, ScopedTarget>();
-        if (_isWorld)
+        foreach (object? _ in Scan(devices))
         {
-            // Device.AllDevices holds every Device structure registered on the grid (Device.OnRegistered,
-            // OnDeregistered) whether or not it is cabled or powered. Walking CableNetwork.AllCableNetworks'
-            // DataDeviceList would miss a device with no cable at all, such as an airlock door whose cable was
-            // destroyed.
-            foreach (Device device in StationGodMCP.WorldModel.World.Devices())
-            {
-                Add(devices, ScopedTarget.From(device));
-            }
-        }
-        else
-        {
-            foreach (Device device in GatewayDevices()!.Values)
-            {
-                Add(devices, ScopedTarget.From(device));
-            }
-        }
-
-        // Worn and held items never sit on a cable network. They are reachable through any scope; a cabled device
-        // with the same reference id wins.
-        foreach (ScopedTarget worn in ScopedTarget.Worn())
-        {
-            if (!devices.ContainsKey(worn.ReferenceId))
-            {
-                devices[worn.ReferenceId] = worn;
-            }
         }
 
         return devices;
@@ -141,14 +120,6 @@ internal sealed class DeviceScope
         }
     }
 
-    /// <summary>Every target in the scope, by reference id.</summary>
-    internal List<ScopedTarget> SortedDevices()
-    {
-        List<ScopedTarget> devices = new List<ScopedTarget>(DeviceMap().Values);
-        devices.Sort(static (a, b) => a.ReferenceId.CompareTo(b.ReferenceId));
-        return devices;
-    }
-
     /// <summary>
     /// The devices on the gateway's data networks (CableNetwork.DataDeviceList) by reference id, built once per scope
     /// instance (a gateway scope is made per request). Null for the world scope.
@@ -196,14 +167,21 @@ internal sealed class DeviceScope
     /// <summary>
     /// The scopes a gateway option takes: "world" first, every device in the world (its status "bypass"), then each
     /// StationGod Gateway (GatewayRegistry), whose id narrows a call to its data networks, with its status and counts.
+    /// A Work body: the world's devices counted a batch per step, a gateway per step.
     /// </summary>
-    internal static List<Views.GatewayView> Listed()
+    internal static IEnumerable<object?> Listing(Answer<List<Views.GatewayView>> answer)
     {
         int worn = ScopedTarget.Worn().Count;
+        Answer<int> world = new Answer<int>();
+        foreach (object? step in CountingWorld(world))
+        {
+            yield return step;
+        }
+
         List<Views.GatewayView> gateways = new List<Views.GatewayView>
         {
             new Views.GatewayView(WorldId, "Whole world", null, new Views.GatewayState(true, "bypass"),
-                new Views.GatewayCounts(0, CountWorld(), worn))
+                new Views.GatewayCounts(0, world.Value, worn))
         };
 
         foreach (StationGodGateway gateway in GatewayRegistry.Snapshot())
@@ -213,20 +191,30 @@ internal sealed class DeviceScope
             gateways.Add(new Views.GatewayView(new ThingId(gateway.ReferenceId).ToString(), gateway.DisplayName,
                 gateway.PrefabName, new Views.GatewayState(unavailable == null, unavailable ?? "ready"),
                 new Views.GatewayCounts(networks.Count, CountDevices(networks), worn)));
+            yield return null;
         }
 
-        return gateways;
+        answer.Value = gateways;
     }
 
-    internal static int CountWorld()
+    // Every device in the world and every worn or held logic item, each once: the Device class candidates checked
+    // CandidatesPerStep per step.
+    private static IEnumerable<object?> CountingWorld(Answer<int> answer)
     {
         HashSet<long> ids = new HashSet<long>();
-        foreach (Device device in StationGodMCP.WorldModel.World.Devices())
+        List<Thing> candidates = StationGodMCP.WorldModel.World.Candidates(WorldClass.Device);
+        for (int index = 0; index < candidates.Count; index++)
         {
-            Thing? thing = device != null ? ((ILogicable)device).GetAsThing : null;
-            if (thing != null)
+            if (candidates[index] is Device device &&
+                StationGodMCP.WorldModel.World.Holds(WorldClass.Device, device) &&
+                ((ILogicable)device).GetAsThing is Thing thing && thing != null)
             {
                 ids.Add(thing.ReferenceId);
+            }
+
+            if (index % CandidatesPerStep == CandidatesPerStep - 1)
+            {
+                yield return null;
             }
         }
 
@@ -235,7 +223,7 @@ internal sealed class DeviceScope
             ids.Add(worn.ReferenceId);
         }
 
-        return ids.Count;
+        answer.Value = ids.Count;
     }
 
     /// <summary>The devices on these data networks, each once.</summary>

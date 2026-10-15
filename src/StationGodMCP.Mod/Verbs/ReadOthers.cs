@@ -62,8 +62,12 @@ internal static class ReadSnapshot
             }
         }
 
-        return Answer.Of(DeviceSnapshots.Read(Devices.Scope(options.Gateway), selector.Prefab, selector.Name, ids,
-            options.Logic as JArray, options.Fields.Includes("zero_ratios"), options.Paging.Limit ?? int.MaxValue));
+        DeviceScope scope = Devices.Scope(options.Gateway);
+        JArray? logic = options.Logic as JArray;
+        bool zeroRatios = options.Fields.Includes("zero_ratios");
+        int maximum = options.Paging.Limit ?? int.MaxValue;
+        return WorkResult<NetworkSnapshotView>.Of(answer => DeviceSnapshots.Reading(scope, selector.Prefab,
+            selector.Name, ids, logic, zeroRatios, maximum, answer), snapshot => Answer.Of(snapshot));
     }
 }
 

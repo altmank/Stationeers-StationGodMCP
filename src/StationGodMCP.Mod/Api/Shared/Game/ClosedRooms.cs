@@ -14,6 +14,8 @@ using StationGodMCP.Pure;
 using StationGodMCP.Pure.Protocol;
 using UnityEngine;
 using World = StationGodMCP.WorldModel.World;
+using StationGodMCP.Pure.Scheduling;
+using StationGodMCP.WorldModel;
 
 namespace StationGodMCP.Api.Shared.Game;
 
@@ -33,11 +35,15 @@ internal static class ClosedRooms
 {
     private const double TraceMoles = 1e-9;
 
+    // Device class candidates DevicesByRoom checks per step.
+    private const int CandidatesPerStep = 256;
+
     /// <summary>
     /// A measuring of the loaded world's rooms, with every cell centre (includeCells) and the devices in each room
-    /// (includeDevices); refused not_ready while the room or atmospherics controller is not loaded.
+    /// (includeDevices); refused not_ready while the room or atmospherics controller is not loaded. A Work body: the
+    /// devices placed a batch per step.
     /// </summary>
-    internal static RoomMeasure Measuring(bool includeCells, bool includeDevices)
+    internal static IEnumerable<object?> Measuring(bool includeCells, bool includeDevices, Answer<RoomMeasure> answer)
     {
         RoomController rooms = RoomController.World;
         AtmosphericsController air = AtmosphericsController.World;
@@ -46,22 +52,33 @@ internal static class ClosedRooms
             throw ApiErrors.Refused("not_ready", "find room: the room or atmospherics controller is not loaded.");
         }
 
-        return new RoomMeasure(rooms, air, RoomOf(PlayerOrigin.Current().Player, rooms),
-            includeDevices ? DevicesByRoom(rooms) : null, includeCells);
+        Dictionary<long, List<ThingView>>? devices = null;
+        if (includeDevices)
+        {
+            devices = new Dictionary<long, List<ThingView>>();
+            foreach (object? step in DevicesByRoom(rooms, devices))
+            {
+                yield return step;
+            }
+        }
+
+        answer.Value = new RoomMeasure(rooms, air, RoomOf(PlayerOrigin.Current().Player, rooms), devices,
+            includeCells);
     }
 
-    /// <summary>Every live room, largest first.</summary>
-    internal static List<RoomView> All(RoomMeasure measure)
+    /// <summary>Every live room, largest first: a Work body, a room measured per step.</summary>
+    internal static IEnumerable<object?> All(RoomMeasure measure, Answer<List<RoomView>> answer)
     {
         List<Room> live = LiveRooms();
         List<RoomView> views = new List<RoomView>(live.Count);
         foreach (Room room in live)
         {
+            yield return null;
             views.Add(measure.Of(room));
         }
 
         views.Sort(static (a, b) => b.CellCount.CompareTo(a.CellCount));
-        return views;
+        answer.Value = views;
     }
 
     internal static List<Room> LiveRooms()
@@ -115,13 +132,20 @@ internal static class ClosedRooms
     private static Room? RoomOf(Thing? thing, RoomController rooms) =>
         thing == null ? null : rooms.GetRoom(new WorldGrid(HolderChain.PlaceOf(thing)).Value);
 
-    // Device.AllDevices holds every registered device structure; each is placed by its own registered cell.
-    private static Dictionary<long, List<ThingView>> DevicesByRoom(RoomController rooms)
+    // Every registered device structure (the world index's Device class candidates, each still checked a member),
+    // placed by its own registered cell; CandidatesPerStep per step.
+    private static IEnumerable<object?> DevicesByRoom(RoomController rooms, Dictionary<long, List<ThingView>> byRoom)
     {
-        Dictionary<long, List<ThingView>> byRoom = new Dictionary<long, List<ThingView>>();
-        foreach (Device device in World.Devices())
+        List<Thing> candidates = World.Candidates(WorldClass.Device);
+        for (int index = 0; index < candidates.Count; index++)
         {
-            if (device == null || device.IsCursor || device.IsBeingDestroyed || device.WorldGrid == WorldGrid.INVALID)
+            if (index % CandidatesPerStep == CandidatesPerStep - 1)
+            {
+                yield return null;
+            }
+
+            if (!(candidates[index] is Device device) || !World.Holds(WorldClass.Device, device) || device.IsCursor ||
+                device.IsBeingDestroyed || device.WorldGrid == WorldGrid.INVALID)
             {
                 continue;
             }
@@ -140,8 +164,6 @@ internal static class ClosedRooms
 
             list.Add(GameLookup.ViewOf(device));
         }
-
-        return byRoom;
     }
 
     internal static RoomView Measure(Room room, AtmosphericsController air, Room? playerRoom,
