@@ -128,7 +128,7 @@ public sealed class LogicSamplerTests
             List<string> changed = new List<string>();
             foreach (BatchItemView reading in results)
             {
-                string serialized = ApiJson.WriteFresh(reading);
+                string serialized = ApiJson.WriteShared(reading);
                 if (!previous.TryGetValue(reading.Index, out string? prior) || prior != serialized)
                 {
                     previous[reading.Index] = serialized;
@@ -193,7 +193,7 @@ public sealed class LogicSamplerTests
         for (int index = 0; index < changes.Count; index++)
         {
             Assert.Equal(changes[index].Elapsed, result.Changes[index].ElapsedSeconds);
-            List<string> mine = result.Changes[index].Readings.ConvertAll(reading => ApiJson.WriteFresh(reading));
+            List<string> mine = result.Changes[index].Readings.ConvertAll(reading => ApiJson.WriteShared(reading));
             Assert.Equal(changes[index].Readings, mine);
         }
     }
@@ -459,7 +459,7 @@ public sealed class LogicSamplerTests
         Assert.False(LogicResultComparer.Instance.SameValues(Read(1.0), Fail("No.")));
         Assert.True(LogicResultComparer.Instance.SameValues(Fail("No."), Fail("No.")));
         Assert.False(LogicResultComparer.Instance.SameValues(Fail("No."), Fail("Not now.")));
-        Assert.NotEqual(ApiJson.WriteFresh(Read(0.0)), ApiJson.WriteFresh(Read(-0.0)));
+        Assert.NotEqual(ApiJson.WriteShared(Read(0.0)), ApiJson.WriteShared(Read(-0.0)));
     }
 
     [Theory]

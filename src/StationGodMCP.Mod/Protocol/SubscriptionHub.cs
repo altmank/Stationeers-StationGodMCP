@@ -220,9 +220,10 @@ internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, IS
     /// <summary>
     /// A held-tick job reached its final status (finished, failed, or dropped before it started), on the main thread
     /// where it ended: every jobs-topic subscription of every connection gets a job_ended event with the job's facts
-    /// (JobEndFacts) taken from finalView, the view a poll of the job answers from then on. The facts are made once, and
-    /// only when someone subscribes. Each event is a line of its own in the connection's outbound queue, never merged
-    /// with another; a client too slow to take its lines is closed as for any line (slow_client).
+    /// (JobEndFacts) taken from finalView, the view a poll of the job answers from then on. The facts are read out of
+    /// the view by each connection's writer as it writes the event (JobEndedFacts), off the game's thread, and only
+    /// when someone subscribes. Each event is a line of its own in the connection's outbound queue, never merged with
+    /// another; a client too slow to take its lines is closed as for any line (slow_client).
     /// </summary>
     [Profiled]
     internal void JobEnded(object finalView, long frame)
@@ -232,16 +233,7 @@ internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, IS
             return;
         }
 
-        try
-        {
-            JObject facts = JobEndFacts.Of(JObject.FromObject(finalView, ApiJson.Serializer));
-            _engine.JobEnded(facts, frame, this);
-        }
-        catch (Exception exception)
-        {
-            // The job's bookkeeping calls this: a view that will not serialise loses its events, never the job.
-            ProtocolLog.Warning($"A job_ended event could not be sent: {exception.Message}");
-        }
+        _engine.JobEnded(new JobEndedFacts(finalView), frame, this);
     }
 
     /// <summary>
@@ -348,7 +340,7 @@ internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, IS
     /// <summary>A subscription event's line: the view's keys after the envelope's type.</summary>
     internal static string EventLine(object view)
     {
-        string keys = ApiJson.WriteFresh(view);
+        string keys = ApiJson.WriteShared(view);
         return "{\"type\":\"event\"," + keys.Substring(1);
     }
 
@@ -393,11 +385,12 @@ internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, IS
         return new UnsubscribeReplyView(subscription);
     }
 
+    // The event's line is made by the connection's writer when it reaches it, off the game's thread.
     private void SendEvent(ConnectionId connection, object view)
     {
         if (_connections.TryGetValue(connection, out Connection? open))
         {
-            open.Send(EventLine(view));
+            open.Send(new EventOutbound(view));
         }
     }
 
@@ -453,6 +446,30 @@ internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, IS
 
             _taken = true;
             return true;
+        }
+    }
+
+    /// <summary>An event in the outbound queue, its line made when the writer reaches it.</summary>
+    private sealed class EventOutbound : IOutboundLine
+    {
+        private readonly object _view;
+
+        internal EventOutbound(object view) => _view = view;
+
+        public bool TryTake(out string line)
+        {
+            try
+            {
+                line = EventLine(_view);
+                return true;
+            }
+            catch (Exception exception)
+            {
+                // A view that will not write (a job's final view): its event is lost, never the connection.
+                ProtocolLog.Warning($"An event could not be written: {exception.Message}");
+                line = string.Empty;
+                return false;
+            }
         }
     }
 

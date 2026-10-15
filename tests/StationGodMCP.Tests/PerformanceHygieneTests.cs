@@ -312,7 +312,7 @@ public sealed class PerformanceHygieneTests
 
         Assert.Equal(expected, ApiJson.WriteShared(reply));
         Assert.Equal(expected, ApiJson.WriteShared(reply));
-        Assert.Equal(expected, ApiJson.WriteFresh(reply));
+        Assert.Equal(expected, ApiJson.WriteShared(reply));
     }
 
     // ---- I: highlight frame helpers ----

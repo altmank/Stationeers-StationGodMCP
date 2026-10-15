@@ -157,11 +157,8 @@ internal static class ApiHost
         internal static LoadedDocument Failed(string problem) => new LoadedDocument(null, problem);
     }
 
-    /// <summary>A reply as JSON text, through the one shared serializer: main thread only.</summary>
+    /// <summary>A reply as JSON text, through the writing thread's serializer.</summary>
     internal static string Serialize(object reply) => ApiJson.WriteShared(reply);
-
-    /// <summary>A reply as JSON text from a listener thread (game_timeout, the TCP handshake).</summary>
-    internal static string SerializeOffMainThread(object reply) => ApiJson.WriteFresh(reply);
 
     private static double MillisecondsSince(long timestamp) =>
         (Stopwatch.GetTimestamp() - timestamp) * 1000.0 / Stopwatch.Frequency;

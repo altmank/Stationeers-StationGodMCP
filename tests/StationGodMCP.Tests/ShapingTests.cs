@@ -69,7 +69,7 @@ public sealed class ShapingTests
     {
         JToken reply = ShapingChecks.Parse(File.ReadAllText(Path.Combine(FixtureFolder, fixture)));
 
-        Assert.Equal(ApiJson.WriteFresh(reply), ShapingChecks.Mod(reply, ShapingChecks.Nothing).Json);
+        Assert.Equal(ApiJson.WriteShared(reply), ShapingChecks.Mod(reply, ShapingChecks.Nothing).Json);
     }
 
     [Fact]
@@ -401,13 +401,13 @@ public sealed class ShapingTests
 
         Assert.Equal(
             """{"code":"reply_too_large","message":"The reply is 2048 bytes, more than the 1024 allowed; narrow it with fields, limit or the method's own filters.","data":{"bytes":2048,"limit":1024,"counts":{"things":3,"cells":0}},"see":{"topic":"shaping"}}""",
-            ApiJson.WriteFresh(error));
+            ApiJson.WriteShared(error));
     }
 
     [Fact]
     public void AnErrorWithoutDataIsWrittenAsBefore()
     {
-        Assert.Equal("""{"code":"x","message":"y"}""", ApiJson.WriteFresh(new ErrorView("x", "y")));
+        Assert.Equal("""{"code":"x","message":"y"}""", ApiJson.WriteShared(new ErrorView("x", "y")));
     }
 
     [Theory]

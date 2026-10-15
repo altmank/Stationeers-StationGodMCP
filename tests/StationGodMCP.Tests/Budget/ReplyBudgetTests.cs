@@ -33,7 +33,7 @@ public sealed class ReplyBudgetTests
     internal static Measured Measure(ReplyShape shape)
     {
         ReplySynth synth = new ReplySynth(shape.Over(ReplyShapes.Common));
-        string json = ApiJson.WriteFresh(synth.Make(shape.View));
+        string json = ApiJson.WriteShared(synth.Make(shape.View));
         return new Measured(Encoding.UTF8.GetByteCount(json),
             synth.Undeclared.OrderBy(member => member, StringComparer.Ordinal).ToList(), json);
     }

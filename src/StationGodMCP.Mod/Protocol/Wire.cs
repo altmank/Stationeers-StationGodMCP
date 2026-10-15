@@ -278,8 +278,8 @@ internal sealed class GoodbyeView
 /// <summary>The server's messages as lines, written with the mod's serialiser settings on any thread.</summary>
 internal static class Wire
 {
-    internal static string Line(object message) => ApiJson.WriteFresh(message);
+    internal static string Line(object message) => ApiJson.WriteShared(message);
 
     internal static string Refusal(string? id, string code, string message, object? data = null) =>
-        ApiJson.WriteFresh(CallReplyView.Refused(id, new ErrorView(code, message, data)));
+        ApiJson.WriteShared(CallReplyView.Refused(id, new ErrorView(code, message, data)));
 }

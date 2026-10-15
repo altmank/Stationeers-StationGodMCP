@@ -31,8 +31,8 @@ internal static class ApiJson
     internal static JsonSerializer Serializer => _serializer ??= JsonSerializer.CreateDefault(Settings);
 
     /// <summary>
-    /// A reply as JSON text, byte for byte what JsonConvert.SerializeObject(reply, Settings) writes, through one shared
-    /// serializer instead of a new one per reply. Main thread only.
+    /// A reply as JSON text, byte for byte what JsonConvert.SerializeObject(reply, Settings) writes, through the writing
+    /// thread's serializer instead of a new one per reply. Any thread.
     /// </summary>
     internal static string WriteShared(object? reply)
     {
@@ -48,7 +48,7 @@ internal static class ApiJson
 
     /// <summary>
     /// How many characters WriteShared would write for value, counted as they are written, so the text is never built
-    /// (the kept jobs' size estimate, KeptJobSizes.Final). Main thread only.
+    /// (the kept jobs' size estimate, KeptJobSizes.Final). Any thread.
     /// </summary>
     internal static long Length(object? value)
     {
@@ -127,9 +127,6 @@ internal static class ApiJson
         FloatFormatHandling = serializer.FloatFormatHandling,
         StringEscapeHandling = serializer.StringEscapeHandling
     };
-
-    /// <summary>A reply as JSON text with a serializer of its own: safe on any thread.</summary>
-    internal static string WriteFresh(object? reply) => JsonConvert.SerializeObject(reply, Settings);
 
     // A text writer that keeps only how many characters it was given.
     private sealed class CharacterCount : TextWriter

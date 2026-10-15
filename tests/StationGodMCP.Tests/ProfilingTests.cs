@@ -505,7 +505,7 @@ public sealed class ProfilingTests
         Frame(recorder, clock, 3, 1, inside: () => Scope(recorder, clock, ProfId.WorldStores, 1));
 
         ProfilingView view = new ProfilingView(recorder.Report(true), true, 19, new List<string>(), null);
-        JObject json = JObject.Parse(ApiJson.WriteFresh(view));
+        JObject json = JObject.Parse(ApiJson.WriteShared(view));
 
         Assert.True((bool)json["enabled"]!);
         Assert.Equal(JTokenType.Null, json["csv_path"]!.Type);

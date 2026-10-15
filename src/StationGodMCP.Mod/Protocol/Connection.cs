@@ -540,14 +540,14 @@ internal sealed class SecretGateSession : Session
 
         if (_host.LegacySecret == null || !LegacySecret.Matches(line, _host.LegacySecret))
         {
-            _connection.Send(ApiJson.WriteFresh(new AuthRefusedView(new ErrorView("unauthorized", "Authentication failed."))));
+            _connection.Send(ApiJson.WriteShared(new AuthRefusedView(new ErrorView("unauthorized", "Authentication failed."))));
             _connection.EndGracefully();
             return;
         }
 
         ProtocolLog.Info($"TCP sign-in from {_connection.Peer} ({_connection.ClientId}).");
         _signedIn = true;
-        _connection.Send(ApiJson.WriteFresh(new AuthAcceptedView()));
+        _connection.Send(ApiJson.WriteShared(new AuthAcceptedView()));
     }
 
     internal override void OnReadTimeout() => _inner?.OnReadTimeout();

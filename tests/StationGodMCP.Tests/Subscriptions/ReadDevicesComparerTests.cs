@@ -152,7 +152,7 @@ public sealed class ReadDevicesComparerTests
         slot.Offer(Reading(new Device()), 81312, 84211.5, 0.004);
         Assert.True(slot.TryTake(out SubscriptionUpdate<ReadDevicesView> update));
 
-        JObject json = JObject.Parse(ApiJson.WriteFresh(UpdateEventView.Of(update)));
+        JObject json = JObject.Parse(ApiJson.WriteShared(UpdateEventView.Of(update)));
 
         Assert.Equal(new[] { "event", "subscription", "seq", "frame", "game_time_s", "late_ms", "result" },
             Keys(json));
@@ -171,7 +171,7 @@ public sealed class ReadDevicesComparerTests
         SubscribeOutcome<ReadDevicesView>.Subscribed subscribed = new SubscribeOutcome<ReadDevicesView>.Subscribed(
             new SubscriptionId(3), SamplingInterval.Default, 412, 81250, Reading(new Device()));
 
-        JObject json = JObject.Parse(ApiJson.WriteFresh(SubscribeReplyView.Of(subscribed)));
+        JObject json = JObject.Parse(ApiJson.WriteShared(SubscribeReplyView.Of(subscribed)));
 
         Assert.Equal(new[] { "subscription", "interval_s", "values", "frame", "result" }, Keys(json));
         Assert.Equal(1.0, (double)json["interval_s"]!);
@@ -183,13 +183,13 @@ public sealed class ReadDevicesComparerTests
     {
         SubscriptionId id = new SubscriptionId(3);
 
-        Assert.Equal("""{"subscription":"s3","ended":true}""", ApiJson.WriteFresh(new UnsubscribeReplyView(id)));
+        Assert.Equal("""{"subscription":"s3","ended":true}""", ApiJson.WriteShared(new UnsubscribeReplyView(id)));
         Assert.Equal("""{"event":"subscription_ended","subscription":"s3","reason":"world_changed"}""",
-            ApiJson.WriteFresh(new SubscriptionEndedEventView(id, SubscriptionEnd.WorldChanged)));
+            ApiJson.WriteShared(new SubscriptionEndedEventView(id, SubscriptionEnd.WorldChanged)));
         Assert.Equal("""{"event":"game_state","subscription":"s3","state":"Paused"}""",
-            ApiJson.WriteFresh(new GameStateEventView(id, "Paused")));
+            ApiJson.WriteShared(new GameStateEventView(id, "Paused")));
         Assert.Equal("""{"event":"world_changed","subscription":"s3","world":{"id":"0000000000000001"}}""",
-            ApiJson.WriteFresh(new WorldChangedEventView(id, new ScriptedWorldIds().Next())));
+            ApiJson.WriteShared(new WorldChangedEventView(id, new ScriptedWorldIds().Next())));
     }
 
     [Fact]
@@ -199,7 +199,7 @@ public sealed class ReadDevicesComparerTests
             30.72);
 
         Assert.Equal("""{"name":"max_projected_ms_per_s","limit":22.5,"requested":30.72,"projected_ms_per_s":30.72}""",
-            ApiJson.WriteFresh(refusal.Data));
+            ApiJson.WriteShared(refusal.Data));
         Assert.Contains("read logic", refusal.Message);
     }
 

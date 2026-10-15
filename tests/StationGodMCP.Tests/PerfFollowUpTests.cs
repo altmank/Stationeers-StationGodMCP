@@ -73,7 +73,7 @@ public sealed class PerfFollowUpTests
         calls.Record("read_devices", true, 1.234);
         calls.Record("thing_health", false, 2.0);
 
-        string json = StationGodMCP.Api.Shared.ApiJson.WriteFresh(new StationGodMCP.Api.Views.ConnectionView("c2",
+        string json = StationGodMCP.Api.Shared.ApiJson.WriteShared(new StationGodMCP.Api.Views.ConnectionView("c2",
             "dash", "stationgod-py", "tcp", 2, 1, 2, 300, calls, 4));
 
         Assert.EndsWith(

@@ -1,7 +1,9 @@
 #nullable enable
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Threading;
 using System.Globalization;
 using Assets.Scripts;
 using Assets.Scripts.GridSystem;
@@ -45,6 +47,8 @@ internal static class HeldTickJobs
 
     // Ended jobs' final views, kept for polls and undo across every client, bounded by memory (KeptJobs).
     private static readonly KeptJobStore<object> Finished = KeptJobs.Main.Finals;
+    private static readonly ConcurrentQueue<MeasuredFinal> Measured = new ConcurrentQueue<MeasuredFinal>();
+    private static int _measuring;
     private static readonly JobLine<QueuedJob> Waiting = new JobLine<QueuedJob>(MaximumWaiting);
 
     // What the gas hold meant for each job that acknowledged a loss, so a poll's reply repeats its gas_hold.
@@ -492,27 +496,59 @@ internal static class HeldTickJobs
         }
     }
 
-    // A job's final view: kept for its polls (KeptJobs: its size the view as polls write it), and told to Ended.
+    // A job's final view: kept for its polls (KeptJobs: its size the view as polls write it, counted on a pool thread
+    // and set at the jobs lane's next slice; the entry's own size until then), and told to Ended.
     [Profiled]
     private static void Remember(string id, object view)
     {
-        Finished.Put(id, view, KeptJobSizes.Final(PolledLength(id, view)));
+        Finished.Put(id, view, KeptJobSizes.Final(0));
+        Interlocked.Increment(ref _measuring);
+        ThreadPool.QueueUserWorkItem(static state => Measure((MeasuredFinal)state), new MeasuredFinal(id, view));
         Ended?.Invoke(view);
     }
 
-    [Profiled]
-    private static long PolledLength(string id, object view)
+    // On a pool thread: the final view is plain data, so writing it there to count it touches nothing of the game's.
+    private static void Measure(MeasuredFinal final)
     {
         try
         {
-            return ApiJson.Length(view);
+            final.Characters = ApiJson.Length(final.View);
         }
         catch (Exception exception)
         {
             // A view that will not serialise fails its polls too; it is kept at the entry's size, never lost.
-            StationGodMod.LogWarning($"job {id}'s final view could not be measured: {exception.Message}");
-            return 0;
+            StationGodMod.LogWarning($"job {final.Id}'s final view could not be measured: {exception.Message}");
         }
+
+        Measured.Enqueue(final);
+    }
+
+    // Main thread: each measured final view's size set on its entry, when the entry still holds that view.
+    private static void ApplyMeasured()
+    {
+        while (Measured.TryDequeue(out MeasuredFinal final))
+        {
+            Interlocked.Decrement(ref _measuring);
+            if (ReferenceEquals(Finished.Of(final.Id), final.View))
+            {
+                Finished.Put(final.Id, final.View, KeptJobSizes.Final(final.Characters));
+            }
+        }
+    }
+
+    private sealed class MeasuredFinal
+    {
+        internal MeasuredFinal(string id, object view)
+        {
+            Id = id;
+            View = view;
+        }
+
+        internal string Id { get; }
+
+        internal object View { get; }
+
+        internal long Characters { get; set; }
     }
 
     private static void Keep(string id, GasHoldVerdict hold, GasHoldStage stage)
@@ -572,12 +608,14 @@ internal static class HeldTickJobs
     // Work while a job runs or waits, or overrun atmosphere work is still to be settled (a release may be owed).
     private sealed class JobLane : ISliceLane
     {
-        public bool HasWork => _active != null || Waiting.Count > 0 || AtmosphericsThread.Busy;
+        public bool HasWork => _active != null || Waiting.Count > 0 || AtmosphericsThread.Busy ||
+                               Volatile.Read(ref _measuring) > 0;
 
         public void RunSlice(double untilMs)
         {
             using (Prof.Scope(ProfId.HeldTickJobs))
             {
+                ApplyMeasured();
                 Tick(untilMs);
             }
         }
