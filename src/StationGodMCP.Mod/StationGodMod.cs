@@ -228,6 +228,7 @@ public sealed class StationGodMod : ModBehaviour
 
             WorldModel.ThingIndex.Tick();
             WorldModel.DamagedThings.Tick();
+            WorldModel.WaterSweep.Tick();
             WorldModel.FrameFaces.Tick();
             WorldModel.LoadWarmup.Tick();
 

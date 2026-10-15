@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **find water reads a refreshed set and answers `as_of`.** Which atmospheres and pipe networks hold water is swept
+  in the background a slice a frame (while find water is being asked); a call reads that set, each source's water
+  read now, and `as_of` is the game time its sweep began. Its cost follows the sources, not the world's atmospheres.
+  The first call (and the first after ten idle minutes) reads the pools itself, as of now. With `min_mol` 0 only
+  atmospheres that held some water are listed.
 - **sg 0.4.1: a list the game cut raises instead of handing a script part of it.** A reply's `truncated` names the
   lists the game cut (a nested one such as `results[].slots`, or a top-level list other than the main list); using
   one (iterating, len, an index, `in`, its truth) raises `sg.Error("truncated")` whose `fix` says how to get it whole,

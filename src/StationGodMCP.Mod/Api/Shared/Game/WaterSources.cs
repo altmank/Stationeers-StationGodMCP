@@ -25,6 +25,10 @@ namespace StationGodMCP.Api.Shared.Game;
 /// the game has not listed yet; only atmospheres holding at least the minimum are taken from either. Room and world air is left out, and so are organs and
 /// bodies (a stomach holds water too). Largest liquid water first. A call that holds the main thread over
 /// WaterSourcesWarning.ThresholdMs logs where the time went (rate-limited).
+///
+/// Finding reads the refreshed set of atmospheres holding water (WaterSweep, review D R-D-15) when a sweep has ended,
+/// so a call costs its sources, not the world's atmospheres, and answers the game time that sweep began (as_of_s);
+/// before that it reads the pools itself (Collecting), as of now.
 /// </summary>
 internal static class WaterSources
 {
@@ -37,6 +41,29 @@ internal static class WaterSources
 
     /// <summary>How many pool entries one step reads (its lock held only for them).</summary>
     internal const int PoolAStep = 256;
+
+    /// <summary>
+    /// Every source holding at least minimum mol, largest first, as work over frames: from the latest swept set when
+    /// there is one (each member's water read now), else from the pools (Collecting).
+    /// </summary>
+    internal static IEnumerable<object?> Finding(double minimum, Pure.Scheduling.Answer<WaterFound> answer)
+    {
+        if (!WorldModel.WaterSweep.TryLatest(out IReadOnlyList<Atmosphere> latest, out double asOfS))
+        {
+            foreach (object? step in Collecting(minimum, answer))
+            {
+                yield return step;
+            }
+
+            yield break;
+        }
+
+        foreach (object? step in Describing(latest, minimum, PlayerOrigin.Current(), asOfS, 0.0, 0.0,
+                     GC.CollectionCount(0), answer))
+        {
+            yield return step;
+        }
+    }
 
     /// <summary>
     /// Every source holding at least minimum mol of water, polluted water and steam together, largest first, as work
@@ -102,8 +129,20 @@ internal static class WaterSources
 
         networkListMs += Ms(Stopwatch.GetTimestamp() - started);
         yield return null;
+        foreach (object? step in Describing(atmospheres, minimum, origin, UnityEngine.Time.time, atmosphereListMs,
+                     networkListMs, collections, answer))
+        {
+            yield return step;
+        }
+    }
+
+    // The atmospheres' rows (sources holding at least minimum now), summed, sorted and described, a batch a step.
+    private static IEnumerable<object?> Describing(IReadOnlyList<Atmosphere> atmospheres, double minimum,
+        PlayerOrigin origin, double asOfS, double atmosphereListMs, double networkListMs, int collections,
+        Pure.Scheduling.Answer<WaterFound> answer)
+    {
         double scanMs = 0.0;
-        started = Stopwatch.GetTimestamp();
+        long started = Stopwatch.GetTimestamp();
         List<WaterRow> rows = new List<WaterRow>();
         for (int index = 0; index < atmospheres.Count; index++)
         {
@@ -152,7 +191,7 @@ internal static class WaterSources
         rowsMs += Ms(Stopwatch.GetTimestamp() - started);
         WarnWhenSlow(new WaterSourcesTiming(atmosphereListMs + networkListMs + scanMs + rowsMs, 0.0, atmosphereListMs,
             0.0, networkListMs, scanMs, rowsMs, atmospheres.Count, rows.Count, GC.CollectionCount(0) - collections));
-        answer.Value = new WaterFound(sources, sum.ToView(), origin.View);
+        answer.Value = new WaterFound(sources, sum.ToView(), origin.View, asOfS);
     }
 
     private static void WarnWhenSlow(in WaterSourcesTiming timing)
@@ -274,12 +313,16 @@ internal sealed class WaterSum
 /// <summary>The water sources found, largest first, their totals, and the player they were measured from.</summary>
 internal sealed class WaterFound
 {
-    internal WaterFound(List<WaterSourceView> sources, WaterView totals, LocalPlayerView? localPlayer)
+    internal WaterFound(List<WaterSourceView> sources, WaterView totals, LocalPlayerView? localPlayer, double asOfS)
     {
         Sources = sources;
         Totals = totals;
         LocalPlayer = localPlayer;
+        AsOfS = asOfS;
     }
+
+    /// <summary>The game time the set of sources was read (a refreshed set's sweep start, or now).</summary>
+    public double AsOfS { get; }
 
     public List<WaterSourceView> Sources { get; }
 

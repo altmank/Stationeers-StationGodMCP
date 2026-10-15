@@ -335,6 +335,7 @@
               "has_more": "bool",
               "totals": "{liquid_mol: float, liquid_l: float, hydration: float, polluted_mol: float, polluted_l: float, steam_mol: float, steam_if_condensed_l: float}",
               "min_mol": "float",
+              "as_of": "float",
               "local_player": "{reference_id: str, display_name: str | None, position: Vec3} | None"
             }
           }

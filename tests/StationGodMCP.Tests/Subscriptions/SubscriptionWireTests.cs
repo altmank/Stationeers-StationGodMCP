@@ -248,6 +248,13 @@ public sealed class SubscriptionWireTests
             tick: () => new SamplingTick(_frame, _gameTimeS), resumeWindowMs: 60000);
         for (int index = 0; index < 40; index++)
         {
+            // The last probe's connection leaves the host's list on its own thread: wait for it (review D, R-D-19).
+            Stopwatch left = Stopwatch.StartNew();
+            while (rig.Host.Open.Count() > 0 && left.ElapsedMilliseconds < 5000)
+            {
+                await Task.Delay(1);
+            }
+
             V2Client client = await V2Client.Connect(rig, "churn" + index);
             Connection connection = rig.Host.Open.Single();
             switch (index % 5)

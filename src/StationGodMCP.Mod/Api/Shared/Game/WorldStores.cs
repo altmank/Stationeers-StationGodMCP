@@ -63,6 +63,7 @@ internal static class WorldStores
         scope.Register("world_index", WorldModel.ThingIndex.Reset);
         scope.Register("frame_faces", WorldModel.FrameFaces.Clear);
         scope.Register("damaged_things", WorldModel.DamagedThings.Clear);
+        scope.Register("water_sweep", WorldModel.WaterSweep.Clear);
         scope.Register("gateway_maps", GatewayMaps.Clear);
         scope.Register("chip_programs", Pure.Lint.LintChipPrograms.Clear);
         scope.Register("stream_stores", Protocol.StreamStores.Main.WorldChanged);
