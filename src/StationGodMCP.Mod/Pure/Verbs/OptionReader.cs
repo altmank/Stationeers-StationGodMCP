@@ -1,5 +1,6 @@
 #nullable enable
 
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using Newtonsoft.Json.Linq;
@@ -15,6 +16,9 @@ namespace StationGodMCP.Pure.Verbs;
 internal sealed class OptionReader
 {
     private readonly JObject _given;
+    private List<OptionProblem>? _problems;
+    private Func<string, JToken?>? _raw;
+    private Func<string, JToken?>? _baseDefault;
 
     internal OptionReader(WhatSpec what, JObject? given, ShapeRequest? shape = null)
     {
@@ -28,7 +32,10 @@ internal sealed class OptionReader
     /// <summary>The call's shape: the wire shape with fields, omit and list_limits given as options folded in.</summary>
     internal ShapeRequest? Shape { get; }
 
-    internal List<OptionProblem> Problems { get; } = new List<OptionProblem>();
+    /// <summary>What the option kinds found wrong; made at the first problem.</summary>
+    internal List<OptionProblem> Problems => _problems ??= new List<OptionProblem>();
+
+    internal bool HasProblems => _problems is { Count: > 0 };
 
     internal void Problem(string path, string problem) => Problems.Add(new OptionProblem(path, problem));
 
@@ -78,30 +85,31 @@ internal sealed class OptionReader
     /// The default the catalogue gives an option for this call, as text: the first x-default-when form whose conditions
     /// these options meet, else the option's default; null when it gives none.
     /// </summary>
-    internal string? DefaultText(string name)
+    internal string? DefaultText(string name) => DefaultOf(name)?.Text;
+
+    // The default for this call, parsed once in the catalogue's spec: the first x-default-when form that applies, else
+    // the option's own.
+    private DefaultValue? DefaultOf(string name)
     {
         if (What.Option(name) is not { } option)
         {
             return null;
         }
 
-        foreach (DefaultForm form in option.DefaultForms)
+        IReadOnlyList<DefaultForm> forms = option.DefaultForms;
+        for (int index = 0; index < forms.Count; index++)
         {
-            if (form.Applies(Raw, BaseDefault))
+            if (forms[index].Applies(_raw ??= Raw, _baseDefault ??= BaseDefault))
             {
-                return form.Default;
+                return forms[index].Value;
             }
         }
 
-        return option.Default;
+        return option.DefaultValue;
     }
 
     /// <summary>The words the catalogue gives as a list option's default ("[status]"), or null when it gives none.</summary>
-    internal IReadOnlyList<string>? DefaultWords(string name) =>
-        DefaultText(name) is { } text && text.StartsWith("[", System.StringComparison.Ordinal) &&
-        text.EndsWith("]", System.StringComparison.Ordinal)
-            ? WordsOf(text)
-            : null;
+    internal IReadOnlyList<string>? DefaultWords(string name) => DefaultOf(name)?.Words;
 
     /// <summary>The words of a default written as a list, "[a, b]".</summary>
     internal static IReadOnlyList<string> WordsOf(string text)
@@ -119,44 +127,16 @@ internal sealed class OptionReader
     }
 
     /// <summary>The integer the catalogue gives as an option's default for this call, or null when it gives none.</summary>
-    internal long? DefaultInteger(string name) =>
-        DefaultText(name) is { } text &&
-        long.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out long number)
-            ? number
-            : null;
+    internal long? DefaultInteger(string name) => DefaultOf(name)?.Integer;
 
     /// <summary>The number the catalogue gives as an option's default for this call, or null when it gives none.</summary>
-    internal double? DefaultNumber(string name) =>
-        DefaultText(name) is { } text &&
-        double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out double number)
-            ? number
-            : null;
+    internal double? DefaultNumber(string name) => DefaultOf(name)?.Number;
 
     /// <summary>The flag the catalogue gives as an option's default for this call, or null when it gives none.</summary>
-    internal bool? DefaultFlag(string name) => DefaultText(name) switch
-    {
-        "true" => true,
-        "false" => false,
-        _ => null
-    };
+    internal bool? DefaultFlag(string name) => DefaultOf(name)?.Flag;
 
     // An option's own default as a JSON value (a flag, a number or a word), for a form's condition on it.
-    private JToken? BaseDefault(string name)
-    {
-        if (What.Option(name)?.Default is not { } text)
-        {
-            return null;
-        }
-
-        if (text is "true" or "false")
-        {
-            return text == "true";
-        }
-
-        return double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out double number)
-            ? number == System.Math.Floor(number) ? new JValue((long)number) : new JValue(number)
-            : new JValue(text);
-    }
+    private JToken? BaseDefault(string name) => What.Option(name)?.DefaultValue?.Json;
 
     internal static double? NumberOf(JToken? token) =>
         token is { Type: JTokenType.Integer or JTokenType.Float } ? (double)token : null;

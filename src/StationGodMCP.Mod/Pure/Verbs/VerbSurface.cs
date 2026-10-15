@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Pure.Catalogue;
 
@@ -310,6 +311,7 @@ internal sealed class OptionSpec
     private readonly Lazy<JObject> _schema;
     private readonly Lazy<IReadOnlyList<string>> _types;
     private readonly Lazy<IReadOnlyList<DefaultForm>> _forms;
+    private readonly Lazy<DefaultValue?> _default;
 
     internal OptionSpec(string name, string schema, bool required = false, string? defaultText = null,
         string? defaultWhen = null)
@@ -317,6 +319,7 @@ internal sealed class OptionSpec
         Name = name;
         Required = required;
         Default = defaultText;
+        _default = new Lazy<DefaultValue?>(() => defaultText != null ? new DefaultValue(defaultText) : null);
         _schema = new Lazy<JObject>(() => JObject.Parse(schema));
         _types = new Lazy<IReadOnlyList<string>>(() => SchemaTypes.Of(_schema.Value));
         _forms = new Lazy<IReadOnlyList<DefaultForm>>(() => DefaultForm.Parse(defaultWhen));
@@ -334,15 +337,14 @@ internal sealed class OptionSpec
     /// <summary>The catalogue's default, as text ("0", "nearest"); null when it gives none.</summary>
     internal string? Default { get; }
 
+    /// <summary>The catalogue's default parsed once (OptionReader reads it on every call); null when it gives none.</summary>
+    internal DefaultValue? DefaultValue => _default.Value;
+
     /// <summary>The schema's types, in order; empty when it names none.</summary>
     internal IReadOnlyList<string> Types => _types.Value;
 
     /// <summary>The option's default as a number; null when it has none or it is no number.</summary>
-    internal double? DefaultNumber =>
-        double.TryParse(Default, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture,
-            out double number)
-            ? number
-            : null;
+    internal double? DefaultNumber => DefaultValue?.Number;
 
     internal bool Takes(string type)
     {
@@ -368,11 +370,15 @@ internal sealed class DefaultForm
     {
         When = when;
         Default = @default;
+        Value = new DefaultValue(@default);
     }
 
     public JObject When { get; }
 
     public string Default { get; }
+
+    /// <summary>The default parsed once.</summary>
+    public DefaultValue Value { get; }
 
     internal static IReadOnlyList<DefaultForm> Parse(string? forms)
     {
@@ -407,6 +413,51 @@ internal sealed class DefaultForm
 
         return true;
     }
+}
+
+/// <summary>
+/// A catalogue default (an option's, or an x-default-when form's) parsed once from its text: as words when it is a list
+/// "[a, b]", as an integer, a number or a flag when it reads as one, and as the JSON value a form's condition compares
+/// (a flag, a number or the text).
+/// </summary>
+internal sealed class DefaultValue
+{
+    internal DefaultValue(string text)
+    {
+        Text = text;
+        Words = text.StartsWith("[", StringComparison.Ordinal) && text.EndsWith("]", StringComparison.Ordinal)
+            ? OptionReader.WordsOf(text)
+            : null;
+        Integer = long.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out long integer)
+            ? integer
+            : null;
+        Number = double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out double number)
+            ? number
+            : null;
+        Flag = text switch
+        {
+            "true" => true,
+            "false" => false,
+            _ => null
+        };
+        Json = Flag is { } flag
+            ? new JValue(flag)
+            : Number is { } value
+                ? value == Math.Floor(value) ? new JValue((long)value) : new JValue(value)
+                : new JValue(text);
+    }
+
+    internal string Text { get; }
+
+    internal IReadOnlyList<string>? Words { get; }
+
+    internal long? Integer { get; }
+
+    internal double? Number { get; }
+
+    internal bool? Flag { get; }
+
+    internal JToken Json { get; }
 }
 
 /// <summary>The type names a JSON schema lists in type (one, or a list).</summary>

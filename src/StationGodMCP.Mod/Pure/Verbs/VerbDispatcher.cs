@@ -31,7 +31,7 @@ internal sealed class VerbHandler
         new VerbHandler(what, reader =>
         {
             TOptions options = bind(reader);
-            return reader.Problems.Count > 0
+            return reader.HasProblems
                 ? new VerbOutcome.Refused(OptionProblem.Refusal(what.Label, reader.Problems))
                 : run(options);
         });

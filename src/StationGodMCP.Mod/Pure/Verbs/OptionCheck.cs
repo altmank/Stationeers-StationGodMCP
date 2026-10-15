@@ -50,7 +50,8 @@ internal static class OptionCheck
             }
         }
 
-        IReadOnlyList<string> valid = ValidNames(verb, what);
+        // Every name the what takes, for the nearest names: built only when an unknown name is reported.
+        IReadOnlyList<string>? valid = null;
         string? unknownName = null;
         foreach (JProperty property in given.Properties())
         {
@@ -70,7 +71,7 @@ internal static class OptionCheck
             OptionSpec? option = what.Option(name) ?? (verb.TakesShaping ? VerbSurface.ShapingOption(name) : null);
             if (option == null)
             {
-                problems.Add(new OptionProblem(name, $"not an option of {what.Label}", NearestNames.Of(name, valid)));
+                problems.Add(new OptionProblem(name, $"not an option of {what.Label}", NearestNames.Of(name, valid ??= ValidNames(verb, what))));
                 unknownName ??= name;
                 continue;
             }
@@ -96,7 +97,7 @@ internal static class OptionCheck
         return problems.Count == 0
             ? null
             : OptionProblem.Refusal(what.Label, problems,
-                unknownName == null ? null : NearestNames.NearestFirst(unknownName, valid));
+                unknownName == null ? null : NearestNames.NearestFirst(unknownName, valid!));
     }
 
     /// <summary>An id that takes no list: a write that cannot be undone takes one id; several are a script's loop.</summary>

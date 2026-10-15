@@ -47,17 +47,37 @@ internal sealed class Truncation
 /// </summary>
 internal static class Truncations
 {
+    // One list per thread, cleared at each Begin: collecting allocates nothing until a list is cut.
     [ThreadStatic]
     private static List<Truncation>? _notes;
 
-    internal static void Begin() => _notes = new List<Truncation>();
+    [ThreadStatic]
+    private static bool _collecting;
+
+    internal static void Begin()
+    {
+        (_notes ??= new List<Truncation>()).Clear();
+        _collecting = true;
+    }
 
     /// <summary>The notes since Begin, and no more collecting until the next Begin.</summary>
     internal static List<Truncation> Take()
     {
-        List<Truncation> notes = _notes ?? new List<Truncation>();
-        _notes = null;
+        List<Truncation> notes = new List<Truncation>();
+        MoveInto(notes);
         return notes;
+    }
+
+    /// <summary>Adds the notes since Begin to into (nothing is allocated); no more collecting until the next Begin.</summary>
+    internal static void MoveInto(List<Truncation> into)
+    {
+        if (_collecting && _notes!.Count > 0)
+        {
+            into.AddRange(_notes);
+            _notes.Clear();
+        }
+
+        _collecting = false;
     }
 
     /// <summary>
@@ -98,7 +118,10 @@ internal static class Truncations
     {
         if (returned < total || atLeast)
         {
-            _notes?.Add(new Truncation(list, returned, total, more, atLeast));
+            if (_collecting)
+            {
+                _notes!.Add(new Truncation(list, returned, total, more, atLeast));
+            }
         }
     }
 

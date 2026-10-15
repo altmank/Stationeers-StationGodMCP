@@ -114,6 +114,20 @@ public sealed class OptionKindTests
     }
 
     [Fact]
+    public void ACataloguesDefaultsAreParsedOnceAndAReaderWithNoProblemsHoldsNoList()
+    {
+        // review D, R-D-23: nothing is parsed or listed again per call
+        OptionReader first = new OptionReader(InspectChipOptions.Spec, JObject.Parse("""{"id": "1"}"""));
+        OptionReader second = new OptionReader(InspectChipOptions.Spec, JObject.Parse("""{"id": "2"}"""));
+
+        Assert.Equal(new[] { "status" }, first.DefaultWords("parts"));
+        Assert.Same(first.DefaultWords("parts"), second.DefaultWords("parts"));
+        Assert.Equal(0L, second.DefaultInteger("start"));
+        InspectChipOptions.Bind(first);
+        Assert.False(first.HasProblems);
+    }
+
+    [Fact]
     public void AReportCallCountsAsTheWhatsReportCostAndAWhatThatStatesNoneAsItsCost()
     {
         // build structure reports as a plan and acts as a job

@@ -64,7 +64,7 @@ internal sealed class VerbNotes
     /// <summary>Adds what the run since Begin noted; a later gas hold replaces an earlier one.</summary>
     internal void Take()
     {
-        _truncations.AddRange(Pure.Shaping.Truncations.Take());
+        Pure.Shaping.Truncations.MoveInto(_truncations);
         _gasHold = GasHoldReply.Take() ?? _gasHold;
     }
 
