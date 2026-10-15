@@ -46,9 +46,11 @@ internal interface ICallScheduler
 
     /// <summary>
     /// One frame: the subscription lane's samples, then light calls, then at most one heavy call, then deferred work,
-    /// then the job lane's step (jobs; null for none) in what is left of the budget.
+    /// then the job lane's step (jobs; null for none) in what is left of the budget, counted from startedMs (StationGod's
+    /// work this frame began then; NaN: now).
     /// </summary>
-    FrameOutcome RunFrame(bool jobHoldsTick, ISampleLane? samples, ICallRunner runner, ISliceLane? jobs = null);
+    FrameOutcome RunFrame(bool jobHoldsTick, ISampleLane? samples, ICallRunner runner, ISliceLane? jobs = null,
+        double startedMs = double.NaN);
 
     /// <summary>What each (owner, stream) has cost the main thread (stream_costs); main thread only.</summary>
     StreamCosts Costs { get; }
@@ -131,11 +133,13 @@ internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
     public void EndSession(string owner) =>
         _inbox.Enqueue(new Posted(PostKind.EndSession, null, NoSource, default, owner));
 
-    public FrameOutcome RunFrame(bool jobHoldsTick, ISampleLane? samples, ICallRunner runner, ISliceLane? jobs = null)
+    public FrameOutcome RunFrame(bool jobHoldsTick, ISampleLane? samples, ICallRunner runner, ISliceLane? jobs = null,
+        double startedMs = double.NaN)
     {
         _runner = runner;
+        double started = double.IsNaN(startedMs) ? _clock.NowMs : startedMs;
         TakeInbox();
-        return _scheduler.RunFrame(jobHoldsTick, samples, Deferred, jobs);
+        return _scheduler.RunFrame(jobHoldsTick, samples, Deferred, jobs, started);
     }
 
     void ICallRunner<QueuedCall>.Run(QueuedCall call)

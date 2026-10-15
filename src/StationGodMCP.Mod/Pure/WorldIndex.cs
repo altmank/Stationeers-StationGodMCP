@@ -39,9 +39,9 @@ internal sealed class WorldIndex<T> where T : class
     private readonly object _gate = new object();
     private readonly Func<T, string?> _nameOf;
     private readonly Func<T, int> _classesOf;
-    private readonly Dictionary<string, HashSet<T>> _byName =
-        new Dictionary<string, HashSet<T>>(StringComparer.OrdinalIgnoreCase);
-    private readonly HashSet<T>[] _byClass = new HashSet<T>[MaximumClasses];
+    private readonly Dictionary<string, IndexedSet<T>> _byName =
+        new Dictionary<string, IndexedSet<T>>(StringComparer.OrdinalIgnoreCase);
+    private readonly IndexedSet<T>[] _byClass = new IndexedSet<T>[MaximumClasses];
     private readonly Dictionary<T, Filing> _filedUnder = new Dictionary<T, Filing>(ByReference.Instance);
     private readonly List<T> _arrived = new List<T>();
     private readonly List<T> _left = new List<T>();
@@ -61,7 +61,7 @@ internal sealed class WorldIndex<T> where T : class
         _classesOf = classesOf ?? (static _ => 0);
         for (int index = 0; index < MaximumClasses; index++)
         {
-            _byClass[index] = new HashSet<T>(ByReference.Instance);
+            _byClass[index] = new IndexedSet<T>(ByReference.Instance);
         }
     }
 
@@ -116,7 +116,7 @@ internal sealed class WorldIndex<T> where T : class
     /// <summary>Things filed under one class, after the last query.</summary>
     internal int ClassCount(int classNumber)
     {
-        HashSet<T> bucket = _byClass[ClassIndex(classNumber)];
+        IndexedSet<T> bucket = _byClass[ClassIndex(classNumber)];
         lock (_gate)
         {
             return bucket.Count;
@@ -167,7 +167,7 @@ internal sealed class WorldIndex<T> where T : class
     private void Forget()
     {
         _byName.Clear();
-        foreach (HashSet<T> bucket in _byClass)
+        foreach (IndexedSet<T> bucket in _byClass)
         {
             bucket.Clear();
         }
@@ -204,7 +204,7 @@ internal sealed class WorldIndex<T> where T : class
             List<T> found = new List<T>();
             List<T>? gone = null;
             examined = 0;
-            foreach (HashSet<T> bucket in BucketsFor(match))
+            foreach (IndexedSet<T> bucket in BucketsFor(match))
             {
                 examined += bucket.Count;
                 Collect(bucket, inAnyList, isMember, found, ref gone);
@@ -222,7 +222,7 @@ internal sealed class WorldIndex<T> where T : class
     internal List<T> OfClass(int classNumber, Func<IEnumerable<T>> seed, Func<T, bool> inAnyList,
         Func<T, bool> isMember)
     {
-        HashSet<T> bucket = _byClass[ClassIndex(classNumber)];
+        IndexedSet<T> bucket = _byClass[ClassIndex(classNumber)];
         Seed(seed);
         lock (_gate)
         {
@@ -241,17 +241,13 @@ internal sealed class WorldIndex<T> where T : class
     /// </summary>
     internal List<T> Candidates(int classNumber, Func<IEnumerable<T>> seed, Func<T, bool> inAnyList)
     {
-        HashSet<T> bucket = _byClass[ClassIndex(classNumber)];
+        IndexedSet<T> bucket = _byClass[ClassIndex(classNumber)];
         Seed(seed);
         lock (_gate)
         {
             Drain(inAnyList);
             List<T> candidates = new List<T>(bucket.Count);
-            foreach (T thing in bucket)
-            {
-                candidates.Add(thing);
-            }
-
+            bucket.CopyTo(candidates);
             return candidates;
         }
     }
@@ -328,11 +324,12 @@ internal sealed class WorldIndex<T> where T : class
         }
     }
 
-    private static void Collect(HashSet<T> bucket, Func<T, bool> inAnyList, Func<T, bool> isMember, List<T> found,
+    private static void Collect(IndexedSet<T> bucket, Func<T, bool> inAnyList, Func<T, bool> isMember, List<T> found,
         ref List<T>? gone)
     {
-        foreach (T thing in bucket)
+        for (int place = 0; place < bucket.Count; place++)
         {
+            T thing = bucket[place];
             if (isMember(thing))
             {
                 found.Add(thing);
@@ -377,14 +374,14 @@ internal sealed class WorldIndex<T> where T : class
         _left.Clear();
     }
 
-    private List<HashSet<T>> BucketsFor(PrefabMatch match)
+    private List<IndexedSet<T>> BucketsFor(PrefabMatch match)
     {
-        List<HashSet<T>> buckets = new List<HashSet<T>>();
+        List<IndexedSet<T>> buckets = new List<IndexedSet<T>>();
         if (match.Exact != null)
         {
             foreach (string name in match.Exact)
             {
-                if (_byName.TryGetValue(name, out HashSet<T> bucket))
+                if (_byName.TryGetValue(name, out IndexedSet<T> bucket))
                 {
                     buckets.Add(bucket);
                 }
@@ -393,7 +390,7 @@ internal sealed class WorldIndex<T> where T : class
             return buckets;
         }
 
-        foreach (KeyValuePair<string, HashSet<T>> entry in _byName)
+        foreach (KeyValuePair<string, IndexedSet<T>> entry in _byName)
         {
             if (match.Keeps(entry.Key))
             {
@@ -429,9 +426,9 @@ internal sealed class WorldIndex<T> where T : class
             classes = _classesOf(thing);
         }
 
-        if (!_byName.TryGetValue(name, out HashSet<T> bucket))
+        if (!_byName.TryGetValue(name, out IndexedSet<T> bucket))
         {
-            bucket = new HashSet<T>(ByReference.Instance);
+            bucket = new IndexedSet<T>(ByReference.Instance);
             _byName.Add(name, bucket);
         }
 
@@ -468,7 +465,7 @@ internal sealed class WorldIndex<T> where T : class
         }
 
         _filedUnder.Remove(thing);
-        if (_byName.TryGetValue(filed.Name, out HashSet<T> bucket))
+        if (_byName.TryGetValue(filed.Name, out IndexedSet<T> bucket))
         {
             bucket.Remove(thing);
             if (bucket.Count == 0)

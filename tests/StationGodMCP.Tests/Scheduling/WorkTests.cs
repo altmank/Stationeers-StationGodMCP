@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using StationGodMCP.Pure;
 using StationGodMCP.Pure.Scheduling;
 using Xunit;
 
@@ -177,7 +178,7 @@ public sealed class JobLaneTests
         rig.Scheduler.RunFrame(false, null, null, jobs);
 
         Assert.Single(jobs.Untils);
-        Assert.Equal(4.0, jobs.Untils[0], 3);
+        Assert.Equal(4.0 - FrameBudget.StepReserveMs, jobs.Untils[0], 3);
         Assert.Equal(1.0, jobs.StartedAt[0], 3);
     }
 

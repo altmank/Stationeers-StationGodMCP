@@ -231,18 +231,19 @@ internal sealed class FrameScheduler<TCall> where TCall : class
 
     /// <summary>
     /// One frame: samples, then light calls, then at most one heavy call, then one slice of deferred work, then the
-    /// running job's step in what is left. While it
+    /// running job's step in what is left. startedMs is when StationGod's work this frame began on the scheduler's
+    /// clock (its Update's start), so the budget covers what it did before the scheduler too; NaN starts it now. While it
     /// runs, CurrentFrame holds the frame's start and budget, so a reply built inside it can tell whether the budget
     /// was reached and work sized to the frame knows where to stop.
     /// </summary>
     internal FrameOutcome RunFrame(bool jobHoldsTick, ISampleLane? samples, ISliceLane? slices = null,
-        ISliceLane? jobs = null)
+        ISliceLane? jobs = null, double startedMs = double.NaN)
     {
         Frame++;
         _expired = 0;
         FrameShares shares = _settings.SharesFor(jobHoldsTick);
-        double startMs = _clock.NowMs;
-        CurrentFrame.Begin(startMs, shares.BudgetMs);
+        double startMs = double.IsNaN(startedMs) ? _clock.NowMs : Math.Min(startedMs, _clock.NowMs);
+        CurrentFrame.Begin(startMs, shares.BudgetMs, FrameBudget.StepReserveMs);
         try
         {
             LetGoOfAnswered();
@@ -250,8 +251,8 @@ internal sealed class FrameScheduler<TCall> where TCall : class
             LetGoOfAnswered();
             int light = RunLight(startMs, shares.BudgetMs, out bool lightStopped);
             int heavy = RunHeavy(startMs, shares.BudgetMs, out bool heavyStopped);
-            RunSlice(slices, startMs + shares.BudgetMs, ref _sliceWaitFrames);
-            RunSlice(jobs, startMs + shares.BudgetMs, ref _jobWaitFrames);
+            RunSlice(slices, CurrentFrame.EndMs, ref _sliceWaitFrames);
+            RunSlice(jobs, CurrentFrame.EndMs, ref _jobWaitFrames);
             return new FrameOutcome(taken, light, heavy, _expired, _clock.NowMs - startMs, lightStopped || heavyStopped);
         }
         finally

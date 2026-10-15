@@ -16,6 +16,13 @@ internal sealed class FrameBudget
 
     internal const double JobHeldMs = 2.0;
 
+    /// <summary>
+    /// What work spread over frames leaves of the budget (A3): it stops this much before the budget's end, so the one step
+    /// that may overrun its slice and StationGod's work after the scheduler (previews, the flight recorder) still end the
+    /// frame inside the budget.
+    /// </summary>
+    internal const double StepReserveMs = 0.3;
+
     private FrameBudget(double limitMs)
     {
         LimitMs = limitMs;

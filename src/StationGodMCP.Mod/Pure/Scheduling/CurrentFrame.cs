@@ -22,13 +22,17 @@ internal static class CurrentFrame
     [ThreadStatic]
     private static double _budgetMs;
 
+    [ThreadStatic]
+    private static double _workEndMs;
+
     internal static bool Running => _running;
 
-    internal static void Begin(double startMs, double budgetMs)
+    internal static void Begin(double startMs, double budgetMs, double reserveMs = 0.0)
     {
         _running = true;
         _startMs = startMs;
         _budgetMs = budgetMs;
+        _workEndMs = startMs + budgetMs - Math.Min(reserveMs, budgetMs / 2.0);
     }
 
     internal static void End() => _running = false;
@@ -41,8 +45,9 @@ internal static class CurrentFrame
         _running && !double.IsPositiveInfinity(_budgetMs) && nowMs - _startMs >= _budgetMs;
 
     /// <summary>
-    /// When, on the scheduler's clock, the frame's request time reaches its budget; PositiveInfinity outside a frame
-    /// and when the budget is unlimited. Work sized to the frame (a walk's page, a walk's build) stops there.
+    /// When, on the scheduler's clock, work sized to the frame (a walk's page, a walk's build, any Work) stops: the
+    /// budget's end less the step reserve the scheduler began the frame with (FrameBudget.StepReserveMs);
+    /// PositiveInfinity outside a frame and when the budget is unlimited.
     /// </summary>
-    internal static double EndMs => _running ? _startMs + _budgetMs : double.PositiveInfinity;
+    internal static double EndMs => _running ? _workEndMs : double.PositiveInfinity;
 }

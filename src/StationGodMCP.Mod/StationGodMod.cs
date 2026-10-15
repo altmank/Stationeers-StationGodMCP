@@ -233,7 +233,9 @@ public sealed class StationGodMod : ModBehaviour
                 StartTcpServer(_remote);
             }
 
-            _dispatcher.RunFrame(HeldTickJobs.HoldsTick, _subscriptions, HeldTickJobs.Lane);
+            // The budget counts from the Update's start, so StationGod's work before the scheduler is inside it too.
+            _dispatcher.RunFrame(HeldTickJobs.HoldsTick, _subscriptions, HeldTickJobs.Lane,
+                updateStarted * 1000.0 / System.Diagnostics.Stopwatch.Frequency);
 
             using (Prof.Scope(ProfId.Previews))
             {
