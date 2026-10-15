@@ -21,7 +21,9 @@ namespace StationGodMCP.WorldModel;
 /// Then the mod's own code is compiled (compiled, never run: RuntimeHelpers.PrepareMethod, and on the game's Mono the
 /// method's function pointer, which compiles it), CompileMsAFrame of each
 /// frame, type by type, so the first call of a kind after a load does not pay for compiling its handler, its reports
-/// and the planners and job states it reaches. Generic methods and types are left to their first call. Main thread.
+/// and the planners and job states it reaches; with them every method they call directly (the game's, the runtime's,
+/// closed generic ones), read from their IL (CalledMethods). Open generic methods are left to their first call. Main
+/// thread.
 /// </summary>
 internal static class LoadWarmup
 {
@@ -49,6 +51,11 @@ internal static class LoadWarmup
     private static int _type;
     private static MethodBase[]? _members;
     private static int _member;
+    private static readonly List<MethodBase> Called = new List<MethodBase>();
+    private static readonly List<MethodBase> Callees = new List<MethodBase>();
+    private static readonly HashSet<MethodBase> Seen = new HashSet<MethodBase>();
+    private static int _queued;
+    private static int _callees;
     private static int _compiled;
     private static int _failed;
     private static double _compileMs;
@@ -96,36 +103,85 @@ internal static class LoadWarmup
         _next++;
     }
 
-    // Compiles methods until CompileMsAFrame has passed (at least one), going on where the last frame stopped.
+    // Compiles methods until CompileMsAFrame has passed (at least one), going on where the last frame stopped: the
+    // callees queued so far first, then the next of the mod's own methods, whose direct callees (the game's, the
+    // runtime's, closed generic ones: CalledMethods) are queued as it is compiled.
     private static void Compile()
     {
         long started = Stopwatch.GetTimestamp();
         _types ??= typeof(LoadWarmup).Assembly.GetTypes();
-        while (_type < _types.Length)
+        while (true)
         {
-            if (_members == null)
+            if (_queued < Callees.Count)
             {
-                _members = MembersOf(_types[_type]);
-                _member = 0;
+                Prepare(Callees[_queued++]);
+                _callees++;
+            }
+            else if (NextOwn() is { } own)
+            {
+                Prepare(own);
+                Queue(own);
+            }
+            else
+            {
+                break;
             }
 
-            while (_member < _members.Length)
+            if (Elapsed(started) >= CompileMsAFrame)
             {
-                Prepare(_members[_member++]);
-                if (Elapsed(started) >= CompileMsAFrame)
-                {
-                    _compileMs += Elapsed(started);
-                    return;
-                }
+                _compileMs += Elapsed(started);
+                return;
             }
-
-            _members = null;
-            _type++;
         }
 
         _compileMs += Elapsed(started);
-        StationGodMod.Log($"Compiled StationGod's code at load: {_compiled} methods in {_compileMs:F0} ms of frames" +
+        Callees.Clear();
+        Seen.Clear();
+        StationGodMod.Log($"Compiled StationGod's code at load: {_compiled - _callees} of its methods and {_callees} " +
+                          $"they call in {_compileMs:F0} ms of frames" +
                           (_failed > 0 ? $", {_failed} left to their first call" : string.Empty) + ".");
+    }
+
+    // The next of the mod's own methods to compile; null once every type is done (Compiled).
+    private static MethodBase? NextOwn()
+    {
+        while (_type < _types!.Length)
+        {
+            _members ??= MembersOf(_types[_type]);
+            if (_member < _members.Length)
+            {
+                return _members[_member++];
+            }
+
+            _members = null;
+            _member = 0;
+            _type++;
+        }
+
+        return null;
+    }
+
+    // The method's direct callees not seen yet, queued to be compiled.
+    private static void Queue(MethodBase own)
+    {
+        try
+        {
+            CalledMethods.Of(own, Called);
+        }
+        catch (Exception)
+        {
+            // A body the runtime will not read: its callees compile in their first call.
+        }
+
+        foreach (MethodBase callee in Called)
+        {
+            if (Seen.Add(callee))
+            {
+                Callees.Add(callee);
+            }
+        }
+
+        Called.Clear();
     }
 
     private static void Prepare(MethodBase method)
@@ -161,7 +217,7 @@ internal static class LoadWarmup
         List<MethodBase> members = new List<MethodBase>(methods.Length + constructors.Length);
         foreach (MethodInfo method in methods)
         {
-            if (Compilable(method))
+            if (CalledMethods.Compilable(method))
             {
                 members.Add(method);
             }
@@ -169,7 +225,7 @@ internal static class LoadWarmup
 
         foreach (ConstructorInfo constructor in constructors)
         {
-            if (Compilable(constructor))
+            if (CalledMethods.Compilable(constructor))
             {
                 members.Add(constructor);
             }
@@ -177,11 +233,6 @@ internal static class LoadWarmup
 
         return members.ToArray();
     }
-
-    private static bool Compilable(MethodBase method) =>
-        !method.IsAbstract && !method.ContainsGenericParameters &&
-        (method.MethodImplementationFlags & (MethodImplAttributes.InternalCall | MethodImplAttributes.Runtime)) == 0 &&
-        (method.Attributes & MethodAttributes.PinvokeImpl) == 0;
 
     private static double Elapsed(long started) => (Stopwatch.GetTimestamp() - started) * 1000.0 / Stopwatch.Frequency;
 }
