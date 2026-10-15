@@ -107,7 +107,7 @@ internal sealed class BuildWaiting : HeldTickJob
 
     internal override object Failed(ErrorView error) => Refused(null, error);
 
-    internal override JobStep Step()
+    internal override JobStep Step(double untilMs)
     {
         if (GameManager.GameState != GameState.Running)
         {
@@ -186,7 +186,7 @@ internal sealed class BuildSettling : HeldTickJob
         new BuildJobView(Id, _work.Tool, "applied_unchecked", _work.Preflight,
             new BuildJobResult(_finalCheck, _log, new List<BuildCheckView>(), error));
 
-    internal override JobStep Step()
+    internal override JobStep Step(double untilMs)
     {
         _frames++;
         if (!_work.Settled() && _frames < MaximumFrames)

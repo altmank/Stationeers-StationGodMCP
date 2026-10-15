@@ -11,7 +11,7 @@ from `StationGodMod.Update`, which calls the frame once per frame on the host
 
 ## The frame
 
-`RunFrame` runs four lanes in order and one sweep (`src/StationGodMCP.Mod/Pure/Scheduling/FrameScheduler.cs:234-245`):
+`RunFrame` runs five lanes in order and one sweep (`src/StationGodMCP.Mod/Pure/Scheduling/FrameScheduler.cs:234-245`):
 
 1. **Samples.** The subscription lane takes due samples, oldest due first and round robin across connections, while
    it has spent less than its share; the first sample of a frame always runs
@@ -26,7 +26,11 @@ from `StationGodMod.Update`, which calls the frame once per frame on the host
    in what the frame's calls left of the budget, and over budget takes a single step once it has waited
    `HeavyMaxWaitFrames` frames (`FrameScheduler.cs:276-292`; `Protocol/DeferredCalls.cs:23`;
    `Protocol/SubscriptionHub.cs:21-27`).
-5. A call whose deadline passed before it started is answered `game_timeout` when a lane's search meets it, unrun
+5. **Jobs.** The running building job's step (`HeldTickJobs.Lane`) runs on the slice lane's rule in what is left
+   after it, so StationGod's job steps are inside the frame's budget too (`FrameScheduler.cs`, `RunSlice`;
+   `Api/Shared/Game/HeldTickJobs.cs`, `JobLane`). A job state with long work does it as `Work` (below) and goes on
+   next frame.
+6. A call whose deadline passed before it started is answered `game_timeout` when a lane's search meets it, unrun
    (`FrameScheduler.cs:452-470`).
 
 The budget is `[Performance] RequestBudgetMs`, 4 ms by default; 0 means unlimited. While a building job holds the
@@ -35,6 +39,19 @@ game tick the budget is at most 2 ms, because every extra request millisecond le
 share is `SubscriptionBudgetMs` (1.5 ms), capped at half the frame's budget; so with the defaults subscriptions get
 up to 1.5 ms and light calls at least 2.5 ms, and while a job holds the tick at most 1 ms and 1 ms
 (`Pure/Scheduling/SchedulerSettings.cs:94-117`).
+
+## Work over frames
+
+Every handler that can loop over more than a page's worth of things does its work as `Work`
+(`src/StationGodMCP.Mod/Pure/Scheduling/Work.cs`): a body is an iterator that does a bounded step (one candidate, one
+batch of a search's expansions, one piece of an apply) and yields; nested bodies are chained by yielding their steps,
+and a body sets its `Answer` before it ends. `Work.Step` takes steps until the clock reaches the slice's end, at least
+one, so a slice overruns by one step at most. A handler answers through `WorkResult`
+(`Api/Shared/WorkResult.cs`): stepped in its own frame up to the budget, answered at once if it ends there, else
+deferred (`VerbOutcome.Pending`) and stepped in the slice lane. A started call's stop (cancel requested, deadline
+passed) is met at every yield (`WorkStop`, set by `Protocol/DeferredCalls.cs` around each slice); the slice lane then
+answers it. Job states step their preflight, apply and checks the same way in the job lane, with the game tick held
+throughout, so no tick sees a half-done change; only frames pass between steps.
 
 ## Order on a stream
 

@@ -11,7 +11,8 @@ namespace StationGodMCP.Protocol;
 /// The calls that go on over frames with work of their own (CallOutcome.Continued: a walk's build), the scheduler's
 /// slice lane: each frame, after the frame's calls, one of them in turn runs a slice in what is left of the budget,
 /// under its call's context, and is answered when its work is ready. A call keeps its in-flight place until then.
-/// Before each slice every call is checked: a cancel that came after it started answers it cancelled, its deadline
+/// Before each slice every call is checked, and its work meets the same stop at every yield inside the slice (WorkStop):
+/// a cancel that came after it started answers it cancelled, its deadline
 /// passing game_timeout, another world loading world_changed; its stream's end (stream_end, a whole connection's end)
 /// answers it cancelled and its connection's close drops it; its owner's session_end answers it cancelled too, and a
 /// call a shutdown answered (shutting_down, from the connection's thread) is dropped. A stopped call's work is dropped
@@ -43,7 +44,8 @@ internal sealed class DeferredCalls : ISliceLane
     internal void Add(QueuedCall call, IDeferredWork work, string? method)
     {
         call.MarkDeferred();
-        _entries.Add(new Entry(call, work, method, _world().Id));
+        _entries.Add(new Entry(call, work, method, _world().Id,
+            () => call.CancelRequested || _clock.NowMs >= call.DeadlineAtMs));
     }
 
     public void RunSlice(double untilMs)
@@ -65,6 +67,7 @@ internal sealed class DeferredCalls : ISliceLane
         try
         {
             using (CallContext.Enter(entry.Call.Context))
+            using (WorkStop.Enter(entry.Stop))
             {
                 if (entry.Work.Step(untilMs))
                 {
@@ -166,12 +169,13 @@ internal sealed class DeferredCalls : ISliceLane
 
     private sealed class Entry
     {
-        internal Entry(QueuedCall call, IDeferredWork work, string? method, string world)
+        internal Entry(QueuedCall call, IDeferredWork work, string? method, string world, Func<bool> stop)
         {
             Call = call;
             Work = work;
             Method = method;
             World = world;
+            Stop = stop;
         }
 
         internal QueuedCall Call { get; }
@@ -182,5 +186,8 @@ internal sealed class DeferredCalls : ISliceLane
 
         /// <summary>The world the call started in.</summary>
         internal string World { get; }
+
+        /// <summary>Cancel requested or deadline passed: the work stops at its next yield (WorkStop).</summary>
+        internal Func<bool> Stop { get; }
     }
 }

@@ -88,13 +88,16 @@ internal sealed class StationGodRequestDispatcher : ICallQueue, ICallRunner
 
     public void OwnerResumed(string owner, object source) => Subscriptions?.Resumed(owner, source);
 
-    /// <summary>One frame of the scheduler, on the main thread; its outcome goes to server info's counters.</summary>
-    internal void RunFrame(bool jobHoldsTick, ISampleLane? samples)
+    /// <summary>
+    /// One frame of the scheduler, on the main thread, the job lane's step (jobs) inside its budget; its outcome goes to
+    /// server info's counters.
+    /// </summary>
+    internal void RunFrame(bool jobHoldsTick, ISampleLane? samples, ISliceLane? jobs = null)
     {
         FrameOutcome outcome;
         using (Prof.Scope(ProfId.RunFrame))
         {
-            outcome = _requests.RunFrame(jobHoldsTick, samples, this);
+            outcome = _requests.RunFrame(jobHoldsTick, samples, this, jobs);
         }
 
         for (int expired = 0; expired < outcome.ExpiredCalls; expired++)

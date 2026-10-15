@@ -199,6 +199,27 @@ public sealed class DeferredCallsTests
     }
 
     [Fact]
+    public void ACancelArrivingInsideASliceStopsTheWorkAtItsNextYield()
+    {
+        LaneScheduler scheduler = Scheduler();
+        DeferredCall? call = null;
+        StoppableWork work = new StoppableWork(_clock, () => call!.RequestCancel());
+        call = new DeferredCall(_connection, Hub, work);
+        scheduler.Add(call);
+        scheduler.RunFrame(false, null, new NoRunner());
+        long firstFrame = work.Work.Steps;
+
+        scheduler.RunFrame(false, null, new NoRunner());
+        long stoppedAt = work.Work.Steps;
+        scheduler.RunFrame(false, null, new NoRunner());
+
+        Assert.Equal(StoppableWork.CancelAtStep, stoppedAt);
+        Assert.True(firstFrame < StoppableWork.CancelAtStep);
+        Assert.Equal("refused cancelled", call.Answer);
+        Assert.Equal(0, scheduler.Deferred.Count);
+    }
+
+    [Fact]
     public void WorkThatThrowsIsAnsweredAndTheFrameGoesOn()
     {
         LaneScheduler scheduler = Scheduler();
@@ -261,6 +282,42 @@ public sealed class DeferredCallsTests
         }
 
         public string Finish() => "ready";
+    }
+
+    /// <summary>Work on the Work form whose body asks for its call's cancel at one step, 0.1 ms a step.</summary>
+    private sealed class StoppableWork : IDeferredWork
+    {
+        internal const int CancelAtStep = 50;
+
+        private readonly FakeClock _clock;
+
+        internal StoppableWork(FakeClock clock, Action cancel)
+        {
+            _clock = clock;
+            Work = new Work<int>(answer => Body(cancel, answer));
+        }
+
+        internal Work<int> Work { get; }
+
+        public bool Step(double untilMs) => Work.Step(_clock, untilMs);
+
+        public string Finish() => "ready";
+
+        private IEnumerable<object?> Body(Action cancel, Answer<int> answer)
+        {
+            for (int step = 1; step <= 10_000; step++)
+            {
+                _clock.Advance(0.1);
+                if (step == CancelAtStep)
+                {
+                    cancel();
+                }
+
+                yield return null;
+            }
+
+            answer.Value = 1;
+        }
     }
 
     /// <summary>A call whose handler starts work that goes on over frames.</summary>

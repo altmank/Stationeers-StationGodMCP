@@ -14,7 +14,9 @@ namespace StationGodMCP.Pure.Scheduling;
 /// <item>the heavy lane runs at most one call by the same rounds: any call while the frame is under budget, and over
 /// budget only one that has waited HeavyMaxWaitFrames frames;</item>
 /// <item>the slice lane (calls deferred over frames, such as a walk's build) runs one slice in what is left of the
-/// budget, and over budget a single step once it has waited HeavyMaxWaitFrames frames.</item>
+/// budget, and over budget a single step once it has waited HeavyMaxWaitFrames frames;</item>
+/// <item>the job lane (the running building job's steps, HeldTickJobs) does the same with what is left after the slice,
+/// so StationGod's job steps are inside the frame's budget too.</item>
 /// </list>
 /// Rounds have two levels: each client (the connections opened with the same client key, or one connection opened
 /// without one) has one turn per round, and within a client its streams, a stream being one (connection, stream
@@ -48,6 +50,7 @@ internal sealed class FrameScheduler<TCall> where TCall : class
     private long _arrivals;
     private int _expired;
     private int _sliceWaitFrames;
+    private int _jobWaitFrames;
 
     internal FrameScheduler(SchedulerSettings settings, ICallRunner<TCall> runner, IMonotonicClock clock,
         CostPredictor predictor)
@@ -227,11 +230,13 @@ internal sealed class FrameScheduler<TCall> where TCall : class
     }
 
     /// <summary>
-    /// One frame: samples, then light calls, then at most one heavy call, then one slice of deferred work. While it
+    /// One frame: samples, then light calls, then at most one heavy call, then one slice of deferred work, then the
+    /// running job's step in what is left. While it
     /// runs, CurrentFrame holds the frame's start and budget, so a reply built inside it can tell whether the budget
     /// was reached and work sized to the frame knows where to stop.
     /// </summary>
-    internal FrameOutcome RunFrame(bool jobHoldsTick, ISampleLane? samples, ISliceLane? slices = null)
+    internal FrameOutcome RunFrame(bool jobHoldsTick, ISampleLane? samples, ISliceLane? slices = null,
+        ISliceLane? jobs = null)
     {
         Frame++;
         _expired = 0;
@@ -245,7 +250,8 @@ internal sealed class FrameScheduler<TCall> where TCall : class
             LetGoOfAnswered();
             int light = RunLight(startMs, shares.BudgetMs, out bool lightStopped);
             int heavy = RunHeavy(startMs, shares.BudgetMs, out bool heavyStopped);
-            RunSlice(slices, startMs + shares.BudgetMs);
+            RunSlice(slices, startMs + shares.BudgetMs, ref _sliceWaitFrames);
+            RunSlice(jobs, startMs + shares.BudgetMs, ref _jobWaitFrames);
             return new FrameOutcome(taken, light, heavy, _expired, _clock.NowMs - startMs, lightStopped || heavyStopped);
         }
         finally
@@ -271,22 +277,23 @@ internal sealed class FrameScheduler<TCall> where TCall : class
         return taken;
     }
 
-    // Deferred work gets what the frame's calls left of its budget; a frame with none left runs no slice, unless the work
-    // has waited HeavyMaxWaitFrames such frames, when it takes a single step, so it always moves.
-    private void RunSlice(ISliceLane? slices, double untilMs)
+    // Deferred work (and the job lane after it) gets what the frame's calls left of its budget; a frame with none left
+    // runs no slice, unless the work has waited HeavyMaxWaitFrames such frames, when it takes a single step, so it
+    // always moves. Each lane counts its own waiting frames.
+    private void RunSlice(ISliceLane? slices, double untilMs, ref int waitFrames)
     {
         if (slices == null || !slices.HasWork)
         {
-            _sliceWaitFrames = 0;
+            waitFrames = 0;
             return;
         }
 
-        if (_clock.NowMs >= untilMs && ++_sliceWaitFrames <= _settings.HeavyMaxWaitFrames)
+        if (_clock.NowMs >= untilMs && ++waitFrames <= _settings.HeavyMaxWaitFrames)
         {
             return;
         }
 
-        _sliceWaitFrames = 0;
+        waitFrames = 0;
         slices.RunSlice(untilMs);
     }
 

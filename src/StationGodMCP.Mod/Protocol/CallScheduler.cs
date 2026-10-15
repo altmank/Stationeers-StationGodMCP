@@ -44,8 +44,11 @@ internal interface ICallScheduler
     /// <summary>The connection ended: its waiting calls are dropped unrun and it takes no more.</summary>
     void Close(object source);
 
-    /// <summary>One frame: the subscription lane's samples, then light calls, then at most one heavy call.</summary>
-    FrameOutcome RunFrame(bool jobHoldsTick, ISampleLane? samples, ICallRunner runner);
+    /// <summary>
+    /// One frame: the subscription lane's samples, then light calls, then at most one heavy call, then deferred work,
+    /// then the job lane's step (jobs; null for none) in what is left of the budget.
+    /// </summary>
+    FrameOutcome RunFrame(bool jobHoldsTick, ISampleLane? samples, ICallRunner runner, ISliceLane? jobs = null);
 
     /// <summary>What each (owner, stream) has cost the main thread (stream_costs); main thread only.</summary>
     StreamCosts Costs { get; }
@@ -128,11 +131,11 @@ internal sealed class LaneScheduler : ICallScheduler, ICallRunner<QueuedCall>
     public void EndSession(string owner) =>
         _inbox.Enqueue(new Posted(PostKind.EndSession, null, NoSource, default, owner));
 
-    public FrameOutcome RunFrame(bool jobHoldsTick, ISampleLane? samples, ICallRunner runner)
+    public FrameOutcome RunFrame(bool jobHoldsTick, ISampleLane? samples, ICallRunner runner, ISliceLane? jobs = null)
     {
         _runner = runner;
         TakeInbox();
-        return _scheduler.RunFrame(jobHoldsTick, samples, Deferred);
+        return _scheduler.RunFrame(jobHoldsTick, samples, Deferred, jobs);
     }
 
     void ICallRunner<QueuedCall>.Run(QueuedCall call)

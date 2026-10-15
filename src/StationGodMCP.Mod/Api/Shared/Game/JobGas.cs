@@ -365,7 +365,7 @@ internal static class AtmosphericsThread
         return Work.Run(work, CurrentJob);
     }
 
-    /// <summary>Every frame (HeldTickJobs.Tick): whether overrun work is still running, or has just ended.</summary>
+    /// <summary>Every job-lane slice (HeldTickJobs.Lane): whether overrun work is still running, or has just ended.</summary>
     internal static WorkSettlement Settle() => Work.Settle();
 }
 

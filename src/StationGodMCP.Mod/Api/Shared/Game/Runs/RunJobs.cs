@@ -61,7 +61,7 @@ internal sealed class RunWaiting : ActiveRun
         _startedAt = startedAt;
     }
 
-    internal override JobStep Step()
+    internal override JobStep Step(double untilMs)
     {
         if (GameManager.GameState != GameState.Running)
         {
@@ -139,7 +139,7 @@ internal sealed class RunAwaitingRemovals : ActiveRun
         new RunJobView(Id, Request.Tool, "stopped", Preflight,
             new RunJobResultView(_finalCheck, _outcome.Log, null, error));
 
-    internal override JobStep Step()
+    internal override JobStep Step(double untilMs)
     {
         _frames++;
         List<SmallGrid> removed = new List<SmallGrid>();
@@ -196,7 +196,7 @@ internal sealed class RunAwaitingCheck : ActiveRun
         new RunJobView(Id, Request.Tool, "applied_unchecked", Preflight,
             new RunJobResultView(_finalCheck, _outcome.Log, null, error));
 
-    internal override JobStep Step()
+    internal override JobStep Step(double untilMs)
     {
         _frames++;
         if (RunGone.AnyRemain(_outcome.Replaced) && _frames < MaximumFrames)

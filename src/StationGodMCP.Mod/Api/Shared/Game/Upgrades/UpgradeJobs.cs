@@ -64,7 +64,7 @@ internal sealed class WaitingForTick : ActiveUpgrade
         _startedAt = startedAt;
     }
 
-    internal override JobStep Step()
+    internal override JobStep Step(double untilMs)
     {
         if (GameManager.GameState != GameState.Running)
         {
@@ -166,7 +166,7 @@ internal sealed class AwaitingCheck : ActiveUpgrade
         new UpgradeJobView(Id, Request.Goal.Tool, "applied_unchecked", Preflight,
             new UpgradeJobResult(_outcome.FinalCheck, _outcome.Log, null, error));
 
-    internal override JobStep Step()
+    internal override JobStep Step(double untilMs)
     {
         _frames++;
         if (OldPiecesRemain() && _frames < MaximumFrames)

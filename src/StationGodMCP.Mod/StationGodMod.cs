@@ -233,11 +233,7 @@ public sealed class StationGodMod : ModBehaviour
                 StartTcpServer(_remote);
             }
 
-            _dispatcher.RunFrame(HeldTickJobs.HoldsTick, _subscriptions);
-            using (Prof.Scope(ProfId.HeldTickJobs))
-            {
-                HeldTickJobs.Tick();
-            }
+            _dispatcher.RunFrame(HeldTickJobs.HoldsTick, _subscriptions, HeldTickJobs.Lane);
 
             using (Prof.Scope(ProfId.Previews))
             {

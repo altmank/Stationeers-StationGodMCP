@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **Long work is spread over frames.** Scans, plans, route and flight searches, ore search, apply loops and job
+  steps run in bounded steps inside StationGod's frame budget (job steps included); a call's own wall time may grow,
+  the game no longer freezes for it. A cancel or a deadline stops started work at its next step.
 - **The mod answers verbs.** Every call is a verb, and most take a `what` naming the kind of thing:
   `{"method": "<verb>", "params": {"what", ...options}}`. The tool surface is the 15 verbs - `find`, `inspect`,
   `survey`, `read`, `write`, `plan`, `check`, `build`, `swap`, `remove`, `move`, `trade`, `show`, `undo`, `server` -

@@ -10,6 +10,7 @@ using StationGodMCP.Pure;
 using StationGodMCP.Pure.Jobs;
 using StationGodMCP.Pure.Profiling;
 using StationGodMCP.Pure.Protocol;
+using StationGodMCP.Pure.Scheduling;
 using UnityEngine;
 
 namespace StationGodMCP.Api.Shared.Game;
@@ -253,8 +254,17 @@ internal static class HeldTickJobs
         return tool;
     }
 
-    /// <summary>Moves the running job on, or starts the next queued one; called every frame on the host.</summary>
-    internal static void Tick()
+    /// <summary>
+    /// The frame scheduler's job lane (FrameScheduler.RunFrame): the running job's steps in what the frame's calls left
+    /// of its budget, so job steps are inside it.
+    /// </summary>
+    internal static ISliceLane Lane { get; } = new JobLane();
+
+    /// <summary>
+    /// Moves the running job on until the clock reaches untilMs (a job state takes bounded steps of its work and goes
+    /// on next frame), or starts the next queued one; called by the job lane on the host.
+    /// </summary>
+    private static void Tick(double untilMs)
     {
         if (!AtmosphereWorkSettled())
         {
@@ -280,7 +290,7 @@ internal static class HeldTickJobs
             using (Prof.Scope(ProfId.JobStep))
             using (CallContext.Enter(_activeContext))
             {
-                step = _active.Step();
+                step = _active.Step(untilMs);
             }
         }
         catch (Exception exception)
@@ -551,9 +561,27 @@ internal static class HeldTickJobs
     internal static bool IsSaving() => (bool)GameMembers.SaveIsSaving.Invoke(null);
 
     internal static bool TickTimedOut(float startedAt) => Time.realtimeSinceStartup - startedAt > TickWaitSeconds;
+
+    // Work while a job runs or waits, or overrun atmosphere work is still to be settled (a release may be owed).
+    private sealed class JobLane : ISliceLane
+    {
+        public bool HasWork => _active != null || Waiting.Count > 0 || AtmosphericsThread.Busy;
+
+        public void RunSlice(double untilMs)
+        {
+            using (Prof.Scope(ProfId.HeldTickJobs))
+            {
+                Tick(untilMs);
+            }
+        }
+    }
 }
 
-/// <summary>A running job in one of its states: its id, its view while running, and what its next step is.</summary>
+/// <summary>
+/// A running job in one of its states: its id, its view while running, and what its next step is. A state with long work
+/// (a preflight's plan, an apply, a gas reading) does it as Work, stepped until untilMs, and answers Continue with
+/// itself until the work has ended.
+/// </summary>
 internal abstract class HeldTickJob
 {
     protected HeldTickJob(string id)
@@ -563,7 +591,7 @@ internal abstract class HeldTickJob
 
     internal string Id { get; }
 
-    internal abstract JobStep Step();
+    internal abstract JobStep Step(double untilMs);
 
     /// <summary>The job as polled while it runs.</summary>
     internal abstract object View();

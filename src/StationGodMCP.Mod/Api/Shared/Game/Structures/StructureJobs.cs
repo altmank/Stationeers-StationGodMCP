@@ -65,7 +65,7 @@ internal sealed class StructureWaitingForTick : ActiveStructureSwap
         _startedAt = startedAt;
     }
 
-    internal override JobStep Step()
+    internal override JobStep Step(double untilMs)
     {
         if (GameManager.GameState != GameState.Running)
         {
@@ -173,7 +173,7 @@ internal sealed class StructureAwaitingOldGone : ActiveStructureSwap
     internal override object Failed(ErrorView error) =>
         _outcome.View(Id, Request.Family.Tool, Preflight, "applied_unchecked", StructureChecks.None, error);
 
-    internal override JobStep Step()
+    internal override JobStep Step(double untilMs)
     {
         _frames++;
         if (OldPiecesRemain() && _frames < MaximumFrames)
@@ -232,7 +232,7 @@ internal sealed class StructureAwaitingRooms : ActiveStructureSwap
     internal override object Failed(ErrorView error) =>
         _outcome.View(Id, Request.Family.Tool, Preflight, "applied_unchecked", new StructureChecks(_held, null), error);
 
-    internal override JobStep Step()
+    internal override JobStep Step(double untilMs)
     {
         bool ticked = unchecked(GameManager.GameTickCount - _tickAtRelease) >= TicksToRun;
         bool settled = ticked && RoomEvaluator.Instance != null && RoomEvaluator.Instance.PendingCount == 0;
@@ -271,7 +271,7 @@ internal sealed class StructureCheckingRooms : ActiveStructureSwap
     internal override object Failed(ErrorView error) =>
         _outcome.View(Id, Request.Family.Tool, Preflight, "applied_unchecked", new StructureChecks(_held, null), error);
 
-    internal override JobStep Step()
+    internal override JobStep Step(double untilMs)
     {
         if (!GameManager.GameTickPaused && !HeldTickJobs.TickTimedOut(_heldAt) &&
             GameManager.GameState == GameState.Running)
