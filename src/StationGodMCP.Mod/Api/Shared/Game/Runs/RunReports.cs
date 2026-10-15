@@ -7,6 +7,7 @@ using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using UnityEngine;
+using StationGodMCP.Pure.Profiling;
 
 namespace StationGodMCP.Api.Shared.Game.Runs;
 
@@ -18,6 +19,7 @@ internal static class RunReports
     internal const string Refused = "refused";
 
     /// <summary>The plan's report; limit, when given, is how many cells it lists instead of the request's.</summary>
+    [Profiled]
     internal static RunReportView Of(RunPlan plan, string status, string? jobId, int? limit = null)
     {
         RunRequest request = plan.Request;

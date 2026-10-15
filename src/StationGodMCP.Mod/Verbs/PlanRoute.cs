@@ -26,7 +26,12 @@ internal static class PlanRoute
             return new VerbOutcome.Refused(OptionProblem.Refusal(label, problems));
         }
 
-        PlannedRoute planned = RoutePlanning.Plan(order, label);
+        return WorkResult<PlannedRoute>.Of(answer => RoutePlanning.Planning(order, label, answer),
+            planned => Answered(order, planned));
+    }
+
+    private static VerbOutcome Answered(RouteOrder order, PlannedRoute planned)
+    {
         JObject? report = null;
         if (planned.Report is { } view)
         {

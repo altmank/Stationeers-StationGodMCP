@@ -7,6 +7,7 @@ using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Pipes;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Scheduling;
 
 namespace StationGodMCP.Api.Shared.Game.Runs;
 
@@ -62,7 +63,14 @@ internal sealed class RunForecast
 /// <summary>Builds the RunForecast of a plan whose cells and removals are known.</summary>
 internal static class RunForecastBuilder
 {
-    internal static RunForecast Build(RunPlan plan)
+    // A modelled network's members taken into the neighbourhood per step.
+    private const int MembersPerStep = 256;
+
+    /// <summary>
+    /// The forecast as a Work body: the neighbourhood, the modelled networks' members, the things' models, the links
+    /// and the ports a bounded piece per step; the graph solved in one.
+    /// </summary>
+    internal static IEnumerable<object?> Building(RunPlan plan, Answer<RunForecast> answer)
     {
         RunKind kind = plan.Request.Kind;
         UpgradeFamily family = kind.Family;
@@ -93,13 +101,26 @@ internal static class RunForecastBuilder
             }
         }
 
-        Dictionary<long, SmallGrid> things = LinkSurvey.Neighbourhood(reach);
+        yield return null;
+        Dictionary<long, SmallGrid> things = new Dictionary<long, SmallGrid>();
+        foreach (object? step in LinkSurvey.NeighbourhoodSteps(reach, things))
+        {
+            yield return step;
+        }
+
         foreach (long network in modelled)
         {
+            int taken = 0;
             foreach (SmallGrid member in family.NetworkMembers(new ThingId(network)))
             {
                 things[member.ReferenceId] = member;
+                if (++taken % MembersPerStep == 0)
+                {
+                    yield return null;
+                }
             }
+
+            yield return null;
         }
 
         NetworkEdit edit = new NetworkEdit();
@@ -126,6 +147,8 @@ internal static class RunForecastBuilder
                     ? change
                     : live;
             }
+
+            yield return null;
         }
 
         foreach (KeyValuePair<long, PieceModel> entry in planned)
@@ -134,9 +157,20 @@ internal static class RunForecastBuilder
         }
 
         // The game's links now around changed and removed pieces, and the model's reading of them.
-        forecastParts.GameBefore = LinkSurvey.GameLinks(things, focusBefore, forecastParts.Unreadable);
-        forecastParts.ModelCheck = Connectivity.Compare(forecastParts.GameBefore,
-            Connectivity.LinksTouching(liveModels, focusBefore));
+        HashSet<Link> gameBefore = new HashSet<Link>();
+        foreach (object? step in LinkSurvey.GameLinksSteps(things, focusBefore, forecastParts.Unreadable, gameBefore))
+        {
+            yield return step;
+        }
+
+        HashSet<Link> liveLinks = new HashSet<Link>();
+        foreach (object? step in Connectivity.LinksTouchingSteps(liveModels, focusBefore, liveLinks))
+        {
+            yield return step;
+        }
+
+        forecastParts.GameBefore = gameBefore;
+        forecastParts.ModelCheck = Connectivity.Compare(gameBefore, liveLinks);
 
         // Graph nodes: pieces of modelled networks, new pieces, and whole networks of everything else.
         foreach (SmallGrid thing in things.Values)
@@ -147,6 +181,7 @@ internal static class RunForecastBuilder
             }
 
             NodeFor(thing, family, modelled, edit, context, forecastParts, planned.ContainsKey(thing.ReferenceId));
+            yield return null;
         }
 
         foreach (PlannedCell cell in plan.Cells)
@@ -188,8 +223,20 @@ internal static class RunForecastBuilder
         }
 
         List<PieceModel> afterModels = new List<PieceModel>(after.Values);
-        HashSet<Link> links = Connectivity.LinksTouching(afterModels, focusAfter);
-        forecastParts.After = Connectivity.LinksTouching(afterModels, new HashSet<long>(planned.Keys));
+        HashSet<Link> links = new HashSet<Link>();
+        foreach (object? step in Connectivity.LinksTouchingSteps(afterModels, focusAfter, links))
+        {
+            yield return step;
+        }
+
+        HashSet<Link> afterLinks = new HashSet<Link>();
+        foreach (object? step in Connectivity.LinksTouchingSteps(afterModels, new HashSet<long>(planned.Keys),
+                     afterLinks))
+        {
+            yield return step;
+        }
+
+        forecastParts.After = afterLinks;
         foreach (Link link in links)
         {
             if (forecastParts.NodeOf.TryGetValue(link.From, out long from) &&
@@ -201,7 +248,12 @@ internal static class RunForecastBuilder
 
         forecastParts.Loops = RunLoops.Closing(links, forecastParts.NodeOf, forecastParts.GameBefore,
             planned.Keys);
-        AddPorts(plan, kind, things, after, edit, forecastParts, removed);
+        yield return null;
+        foreach (object? step in AddPorts(plan, kind, things, after, edit, forecastParts, removed))
+        {
+            yield return step;
+        }
+
         Forecast result = NetworkForecaster.Of(edit, out Dictionary<long, int> componentOf);
         RunForecast forecast = new RunForecast(result, componentOf, context)
         {
@@ -232,12 +284,14 @@ internal static class RunForecastBuilder
             context.Devices[port.Key.ReferenceId] = port.Key;
         }
 
+        yield return null;
         foreach (ForecastNetwork network in result.Networks)
         {
             forecast.Guards[network.Index] = kind.GuardOf(network, context);
+            yield return null;
         }
 
-        return forecast;
+        answer.Value = forecast;
     }
 
     // A member of a modelled network is its own node; any other member stands for its whole network.
@@ -273,7 +327,8 @@ internal static class RunForecastBuilder
     // Every port of the run's type of each device next to the edit or on a network the edit touches (modelled or
     // joined whole, so networks_after lists every device a merged network holds): the network it is on now (the
     // game's IsConnected), and the node joined to it after (the model in its cell with an end facing it).
-    private static void AddPorts(RunPlan plan, RunKind kind, Dictionary<long, SmallGrid> things,
+    // A network's devices, then a device's ports, per step.
+    private static IEnumerable<object?> AddPorts(RunPlan plan, RunKind kind, Dictionary<long, SmallGrid> things,
         Dictionary<long, PieceModel> after, NetworkEdit edit, RunForecast parts, HashSet<long> removed)
     {
         Dictionary<long, Device> devices = new Dictionary<long, Device>();
@@ -291,6 +346,8 @@ internal static class RunForecastBuilder
             {
                 devices[device.ReferenceId] = device;
             }
+
+            yield return null;
         }
 
         Dictionary<GridCell, PieceModel> byCell = new Dictionary<GridCell, PieceModel>();
@@ -337,6 +394,8 @@ internal static class RunForecastBuilder
                 edit.Ports.Add(port);
                 parts.Ports.Add(new KeyValuePair<Device, ForecastPort>(device, port));
             }
+
+            yield return null;
         }
     }
 

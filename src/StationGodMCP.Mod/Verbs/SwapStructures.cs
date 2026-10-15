@@ -97,9 +97,9 @@ internal static class SwapStructures
             new StructureSwapOptions(call.Materials.RefundTo, call.SkipUnmatched,
                 call.Report.Rows ?? StructureSwapArguments.DefaultRows, call.Fields.Includes("notes")), more));
         string mark = spec.Write!.UndoMark;
-        return WriteCheck<StructureSwapPlan>.Run(() => StructureSwapPlanner.Plan(request))
-            .Outcome(call.Report, plan => Act(plan, request, unread, named, mark, call),
-                plan => Described(plan, unread, named, mark));
+        return WriteCheck<StructureSwapPlan>.Planned(answer => StructureSwapPlanner.Planning(request, answer),
+            call.Report, plan => Act(plan, request, unread, named, mark, call),
+            plan => Described(plan, unread, named, mark));
     }
 
     private static VerbOutcome Act(StructureSwapPlan plan, StructureSwapRequest request, List<ReportProblem> unread,

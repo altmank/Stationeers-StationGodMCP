@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using StationGodMCP.Pure.Scheduling;
 
 namespace StationGodMCP.Pure;
 
@@ -182,6 +183,9 @@ internal sealed class RouteResult
 /// </summary>
 internal static class RoutePlanner
 {
+    /// <summary>The expansions Searching takes per step.</summary>
+    internal const int ExpansionsPerStep = 256;
+
     internal static RouteResult Find(RouteEnd start, RouteEnd goal, Func<GridCell, CellCost> costOf, RouteRules rules,
         AirBound? air = null) =>
         FindAny(start, new[] { goal }, costOf, rules, air);
@@ -194,6 +198,18 @@ internal static class RoutePlanner
     internal static RouteResult FindAny(RouteEnd start, IReadOnlyList<RouteEnd> goals, Func<GridCell, CellCost> costOf,
         RouteRules rules, AirBound? air = null)
     {
+        Answer<RouteResult> answer = new Answer<RouteResult>();
+        foreach (object? _ in Searching(start, goals, costOf, rules, air, answer))
+        {
+        }
+
+        return answer.Value;
+    }
+
+    /// <summary>FindAny spread over frames (a Work body): ExpansionsPerStep expansions per step.</summary>
+    internal static IEnumerable<object?> Searching(RouteEnd start, IReadOnlyList<RouteEnd> goals,
+        Func<GridCell, CellCost> costOf, RouteRules rules, AirBound? air, Answer<RouteResult> answer)
+    {
         Dictionary<GridCell, RouteEnd> goalAt = new Dictionary<GridCell, RouteEnd>();
         foreach (RouteEnd end in goals)
         {
@@ -202,7 +218,8 @@ internal static class RoutePlanner
 
         if (goalAt.ContainsKey(start.Cell))
         {
-            return RouteResult.Found(new List<GridCell> { start.Cell }, 0.0, 0);
+            answer.Value = RouteResult.Found(new List<GridCell> { start.Cell }, 0.0, 0);
+            yield break;
         }
 
         Func<GridCell, double> distance = HeuristicFor(goals);
@@ -236,12 +253,19 @@ internal static class RoutePlanner
 
             if (goalAt.ContainsKey(state.Cell))
             {
-                return RouteResult.Found(Trace(cameFrom, state), spent, expanded);
+                answer.Value = RouteResult.Found(Trace(cameFrom, state), spent, expanded);
+                yield break;
             }
 
             if (++expanded > rules.MaxExpanded)
             {
-                return RouteResult.Failed("search_limit", expanded);
+                answer.Value = RouteResult.Failed("search_limit", expanded);
+                yield break;
+            }
+
+            if (expanded % ExpansionsPerStep == 0)
+            {
+                yield return null;
             }
 
             foreach (GridStep step in GridStep.All)
@@ -297,7 +321,7 @@ internal static class RoutePlanner
             }
         }
 
-        return RouteResult.Failed(tooLong ? "too_long" : "no_route", expanded);
+        answer.Value = RouteResult.Failed(tooLong ? "too_long" : "no_route", expanded);
     }
 
     private static double EnterCost(GridCell cell, Dictionary<GridCell, CellCost> costs,

@@ -21,6 +21,8 @@ using StationGodMCP.Pure;
 using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Routing;
 using UnityEngine;
+using StationGodMCP.Pure.Profiling;
+using StationGodMCP.Pure.Scheduling;
 
 namespace StationGodMCP.Api.Shared.Game.Build;
 
@@ -128,7 +130,11 @@ internal static class RemovePlanner
 {
     private static readonly RunKind[] Kinds = { new CableRunKind(), new PipeRunKind(), new ChuteRunKind() };
 
-    internal static RemovePlan Plan(RemoveRequest arguments)
+    /// <summary>
+    /// The preflight as a Work body (the report's and the job's), spread over frames: a piece read per step, each
+    /// kind's run plan in steps of its own, the gas model, then a piece guarded per step.
+    /// </summary>
+    internal static IEnumerable<object?> Planning(RemoveRequest arguments, Answer<RemovePlan> answer)
     {
         if (NetworkManager.IsClient || !GameManager.RunSimulation)
         {
@@ -141,6 +147,7 @@ internal static class RemovePlanner
         }
 
         RemovePlan plan = new RemovePlan(arguments);
+        answer.Value = plan;
         Source(plan);
         HashSet<long> seen = new HashSet<long>();
         for (int index = 0; index < arguments.Ids.Count; index++)
@@ -157,12 +164,20 @@ internal static class RemovePlanner
                 RunKind? kind = KindOf(piece);
                 plan.Takedowns.Add(new PlannedTakedown(index, piece, kind, RefundOf(piece)));
             }
+
+            yield return null;
         }
 
         Receivers(plan);
+        yield return null;
+        List<NetworkRun> runs = new List<NetworkRun>();
+        foreach (object? step in NetworkRuns(plan, runs))
+        {
+            yield return step;
+        }
 
-        List<NetworkRun> runs = NetworkRuns(plan);
         Dictionary<long, NetworkTakedown> gas = GasModel(plan);
+        yield return null;
         foreach (NetworkTakedown taken in gas.Values)
         {
             if (taken.Outcome.LostMol > 0.0)
@@ -176,6 +191,7 @@ internal static class RemovePlanner
         foreach (PlannedTakedown takedown in plan.Takedowns)
         {
             Guard(plan, takedown, seen, breached, gas, grid);
+            yield return null;
         }
 
         Squeeze(plan, gas);
@@ -188,7 +204,6 @@ internal static class RemovePlanner
         }
 
         NetworkPieces(plan);
-        return plan;
     }
 
     private static Structure? Piece(RemovePlan plan, ThingId id, int index)
@@ -226,6 +241,7 @@ internal static class RemovePlanner
         return null;
     }
 
+    [Profiled]
     private static void Guard(RemovePlan plan, PlannedTakedown takedown, HashSet<long> removed,
         BreachedFaces breached, Dictionary<long, NetworkTakedown> gas, GridFacts grid)
     {
@@ -350,6 +366,7 @@ internal static class RemovePlanner
     // leave it first (KeptWhole). A network the request takes only in-line tanks or passive vents from, and leaves in
     // one piece, is kept whole too: they leave it before they go, so it keeps its id, as with pipe pieces. Its findings
     // go on its first member in the request that is not a pipe piece, else on its first pipe piece.
+    [Profiled]
     private static Dictionary<long, NetworkTakedown> GasModel(RemovePlan plan)
     {
         Dictionary<long, NetworkTakedown> model = new Dictionary<long, NetworkTakedown>();
@@ -383,6 +400,7 @@ internal static class RemovePlanner
         return model;
     }
 
+    [Profiled]
     private static List<TakedownMember> Members(PipeNetwork network, out Dictionary<long, SmallGrid> members)
     {
         members = new Dictionary<long, SmallGrid>();
@@ -894,7 +912,7 @@ internal static class RemovePlanner
     // checks see the network the whole job leaves. A pipe network the job neither splits nor empties is kept whole
     // (KeptWhole: RunBuilder.Remove and RemoveOne take each piece out of it first). The gas of every pipe network is
     // the gas model's (GasModel), so a pipe plan's would_burst and holds_contents are not reported again.
-    private static List<NetworkRun> NetworkRuns(RemovePlan plan)
+    private static IEnumerable<object?> NetworkRuns(RemovePlan plan, List<NetworkRun> runs)
     {
         HashSet<long> withMembers = new HashSet<long>();
         foreach (PlannedTakedown takedown in plan.Takedowns)
@@ -905,7 +923,6 @@ internal static class RemovePlanner
             }
         }
 
-        List<NetworkRun> runs = new List<NetworkRun>();
         foreach (RunKind kind in Kinds)
         {
             List<PlannedTakedown> pieces = plan.Takedowns.FindAll(takedown => takedown.Kind == kind);
@@ -918,8 +935,15 @@ internal static class RemovePlanner
                 .FindAll(takedown => takedown.Kind == null && takedown.Piece is Pipe { PipeNetwork: { } network } &&
                                      sharedNetworks.Contains(network.ReferenceId))
                 .ConvertAll(takedown => new ThingId(takedown.Piece.ReferenceId));
-            AddRun(plan, runs, kind, pieces, new List<ThingId>());
-            AddRun(plan, runs, kind, shared, alongside);
+            foreach (object? step in AddRun(plan, runs, kind, pieces, new List<ThingId>()))
+            {
+                yield return step;
+            }
+
+            foreach (object? step in AddRun(plan, runs, kind, shared, alongside))
+            {
+                yield return step;
+            }
         }
 
         foreach (NetworkRun run in runs)
@@ -938,29 +962,34 @@ internal static class RemovePlanner
                 }
             }
         }
-
-        return runs;
     }
 
-    private static void AddRun(RemovePlan plan, List<NetworkRun> runs, RunKind kind, List<PlannedTakedown> pieces,
-        List<ThingId> alongside)
+    private static IEnumerable<object?> AddRun(RemovePlan plan, List<NetworkRun> runs, RunKind kind,
+        List<PlannedTakedown> pieces, List<ThingId> alongside)
     {
         if (pieces.Count == 0)
         {
-            return;
+            yield break;
         }
 
         List<ThingId> ids = pieces.ConvertAll(takedown => new ThingId(takedown.Piece.ReferenceId));
         RunRequest request = new RunRequest(kind, "remove structure", null,
             new RunRemoval(ids, new List<GridCell>(), null, alongside),
             new RunOptions(EditAllowance.Nothing, null, RefundRoute.Nothing, RunArgs.DefaultListLimit));
-        RunPlan runPlan = RunPlanner.Plan(request);
+        Answer<RunPlan> planned = new Answer<RunPlan>();
+        foreach (object? step in RunPlanner.Planning(request, true, planned))
+        {
+            yield return step;
+        }
+
+        RunPlan runPlan = planned.Value;
         plan.NetworkPlans.Add(runPlan);
         runs.Add(new NetworkRun(kind, pieces, runPlan, kind.Family is PipeFamily));
     }
 
     // A run plan's findings: its would_split warns here, contents refusals are lifted by allow_contents, anything else
     // refuses (cannot_remove only where no guard above already refused the piece).
+    [Profiled]
     private static void NetworkGuard(RemovePlan plan, NetworkRun run)
     {
         RunKind kind = run.Kind;
@@ -1086,6 +1115,7 @@ internal static class RemovePlanner
     }
 
     // refund_to resolved: the containers it names checked, a target it cannot use now skipped.
+    [Profiled]
     private static void Receivers(RemovePlan plan)
     {
         List<GuardFinding> findings = new List<GuardFinding>();

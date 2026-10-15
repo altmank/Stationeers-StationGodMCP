@@ -12,6 +12,8 @@ using Assets.Scripts.Objects.Pipes;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Protocol;
+using StationGodMCP.Pure.Profiling;
+using StationGodMCP.Pure.Scheduling;
 
 namespace StationGodMCP.Api.Shared.Game.Upgrades;
 
@@ -331,7 +333,11 @@ internal static class UpgradePlanner
 {
     internal const int MaximumPieces = ReplyDefaults.ReportListMaximum;
 
-    internal static UpgradePlan Plan(UpgradeRequest request)
+    /// <summary>
+    /// The preflight spread over frames (a Work body; the report's and the job's): the members (a box a row per step),
+    /// a member classified per step, the link survey and the network records in steps of their own.
+    /// </summary>
+    internal static IEnumerable<object?> Planning(UpgradeRequest request, Answer<UpgradePlan> answer)
     {
         if (NetworkManager.IsClient || !GameManager.RunSimulation)
         {
@@ -339,15 +345,33 @@ internal static class UpgradePlanner
         }
 
         UpgradePlan plan = new UpgradePlan(request);
-        List<SmallGrid> members = Members(request, plan);
+        List<SmallGrid> members;
+        if (request.Selection is PieceSelection.Box box)
+        {
+            members = new List<SmallGrid>();
+            foreach (object? step in InBoxSteps(request.Family, box, members))
+            {
+                yield return step;
+            }
+
+            members = Capped(members);
+        }
+        else
+        {
+            members = Members(request, plan);
+        }
+
+        yield return null;
         plan.Total = members.Count;
         PlanContext context = new PlanContext(plan, WorldModel.Prefabs.KitsOf(request.Family), new TwinFinder());
         foreach (SmallGrid member in members)
         {
             request.Goal.Classify(context, member);
+            yield return null;
         }
 
         request.Goal.Finish(context, members);
+        yield return null;
 
         if (plan.Unmatched.Count > 0 && !request.SkipUnmatched)
         {
@@ -357,20 +381,31 @@ internal static class UpgradePlanner
         }
 
         CountCoils(plan, request);
+        yield return null;
         if (plan.Swaps.Count > 0)
         {
-            plan.Links = LinkSurvey.Take(plan.Swaps, request.Family);
+            Answer<LinkSurvey> links = new Answer<LinkSurvey>();
+            foreach (object? step in LinkSurvey.Taking(plan.Swaps, request.Family, links))
+            {
+                yield return step;
+            }
+
+            plan.Links = links.Value;
             plan.Links.AddProblems(plan);
-            NetworkRecord.RecordAll(plan);
+            foreach (object? step in NetworkRecord.Recording(plan))
+            {
+                yield return step;
+            }
         }
         else
         {
             plan.Problem("nothing_to_swap", request.Goal.NothingToSwap);
         }
 
-        return plan;
+        answer.Value = plan;
     }
 
+    [Profiled]
     private static List<SmallGrid> Members(UpgradeRequest request, UpgradePlan plan)
     {
         UpgradeFamily family = request.Family;
@@ -463,6 +498,7 @@ internal static class UpgradePlanner
         return pieces;
     }
 
+    [Profiled]
     private static void CountCoils(UpgradePlan plan, UpgradeRequest request)
     {
         Dictionary<int, int> needed = new Dictionary<int, int>();

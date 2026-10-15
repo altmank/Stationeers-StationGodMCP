@@ -8,14 +8,16 @@ using Rooms;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Profiling;
+using StationGodMCP.Pure.Scheduling;
 using UnityEngine;
 
 namespace StationGodMCP.Api.Shared.Game.Structures;
 
 /// <summary>
 /// Confirmed swap wall and swap frame runs, on the shared runner (HeldTickJobs), so they never overlap an
-/// upgrade or clean job. The tick is held; once it has stopped, the whole preflight runs again and, only if it finds
-/// nothing, every piece is swapped in that frame (StructureSwapper). Once Unity has destroyed the old pieces the
+/// upgrade or clean job. The tick is held; once it has stopped, the whole preflight runs again over as many frames as
+/// it needs and, only if it finds nothing, the pieces are swapped one per step (StructureSwapper), the tick held
+/// throughout. Once Unity has destroyed the old pieces the
 /// result is checked with the tick still held, then the tick is let go; once the game has run its ticks and emptied
 /// its room queue, the tick is held once more for a consistent look at the rooms, and let go for good.
 /// </summary>
@@ -53,7 +55,7 @@ internal abstract class ActiveStructureSwap : HeldTickJob
             new StructureSwapJobResult(finalCheck, new StructureSwapLogView(), StructureChecks.None, error));
 }
 
-/// <summary>Waiting for the game tick to stop; then the final check and the swap, in one frame.</summary>
+/// <summary>Waiting for the game tick to stop; then the final check (StructurePreflighting).</summary>
 internal sealed class StructureWaitingForTick : ActiveStructureSwap
 {
     private readonly float _startedAt;
@@ -87,21 +89,52 @@ internal sealed class StructureWaitingForTick : ActiveStructureSwap
                 : JobStep.Next(this);
         }
 
-        return SwapNow();
+        return new StructurePreflighting(this).Step(untilMs);
+    }
+}
+
+/// <summary>
+/// The tick has stopped: the whole preflight again (StructureSwapPlanner.Planning) over as many frames as it needs,
+/// the tick held; a save or the world stopping meanwhile refuses the run, nothing changed. A plan with problems is
+/// refused.
+/// </summary>
+internal sealed class StructurePreflighting : ActiveStructureSwap
+{
+    private readonly Work<StructureSwapPlan> _plan;
+
+    internal StructurePreflighting(ActiveStructureSwap waiting)
+        : base(waiting.Id, waiting.Request, waiting.Preflight)
+    {
+        _plan = new Work<StructureSwapPlan>(answer => StructureSwapPlanner.Planning(Request, answer));
     }
 
-    private JobStep SwapNow()
+    internal override JobStep Step(double untilMs)
     {
-        StructureSwapPlan plan;
+        if (GameManager.GameState != GameState.Running)
+        {
+            return JobStep.Finish(Refused(null, new ErrorView("game_not_running",
+                "The world stopped running before the swap; nothing was changed.")), false);
+        }
+
+        if (HeldTickJobs.IsSaving())
+        {
+            return JobStep.Finish(Refused(null, new ErrorView("save_started",
+                "A save started during the final check; nothing was changed. Run it again.")), false);
+        }
+
         try
         {
-            plan = StructureSwapPlanner.Plan(Request);
+            if (!_plan.Step(StopwatchClock.Instance, untilMs))
+            {
+                return JobStep.Next(this);
+            }
         }
         catch (ApiException refusal)
         {
             return JobStep.Finish(Refused(null, new ErrorView(refusal.Code, refusal.Message)), true);
         }
 
+        StructureSwapPlan plan = _plan.Value;
         if (!plan.Ready)
         {
             StructureSwapReportView refused = StructureReports.Of(plan, StructureReports.Refused, Id);
@@ -110,16 +143,56 @@ internal sealed class StructureWaitingForTick : ActiveStructureSwap
                 "changed.")), true);
         }
 
-        StructureSwapReportView finalCheck = StructureReports.Of(plan, StructureReports.Scheduled, Id);
-        Dictionary<long, Structure> replacements = new Dictionary<long, Structure>();
-        StructureSwapLogView log;
+        return JobStep.Next(new StructureSwapping(this, plan, StructureReports.Of(plan, StructureReports.Scheduled,
+            Id)));
+    }
+}
+
+/// <summary>Checked: the pieces swapped one per step (StructureSwapper.Steps), the tick held throughout.</summary>
+internal sealed class StructureSwapping : ActiveStructureSwap
+{
+    private readonly StructureSwapPlan _plan;
+    private readonly StructureSwapReportView _finalCheck;
+    private readonly StructureSwapLogView _log = new StructureSwapLogView();
+    private readonly Dictionary<long, Structure> _replacements = new Dictionary<long, Structure>();
+    private readonly Work<bool> _swap;
+
+    internal StructureSwapping(ActiveStructureSwap checkedRun, StructureSwapPlan plan,
+        StructureSwapReportView finalCheck)
+        : base(checkedRun.Id, checkedRun.Request, checkedRun.Preflight)
+    {
+        _plan = plan;
+        _finalCheck = finalCheck;
+        _swap = new Work<bool>(answer => Swapped(answer));
+    }
+
+    // Swapping had begun: what it did so far stands.
+    internal override object Failed(ErrorView error) =>
+        new StructureSwapJobView(Id, Request.Family.Tool, "stopped", Preflight,
+            new StructureSwapJobResult(_finalCheck, _log, StructureChecks.None, error));
+
+    internal override JobStep Step(double untilMs)
+    {
+        bool done;
         using (Prof.Scope(ProfId.JobApply))
         {
-            log = StructureSwapper.Run(plan, replacements);
+            done = _swap.Step(StopwatchClock.Instance, untilMs);
         }
 
-        return JobStep.Next(new StructureAwaitingOldGone(this, new StructureSwapOutcome(plan, finalCheck, log,
-            replacements)));
+        return done
+            ? JobStep.Next(new StructureAwaitingOldGone(this, new StructureSwapOutcome(_plan, _finalCheck, _log,
+                _replacements)))
+            : JobStep.Next(this);
+    }
+
+    private IEnumerable<object?> Swapped(Answer<bool> answer)
+    {
+        foreach (object? step in StructureSwapper.Steps(_plan, _replacements, _log))
+        {
+            yield return step;
+        }
+
+        answer.Value = true;
     }
 }
 

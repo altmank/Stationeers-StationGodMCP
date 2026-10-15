@@ -13,6 +13,7 @@ using StationGodMCP.Pure.Sampling;
 using StationGodMCP.Pure.Scheduling;
 using StationGodMCP.Pure.Shaping;
 using StationGodMCP.Pure.Subscriptions;
+using StationGodMCP.Pure.Profiling;
 
 namespace StationGodMCP.Protocol;
 
@@ -223,6 +224,7 @@ internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, IS
     /// only when someone subscribes. Each event is a line of its own in the connection's outbound queue, never merged
     /// with another; a client too slow to take its lines is closed as for any line (slow_client).
     /// </summary>
+    [Profiled]
     internal void JobEnded(object finalView, long frame)
     {
         if (!_engine.HasJobSubscriptions)

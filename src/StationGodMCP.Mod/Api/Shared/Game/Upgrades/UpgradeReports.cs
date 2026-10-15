@@ -6,6 +6,7 @@ using Assets.Scripts.Objects.Items;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using UnityEngine;
+using StationGodMCP.Pure.Profiling;
 
 namespace StationGodMCP.Api.Shared.Game.Upgrades;
 
@@ -17,6 +18,7 @@ internal static class UpgradeReports
     internal const string Refused = "refused";
 
     /// <summary>The plan's report; limit, when given, is how many entries each list shows instead of the request's.</summary>
+    [Profiled]
     internal static UpgradeReportView Of(UpgradePlan plan, string status, string? jobId, int? limit = null)
     {
         UpgradeRequest request = plan.Request;
@@ -112,6 +114,7 @@ internal static class UpgradeReports
         return new RotationView(euler.x, euler.y, euler.z);
     }
 
+    [Profiled]
     private static List<UpgradePieceView> Pieces(UpgradePlan plan, int limit)
     {
         int count = System.Math.Min(plan.Swaps.Count, limit);
@@ -289,6 +292,7 @@ internal static class UpgradeReports
         return views;
     }
 
+    [Profiled]
     private static List<object> Networks(UpgradePlan plan)
     {
         List<object> networks = new List<object>(plan.Networks.Count);

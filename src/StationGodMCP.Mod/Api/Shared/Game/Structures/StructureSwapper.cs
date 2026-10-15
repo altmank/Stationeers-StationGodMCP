@@ -11,8 +11,8 @@ using StationGodMCP.Pure;
 namespace StationGodMCP.Api.Shared.Game.Structures;
 
 /// <summary>
-/// Swaps every planned piece in one main-thread call while the game tick is held, so no atmospherics or room tick
-/// sees a slot empty. Each piece: the old piece is marked as being destroyed (Thing.BeingDestroyed, which is what
+/// Swaps every planned piece while the game tick is held, so no atmospherics or room tick sees a slot empty; the
+/// pieces go one per step over frames (Steps, a Work body), the tick held throughout. Each piece: the old piece is marked as being destroyed (Thing.BeingDestroyed, which is what
 /// lets Cell.AddStructural hand its slot to a newcomer; otherwise the newcomer is refused and destroyed), the new
 /// piece is built from the old one (Constructor.SpawnConstruct of a CreateStructureInstance: position, rotation,
 /// owner and colour), raised to its final build state as the authoring tool does (CurrentBuildStateIndex, which
@@ -22,9 +22,10 @@ namespace StationGodMCP.Api.Shared.Game.Structures;
 /// </summary>
 internal static class StructureSwapper
 {
-    internal static StructureSwapLogView Run(StructureSwapPlan plan, Dictionary<long, Structure> replacements)
+    /// <summary>The swap as a Work body: one planned swap per step, into log and replacements; then the refund.</summary>
+    internal static IEnumerable<object?> Steps(StructureSwapPlan plan, Dictionary<long, Structure> replacements,
+        StructureSwapLogView log)
     {
-        StructureSwapLogView log = new StructureSwapLogView();
         Dictionary<int, int> used = new Dictionary<int, int>();
         List<ItemAmount> refund = new List<ItemAmount>();
         foreach (PlannedStructureSwap swap in plan.Swaps)
@@ -49,6 +50,8 @@ internal static class StructureSwapper
                     }
                 }
             }
+
+            yield return null;
         }
 
         foreach (KeyValuePair<int, int> item in used)
@@ -60,8 +63,6 @@ internal static class StructureSwapper
         {
             DeliverRefund(plan.Refunds, refund, log);
         }
-
-        return log;
     }
 
     private static void TryCharge(StructureSwapPlan plan, PlannedStructureSwap swap, Structure built,

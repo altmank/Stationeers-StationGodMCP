@@ -145,6 +145,7 @@ internal static class HeldTickJobs
 
     private static string NextId(string prefix) => prefix + "-" + (++_next).ToString(CultureInfo.InvariantCulture);
 
+    [Profiled]
     private static HeldTickJob Launch(string id, string tool, Func<string, HeldTickJob> create, CallContext context)
     {
         HeldTickJob job;
@@ -327,6 +328,7 @@ internal static class HeldTickJobs
         }
     }
 
+    [Profiled]
     private static void Complete(JobStep.Done done)
     {
         if (done.ReleaseTick)
@@ -347,6 +349,7 @@ internal static class HeldTickJobs
     // Overrun atmosphere work (AtmosphericsThread) still changing pipe atmospheres: false, and nothing moves this
     // frame. When it has just ended: its failure is logged, pipe jobs are held (its contents were never checked) and a
     // release owed meanwhile is made.
+    [Profiled]
     private static bool AtmosphereWorkSettled()
     {
         switch (AtmosphericsThread.Settle())
@@ -396,6 +399,7 @@ internal static class HeldTickJobs
         Prof.TickReleased(Time.frameCount);
     }
 
+    [Profiled]
     private static void UnpauseNow()
     {
         if (_tickHeld && !IsSaving())
@@ -443,6 +447,7 @@ internal static class HeldTickJobs
     }
 
     // The next queued job, once nothing holds the tick; one the world can no longer run is dropped, refused.
+    [Profiled]
     private static void StartWaiting()
     {
         if (Waiting.Count == 0 || IsSaving() || GameManager.GameTickPaused || AtmosphericsThread.Busy)
@@ -488,12 +493,14 @@ internal static class HeldTickJobs
     }
 
     // A job's final view: kept for its polls (KeptJobs: its size the view as polls write it), and told to Ended.
+    [Profiled]
     private static void Remember(string id, object view)
     {
         Finished.Put(id, view, KeptJobSizes.Final(PolledLength(id, view)));
         Ended?.Invoke(view);
     }
 
+    [Profiled]
     private static long PolledLength(string id, object view)
     {
         try

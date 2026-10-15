@@ -116,20 +116,20 @@ internal static class BuildRuns
         RunRequest request = new RunRequest(kind, kind.PlaceTool,
             new RunBuild(shape, grade, JoinOf(order), extra), removal, options);
         JobSource source = new JobSource(from?.Value, false, order.Source.RefundTo, order.Source.Refund);
-        return WriteCheck<RunPlan>.Run(() => RunPlanner.Plan(request))
-            .Outcome(order.Report, plan => Act(plan, request, order, removed, unread, source),
-                plan => Described(plan, request, order, removed, unread));
+        return WriteCheck<RunPlan>.Planned(answer => RunPlanner.Planning(request, true, answer), order.Report,
+            plan => Act(plan, request, order, removed, unread, source),
+            plan => Described(plan, request, order, removed, unread));
     }
 
     /// <summary>
     /// One piece run's reply, for a caller that runs the call itself (undo's replay): the report until it acts, or
     /// the started job. A refusal the call cannot be read with is thrown, as any call's is.
     /// </summary>
-    internal static object Reply(RunKind kind, RunBuildOrder order) => Run(kind, order) switch
+    internal static object Reply(RunKind kind, RunBuildOrder order) => VerbOutcome.Settled(Run(kind, order)) switch
     {
         VerbOutcome.Answered answered => answered.Reply,
         VerbOutcome.Refused refused => throw ApiErrors.Refused(refused.Error.Code, refused.Error.Message),
-        _ => throw new InvalidOperationException("A build call answers in the call that reads it.")
+        _ => throw new InvalidOperationException("A settled call is answered or refused.")
     };
 
     // The grade word as the family's grade; a what that must name one is refused before this (RunBuildOrder).

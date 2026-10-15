@@ -12,6 +12,7 @@ using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Verbs;
 using UnityEngine;
+using StationGodMCP.Pure.Profiling;
 
 namespace StationGodMCP.Verbs;
 
@@ -168,9 +169,9 @@ internal static class SwapNetworks
     {
         string mark = spec.Write!.UndoMark;
         bool pipes = request.Family is PipeFamily;
-        return WriteCheck<UpgradePlan>.Run(() => UpgradePlanner.Plan(request))
-            .Outcome(call.Report, plan => Act(plan, request, call, named, unread, mark, pipes),
-                plan => Described(plan, named, unread, mark, pipes, call.AcknowledgeGasLost));
+        return WriteCheck<UpgradePlan>.Planned(answer => UpgradePlanner.Planning(request, answer), call.Report,
+            plan => Act(plan, request, call, named, unread, mark, pipes),
+            plan => Described(plan, named, unread, mark, pipes, call.AcknowledgeGasLost));
     }
 
     private static VerbOutcome Act(UpgradePlan plan, UpgradeRequest request, NetworkSwapCall call,
@@ -188,6 +189,7 @@ internal static class SwapNetworks
         return new VerbOutcome.Answered(JObject.FromObject(reply, ApiJson.Fresh()));
     }
 
+    [Profiled]
     private static JObject Described(UpgradePlan plan, List<ThingId?> named, List<ReportProblem> unread,
         string mark, bool pipes, string? acknowledge)
     {

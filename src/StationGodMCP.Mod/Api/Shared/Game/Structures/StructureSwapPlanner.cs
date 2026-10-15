@@ -11,6 +11,8 @@ using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Verbs;
+using StationGodMCP.Pure.Profiling;
+using StationGodMCP.Pure.Scheduling;
 
 namespace StationGodMCP.Api.Shared.Game.Structures;
 
@@ -22,7 +24,11 @@ namespace StationGodMCP.Api.Shared.Game.Structures;
 /// </summary>
 internal static class StructureSwapPlanner
 {
-    internal static StructureSwapPlan Plan(StructureSwapRequest request)
+    /// <summary>
+    /// The preflight as a Work body (the report's and the job's), spread over frames: the members, then a member
+    /// classified per step, the materials, and the air record in steps of its own.
+    /// </summary>
+    internal static IEnumerable<object?> Planning(StructureSwapRequest request, Answer<StructureSwapPlan> answer)
     {
         if (NetworkManager.IsClient || !GameManager.RunSimulation)
         {
@@ -35,19 +41,22 @@ internal static class StructureSwapPlanner
         }
 
         StructureSwapPlan plan = new StructureSwapPlan(request);
+        answer.Value = plan;
         List<Structure> members = Members(request, plan);
         plan.Total = members.Count;
         StructureTargets targets = WorldModel.Prefabs.Targets;
         Structure? named = NamedTarget(request, targets, plan);
         if (request.Arguments.To != null && named == null)
         {
-            return plan;
+            yield break;
         }
 
+        yield return null;
         BuildCatalogue catalogue = WorldModel.Prefabs.Build;
         foreach (Structure member in members)
         {
             Classify(plan, targets, catalogue, named, member);
+            yield return null;
         }
 
         if (plan.Unmatched.Count > 0 && !request.Arguments.SkipUnmatched)
@@ -61,11 +70,17 @@ internal static class StructureSwapPlanner
         if (plan.Swaps.Count == 0)
         {
             plan.Problem("nothing_to_swap", $"No {request.Family.Noun} in scope needs replacing.");
-            return plan;
+            yield break;
         }
 
-        plan.Air = StructureAirRecord.Take(plan.Swaps);
-        return plan;
+        yield return null;
+        Answer<StructureAirRecord> air = new Answer<StructureAirRecord>();
+        foreach (object? step in StructureAirRecord.Taking(plan.Swaps, air))
+        {
+            yield return step;
+        }
+
+        plan.Air = air.Value;
     }
 
     private static Structure? NamedTarget(StructureSwapRequest request, StructureTargets targets,
@@ -88,6 +103,7 @@ internal static class StructureSwapPlanner
         return target;
     }
 
+    [Profiled]
     private static List<Structure> Members(StructureSwapRequest request, StructureSwapPlan plan)
     {
         List<Structure> members = new List<Structure>();
@@ -138,6 +154,7 @@ internal static class StructureSwapPlanner
         }
     }
 
+    [Profiled]
     private static void Classify(StructureSwapPlan plan, StructureTargets targets, BuildCatalogue catalogue,
         Structure? named, Structure member)
     {
@@ -260,6 +277,7 @@ internal static class StructureSwapPlanner
         swap.Materials.AddRange(MaterialRule.Net(cost, refund));
     }
 
+    [Profiled]
     private static void CountMaterials(StructureSwapPlan plan)
     {
         List<IReadOnlyList<MaterialLine>> lines = new List<IReadOnlyList<MaterialLine>>(plan.Swaps.Count);

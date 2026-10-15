@@ -13,6 +13,8 @@ using StationGodMCP.Api.Shared.Game.Build;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Protocol;
+using StationGodMCP.Pure.Profiling;
+using StationGodMCP.Pure.Scheduling;
 
 namespace StationGodMCP.Api.Shared.Game.Runs;
 
@@ -29,33 +31,58 @@ internal static class RunPlanner
     internal const int MaximumRemovals = 1024;
 
     /// <summary>
-    /// The preflight; with join_trunk, the run with the tap to join_to added when it stops short (RunTaps). lint: the
-    /// report lint rules add their warnings (the held tick's final check, whose warnings nobody reads, skips them).
+    /// The preflight as a Work body (the report's and the job's): its phases a step each, the forecast in steps of its
+    /// own; with join_trunk, the run with the tap to join_to added when it stops short (RunTaps), each try in steps of
+    /// its own. lint: the report lint rules add their warnings (the held tick's final check, whose warnings nobody
+    /// reads, skips them).
     /// </summary>
-    internal static RunPlan Plan(RunRequest request, bool lint = true)
+    internal static IEnumerable<object?> Planning(RunRequest request, bool lint, Answer<RunPlan> answer)
     {
         if (NetworkManager.IsClient || !GameManager.RunSimulation)
         {
             throw ApiErrors.Refused("not_host", "This game is a multiplayer client; only the host builds pieces.");
         }
 
-        RunPlan plan = PlanOnce(request);
-        plan = request.Options.Targets.JoinTrunk ? RunTaps.Tapped(request, plan, PlanOnce) : plan;
-        if (lint)
+        Answer<RunPlan> once = new Answer<RunPlan>();
+        foreach (object? step in PlanningOnce(request, once))
         {
-            Lint.LintReport.Check(plan, request.Options.AllowLint);
+            yield return step;
         }
 
-        return plan;
+        RunPlan plan = once.Value;
+        if (request.Options.Targets.JoinTrunk)
+        {
+            Answer<RunPlan> tapped = new Answer<RunPlan>();
+            foreach (object? step in RunTaps.Tapping(request, plan, PlanningOnce, tapped))
+            {
+                yield return step;
+            }
+
+            plan = tapped.Value;
+        }
+
+        if (lint)
+        {
+            foreach (object? step in Lint.LintReport.Checking(plan, request.Options.AllowLint))
+            {
+                yield return step;
+            }
+        }
+
+        answer.Value = plan;
     }
 
-    private static RunPlan PlanOnce(RunRequest request)
+    // One plan of the request as given: a phase per step, the forecast in steps of its own.
+    private static IEnumerable<object?> PlanningOnce(RunRequest request, Answer<RunPlan> answer)
     {
         RunPlan plan = new RunPlan(request);
+        answer.Value = plan;
         ReadRemovals(plan);
+        yield return null;
         if (request.Build != null)
         {
             LayOut(plan, request.Build);
+            yield return null;
         }
 
         CountMaterials(plan);
@@ -64,18 +91,27 @@ internal static class RunPlanner
             plan.Problem("nothing_to_do", plan.KeptCells.Count > 0
                 ? "Every cell of the run already has the piece it needs."
                 : "Nothing to build or remove.");
-            return plan;
+            yield break;
         }
 
-        plan.Forecast = RunForecastBuilder.Build(plan);
+        yield return null;
+        Answer<RunForecast> forecast = new Answer<RunForecast>();
+        foreach (object? step in RunForecastBuilder.Building(plan, forecast))
+        {
+            yield return step;
+        }
+
+        plan.Forecast = forecast.Value;
         FindRoots(plan, plan.Forecast);
+        yield return null;
         Guard(plan, plan.Forecast);
+        yield return null;
         request.Kind.CheckEdit(plan);
         RunTaps.Check(plan);
-        return plan;
     }
 
     // root, or every supplier of the networks the edit touches (NetworkRoots): what would_split measures against.
+    [Profiled]
     private static void FindRoots(RunPlan plan, RunForecast forecast)
     {
         ThingId? root = plan.Request.Options.Targets.Root;
@@ -89,6 +125,7 @@ internal static class RunPlanner
         plan.Roots = NetworkRoots.Feeds(forecast.Context.NetworksBefore.Values);
     }
 
+    [Profiled]
     private static void ReadRemovals(RunPlan plan)
     {
         RunRemoval removal = plan.Request.Removal;
@@ -261,6 +298,7 @@ internal static class RunPlanner
         (piece is Cable cable && cable.RocketNetwork != null) || (piece is Pipe pipe && pipe.RocketNetwork != null) ||
         (piece is Chute chute && chute.RocketNetwork != null);
 
+    [Profiled]
     private static void LayOut(RunPlan plan, RunBuild build)
     {
         RunKind kind = plan.Request.Kind;
@@ -361,6 +399,7 @@ internal static class RunPlanner
     private const int AirListed = 12;
 
     // The run's new pieces that no frame or wall holds up: counted in the report and named in one warning.
+    [Profiled]
     private static void FindAir(RunPlan plan, RunLayout layout, GridFacts facts)
     {
         foreach (LayoutCell cell in layout.Cells)
@@ -396,6 +435,7 @@ internal static class RunPlanner
     // The run's new pieces in a door's keep-out (a problem, or a warning with allow_door_keepout) or on a window (a
     // warning): one issue per door and per window. A run's own tips (its ends and its branches' first cells) are where
     // it must reach, as the planners release them: in a keep-out they warn instead, with the same code.
+    [Profiled]
     private static void FindOpenings(RunPlan plan, RunLayout layout, GridFacts facts, RunShape shape)
     {
         HashSet<GridCell> tips = new HashSet<GridCell>();
@@ -480,6 +520,7 @@ internal static class RunPlanner
             centre.z);
     }
 
+    [Profiled]
     private static RunLayout Lay(RunPlan plan, RunBuild build, RunShape shape, SmallGridBlock mask)
     {
         RunKind kind = plan.Request.Kind;
@@ -491,6 +532,7 @@ internal static class RunPlanner
     // Every long straight the layout would have to give a new end in its middle (long_piece) that may be removed
     // and replaced: it joins the removals, and each of its cells is laid again as a single (FillEnds), in the long
     // piece's own grade, owner and colour. Keyed by cell.
+    [Profiled]
     private static Dictionary<GridCell, SmallGrid> SplitLongPieces(RunPlan plan, RunLayout layout)
     {
         RunKind kind = plan.Request.Kind;
@@ -627,6 +669,7 @@ internal static class RunPlanner
 
     private static long? IdOf(SmallGrid? piece) => piece != null ? piece.ReferenceId : (long?)null;
 
+    [Profiled]
     private static void CountMaterials(RunPlan plan)
     {
         plan.From = Source(plan);
@@ -726,6 +769,7 @@ internal static class RunPlanner
     }
 
     // refund_to resolved against the source; the ground with no holder at all is where the first removed piece stood.
+    [Profiled]
     private static void Receivers(RunPlan plan)
     {
         List<GuardFinding> findings = new List<GuardFinding>();
@@ -761,6 +805,7 @@ internal static class RunPlanner
             $"{Names.Of(from)} ({from.PrefabName} {from.ReferenceId})", null), from.ReferenceId);
     }
 
+    [Profiled]
     private static void Guard(RunPlan plan, RunForecast forecast)
     {
         foreach (long id in forecast.Unreadable)
@@ -809,6 +854,7 @@ internal static class RunPlanner
     internal const string WouldLoop = "would_loop";
 
     // A warning, not a refusal: a loop may be redundancy the player wants.
+    [Profiled]
     private static void Loops(RunPlan plan, RunForecast forecast)
     {
         if (forecast.Loops.Count == 0)
@@ -829,6 +875,7 @@ internal static class RunPlanner
     }
 
     // A change only adds ends: every link a changed piece has now must still be there after the edit.
+    [Profiled]
     private static void LostLinks(RunPlan plan, RunForecast forecast)
     {
         HashSet<long> removed = plan.RemovedIds();

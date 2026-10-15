@@ -8,6 +8,8 @@ using Assets.Scripts.GridSystem;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using World = StationGodMCP.WorldModel.World;
+using StationGodMCP.Pure.Profiling;
+using StationGodMCP.Pure.Scheduling;
 
 namespace StationGodMCP.Api.Shared.Game.Structures;
 
@@ -184,7 +186,8 @@ internal sealed class StructureAirRecord
     /// <summary>Every cell a swap can touch, for finding rooms that appear there.</summary>
     internal HashSet<GridPoint> Affected { get; } = new HashSet<GridPoint>();
 
-    internal static StructureAirRecord Take(List<PlannedStructureSwap> swaps)
+    /// <summary>The record as a Work body: a cell (its room summed, or its own air) per step, then a swap's scope.</summary>
+    internal static IEnumerable<object?> Taking(List<PlannedStructureSwap> swaps, Answer<StructureAirRecord> answer)
     {
         StructureAirRecord record = new StructureAirRecord();
         RoomController rooms = RoomController.World;
@@ -200,19 +203,20 @@ internal sealed class StructureAirRecord
                     swapRooms.Add(room.RoomId);
                     record.AddRoom(room, air);
                     record.Affected.Add(cell);
-                    continue;
                 }
-
-                if (record.Affected.Add(cell))
+                else if (record.Affected.Add(cell))
                 {
                     record.Cells.Add(new CellBefore(cell, AirSample.Of(LocalAir(air, cell))));
                 }
+
+                yield return null;
             }
 
             record.Scopes.Add(new SwapAirScope(swap.OldId, swapRooms, swap.SealedCells, Divided(air, swap)));
+            yield return null;
         }
 
-        return record;
+        answer.Value = record;
     }
 
     internal string? RoomOf(GridPoint cell)

@@ -6,6 +6,7 @@ using System.Text;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
+using StationGodMCP.Pure.Profiling;
 
 namespace StationGodMCP.Pure.Verbs;
 
@@ -51,6 +52,24 @@ internal abstract class VerbOutcome
         }
 
         public IPendingResult Work { get; }
+    }
+
+    /// <summary>
+    /// An outcome taken to its end within this call: a pending one's work stepped until it ends, for a caller that runs
+    /// a call itself and needs its answer now (undo's replay).
+    /// </summary>
+    internal static VerbOutcome Settled(VerbOutcome outcome)
+    {
+        if (!(outcome is Pending pending))
+        {
+            return outcome;
+        }
+
+        while (!pending.Work.Step(double.PositiveInfinity))
+        {
+        }
+
+        return Of(pending.Work.Result());
     }
 
     /// <summary>A pending result's outcome: Answered or Refused as given, a reply object as Answered.</summary>
@@ -398,6 +417,7 @@ internal static class Report
     /// null), report_only: true and every target; its summary form when it is very large. Throws report_too_large
     /// when even the summary form is too large for the client.
     /// </summary>
+    [Profiled]
     internal static JObject Of(IReadOnlyList<ReportTarget> targets, JObject? body = null,
         IReadOnlyList<ReportProblem>? problems = null)
     {

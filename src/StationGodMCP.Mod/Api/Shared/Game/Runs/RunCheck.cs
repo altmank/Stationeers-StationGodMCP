@@ -8,6 +8,7 @@ using Assets.Scripts.Objects.Pipes;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Scheduling;
 
 namespace StationGodMCP.Api.Shared.Game.Runs;
 
@@ -19,7 +20,8 @@ namespace StationGodMCP.Api.Shared.Game.Runs;
 /// </summary>
 internal static class RunCheck
 {
-    internal static RunVerificationView Verify(RunPlan plan, RunOutcome outcome)
+    /// <summary>The check as a Work body: the links around the built pieces in steps of their own, then the rest.</summary>
+    internal static IEnumerable<object?> Verifying(RunPlan plan, RunOutcome outcome, Answer<RunVerificationView> answer)
     {
         List<RunIssueView> problems = new List<RunIssueView>();
         RunForecast forecast = plan.Forecast!;
@@ -29,7 +31,11 @@ internal static class RunCheck
             problems.Add(new RunIssueView("stopped", outcome.Log.StoppedAt.Message, null, null));
         }
 
-        CheckLinks(problems, forecast, outcome);
+        foreach (object? step in CheckLinks(problems, forecast, outcome))
+        {
+            yield return step;
+        }
+
         Dictionary<int, HashSet<long>> networksByPart = new Dictionary<int, HashSet<long>>();
         HashSet<long> now = new HashSet<long>();
         foreach (KeyValuePair<long, SmallGrid> built in outcome.Built)
@@ -76,7 +82,7 @@ internal static class RunCheck
             ids.Add(new ThingId(id));
         }
 
-        return new RunVerificationView(problems, ids);
+        answer.Value = new RunVerificationView(problems, ids);
     }
 
     private static int? Part(RunForecast forecast, long id) =>
@@ -107,7 +113,9 @@ internal static class RunCheck
         set.Add(network.ReferenceId);
     }
 
-    private static void CheckLinks(List<RunIssueView> problems, RunForecast forecast, RunOutcome outcome)
+    // A built piece per step, the neighbourhood and the game's links in steps of their own.
+    private static IEnumerable<object?> CheckLinks(List<RunIssueView> problems, RunForecast forecast,
+        RunOutcome outcome)
     {
         Dictionary<long, long> groupOf = new Dictionary<long, long>();
         List<PieceModel> models = new List<PieceModel>();
@@ -124,11 +132,23 @@ internal static class RunCheck
             groupOf[built.Value.ReferenceId] = built.Key;
             focus.Add(built.Value.ReferenceId);
             models.Add(PieceShapes.Live(built.Value));
+            yield return null;
+        }
+
+        Dictionary<long, SmallGrid> things = new Dictionary<long, SmallGrid>();
+        foreach (object? step in LinkSurvey.NeighbourhoodSteps(models, things))
+        {
+            yield return step;
         }
 
         List<long> unreadable = new List<long>();
-        HashSet<Link> game = Connectivity.Grouped(
-            LinkSurvey.GameLinks(LinkSurvey.Neighbourhood(models), focus, unreadable), groupOf);
+        HashSet<Link> links = new HashSet<Link>();
+        foreach (object? step in LinkSurvey.GameLinksSteps(things, focus, unreadable, links))
+        {
+            yield return step;
+        }
+
+        HashSet<Link> game = Connectivity.Grouped(links, groupOf);
         HashSet<Link> expected = new HashSet<Link>();
         foreach (Link link in forecast.After)
         {

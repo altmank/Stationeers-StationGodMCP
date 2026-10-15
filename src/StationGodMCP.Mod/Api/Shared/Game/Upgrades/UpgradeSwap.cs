@@ -15,21 +15,25 @@ using UnityEngine;
 namespace StationGodMCP.Api.Shared.Game.Upgrades;
 
 /// <summary>
-/// Swaps every planned piece in one main-thread call, while the game tick is held, so no power, atmospherics or logic
-/// tick sees a network half rebuilt. Each piece goes the way the game's own merge placement replaces a piece
+/// Swaps every planned piece while the game tick is held, so no power, atmospherics or logic tick sees a network half
+/// rebuilt; the pieces go one per step over frames (Steps, a Work body), the tick held throughout (chutes all in one
+/// step: Chute.OnDestroy rebuilds its neighbours' networks at the frame's end). Each piece goes the
+/// way the game's own merge placement replaces a piece
 /// (MultiMergeConstructor.Construct: Constructor.SpawnConstruct of a CreateStructureInstance, OnServer.Destroy of the
 /// old piece), in an order that never leaves a gap: the replacement is built first (Thing.Create registers it on the
 /// grid in the old piece's cells and joins the network through the neighbours, Cable.OnRegistered or
 /// Pipe.OnRegistered), put into the old piece's network if placing it made a network of its own, then the old piece
 /// leaves the network and is destroyed. A chute removed with no replacement stays in its network and is destroyed as a
-/// player's deconstruction does (NetworkLeaveRule.SwapLeavesFirst). Coils are taken as the kit takes them (Stackable.OnUseItem). The first failure
-/// stops the loop; the log says which pieces were swapped and which piece it stopped at.
+/// player's deconstruction does (NetworkLeaveRule.SwapLeavesFirst). Coils are taken as the kit takes them
+/// (Stackable.OnUseItem). The first failure stops the loop; the log says which pieces were swapped and which piece it
+/// stopped at.
 /// </summary>
 internal static class UpgradeSwap
 {
-    internal static UpgradeSwapLog Run(UpgradePlan plan, Dictionary<long, List<SmallGrid>> replacements, JobGas gas)
+    /// <summary>The swap as a Work body: one planned swap per step, into log and replacements; then the refund.</summary>
+    internal static IEnumerable<object?> Steps(UpgradePlan plan, Dictionary<long, List<SmallGrid>> replacements,
+        JobGas gas, UpgradeSwapLog log)
     {
-        UpgradeSwapLog log = new UpgradeSwapLog();
         Dictionary<int, int> used = new Dictionary<int, int>();
         List<ItemAmount> refund = new List<ItemAmount>();
         foreach (PlannedSwap swap in plan.Swaps)
@@ -56,6 +60,13 @@ internal static class UpgradeSwap
             {
                 refund.AddRange(swap.Refund);
             }
+
+            // A family whose OnDestroy rebuilds the neighbours' networks (chutes) swaps every piece in one frame, so
+            // no swap reads a network another one's destroy, at a frame's end, already rebuilt.
+            if (plan.Request.Family.OnDestroyRebuilds != NeighbourRebuild.Always)
+            {
+                yield return null;
+            }
         }
 
         UsedOf(plan, used, log);
@@ -63,8 +74,6 @@ internal static class UpgradeSwap
         {
             DeliverRefund(plan.Refunds, refund, log);
         }
-
-        return log;
     }
 
     private static void DeliverRefund(RefundReceivers receivers, List<ItemAmount> refund, UpgradeSwapLog log)

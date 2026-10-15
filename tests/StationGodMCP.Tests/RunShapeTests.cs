@@ -2,6 +2,8 @@
 
 using System.Collections.Generic;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Scheduling;
+using StationGodMCP.Tests.Scheduling;
 using Xunit;
 
 namespace StationGodMCP.Tests;
@@ -101,6 +103,35 @@ public sealed class RunShapeTests
         Assert.NotNull(result.Cells);
         Assert.Equal(RunModels.At(0, 0, 3), result.Cells![result.Cells.Count - 1]);
         Assert.Equal(4, result.Cells.Count);
+    }
+
+    [Fact]
+    public void TheSearchOverFramesTakesItsExpansionsInBatchesAndFindsTheSameRoute()
+    {
+        // A wall across x = 5, open only at z = 9, makes the search expand well past one batch.
+        RouteEnd start = RouteEnd.Open(RunModels.At(0, 0, 0));
+        List<RouteEnd> goals = new List<RouteEnd> { new RouteEnd(RunModels.At(10, 0, 0), EndSet.None, 3.0) };
+        RouteRules rules = new RouteRules(2.0, AxisOrder.Any, 200, RunModels.At(-10, -10, -10),
+            RunModels.At(20, 10, 10));
+        GridCell gap = RunModels.At(5, 0, 9);
+        int wall = RunModels.At(5, 0, 0).X;
+        CellCost CostOf(GridCell cell) => cell.X != wall || cell.Equals(gap) ? CellCost.Of(1.0) : CellCost.Blocked;
+        RouteResult whole = RoutePlanner.FindAny(start, goals, CostOf, rules);
+        Work<RouteResult> work = new Work<RouteResult>(answer =>
+            RoutePlanner.Searching(start, goals, CostOf, rules, null, answer));
+        FakeClock clock = new FakeClock();
+        int frames = 1;
+        while (!work.Step(clock, 0.0))
+        {
+            frames++;
+        }
+
+        Assert.NotNull(whole.Cells);
+        Assert.Contains(gap, whole.Cells!);
+        Assert.Equal(whole.Cells, work.Value.Cells);
+        Assert.Equal(whole.Expanded, work.Value.Expanded);
+        Assert.True(whole.Expanded > RoutePlanner.ExpansionsPerStep);
+        Assert.Equal(whole.Expanded / RoutePlanner.ExpansionsPerStep + 1, frames);
     }
 }
 

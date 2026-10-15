@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure.Verbs;
+using StationGodMCP.Pure.Profiling;
 
 namespace StationGodMCP.Api.Shared;
 
@@ -17,6 +18,7 @@ internal static class JobReports
     private static readonly string[] JobKeys = { "tool", "status", "job_id" };
 
     /// <summary>The view's keys but tool, status and job_id; ready true only when no problem is listed.</summary>
+    [Profiled]
     internal static JObject Body(object view, bool ready)
     {
         JObject body = JObject.FromObject(view, ApiJson.Fresh());

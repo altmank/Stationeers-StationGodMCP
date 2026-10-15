@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using StationGodMCP.Pure.Scheduling;
 
 namespace StationGodMCP.Pure;
 
@@ -124,6 +125,18 @@ internal static class RouteTrees
     internal static RouteTree Grow(IReadOnlyList<RouteEndpoint> starts, RouteMain main, RouteSearch search,
         double junctionCost)
     {
+        Answer<RouteTree> answer = new Answer<RouteTree>();
+        foreach (object? _ in Growing(starts, main, search, junctionCost, answer))
+        {
+        }
+
+        return answer.Value;
+    }
+
+    /// <summary>Grow spread over frames (a Work body): each search in steps of its own (RoutePlanner.Searching).</summary>
+    internal static IEnumerable<object?> Growing(IReadOnlyList<RouteEndpoint> starts, RouteMain main, RouteSearch search,
+        double junctionCost, Answer<RouteTree> answer)
+    {
         RouteTree tree;
         int first;
         switch (main)
@@ -135,11 +148,18 @@ internal static class RouteTrees
             case RouteMain.ToTarget target:
                 RouteEndpoint origin = starts[0];
                 RouteRules box = search.Box(origin.End.Cell, target.Target.NearestTo(origin.End.Cell).Cell);
-                RouteResult found = RoutePlanner.FindAny(origin.End, target.Target.Ends, search.Cost, box,
-                    search.Air(box, target.Target.Ends));
+                Answer<RouteResult> searched = new Answer<RouteResult>();
+                foreach (object? step in RoutePlanner.Searching(origin.End, target.Target.Ends, search.Cost, box,
+                             search.Air(box, target.Target.Ends), searched))
+                {
+                    yield return step;
+                }
+
+                RouteResult found = searched.Value;
                 if (found.Cells == null)
                 {
-                    return RouteTree.Failed(starts.Count > 1 ? "from[0]" : null, found);
+                    answer.Value = RouteTree.Failed(starts.Count > 1 ? "from[0]" : null, found);
+                    yield break;
                 }
 
                 tree = new RouteTree(found.Cells, found.Cost, found.Expanded);
@@ -151,21 +171,28 @@ internal static class RouteTrees
 
         for (int index = first; index < starts.Count; index++)
         {
-            RouteTree? failed = AddStart(tree, starts[index], $"from[{index}]", search, junctionCost);
-            if (failed != null)
+            Answer<RouteTree?> failed = new Answer<RouteTree?>();
+            foreach (object? step in AddStart(tree, starts[index], $"from[{index}]", search, junctionCost, failed))
             {
-                return failed;
+                yield return step;
+            }
+
+            if (failed.Value != null)
+            {
+                answer.Value = failed.Value;
+                yield break;
             }
         }
 
-        return tree;
+        answer.Value = tree;
     }
 
     // One start joined to the tree: an extra end where the tree already passes its cell, else a branch; null when
     // joined, the failed tree when no branch was found.
-    private static RouteTree? AddStart(RouteTree tree, RouteEndpoint start, string which, RouteSearch search,
-        double junctionCost)
+    private static IEnumerable<object?> AddStart(RouteTree tree, RouteEndpoint start, string which,
+        RouteSearch search, double junctionCost, Answer<RouteTree?> answer)
     {
+        answer.Value = null;
         if (tree.Contains(start.End.Cell))
         {
             if (start.IntoDevice.HasValue)
@@ -173,22 +200,29 @@ internal static class RouteTrees
                 tree.AddExtra(new ExtraEnd(start.End.Cell, start.IntoDevice.Value));
             }
 
-            return null;
+            yield break;
         }
 
         List<RouteEnd> goals = tree.Cells.FindAll(cell => tree.EndsAt(cell) < MaximumAttachEnds)
             .ConvertAll(cell => new RouteEnd(cell, EndSet.None, junctionCost));
         RouteEndpoint treeEnds = new RouteEndpoint(goals, new List<long>());
         RouteRules box = search.Box(start.End.Cell, treeEnds.NearestTo(start.End.Cell).Cell);
-        RouteResult branch = RoutePlanner.FindAny(start.End, goals,
-            cell => tree.Contains(cell) ? CellCost.Blocked : search.Cost(cell), box, search.Air(box, goals));
+        Answer<RouteResult> searched = new Answer<RouteResult>();
+        foreach (object? step in RoutePlanner.Searching(start.End, goals,
+                     cell => tree.Contains(cell) ? CellCost.Blocked : search.Cost(cell), box, search.Air(box, goals),
+                     searched))
+        {
+            yield return step;
+        }
+
+        RouteResult branch = searched.Value;
         if (branch.Cells == null)
         {
-            return RouteTree.Failed(which, branch);
+            answer.Value = RouteTree.Failed(which, branch);
+            yield break;
         }
 
         tree.Add(branch);
-        return null;
     }
 }
 

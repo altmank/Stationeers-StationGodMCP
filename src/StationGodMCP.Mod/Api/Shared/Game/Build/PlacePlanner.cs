@@ -17,6 +17,8 @@ using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Protocol;
 using UnityEngine;
+using StationGodMCP.Pure.Profiling;
+using StationGodMCP.Pure.Scheduling;
 
 namespace StationGodMCP.Api.Shared.Game.Build;
 
@@ -191,6 +193,20 @@ internal static class PlacePlanner
     /// <summary>The preflight. lint: the report lint rules add their warnings (not in the held tick's final check).</summary>
     internal static PlacePlan Plan(PlaceRequest arguments, bool lint = true)
     {
+        Answer<PlacePlan> answer = new Answer<PlacePlan>();
+        foreach (object? _ in Planning(arguments, lint, answer))
+        {
+        }
+
+        return answer.Value;
+    }
+
+    /// <summary>
+    /// Plan spread over frames (a Work body; the report's and the job's): a placement resolved per step, the checks
+    /// across them a step each, the lint rules in steps of their own.
+    /// </summary>
+    internal static IEnumerable<object?> Planning(PlaceRequest arguments, bool lint, Answer<PlacePlan> answer)
+    {
         if (NetworkManager.IsClient || !GameManager.RunSimulation)
         {
             throw ApiErrors.Refused("not_host", "This game is a multiplayer client; only the host builds.");
@@ -218,18 +234,25 @@ internal static class PlacePlanner
             PlannedPlacement placement = new PlannedPlacement(args);
             plan.Placements.Add(placement);
             Resolve(plan, catalogue, swatches, placement);
+            yield return null;
         }
 
         Overlaps(plan);
+        yield return null;
         Clashes(plan);
+        yield return null;
         PadApproachGuard.Check(plan, arguments.AllowPad);
         CountMaterials(plan);
         if (lint)
         {
-            Lint.LintReport.Check(plan, arguments.AllowLint);
+            yield return null;
+            foreach (object? step in Lint.LintReport.Checking(plan, arguments.AllowLint))
+            {
+                yield return step;
+            }
         }
 
-        return plan;
+        answer.Value = plan;
     }
 
     /// <summary>The cursor check again for one resolved placement, as things stand now (the job's step before it).</summary>
@@ -244,6 +267,7 @@ internal static class PlacePlanner
 
     // The player-placement rule for a new placement (PlayerPlacement.Refusal); free waives materials, never this. A
     // launching or landing rocket is left alone first (Rockets.MovingRefusalAt, the tools' own rule).
+    [Profiled]
     private static string? Check(Structure prefab, Structure cursor, Vector3 position, Quaternion rotation) =>
         Rockets.MovingRefusalAt(prefab, position, rotation) ??
         PlayerPlacement.Refusal(prefab, cursor, position, rotation);
@@ -321,6 +345,7 @@ internal static class PlacePlanner
         }
     }
 
+    [Profiled]
     private static void Resolve(PlacePlan plan, BuildCatalogue catalogue, List<ColorSwatch> swatches,
         PlannedPlacement placement)
     {
@@ -1023,6 +1048,7 @@ internal static class PlacePlanner
 
     // Two placements at one spot in one slot: the cursor check sees only what stands now, so the job's own check
     // before each build would stop the run at the second one.
+    [Profiled]
     private static void Overlaps(PlacePlan plan)
     {
         Dictionary<PlacementSpot, int> seen = new Dictionary<PlacementSpot, int>();
@@ -1048,6 +1074,7 @@ internal static class PlacePlanner
 
     // Placements of the run that the game would refuse once an earlier one stands (PlanClashes): a shared slot of a
     // small cell, or a 2 m cell a frame fills and another piece registers in. Placements already refused are left out.
+    [Profiled]
     private static void Clashes(PlacePlan plan)
     {
         List<PlannedFootprint> footprints = new List<PlannedFootprint>();
@@ -1152,6 +1179,7 @@ internal static class PlacePlanner
         plan.From = human;
     }
 
+    [Profiled]
     private static void CountMaterials(PlacePlan plan)
     {
         if (plan.Arguments.Free)

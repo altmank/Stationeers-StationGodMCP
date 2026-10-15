@@ -12,6 +12,7 @@ using StationGodMCP.Pure.Paging;
 using StationGodMCP.Pure.Scheduling;
 using StationGodMCP.Pure.Shaping;
 using StationGodMCP.Pure.Verbs;
+using StationGodMCP.Pure.Profiling;
 
 namespace StationGodMCP.Protocol;
 
@@ -118,6 +119,7 @@ internal static class VerbCalls
     /// The reply message of an answered or refused call: elapsed_ms its handler time, budget_hit when the frame's
     /// budget is reached as it is written; the serialise time is observed (EntryCost) and the call timed.
     /// </summary>
+    [Profiled]
     internal static string Write(VerbRunner runner, CallRequest request, string what, VerbOutcome outcome,
         double handlerMs, double queueWaitMs, VerbNotes? notes = null)
     {
@@ -235,6 +237,7 @@ internal sealed class PendingVerbCall : IDeferredWork
         }
     }
 
+    [Profiled]
     public string Finish()
     {
         long started = Stopwatch.GetTimestamp();

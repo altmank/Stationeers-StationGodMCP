@@ -54,10 +54,13 @@ internal static class PlanRemoval
             new RunTargets(root, null, false), false,
             new RunDetail(fields.Includes("links"), fields.Includes("notes"), fields.Includes("network_devices")),
             more);
-        RunPlan plan = RunPlanner.Plan(new RunRequest(kind, SourceRule.PlanRemoval, null, removal, run));
-        RunReportView view = RunReports.Of(plan, RunReports.DryRun, null);
-        view.NoteTruncations(string.Empty);
-        return new VerbOutcome.Answered(JobReports.Body(view, view.Ready));
+        RunRequest request = new RunRequest(kind, SourceRule.PlanRemoval, null, removal, run);
+        return WorkResult<RunPlan>.Of(answer => RunPlanner.Planning(request, true, answer), plan =>
+        {
+            RunReportView view = RunReports.Of(plan, RunReports.DryRun, null);
+            view.NoteTruncations(string.Empty);
+            return new VerbOutcome.Answered(JobReports.Body(view, view.Ready));
+        });
     }
 
     // The pieces the call names: by id, every piece of the network, or the piece in each cell along waypoints or

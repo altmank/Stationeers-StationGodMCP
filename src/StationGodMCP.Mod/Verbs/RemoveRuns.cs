@@ -144,9 +144,9 @@ internal static class RemoveRuns
         string mark = spec.Write!.UndoMark;
         bool pipes = kind.Family is PipeFamily;
         JobSource source = new JobSource(from?.Value, false, call.Materials.RefundTo, null);
-        return WriteCheck<RunPlan>.Run(() => RunPlanner.Plan(request))
-            .Outcome(call.Report, plan => Act(plan, request, call, named, unread, mark, pipes, source),
-                plan => Described(plan, named, unread, mark, pipes, call.AcknowledgeGasLost));
+        return WriteCheck<RunPlan>.Planned(answer => RunPlanner.Planning(request, true, answer), call.Report,
+            plan => Act(plan, request, call, named, unread, mark, pipes, source),
+            plan => Described(plan, named, unread, mark, pipes, call.AcknowledgeGasLost));
     }
 
     /// <summary>The cells along waypoints, or the cells listed; null with the reason when they make no run.</summary>

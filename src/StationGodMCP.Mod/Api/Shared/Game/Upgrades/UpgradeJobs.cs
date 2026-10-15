@@ -9,16 +9,18 @@ using Assets.Scripts.Objects.Pipes;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Profiling;
+using StationGodMCP.Pure.Scheduling;
 using UnityEngine;
 
 namespace StationGodMCP.Api.Shared.Game.Upgrades;
 
 /// <summary>
 /// Confirmed runs of the upgrade and clean tools, on the shared runner (HeldTickJobs). Once GameManager.GameTickPaused
-/// says the tick has stopped between two ticks, the whole preflight runs again and, only if it finds nothing, every
-/// piece is swapped in that frame. The frame after (once the old pieces are gone), the result is checked against what
-/// was recorded, and the tick is let go. A save that starts meanwhile owns the tick from then on: the run is refused
-/// before any change, or, if the swap is done, the tick is left for the save to let go.
+/// says the tick has stopped between two ticks, the whole preflight runs again over as many frames as it needs (the
+/// tick held, so no tick runs between its steps) and, only if it finds nothing, the pieces are swapped, one per step,
+/// still with the tick held. Once the old pieces are gone the result is checked against what was recorded, and the
+/// tick is let go. A save that starts meanwhile owns the tick from then on: the run is refused before any change, or,
+/// once swapping has begun, it goes on and the tick is left for the save to let go.
 /// </summary>
 internal static class UpgradeJobs
 {
@@ -86,22 +88,53 @@ internal sealed class WaitingForTick : ActiveUpgrade
                 : JobStep.Next(this);
         }
 
-        return SwapNow();
+        return new Preflighting(this, JobGas.Open(Request.Family is PipeFamily)).Step(untilMs);
+    }
+}
+
+/// <summary>
+/// The tick has stopped: the whole preflight again (UpgradePlanner.Planning) over as many frames as it needs, the tick
+/// held; a save or the world stopping meanwhile refuses the run, nothing changed. A plan with problems is refused.
+/// </summary>
+internal sealed class Preflighting : ActiveUpgrade
+{
+    private readonly JobGas _gas;
+    private readonly Work<UpgradePlan> _plan;
+
+    internal Preflighting(ActiveUpgrade waiting, JobGas gas)
+        : base(waiting.Id, waiting.Request, waiting.Preflight)
+    {
+        _gas = gas;
+        _plan = new Work<UpgradePlan>(answer => UpgradePlanner.Planning(Request, answer));
     }
 
-    private JobStep SwapNow()
+    internal override JobStep Step(double untilMs)
     {
-        JobGas gas = JobGas.Open(Request.Family is PipeFamily);
-        UpgradePlan plan;
+        if (GameManager.GameState != GameState.Running)
+        {
+            return JobStep.Finish(Refused(null, new ErrorView("game_not_running",
+                "The world stopped running before the swap; nothing was changed.")), false);
+        }
+
+        if (HeldTickJobs.IsSaving())
+        {
+            return JobStep.Finish(Refused(null, new ErrorView("save_started",
+                "A save started during the final check; nothing was changed. Run it again.")), false);
+        }
+
         try
         {
-            plan = UpgradePlanner.Plan(Request);
+            if (!_plan.Step(StopwatchClock.Instance, untilMs))
+            {
+                return JobStep.Next(this);
+            }
         }
         catch (ApiException refusal)
         {
             return JobStep.Finish(Refused(null, new ErrorView(refusal.Code, refusal.Message)), true);
         }
 
+        UpgradePlan plan = _plan.Value;
         if (!plan.Ready)
         {
             UpgradeReportView refused = UpgradeReports.Of(plan, UpgradeReports.Refused, Id);
@@ -110,15 +143,55 @@ internal sealed class WaitingForTick : ActiveUpgrade
                 "changed.")), true);
         }
 
-        UpgradeReportView finalCheck = UpgradeReports.Of(plan, UpgradeReports.Scheduled, Id);
-        Dictionary<long, List<SmallGrid>> replacements = new Dictionary<long, List<SmallGrid>>();
-        UpgradeSwapLog log;
+        return JobStep.Next(new Swapping(this, plan, UpgradeReports.Of(plan, UpgradeReports.Scheduled, Id), _gas));
+    }
+}
+
+/// <summary>Checked: the pieces swapped one per step (UpgradeSwap.Steps), the tick held throughout.</summary>
+internal sealed class Swapping : ActiveUpgrade
+{
+    private readonly UpgradePlan _plan;
+    private readonly UpgradeReportView _finalCheck;
+    private readonly JobGas _gas;
+    private readonly UpgradeSwapLog _log = new UpgradeSwapLog();
+    private readonly Dictionary<long, List<SmallGrid>> _replacements = new Dictionary<long, List<SmallGrid>>();
+    private readonly Work<bool> _swap;
+
+    internal Swapping(ActiveUpgrade checkedRun, UpgradePlan plan, UpgradeReportView finalCheck, JobGas gas)
+        : base(checkedRun.Id, checkedRun.Request, checkedRun.Preflight)
+    {
+        _plan = plan;
+        _finalCheck = finalCheck;
+        _gas = gas;
+        _swap = new Work<bool>(answer => Swapped(answer));
+    }
+
+    // Swapping had begun: what it did so far stands.
+    internal override object Failed(ErrorView error) =>
+        new UpgradeJobView(Id, Request.Goal.Tool, "stopped", Preflight,
+            new UpgradeJobResult(_finalCheck, _log, null, error));
+
+    internal override JobStep Step(double untilMs)
+    {
+        bool done;
         using (Prof.Scope(ProfId.JobApply))
         {
-            log = UpgradeSwap.Run(plan, replacements, gas);
+            done = _swap.Step(StopwatchClock.Instance, untilMs);
         }
 
-        return JobStep.Next(new AwaitingCheck(this, plan, new SwapOutcome(finalCheck, log, replacements), gas));
+        return done
+            ? JobStep.Next(new AwaitingCheck(this, _plan, new SwapOutcome(_finalCheck, _log, _replacements), _gas))
+            : JobStep.Next(this);
+    }
+
+    private IEnumerable<object?> Swapped(Answer<bool> answer)
+    {
+        foreach (object? step in UpgradeSwap.Steps(_plan, _replacements, _gas, _log))
+        {
+            yield return step;
+        }
+
+        answer.Value = true;
     }
 }
 
@@ -152,6 +225,8 @@ internal sealed class AwaitingCheck : ActiveUpgrade
     private readonly SwapOutcome _outcome;
     private readonly JobGas _gas;
     private int _frames;
+    private GasCheckView? _gasCheck;
+    private Work<UpgradeVerificationView>? _check;
 
     internal AwaitingCheck(ActiveUpgrade waiting, UpgradePlan plan, SwapOutcome outcome, JobGas gas)
         : base(waiting.Id, waiting.Request, waiting.Preflight)
@@ -168,14 +243,25 @@ internal sealed class AwaitingCheck : ActiveUpgrade
 
     internal override JobStep Step(double untilMs)
     {
-        _frames++;
-        if (OldPiecesRemain() && _frames < MaximumFrames)
+        if (_check == null)
+        {
+            _frames++;
+            if (OldPiecesRemain() && _frames < MaximumFrames)
+            {
+                return JobStep.Next(this);
+            }
+
+            _gasCheck = _gas.Close(Id);
+            _check = new Work<UpgradeVerificationView>(answer => UpgradeCheck.Verifying(_plan, _outcome, answer));
+        }
+
+        if (!_check.Step(StopwatchClock.Instance, untilMs))
         {
             return JobStep.Next(this);
         }
 
-        GasCheckView? gasCheck = _gas.Close(Id);
-        UpgradeVerificationView verification = UpgradeCheck.Verify(_plan, _outcome);
+        GasCheckView? gasCheck = _gasCheck;
+        UpgradeVerificationView verification = _check.Value;
         string status = _outcome.Log.StoppedAt != null ? "stopped"
             : verification.Ok ? "applied"
             : "applied_with_differences";
@@ -216,7 +302,12 @@ internal sealed class AwaitingCheck : ActiveUpgrade
 /// </summary>
 internal static class UpgradeCheck
 {
-    internal static UpgradeVerificationView Verify(UpgradePlan plan, SwapOutcome outcome)
+    /// <summary>
+    /// The check as a Work body: a swap's pieces per step, the neighbourhood and the game's links in steps of their
+    /// own, then a network per step.
+    /// </summary>
+    internal static IEnumerable<object?> Verifying(UpgradePlan plan, SwapOutcome outcome,
+        Answer<UpgradeVerificationView> answer)
     {
         List<UpgradeProblemView> problems = new List<UpgradeProblemView>();
         LinkSurvey survey = plan.Links!;
@@ -231,12 +322,25 @@ internal static class UpgradeCheck
                 focus.Add(now.ReferenceId);
                 models.Add(PieceShapes.Live(now));
             }
+
+            yield return null;
+        }
+
+        Dictionary<long, SmallGrid> things = new Dictionary<long, SmallGrid>();
+        foreach (object? step in LinkSurvey.NeighbourhoodSteps(models, things))
+        {
+            yield return step;
         }
 
         // Every piece counted under its swap's group: links among one group's new pieces are no links.
         List<long> unreadable = new List<long>();
-        HashSet<Link> after = Connectivity.Grouped(
-            LinkSurvey.GameLinks(LinkSurvey.Neighbourhood(models), focus, unreadable), groupOf);
+        HashSet<Link> links = new HashSet<Link>();
+        foreach (object? step in LinkSurvey.GameLinksSteps(things, focus, unreadable, links))
+        {
+            yield return step;
+        }
+
+        HashSet<Link> after = Connectivity.Grouped(links, groupOf);
         LinkDiff diff = Connectivity.Compare(survey.Expected, after);
         AddLinkProblems(problems, survey, diff, unreadable);
         CheckMounted(problems, plan, outcome);
@@ -250,9 +354,11 @@ internal static class UpgradeCheck
             {
                 networks.Add(report);
             }
+
+            yield return null;
         }
 
-        return new UpgradeVerificationView(problems, new UpgradeLinkCounts(survey.Expected.Count, after.Count),
+        answer.Value = new UpgradeVerificationView(problems, new UpgradeLinkCounts(survey.Expected.Count, after.Count),
             survey.ViewsOf(diff.Added), survey.ViewsOf(diff.Lost), networks);
     }
 

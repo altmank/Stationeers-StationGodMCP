@@ -8,6 +8,8 @@ using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Pipes;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Profiling;
+using StationGodMCP.Pure.Scheduling;
 
 namespace StationGodMCP.Api.Shared.Game.Upgrades;
 
@@ -68,7 +70,12 @@ internal sealed class LinkSurvey
     /// <summary>Every thing in the neighbourhood by id, for naming links.</summary>
     internal Dictionary<long, SmallGrid> Things { get; }
 
-    internal static LinkSurvey Take(List<PlannedSwap> swaps, UpgradeFamily family)
+    /// <summary>
+    /// The links around the swaps as the game has them and as the model predicts them, spread over frames (a Work body):
+    /// a swap, a neighbourhood cell, a thing, a model or a device per step.
+    /// </summary>
+    internal static IEnumerable<object?> Taking(List<PlannedSwap> swaps, UpgradeFamily family,
+        Answer<LinkSurvey> answer)
     {
         HashSet<long> focus = new HashSet<long>();
         Dictionary<long, PlannedSwap> byId = new Dictionary<long, PlannedSwap>();
@@ -88,9 +95,16 @@ internal sealed class LinkSurvey
             {
                 reach.Add(part.Model);
             }
+
+            yield return null;
         }
 
-        Dictionary<long, SmallGrid> things = Neighbourhood(reach);
+        Dictionary<long, SmallGrid> things = new Dictionary<long, SmallGrid>();
+        foreach (object? step in NeighbourhoodSteps(reach, things))
+        {
+            yield return step;
+        }
+
         List<PieceModel> live = new List<PieceModel>(things.Count);
         List<PieceModel> predicted = new List<PieceModel>(things.Count);
         foreach (SmallGrid thing in things.Values)
@@ -109,18 +123,42 @@ internal sealed class LinkSurvey
                     predicted.Add(part.Model);
                 }
             }
+
+            yield return null;
         }
 
         List<long> unreadable = new List<long>();
-        HashSet<Link> game = GameLinks(things, focus, unreadable);
-        HashSet<Link> after = Connectivity.LinksTouching(predicted, focus);
-        LinkSurveyParts parts = new LinkSurveyParts(things, unreadable, MountedOn(swaps, family),
-            new List<DeviceRecord>());
+        HashSet<Link> game = new HashSet<Link>();
+        foreach (object? step in GameLinksSteps(things, focus, unreadable, game))
+        {
+            yield return step;
+        }
+
+        HashSet<Link> after = new HashSet<Link>();
+        foreach (object? step in Connectivity.LinksTouchingSteps(predicted, focus, after))
+        {
+            yield return step;
+        }
+
+        HashSet<Link> liveLinks = new HashSet<Link>();
+        foreach (object? step in Connectivity.LinksTouchingSteps(live, focus, liveLinks))
+        {
+            yield return step;
+        }
+
+        List<MountedRecord> mounted = MountedOn(swaps, family);
+        yield return null;
+        LinkSurveyParts parts = new LinkSurveyParts(things, unreadable, mounted, new List<DeviceRecord>());
         HashSet<Link> expected = Connectivity.Without(Connectivity.Grouped(game, groups.GroupOf), groups.Removed);
-        LinkSurvey survey = new LinkSurvey(game, groups, Connectivity.Compare(game,
-            Connectivity.LinksTouching(live, focus)), Connectivity.Compare(expected, after), after.Count, parts);
-        survey.Devices.AddRange(DevicesAround(things, game, survey.Mounted, family));
-        return survey;
+        LinkSurvey survey = new LinkSurvey(game, groups, Connectivity.Compare(game, liveLinks),
+            Connectivity.Compare(expected, after), after.Count, parts);
+        yield return null;
+        foreach (object? step in DevicesAround(things, game, survey.Mounted, family, survey.Devices))
+        {
+            yield return step;
+        }
+
+        answer.Value = survey;
     }
 
     private static PieceModel LiveOf(PlannedSwap swap, SmallGrid thing)
@@ -139,6 +177,17 @@ internal sealed class LinkSurvey
     /// <summary>Every occupant of the models' cells and of their ends' own and facing cells.</summary>
     internal static Dictionary<long, SmallGrid> Neighbourhood(List<PieceModel> models)
     {
+        Dictionary<long, SmallGrid> things = new Dictionary<long, SmallGrid>();
+        foreach (object? _ in NeighbourhoodSteps(models, things))
+        {
+        }
+
+        return things;
+    }
+
+    /// <summary>Neighbourhood spread over frames: a model's cells, then a cell's occupants, per step.</summary>
+    internal static IEnumerable<object?> NeighbourhoodSteps(List<PieceModel> models, Dictionary<long, SmallGrid> things)
+    {
         HashSet<GridCell> cells = new HashSet<GridCell>();
         foreach (PieceModel model in models)
         {
@@ -152,9 +201,10 @@ internal sealed class LinkSurvey
                 cells.Add(end.Local);
                 cells.Add(end.Facing);
             }
+
+            yield return null;
         }
 
-        Dictionary<long, SmallGrid> things = new Dictionary<long, SmallGrid>();
         GridController world = GridController.World;
         foreach (GridCell cell in cells)
         {
@@ -163,9 +213,9 @@ internal sealed class LinkSurvey
             {
                 AddOccupants(small, things);
             }
-        }
 
-        return things;
+            yield return null;
+        }
     }
 
     private static void AddOccupants(SmallCell cell, Dictionary<long, SmallGrid> things)
@@ -186,10 +236,22 @@ internal sealed class LinkSurvey
     /// IsConnected), made here with the game's IsConnected because FillConnected's Span buffer is typed against the
     /// game's mscorlib.
     /// </summary>
+    [Profiled]
     internal static HashSet<Link> GameLinks(Dictionary<long, SmallGrid> things, HashSet<long> focus,
         List<long> unreadable)
     {
         HashSet<Link> links = new HashSet<Link>();
+        foreach (object? _ in GameLinksSteps(things, focus, unreadable, links))
+        {
+        }
+
+        return links;
+    }
+
+    /// <summary>GameLinks spread over frames (a Work body): one thing's ends per step, into links.</summary>
+    internal static IEnumerable<object?> GameLinksSteps(Dictionary<long, SmallGrid> things, HashSet<long> focus,
+        List<long> unreadable, HashSet<Link> links)
+    {
         foreach (SmallGrid thing in things.Values)
         {
             try
@@ -201,9 +263,9 @@ internal sealed class LinkSurvey
                 // Connection.Transform and IsConnected's own ends: a half-built or removed thing lacks them.
                 unreadable.Add(thing.ReferenceId);
             }
-        }
 
-        return links;
+            yield return null;
+        }
     }
 
     private static void AddGameLinks(SmallGrid thing, HashSet<long> focus, HashSet<Link> links)
@@ -262,34 +324,42 @@ internal sealed class LinkSurvey
         return mounted;
     }
 
-    private static List<DeviceRecord> DevicesAround(Dictionary<long, SmallGrid> things, HashSet<Link> links,
-        List<MountedRecord> mounted, UpgradeFamily family)
+    // The devices among the things with a link (counted once over the links, not per device) or mounted on a swapped
+    // piece; a device per step.
+    private static IEnumerable<object?> DevicesAround(Dictionary<long, SmallGrid> things, HashSet<Link> links,
+        List<MountedRecord> mounted, UpgradeFamily family, List<DeviceRecord> devices)
     {
-        List<DeviceRecord> devices = new List<DeviceRecord>();
-        foreach (SmallGrid thing in things.Values)
+        Dictionary<long, int> linkCounts = new Dictionary<long, int>();
+        foreach (Link link in links)
         {
-            if (!(thing is Device device))
+            linkCounts[link.From] = linkCounts.TryGetValue(link.From, out int from) ? from + 1 : 1;
+            if (link.To != link.From)
             {
-                continue;
-            }
-
-            int count = 0;
-            foreach (Link link in links)
-            {
-                if (link.From == device.ReferenceId || link.To == device.ReferenceId)
-                {
-                    count++;
-                }
-            }
-
-            bool isMounted = mounted.Exists(record => record.Device == device);
-            if (count > 0 || isMounted)
-            {
-                devices.Add(new DeviceRecord(device, count, isMounted, family.DeviceNetworks(device)));
+                linkCounts[link.To] = linkCounts.TryGetValue(link.To, out int to) ? to + 1 : 1;
             }
         }
 
-        return devices;
+        HashSet<long> mountedIds = new HashSet<long>();
+        foreach (MountedRecord record in mounted)
+        {
+            mountedIds.Add(record.Device.ReferenceId);
+        }
+
+        yield return null;
+        foreach (SmallGrid thing in things.Values)
+        {
+            if (thing is Device device)
+            {
+                int count = linkCounts.TryGetValue(device.ReferenceId, out int counted) ? counted : 0;
+                bool isMounted = mountedIds.Contains(device.ReferenceId);
+                if (count > 0 || isMounted)
+                {
+                    devices.Add(new DeviceRecord(device, count, isMounted, family.DeviceNetworks(device)));
+                }
+
+                yield return null;
+            }
+        }
     }
 
     internal void AddProblems(UpgradePlan plan)

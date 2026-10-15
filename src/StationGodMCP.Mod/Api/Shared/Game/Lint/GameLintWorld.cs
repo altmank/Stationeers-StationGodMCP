@@ -15,6 +15,7 @@ using StationGodMCP.Pure;
 using StationGodMCP.Pure.Lint;
 using StationGodMCP.Pure.Scheduling;
 using UnityEngine;
+using StationGodMCP.Pure.Profiling;
 
 namespace StationGodMCP.Api.Shared.Game.Lint;
 
@@ -132,9 +133,10 @@ internal sealed class GameLintWorld : ILintWorld
 
     /// <summary>
     /// A plan and what stands around it: the touched 2 m cells and their neighbours. gone: ids the plan removes or
-    /// replaces, left out of the world.
+    /// replaces, left out of the world. A Work body: the planned things, then one 2 m cell gathered per step.
     /// </summary>
-    internal static GameLintWorld DryRun(List<PlannedThing> planned, HashSet<long> gone)
+    internal static IEnumerable<object?> DryRunSteps(List<PlannedThing> planned, HashSet<long> gone,
+        Answer<GameLintWorld> answer)
     {
         GameLintWorld world = new GameLintWorld(gone);
         List<ThingSubject> subjects = new List<ThingSubject>(planned.Count);
@@ -180,7 +182,14 @@ internal sealed class GameLintWorld : ILintWorld
             }
         }
 
-        world.Gather(area);
+        yield return null;
+        world.BeginGather();
+        foreach (GridCell large in area)
+        {
+            world.GatherCell(large);
+            yield return null;
+        }
+
         world.Cells = area.Count;
         foreach (ThingSubject subject in subjects)
         {
@@ -192,7 +201,7 @@ internal sealed class GameLintWorld : ILintWorld
         }
 
         world.Finish();
-        return world;
+        answer.Value = world;
     }
 
     public ILintObject World => _world ??= new WorldSubject(this);
@@ -315,6 +324,7 @@ internal sealed class GameLintWorld : ILintWorld
     }
 
     // Every piece, device and 2 m structure in the cells, the doors on their faces, then the sets built from them.
+    [Profiled]
     private void Gather(List<GridCell> region)
     {
         BeginGather();
@@ -416,6 +426,7 @@ internal sealed class GameLintWorld : ILintWorld
     }
 
     // ports, cells, networks and rooms: built from the things on first use.
+    [Profiled]
     private List<ILintObject> Derived(string set)
     {
         List<ILintObject> subjects = new List<ILintObject>();

@@ -58,19 +58,19 @@ internal static class RemoveStructureRun
         ThingId? from = JobTargets.Payers(order.Materials, order.Label, more);
         RemoveRequest arguments = order.Arguments(from, more);
         JobSource source = new JobSource(from?.Value, false, order.Materials.RefundTo, null);
-        return WriteCheck<RemovePlan>.Run(() => RemovePlanner.Plan(arguments))
-            .Outcome(order.Report, plan => Act(plan, arguments, order, source), plan => Described(plan, order));
+        return WriteCheck<RemovePlan>.Planned(answer => RemovePlanner.Planning(arguments, answer), order.Report,
+            plan => Act(plan, arguments, order, source), plan => Described(plan, order));
     }
 
     /// <summary>
     /// One removal call's reply, for a caller that runs the call itself (undo's replay): the report until it acts, or
     /// the started job. A refusal the call cannot be read with is thrown, as any call's is.
     /// </summary>
-    internal static object Reply(RemoveStructureOrder order) => Run(order) switch
+    internal static object Reply(RemoveStructureOrder order) => VerbOutcome.Settled(Run(order)) switch
     {
         VerbOutcome.Answered answered => answered.Reply,
         VerbOutcome.Refused refused => throw ApiErrors.Refused(refused.Error.Code, refused.Error.Message),
-        _ => throw new System.InvalidOperationException("A removal call answers in the call that reads it.")
+        _ => throw new System.InvalidOperationException("A settled call is answered or refused.")
     };
 
     private static VerbOutcome Act(RemovePlan plan, RemoveRequest arguments, RemoveStructureOrder order,

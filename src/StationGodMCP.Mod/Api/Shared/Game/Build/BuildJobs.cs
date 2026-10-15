@@ -14,13 +14,14 @@ using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Profiling;
+using StationGodMCP.Pure.Scheduling;
 using UnityEngine;
 
 namespace StationGodMCP.Api.Shared.Game.Build;
 
 /// <summary>
 /// What a build structure or remove structure job does, apart from the running: the final check (the whole preflight
-/// again once the tick has stopped), the work in that one frame, and the checks once Unity has finished it.
+/// again once the tick has stopped, over frames), the work (over frames), and the checks once Unity has finished it.
 /// </summary>
 internal abstract class BuildWork
 {
@@ -34,14 +35,17 @@ internal abstract class BuildWork
     /// </summary>
     internal abstract bool TouchesPipes { get; }
 
-    /// <summary>The final check's report, or null (with the error) when it refuses.</summary>
+    /// <summary>The final check as a Work body: the whole preflight again, its plan kept for FinalCheck and Apply.</summary>
+    internal abstract IEnumerable<object?> Checking();
+
+    /// <summary>The final check's report, or null (with the error) when it refuses; once Checking has ended.</summary>
     internal abstract object? FinalCheck(out ErrorView? refusal);
 
     /// <summary>
-    /// Places or removes everything, in this frame, as far as it goes; the gas changes each placement queues are
+    /// Places or removes everything as far as it goes, as a Work body; the gas changes each placement queues are
     /// applied before the next one (JobGas.Settle).
     /// </summary>
-    internal abstract void Apply(BuildLog log, JobGas gas);
+    internal abstract IEnumerable<object?> Apply(BuildLog log, JobGas gas);
 
     /// <summary>Whether Unity has finished what Apply started (removed pieces destroyed).</summary>
     internal abstract bool Settled();
@@ -90,7 +94,7 @@ internal static class PipeContact
     }
 }
 
-/// <summary>Waiting for the game tick to stop; then the final check and the work, in one frame.</summary>
+/// <summary>Waiting for the game tick to stop; then the final check (BuildChecking).</summary>
 internal sealed class BuildWaiting : HeldTickJob
 {
     private readonly BuildWork _work;
@@ -129,30 +133,7 @@ internal sealed class BuildWaiting : HeldTickJob
                 : JobStep.Next(this);
         }
 
-        JobGas gas = JobGas.Open(_work.TouchesPipes);
-        object? finalCheck;
-        ErrorView? refusal;
-        try
-        {
-            finalCheck = _work.FinalCheck(out refusal);
-        }
-        catch (ApiException exception)
-        {
-            return JobStep.Finish(Refused(null, new ErrorView(exception.Code, exception.Message)), true);
-        }
-
-        if (refusal != null)
-        {
-            return JobStep.Finish(Refused(finalCheck, refusal), true);
-        }
-
-        BuildLog log = new BuildLog();
-        using (Prof.Scope(ProfId.JobApply))
-        {
-            _work.Apply(log, gas);
-        }
-
-        return JobStep.Next(new BuildSettling(Id, _work, finalCheck, log, gas));
+        return new BuildChecking(Id, _work, JobGas.Open(_work.TouchesPipes)).Step(untilMs);
     }
 
     private BuildJobView Refused(object? finalCheck, ErrorView error) =>
@@ -160,7 +141,126 @@ internal sealed class BuildWaiting : HeldTickJob
             new BuildJobResult(finalCheck, new BuildLog(), new List<BuildCheckView>(), error));
 }
 
-/// <summary>Done in the held frame; waiting for Unity to finish it (at most 30 frames), then checked, tick let go.</summary>
+/// <summary>
+/// The tick has stopped: the final check (BuildWork.Checking) over as many frames as it needs, the tick held; a save
+/// or the world stopping meanwhile refuses the run, nothing changed. Only a check that finds nothing goes on.
+/// </summary>
+internal sealed class BuildChecking : HeldTickJob
+{
+    private readonly BuildWork _work;
+    private readonly JobGas _gas;
+    private readonly Work<bool> _check;
+
+    internal BuildChecking(string id, BuildWork work, JobGas gas)
+        : base(id)
+    {
+        _work = work;
+        _gas = gas;
+        _check = new Work<bool>(answer => Checked(answer));
+    }
+
+    internal override object View() => new BuildJobView(Id, _work.Tool, "waiting", _work.Preflight, null);
+
+    internal override object Failed(ErrorView error) => Refused(null, error);
+
+    internal override JobStep Step(double untilMs)
+    {
+        if (GameManager.GameState != GameState.Running)
+        {
+            return JobStep.Finish(Refused(null, new ErrorView("game_not_running",
+                "The world stopped running first; nothing was changed.")), false);
+        }
+
+        if (HeldTickJobs.IsSaving())
+        {
+            return JobStep.Finish(Refused(null, new ErrorView("save_started",
+                "A save started during the final check; nothing was changed. Run it again.")), false);
+        }
+
+        object? finalCheck;
+        ErrorView? refusal;
+        try
+        {
+            if (!_check.Step(StopwatchClock.Instance, untilMs))
+            {
+                return JobStep.Next(this);
+            }
+
+            finalCheck = _work.FinalCheck(out refusal);
+        }
+        catch (ApiException exception)
+        {
+            return JobStep.Finish(Refused(null, new ErrorView(exception.Code, exception.Message)), true);
+        }
+
+        return refusal != null
+            ? JobStep.Finish(Refused(finalCheck, refusal), true)
+            : JobStep.Next(new BuildApplying(Id, _work, finalCheck, _gas));
+    }
+
+    private IEnumerable<object?> Checked(Answer<bool> answer)
+    {
+        foreach (object? step in _work.Checking())
+        {
+            yield return step;
+        }
+
+        answer.Value = true;
+    }
+
+    private BuildJobView Refused(object? finalCheck, ErrorView error) =>
+        new BuildJobView(Id, _work.Tool, "refused", _work.Preflight,
+            new BuildJobResult(finalCheck, new BuildLog(), new List<BuildCheckView>(), error));
+}
+
+/// <summary>Checked: the work done over frames (BuildWork.Apply), the tick held throughout.</summary>
+internal sealed class BuildApplying : HeldTickJob
+{
+    private readonly BuildWork _work;
+    private readonly object? _finalCheck;
+    private readonly JobGas _gas;
+    private readonly BuildLog _log = new BuildLog();
+    private readonly Work<bool> _apply;
+
+    internal BuildApplying(string id, BuildWork work, object? finalCheck, JobGas gas)
+        : base(id)
+    {
+        _work = work;
+        _finalCheck = finalCheck;
+        _gas = gas;
+        _apply = new Work<bool>(answer => Applied(answer));
+    }
+
+    internal override object View() => new BuildJobView(Id, _work.Tool, "waiting", _work.Preflight, null);
+
+    // The work had begun: what it did so far stands.
+    internal override object Failed(ErrorView error) =>
+        new BuildJobView(Id, _work.Tool, "stopped", _work.Preflight,
+            new BuildJobResult(_finalCheck, _log, new List<BuildCheckView>(), error));
+
+    internal override JobStep Step(double untilMs)
+    {
+        bool done;
+        using (Prof.Scope(ProfId.JobApply))
+        {
+            done = _apply.Step(StopwatchClock.Instance, untilMs);
+        }
+
+        return done ? JobStep.Next(new BuildSettling(Id, _work, _finalCheck, _log, _gas)) : JobStep.Next(this);
+    }
+
+    private IEnumerable<object?> Applied(Answer<bool> answer)
+    {
+        foreach (object? step in _work.Apply(_log, _gas))
+        {
+            yield return step;
+        }
+
+        answer.Value = true;
+    }
+}
+
+/// <summary>Done with the tick held; waiting for Unity to finish it (at most 30 frames), then checked, tick let go.</summary>
 internal sealed class BuildSettling : HeldTickJob
 {
     private const int MaximumFrames = 30;
@@ -231,15 +331,27 @@ internal sealed class PlaceWork : BuildWork
 
     internal override bool TouchesPipes { get; }
 
-    internal override object? FinalCheck(out ErrorView? refusal)
+    internal override IEnumerable<object?> Checking()
     {
-        _plan = PlacePlanner.Plan(_arguments, lint: false);
-        refusal = _plan.Ready ? null : new ErrorView("final_check_failed",
-            $"The check once the tick had stopped found {_plan.Problems.Count} problem(s); nothing was changed.");
-        return BuildReports.Of(_plan, _plan.Ready ? BuildReports.Scheduled : BuildReports.Refused, null);
+        Answer<PlacePlan> answer = new Answer<PlacePlan>();
+        foreach (object? step in PlacePlanner.Planning(_arguments, false, answer))
+        {
+            yield return step;
+        }
+
+        _plan = answer.Value;
     }
 
-    internal override void Apply(BuildLog log, JobGas gas)
+    internal override object? FinalCheck(out ErrorView? refusal)
+    {
+        PlacePlan plan = _plan!;
+        refusal = plan.Ready ? null : new ErrorView("final_check_failed",
+            $"The check once the tick had stopped found {plan.Problems.Count} problem(s); nothing was changed.");
+        return BuildReports.Of(plan, plan.Ready ? BuildReports.Scheduled : BuildReports.Refused, null);
+    }
+
+    // A placement per step.
+    internal override IEnumerable<object?> Apply(BuildLog log, JobGas gas)
     {
         PlacePlan plan = _plan!;
         Dictionary<int, ItemStock> stocks = new Dictionary<int, ItemStock>();
@@ -257,6 +369,7 @@ internal sealed class PlaceWork : BuildWork
             }
 
             gas.Settle();
+            yield return null;
         }
 
         foreach (ItemStock stock in plan.Stocks)
@@ -472,19 +585,31 @@ internal sealed class RemoveWork : BuildWork
 
     internal override bool TouchesPipes { get; }
 
+    internal override IEnumerable<object?> Checking()
+    {
+        Answer<RemovePlan> answer = new Answer<RemovePlan>();
+        foreach (object? step in RemovePlanner.Planning(_arguments, answer))
+        {
+            yield return step;
+        }
+
+        _plan = answer.Value;
+    }
+
     internal override object? FinalCheck(out ErrorView? refusal)
     {
-        _plan = RemovePlanner.Plan(_arguments);
-        refusal = _plan.Ready ? null : new ErrorView("final_check_failed",
-            $"The check once the tick had stopped found {_plan.Problems.Count} problem(s); nothing was changed.");
-        return BuildReports.Of(_plan, _plan.Ready ? BuildReports.Scheduled : BuildReports.Refused, null);
+        RemovePlan plan = _plan!;
+        refusal = plan.Ready ? null : new ErrorView("final_check_failed",
+            $"The check once the tick had stopped found {plan.Problems.Count} problem(s); nothing was changed.");
+        return BuildReports.Of(plan, plan.Ready ? BuildReports.Scheduled : BuildReports.Refused, null);
     }
 
     // Removals only split networks, and the game chains splits made in one frame itself (Pipe.OnDestroy divides from
     // the live atmosphere of a network still awaiting its share): the gas is applied and checked once, at the end.
     // The gas the plan forecasts it deletes (allowed, or it would not have passed) is expected by the check, which
-    // would otherwise put it back into the parts left and could burst them (structures-34).
-    internal override void Apply(BuildLog log, JobGas gas)
+    // would otherwise put it back into the parts left and could burst them (structures-34). The removals are one step:
+    // every OnServer.Destroy lands at the same frame's end, as the game chains its splits.
+    internal override IEnumerable<object?> Apply(BuildLog log, JobGas gas)
     {
         RemovePlan plan = _plan!;
         gas.Expect(plan.GasLosses);
@@ -512,6 +637,7 @@ internal sealed class RemoveWork : BuildWork
         }
 
         Refund(plan, done, log);
+        yield break;
     }
 
     // The order a player would have to take them down in (RocketTakedownOrder): fuselage pieces last, top first.

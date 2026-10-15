@@ -7,15 +7,17 @@ using Assets.Scripts.Objects;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure.Profiling;
+using StationGodMCP.Pure.Scheduling;
 using UnityEngine;
 
 namespace StationGodMCP.Api.Shared.Game.Runs;
 
 /// <summary>
 /// Confirmed runs of place_* and remove_*, on the shared runner (HeldTickJobs), so they never overlap a swap job.
-/// With the game tick held: once it has stopped, the whole preflight runs again and, only if it finds nothing, the
-/// removals are made in that frame; the frame after they are gone, every change and new piece is built in one frame;
-/// once the replaced pieces are gone, the result is checked and the tick let go. No power, atmospherics or logic tick
+/// With the game tick held: once it has stopped, the whole preflight runs again over as many frames as it needs and,
+/// only if it finds nothing, the removals are made in one frame; once they are gone, the changes and new pieces are
+/// built a piece per step (RunBuilder.Building); once the replaced pieces are gone, the result is checked and the tick
+/// let go. No power, atmospherics or logic tick
 /// sees a device between its old cable and its new one. A pipe run's queued gas changes are applied after the
 /// removals and after every piece built, and its contents are checked at the end (JobGas).
 /// </summary>
@@ -50,7 +52,7 @@ internal abstract class ActiveRun : HeldTickJob
         new RunJobView(Id, Request.Tool, "refused", Preflight, new RunJobResultView(finalCheck, null, null, error));
 }
 
-/// <summary>Waiting for the game tick to stop; then the final check and the removals, in one frame.</summary>
+/// <summary>Waiting for the game tick to stop; then the final check (RunPreflighting).</summary>
 internal sealed class RunWaiting : ActiveRun
 {
     private readonly float _startedAt;
@@ -83,17 +85,54 @@ internal sealed class RunWaiting : ActiveRun
                 : JobStep.Next(this);
         }
 
-        JobGas gas = JobGas.Open(Request.Kind.Family is PipeFamily);
-        RunPlan plan;
+        return new RunPreflighting(this, JobGas.Open(Request.Kind.Family is PipeFamily)).Step(untilMs);
+    }
+}
+
+/// <summary>
+/// The tick has stopped: the whole preflight again (RunPlanner.Planning, without the report lint rules) over as many
+/// frames as it needs, the tick held; a save or the world stopping meanwhile refuses the run, nothing changed. Only a
+/// plan with no problem goes on: its removals are made in the step it is ready in.
+/// </summary>
+internal sealed class RunPreflighting : ActiveRun
+{
+    private readonly JobGas _gas;
+    private readonly Work<RunPlan> _plan;
+
+    internal RunPreflighting(ActiveRun waiting, JobGas gas)
+        : base(waiting.Id, waiting.Request, waiting.Preflight)
+    {
+        _gas = gas;
+        _plan = new Work<RunPlan>(answer => RunPlanner.Planning(Request, false, answer));
+    }
+
+    internal override JobStep Step(double untilMs)
+    {
+        if (GameManager.GameState != GameState.Running)
+        {
+            return JobStep.Finish(Refused(null, new ErrorView("game_not_running",
+                "The world stopped running before the run; nothing was changed.")), false);
+        }
+
+        if (HeldTickJobs.IsSaving())
+        {
+            return JobStep.Finish(Refused(null, new ErrorView("save_started",
+                "A save started during the final check; nothing was changed. Run it again.")), false);
+        }
+
         try
         {
-            plan = RunPlanner.Plan(Request, lint: false);
+            if (!_plan.Step(StopwatchClock.Instance, untilMs))
+            {
+                return JobStep.Next(this);
+            }
         }
         catch (ApiException refusal)
         {
             return JobStep.Finish(Refused(null, new ErrorView(refusal.Code, refusal.Message)), true);
         }
 
+        RunPlan plan = _plan.Value;
         RunPlanner.RequireAssumedGone(plan);
         if (!plan.Ready)
         {
@@ -110,11 +149,11 @@ internal sealed class RunWaiting : ActiveRun
             RunBuilder.Remove(plan, outcome);
         }
 
-        return JobStep.Next(new RunAwaitingRemovals(this, plan, outcome, finalCheck, gas));
+        return JobStep.Next(new RunAwaitingRemovals(this, plan, outcome, finalCheck, _gas));
     }
 }
 
-/// <summary>Removed; waiting for Unity to destroy the removed pieces, then building every cell in one frame.</summary>
+/// <summary>Removed; waiting for Unity to destroy the removed pieces, then the build (RunBuilding).</summary>
 internal sealed class RunAwaitingRemovals : ActiveRun
 {
     private const int MaximumFrames = 30;
@@ -158,19 +197,60 @@ internal sealed class RunAwaitingRemovals : ActiveRun
 
         // The removed pieces' splits (Pipe.OnDestroy, at the end of the removal frame) land before any merge.
         _gas.Settle();
-        if (_outcome.Log.StoppedAt == null)
-        {
-            using (Prof.Scope(ProfId.JobApply))
-            {
-                RunBuilder.Build(_plan, _outcome, _gas);
-            }
-        }
-
-        return JobStep.Next(new RunAwaitingCheck(this, _plan, _outcome, _finalCheck, _gas));
+        return _outcome.Log.StoppedAt == null
+            ? JobStep.Next(new RunBuilding(this, _plan, _outcome, _finalCheck, _gas))
+            : JobStep.Next(new RunAwaitingCheck(this, _plan, _outcome, _finalCheck, _gas));
     }
 }
 
-/// <summary>Built; waiting for Unity to destroy the replaced pieces, then checking the result.</summary>
+/// <summary>The removals gone: the changes and new pieces built a piece per step (RunBuilder.Building).</summary>
+internal sealed class RunBuilding : ActiveRun
+{
+    private readonly RunPlan _plan;
+    private readonly RunOutcome _outcome;
+    private readonly RunReportView _finalCheck;
+    private readonly JobGas _gas;
+    private readonly Work<bool> _build;
+
+    internal RunBuilding(ActiveRun removed, RunPlan plan, RunOutcome outcome, RunReportView finalCheck, JobGas gas)
+        : base(removed.Id, removed.Request, removed.Preflight)
+    {
+        _plan = plan;
+        _outcome = outcome;
+        _finalCheck = finalCheck;
+        _gas = gas;
+        _build = new Work<bool>(answer => Built(answer));
+    }
+
+    internal override object Failed(ErrorView error) =>
+        new RunJobView(Id, Request.Tool, "stopped", Preflight,
+            new RunJobResultView(_finalCheck, _outcome.Log, null, error));
+
+    internal override JobStep Step(double untilMs)
+    {
+        bool done;
+        using (Prof.Scope(ProfId.JobApply))
+        {
+            done = _build.Step(StopwatchClock.Instance, untilMs);
+        }
+
+        return done
+            ? JobStep.Next(new RunAwaitingCheck(this, _plan, _outcome, _finalCheck, _gas))
+            : JobStep.Next(this);
+    }
+
+    private IEnumerable<object?> Built(Answer<bool> answer)
+    {
+        foreach (object? step in RunBuilder.Building(_plan, _outcome, _gas))
+        {
+            yield return step;
+        }
+
+        answer.Value = true;
+    }
+}
+
+/// <summary>Built; waiting for Unity to destroy the replaced pieces, then checking the result (over frames).</summary>
 internal sealed class RunAwaitingCheck : ActiveRun
 {
     private const int MaximumFrames = 30;
@@ -180,6 +260,8 @@ internal sealed class RunAwaitingCheck : ActiveRun
     private readonly RunReportView _finalCheck;
     private readonly JobGas _gas;
     private int _frames;
+    private GasCheckView? _gasCheck;
+    private Work<RunVerificationView>? _check;
 
     internal RunAwaitingCheck(ActiveRun previous, RunPlan plan, RunOutcome outcome, RunReportView finalCheck,
         JobGas gas)
@@ -198,14 +280,25 @@ internal sealed class RunAwaitingCheck : ActiveRun
 
     internal override JobStep Step(double untilMs)
     {
-        _frames++;
-        if (RunGone.AnyRemain(_outcome.Replaced) && _frames < MaximumFrames)
+        if (_check == null)
+        {
+            _frames++;
+            if (RunGone.AnyRemain(_outcome.Replaced) && _frames < MaximumFrames)
+            {
+                return JobStep.Next(this);
+            }
+
+            _gasCheck = _gas.Close(Id);
+            _check = new Work<RunVerificationView>(answer => RunCheck.Verifying(_plan, _outcome, answer));
+        }
+
+        if (!_check.Step(StopwatchClock.Instance, untilMs))
         {
             return JobStep.Next(this);
         }
 
-        GasCheckView? gasCheck = _gas.Close(Id);
-        RunVerificationView verification = RunCheck.Verify(_plan, _outcome);
+        GasCheckView? gasCheck = _gasCheck;
+        RunVerificationView verification = _check.Value;
         string status = _outcome.Log.StoppedAt != null ? "stopped"
             : verification.Ok ? "applied"
             : "applied_with_differences";

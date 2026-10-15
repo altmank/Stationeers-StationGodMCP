@@ -9,6 +9,7 @@ using Assets.Scripts.Objects;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Protocol;
+using StationGodMCP.Pure.Scheduling;
 
 namespace StationGodMCP.Api.Shared.Game.Runs;
 
@@ -73,13 +74,15 @@ internal static class RunTaps
     /// The plan, or when it does not reach join_to, the plan of the run with the best tap added (planned again by
     /// planOnce, without join_trunk). Leaves the plan as it is, with a note, when no tap reaches the target.
     /// </summary>
-    internal static RunPlan Tapped(RunRequest request, RunPlan plan, Func<RunRequest, RunPlan> planOnce)
+    internal static IEnumerable<object?> Tapping(RunRequest request, RunPlan plan,
+        Func<RunRequest, Answer<RunPlan>, IEnumerable<object?>> planOnce, Answer<RunPlan> answer)
     {
+        answer.Value = plan;
         RunTargets targets = request.Options.Targets;
         RunBuild? build = request.Build;
         if (build == null)
         {
-            return plan;
+            yield break;
         }
 
         if (!targets.JoinTo.HasValue)
@@ -87,13 +90,13 @@ internal static class RunTaps
             plan.Problem("join_trunk_needs_target",
                 "join_trunk needs join_to: the network the tap should reach (a network id, or {id, port} of a " +
                 "device on it).");
-            return plan;
+            yield break;
         }
 
         long target = targets.JoinTo.Value.Value;
         if (plan.Forecast == null || JoinedNetworks(plan).Contains(target))
         {
-            return plan;
+            yield break;
         }
 
         List<NearMiss> candidates = new List<NearMiss>();
@@ -123,7 +126,13 @@ internal static class RunTaps
                 continue;
             }
 
-            RunPlan tapped = planOnce(request.With(shape, options));
+            Answer<RunPlan> once = new Answer<RunPlan>();
+            foreach (object? step in planOnce(request.With(shape, options), once))
+            {
+                yield return step;
+            }
+
+            RunPlan tapped = once.Value;
             if (tapped.Ready && tapped.Forecast != null && JoinedNetworks(tapped).Contains(target))
             {
                 tapped.Tap = miss;
@@ -131,7 +140,8 @@ internal static class RunTaps
                 tapped.Warnings.Add(new LayoutIssue(TapAdded,
                     $"join_trunk: the run stopped {Gap(miss)} {Describe(plan, miss.Piece)}; the " +
                     $"tap ({TapText(miss)}) is added, so the run joins network {target}.", miss.From, miss.Piece));
-                return tapped;
+                answer.Value = tapped;
+                yield break;
             }
         }
 
@@ -141,7 +151,6 @@ internal static class RunTaps
                     $"{target}; route the run to it (plan route with end: {{network}}) instead."
                 : $"join_trunk: none of the {Math.Min(candidates.Count, MaximumTries)} taps " +
                     $"tried towards network {target} plans ready; the run is left as given.", null, target));
-        return plan;
     }
 
     // Each network the run's new and changed pieces end up on after the edit (every network before it they join).

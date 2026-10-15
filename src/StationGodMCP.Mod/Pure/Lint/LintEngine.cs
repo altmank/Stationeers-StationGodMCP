@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using StationGodMCP.Pure.Scheduling;
+using StationGodMCP.Pure.Profiling;
 
 namespace StationGodMCP.Pure.Lint;
 
@@ -76,6 +77,7 @@ internal static class LintEngine
     internal const string RuleErrorCode = "rule_error";
     internal const int RuleErrorsPerRule = 25;
 
+    [Profiled]
     internal static LintRun Run(LintRuleSet set, ILintWorld world, string phase)
     {
         Answer<LintRun> answer = new Answer<LintRun>();

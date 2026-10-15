@@ -1,7 +1,9 @@
 #nullable enable
 
 using System;
+using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure.Scheduling;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Api.Shared;
@@ -43,6 +45,50 @@ internal sealed class WriteCheck<TPlan> where TPlan : class
         {
             return new WriteCheck<TPlan>(null, refusal);
         }
+    }
+
+    /// <summary>
+    /// A write whose checks are work spread over frames (A3): the planner body is stepped in the call's frame and then in
+    /// the slice lane (WorkResult); a refusal it throws at any step is the check's refusal, as Run's is; then Outcome
+    /// answers. act and describe run in the step the plan is ready in.
+    /// </summary>
+    internal static VerbOutcome Planned(Func<Answer<TPlan>, IEnumerable<object?>> checks, ReportConfirm report,
+        Func<TPlan, VerbOutcome> act, Func<TPlan, JObject> describe) =>
+        WorkResult<WriteCheck<TPlan>>.Of(answer => Stepped(checks, answer),
+            check => check.Outcome(report, act, describe));
+
+    /// <summary>
+    /// The checks as a body (a planner's work over frames), its plan or the refusal one of its steps threw. Any other
+    /// exception is a fault and is raised as it is.
+    /// </summary>
+    internal static IEnumerable<object?> Stepped(Func<Answer<TPlan>, IEnumerable<object?>> checks,
+        Answer<WriteCheck<TPlan>> answer)
+    {
+        Answer<TPlan> plan = new Answer<TPlan>();
+        using IEnumerator<object?> steps = checks(plan).GetEnumerator();
+        ApiException? refused = null;
+        while (true)
+        {
+            bool more;
+            try
+            {
+                more = steps.MoveNext();
+            }
+            catch (ApiException refusal)
+            {
+                refused = refusal;
+                break;
+            }
+
+            if (!more)
+            {
+                break;
+            }
+
+            yield return null;
+        }
+
+        answer.Value = refused != null ? new WriteCheck<TPlan>(null, refused) : new WriteCheck<TPlan>(plan.Value, null);
     }
 
     /// <summary>

@@ -8,6 +8,8 @@ using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Lint;
 using StationGodMCP.Pure.Protocol;
+using StationGodMCP.Pure.Profiling;
+using StationGodMCP.Pure.Scheduling;
 
 
 namespace StationGodMCP.Api.Shared.Game.Lint;
@@ -22,37 +24,79 @@ internal static class LintReport
 {
     internal const string CodePrefix = "lint_";
 
-    /// <summary>The findings about the planned things, report order.</summary>
-    internal static List<LintFinding> Findings(List<PlannedThing> planned, HashSet<long> gone)
+    /// <summary>
+    /// The findings about the planned things, report order, as a Work body: the world around gathered a cell per step,
+    /// then a rule's subject per step. Rules that throw at any step give the one unavailable warning.
+    /// </summary>
+    internal static IEnumerable<object?> Finding(List<PlannedThing> planned, HashSet<long> gone,
+        Answer<List<LintFinding>> answer)
     {
         if (planned.Count == 0)
         {
-            return new List<LintFinding>();
+            answer.Value = new List<LintFinding>();
+            yield break;
         }
 
-        try
+        Answer<List<LintFinding>> found = new Answer<List<LintFinding>>();
+        using IEnumerator<object?> steps = Run(planned, gone, found).GetEnumerator();
+        Exception? failed = null;
+        while (true)
         {
-            LintRuleSet rules = LintRuleFiles.Current();
-            GameLintWorld world = GameLintWorld.DryRun(planned, gone);
-            return Pure.LintReport.Ordered(LintEngine.Run(rules, world, "report").Findings);
-        }
-        catch (Exception error)
-        {
-            return new List<LintFinding>
+            bool more;
+            try
             {
-                new LintFinding(CodePrefix + "unavailable", ConflictLevel.Warning, 0,
-                    $"The report lint rules could not run: {error.GetType().Name}: " +
-                    $"{error.Message}", null, Vec3.Zero,
-                    null, null, null)
-            };
+                more = steps.MoveNext();
+            }
+            catch (Exception error)
+            {
+                failed = error;
+                break;
+            }
+
+            if (!more)
+            {
+                break;
+            }
+
+            yield return null;
         }
+
+        answer.Value = failed == null ? found.Value : Unavailable(failed);
     }
+
+    private static IEnumerable<object?> Run(List<PlannedThing> planned, HashSet<long> gone,
+        Answer<List<LintFinding>> answer)
+    {
+        LintRuleSet rules = LintRuleFiles.Current();
+        Answer<GameLintWorld> world = new Answer<GameLintWorld>();
+        foreach (object? step in GameLintWorld.DryRunSteps(planned, gone, world))
+        {
+            yield return step;
+        }
+
+        Answer<LintRun> run = new Answer<LintRun>();
+        foreach (object? step in LintEngine.Steps(rules, world.Value, "report", run))
+        {
+            yield return step;
+        }
+
+        answer.Value = Pure.LintReport.Ordered(run.Value.Findings);
+    }
+
+    private static List<LintFinding> Unavailable(Exception error) =>
+        new List<LintFinding>
+        {
+            new LintFinding(CodePrefix + "unavailable", ConflictLevel.Warning, 0,
+                $"The report lint rules could not run: {error.GetType().Name}: " +
+                $"{error.Message}", null, Vec3.Zero,
+                null, null, null)
+        };
 
     /// <summary>
     /// The lint findings of a cable, pipe or chute run's planned pieces: a problem refuses the run, unless the call's
-    /// allow names lint, which makes it a warning and has the report mark the rows about it PASSED (RunPlan.Lifted).
+    /// allow names lint, which makes it a warning and has the report mark the rows about it PASSED (RunPlan.Lifted). A Work body: the findings in steps of their own (Finding).
     /// </summary>
-    internal static void Check(RunPlan plan, bool allowLint)
+    internal static IEnumerable<object?> Checking(RunPlan plan, bool allowLint)
     {
         List<PlannedThing> planned = new List<PlannedThing>(plan.Cells.Count);
         HashSet<long> gone = new HashSet<long>();
@@ -72,7 +116,13 @@ internal static class LintReport
                 cell.Model.Cells, cell.Model.Ends));
         }
 
-        foreach (LintFinding finding in Findings(planned, gone))
+        Answer<List<LintFinding>> findings = new Answer<List<LintFinding>>();
+        foreach (object? step in Finding(planned, gone, findings))
+        {
+            yield return step;
+        }
+
+        foreach (LintFinding finding in findings.Value)
         {
             if (finding.Level != ConflictLevel.Problem)
             {
@@ -96,8 +146,8 @@ internal static class LintReport
 
     /// <summary>The lint findings of build structure's resolved placements: a problem refuses the plan, unless the
     /// call's allow names lint, which makes it a warning and has the report mark the placements it is about PASSED
-    /// (PlacePlan.Lifted).</summary>
-    internal static void Check(PlacePlan plan, bool allowLint)
+    /// (PlacePlan.Lifted). A Work body: the findings in steps of their own (Finding).</summary>
+    internal static IEnumerable<object?> Checking(PlacePlan plan, bool allowLint)
     {
         List<PlannedThing> planned = new List<PlannedThing>(plan.Placements.Count);
         foreach (PlannedPlacement placement in plan.Placements)
@@ -109,7 +159,13 @@ internal static class LintReport
             }
         }
 
-        foreach (LintFinding finding in Findings(planned, new HashSet<long>()))
+        Answer<List<LintFinding>> findings = new Answer<List<LintFinding>>();
+        foreach (object? step in Finding(planned, new HashSet<long>(), findings))
+        {
+            yield return step;
+        }
+
+        foreach (LintFinding finding in findings.Value)
         {
             int? index = IndexOf(finding, planned);
             if (finding.Level != ConflictLevel.Problem)

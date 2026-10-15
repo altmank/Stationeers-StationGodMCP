@@ -51,7 +51,12 @@ one, so a slice overruns by one step at most. A handler answers through `WorkRes
 deferred (`VerbOutcome.Pending`) and stepped in the slice lane. A started call's stop (cancel requested, deadline
 passed) is met at every yield (`WorkStop`, set by `Protocol/DeferredCalls.cs` around each slice); the slice lane then
 answers it. Job states step their preflight, apply and checks the same way in the job lane, with the game tick held
-throughout, so no tick sees a half-done change; only frames pass between steps.
+throughout, so no tick sees a half-done change; only frames pass between steps. Two kinds of apply stay in one step,
+because Unity destroys a thing at the end of the frame it was destroyed in: a run's or remove structure's removals
+(every `OnServer.Destroy` lands at the same frame's end, so no removal reads a network another one's destroy already
+rebuilt), and the swaps and changed pieces of a chute network (`Chute.OnDestroy` rebuilds its neighbours' networks
+whatever was done first). A caller that runs a call itself and needs its answer at once (undo's replay) takes it to
+its end in one frame (`VerbOutcome.Settled`).
 
 ## Order on a stream
 

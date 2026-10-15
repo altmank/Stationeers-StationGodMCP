@@ -267,8 +267,20 @@ internal static class Connectivity
     /// <summary>Every link among the models that starts or ends at a focus id.</summary>
     internal static HashSet<Link> LinksTouching(IReadOnlyList<PieceModel> models, HashSet<long> focus)
     {
-        Dictionary<GridCell, List<PieceModel>> byCell = IndexByCell(models);
         HashSet<Link> links = new HashSet<Link>();
+        foreach (object? _ in LinksTouchingSteps(models, focus, links))
+        {
+        }
+
+        return links;
+    }
+
+    /// <summary>LinksTouching spread over frames (a Work body): one model's ends per step, into links.</summary>
+    internal static IEnumerable<object?> LinksTouchingSteps(IReadOnlyList<PieceModel> models, HashSet<long> focus,
+        HashSet<Link> links)
+    {
+        Dictionary<GridCell, List<PieceModel>> byCell = IndexByCell(models);
+        yield return null;
         for (int index = 0; index < models.Count; index++)
         {
             PieceModel from = models[index];
@@ -288,9 +300,9 @@ internal static class Connectivity
                     }
                 }
             }
-        }
 
-        return links;
+            yield return null;
+        }
     }
 
     private static Dictionary<GridCell, List<PieceModel>> IndexByCell(IReadOnlyList<PieceModel> models)

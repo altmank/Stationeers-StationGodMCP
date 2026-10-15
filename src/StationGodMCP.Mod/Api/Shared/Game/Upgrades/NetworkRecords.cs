@@ -11,6 +11,7 @@ using Assets.Scripts.Objects.Pipes;
 using Networks;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure.Protocol;
+using StationGodMCP.Pure.Profiling;
 
 namespace StationGodMCP.Api.Shared.Game.Upgrades;
 
@@ -20,10 +21,25 @@ namespace StationGodMCP.Api.Shared.Game.Upgrades;
 /// </summary>
 internal abstract class NetworkRecord
 {
+    // Each old piece's swap by the piece's reference id: IsSwapped asks it per member, so a network of n members with n
+    // swaps costs n lookups, not n * n comparisons.
+    private readonly Dictionary<long, PlannedSwap> _byOld = new Dictionary<long, PlannedSwap>();
+
     protected NetworkRecord(ThingId id, List<PlannedSwap> swaps, List<Device> devices, List<SmallGrid> members)
     {
         Id = id;
         Swaps = swaps;
+        foreach (PlannedSwap swap in swaps)
+        {
+            foreach (OldPiece old in swap.Olds)
+            {
+                if (old.Piece != null)
+                {
+                    _byOld[old.Piece.ReferenceId] = swap;
+                }
+            }
+        }
+
         DevicesBefore = IdsOf(devices);
         Staying = members.FindAll(member => !IsSwapped(member, out _));
     }
@@ -116,8 +132,11 @@ internal abstract class NetworkRecord
 
     internal abstract void Verify(List<UpgradeProblemView> problems, Dictionary<long, List<SmallGrid>> replacements);
 
-    /// <summary>Groups the planned swaps by network and records each network.</summary>
-    internal static void RecordAll(UpgradePlan plan)
+    /// <summary>
+    /// Groups the planned swaps by network and records each network, spread over frames (a Work body): a swap grouped,
+    /// then a network recorded, per step.
+    /// </summary>
+    internal static IEnumerable<object?> Recording(UpgradePlan plan)
     {
         UpgradeFamily family = plan.Request.Family;
         Dictionary<long, List<PlannedSwap>> grouped = new Dictionary<long, List<PlannedSwap>>();
@@ -128,6 +147,7 @@ internal abstract class NetworkRecord
             if (network == null)
             {
                 plan.Problem("no_network", $"{swap.Old.PrefabName} is in no {family.NetworkKind} network.", swap.Old);
+                yield return null;
                 continue;
             }
 
@@ -139,6 +159,7 @@ internal abstract class NetworkRecord
             }
 
             group.Add(swap);
+            yield return null;
         }
 
         foreach (KeyValuePair<long, List<PlannedSwap>> entry in grouped)
@@ -146,6 +167,7 @@ internal abstract class NetworkRecord
             NetworkRecord record = family.Record(networks[entry.Key], entry.Value);
             record.AddProblems(plan);
             plan.Networks.Add(record);
+            yield return null;
         }
     }
 
@@ -188,13 +210,10 @@ internal abstract class NetworkRecord
 
     protected bool IsSwapped(Thing member, out PlannedSwap? swap)
     {
-        foreach (PlannedSwap planned in Swaps)
+        if (member != null && _byOld.TryGetValue(member.ReferenceId, out PlannedSwap planned) && planned.Takes(member))
         {
-            if (planned.Takes(member))
-            {
-                swap = planned;
-                return true;
-            }
+            swap = planned;
+            return true;
         }
 
         swap = null;

@@ -8,6 +8,7 @@ using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Profiling;
+using StationGodMCP.Pure.Scheduling;
 using StationGodMCP.Pure.Verbs;
 using StationGodMCP.Verbs;
 using UnityEngine;
@@ -61,8 +62,11 @@ internal static class RoutePlanning
     private const double BendCost = 2.0;
     private const double MinimumBendsCost = 25.0;
 
-    [Profiled]
-    internal static PlannedRoute Plan(RouteOrder order, string label)
+    /// <summary>
+    /// The route as a Work body: the ends and rules in one step, each search a batch of expansions per step
+    /// (RouteTrees.Growing), build's report in steps of its own (RunPlanner.Planning).
+    /// </summary>
+    internal static IEnumerable<object?> Planning(RouteOrder order, string label, Answer<PlannedRoute> answer)
     {
         RunKind kind = RunKind.Named(order.Kind);
         NetworkTarget? joinTo = order.JoinTo ?? JoinTarget(order.End, kind);
@@ -117,13 +121,26 @@ internal static class RoutePlanning
 
         RouteReservation reserved = Reservation(order, starts, end, trunk, notes);
         OpeningGuard openings = Openings(order, facts, starts, end, notes);
-        RouteTree tree = Grow(order, starts, main, facts, rules, reserved, openings);
+        yield return null;
+        Answer<RouteTree> grown = new Answer<RouteTree>();
+        foreach (object? step in Grow(order, starts, main, facts, rules, reserved, openings, grown))
+        {
+            yield return step;
+        }
+
+        RouteTree tree = grown.Value;
         bool supportedSearched = rules.FramesFirst;
         if (tree.GaveUp && rules.FramesFirst)
         {
             // The air penalty never costs a route the plain search finds: past the air field's box size the search can
             // run out of cells looking for a supported way that does not exist.
-            RouteTree second = Grow(order, starts, main, facts, rules.WithoutFramesFirst(), reserved, openings);
+            foreach (object? step in Grow(order, starts, main, facts, rules.WithoutFramesFirst(), reserved, openings,
+                         grown))
+            {
+                yield return step;
+            }
+
+            RouteTree second = grown.Value;
             if (second.Found)
             {
                 tree = second;
@@ -136,18 +153,26 @@ internal static class RoutePlanning
 
         if (!tree.Found)
         {
-            return PlannedRoute.Failed(Failure(tree), notes);
+            answer.Value = PlannedRoute.Failed(Failure(tree), notes);
+            yield break;
         }
 
         ReleasedNote(openings, tree, notes);
         string? blocked = BlockedCell(NewCells(tree, facts), kind, mask, ignore);
         if (blocked != null)
         {
-            return PlannedRoute.Failed(blocked, notes);
+            answer.Value = PlannedRoute.Failed(blocked, notes);
+            yield break;
         }
 
         RunOptions options = Options(order, kind, joinTo, label);
-        RunReportView report = BuildReport(kind, grade, order.Join, tree, removes, assumed, options);
+        Answer<RunReportView> reported = new Answer<RunReportView>();
+        foreach (object? step in BuildReport(kind, grade, order.Join, tree, removes, assumed, options, reported))
+        {
+            yield return step;
+        }
+
+        RunReportView report = reported.Value;
         if (HasWarning(report, RunPlanner.WouldLoop))
         {
             if (end != null && Shared(starts, end))
@@ -158,11 +183,25 @@ internal static class RoutePlanning
             }
             else if (order.Join == JoinMode.All)
             {
-                RouteTree retry = Grow(order, starts, main, facts,
-                    Rules(order, kind, starts, own, true).WithInsideRule(lintRule), reserved, openings);
-                RunReportView? second = retry.Found
-                    ? BuildReport(kind, grade, order.Join, retry, removes, assumed, options)
-                    : null;
+                foreach (object? step in Grow(order, starts, main, facts,
+                             Rules(order, kind, starts, own, true).WithInsideRule(lintRule), reserved, openings, grown))
+                {
+                    yield return step;
+                }
+
+                RouteTree retry = grown.Value;
+                RunReportView? second = null;
+                if (retry.Found)
+                {
+                    foreach (object? step in BuildReport(kind, grade, order.Join, retry, removes, assumed, options,
+                                 reported))
+                    {
+                        yield return step;
+                    }
+
+                    second = reported.Value;
+                }
+
                 if (second != null && !HasWarning(second, RunPlanner.WouldLoop))
                 {
                     tree = retry;
@@ -188,7 +227,7 @@ internal static class RoutePlanning
         JObject build = RouteBuildArguments.Of(order, kind.NameOf(grade), tree, removes, Ids(assumed.Others), joinTo,
             CentreOf);
         RouteView route = ViewOf(tree, removes, visibility, assumedView, RemovalRefund(segment, assumed));
-        return new PlannedRoute(route, null, build, report, notes);
+        answer.Value = new PlannedRoute(route, null, build, report, notes);
     }
 
     private static Vec3 CentreOf(GridCell cell)
@@ -199,12 +238,13 @@ internal static class RoutePlanning
 
     // The main route from the first start to the end (or the trunk as given), then each other start to the nearest
     // cell of the tree.
-    private static RouteTree Grow(RouteOrder order, List<RouteEndpoint> starts, RouteMain main, GridFacts facts,
-        RouteRuleSet rules, RouteReservation reserved, OpeningGuard openings) =>
-        RouteTrees.Grow(starts, main,
+    private static IEnumerable<object?> Grow(RouteOrder order, List<RouteEndpoint> starts, RouteMain main,
+        GridFacts facts, RouteRuleSet rules, RouteReservation reserved, OpeningGuard openings,
+        Answer<RouteTree> answer) =>
+        RouteTrees.Growing(starts, main,
             new RouteSearch(openings.Guard(reserved.Guard(cell => rules.Cost(facts.Small(cell), cell))),
                 (from, to) => SearchRules(order, from, to), (search, goals) => AirBoundOf(rules, facts, search, goals)),
-            RouteEnds.JunctionCost);
+            RouteEnds.JunctionCost, answer);
 
     private static Grade GradeOf(string? name, RunKind kind)
     {
@@ -480,14 +520,20 @@ internal static class RoutePlanning
     }
 
     // build's planned view of the route: RunPlanner over the request build would make of build_arguments.
-    private static RunReportView BuildReport(RunKind kind, Grade grade, JoinMode join, RouteTree tree,
-        List<ThingId> removes, AssumedRemovals assumed, RunOptions options)
+    private static IEnumerable<object?> BuildReport(RunKind kind, Grade grade, JoinMode join, RouteTree tree,
+        List<ThingId> removes, AssumedRemovals assumed, RunOptions options, Answer<RunReportView> answer)
     {
         RunShape shape = RunShape.Of(tree.Main, tree.Branches, out string? error) ??
                          throw ApiErrors.InvalidArgument(error ?? "The route's shape is not valid.");
         RunRequest request = new RunRequest(kind, kind.PlaceTool, new RunBuild(shape, grade, join, tree.Extra),
             new RunRemoval(removes, new List<GridCell>(), Ids(assumed.Others)), options);
-        return RunReports.Of(RunPlanner.Plan(request), RunReports.DryRun, null);
+        Answer<RunPlan> plan = new Answer<RunPlan>();
+        foreach (object? step in RunPlanner.Planning(request, true, plan))
+        {
+            yield return step;
+        }
+
+        answer.Value = RunReports.Of(plan.Value, RunReports.DryRun, null);
     }
 
     private static bool HasWarning(RunReportView report, string code) =>

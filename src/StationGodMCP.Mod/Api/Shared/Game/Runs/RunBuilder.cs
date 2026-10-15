@@ -26,13 +26,15 @@ internal sealed class RunOutcome
 }
 
 /// <summary>
-/// The two steps of a confirmed run, each in one frame while the game tick is held. Removals first: each piece is
-/// destroyed as a player's deconstruction does (OnServer.Destroy; Cable.OnDestroy and Pipe.OnDestroy rebuild the
+/// The two steps of a confirmed run while the game tick is held. Removals first, in one frame (every OnServer.Destroy
+/// lands at the same frame's end, so no removal reads a network another one's OnDestroy already rebuilt): each piece
+/// is destroyed as a player's deconstruction does (OnServer.Destroy; Cable.OnDestroy and Pipe.OnDestroy rebuild the
 /// networks from its neighbours), except that where the forecast keeps its network whole (nothing splits), the piece
 /// leaves the network first (UpgradeFamily.Leave), so the network keeps its id and a pipe network its contents. A
 /// chute never leaves first (NetworkLeaveRule): Chute.OnDestroy rebuilds its neighbours' networks whatever was done.
-/// Then, once Unity has destroyed them, the build: every changed piece is replaced as the kit's merge does (the new
-/// piece built into the old one's cell, put into its network, the old one leaves and is destroyed), then every new
+/// Then, once Unity has destroyed them, the build, a piece per step over frames (Building; a chute run's in one
+/// step): every changed piece is replaced as the kit's merge does (the new piece built into the old one's cell, put
+/// into its network, the old one leaves and is destroyed), then every new
 /// piece is built as a coil's placement builds it (Constructor.SpawnConstruct; Cable.OnRegistered and
 /// Pipe.OnRegistered join and merge the networks around it). Each cell's coils are taken before it is built; the
 /// first failure stops the build and the log says where. After each piece the gas its merges queued is applied
@@ -84,7 +86,8 @@ internal static class RunBuilder
         }
     }
 
-    internal static void Build(RunPlan plan, RunOutcome outcome, JobGas gas)
+    /// <summary>The build as a Work body: a swapped long, then a cell, per step; then the refund.</summary>
+    internal static IEnumerable<object?> Building(RunPlan plan, RunOutcome outcome, JobGas gas)
     {
         Dictionary<int, ItemStock> stocks = new Dictionary<int, ItemStock>();
         foreach (ItemStock stock in plan.Stocks)
@@ -110,6 +113,7 @@ internal static class RunBuilder
             {
                 swapped.Add(removal.Piece);
                 SwapSplit(plan, removal, stocks, used, refund, outcome, gas);
+                yield return null;
             }
         }
 
@@ -125,6 +129,9 @@ internal static class RunBuilder
         ordered.AddRange(GrowthOrder.From(standing,
             plan.Cells.FindAll(cell => !cell.IsChange && (cell.SplitFrom == null || !swapped.Contains(cell.SplitFrom))),
             static cell => cell.Model));
+        // A family whose OnDestroy rebuilds the neighbours' networks (chutes) builds every cell in one step, so no
+        // cell reads a network a changed piece's destroy, at a frame's end, already rebuilt.
+        bool oneStepEach = plan.Request.Kind.Family.OnDestroyRebuilds != NeighbourRebuild.Always;
         foreach (PlannedCell cell in ordered)
         {
             if (outcome.Log.StoppedAt != null)
@@ -133,6 +140,10 @@ internal static class RunBuilder
             }
 
             BuildOne(plan, cell, stocks, used, refund, outcome, gas);
+            if (oneStepEach)
+            {
+                yield return null;
+            }
         }
 
         foreach (ItemStock stock in plan.Stocks)
