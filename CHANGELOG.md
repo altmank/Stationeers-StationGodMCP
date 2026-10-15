@@ -1,6 +1,13 @@
 # Changelog
 
-## Unreleased
+## 2.0.0
+
+StationGod 2.0 replaces the 1.x tools with 17 verbs (find, inspect, survey, read, write, plan, check, build, swap,
+remove, move, trade, show, undo, server, help, run_script), most taking a `what`: one set of option names, one write
+rule (typed ids act, everything else reports until `confirm: true`), refs and a 12 KB reply cap, scripts through
+`run_script` and the `sg` 0.4.1 library, and a cost build that keeps StationGod's frames inside the request budget
+(work over frames, followed and refreshed facts, a world index, replies written off the game's thread). A 1.x tool
+name is not taken: an agent or script written for 1.x must use the verbs. Python `sg` 0.4.1 ships with it.
 
 - **A long frame is logged with what identifies it.** When the game's whole frame ran 50 ms or more and 2.5 times the typical frame (a running average), or StationGod's
   own Update 16 ms or more, the log says (at most once per 10 s) the frame, its whole ms, StationGod's ms by part
