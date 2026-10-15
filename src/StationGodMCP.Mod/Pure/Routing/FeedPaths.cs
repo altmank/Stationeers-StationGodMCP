@@ -1,6 +1,7 @@
 #nullable enable
 
 using System.Collections.Generic;
+using StationGodMCP.Pure.Scheduling;
 
 namespace StationGodMCP.Pure;
 
@@ -94,24 +95,48 @@ internal sealed class FeedReport
 /// </summary>
 internal static class FeedPaths
 {
+    // Nodes taken off the walk's queue per step of Steps.
+    private const int NodesAStep = 256;
+
+    private static readonly List<long> NoNext = new List<long>();
+
     internal static FeedReport Of(long root, IReadOnlyDictionary<long, FeedNode> nodes, IEnumerable<Link> links)
     {
+        Answer<FeedReport> report = new Answer<FeedReport>();
+        foreach (object? _ in Steps(root, nodes, links, report))
+        {
+        }
+
+        return report.Value;
+    }
+
+    /// <summary>Of spread over frames (a Work body): the walk a batch of nodes a step, then the report into report.</summary>
+    internal static IEnumerable<object?> Steps(long root, IReadOnlyDictionary<long, FeedNode> nodes,
+        IEnumerable<Link> links, Answer<FeedReport> report)
+    {
         Dictionary<long, List<long>> next = Adjacency(nodes, links);
+        yield return null;
         Dictionary<long, long> parent = new Dictionary<long, long>();
         List<long> order = new List<long>();
         Queue<long> queue = new Queue<long>();
         HashSet<long> seen = new HashSet<long> { root };
         queue.Enqueue(root);
+        int taken = 0;
         while (queue.Count > 0)
         {
             long id = queue.Dequeue();
             order.Add(id);
+            if (++taken % NodesAStep == 0)
+            {
+                yield return null;
+            }
+
             if (id != root && nodes[id].Device)
             {
                 continue;
             }
 
-            foreach (long other in next.TryGetValue(id, out List<long> list) ? list : new List<long>())
+            foreach (long other in next.TryGetValue(id, out List<long> list) ? list : NoNext)
             {
                 if (seen.Add(other))
                 {
@@ -123,11 +148,17 @@ internal static class FeedPaths
 
         long? rootRoom = nodes.TryGetValue(root, out FeedNode rootNode) ? rootNode.Room : null;
         List<FeedPath> paths = new List<FeedPath>();
-        foreach (long id in order)
+        for (int index = 0; index < order.Count; index++)
         {
+            long id = order[index];
             if (id != root && nodes[id].Device)
             {
                 paths.Add(PathTo(id, root, rootRoom, nodes, parent));
+            }
+
+            if ((index + 1) % NodesAStep == 0)
+            {
+                yield return null;
             }
         }
 
@@ -141,7 +172,7 @@ internal static class FeedPaths
         }
 
         unreached.Sort();
-        return new FeedReport(paths, RoomsOf(paths), unreached);
+        report.Value = new FeedReport(paths, RoomsOf(paths), unreached);
     }
 
     private static Dictionary<long, List<long>> Adjacency(IReadOnlyDictionary<long, FeedNode> nodes,

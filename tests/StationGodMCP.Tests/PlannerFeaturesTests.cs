@@ -422,6 +422,32 @@ public sealed class PlannerFeaturesTests
     }
 
     [Fact]
+    public void ALongFeedIsWalkedOverManyStepsToTheSameReport()
+    {
+        // review D, R-D-10: survey feeds' walk is a Work body, a batch of nodes a step
+        Dictionary<long, FeedNode> nodes = new Dictionary<long, FeedNode> { [1] = new FeedNode(1, true, null) };
+        List<Link> links = new List<Link>();
+        for (long id = 2; id <= 2001; id++)
+        {
+            nodes[id] = new FeedNode(id, false, null);
+            links.Add(new Link(id - 1, id));
+        }
+
+        nodes[2002] = new FeedNode(2002, true, null);
+        links.Add(new Link(2001, 2002));
+        Answer<FeedReport> report = new Answer<FeedReport>();
+        int steps = 0;
+        foreach (object? _ in FeedPaths.Steps(1, nodes, links, report))
+        {
+            steps++;
+        }
+
+        Assert.True(steps > 10, $"{steps} steps");
+        Assert.Equal(2000, Assert.Single(report.Value.Paths).Pieces.Count);
+        Assert.Equal(FeedPaths.Of(1, nodes, links).Paths[0].Pieces, report.Value.Paths[0].Pieces);
+    }
+
+    [Fact]
     public void AFeedNeverPassesThroughADevice()
     {
         // The vault (2) also links piece 17, a shortcut past 15 and 16: the purifier's feed still runs over pieces only.

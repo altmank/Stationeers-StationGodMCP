@@ -12,6 +12,7 @@ using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Scheduling;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Api.Shared.Game;
@@ -21,17 +22,25 @@ namespace StationGodMCP.Api.Shared.Game;
 /// other device on it (FeedPaths: breadth first over the model's links among the network's pieces and devices), and
 /// the rooms each path crosses. A piece is in the room of a 2 m cell it touches (its own first); a device in the room
 /// of its grid cell, as find room reports it. A device fed through a room that is neither the root's nor its own is a
-/// daisy chain; a room its devices' feeds enter at more than one piece has several feeds.
+/// daisy chain; a room its devices' feeds enter at more than one piece has several feeds. The survey is work over
+/// frames (review D, R-D-10): the root and its network are found at once, then the members are read a batch a step, the
+/// links among them found a model a step (Connectivity.LinksTouchingSteps) and the paths walked a batch of nodes a step
+/// (FeedPaths.Steps).
 /// </summary>
 internal static class FeedPathsSurvey
 {
     private const int MaximumMembers = 8192;
 
+    // Members read (shape and room) per step.
+    private const int MembersAStep = 64;
+
     /// <summary>
     /// The feeds from the root device (its id) over the network of kind (cable, pipe or chute) that network names, or
-    /// the one its port joins, or its only one of that kind.
+    /// the one its port joins, or its only one of that kind: the root's reference id, and the body that surveys it
+    /// (refusals about the root and its network are thrown here, at once).
     /// </summary>
-    internal static FeedPathsView Of(string rootId, string kindName, NetworkTarget? named, int? port)
+    internal static (string ReferenceId, System.Func<Answer<FeedPathsView>, IEnumerable<object?>> Body) Start(
+        string rootId, string kindName, NetworkTarget? named, int? port)
     {
         RunKind kind = kindName switch
         {
@@ -55,20 +64,41 @@ internal static class FeedPathsSurvey
             throw ApiErrors.Refused("too_many_pieces", $"Network {network} has {members.Count} members.");
         }
 
+        return (root.ReferenceId.ToString(CultureInfo.InvariantCulture),
+            view => Survey(root, network, kind, members, view));
+    }
+
+    private static IEnumerable<object?> Survey(Device root, long network, RunKind kind, List<SmallGrid> members,
+        Answer<FeedPathsView> view)
+    {
         GridFacts facts = new GridFacts(kind, SmallGridBlock.None, new HashSet<long>());
         RoomController? rooms = RoomController.World;
         Dictionary<long, FeedNode> nodes = new Dictionary<long, FeedNode>();
         Dictionary<long, SmallGrid> things = new Dictionary<long, SmallGrid>();
         List<PieceModel> models = new List<PieceModel>(members.Count + 1);
-        foreach (SmallGrid member in members)
+        for (int index = 0; index < members.Count; index++)
         {
-            Add(member, kind, facts, rooms, nodes, things, models);
+            Add(members[index], kind, facts, rooms, nodes, things, models);
+            if ((index + 1) % MembersAStep == 0)
+            {
+                yield return null;
+            }
         }
 
         Add(root, kind, facts, rooms, nodes, things, models);
-        HashSet<Link> links = Connectivity.LinksTouching(models, new HashSet<long>(nodes.Keys));
-        FeedReport report = FeedPaths.Of(root.ReferenceId, nodes, links);
-        return View(root, network, kind, report, nodes, things);
+        HashSet<Link> links = new HashSet<Link>();
+        foreach (object? step in Connectivity.LinksTouchingSteps(models, new HashSet<long>(nodes.Keys), links))
+        {
+            yield return step;
+        }
+
+        Answer<FeedReport> report = new Answer<FeedReport>();
+        foreach (object? step in FeedPaths.Steps(root.ReferenceId, nodes, links, report))
+        {
+            yield return step;
+        }
+
+        view.Value = View(root, network, kind, report.Value, nodes, things);
     }
 
     private static void Add(SmallGrid thing, RunKind kind, GridFacts facts, RoomController? rooms,
