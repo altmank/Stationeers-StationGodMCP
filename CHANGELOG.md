@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **A long frame is logged with what identifies it.** When the game's whole frame ran 50 ms or more, or StationGod's
+  own Update 16 ms or more, the log says (at most once per 10 s) the frame, its whole ms, StationGod's ms by part
+  (world stores, subscriptions and facts, world model, requests and jobs, previews), the calls it ran with their ms,
+  and the GC collections in or after it. Always on; nothing is allocated unless a line is written.
 - **find water reads a refreshed set and answers `as_of`.** Which atmospheres and pipe networks hold water is swept
   in the background a slice a frame (while find water is being asked); a call reads that set, each source's water
   read now, and `as_of` is the game time its sweep began. Its cost follows the sources, not the world's atmospheres.

@@ -508,7 +508,9 @@ internal sealed class FrameScheduler<TCall> where TCall : class
         Recycle(waiting);
         double before = _clock.NowMs;
         _runner.Run(call);
-        _predictor.Observe(profile, _clock.NowMs - before);
+        double ran = _clock.NowMs - before;
+        _predictor.Observe(profile, ran);
+        LongFrames.Main?.Call(profile.Method, ran);
         if (!_runner.IsAnswered(call))
         {
             Hold(owner, stream, call);

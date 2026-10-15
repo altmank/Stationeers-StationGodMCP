@@ -57,6 +57,12 @@ public sealed class StationGodMod : ModBehaviour
     /// <summary>StationGod's whole Update per frame, job steps included: server info's update_ms.</summary>
     internal static UpdateStats Updates { get; } = new UpdateStats();
 
+    // The parts of Update a long frame's log line names (LongFrames, review D R-D-28).
+    private const int StoresPart = 0, FactsPart = 1, WorldPart = 2, RequestsPart = 3, AfterPart = 4;
+
+    private static readonly LongFrames LongFrameNotes = new LongFrames("world stores", "subscriptions and facts",
+        "world model", "requests, slices and jobs", "previews, highlights and flight recorder");
+
     /// <summary>The local pipe's name, read once at load ([Pipe] Name, STATIONGODMCP_PIPE_NAME).</summary>
     internal static PipeName Pipe { get; private set; } = PipeName.Default;
 
@@ -185,7 +191,17 @@ public sealed class StationGodMod : ModBehaviour
     private void Update()
     {
         ProfilingControl.Tick();
+        int gcNow = GC.CollectionCount(0);
+        string? longFrame = LongFrameNotes.Check(Time.unscaledDeltaTime * 1000.0, gcNow, Time.realtimeSinceStartup);
+        if (longFrame != null)
+        {
+            Log(longFrame);
+        }
+
+        LongFrames.Main = LongFrameNotes;
+        LongFrameNotes.Begin(Time.frameCount, gcNow);
         long updateStarted = System.Diagnostics.Stopwatch.GetTimestamp();
+        long partStarted = updateStarted;
         long frameStarted = Prof.BeginFrame();
         try
         {
@@ -193,6 +209,8 @@ public sealed class StationGodMod : ModBehaviour
             {
                 WorldStores.Tick();
             }
+
+            partStarted = Part(StoresPart, partStarted);
 
             // Before the hub's frame begins, so a passed window's end reaches it and the stores this frame.
             Holds?.Tick();
@@ -211,6 +229,8 @@ public sealed class StationGodMod : ModBehaviour
             {
                 _subscriptions?.ObserveGameState(ReportedGameState());
             }
+
+            partStarted = Part(FactsPart, partStarted);
 
             if (!NetworkManager.IsServer)
             {
@@ -231,6 +251,7 @@ public sealed class StationGodMod : ModBehaviour
             WorldModel.WaterSweep.Tick();
             WorldModel.FrameFaces.Tick();
             WorldModel.LoadWarmup.Tick();
+            partStarted = Part(WorldPart, partStarted);
 
             if (_pipeListener == null && !_pipeUnavailable)
             {
@@ -245,6 +266,7 @@ public sealed class StationGodMod : ModBehaviour
             // The budget counts from the Update's start, so StationGod's work before the scheduler is inside it too.
             _dispatcher.RunFrame(HeldTickJobs.HoldsTick, _subscriptions, HeldTickJobs.Lane,
                 updateStarted * 1000.0 / System.Diagnostics.Stopwatch.Frequency);
+            partStarted = Part(RequestsPart, partStarted);
 
             using (Prof.Scope(ProfId.Previews))
             {
@@ -269,10 +291,20 @@ public sealed class StationGodMod : ModBehaviour
         finally
         {
             Prof.EndFrame(frameStarted, Time.frameCount);
+            Part(AfterPart, partStarted);
             long updateTicks = System.Diagnostics.Stopwatch.GetTimestamp() - updateStarted;
-            Updates.Frame(Time.frameCount, updateTicks * 1000.0 / System.Diagnostics.Stopwatch.Frequency,
-                PerformanceSettings.RequestBudgetMs);
+            double updateMs = updateTicks * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
+            Updates.Frame(Time.frameCount, updateMs, PerformanceSettings.RequestBudgetMs);
+            LongFrameNotes.End(updateMs, GC.CollectionCount(0));
         }
+    }
+
+    // A part of Update ended now: its time noted for a long frame's log line; the next part starts now.
+    private static long Part(int part, long started)
+    {
+        long now = System.Diagnostics.Stopwatch.GetTimestamp();
+        LongFrameNotes.Section(part, (now - started) * 1000.0 / System.Diagnostics.Stopwatch.Frequency);
+        return now;
     }
 
     private void RegisterPrefabs()
