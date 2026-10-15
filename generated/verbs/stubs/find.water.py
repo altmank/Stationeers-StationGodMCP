@@ -13,6 +13,7 @@ def find(what: Literal['water'], *,
       totals: {liquid_mol: float, liquid_l: float, hydration: float, polluted_mol: float, polluted_l: float, steam_mol: float, steam_if_condensed_l:
           float}
       min_mol: float
+      as_of: float
       local_player: {reference_id: str, display_name: str | None, position: Vec3} | None
     Types: Vec3 = {x: float, y: float, z: float}
     Example: sg.find('water', min_mol=50)
