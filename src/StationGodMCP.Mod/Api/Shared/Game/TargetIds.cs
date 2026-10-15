@@ -16,19 +16,27 @@ internal static class TargetIds
     internal const string LookingAt = "looking_at";
 
     /// <summary>The reference id the text names.</summary>
-    internal static ThingId Of(string id, string label)
+    internal static ThingId Of(string id, string label) =>
+        TryOf(id, label, out ThingId read) is { } refused ? throw refused : read;
+
+    /// <summary>
+    /// The reference id the text names, or the refusal (built, not thrown: a list of ids answers it as one row's
+    /// error); null when read holds the id.
+    /// </summary>
+    internal static ApiException? TryOf(string id, string label, out ThingId read)
     {
         if (string.Equals(id.Trim(), LookingAt, StringComparison.OrdinalIgnoreCase))
         {
             Thing? thing = PlayerView.Current().Require(label).Target;
+            read = thing != null ? new ThingId(thing.ReferenceId) : default;
             return thing != null
-                ? new ThingId(thing.ReferenceId)
-                : throw ApiErrors.Refused("thing_not_found", $"{label}: nothing is under the crosshair for \"looking_at\".");
+                ? null
+                : ApiErrors.Refused("thing_not_found", $"{label}: nothing is under the crosshair for \"looking_at\".");
         }
 
-        return ThingId.TryRead(new JValue(id), out ThingId read)
-            ? read
-            : throw ApiErrors.Refused("thing_not_found",
+        return ThingId.TryRead(new JValue(id), out read)
+            ? null
+            : ApiErrors.Refused("thing_not_found",
                 $"{label}: '{id}' is not a thing's id (a reference id, or \"looking_at\").");
     }
 

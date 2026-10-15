@@ -80,7 +80,7 @@ internal static class IdWork
         answer.Value = true;
     }
 
-    // One id's row: its reference id and view, or the refusal, thrown again where the rows are built.
+    // One id's row: its reference id and view, or the refusal, handed on as the row's view (never thrown again).
     private sealed class Row<TView>
         where TView : class
     {
@@ -96,6 +96,6 @@ internal static class IdWork
         }
 
         internal (string ReferenceId, object View) Answered() =>
-            _refused != null ? throw _refused : (_referenceId!, _view!);
+            _refused != null ? (string.Empty, _refused) : (_referenceId!, _view!);
     }
 }

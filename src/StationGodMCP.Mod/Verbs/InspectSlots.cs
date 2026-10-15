@@ -16,6 +16,6 @@ internal static class InspectSlots
         DeviceScope scope = Devices.Scope(options.Gateway);
         int? slot = options.Slot is { } index ? (int)System.Math.Min(index, int.MaxValue) : null;
         return IdAnswers.Things(options.Selector.Ids!, InspectSlotsOptions.Spec.Label,
-            id => DeviceSlots.Read(scope, Devices.Require(scope, id), slot));
+            id => IdAnswers.Device(scope, id, device => DeviceSlots.Read(scope, device, slot)));
     }
 }

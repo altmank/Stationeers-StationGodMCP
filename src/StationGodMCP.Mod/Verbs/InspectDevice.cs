@@ -25,7 +25,7 @@ internal static class InspectDevice
         DeviceScope scope = Devices.Scope(options.Gateway);
         bool listed = options.Fields.Includes(LogicTypesPart);
         return IdAnswers.Things(options.Selector.Ids!, InspectDeviceOptions.Spec.Label,
-            id => Describe(scope, Devices.Require(scope, id), listed));
+            id => IdAnswers.Device(scope, id, device => Describe(scope, device, listed)));
     }
 
     private static DescribeDeviceView Describe(DeviceScope scope, ScopedTarget device, bool listed)

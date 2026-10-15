@@ -45,7 +45,7 @@ internal static class InspectHealth
         bool one = !ids!.AnswersRows;
         bool withNetworks = one || shape.Wants("results", "networks");
         return IdAnswers.Things(ids, InspectHealthOptions.Spec.Label,
-            id => HealthReader.Read(GameLookup.RequireThing(id), origin, withNetworks, withBuildState: one));
+            id => IdAnswers.Thing(id, thing => HealthReader.Read(thing, origin, withNetworks, withBuildState: one)));
     }
 
     private static VerbOutcome Network(InspectHealthOptions options, NetworkTarget network, bool withNetworks)

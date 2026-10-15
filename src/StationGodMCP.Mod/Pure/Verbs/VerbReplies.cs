@@ -110,8 +110,8 @@ internal sealed class Rows
     }
 
     /// <summary>
-    /// One id's row from its read: the payload read gives, or, when read refuses (an ApiException), that refusal as the
-    /// row's error.
+    /// One id's row from its read: the payload read gives, or, when read refuses (an ApiException it answers, built and
+    /// not thrown, or one it throws), that refusal as the row's error.
     /// </summary>
     internal void Add(string referenceId, System.Func<object> read)
     {
@@ -122,11 +122,17 @@ internal sealed class Rows
         }
         catch (ApiException refused)
         {
-            Failed(referenceId, new VerbError(refused.Code, refused.Message));
-            return;
+            payload = refused;
         }
 
-        Succeeded(referenceId, payload);
+        if (payload is ApiException refusal)
+        {
+            Failed(referenceId, new VerbError(refusal.Code, refusal.Message));
+        }
+        else
+        {
+            Succeeded(referenceId, payload);
+        }
     }
 
     internal void Failed(string? referenceId, VerbError error)

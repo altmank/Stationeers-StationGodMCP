@@ -26,18 +26,19 @@ internal static class ReadMemory
         DeviceScope scope = Devices.Scope(options.Gateway);
         int start = (int)System.Math.Min(options.Start!.Value, int.MaxValue);
         int count = (int)options.Count!.Value;
-        return IdAnswers.Things(options.Selector.Ids!, ReadMemoryOptions.Spec.Label, id =>
-        {
-            ScopedTarget device = Devices.Require(scope, id);
-            if (device.Thing is not IMemoryReadable memory)
+        return IdAnswers.Things(options.Selector.Ids!, ReadMemoryOptions.Spec.Label, id => IdAnswers.Device(scope, id,
+            device =>
             {
-                throw ApiErrors.Refused("memory_not_readable",
-                    $"Device {device.ReferenceId} does not expose readable memory.");
-            }
+                if (device.Thing is not IMemoryReadable memory)
+                {
+                    return ApiErrors.Refused("memory_not_readable",
+                        $"Device {device.ReferenceId} does not expose readable memory.");
+                }
 
-            DeviceMemory.RequireRange(device, start, count);
-            return new MemoryReadView(DeviceMemory.Place(scope, device, start), DeviceMemory.Read(memory, start, count));
-        });
+                DeviceMemory.RequireRange(device, start, count);
+                return new MemoryReadView(DeviceMemory.Place(scope, device, start),
+                    DeviceMemory.Read(memory, start, count));
+            }));
     }
 }
 

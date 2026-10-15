@@ -17,21 +17,26 @@ namespace StationGodMCP.Verbs;
 /// </summary>
 internal static class IdAnswers
 {
-    /// <summary>Ids that name things (TargetIds: a reference id or "looking_at"), each read by read.</summary>
-    internal static VerbOutcome Things(PerIdList ids, string label, Func<ThingId, object> read, JObject? top = null) =>
-        Of(ids, id =>
-        {
-            ThingId thing = TargetIds.Of(id, label);
-            return (thing.ToString(), read(thing));
-        }, top);
+    /// <summary>
+    /// Ids that name things (TargetIds: a reference id or "looking_at"), each read by read; read answers the id's view,
+    /// or a refusal (an ApiException built, not thrown) that becomes the id's row error.
+    /// </summary>
+    internal static VerbOutcome Things(PerIdList ids, string label, Func<ThingId, object> read, object? top = null) =>
+        Of(ids, id => TargetIds.TryOf(id, label, out ThingId thing) is { } refused
+            ? (id, refused)
+            : (thing.ToString(), read(thing)), top);
 
-    /// <summary>Ids read as given: read answers the row's reference id and its view.</summary>
+    /// <summary>
+    /// Ids read as given: read answers the row's reference id and its view, or a refusal as the view (an ApiException
+    /// built, not thrown). A refusal read throws still answers its row; one id's refusal is the call's.
+    /// </summary>
     internal static VerbOutcome Of(PerIdList ids, Func<string, (string ReferenceId, object View)> read,
-        JObject? top = null)
+        object? top = null)
     {
         if (!ids.AnswersRows)
         {
-            return new VerbOutcome.Answered(read(ids.Ids[0]).View);
+            object view = read(ids.Ids[0]).View;
+            return view is ApiException one ? new VerbOutcome.Refused(VerbError.Of(one)) : new VerbOutcome.Answered(view);
         }
 
         Rows rows = new Rows();
@@ -44,14 +49,28 @@ internal static class IdAnswers
             }
             catch (ApiException refused)
             {
-                rows.Failed(id, new VerbError(refused.Code, refused.Message,
-                    refused.Details == null ? null : JToken.FromObject(refused.Details, ApiJson.Serializer)));
+                rows.Failed(id, VerbError.Of(refused));
                 continue;
             }
 
-            rows.Succeeded(found.ReferenceId, found.View);
+            if (found.View is ApiException answered)
+            {
+                rows.Failed(id, VerbError.Of(answered));
+            }
+            else
+            {
+                rows.Succeeded(found.ReferenceId, found.View);
+            }
         }
 
         return new VerbOutcome.Answered(rows.Reply(top));
     }
+
+    /// <summary>The id's thing, or thing_not_found (built, not thrown) when none exists.</summary>
+    internal static object Thing(ThingId id, Func<Assets.Scripts.Objects.Thing, object> read) =>
+        GameLookup.TryFindThing(id, out Assets.Scripts.Objects.Thing thing) ? read(thing) : ApiErrors.ThingNotFound(id);
+
+    /// <summary>The id's device in scope, or the refusal Devices.Require would throw (built, not thrown).</summary>
+    internal static object Device(DeviceScope scope, ThingId id, Func<ScopedTarget, object> read) =>
+        Devices.Find(scope, id.Value) is { } device ? read(device) : Devices.NotFound(scope, id);
 }

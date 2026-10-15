@@ -13,5 +13,5 @@ internal static class InspectConnections
 {
     internal static VerbOutcome Run(InspectConnectionsOptions options) =>
         IdAnswers.Things(options.Selector.Ids!, InspectConnectionsOptions.Spec.Label,
-            id => EndsReader.Read(GameLookup.RequireThing(id)));
+            id => IdAnswers.Thing(id, EndsReader.Read));
 }

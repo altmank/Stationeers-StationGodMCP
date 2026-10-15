@@ -62,7 +62,7 @@ internal static class Devices
     // A thing that exists but has no logic (a crate, a lander, a tool) is named as such, not as out of sight, and so is
     // a logic item (a labeller, a tablet) that no player wears or holds, and a structure with logic that is not a
     // Device (a landing pad centre): neither is in Device.AllDevices.
-    private static ApiException NotFound(DeviceScope scope, ThingId id) =>
+    internal static ApiException NotFound(DeviceScope scope, ThingId id) =>
         Thing.Find(id.Value) switch
         {
             Thing thing when thing != null && !(thing is ILogicable) => ApiErrors.Refused("device_not_found",

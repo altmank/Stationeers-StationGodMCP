@@ -13,5 +13,5 @@ internal static class InspectReagents
 {
     internal static VerbOutcome Run(InspectReagentsOptions options) =>
         IdAnswers.Things(options.Selector.Ids!, InspectReagentsOptions.Spec.Label,
-            id => ThingReagents.Read(GameLookup.RequireThing(id)));
+            id => IdAnswers.Thing(id, ThingReagents.Read));
 }
