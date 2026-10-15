@@ -83,7 +83,7 @@ internal static class WorldItems
 
     private static ItemRecord? Kept(Item item, ItemFilter filter, PlayerOrigin origin)
     {
-        if (!filter.Names(item))
+        if (!filter.Names(item) || !filter.CouldHold(item.ParentSlot != null))
         {
             return null;
         }
@@ -404,6 +404,18 @@ internal sealed class ItemFilter
 
         return !NearPlayerM.HasValue || (record.Distance.HasValue && record.Distance.Value <= NearPlayerM.Value);
     }
+
+    /// <summary>
+    /// Whether an item in a slot (inSlot) or loose could be kept at all, before it is described (review D, R-D-14: a
+    /// stored-only find dropped every loose item only after describing it): ground wants a loose item, stored and
+    /// player one in a slot, and within_id one held.
+    /// </summary>
+    internal bool CouldHold(bool inSlot) => Location switch
+    {
+        HolderChain.Ground => !inSlot && !WithinId.HasValue,
+        HolderChain.Stored or HolderChain.Player => inSlot,
+        _ => inSlot || !WithinId.HasValue
+    };
 
     internal bool Keeps(ItemRecord record)
     {
