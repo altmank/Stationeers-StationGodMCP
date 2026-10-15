@@ -213,5 +213,4 @@ finished run's writes can be taken back with `undo {id: "script-14"}`.
 
 [MIT](LICENSE). By XCeled.
 
-- Steam Workshop: search for *StationGod MCP* in the Stationeers Workshop.
 - Source and issues: [github.com/altmank/Stationeers-StationGodMCP](https://github.com/altmank/Stationeers-StationGodMCP/issues)
