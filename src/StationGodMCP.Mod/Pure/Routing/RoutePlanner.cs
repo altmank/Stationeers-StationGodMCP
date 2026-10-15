@@ -183,8 +183,14 @@ internal sealed class RouteResult
 /// </summary>
 internal static class RoutePlanner
 {
-    /// <summary>The expansions Searching takes per step.</summary>
+    /// <summary>The most expansions Searching takes per step.</summary>
     internal const int ExpansionsPerStep = 32;
+
+    /// <summary>
+    /// The longest a step of Searching runs: on a large world one expansion's cell costs can be long, so a step also
+    /// ends when it has run this long or the slice it is stepped in has ended (WorkSlice), whichever comes first.
+    /// </summary>
+    internal const double MaxStepMs = 0.5;
 
     internal static RouteResult Find(RouteEnd start, RouteEnd goal, Func<GridCell, CellCost> costOf, RouteRules rules,
         AirBound? air = null) =>
@@ -206,7 +212,10 @@ internal static class RoutePlanner
         return answer.Value;
     }
 
-    /// <summary>FindAny spread over frames (a Work body): ExpansionsPerStep expansions per step.</summary>
+    /// <summary>
+    /// FindAny spread over frames (a Work body): a step is ExpansionsPerStep expansions, or fewer when the clock says
+    /// the step has run MaxStepMs or the slice has ended (review D, R-D-12).
+    /// </summary>
     internal static IEnumerable<object?> Searching(RouteEnd start, IReadOnlyList<RouteEnd> goals,
         Func<GridCell, CellCost> costOf, RouteRules rules, AirBound? air, Answer<RouteResult> answer)
     {
@@ -258,6 +267,8 @@ internal static class RoutePlanner
         visits[first] = new Visit(0.0, 1, first, false);
         open.Push(first, heuristic(start.Cell));
         int expanded = 0;
+        int inStep = 0;
+        double stepStartedMs = WorkSlice.NowMs;
         bool tooLong = false;
         while (open.Count > 0)
         {
@@ -281,9 +292,11 @@ internal static class RoutePlanner
                 yield break;
             }
 
-            if (expanded % ExpansionsPerStep == 0)
+            if (++inStep >= ExpansionsPerStep || WorkSlice.Over(stepStartedMs, MaxStepMs))
             {
                 yield return null;
+                inStep = 0;
+                stepStartedMs = WorkSlice.NowMs;
             }
 
             foreach (GridStep step in GridStep.All)

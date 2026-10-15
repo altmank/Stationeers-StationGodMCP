@@ -103,6 +103,19 @@ internal sealed class Work<T>
             return true;
         }
 
+        WorkSlice.Scope slice = WorkSlice.Enter(clock, untilMs);
+        try
+        {
+            return StepWithin(steps, clock, untilMs);
+        }
+        finally
+        {
+            slice.Dispose();
+        }
+    }
+
+    private bool StepWithin(IEnumerator<object?> steps, IMonotonicClock clock, double untilMs)
+    {
         double stepStarted = clock.NowMs;
         while (true)
         {
@@ -128,6 +141,69 @@ internal sealed class Work<T>
             {
                 return false;
             }
+        }
+    }
+}
+
+/// <summary>
+/// The slice the running Work is stepped to (Work.Step: its clock and its end; the earliest end when steps nest): a
+/// body whose own batch can outlast its slice (a route search's expansions) asks Over whether its step has run long
+/// enough, so the slice ends on time (review D, R-D-12). Outside a slice the clock is the stopwatch and the end
+/// PositiveInfinity. Thread-static; nothing is allocated.
+/// </summary>
+internal static class WorkSlice
+{
+    [ThreadStatic]
+    private static IMonotonicClock? _clock;
+
+    [ThreadStatic]
+    private static double _endMs;
+
+    /// <summary>The slice's end on its clock; PositiveInfinity outside a slice.</summary>
+    internal static double EndMs => _clock != null ? _endMs : double.PositiveInfinity;
+
+    /// <summary>Now, on the slice's clock (the stopwatch outside a slice).</summary>
+    internal static double NowMs => (_clock ?? StopwatchClock.Instance).NowMs;
+
+    /// <summary>
+    /// Whether a step a body began at startedMs (NowMs then) should yield now: it has run maxStepMs, or it began before
+    /// the slice's end and the end has passed (a step begun after the end is the one step a slice always takes).
+    /// </summary>
+    internal static bool Over(double startedMs, double maxStepMs)
+    {
+        double now = NowMs;
+        double end = EndMs;
+        return now - startedMs >= maxStepMs || (startedMs < end && now >= end);
+    }
+
+    internal static Scope Enter(IMonotonicClock clock, double endMs)
+    {
+        Scope before = new Scope(_clock, _endMs);
+        if (_clock == null || endMs < _endMs)
+        {
+            _endMs = endMs;
+        }
+
+        _clock = clock;
+        return before;
+    }
+
+    /// <summary>The slice before Enter, put back when disposed.</summary>
+    internal readonly struct Scope : IDisposable
+    {
+        private readonly IMonotonicClock? _clockBefore;
+        private readonly double _endBefore;
+
+        internal Scope(IMonotonicClock? clockBefore, double endBefore)
+        {
+            _clockBefore = clockBefore;
+            _endBefore = endBefore;
+        }
+
+        public void Dispose()
+        {
+            _clock = _clockBefore;
+            _endMs = _endBefore;
         }
     }
 }

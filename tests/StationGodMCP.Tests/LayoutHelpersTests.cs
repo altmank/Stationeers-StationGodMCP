@@ -6,6 +6,7 @@ using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Scheduling;
 using Xunit;
 
 namespace StationGodMCP.Tests;
@@ -233,6 +234,61 @@ public sealed class RouteEndsAndReservationTests
     {
         Func<GridCell, CellCost> cost = Open;
         Assert.Same(cost, RouteReservation.None.Guard(cost));
+    }
+
+    [Fact]
+    public void ASlowSearchStepEndsByTheClockNotAtAFixedBatch()
+    {
+        // review D, R-D-12: cells that cost a long time to judge end a step before ExpansionsPerStep expansions
+        RouteRules box = new RouteRules(2.0, AxisOrder.Any, 4000, At(-12, -3, -3), At(12, 3, 3));
+        Func<GridCell, CellCost> slow = cell =>
+        {
+            System.Diagnostics.Stopwatch spin = System.Diagnostics.Stopwatch.StartNew();
+            while (spin.Elapsed.TotalMilliseconds < 0.05)
+            {
+            }
+
+            return CellCost.Of(1.0);
+        };
+        Answer<RouteResult> found = new Answer<RouteResult>();
+        int steps = 0;
+        foreach (object? _ in RoutePlanner.Searching(RouteEnd.Open(At(-10, 0, 0)), new[] { RouteEnd.Open(At(10, 0, 0)) },
+                     slow, box, null, found))
+        {
+            steps++;
+        }
+
+        Assert.NotNull(found.Value.Cells);
+        Assert.True(steps * RoutePlanner.ExpansionsPerStep > found.Value.Expanded * 2,
+            $"{steps} steps for {found.Value.Expanded} expansions");
+    }
+
+    [Fact]
+    public void AWorkSliceEndsAtTheEarliestOfNestedStepsAndIsPutBack()
+    {
+        Assert.Equal(double.PositiveInfinity, WorkSlice.EndMs);
+        double seen = 0.0;
+        Work<int> inner = new Work<int>(answer => Note(() => seen = WorkSlice.EndMs, answer));
+        Work<int> outer = new Work<int>(answer => Drive(inner, answer));
+
+        outer.Step(StopwatchClock.Instance, StopwatchClock.Instance.NowMs + 60000.0);
+
+        Assert.True(seen <= StopwatchClock.Instance.NowMs + 60000.0 && seen > 60000.0);
+        Assert.Equal(double.PositiveInfinity, WorkSlice.EndMs);
+    }
+
+    private static IEnumerable<object?> Note(Action note, Answer<int> answer)
+    {
+        note();
+        answer.Value = 1;
+        yield break;
+    }
+
+    private static IEnumerable<object?> Drive(Work<int> inner, Answer<int> answer)
+    {
+        inner.Step(StopwatchClock.Instance, StopwatchClock.Instance.NowMs + 120000.0);
+        answer.Value = 1;
+        yield break;
     }
 
     [Fact]
