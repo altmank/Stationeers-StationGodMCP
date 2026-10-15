@@ -42,7 +42,12 @@ internal static class StructureSwapPlanner
 
         StructureSwapPlan plan = new StructureSwapPlan(request);
         answer.Value = plan;
-        List<Structure> members = Members(request, plan);
+        List<Structure> members = new List<Structure>();
+        foreach (object? step in Membering(request, plan, members))
+        {
+            yield return step;
+        }
+
         plan.Total = members.Count;
         StructureTargets targets = WorldModel.Prefabs.Targets;
         Structure? named = NamedTarget(request, targets, plan);
@@ -103,10 +108,10 @@ internal static class StructureSwapPlanner
         return target;
     }
 
-    [Profiled]
-    private static List<Structure> Members(StructureSwapRequest request, StructureSwapPlan plan)
+    // The pieces in scope, added to members: the ids named, or the room's pieces a batch of its cells a step.
+    private static IEnumerable<object?> Membering(StructureSwapRequest request, StructureSwapPlan plan,
+        List<Structure> members)
     {
-        List<Structure> members = new List<Structure>();
         HashSet<long> seen = new HashSet<long>();
         switch (request.Arguments.Scope)
         {
@@ -117,14 +122,19 @@ internal static class StructureSwapPlanner
                 Room found = StructureAirRecord.FindRoom(room.Id) ??
                              throw ApiErrors.Refused("room_not_found",
                                  $"No room {room.Id}; take a room's id from find room.");
-                request.Family.CollectInRoom(found, members, seen);
+                foreach (object? step in request.Family.CollectingInRoom(found, members, seen))
+                {
+                    yield return step;
+                }
+
                 break;
         }
 
-        return members.Count <= StructureSwapArguments.MaximumPieces
-            ? members
-            : throw ApiErrors.Refused("too_many_pieces",
+        if (members.Count > StructureSwapArguments.MaximumPieces)
+        {
+            throw ApiErrors.Refused("too_many_pieces",
                 $"{members.Count} pieces; at most {StructureSwapArguments.MaximumPieces} per run.");
+        }
     }
 
     private static void Listed(StructureFamily family, List<ThingId> ids, StructureSwapPlan plan,

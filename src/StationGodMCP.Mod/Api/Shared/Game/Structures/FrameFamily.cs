@@ -40,16 +40,22 @@ internal sealed class FrameFamily : StructureFamily
     internal override bool IsPlain(Structure structure) => structure.GetType() == typeof(Frame);
 
     // A frame that lets gravity pass can be inside the room; any frame can wall it, from a neighbour cell.
-    internal override void CollectInRoom(Room room, List<Structure> into, HashSet<long> seen)
+    internal override IEnumerable<object?> CollectingInRoom(Room room, List<Structure> into, HashSet<long> seen)
     {
         GridController grid = GridController.World;
-        foreach (WorldGrid worldGrid in new List<WorldGrid>(room.Grids))
+        List<WorldGrid> cells = new List<WorldGrid>(room.Grids);
+        for (int index = 0; index < cells.Count; index++)
         {
-            GridPoint cell = StructureSlots.PointOf(worldGrid.Value);
+            GridPoint cell = StructureSlots.PointOf(cells[index].Value);
             AddFrameAt(grid, cell, into, seen);
             foreach (GridPoint neighbour in FaceMath.Neighbours(cell))
             {
                 AddFrameAt(grid, neighbour, into, seen);
+            }
+
+            if (index % CellsAStep == CellsAStep - 1)
+            {
+                yield return null;
             }
         }
     }

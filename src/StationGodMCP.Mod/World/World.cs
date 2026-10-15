@@ -179,20 +179,27 @@ internal static class World
         Kept(PipeNetwork.AllPipeNetworks, keep, out lockWaitMs);
 
     /// <summary>
-    /// As Atmospheres, without waiting: false, nothing added, when the atmospherics thread holds the pool's lock now
-    /// (its pass goes on; the caller tries again in a later step). True with what keep takes added to kept.
+    /// A part of Atmospheres, without waiting (work over frames, A3): the count entries from start in the pool's order
+    /// that keep takes, added to kept; ended when the pool has no entry past them. False, nothing added, when the
+    /// atmospherics thread holds the pool's lock now (its pass goes on; the caller tries again in a later step). The
+    /// pool may change between parts (an entry removed moves its last one into its place), so a reader of several
+    /// parts may see an entry twice or miss one that moved: it is a reading of live facts, not a snapshot.
     /// </summary>
-    internal static bool TryAtmospheres(Func<Atmosphere, bool> keep, List<Atmosphere> kept) =>
-        TryKept(AtmosphericsManager.AllAtmospheres, keep, kept);
+    internal static bool TryAtmospheres(int start, int count, Func<Atmosphere, bool> keep, List<Atmosphere> kept,
+        out bool ended) =>
+        TryKept(AtmosphericsManager.AllAtmospheres, start, count, keep, kept, out ended);
 
     /// <summary>As TryAtmospheres, for PipeNetwork.AllPipeNetworks.</summary>
-    internal static bool TryPipeNetworks(Func<PipeNetwork, bool> keep, List<PipeNetwork> kept) =>
-        TryKept(PipeNetwork.AllPipeNetworks, keep, kept);
+    internal static bool TryPipeNetworks(int start, int count, Func<PipeNetwork, bool> keep, List<PipeNetwork> kept,
+        out bool ended) =>
+        TryKept(PipeNetwork.AllPipeNetworks, start, count, keep, kept, out ended);
 
-    private static bool TryKept<T>(ConcurrentDensePool<T> pool, Func<T, bool> keep, List<T> kept)
+    private static bool TryKept<T>(ConcurrentDensePool<T> pool, int start, int count, Func<T, bool> keep, List<T> kept,
+        out bool ended)
         where T : class, IDensePoolable
     {
         using ProfScope reading = Prof.Scope(ProfId.PoolSnapshot);
+        ended = false;
         if (!Monitor.TryEnter(pool))
         {
             return false;
@@ -200,13 +207,22 @@ internal static class World
 
         try
         {
+            int at = 0;
+            int until = start + count;
             foreach (T entry in pool.Active())
             {
-                if (entry != null && keep(entry))
+                if (at >= until)
+                {
+                    return true;
+                }
+
+                if (at++ >= start && entry != null && keep(entry))
                 {
                     kept.Add(entry);
                 }
             }
+
+            ended = true;
         }
         finally
         {

@@ -35,11 +35,14 @@ internal static class WaterSources
 
     internal const int ViewsAStep = 64;
 
+    /// <summary>How many pool entries one step reads (its lock held only for them).</summary>
+    internal const int PoolAStep = 256;
+
     /// <summary>
     /// Every source holding at least minimum mol of water, polluted water and steam together, largest first, as work
-    /// over frames (A3): each pool read when its lock is free (a step that finds the atmospherics thread holding it
-    /// tries again in the next, never waits), the rows and their views a batch a step. The slow-call log sums the
-    /// steps' own time.
+    /// over frames (A3): each pool read PoolAStep entries a step when its lock is free (a step that finds the
+    /// atmospherics thread holding it tries again in the next, never waits), the rows and their views a batch a step.
+    /// The slow-call log sums the steps' own time.
     /// </summary>
     [Profiled]
     internal static IEnumerable<object?> Collecting(double minimum, Pure.Scheduling.Answer<WaterFound> answer)
@@ -47,24 +50,48 @@ internal static class WaterSources
         int collections = GC.CollectionCount(0);
         long started = Stopwatch.GetTimestamp();
         PlayerOrigin origin = PlayerOrigin.Current();
-        List<Atmosphere> atmospheres = new List<Atmosphere>();
-        while (!World.TryAtmospheres(atmosphere => Holds(atmosphere, minimum), atmospheres))
+        List<Atmosphere> taken = new List<Atmosphere>();
+        double atmosphereListMs = 0.0;
+        bool ended = false;
+        for (int from = 0; !ended;)
         {
+            if (World.TryAtmospheres(from, PoolAStep, atmosphere => Holds(atmosphere, minimum), taken, out ended))
+            {
+                from += PoolAStep;
+                atmosphereListMs += Ms(Stopwatch.GetTimestamp() - started);
+            }
+
             yield return null;
             started = Stopwatch.GetTimestamp();
         }
 
-        double atmosphereListMs = Ms(Stopwatch.GetTimestamp() - started);
-        yield return null;
-        started = Stopwatch.GetTimestamp();
         List<PipeNetwork> networks = new List<PipeNetwork>();
-        while (!World.TryPipeNetworks(network => Holds(network.Atmosphere, minimum), networks))
+        double networkListMs = 0.0;
+        ended = false;
+        for (int from = 0; !ended;)
         {
+            if (World.TryPipeNetworks(from, PoolAStep, network => Holds(network.Atmosphere, minimum), networks,
+                    out ended))
+            {
+                from += PoolAStep;
+                networkListMs += Ms(Stopwatch.GetTimestamp() - started);
+            }
+
             yield return null;
             started = Stopwatch.GetTimestamp();
         }
 
-        HashSet<Atmosphere> listed = new HashSet<Atmosphere>(atmospheres);
+        // Once each: a pool read in parts may list an entry twice, and a network's atmosphere may be listed already.
+        HashSet<Atmosphere> listed = new HashSet<Atmosphere>();
+        List<Atmosphere> atmospheres = new List<Atmosphere>(taken.Count + networks.Count);
+        foreach (Atmosphere atmosphere in taken)
+        {
+            if (listed.Add(atmosphere))
+            {
+                atmospheres.Add(atmosphere);
+            }
+        }
+
         foreach (PipeNetwork network in networks)
         {
             if (listed.Add(network.Atmosphere))
@@ -73,7 +100,7 @@ internal static class WaterSources
             }
         }
 
-        double networkListMs = Ms(Stopwatch.GetTimestamp() - started);
+        networkListMs += Ms(Stopwatch.GetTimestamp() - started);
         yield return null;
         double scanMs = 0.0;
         started = Stopwatch.GetTimestamp();

@@ -37,12 +37,13 @@ internal sealed class WallFamily : StructureFamily
 
     // Every wall registered on a face of one of the room's cells (GridController.FaceLookup holds each face point's
     // structures, whichever of the two cells they registered in).
-    internal override void CollectInRoom(Room room, List<Structure> into, HashSet<long> seen)
+    internal override IEnumerable<object?> CollectingInRoom(Room room, List<Structure> into, HashSet<long> seen)
     {
         GridController grid = GridController.World;
-        foreach (WorldGrid cell in new List<WorldGrid>(room.Grids))
+        List<WorldGrid> cells = new List<WorldGrid>(room.Grids);
+        for (int index = 0; index < cells.Count; index++)
         {
-            foreach (GridPoint face in FaceMath.FacesOf(StructureSlots.PointOf(cell.Value)))
+            foreach (GridPoint face in FaceMath.FacesOf(StructureSlots.PointOf(cells[index].Value)))
             {
                 HashSet<Structure> held = grid.GetFaceStructures(StructureSlots.GridOf(face));
                 foreach (Structure structure in new List<Structure>(held))
@@ -52,6 +53,11 @@ internal sealed class WallFamily : StructureFamily
                         AddOnce(wall, into, seen);
                     }
                 }
+            }
+
+            if (index % CellsAStep == CellsAStep - 1)
+            {
+                yield return null;
             }
         }
     }

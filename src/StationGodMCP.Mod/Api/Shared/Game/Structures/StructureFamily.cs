@@ -30,8 +30,14 @@ internal abstract class StructureFamily
     /// <summary>Exactly the classes a swap may take away or build.</summary>
     internal abstract bool IsPlain(Structure structure);
 
-    /// <summary>Adds the room's pieces of this kind (once each, by reference id).</summary>
-    internal abstract void CollectInRoom(Room room, List<Structure> into, HashSet<long> seen);
+    /// <summary>How many of a room's cells one step of CollectingInRoom reads.</summary>
+    internal const int CellsAStep = 32;
+
+    /// <summary>
+    /// Adds the room's pieces of this kind (once each, by reference id), as work over frames (A3): CellsAStep of the
+    /// room's cells a step.
+    /// </summary>
+    internal abstract IEnumerable<object?> CollectingInRoom(Room room, List<Structure> into, HashSet<long> seen);
 
     /// <summary>The target when the request names none; null when the family needs one named.</summary>
     internal abstract Structure? DefaultTarget(Structure old);
