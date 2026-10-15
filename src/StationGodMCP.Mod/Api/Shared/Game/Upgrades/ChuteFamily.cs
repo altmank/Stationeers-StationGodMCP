@@ -8,6 +8,7 @@ using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Pipes;
 using Networks;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Profiling;
 
 namespace StationGodMCP.Api.Shared.Game.Upgrades;
 
@@ -109,6 +110,7 @@ internal sealed class ChuteFamily : UpgradeFamily
 
     internal override List<long> DeviceNetworks(Device device) => Ids(device.ConnectedChuteNetworks);
 
+    [Profiled]
     internal override NetworkRecord Record(IReferencable network, List<PlannedSwap> swaps) =>
         new ChuteNetworkRecord((ChuteNetwork)network, swaps);
 

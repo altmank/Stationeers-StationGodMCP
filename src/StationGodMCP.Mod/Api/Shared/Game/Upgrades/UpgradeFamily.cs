@@ -11,6 +11,7 @@ using Assets.Scripts.Objects.Pipes;
 using Networks;
 using Objects.Pipes;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Profiling;
 
 namespace StationGodMCP.Api.Shared.Game.Upgrades;
 
@@ -325,6 +326,7 @@ internal sealed class CableFamily : UpgradeFamily
 
     internal override List<long> DeviceNetworks(Device device) => Ids(device.ConnectedCableNetworks);
 
+    [Profiled]
     internal override NetworkRecord Record(IReferencable network, List<PlannedSwap> swaps) =>
         new CableNetworkRecord((CableNetwork)network, swaps);
 
@@ -493,6 +495,7 @@ internal sealed class PipeFamily : UpgradeFamily
 
     internal override List<long> DeviceNetworks(Device device) => Ids(device.ConnectedPipeNetworks);
 
+    [Profiled]
     internal override NetworkRecord Record(IReferencable network, List<PlannedSwap> swaps) =>
         new PipeNetworkRecord((PipeNetwork)network, swaps);
 
