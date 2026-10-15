@@ -43,16 +43,29 @@ internal static class FindPlant
         List<Plant> plants = ids != null
             ? new List<Plant> { Plants.One(ids.Ids[0]) }
             : Plants.All(options.Fields.Includes(Unplanted));
+        return WorkResult<List<object>>.Of(answer => Reading(plants, whole, answer),
+            views => ListReply.Of("plants", views, Paging.All, static plant => plant,
+                ReplyFields.Of(("game_time_s", clock.GameTimeS), ("day_length_s", clock.DayLengthS),
+                    ("debug_fast_growth", clock.DebugFastGrowth))));
+    }
+
+    /// <summary>How many plants one step of Reading describes.</summary>
+    internal const int PlantsAStep = 16;
+
+    // The plants' views as work over frames (A3), PlantsAStep a step.
+    private static IEnumerable<object?> Reading(List<Plant> plants, bool whole, Pure.Scheduling.Answer<List<object>> answer)
+    {
         List<object> views = new List<object>(plants.Count);
-        foreach (Plant plant in plants)
+        for (int index = 0; index < plants.Count; index++)
         {
-            PlantView view = PlantReader.Read(plant);
+            PlantView view = PlantReader.Read(plants[index]);
             views.Add(whole ? view : new PlantBriefView(view));
+            if (index % PlantsAStep == PlantsAStep - 1)
+            {
+                yield return null;
+            }
         }
 
-        return new VerbOutcome.Answered(ListReply.Of("plants", views, Paging.All,
-            plant => plant,
-            ReplyFields.Of(("game_time_s", clock.GameTimeS), ("day_length_s", clock.DayLengthS),
-                ("debug_fast_growth", clock.DebugFastGrowth))));
+        answer.Value = views;
     }
 }

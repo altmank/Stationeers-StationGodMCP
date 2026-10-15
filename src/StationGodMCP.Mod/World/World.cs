@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Threading;
 using Assets.Scripts;
 using Assets.Scripts.Atmospherics;
 using Assets.Scripts.GridSystem;
@@ -176,6 +177,44 @@ internal static class World
     /// <summary>As Atmospheres, for PipeNetwork.AllPipeNetworks.</summary>
     internal static List<PipeNetwork> PipeNetworks(Func<PipeNetwork, bool> keep, out double lockWaitMs) =>
         Kept(PipeNetwork.AllPipeNetworks, keep, out lockWaitMs);
+
+    /// <summary>
+    /// As Atmospheres, without waiting: false, nothing added, when the atmospherics thread holds the pool's lock now
+    /// (its pass goes on; the caller tries again in a later step). True with what keep takes added to kept.
+    /// </summary>
+    internal static bool TryAtmospheres(Func<Atmosphere, bool> keep, List<Atmosphere> kept) =>
+        TryKept(AtmosphericsManager.AllAtmospheres, keep, kept);
+
+    /// <summary>As TryAtmospheres, for PipeNetwork.AllPipeNetworks.</summary>
+    internal static bool TryPipeNetworks(Func<PipeNetwork, bool> keep, List<PipeNetwork> kept) =>
+        TryKept(PipeNetwork.AllPipeNetworks, keep, kept);
+
+    private static bool TryKept<T>(ConcurrentDensePool<T> pool, Func<T, bool> keep, List<T> kept)
+        where T : class, IDensePoolable
+    {
+        using ProfScope reading = Prof.Scope(ProfId.PoolSnapshot);
+        if (!Monitor.TryEnter(pool))
+        {
+            return false;
+        }
+
+        try
+        {
+            foreach (T entry in pool.Active())
+            {
+                if (entry != null && keep(entry))
+                {
+                    kept.Add(entry);
+                }
+            }
+        }
+        finally
+        {
+            Monitor.Exit(pool);
+        }
+
+        return true;
+    }
 
     private static List<T> Kept<T>(ConcurrentDensePool<T> pool, Func<T, bool> keep, out double lockWaitMs)
         where T : class, IDensePoolable

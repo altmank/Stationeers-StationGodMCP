@@ -9,6 +9,7 @@ using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Api.Shared.Game.Structures;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Profiling;
 using StationGodMCP.Pure.Shaping;
 using StationGodMCP.Pure.Verbs;
 using UnityEngine;
@@ -32,7 +33,17 @@ internal static class SpotFinder
     private const int MaximumBodyCells = 40000;
     private const int MaximumReasons = 8;
 
-    internal static PlanSpotView Find(SpotOrder order)
+    /// <summary>How many candidate spots one step of Finding aims, and how many it checks.</summary>
+    internal const int CandidatesAStep = 64;
+
+    internal const int ChecksAStep = 4;
+
+    /// <summary>
+    /// The spots as work over frames (A3): the planes and their spots a step each, the candidates aimed
+    /// CandidatesAStep a step, the passed ones checked ChecksAStep a step.
+    /// </summary>
+    [Profiled]
+    internal static IEnumerable<object?> Finding(SpotOrder order, StationGodMCP.Pure.Scheduling.Answer<PlanSpotView> answer)
     {
         GridFacts facts = new GridFacts(new CableRunKind(), SmallGridBlock.None, new HashSet<long>());
         BuildCatalogue catalogue = WorldModel.Prefabs.Build;
@@ -77,6 +88,8 @@ internal static class SpotFinder
                     tries.Add((search, u, v, distance));
                 }
             }
+
+            yield return null;
         }
 
         tries.Sort(static (a, b) => a.Distance.CompareTo(b.Distance));
@@ -91,6 +104,11 @@ internal static class SpotFinder
                 NearKinds.AnyPiece, MaximumBodyCells);
             Candidate? candidate = Candidate.At(prefab, cursor, on.View, on.Turn, u, v, near, facts, require, seen,
                 on.Bodies);
+            if (index % CandidatesAStep == CandidatesAStep - 1)
+            {
+                yield return null;
+            }
+
             if (candidate == null)
             {
                 continue;
@@ -126,6 +144,11 @@ internal static class SpotFinder
                 rejected++;
                 reasons.Add(rejection);
             }
+
+            if ((checkedSpots.Count + rejected) % ChecksAStep == 0)
+            {
+                yield return null;
+            }
         }
 
         if (checkedSpots.Count + rejected < passed.Count)
@@ -154,8 +177,9 @@ internal static class SpotFinder
             spots.Add(checkedSpots[index].View(prefab));
         }
 
-        return new PlanSpotView(prefab.PrefabName, planes.ConvertAll(plane => $"{plane.Plane} seen from {plane.Side.Name}"),
-            spots, passed.Count + filtered, filtered, checkedSpots.Count + rejected, rejected,
+        answer.Value = new PlanSpotView(prefab.PrefabName,
+            planes.ConvertAll(plane => $"{plane.Plane} seen from {plane.Side.Name}"), spots, passed.Count + filtered,
+            filtered, checkedSpots.Count + rejected, rejected,
             reasons.Top(MaximumReasons).ConvertAll(static reason => new SpotReasonView(reason.Reason, reason.Count)),
             camera.Source);
     }

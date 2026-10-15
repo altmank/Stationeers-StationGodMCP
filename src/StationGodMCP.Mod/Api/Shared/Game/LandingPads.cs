@@ -39,7 +39,12 @@ namespace StationGodMCP.Api.Shared.Game;
 internal static class LandingPads
 {
     /// <summary>Every landing pad centre in the world, described against the contacts in the sky now.</summary>
-    internal static List<LandingPadView> All()
+    /// <summary>
+    /// Every pad as work over frames (A3): a pad's checks (the game's own, every square size) a step, since each costs
+    /// the game's checks for every contact.
+    /// </summary>
+    [StationGodMCP.Pure.Profiling.Profiled]
+    internal static IEnumerable<object?> Measuring(StationGodMCP.Pure.Scheduling.Answer<List<LandingPadView>> answer)
     {
         List<LandingPadCenter> centers = World.Pads();
         centers.Sort(static (a, b) => a.ReferenceId.CompareTo(b.ReferenceId));
@@ -59,10 +64,11 @@ internal static class LandingPads
             if (center != null && !center.IsCursor && !center.IsBeingDestroyed)
             {
                 pads.Add(LandingPadProbe.Describe(center, contacts));
+                yield return null;
             }
         }
 
-        return pads;
+        answer.Value = pads;
     }
 }
 

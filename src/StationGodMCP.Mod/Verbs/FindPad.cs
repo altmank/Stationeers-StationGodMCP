@@ -19,9 +19,7 @@ internal static class FindPad
 {
     internal static VerbOutcome Run(FindPadOptions options)
     {
-        List<LandingPadView> pads = LandingPads.All();
-        JsonSerializer serializer = ApiJson.Serializer;
-        return new VerbOutcome.Answered(ListReply.Of("pads", pads, Paging.All,
-            pad => pad));
+        return WorkResult<List<LandingPadView>>.Of(LandingPads.Measuring,
+            pads => ListReply.Of("pads", pads, Paging.All, static pad => pad));
     }
 }

@@ -3,6 +3,7 @@
 using System.Collections.Generic;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game.Build;
+using StationGodMCP.Api.Views;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Verbs;
@@ -19,6 +20,6 @@ internal static class PlanSpot
         SpotOrder? order = SpotOrder.Of(options, problems);
         return order == null
             ? new VerbOutcome.Refused(OptionProblem.Refusal(PlanSpotOptions.Spec.Label, problems))
-            : Answer.Of(SpotFinder.Find(order));
+            : WorkResult<PlanSpotView>.Of(answer => SpotFinder.Finding(order, answer), static view => view);
     }
 }

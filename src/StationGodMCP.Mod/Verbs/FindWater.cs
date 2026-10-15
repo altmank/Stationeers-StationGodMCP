@@ -18,10 +18,8 @@ internal static class FindWater
     internal static VerbOutcome Run(FindWaterOptions options)
     {
         double minimum = options.MinMol ?? 0.0;
-        WaterFound found = WaterSources.Collect(minimum);
-        JsonSerializer serializer = ApiJson.Serializer;
-        return new VerbOutcome.Answered(ListReply.Of("sources", found.Sources, Paging.All,
-            source => source,
-            ReplyFields.Of(("totals", found.Totals), ("min_mol", minimum), ("local_player", found.LocalPlayer))));
+        return WorkResult<WaterFound>.Of(answer => WaterSources.Collecting(minimum, answer),
+            found => ListReply.Of("sources", found.Sources, Paging.All, static source => source,
+                ReplyFields.Of(("totals", found.Totals), ("min_mol", minimum), ("local_player", found.LocalPlayer))));
     }
 }
