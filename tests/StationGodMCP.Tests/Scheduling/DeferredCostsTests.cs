@@ -88,7 +88,7 @@ public sealed class DeferredCostsTests : IDisposable
             return ++_steps >= _needed;
         }
 
-        public string Finish()
+        public ReplyLine Finish()
         {
             _clock.Advance(_finishMs);
             return "ready";
@@ -135,7 +135,7 @@ public sealed class DeferredCostsTests : IDisposable
 
         internal override string RefusalReply(string code, string message, object? data = null) => "refused " + code;
 
-        internal override void Deliver(string reply, string? method) => Answer = reply;
+        internal override void Deliver(ReplyLine line, string? method) => Answer = line.Render();
     }
 
     private sealed class NoRunner : ICallRunner

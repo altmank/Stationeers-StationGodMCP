@@ -290,7 +290,7 @@ public sealed class DeferredStreamHoldTests
             return ++_steps >= _needed;
         }
 
-        public string Finish() => _answer();
+        public ReplyLine Finish() => _answer();
     }
 
     /// <summary>A sample run's call: ready once the run ends.</summary>
@@ -300,7 +300,7 @@ public sealed class DeferredStreamHoldTests
 
         public bool Step(double untilMs) => Ready;
 
-        public string Finish() => "samples";
+        public ReplyLine Finish() => "samples";
     }
 
     /// <summary>A call that runs what the test gives it and keeps its answer.</summary>
@@ -338,7 +338,7 @@ public sealed class DeferredStreamHoldTests
 
         internal override string RefusalReply(string code, string message, object? data = null) => "refused " + code;
 
-        internal override void Deliver(string reply, string? method) => Answer = reply;
+        internal override void Deliver(ReplyLine line, string? method) => Answer = line.Render();
     }
 
     private sealed class NoRunner : ICallRunner

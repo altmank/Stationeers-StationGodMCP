@@ -139,7 +139,7 @@ public sealed class BudgetHitTests
     private static int Bytes(CallReplyView reply, bool shaped)
     {
         string json = shaped
-            ? ApiJson.WriteReply(reply, ShapeRequest.None, new List<Truncation>()).Json
+            ? ApiJson.WriteReply(ApiJson.Serializer, reply, ShapeRequest.None, new List<Truncation>(), long.MaxValue).Json!
             : ApiJson.WriteShared(reply);
         return Encoding.UTF8.GetByteCount(json);
     }

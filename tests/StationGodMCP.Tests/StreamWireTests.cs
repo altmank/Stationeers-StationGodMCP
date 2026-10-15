@@ -441,8 +441,9 @@ public sealed class StreamWireTests
 
         internal override string RefusalReply(string code, string message, object? data = null) => "refused " + code;
 
-        internal override void Deliver(string reply, string? method)
+        internal override void Deliver(ReplyLine line, string? method)
         {
+            string reply = line.Render();
         }
     }
 

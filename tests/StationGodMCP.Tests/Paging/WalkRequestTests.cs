@@ -232,7 +232,7 @@ public sealed class WalkRequestTests
                     new WalkBuild<FakeThing>(_world, new FakeFilter(clock, 0.0), ListOrder.ReferenceId), Live);
             }
 
-            while (!page.Step(clock, clock.NowMs + 1000.0, 0.0))
+            while (!page.Step(clock, clock.NowMs + 1000.0))
             {
             }
 

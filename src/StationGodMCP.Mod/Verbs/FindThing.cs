@@ -116,12 +116,11 @@ internal static class FindThing
         }
 
         public bool Step(double untilMs) =>
-            _page.Step(StopwatchClock.Instance, untilMs, EntryCost.FindThing.MsPerEntry);
+            _page.Step(StopwatchClock.Instance, untilMs);
 
         public object Result()
         {
             FramedResult<FoundThingView> found = _page.Result(_page.IsScan ? _page.Scanned : null);
-            EntryCost.FindThing.Expect(found.Page.Entries.Count);
             return FoundThings.Reply(found.Page, found.Kept is int scanned ? scanned : 0, _origin.View,
                 found.CursorId);
         }

@@ -68,26 +68,6 @@ public sealed class WalkPageBudgetTests
         Assert.True(step.HasMore);
     }
 
-    [Fact]
-    public void TheSerialiseEstimateFollowsWhatTheRepliesCost()
-    {
-        EntryCost cost = new EntryCost();
-        double before = cost.MsPerEntry;
-
-        for (int reply = 0; reply < 50; reply++)
-        {
-            EntryCost.Begin();
-            cost.Expect(100);
-            EntryCost.Observed(10.0);
-        }
-
-        EntryCost.Begin();
-        EntryCost.Observed(1000.0);
-
-        Assert.Equal(EntryCost.InitialMsPerEntry, before);
-        Assert.InRange(cost.MsPerEntry, 0.099, 0.101);
-    }
-
     private static long[] Ids(params long[] ids) => ids;
 
     // Each thing found costs the clock costMs, as describing it would.

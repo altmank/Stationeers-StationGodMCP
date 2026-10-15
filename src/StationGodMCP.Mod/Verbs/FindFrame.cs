@@ -22,7 +22,6 @@ internal static class FindFrame
     private const string List = "frames";
     private const string Inner = "inner";
 
-    private static readonly EntryCost Cost = new EntryCost();
 
     internal static VerbOutcome Run(FindFrameOptions options)
     {
@@ -35,7 +34,7 @@ internal static class FindFrame
             CellAir now = OuterFrames.Air();
             PlayerOrigin standing = PlayerOrigin.Current();
             return ThingListPage<FrameView, FrameCounts>.Later(walk, paging,
-                id => OuterFrames.Live(id, now, standing)?.ToView(), Cost,
+                id => OuterFrames.Live(id, now, standing)?.ToView(),
                 (page, cursorId, counts) => Reply(page, cursorId, counts ?? FrameCounts.None, includeInner, standing));
         }
 
@@ -50,7 +49,7 @@ internal static class FindFrame
         FrameCensus census = new FrameCensus(air, origin, selector.AroundPlayerM, includeInner);
         return ThingListPage<FrameView, FrameCounts>.Scan(walk, paging, new ScanBuild(census.Scan, paging.Order),
             () => new FrameCounts(census.TotalFrames, census.TotalOuter),
-            id => census.Rows.TryGetValue(id, out FrameRow? row) ? row.ToView() : null, Cost,
+            id => census.Rows.TryGetValue(id, out FrameRow? row) ? row.ToView() : null,
             (page, cursorId, counts) => Reply(page, cursorId, counts!, includeInner, origin));
     }
 

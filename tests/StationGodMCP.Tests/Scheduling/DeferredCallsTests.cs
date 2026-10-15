@@ -281,7 +281,7 @@ public sealed class DeferredCallsTests
             return Steps >= _needed;
         }
 
-        public string Finish() => "ready";
+        public ReplyLine Finish() => "ready";
     }
 
     /// <summary>Work on the Work form whose body asks for its call's cancel at one step, 0.1 ms a step.</summary>
@@ -301,7 +301,7 @@ public sealed class DeferredCallsTests
 
         public bool Step(double untilMs) => Work.Step(_clock, untilMs);
 
-        public string Finish() => "ready";
+        public ReplyLine Finish() => "ready";
 
         private IEnumerable<object?> Body(Action cancel, Answer<int> answer)
         {
@@ -354,8 +354,9 @@ public sealed class DeferredCallsTests
 
         internal override string RefusalReply(string code, string message, object? data = null) => "refused " + code;
 
-        internal override void Deliver(string reply, string? method)
+        internal override void Deliver(ReplyLine line, string? method)
         {
+            string reply = line.Render();
             Answer = reply;
             AnsweredMethod = method;
         }
@@ -393,8 +394,9 @@ public sealed class DeferredCallsTests
 
         internal override string RefusalReply(string code, string message, object? data = null) => "refused " + code;
 
-        internal override void Deliver(string reply, string? method)
+        internal override void Deliver(ReplyLine line, string? method)
         {
+            string reply = line.Render();
         }
     }
 

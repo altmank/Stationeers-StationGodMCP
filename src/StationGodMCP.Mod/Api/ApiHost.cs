@@ -38,7 +38,6 @@ internal static class ApiHost
     internal static HandledRequest HandleCall(CallRequest call, double queueWaitMs, long frame)
     {
         Stopwatch watch = Stopwatch.StartNew();
-        EntryCost.Begin();
         return Reply(Run(call, watch), queueWaitMs, frame);
     }
 
@@ -61,36 +60,16 @@ internal static class ApiHost
         }
 
         double serializeMs = MillisecondsSince(serializeStarted);
-        EntryCost.Observed(serializeMs);
         MethodStats.Record(answer.Method, answer.Ok, answer.HandlerMs, serializeMs, queueWaitMs);
         return new HandledRequest(json, MethodStats.Counted(answer.Method), answer.Ok);
     }
 
-    /// <summary>The reply message: always written through the shaping writer, which also counts the lists.</summary>
+    /// <summary>The reply message: every call that reaches this host is refused.</summary>
     private static string SerializeCall(ref Answer answer, double queueMs, long frame, bool budgetHit)
     {
         using ProfScope serializing = Prof.Scope(ProfId.CallSerialize);
-        if (!answer.Ok)
-        {
-            return Serialize(CallReplyView.Failed(answer.RequestId, answer.Error!, answer.HandlerMs, queueMs, frame,
-                budgetHit));
-        }
-
-        ShapeRequest shape = answer.Shape ?? ShapeRequest.None;
-        ShapedText shaped = ApiJson.WriteReply(
-            CallReplyView.Of(answer.RequestId, answer.Result!, answer.Shape != null, answer.HandlerMs, queueMs, frame,
-                budgetHit), shape,
-            answer.Truncations);
-        int bytes = Encoding.UTF8.GetByteCount(shaped.Json);
-        int limit = Math.Min(shape.MaxBytes ?? MaxReplyBytes, MaxReplyBytes);
-        if (bytes > limit)
-        {
-            answer = answer.Failed(ReplyTooLarge.Of(bytes, limit, shaped.Outcome));
-            return Serialize(CallReplyView.Failed(answer.RequestId, answer.Error!, answer.HandlerMs, queueMs, frame,
-                budgetHit));
-        }
-
-        return shaped.Json;
+        return Serialize(CallReplyView.Failed(answer.RequestId, answer.Error!, answer.HandlerMs, queueMs, frame,
+            budgetHit));
     }
 
     /// <summary>The largest reply sent (limits.max_reply_bytes).</summary>
@@ -192,48 +171,29 @@ internal static class ApiHost
 
 }
 
-/// <summary>A request's outcome before serialisation: its result or error, and what MethodStats records of it.</summary>
+/// <summary>A request's refusal before serialisation, and what MethodStats records of it.</summary>
 internal sealed class Answer
 {
-    private Answer(string? requestId, string? method, bool ok, object? result, ErrorView? error, double handlerMs,
-        ShapeRequest? shape, List<Truncation>? truncations = null)
+    private Answer(string? requestId, string? method, ErrorView error, double handlerMs)
     {
-        Truncations = truncations ?? new List<Truncation>();
         RequestId = requestId;
         Method = method;
-        Ok = ok;
-        Result = result;
         Error = error;
         HandlerMs = handlerMs;
-        Shape = shape;
     }
 
     internal string? RequestId { get; }
 
     internal string? Method { get; }
 
-    internal bool Ok { get; }
+    internal bool Ok => false;
 
-    /// <summary>The tool's reply object when Ok.</summary>
-    internal object? Result { get; }
-
-    /// <summary>The error when not Ok.</summary>
-    internal ErrorView? Error { get; }
+    internal ErrorView Error { get; }
 
     internal double HandlerMs { get; }
 
-    /// <summary>The request's shape, applied when the reply is serialised; errors are never shaped.</summary>
-    internal ShapeRequest? Shape { get; }
-
-    /// <summary>The lists the handler held back entries of (Pure.Shaping.Truncations).</summary>
-    internal List<Truncation> Truncations { get; }
-
-    internal static Answer Success(string? requestId, string? method, object result, double handlerMs, ShapeRequest? shape,
-        List<Truncation>? truncations = null) =>
-        new Answer(requestId, method, true, result, null, handlerMs, shape, truncations);
-
     internal static Answer Failure(string? requestId, string? method, ErrorView error, double handlerMs) =>
-        new Answer(requestId, method, false, null, error, handlerMs, null);
+        new Answer(requestId, method, error, handlerMs);
 
     internal Answer Failed(ErrorView error) => Failure(RequestId, Method, error, HandlerMs);
 }

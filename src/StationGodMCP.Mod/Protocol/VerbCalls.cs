@@ -79,11 +79,11 @@ internal sealed class VerbNotes
 /// max_reply_bytes (or the shape's max_bytes) is answered reply_too_large; a handler's failure is internal_error. A
 /// handler whose answer is not ready (VerbOutcome.Pending) leaves the call deferred: its work is stepped in the slice
 /// lane (PendingVerbCall) and answers through the same writer once ready. Each answer is counted under the call's what
-/// (its profile's key, find.thing), and its serialise time teaches the entry cost its handler named (EntryCost).
+/// (its profile's key, find.thing) when the connection's writer has written it.
 /// </summary>
 internal static class VerbCalls
 {
-    private const int ElapsedDecimals = 2;
+
 
     internal static bool Handles(string? method) => VerbSurface.Verb(method) != null;
 
@@ -92,7 +92,6 @@ internal static class VerbCalls
     {
         string what = call.Profile.Method;
         Stopwatch watch = Stopwatch.StartNew();
-        EntryCost.Begin();
         CallRequest request = call.Request;
         VerbNotes notes = new VerbNotes();
         VerbNotes.Begin();
@@ -107,55 +106,20 @@ internal static class VerbCalls
     }
 
     /// <summary>
-    /// The reply message of an answered or refused call: elapsed_ms its handler time, budget_hit when the frame's
-    /// budget is reached as it is written; the serialise time is observed (EntryCost) and the call timed.
+    /// The reply line of an answered or refused call: elapsed_ms its handler time, budget_hit when the frame's budget
+    /// is reached as it is handed over. The game thread hands over the plain reply; the connection's writer thread
+    /// writes it (CallReplyLine), where the call is timed.
     /// </summary>
-    [Profiled]
-    internal static string Write(VerbRunner runner, CallRequest request, string what, VerbOutcome outcome,
+    internal static ReplyLine Write(VerbRunner runner, CallRequest request, string what, VerbOutcome outcome,
         double handlerMs, double queueWaitMs, VerbNotes? notes = null)
     {
-        double elapsedMs = Math.Round(handlerMs, ElapsedDecimals);
-        double queueMs = Math.Round(queueWaitMs, ElapsedDecimals);
-        long frame = runner.Frame();
-        bool budgetHit = CurrentFrame.BudgetReached(StopwatchClock.Instance.NowMs);
-        long started = Stopwatch.GetTimestamp();
-        bool ok;
-        string json;
-        if (outcome is VerbOutcome.Answered { Reply: IReplyForm form })
+        if (outcome is VerbOutcome.Pending)
         {
-            outcome = Handled(() => new VerbOutcome.Answered(form.Form(ApiJson.Serializer)));
+            throw new InvalidOperationException("A verb call is written once it is answered or refused.");
         }
 
-        switch (outcome)
-        {
-            case VerbOutcome.Answered answered:
-                ShapeRequest shape = request.Shape ?? ShapeRequest.None;
-                ShapedText shaped = ApiJson.WriteReply(
-                    CallReplyView.Of(request.Id, notes?.Attach(answered.Reply) ?? answered.Reply,
-                        request.Shape != null, elapsedMs, queueMs, frame, budgetHit), shape,
-                    notes?.Truncations ?? Array.Empty<Truncation>());
-                int bytes = Encoding.UTF8.GetByteCount(shaped.Json);
-                int limit = Math.Min(shape.MaxBytes ?? runner.MaxReplyBytes, runner.MaxReplyBytes);
-                ok = bytes <= limit;
-                json = ok
-                    ? shaped.Json
-                    : ApiJson.WriteShared(CallReplyView.Failed(request.Id, ReplyTooLarge.Of(bytes, limit, shaped.Outcome),
-                        elapsedMs, queueMs, frame, budgetHit));
-                break;
-            case VerbOutcome.Refused refused:
-                ok = false;
-                json = ApiJson.WriteShared(CallReplyView.Failed(request.Id,
-                    new ErrorView(refused.Error.Code, refused.Error.Message, refused.Error.Data), elapsedMs, queueMs,
-                    frame, budgetHit));
-                break;
-            default:
-                throw new InvalidOperationException("A verb call is written once it is answered or refused.");
-        }
-
-        double serializeMs = (Stopwatch.GetTimestamp() - started) * 1000.0 / Stopwatch.Frequency;
-        EntryCost.Observed(serializeMs);
-        runner.Timed?.Invoke(what, ok, handlerMs, serializeMs, queueWaitMs);
-        return json;
+        return ReplyLine.Of(new CallReplyLine(runner, request, what, outcome, notes ?? new VerbNotes(), handlerMs,
+            queueWaitMs, runner.Frame(), CurrentFrame.BudgetReached(StopwatchClock.Instance.NowMs)));
     }
 
     /// <summary>
@@ -234,10 +198,9 @@ internal sealed class PendingVerbCall : IDeferredWork
     }
 
     [Profiled]
-    public string Finish()
+    public ReplyLine Finish()
     {
         long started = Stopwatch.GetTimestamp();
-        EntryCost.Begin();
         VerbNotes.Begin();
         VerbOutcome outcome = VerbCalls.Handled(() => VerbOutcome.Of(_pending.Result()));
         _notes.Take();

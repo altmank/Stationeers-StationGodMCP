@@ -626,7 +626,7 @@ public sealed class ProtocolV2Tests
 
         internal override string RefusalReply(string code, string message, object? data = null) => "refused " + code;
 
-        internal override void Deliver(string reply, string? method) => Answer = reply;
+        internal override void Deliver(ReplyLine line, string? method) => Answer = line.Render();
     }
 
     private sealed class NoRunner : ICallRunner

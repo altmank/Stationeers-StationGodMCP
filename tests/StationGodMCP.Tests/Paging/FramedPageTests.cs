@@ -25,7 +25,6 @@ namespace StationGodMCP.Tests.Paging;
 public sealed class FramedPageTests
 {
     private const double BudgetMs = 4.0;
-    private const double SerialiseMs = 0.02;
     private static readonly CallContext Hub = new CallContext("c1", 2);
 
     [Fact]
@@ -79,24 +78,6 @@ public sealed class FramedPageTests
         Assert.Equal(oneShot, framed);
     }
 
-    [Fact]
-    public void ASerialiseThatWouldNotFitWaitsForTheNextSlice()
-    {
-        FakeClock clock = new FakeClock();
-        FramedPage<FoundThingView> page = FramedPage<FoundThingView>.Scan(
-            WalkRequest.Of(PagingOf("""{"limit": 500}"""), new WalkCursors()), 0, 500,
-            new WalkBuild<FakeThing>(World(20, new Random(1)), new FakeFilter(clock, 0.0), ListOrder.Nearest),
-            Costing(clock, 0.1));
-
-        bool first = page.Step(clock, clock.NowMs + BudgetMs, 0.5);
-        double before = clock.NowMs;
-        bool second = page.Step(clock, clock.NowMs + BudgetMs, 0.5);
-
-        Assert.False(first);
-        Assert.True(second);
-        Assert.Equal(before, clock.NowMs);
-    }
-
     /// <summary>find thing's paging as its options bind it: limit's default from the catalogue (8).</summary>
     internal static VerbPaging PagingOf(string options) =>
         FindThingOptions.Bind(new OptionReader(FindThingOptions.Spec, JObject.Parse(options))).Paging;
@@ -123,7 +104,7 @@ public sealed class FramedPageTests
     private static string Run(FramedPage<FoundThingView> framed, FakeClock clock, out int frames)
     {
         frames = 1;
-        while (!framed.Step(clock, clock.NowMs + BudgetMs, SerialiseMs))
+        while (!framed.Step(clock, clock.NowMs + BudgetMs))
         {
             frames++;
         }

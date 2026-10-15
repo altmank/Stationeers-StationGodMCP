@@ -15,8 +15,7 @@ namespace StationGodMCP.Api.Shared;
 /// rest after its page under it. Later: a walk's later page taken from its cursor. Each frame's share stops
 /// at the frame's budget and the next goes on where it stopped, until the page holds limit or the list ends; live gives
 /// an id's entry, or null for a thing gone meanwhile, which is passed over. The page is answered in the slice it
-/// finished in only when serialising it (serialiseMsPerEntry each) still fits the budget; otherwise in the next slice,
-/// before any other work, so a long serialise does not follow the page's own work in one frame. Main thread only.
+/// finished in: its text is written by the connection's writer thread, not in the frame. Main thread only.
 /// </summary>
 internal sealed class FramedPage<TView> where TView : class
 {
@@ -62,12 +61,10 @@ internal sealed class FramedPage<TView> where TView : class
         new FramedPage<TView>(walk, 0, limit, live, null);
 
     /// <summary>Goes on until the clock reaches untilMs, at least one step; true once the page may be answered.</summary>
-    internal bool Step(IMonotonicClock clock, double untilMs, double serialiseMsPerEntry)
+    internal bool Step(IMonotonicClock clock, double untilMs)
     {
-        bool worked = false;
         if (_build != null && !_build.Done)
         {
-            worked = true;
             if (!_build.Run(clock, untilMs) || clock.NowMs >= untilMs)
             {
                 return false;
@@ -76,7 +73,6 @@ internal sealed class FramedPage<TView> where TView : class
 
         if (!_paged)
         {
-            worked = true;
             _paged = Take(new PageBudget(clock, untilMs));
             if (!_paged)
             {
@@ -84,7 +80,7 @@ internal sealed class FramedPage<TView> where TView : class
             }
         }
 
-        return !worked || clock.NowMs + Views.Count * serialiseMsPerEntry < untilMs;
+        return true;
     }
 
     /// <summary>

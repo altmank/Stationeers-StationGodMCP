@@ -21,15 +21,13 @@ namespace StationGodMCP.Verbs;
 internal sealed class ThingListPage<TView, TCounts> : IPendingResult where TView : class where TCounts : class
 {
     private readonly FramedPage<TView> _page;
-    private readonly EntryCost _cost;
     private readonly Func<TCounts?> _counts;
     private readonly Func<Page<TView>, string?, TCounts?, object> _reply;
 
-    private ThingListPage(FramedPage<TView> page, EntryCost cost, Func<TCounts?> counts,
+    private ThingListPage(FramedPage<TView> page, Func<TCounts?> counts,
         Func<Page<TView>, string?, TCounts?, object> reply)
     {
         _page = page;
-        _cost = cost;
         _counts = counts;
         _reply = reply;
     }
@@ -39,9 +37,9 @@ internal sealed class ThingListPage<TView, TCounts> : IPendingResult where TView
     /// id's entry, reply the what's reply for the page, the cursor id (null when none) and the counts.
     /// </summary>
     internal static VerbOutcome First(WalkRequest walk, Paging paging, long[] sorted, int scanned, TCounts counts,
-        Func<long, TView?> live, EntryCost cost, Func<Page<TView>, string?, TCounts?, object> reply) =>
+        Func<long, TView?> live, Func<Page<TView>, string?, TCounts?, object> reply) =>
         Run(new ThingListPage<TView, TCounts>(
-            FramedPage<TView>.Scan(walk, paging.Offset, LimitOf(paging), new ReadyWalk(sorted, scanned), live), cost,
+            FramedPage<TView>.Scan(walk, paging.Offset, LimitOf(paging), new ReadyWalk(sorted, scanned), live),
             () => counts, reply));
 
     /// <summary>
@@ -49,25 +47,24 @@ internal sealed class ThingListPage<TView, TCounts> : IPendingResult where TView
     /// kept under the cursor as First keeps them; live gives an id's entry, reply the what's reply.
     /// </summary>
     internal static VerbOutcome Scan(WalkRequest walk, Paging paging, IWalkBuild build, Func<TCounts> counts,
-        Func<long, TView?> live, EntryCost cost, Func<Page<TView>, string?, TCounts?, object> reply) =>
+        Func<long, TView?> live, Func<Page<TView>, string?, TCounts?, object> reply) =>
         Run(new ThingListPage<TView, TCounts>(
-            FramedPage<TView>.Scan(walk, paging.Offset, LimitOf(paging), build, live), cost, counts, reply));
+            FramedPage<TView>.Scan(walk, paging.Offset, LimitOf(paging), build, live), counts, reply));
 
     /// <summary>
     /// A walk's later page: its next things, each described as it is now by live, with the counts its first page
     /// answered (null only when the walk kept none).
     /// </summary>
-    internal static VerbOutcome Later(WalkRequest walk, Paging paging, Func<long, TView?> live, EntryCost cost,
+    internal static VerbOutcome Later(WalkRequest walk, Paging paging, Func<long, TView?> live,
         Func<Page<TView>, string?, TCounts?, object> reply) =>
-        Run(new ThingListPage<TView, TCounts>(FramedPage<TView>.Later(walk, LimitOf(paging), live), cost,
+        Run(new ThingListPage<TView, TCounts>(FramedPage<TView>.Later(walk, LimitOf(paging), live),
             static () => null, reply));
 
-    public bool Step(double untilMs) => _page.Step(StopwatchClock.Instance, untilMs, _cost.MsPerEntry);
+    public bool Step(double untilMs) => _page.Step(StopwatchClock.Instance, untilMs);
 
     public object Result()
     {
         FramedResult<TView> found = _page.Result(_page.IsScan ? _counts() : null);
-        _cost.Expect(found.Page.Entries.Count);
         return _reply(found.Page, found.CursorId, found.Kept as TCounts);
     }
 

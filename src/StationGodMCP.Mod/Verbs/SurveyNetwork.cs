@@ -29,7 +29,6 @@ internal static class SurveyNetwork
     private const double MaximumRadiusM = 1000.0;
     private const string Option = "network";
 
-    private static readonly EntryCost Cost = new EntryCost();
 
     // The box's open ends answer no head.
     private static readonly object NoHead = new object();
@@ -44,10 +43,10 @@ internal static class SurveyNetwork
             List<ColorSwatch> colors = ThingColors.Swatches();
             return selector.Network is not { } walked
                 ? ThingListPage<NetworkMemberView, object>.Later(walk, paging,
-                    id => NetworkReader.OpenEndOf(id, colors), Cost, (page, cursorId, _) => OpenEnds(page, cursorId))
+                    id => NetworkReader.OpenEndOf(id, colors), (page, cursorId, _) => OpenEnds(page, cursorId))
                 : ThingListPage<NetworkMemberView, MembersHead>.Later(walk, paging,
                     id => NetworkReader.MemberOf(id, KindOf(options, walked), options.OpenEnds == true, null,
-                        colors), Cost, (page, cursorId, head) => Members(page, cursorId, head!));
+                        colors), (page, cursorId, head) => Members(page, cursorId, head!));
         }
 
         List<OptionProblem> problems = new List<OptionProblem>();
@@ -88,7 +87,7 @@ internal static class SurveyNetwork
             ScanBuild ends = ScanBuild.InScanOrder(NetworkReader.OpenEndsIn(selector.Box!, options.Kind, pieces));
             List<ColorSwatch> swatches = ThingColors.Swatches();
             return ThingListPage<NetworkMemberView, object>.Scan(walk, paging, ends, static () => NoHead,
-                id => NetworkReader.OpenEndOf(id, swatches), Cost, (page, cursorId, _) => OpenEnds(page, cursorId));
+                id => NetworkReader.OpenEndOf(id, swatches), (page, cursorId, _) => OpenEnds(page, cursorId));
         }
 
         UpgradeFamily family = options.Kind is { } kind ? FamilyNamed(kind) : NetworkHandles.FamilyOf(network, Option);
@@ -108,8 +107,7 @@ internal static class SurveyNetwork
         return ThingListPage<NetworkMemberView, MembersHead>.Scan(walk, paging, ScanBuild.InScanOrder(scan.Scan),
             () => scan.Head!,
             member => NetworkReader.MemberOf(member, family.NetworkKind, filter.OpenEndsOnly,
-                scan.OpenEnds.TryGetValue(member, out List<int>? open) ? open : null, shown),
-            Cost, (page, cursorId, head) => Members(page, cursorId, head!));
+                scan.OpenEnds.TryGetValue(member, out List<int>? open) ? open : null, shown), (page, cursorId, head) => Members(page, cursorId, head!));
     }
 
     // The network kind a later page's members are of: the first call's options come again with its cursor.

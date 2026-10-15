@@ -8,6 +8,7 @@ using System.Text;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using StationGodMCP.Pure.Shaping;
+using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Api.Shared;
 
@@ -62,50 +63,62 @@ internal static class ApiJson
     }
 
     /// <summary>
-    /// A reply envelope as JSON text with its result shaped as it is written (ShapingJsonWriter). Without anything to
-    /// leave out the text is byte for byte WriteShared's. Main thread only.
+    /// A call's reply envelope written once through serializer (the writing thread's), its result shaped as it is
+    /// written (ShapingJsonWriter: the handler's truncation notes, truncated always written), its UTF-8 size counted as
+    /// it goes and its text no longer kept once it passes limit bytes (the count goes on, for reply_too_large). When
+    /// fields selectors matched nothing and some have exactly one close key in the reply (FieldMapping), it is written
+    /// once more with those read as that key, and says so in fields_mapped: a streaming write cannot know a key it
+    /// passed was the one meant until the reply ends.
     /// </summary>
-    internal static ShapedText WriteShaped(object reply, ShapeRequest shape) => WriteShaped(Serializer, reply, shape, ShapingRoot.Envelope);
-
-    /// <summary>A call's reply: shaped, with the handler's truncation notes, and truncated always written.</summary>
-    internal static ShapedText WriteReply(object reply, ShapeRequest shape, IReadOnlyList<Truncation> truncations) =>
-        WriteShaped(Serializer, reply, shape, ShapingRoot.Envelope, truncations, announce: true);
+    internal static CappedText WriteReply(JsonSerializer serializer, object reply, ShapeRequest shape,
+        IReadOnlyList<Truncation> truncations, long limit)
+    {
+        CappedText written = WriteOnce(serializer, reply, shape, ShapingRoot.Envelope, truncations, true, true, limit);
+        ShapeRequest? mapped = FieldMapping.Remap(shape, written.Outcome);
+        return mapped == null
+            ? written
+            : WriteOnce(serializer, reply, mapped, ShapingRoot.Envelope, truncations, true, true, limit);
+    }
 
     /// <summary>
-    /// As WriteShaped, through the given serializer and with the result where root says. When fields selectors matched
-    /// nothing and some have exactly one close key in the reply (FieldMapping), the reply is written once more with
-    /// those read as that key, and says so in fields_mapped. nearMisses false writes it once, as given, without
-    /// fields_closest.
+    /// A value as JSON text shaped as it is written, through the given serializer and with the result where root says,
+    /// with truncation notes (announce: truncated always written); no size cap; the near-miss mapping as WriteReply.
+    /// nearMisses false writes it once, as given, without fields_closest.
     /// </summary>
     internal static ShapedText WriteShaped(JsonSerializer serializer, object? value, ShapeRequest shape, ShapingRoot root,
         IReadOnlyList<Truncation>? truncations = null, bool announce = false, bool nearMisses = true)
     {
-        ShapedText written = WriteOnce(serializer, value, shape, root, truncations, announce, nearMisses);
+        CappedText written = WriteOnce(serializer, value, shape, root, truncations, announce, nearMisses, long.MaxValue);
         ShapeRequest? mapped = nearMisses ? FieldMapping.Remap(shape, written.Outcome) : null;
-        return mapped == null ? written : WriteOnce(serializer, value, mapped, root, truncations, announce, nearMisses);
+        if (mapped != null)
+        {
+            written = WriteOnce(serializer, value, mapped, root, truncations, announce, nearMisses, long.MaxValue);
+        }
+
+        return new ShapedText(written.Json!, written.Outcome);
     }
 
-    private static ShapedText WriteOnce(JsonSerializer serializer, object? value, ShapeRequest shape, ShapingRoot root,
-        IReadOnlyList<Truncation>? truncations, bool announce, bool nearMisses)
+    private static CappedText WriteOnce(JsonSerializer serializer, object? value, ShapeRequest shape, ShapingRoot root,
+        IReadOnlyList<Truncation>? truncations, bool announce, bool nearMisses, long limit)
     {
-        StringWriter text = new StringWriter(new StringBuilder(256), CultureInfo.InvariantCulture);
-        ShapeOutcome outcome;
+        CappedText text = new CappedText(limit);
         using (JsonTextWriter inner = WriterLike(serializer, text))
         {
             ShapingJsonWriter shaping = new ShapingJsonWriter(inner, shape, root, truncations, announce, nearMisses);
             shaping.Formatting = serializer.Formatting;
             serializer.Serialize(shaping, value, null);
             shaping.Flush();
-            outcome = shaping.Outcome;
+            text.Outcome = shaping.Outcome;
         }
 
-        return new ShapedText(text.ToString(), outcome);
+        return text;
     }
 
     // The settings the serializer sets on a writer it is given, set here on the writer that formats behind the
     // shaping one, so both write the same text.
     private static JsonTextWriter WriterLike(JsonSerializer serializer, TextWriter text) => new JsonTextWriter(text)
     {
+        CloseOutput = false,
         Formatting = serializer.Formatting,
         Culture = serializer.Culture,
         DateFormatHandling = serializer.DateFormatHandling,
@@ -164,4 +177,51 @@ internal sealed class ShapedText
     internal string Json { get; }
 
     internal ShapeOutcome Outcome { get; }
+}
+
+/// <summary>
+/// A reply's text as it is written, kept until it passes limit UTF-8 bytes and then only counted (the size and the
+/// list lengths reply_too_large reports); Json is null once it is over.
+/// </summary>
+internal sealed class CappedText : Utf8Count
+{
+    private readonly long _limit;
+    private StringBuilder? _text = new StringBuilder(256);
+
+    internal CappedText(long limit) => _limit = limit;
+
+    internal bool Over => _text == null;
+
+    internal string? Json => _text?.ToString();
+
+    internal ShapeOutcome Outcome { get; set; } = new ShapeOutcome(0);
+
+    public override void Write(char value)
+    {
+        base.Write(value);
+        _text?.Append(value);
+        Check();
+    }
+
+    public override void Write(char[] buffer, int index, int count)
+    {
+        base.Write(buffer, index, count);
+        _text?.Append(buffer, index, count);
+        Check();
+    }
+
+    public override void Write(string? value)
+    {
+        base.Write(value);
+        _text?.Append(value);
+        Check();
+    }
+
+    private void Check()
+    {
+        if (_text != null && Bytes > _limit)
+        {
+            _text = null;
+        }
+    }
 }

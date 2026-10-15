@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Replies are written off the game's thread, once.** The game's thread copies the facts into plain views and hands
+  them to the connection's writer, which writes the reply text once, applies `fields`/`omit`/`limit` as it writes and
+  stops keeping text at the size cap (`reply_too_large` still reports the whole size and every list's length). A
+  report's summary form and `report_too_large` are decided there too. Nothing on the wire changes.
 - **Long work is spread over frames.** Scans, plans, route and flight searches, ore search, apply loops and job
   steps run in bounded steps inside StationGod's frame budget (job steps included); a call's own wall time may grow,
   the game no longer freezes for it. A cancel or a deadline stops started work at its next step.

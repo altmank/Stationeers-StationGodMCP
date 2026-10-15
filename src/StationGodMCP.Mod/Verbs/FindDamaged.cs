@@ -23,7 +23,6 @@ internal static class FindDamaged
 {
     private const string List = "things";
 
-    private static readonly EntryCost Cost = new EntryCost();
 
     internal static VerbOutcome Run(FindDamagedOptions options)
     {
@@ -36,8 +35,7 @@ internal static class FindDamaged
         {
             PlayerOrigin now = PlayerOrigin.Current();
             return ThingListPage<HealthView, DamageCounts>.Later(walk, paging,
-                id => Thing.Find(id) is { IsBeingDestroyed: false } thing ? HealthReader.Read(thing, now, withNetworks) : null,
-                Cost, (page, cursorId, counts) => Reply(page, cursorId, counts ?? DamageCounts.None, minimum, now));
+                id => Thing.Find(id) is { IsBeingDestroyed: false } thing ? HealthReader.Read(thing, now, withNetworks) : null, (page, cursorId, counts) => Reply(page, cursorId, counts ?? DamageCounts.None, minimum, now));
         }
 
         List<OptionProblem> problems = selector.PlayerRadiusProblems();
@@ -58,8 +56,7 @@ internal static class FindDamaged
             () => new DamageCounts(scanner.Structures, scanner.Broken, scanner.Scanned),
             id => scanner.Listed(id) is { IsBeingDestroyed: false } thing
                 ? HealthReader.Read(thing, origin, withNetworks)
-                : null,
-            Cost, (page, cursorId, counts) => Reply(page, cursorId, counts!, minimum, origin));
+                : null, (page, cursorId, counts) => Reply(page, cursorId, counts!, minimum, origin));
     }
 
     private static ReplyObject Reply(Page<HealthView> page, string? cursorId, DamageCounts counts, double minimum,

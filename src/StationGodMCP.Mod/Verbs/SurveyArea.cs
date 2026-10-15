@@ -26,7 +26,6 @@ internal static class SurveyArea
     private const string Refund = "refund";
     private const string PieceCells = "piece_cells";
 
-    private static readonly EntryCost Cost = new EntryCost();
 
     internal static VerbOutcome Run(SurveyAreaOptions options)
     {
@@ -92,7 +91,7 @@ internal static class SurveyArea
         {
             if (_found == null)
             {
-                if (!_page.Step(StopwatchClock.Instance, untilMs, Cost.MsPerEntry))
+                if (!_page.Step(StopwatchClock.Instance, untilMs))
                 {
                     return false;
                 }
@@ -119,7 +118,6 @@ internal static class SurveyArea
         public object Result()
         {
             Page<KeptCell> page = _found!.Page;
-            Cost.Expect(page.Entries.Count);
             SurveySections sections = SurveySections.Of(_options.Sections);
             SurveyCellDetail detail = SurveyCellDetails.Of(_options.CellDetail);
             bool withCells = sections.Includes(SurveySection.Cells);

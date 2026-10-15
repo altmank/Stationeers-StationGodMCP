@@ -154,15 +154,18 @@ internal sealed class Connection
         _reader.Start();
     }
 
-    /// <summary>Queues one line for the client (a reply or an event); written in order by the writer thread.</summary>
-    internal void Send(string line, string? method = null)
+    /// <summary>
+    /// Queues one line for the client (a reply or an event); written in order by the writer thread, a deferred reply
+    /// (a verb call's) made there when the writer reaches it.
+    /// </summary>
+    internal void Send(ReplyLine line, string? method = null)
     {
         if (_stopping)
         {
             return;
         }
 
-        _outbound.Enqueue(new Outgoing(line, method));
+        _outbound.Enqueue(line.Deferred != null ? new Outgoing(line.Deferred, method) : new Outgoing(line.Text!, method));
         _outboundReady.Release();
     }
 
@@ -174,7 +177,7 @@ internal sealed class Connection
             return;
         }
 
-        _outbound.Enqueue(new Outgoing(line));
+        _outbound.Enqueue(new Outgoing(line, null));
         _outboundReady.Release();
     }
 
@@ -358,7 +361,7 @@ internal sealed class Connection
                         continue;
                     }
 
-                    message = new Outgoing(taken, null);
+                    message = new Outgoing(taken, message.Method);
                 }
 
                 int count = utf8.GetMaxByteCount(message.Line.Length) + 1;
@@ -419,10 +422,10 @@ internal sealed class Connection
             Deferred = null;
         }
 
-        internal Outgoing(IOutboundLine deferred)
+        internal Outgoing(IOutboundLine deferred, string? method)
         {
             Line = string.Empty;
-            Method = null;
+            Method = method;
             Deferred = deferred;
         }
 

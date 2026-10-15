@@ -119,10 +119,10 @@ internal abstract class QueuedCall
     internal abstract string RefusalReply(string code, string message, object? data = null);
 
     /// <summary>Hands an answer on. Called once, by whoever won the call's state.</summary>
-    internal abstract void Deliver(string reply, string? method);
+    internal abstract void Deliver(ReplyLine reply, string? method);
 
     /// <summary>Answers a call that ran with its result; only the run that started it delivers.</summary>
-    internal void Finish(string reply, string? method)
+    internal void Finish(ReplyLine reply, string? method)
     {
         if (State.TryFinish())
         {
@@ -153,13 +153,38 @@ internal abstract class QueuedCall
 }
 
 /// <summary>
+/// A reply on its way to the client: its text, or a line the connection's writer thread writes when it reaches it (a
+/// verb call's answer, CallReplyLine: the game thread hands over plain views and never writes the text).
+/// </summary>
+internal readonly struct ReplyLine
+{
+    private ReplyLine(string? text, IOutboundLine? deferred)
+    {
+        Text = text;
+        Deferred = deferred;
+    }
+
+    /// <summary>The text when it is made already; null for a deferred line.</summary>
+    internal string? Text { get; }
+
+    internal IOutboundLine? Deferred { get; }
+
+    public static implicit operator ReplyLine(string text) => new ReplyLine(text, null);
+
+    internal static ReplyLine Of(IOutboundLine line) => new ReplyLine(null, line);
+
+    /// <summary>The line's text, made now when it is deferred: for a reader that is no connection's writer (tests).</summary>
+    internal string Render() => Text ?? (Deferred!.TryTake(out string line) ? line : string.Empty);
+}
+
+/// <summary>
 /// A call's answer from the main thread: the reply line and the known method it named, if any. Deferred when the call
 /// goes on over later frames: Work goes on in the scheduler's slice lane until it answers (DeferredCalls: a page built
 /// over frames, a read sample run).
 /// </summary>
 internal readonly struct CallOutcome
 {
-    internal CallOutcome(string reply, string? method)
+    internal CallOutcome(ReplyLine reply, string? method)
     {
         Reply = reply;
         Method = method;
@@ -168,14 +193,14 @@ internal readonly struct CallOutcome
 
     private CallOutcome(IDeferredWork work, string? method)
     {
-        Reply = null!;
+        Reply = default;
         Method = method;
         Work = work;
     }
 
-    internal bool IsDeferred => Reply == null;
+    internal bool IsDeferred => Work != null;
 
-    internal string Reply { get; }
+    internal ReplyLine Reply { get; }
 
     internal string? Method { get; }
 
@@ -197,7 +222,7 @@ internal interface IDeferredWork
     bool Step(double untilMs);
 
     /// <summary>The call's reply message, once Step returned true.</summary>
-    string Finish();
+    ReplyLine Finish();
 }
 
 /// <summary>Runs calls on the main thread (StationGodRequestDispatcher, through ApiHost).</summary>
@@ -250,13 +275,13 @@ internal sealed class ProtocolCall : QueuedCall
     internal const string ShuttingDownCode = "shutting_down";
     internal const string WorldChangedCode = "world_changed";
 
-    private readonly Action<ProtocolCall, string, string?> _deliver;
+    private readonly Action<ProtocolCall, ReplyLine, string?> _deliver;
     private readonly object _source;
     private readonly CallContext _context;
     private readonly string? _clientName;
 
     internal ProtocolCall(CallRequest request, CallProfile profile, double deadlineAtMs, object source,
-        CallContext context, string? clientName, Action<ProtocolCall, string, string?> deliver)
+        CallContext context, string? clientName, Action<ProtocolCall, ReplyLine, string?> deliver)
         : base(deadlineAtMs, profile)
     {
         Request = request;
@@ -289,7 +314,7 @@ internal sealed class ProtocolCall : QueuedCall
     internal string ShuttingDownReply() => Wire.Refusal(Request.Id, ShuttingDownCode,
         "The mod is stopping or the world is unloading; the call was not started.");
 
-    internal override void Deliver(string reply, string? method) => _deliver(this, reply, method);
+    internal override void Deliver(ReplyLine reply, string? method) => _deliver(this, reply, method);
 }
 
 /// <summary>Where calls wait for the main thread. Every member may be called from any thread.</summary>

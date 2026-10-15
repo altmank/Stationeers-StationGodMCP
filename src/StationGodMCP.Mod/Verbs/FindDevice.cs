@@ -22,7 +22,6 @@ internal static class FindDevice
 {
     private const string List = "devices";
 
-    private static readonly EntryCost Cost = new EntryCost();
 
     // find device answers no scan counts.
     private static readonly object NoCounts = new object();
@@ -34,15 +33,14 @@ internal static class FindDevice
         DeviceScope scope = Devices.Scope(options.Gateway);
         if (walk.Continues)
         {
-            return ThingListPage<DeviceView, object>.Later(walk, paging, id => ViewOf(scope, Devices.Find(scope, id)),
-                Cost, (page, cursorId, _) => Reply(page, scope, cursorId));
+            return ThingListPage<DeviceView, object>.Later(walk, paging, id => ViewOf(scope, Devices.Find(scope, id)), (page, cursorId, _) => Reply(page, scope, cursorId));
         }
 
         Selector selector = options.Selector;
         Dictionary<long, ScopedTarget> devices = new Dictionary<long, ScopedTarget>();
         return ThingListPage<DeviceView, object>.Scan(walk, paging,
             new ScanBuild(keys => Kept(scope, selector, devices, keys), ListOrder.ReferenceId), static () => NoCounts,
-            id => ViewOf(scope, devices.TryGetValue(id, out ScopedTarget? device) ? device : null), Cost,
+            id => ViewOf(scope, devices.TryGetValue(id, out ScopedTarget? device) ? device : null),
             (page, cursorId, _) => Reply(page, scope, cursorId));
     }
 

@@ -552,7 +552,7 @@ internal sealed class CallSession : Session
         _host.StreamEnded(_connection, end);
     }
 
-    private void Answered(ProtocolCall call, string reply, string? method)
+    private void Answered(ProtocolCall call, ReplyLine reply, string? method)
     {
         lock (_sync)
         {

@@ -23,7 +23,6 @@ internal static class InspectHealth
 {
     private const string Option = "network";
 
-    private static readonly EntryCost Cost = new EntryCost();
 
     internal static VerbOutcome Run(InspectHealthOptions options)
     {
@@ -57,7 +56,7 @@ internal static class InspectHealth
         if (walk.Continues)
         {
             return ThingListPage<HealthView, NetworkHealthFacts>.Later(walk, paging,
-                id => Live(id, origin, withNetworks), Cost, (page, cursorId, facts) => Reply(page, cursorId, facts!));
+                id => Live(id, origin, withNetworks), (page, cursorId, facts) => Reply(page, cursorId, facts!));
         }
 
         UpgradeFamily family = FamilyNamed(options.Kind);
@@ -70,7 +69,7 @@ internal static class InspectHealth
         }
 
         return ThingListPage<HealthView, NetworkHealthFacts>.First(walk, paging, ids, ids.Length, scan.Facts,
-            id => Live(id, origin, withNetworks), Cost, (page, cursorId, facts) => Reply(page, cursorId, facts!));
+            id => Live(id, origin, withNetworks), (page, cursorId, facts) => Reply(page, cursorId, facts!));
     }
 
     private static HealthView? Live(long id, PlayerOrigin origin, bool withNetworks) =>

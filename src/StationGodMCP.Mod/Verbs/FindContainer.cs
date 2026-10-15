@@ -19,7 +19,6 @@ internal static class FindContainer
 {
     private const string List = "containers";
 
-    private static readonly EntryCost Cost = new EntryCost();
 
     // find container answers no scan counts.
     private static readonly object NoCounts = new object();
@@ -32,7 +31,7 @@ internal static class FindContainer
         if (walk.Continues)
         {
             PlayerOrigin now = PlayerOrigin.Current();
-            return ThingListPage<ContainerView, object>.Later(walk, paging, id => Containers.Live(id, now)?.ToView(), Cost,
+            return ThingListPage<ContainerView, object>.Later(walk, paging, id => Containers.Live(id, now)?.ToView(),
                 (page, cursorId, _) => Reply(page, now, cursorId));
         }
 
@@ -48,7 +47,7 @@ internal static class FindContainer
             keys => Containers.Scan(keys, selector.Prefab, selector.Name, selector.AroundPlayerM, origin, found),
             paging.Order);
         return ThingListPage<ContainerView, object>.Scan(walk, paging, build, static () => NoCounts,
-            id => found.TryGetValue(id, out ContainerTally? container) ? container.ToView() : null, Cost,
+            id => found.TryGetValue(id, out ContainerTally? container) ? container.ToView() : null,
             (page, cursorId, _) => Reply(page, origin, cursorId));
     }
 

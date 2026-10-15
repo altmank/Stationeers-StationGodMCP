@@ -273,7 +273,7 @@ public sealed class FindVerbTests
     private static FramedResult<string> Take(FramedPage<string> page, object? kept = null)
     {
         FakeClock clock = new FakeClock();
-        while (!page.Step(clock, clock.NowMs + 4.0, 0.0))
+        while (!page.Step(clock, clock.NowMs + 4.0))
         {
         }
 

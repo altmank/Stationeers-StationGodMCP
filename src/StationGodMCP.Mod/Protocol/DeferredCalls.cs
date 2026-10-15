@@ -62,7 +62,7 @@ internal sealed class DeferredCalls : ISliceLane
         }
 
         Entry entry = _entries[_next];
-        string? reply = null;
+        ReplyLine? reply = null;
         double began = _clock.NowMs;
         try
         {
@@ -92,7 +92,7 @@ internal sealed class DeferredCalls : ISliceLane
         }
 
         _entries.RemoveAt(_next);
-        entry.Call.Finish(reply, entry.Method);
+        entry.Call.Finish(reply.Value, entry.Method);
     }
 
     /// <summary>Streams ended: their calls are answered cancelled and their work dropped.</summary>

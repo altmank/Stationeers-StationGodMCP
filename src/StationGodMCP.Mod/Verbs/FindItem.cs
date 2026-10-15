@@ -29,7 +29,6 @@ internal static class FindItem
     private const string GroupByPlace = "place";
     private const double MaximumRadiusM = 1000.0;
 
-    private static readonly EntryCost Cost = new EntryCost();
 
     internal static VerbOutcome Run(FindItemOptions options)
     {
@@ -41,7 +40,7 @@ internal static class FindItem
             FoundList? kept = walk.Kept() as FoundList;
             PlayerOrigin now = PlayerOrigin.Current();
             return ThingListPage<IFoundItemView, FoundList>.Later(walk, paging,
-                index => kept?.Entry(index, now), Cost, (page, cursorId, list) => Reply(page, cursorId, now, list));
+                index => kept?.Entry(index, now), (page, cursorId, list) => Reply(page, cursorId, now, list));
         }
 
         bool place = string.Equals(options.GroupBy, GroupByPlace, StringComparison.Ordinal);
@@ -78,7 +77,7 @@ internal static class FindItem
         FoundBuild build = new FoundBuild(new FoundScan(filter, origin, excludeInUse), paging.Order, grouping,
             excludeInUse);
         return ThingListPage<IFoundItemView, FoundList>.Scan(walk, paging, build, () => build.List!,
-            index => build.List!.Entry(index, origin), Cost, (page, cursorId, kept) => Reply(page, cursorId, origin, kept));
+            index => build.List!.Entry(index, origin), (page, cursorId, kept) => Reply(page, cursorId, origin, kept));
     }
 
     private static ReplyObject Reply(Page<IFoundItemView> page, string? cursorId, PlayerOrigin origin, FoundList? list)
