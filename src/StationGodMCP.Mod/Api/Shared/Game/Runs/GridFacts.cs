@@ -1,5 +1,6 @@
 #nullable enable
 
+using System;
 using System.Collections.Generic;
 using Assets.Scripts;
 using Assets.Scripts.Atmospherics;
@@ -37,6 +38,14 @@ internal sealed class GridFacts
     private readonly Dictionary<long, HashSet<GridCell>> _doorPorts = new Dictionary<long, HashSet<GridCell>>();
     private readonly DoorBand _band = LayoutSettings.DoorBand;
 
+    // A cell with no neighbouring network of the kind: one list, read only, shared by every such cell.
+    private static readonly List<long> NoNetworks = new List<long>(0);
+
+    // The readers handed to CellSupports and OpeningZones per cell, made once: a method group passed as a delegate is
+    // a new delegate each time, and a route search reads a hundred thousand cells.
+    private readonly Func<GridCell, LargeCellFacts> _largeOf;
+    private readonly Func<GridCell, IReadOnlyList<FaceOpening>> _faceOpeningsOf;
+
     internal GridFacts(RunKind kind, SmallGridBlock mask, HashSet<long> ignore)
     {
         _grid = GridController.World;
@@ -44,6 +53,8 @@ internal sealed class GridFacts
         _kind = kind;
         _mask = mask;
         _ignore = ignore;
+        _largeOf = Large;
+        _faceOpeningsOf = FaceOpenings;
     }
 
     internal static Grid3 Grid(GridCell cell) => PieceShapes.Grid(cell);
@@ -181,7 +192,7 @@ internal sealed class GridFacts
             return zone;
         }
 
-        zone = OpeningZones.At(small, _band, FaceOpenings, Visibility(small) == CellVisibility.Inside);
+        zone = OpeningZones.At(small, _band, _faceOpeningsOf, Visibility(small) == CellVisibility.Inside);
         if (zone.IsDoor && DoorPorts(zone.Id).Contains(small))
         {
             zone = OpeningZone.Clear;
@@ -230,17 +241,17 @@ internal sealed class GridFacts
     /// cell (SmallCell.Owner, set by the fuselage piece around it) counts as held by that hull's frame.
     /// </summary>
     internal CellSupport Support(GridCell small) =>
-        SmallAt(small)?.Owner != null ? CellSupport.Frame : CellSupports.Of(small, Large);
+        SmallAt(small)?.Owner != null ? CellSupport.Frame : CellSupports.Of(small, _largeOf);
 
     /// <summary>How visible a piece in the small cell is (CellSupports.VisibilityOf).</summary>
-    internal CellVisibility Visibility(GridCell small) => CellSupports.VisibilityOf(small, Large);
+    internal CellVisibility Visibility(GridCell small) => CellSupports.VisibilityOf(small, _largeOf);
 
     /// <summary>Whether a 2 m cell can support small cells at all: a frame in it or a face structure on it.</summary>
     internal bool Anchors(GridCell large) => CellSupports.Anchors(Large(large));
 
     private List<long> NeighbourNetworks(GridCell cell)
     {
-        List<long> networks = new List<long>(2);
+        List<long>? networks = null;
         foreach (GridStep step in GridStep.All)
         {
             SmallCell? small = SmallAt(step.From(cell));
@@ -251,12 +262,12 @@ internal sealed class GridFacts
             }
 
             long? network = _kind.Family.NetworkOf(piece)?.ReferenceId;
-            if (network.HasValue && !networks.Contains(network.Value))
+            if (network.HasValue && !(networks ??= new List<long>(2)).Contains(network.Value))
             {
                 networks.Add(network.Value);
             }
         }
 
-        return networks;
+        return networks ?? NoNetworks;
     }
 }

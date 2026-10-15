@@ -1,5 +1,6 @@
 #nullable enable
 
+using System;
 using System.Collections.Generic;
 
 namespace StationGodMCP.Pure;
@@ -166,6 +167,9 @@ internal sealed class RouteRuleSet
     /// <summary>The networks the route starts or ends on; running beside them is fine.</summary>
     internal HashSet<long> OwnNetworks { get; }
 
+    // OwnNetworks.Contains as a predicate, made once (a method group is a new delegate each time it is passed).
+    private Predicate<long>? _ownNetwork;
+
     /// <summary>Networks never to run beside, even when AvoidNetworks is off.</summary>
     internal HashSet<long> AvoidIds { get; }
 
@@ -229,7 +233,7 @@ internal sealed class RouteRuleSet
         }
 
         double cost = 1.0;
-        if (AvoidOwn && cell.NeighbourNetworks.Exists(OwnNetworks.Contains))
+        if (AvoidOwn && cell.NeighbourNetworks.Exists(_ownNetwork ??= OwnNetworks.Contains))
         {
             cost += InteriorPenalty;
         }
