@@ -60,7 +60,11 @@ internal static class StructureSwapPlanner
         BuildCatalogue catalogue = WorldModel.Prefabs.Build;
         foreach (Structure member in members)
         {
-            Classify(plan, targets, catalogue, named, member);
+            foreach (object? step in Classifying(plan, targets, catalogue, named, member))
+            {
+                yield return step;
+            }
+
             yield return null;
         }
 
@@ -164,16 +168,17 @@ internal static class StructureSwapPlanner
         }
     }
 
-    [Profiled]
-    private static void Classify(StructureSwapPlan plan, StructureTargets targets, BuildCatalogue catalogue,
-        Structure? named, Structure member)
+    // A member into the plan, a Work body: its checks and slots, then the player-placement test, then the family's
+    // assessment, a step each (each reads the game's physics or cells; a first call after a load compiles them).
+    private static IEnumerable<object?> Classifying(StructureSwapPlan plan, StructureTargets targets,
+        BuildCatalogue catalogue, Structure? named, Structure member)
     {
         StructureFamily family = plan.Request.Family;
         string? kept = KeptReason(plan.Request, member, out string message);
         if (kept != null)
         {
             plan.Kept.Add(new SkippedPiece(member, kept, message));
-            return;
+            yield break;
         }
 
         Structure? target = named != null ? named : family.DefaultTarget(member);
@@ -183,7 +188,7 @@ internal static class StructureSwapPlanner
         if (issue != null)
         {
             plan.Unmatched.Add(new SkippedPiece(member, "invalid_target", issue));
-            return;
+            yield break;
         }
 
         int final = target!.BuildStates.Count - 1;
@@ -191,7 +196,7 @@ internal static class StructureSwapPlanner
         {
             plan.Kept.Add(new SkippedPiece(member, "already_at_target",
                 $"{member.PrefabName} is already at its final build state."));
-            return;
+            yield break;
         }
 
         List<StructureSlot> slots = StructureSlots.Live(member);
@@ -201,7 +206,7 @@ internal static class StructureSwapPlanner
             plan.Unmatched.Add(new SkippedPiece(member, "footprint_mismatch",
                 $"{target.PrefabName} would not register in exactly the slots {member.PrefabName} holds " +
                 $"({Describe(slots)} against {Describe(predicted)})."));
-            return;
+            yield break;
         }
 
         BuildState last = target.BuildStates[final];
@@ -216,7 +221,9 @@ internal static class StructureSwapPlanner
                 $"{target.PrefabName} at its final state does not, so the swap would open it.", member);
         }
 
+        yield return null;
         Placeable(plan, catalogue, member, target);
+        yield return null;
         AddMaterials(plan, swap);
         family.Assess(swap, plan);
         swap.AffectedCells = family.AffectedCells(swap);

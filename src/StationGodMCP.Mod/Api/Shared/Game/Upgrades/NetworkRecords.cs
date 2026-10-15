@@ -26,6 +26,13 @@ internal abstract class NetworkRecord
     private readonly Dictionary<long, PlannedSwap> _byOld = new Dictionary<long, PlannedSwap>();
 
     protected NetworkRecord(ThingId id, List<PlannedSwap> swaps, List<Device> devices, List<SmallGrid> members)
+        : this(id, swaps, devices)
+    {
+        Keep(members.FindAll(member => !IsSwapped(member, out _)));
+    }
+
+    // A record whose staying members are read over steps and kept with Keep.
+    protected NetworkRecord(ThingId id, List<PlannedSwap> swaps, List<Device> devices)
     {
         Id = id;
         Swaps = swaps;
@@ -41,7 +48,6 @@ internal abstract class NetworkRecord
         }
 
         DevicesBefore = IdsOf(devices);
-        Staying = members.FindAll(member => !IsSwapped(member, out _));
     }
 
     internal ThingId Id { get; }
@@ -51,7 +57,9 @@ internal abstract class NetworkRecord
     protected HashSet<long> DevicesBefore { get; }
 
     /// <summary>The members no swap takes, as recorded before the swap.</summary>
-    private List<SmallGrid> Staying { get; }
+    private List<SmallGrid> Staying { get; set; } = new List<SmallGrid>();
+
+    protected void Keep(List<SmallGrid> staying) => Staying = staying;
 
     /// <summary>
     /// The network now: the recorded one while the game still lists it; once it no longer does, the network the swap's
@@ -125,6 +133,13 @@ internal abstract class NetworkRecord
     /// <summary>The report before the swap, with the predicted state after it.</summary>
     internal abstract object Report();
 
+    /// <summary>Report as a Work body; a network of many members is read a batch of them per step.</summary>
+    internal virtual IEnumerable<object?> Reporting(Pure.Scheduling.Answer<object> answer)
+    {
+        answer.Value = Report();
+        yield break;
+    }
+
     internal abstract void AddProblems(UpgradePlan plan);
 
     /// <summary>The same report read again now; null when the network is gone.</summary>
@@ -164,7 +179,13 @@ internal abstract class NetworkRecord
 
         foreach (KeyValuePair<long, List<PlannedSwap>> entry in grouped)
         {
-            NetworkRecord record = family.Record(networks[entry.Key], entry.Value);
+            Pure.Scheduling.Answer<NetworkRecord> recorded = new Pure.Scheduling.Answer<NetworkRecord>();
+            foreach (object? step in family.Recording(networks[entry.Key], entry.Value, recorded))
+            {
+                yield return step;
+            }
+
+            NetworkRecord record = recorded.Value;
             record.AddProblems(plan);
             plan.Networks.Add(record);
             yield return null;
@@ -281,38 +302,101 @@ internal abstract class NetworkRecord
 /// </summary>
 internal sealed class CableNetworkRecord : NetworkRecord
 {
+    // Cables read per step, recording or reporting (a network can hold thousands).
+    private const int CablesAStep = 256;
+
     private readonly CableNetwork _network;
-    private readonly int _cablesBefore;
+    private int _cablesBefore;
 
     // The weakest cable when the plan was made: the job's report after the swap still says what it was before.
-    private readonly double? _lowestBefore;
+    private double? _lowestBefore;
 
     private CableNetwork? _now;
 
-    internal CableNetworkRecord(CableNetwork network, List<PlannedSwap> swaps)
-        : base(new ThingId(network.ReferenceId), swaps, network.DeviceList,
-            Copy(network.CableList).ConvertAll(static cable => (SmallGrid)cable))
+    private CableNetworkRecord(CableNetwork network, List<PlannedSwap> swaps)
+        : base(new ThingId(network.ReferenceId), swaps, network.DeviceList)
     {
         _network = network;
-        List<Cable> cables = Copy(network.CableList);
-        _cablesBefore = cables.Count;
-        foreach (Cable cable in cables)
+    }
+
+    /// <summary>The record as a Work body: its cables, the staying ones and the weakest, a batch per step.</summary>
+    internal static IEnumerable<object?> Reading(CableNetwork network, List<PlannedSwap> swaps,
+        Pure.Scheduling.Answer<NetworkRecord> answer)
+    {
+        CableNetworkRecord record = new CableNetworkRecord(network, swaps);
+        List<Cable> cables = Listed(network.CableList);
+        yield return null;
+        List<SmallGrid> staying = new List<SmallGrid>(cables.Count);
+        for (int index = 0; index < cables.Count; index++)
         {
-            _lowestBefore = _lowestBefore.HasValue
-                ? Math.Min(_lowestBefore.Value, cable.MaxVoltage)
-                : cable.MaxVoltage;
+            Cable cable = cables[index];
+            if (cable != null)
+            {
+                record._cablesBefore++;
+                record._lowestBefore = record._lowestBefore.HasValue
+                    ? Math.Min(record._lowestBefore.Value, cable.MaxVoltage)
+                    : cable.MaxVoltage;
+                if (!record.IsSwapped(cable, out _))
+                {
+                    staying.Add(cable);
+                }
+            }
+
+            if (index % CablesAStep == CablesAStep - 1)
+            {
+                yield return null;
+            }
         }
+
+        record.Keep(staying);
+        answer.Value = record;
     }
 
     internal override object Report() => ReportOf(_network, true);
 
+    internal override IEnumerable<object?> Reporting(Pure.Scheduling.Answer<object> answer)
+    {
+        Pure.Scheduling.Answer<CableNetworkReportView> report = new Pure.Scheduling.Answer<CableNetworkReportView>();
+        foreach (object? step in ReportingOf(_network, true, report))
+        {
+            yield return step;
+        }
+
+        answer.Value = report.Value;
+    }
+
     private CableNetworkReportView ReportOf(CableNetwork network, bool predict)
     {
-        List<Cable> cables = Copy(network.CableList);
+        Pure.Scheduling.Answer<CableNetworkReportView> report = new Pure.Scheduling.Answer<CableNetworkReportView>();
+        foreach (object? _ in ReportingOf(network, predict, report))
+        {
+        }
+
+        return report.Value;
+    }
+
+    private IEnumerable<object?> ReportingOf(CableNetwork network, bool predict,
+        Pure.Scheduling.Answer<CableNetworkReportView> answer)
+    {
+        List<Cable> cables = Listed(network.CableList);
+        yield return null;
+        int count = 0;
         double? before = null;
         double? after = null;
-        foreach (Cable cable in cables)
+        for (int index = 0; index < cables.Count; index++)
         {
+            if (index % CablesAStep == CablesAStep - 1)
+            {
+                yield return null;
+            }
+
+            Cable cable = cables[index];
+            if (cable == null)
+            {
+                continue;
+            }
+
+            count++;
             double rating = cable.MaxVoltage;
             before = before.HasValue ? Math.Min(before.Value, rating) : rating;
             PlannedSwap? swap = null;
@@ -325,20 +409,30 @@ internal sealed class CableNetworkRecord : NetworkRecord
             after = after.HasValue ? Math.Min(after.Value, future) : future;
         }
 
+        yield return null;
         double? fuse = null;
         foreach (CableFuse each in Copy(network.FuseList))
         {
             fuse = fuse.HasValue ? Math.Min(fuse.Value, each.PowerBreak) : each.PowerBreak;
         }
 
-        return new CableNetworkReportView(new ThingId(network.ReferenceId),
-            new CableNetworkCounts(cables.Count, Swaps.Count, network.FuseList.Count),
+        answer.Value = new CableNetworkReportView(new ThingId(network.ReferenceId),
+            new CableNetworkCounts(count, Swaps.Count, network.FuseList.Count),
             new CableNetworkRatings(network.RequiredLoad, network.PotentialLoad, predict ? before : _lowestBefore,
                 after, fuse),
             ViewsOf(network.DeviceList), predict ? null : RenumberedFrom(network));
     }
 
     private static double RatingOf(Structure prefab) => prefab is Cable cable ? cable.MaxVoltage : 0.0;
+
+    // The list as the game holds it now, read under its lock; destroyed entries are left for the reader to pass over.
+    private static List<T> Listed<T>(List<T> list) where T : class
+    {
+        lock (list)
+        {
+            return new List<T>(list);
+        }
+    }
 
     private static List<T> Copy<T>(List<T> list) where T : UnityEngine.Object
     {
@@ -353,6 +447,7 @@ internal sealed class CableNetworkRecord : NetworkRecord
     }
 
     // Cable networks hold no state of their own beyond membership: nothing to refuse here.
+    [Profiled]
     internal override void AddProblems(UpgradePlan plan)
     {
     }
@@ -499,6 +594,7 @@ internal sealed class PipeNetworkRecord : NetworkRecord
             : new PipeNetworkAir(snapshot.TotalMol(), snapshot.EnergyJ(), snapshot.TemperatureK(), volumeL,
                 snapshot.PressureKpa());
 
+    [Profiled]
     internal override void AddProblems(UpgradePlan plan)
     {
         if (_atmosphere == null || _before == null)
@@ -650,6 +746,7 @@ internal sealed class ChuteNetworkRecord : NetworkRecord
     }
 
     // A chute network holds nothing of its own (items ride in the pieces): nothing to refuse here.
+    [Profiled]
     internal override void AddProblems(UpgradePlan plan)
     {
     }

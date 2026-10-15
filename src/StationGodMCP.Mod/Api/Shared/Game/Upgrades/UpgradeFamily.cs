@@ -127,6 +127,14 @@ internal abstract class UpgradeFamily
     /// <summary>The network's state before the swap, with what the swap would change.</summary>
     internal abstract NetworkRecord Record(IReferencable network, List<PlannedSwap> swaps);
 
+    /// <summary>Record as a Work body; a family whose networks can be long reads them a batch per step.</summary>
+    internal virtual IEnumerable<object?> Recording(IReferencable network, List<PlannedSwap> swaps,
+        Pure.Scheduling.Answer<NetworkRecord> answer)
+    {
+        answer.Value = Record(network, swaps);
+        yield break;
+    }
+
     /// <summary>A report entry for one source prefab and what it becomes.</summary>
     internal abstract object Mapping(Api.Views.UpgradeMappingCount count, Structure source, Structure target);
 
@@ -326,9 +334,19 @@ internal sealed class CableFamily : UpgradeFamily
 
     internal override List<long> DeviceNetworks(Device device) => Ids(device.ConnectedCableNetworks);
 
-    [Profiled]
-    internal override NetworkRecord Record(IReferencable network, List<PlannedSwap> swaps) =>
-        new CableNetworkRecord((CableNetwork)network, swaps);
+    internal override NetworkRecord Record(IReferencable network, List<PlannedSwap> swaps)
+    {
+        Pure.Scheduling.Answer<NetworkRecord> record = new Pure.Scheduling.Answer<NetworkRecord>();
+        foreach (object? _ in Recording(network, swaps, record))
+        {
+        }
+
+        return record.Value;
+    }
+
+    internal override IEnumerable<object?> Recording(IReferencable network, List<PlannedSwap> swaps,
+        Pure.Scheduling.Answer<NetworkRecord> answer) =>
+        CableNetworkRecord.Reading((CableNetwork)network, swaps, answer);
 
     internal override object Mapping(Api.Views.UpgradeMappingCount count, Structure source, Structure target) =>
         new Api.Views.CableMappingView(count, RatingOf(source), RatingOf(target));

@@ -25,6 +25,11 @@ namespace StationGodMCP.Api.Shared.Game.Upgrades;
 /// </summary>
 internal sealed class LinkSurvey
 {
+    // Swaps read for mounted devices, and links counted, per step.
+    private const int SwapsAStep = 32;
+
+    private const int LinksAStep = 512;
+
     private readonly List<long> _unreadable;
 
     private LinkSurvey(HashSet<Link> gameBefore, SurveyGroups groups, LinkDiff modelCheck, LinkDiff change,
@@ -146,13 +151,23 @@ internal sealed class LinkSurvey
             yield return step;
         }
 
-        List<MountedRecord> mounted = MountedOn(swaps, family);
-        yield return null;
+        List<MountedRecord> mounted = new List<MountedRecord>();
+        foreach (object? step in MountingOn(swaps, family, mounted))
+        {
+            yield return step;
+        }
+
         LinkSurveyParts parts = new LinkSurveyParts(things, unreadable, mounted, new List<DeviceRecord>());
-        HashSet<Link> expected = Connectivity.Without(Connectivity.Grouped(game, groups.GroupOf), groups.Removed);
-        LinkSurvey survey = new LinkSurvey(game, groups, Connectivity.Compare(game, liveLinks),
-            Connectivity.Compare(expected, after), after.Count, parts);
+        // The link sets hold thousands on a long network: each pass over them is a step of its own.
+        HashSet<Link> grouped = Connectivity.Grouped(game, groups.GroupOf);
         yield return null;
+        HashSet<Link> expected = Connectivity.Without(grouped, groups.Removed);
+        yield return null;
+        LinkDiff modelCheck = Connectivity.Compare(game, liveLinks);
+        yield return null;
+        LinkDiff change = Connectivity.Compare(expected, after);
+        yield return null;
+        LinkSurvey survey = new LinkSurvey(game, groups, modelCheck, change, after.Count, parts);
         foreach (object? step in DevicesAround(things, game, survey.Mounted, family, survey.Devices))
         {
             yield return step;
@@ -300,12 +315,14 @@ internal sealed class LinkSurvey
         }
     }
 
-    private static List<MountedRecord> MountedOn(List<PlannedSwap> swaps, UpgradeFamily family)
+    // The devices mounted on the swapped pieces, a batch of swaps per step.
+    private static IEnumerable<object?> MountingOn(List<PlannedSwap> swaps, UpgradeFamily family,
+        List<MountedRecord> mounted)
     {
-        List<MountedRecord> mounted = new List<MountedRecord>();
         GridController world = GridController.World;
-        foreach (PlannedSwap swap in swaps)
+        for (int index = 0; index < swaps.Count; index++)
         {
+            PlannedSwap swap = swaps[index];
             foreach (OldPiece old in swap.Olds)
             {
                 foreach (GridCell cell in old.Live.Cells)
@@ -320,9 +337,14 @@ internal sealed class LinkSurvey
                     }
                 }
             }
+
+            if (index % SwapsAStep == SwapsAStep - 1)
+            {
+                yield return null;
+            }
         }
 
-        return mounted;
+        yield return null;
     }
 
     // The devices among the things with a link (counted once over the links, not per device) or mounted on a swapped
@@ -331,12 +353,18 @@ internal sealed class LinkSurvey
         List<MountedRecord> mounted, UpgradeFamily family, List<DeviceRecord> devices)
     {
         Dictionary<long, int> linkCounts = new Dictionary<long, int>();
+        int counted = 0;
         foreach (Link link in links)
         {
             linkCounts[link.From] = linkCounts.TryGetValue(link.From, out int from) ? from + 1 : 1;
             if (link.To != link.From)
             {
                 linkCounts[link.To] = linkCounts.TryGetValue(link.To, out int to) ? to + 1 : 1;
+            }
+
+            if (++counted % LinksAStep == 0)
+            {
+                yield return null;
             }
         }
 
@@ -351,7 +379,7 @@ internal sealed class LinkSurvey
         {
             if (thing is Device device)
             {
-                int count = linkCounts.TryGetValue(device.ReferenceId, out int counted) ? counted : 0;
+                int count = linkCounts.TryGetValue(device.ReferenceId, out int linked) ? linked : 0;
                 bool isMounted = mountedIds.Contains(device.ReferenceId);
                 if (count > 0 || isMounted)
                 {
@@ -363,6 +391,7 @@ internal sealed class LinkSurvey
         }
     }
 
+    [Profiled]
     internal void AddProblems(UpgradePlan plan)
     {
         foreach (long id in _unreadable)

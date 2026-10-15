@@ -8,6 +8,7 @@ using Assets.Scripts.Objects.Items;
 using Assets.Scripts.Objects.Pipes;
 using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Profiling;
 
 namespace StationGodMCP.Api.Shared.Game.Upgrades;
 
@@ -401,6 +402,7 @@ internal sealed class PlanContext
     /// Whether the piece as placed matches its own prefab read at its place; a problem when it does not, since its
     /// replacement cannot then be predicted.
     /// </summary>
+    [Profiled]
     internal bool MatchesOwnPrefab(SmallGrid member, PieceModel live)
     {
         Structure? own = Prefab.Find(member.PrefabHash) as Structure;
@@ -431,6 +433,7 @@ internal sealed class PlanContext
         return $"{message} These pieces of it could not be read: {string.Join(", ", names)}.";
     }
 
+    [Profiled]
     internal void CheckCondition(SmallGrid member, Twin twin)
     {
         if (member.CurrentBuildStateIndex < 0)

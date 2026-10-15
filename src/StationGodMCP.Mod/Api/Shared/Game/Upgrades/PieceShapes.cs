@@ -55,6 +55,7 @@ internal static class PieceShapes
         EndsOf(prefab) != null && prefab.GridBounds != null && prefab.GridBounds.IsValid();
 
     /// <summary>The prefab standing there, under the id; null when its ends or bounds cannot be read.</summary>
+    [Profiled]
     internal static PieceModel? Placed(Structure prefab, Vector3 position, Quaternion rotation, long id)
     {
         List<PrefabEnd>? local = EndsOf(prefab);

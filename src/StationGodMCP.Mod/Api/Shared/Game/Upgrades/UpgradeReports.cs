@@ -58,7 +58,14 @@ internal static class UpgradeReports
         List<object> networks = new List<object>(plan.Networks.Count);
         foreach (NetworkRecord record in plan.Networks)
         {
-            networks.Add(Network(record));
+            // As the plan's resources list it: without its devices.
+            Answer<object> report = new Answer<object>();
+            foreach (object? step in record.Reporting(report))
+            {
+                yield return step;
+            }
+
+            networks.Add(report.Value is IListsDevices listing ? listing.WithoutDevices() : report.Value);
             yield return null;
         }
 
@@ -323,11 +330,4 @@ internal static class UpgradeReports
         return views;
     }
 
-    // One network's report as the plan's resources list it: without its devices.
-    [Profiled]
-    private static object Network(NetworkRecord record)
-    {
-        object report = record.Report();
-        return report is IListsDevices listing ? listing.WithoutDevices() : report;
-    }
 }

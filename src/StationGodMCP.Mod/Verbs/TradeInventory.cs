@@ -65,7 +65,13 @@ internal static class TradeInventory
         List<TraderStockView> stocks = new List<TraderStockView>(contacts.Count);
         foreach (TraderContact contact in contacts)
         {
-            stocks.Add(Stock(contact, everyPad, holder));
+            Answer<TraderStockView> stock = new Answer<TraderStockView>();
+            foreach (object? step in Stocking(contact, everyPad, holder, stock))
+            {
+                yield return step;
+            }
+
+            stocks.Add(stock.Value);
             yield return null;
         }
 
@@ -75,28 +81,46 @@ internal static class TradeInventory
     private static IEnumerable<object?> One(TraderContact contact, List<LandingPadNetwork> everyPad,
         ITradableInventory? holder, Answer<TraderInventoryView> answer)
     {
-        answer.Value = new TraderInventoryView(new List<TraderStockView> { Stock(contact, everyPad, holder) });
-        yield break;
+        Answer<TraderStockView> stock = new Answer<TraderStockView>();
+        foreach (object? step in Stocking(contact, everyPad, holder, stock))
+        {
+            yield return step;
+        }
+
+        answer.Value = new TraderInventoryView(new List<TraderStockView> { stock.Value });
     }
 
-    // One contact's stock, as the view the reply carries: the contact, its pads, and the goods held that meet it.
-    private static TraderStockView Stock(TraderContact contact, List<LandingPadNetwork> everyPad,
-        ITradableInventory? holder)
+    // One contact's stock, as the view the reply carries: the contact, its pads, and the goods held that meet it. A
+    // Work body: the goods held, then a line bought or sold per step.
+    private static IEnumerable<object?> Stocking(TraderContact contact, List<LandingPadNetwork> everyPad,
+        ITradableInventory? holder, Answer<TraderStockView> answer)
     {
         TraderDataInstance? data = contact.DataInstance;
         bool landed = TradeSession.IsLandedAt(contact, contact.ConnectedPad);
         HeldGoods held = HeldGoods.For(contact, everyPad, holder);
-        return new TraderStockView(Contacts.Identity(contact), contact.Contacted,
-            Buys(data, held, landed ? contact : null), Sells(data));
+        yield return null;
+        List<TraderBuysView> buys = new List<TraderBuysView>();
+        foreach (object? step in Buys(data, held, landed ? contact : null, buys))
+        {
+            yield return step;
+        }
+
+        List<TraderSellsView> sells = new List<TraderSellsView>();
+        foreach (object? step in Sells(data, sells))
+        {
+            yield return step;
+        }
+
+        answer.Value = new TraderStockView(Contacts.Identity(contact), contact.Contacted, buys, sells);
     }
 
     // landed is the contact when it is landed and trading, else null: the game's count reads its pad's network.
-    private static List<TraderBuysView> Buys(TraderDataInstance? data, HeldGoods held, TraderContact? landed)
+    private static IEnumerable<object?> Buys(TraderDataInstance? data, HeldGoods held, TraderContact? landed,
+        List<TraderBuysView> buys)
     {
-        List<TraderBuysView> buys = new List<TraderBuysView>();
         if (data == null)
         {
-            return buys;
+            yield break;
         }
 
         foreach (BuyDataInstance buy in data.BuyDataInstances)
@@ -117,17 +141,15 @@ internal static class TradeInventory
                 ? (int)GameMembers.TradeSellItemQuantity.Invoke(null, buy, landed)
                 : null;
             buys.Add(new TraderBuysView(item, buy.Required, conditions, held.Units(buy), sellable));
+            yield return null;
         }
-
-        return buys;
     }
 
-    private static List<TraderSellsView> Sells(TraderDataInstance? data)
+    private static IEnumerable<object?> Sells(TraderDataInstance? data, List<TraderSellsView> sells)
     {
-        List<TraderSellsView> sells = new List<TraderSellsView>();
         if (data == null)
         {
-            return sells;
+            yield break;
         }
 
         foreach (SellDataInstance sell in data.SellDataInstances)
@@ -135,9 +157,8 @@ internal static class TradeInventory
             TradeItem item = new TradeItem(Text.Plain(sell.DisplayName), PrefabOf(sell.GetItemPrefab()),
                 sell.SellData.Value, sell.IsGasTransaction());
             sells.Add(new TraderSellsView(item, sell.Stock, Text.Plain(sell.ToolTip())));
+            yield return null;
         }
-
-        return sells;
     }
 
     private static string? PrefabOf(Thing? prefab) => prefab != null ? prefab.PrefabName : null;
