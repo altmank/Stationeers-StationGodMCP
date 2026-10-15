@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **sg 0.4.1: a list the game cut raises instead of handing a script part of it.** A reply's `truncated` names the
+  lists the game cut (a nested one such as `results[].slots`, or a top-level list other than the main list); using
+  one (iterating, len, an index, `in`, its truth) raises `sg.Error("truncated")` whose `fix` says how to get it whole,
+  and `.entries` gives the part that came. The main list pages as before.
 - **A find subscription's evaluation keeps to the subscription lane's share.** The find handler's own first steps ran
   to the frame's end, so a new evaluation could take the frame's whole budget; they now stop at the lane's end.
   `stream_costs` counts each evaluation as a sample of every subscriber's stream, its ms split evenly over them.

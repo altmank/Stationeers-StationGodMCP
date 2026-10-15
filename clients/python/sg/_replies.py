@@ -9,8 +9,13 @@ every entry page by page with the hub's `more` method, `all()` pages in the rest
 
 Every dict in a reply, at any depth, is a `Row`: a missing key raises KeyError carrying the keys that dict has, so a
 failed run can say which key was meant (note 22).
+
+Any other list the game cut (the reply's `truncated` names it: a top-level key, or a path such as
+`results[].slots` for a list in each entry) is a `CutList`: using it raises sg.Error("truncated", fix=<how to get
+the rest>), so a script never acts on part of a list without knowing (review D, R-D-18).
 """
 from . import _session
+from ._errors import Error
 
 
 class Row(dict):
@@ -82,6 +87,66 @@ class MainList(list):
         return self
 
 
+class CutList(list):
+    """A list the game cut (the reply's `truncated` names it). Iterating it, its len, an index, `in` or its truth
+    raise sg.Error("truncated") whose fix says how to get the whole list; `entries` gives the part that came, for a
+    script that wants it anyway."""
+
+    def __init__(self, entries, note):
+        super().__init__(entries)
+        self._note = note
+
+    @property
+    def entries(self):
+        """The entries that came, as a plain list."""
+        return list(list.__iter__(self))
+
+    def _refuse(self):
+        note = self._note
+        total = note.get("total")
+        returned = note.get("returned")
+        raise Error("truncated",
+                    f"{note.get('list')}: the game sent {returned} of {'at least ' if note.get('at_least') else ''}"
+                    f"{total} entries; .entries is the part that came",
+                    fix=note.get("more"), data=dict(note))
+
+    def __iter__(self):
+        self._refuse()
+
+    def __len__(self):
+        self._refuse()
+
+    def __getitem__(self, index):
+        self._refuse()
+
+    def __contains__(self, value):
+        self._refuse()
+
+    def __bool__(self):
+        self._refuse()
+
+
+def _cut(value, steps, note):
+    """Makes the list at steps (a truncated path's parts; "x[]" walks each entry of list x) a CutList, in place."""
+    if not steps or not isinstance(value, dict):
+        return
+    step, rest = steps[0], steps[1:]
+    each = step.endswith("[]")
+    key = step[:-2] if each else step
+    found = dict.get(value, key)
+    if not isinstance(found, list) or isinstance(found, CutList):
+        return
+    if each:
+        for entry in list.__iter__(found):
+            _cut(entry, rest, note)
+    elif not rest:
+        if not isinstance(found, MainList):
+            dict.__setitem__(value, key, CutList(list.__iter__(found), note))
+    else:
+        for entry in list.__iter__(found):
+            _cut(entry, rest, note)
+
+
 def _row(value):
     """value with every dict in it, at any depth, a Row (so a missing key names the keys there are)."""
     if isinstance(value, dict):
@@ -103,6 +168,9 @@ def wrap(result, main=None):
     if key is not None and isinstance(result.get(key), list):
         dict.__setitem__(reply, key, MainList(dict.__getitem__(reply, key), result.get("cursor")))
         reply._main = key
+    for note in result.get("truncated") or []:
+        if isinstance(note, dict) and isinstance(note.get("list"), str) and note["list"] != key:
+            _cut(reply, note["list"].split("."), note)
     return reply
 
 
@@ -112,6 +180,6 @@ def plain(value):
     if isinstance(value, dict):
         return {key: plain(item) for key, item in dict.items(value)}
     if isinstance(value, (list, tuple)):
-        return [plain(item) for item in list.__iter__(value)] if isinstance(value, MainList) \
+        return [plain(item) for item in list.__iter__(value)] if isinstance(value, (MainList, CutList)) \
             else [plain(item) for item in value]
     return value

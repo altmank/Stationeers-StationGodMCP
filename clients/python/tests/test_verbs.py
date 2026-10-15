@@ -64,6 +64,43 @@ class ReplyTests(HubCase):
         self.assertEqual(["reference_id"], raised.exception.reply_keys)
 
 
+class CutListTests(HubCase):
+    """review D, R-D-18: a list the game cut raises on use, never hands a script part of it."""
+
+    def test_a_nested_list_the_game_cut_raises_truncated_with_the_way_to_get_it_whole(self):
+        self.handler = lambda method, params: ok({
+            "results": [{"id": "1", "slots": [{"index": 0}, {"index": 1}]}],
+            "truncated": [{"list": "results[].slots", "returned": 2, "total": 9, "more": "pass rows 9"}]})
+        reply = sg.inspect("slots", id=["1"])
+        slots = reply["results"][0]["slots"]
+        with self.assertRaises(sg.Error) as raised:
+            for _ in slots:
+                pass
+        self.assertEqual("truncated", raised.exception.code)
+        self.assertEqual("pass rows 9", raised.exception.fix)
+        self.assertIn("2 of 9", raised.exception.message)
+        for use in (len, bool, lambda cut: cut[0], lambda cut: {"index": 0} in cut):
+            with self.assertRaises(sg.Error):
+                use(slots)
+        self.assertEqual([{"index": 0}, {"index": 1}], slots.entries)
+        self.assertEqual([{"index": 0}, {"index": 1}], plain(reply)["results"][0]["slots"])
+
+    def test_a_top_level_list_the_game_cut_raises_and_the_main_list_pages_as_before(self):
+        self.handler = lambda method, params: ok({
+            "devices": [{"reference_id": "1"}], "unreached": [{"reference_id": "2"}],
+            "truncated": [{"list": "unreached", "returned": 1, "total": 4, "more": "pass list_limits {\"unreached\": 4}"},
+                          {"list": "devices", "returned": 1, "total": 3, "more": "pass limit"}]})
+        reply = sg.survey("feeds", id="5")
+        self.assertIsInstance(reply["devices"], MainList)
+        self.assertEqual(1, len(reply["devices"]))
+        with self.assertRaises(sg.Error):
+            len(reply["unreached"])
+
+    def test_a_reply_with_nothing_cut_has_plain_lists(self):
+        self.handler = lambda method, params: ok({"results": [{"slots": [{"index": 0}]}], "truncated": []})
+        self.assertEqual(1, len(sg.inspect("slots", id=["1"])["results"][0]["slots"]))
+
+
 class MainListTests(HubCase):
     PAGES = {None: ([1, 2], "c1"), "c1": ([3, 4], "c2"), "c2": ([5], None)}
 
