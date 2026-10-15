@@ -90,7 +90,7 @@
         }
       },
       "example": {"prefab": "StructureWallLight", "at": [716, 203, 668], "facing": "-x"},
-      "x-cost": {"class": "instant"},
+      "x-cost": {"class": "instant", "growth": "by-id"},
       "reply": {
         "variants": [
           {
@@ -131,7 +131,7 @@
         "clear": {"schema": {"type": "boolean"}, "description": "Only remove what is drawn.", "x-script": "same"}
       },
       "example": {"targets": [{"id": "1199811", "label": "this one"}]},
-      "x-cost": {"class": "instant"},
+      "x-cost": {"class": "instant", "growth": "by-id"},
       "reply": {
         "variants": [
           {

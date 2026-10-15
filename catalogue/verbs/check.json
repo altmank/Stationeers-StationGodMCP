@@ -43,7 +43,7 @@
         }
       },
       "example": {"room": "17"},
-      "x-cost": {"class": "world"},
+      "x-cost": {"class": "world", "growth": "area"},
       "reply": {
         "list": "findings",
         "variants": [
@@ -94,7 +94,7 @@
         "at": {"schema": {"type": "array"}, "description": "explain: a cell.", "x-script": "same"}
       },
       "example": {"action": "explain", "rule": "door_keepout", "id": "1199811"},
-      "x-cost": {"class": "instant"},
+      "x-cost": {"class": "instant", "growth": "by-id"},
       "reply": {
         "list": "rules",
         "variants": [
@@ -119,7 +119,7 @@
       "summary": "could a player place each thing again exactly where it stands, every neighbour present",
       "options": {"id": {"use": "id", "description": "Things to check (1 to 1024).", "required": true}},
       "example": {"id": "r12.things"},
-      "x-cost": {"class": "bounded", "per": "id"},
+      "x-cost": {"class": "bounded", "per": "id", "growth": "by-id"},
       "reply": {
         "list": "results",
         "variants": [
@@ -156,7 +156,7 @@
         }
       },
       "example": {"id": "2005300"},
-      "x-cost": {"class": "world"},
+      "x-cost": {"class": "world", "growth": "index"},
       "reply": {
         "list": "items",
         "variants": [

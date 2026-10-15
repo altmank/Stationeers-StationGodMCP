@@ -31,7 +31,7 @@
         "The two list forms: id: [a, b], logic: [\"On\", \"Power\"] answers 4 rows, one per (id, logic) pair: {index, ok, reference_id, logic_type {id, name}, value}. reads: [{id: a, logic: [\"On\", \"Power\"]}, {id: b, logic: [\"On\", \"Power\"]}] answers 2 rows, one per id: {index, ok, reference_id, logic {On: 1, Power: 40.2}}."
       ],
       "example": {"id": ["1199811", "1199812"], "logic": ["Pressure", "Temperature"]},
-      "x-cost": {"class": "bounded", "per": ["id", "reads"]},
+      "x-cost": {"class": "bounded", "per": ["id", "reads"], "growth": "by-id"},
       "reply": {
         "list": "results",
         "variants": [
@@ -94,7 +94,7 @@
         }
       },
       "example": {"prefab": "StructureBatteryLarge", "limit": 10},
-      "x-cost": {"class": "world"},
+      "x-cost": {"class": "world", "growth": "index"},
       "reply": {
         "list": "devices",
         "variants": [
@@ -130,7 +130,7 @@
         }
       },
       "example": {"id": "4820585", "start": 0, "count": 32},
-      "x-cost": {"class": "instant"},
+      "x-cost": {"class": "instant", "growth": "by-id"},
       "reply": {
         "variants": [
           {
@@ -182,7 +182,7 @@
       "id_list": "reads",
       "x-script-text": ["A list of ids keeps this reply: one series of changes over all of them."],
       "example": {"id": "1199811", "logic": "Pressure", "seconds": 10},
-      "x-cost": {"class": "stream", "duration": {"option": "seconds", "max_s": 30}},
+      "x-cost": {"class": "stream", "duration": {"option": "seconds", "max_s": 30}, "growth": "by-id"},
       "reply": {
         "variants": [
           {
@@ -205,7 +205,7 @@
       "options": {},
       "text": ["No options."],
       "example": {},
-      "x-cost": {"class": "instant"},
+      "x-cost": {"class": "instant", "growth": "by-id"},
       "reply": {
         "variants": [{"keys": {"game_time_s": "float", "paused": "bool", "time_of_day_ratio": "float", "days_past": "int"}}]
       },
@@ -238,7 +238,7 @@
         "cursor": {"use": "cursor"}
       },
       "example": {"limit": 20},
-      "x-cost": {"class": "instant"},
+      "x-cost": {"class": "instant", "growth": "by-id"},
       "reply": {
         "list": "rows",
         "variants": [

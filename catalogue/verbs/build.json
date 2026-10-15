@@ -101,7 +101,7 @@
         "A build that pays from the player's inventory (materials left out, or \"player\") carries the warning materials_from_player. With from_plan, what may be left out: it comes from the plan."
       ],
       "example": {"prefab": "StructureWallLight", "at": [716, 203, 668], "facing": "-x", "confirm": true},
-      "x-cost": {"class": "job"},
+      "x-cost": {"class": "job", "growth": "plan"},
       "x-cost-report": {"class": "plan"},
       "reply": {
         "list": "placements",
@@ -248,7 +248,7 @@
         "A build that pays from the player's inventory (materials left out, or \"player\") carries the warning materials_from_player. With from_plan, what may be left out: it comes from the plan."
       ],
       "example": {"waypoints": [[700, 202, 660], [700, 202, 668]], "confirm": true},
-      "x-cost": {"class": "job"},
+      "x-cost": {"class": "job", "growth": "plan"},
       "x-cost-report": {"class": "plan"},
       "reply": {
         "list": "cells",
@@ -412,7 +412,7 @@
         "A build that pays from the player's inventory (materials left out, or \"player\") carries the warning materials_from_player. With from_plan, what may be left out: it comes from the plan."
       ],
       "example": {"grade": "insulated_gas", "cells": [[1, 2, 3], [1.5, 2, 3]]},
-      "x-cost": {"class": "job"},
+      "x-cost": {"class": "job", "growth": "plan"},
       "x-cost-report": {"class": "plan"},
       "reply": {
         "list": "cells",
@@ -575,7 +575,7 @@
         "A build that pays from the player's inventory (materials left out, or \"player\") carries the warning materials_from_player. With from_plan, what may be left out: it comes from the plan."
       ],
       "example": {"waypoints": [[10, 2, 4], [10, 2, 9]], "confirm": true},
-      "x-cost": {"class": "job"},
+      "x-cost": {"class": "job", "growth": "plan"},
       "x-cost-report": {"class": "plan"},
       "reply": {
         "list": "cells",
@@ -653,7 +653,7 @@
       "text": ["Progress: inspect {what: \"job\", id: \"paste\"}; take it back: undo {id: \"paste\"}."],
       "x-script-text": ["Progress: sg.inspect('job', id='paste'); take it back: sg.undo(id='paste')."],
       "example": {"blueprint": "airlock", "at": [700, 202, 660], "confirm": true},
-      "x-cost": {"class": "job"},
+      "x-cost": {"class": "job", "growth": "plan"},
       "x-cost-report": {"class": "instant"},
       "reply": {
         "variants": [
@@ -739,7 +739,7 @@
         "confirm": {"use": "confirm"}
       },
       "example": {"id": "1199811", "state": 2, "confirm": true},
-      "x-cost": {"class": "instant"},
+      "x-cost": {"class": "instant", "growth": "by-id"},
       "x-cost-report": {"class": "instant"},
       "reply": {
         "variants": [

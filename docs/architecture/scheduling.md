@@ -77,6 +77,15 @@ is light; its first call is what the prediction learns from. A call predicted ab
 to the heavy lane, so a 5-item `read logic` stays light while a 128-item one may not
 (`Pure/Scheduling/CostPredictor.cs:19-58`, `:60-104`).
 
+### Growth: the cost gate's promise
+
+Beside the class, each what's `x-cost` states its `growth`: how its main-thread cost may grow as the world does —
+`by-id` (with the ids asked for), `index` (with the matches), `area` (with the room or box asked about) or `plan`
+(with the plan's own bounds). A walk of the whole world is not a growth a call may declare. The class picks the lane
+today; the growth is what the cost gate (`tools/sg-scoreboard/drivers/gate.py` in StationeersWorkspace) measures on
+the normal and the large test world, together with every call's worst StationGod frame against the request budget
+(server info's `update_ms`).
+
 ## Subscriptions
 
 A subscription is a set of device reads the mod repeats and compares with what it last sent; it costs the same game

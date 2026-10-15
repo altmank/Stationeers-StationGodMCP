@@ -82,7 +82,7 @@
       ],
       "x-script-text": ["A big area is many pages (125 cells each); iterating r['cells'] walks them all."],
       "example": {"room": "17", "sections": ["pieces", "devices"]},
-      "x-cost": {"class": "world"},
+      "x-cost": {"class": "world", "growth": "area"},
       "reply": {
         "list": "cells",
         "variants": [
@@ -138,7 +138,7 @@
         }
       },
       "example": {"plane": "x=716", "side": "-x", "at": [716, 202, 668]},
-      "x-cost": {"class": "world"},
+      "x-cost": {"class": "world", "growth": "area"},
       "reply": {
         "list": "things",
         "variants": [
@@ -198,7 +198,7 @@
         "cursor": {"use": "cursor"}
       },
       "example": {"network": "3768865", "kind": "cable", "summarize": true},
-      "x-cost": {"class": "bounded"},
+      "x-cost": {"class": "bounded", "growth": "index"},
       "reply": {
         "list": "members",
         "variants": [
@@ -270,7 +270,7 @@
         }
       },
       "example": {"id": "720259"},
-      "x-cost": {"class": "plan"},
+      "x-cost": {"class": "plan", "growth": "plan"},
       "reply": {
         "list": "devices",
         "variants": [

@@ -48,7 +48,7 @@
         "max_wait": {"use": "max_wait"}
       },
       "example": {"id": ["1559707"], "confirm": true},
-      "x-cost": {"class": "job"},
+      "x-cost": {"class": "job", "growth": "plan"},
       "x-cost-report": {"class": "plan"},
       "reply": {
         "list": "removals",
@@ -135,7 +135,7 @@
         "max_wait": {"use": "max_wait"}
       },
       "example": {"id": ["3763565"]},
-      "x-cost": {"class": "job"},
+      "x-cost": {"class": "job", "growth": "plan"},
       "x-cost-report": {"class": "plan"},
       "reply": {
         "list": "removals",
@@ -234,7 +234,7 @@
         "max_wait": {"use": "max_wait"}
       },
       "example": {"id": ["3763565"]},
-      "x-cost": {"class": "job"},
+      "x-cost": {"class": "job", "growth": "plan"},
       "x-cost-report": {"class": "plan"},
       "reply": {
         "list": "removals",
@@ -332,7 +332,7 @@
         "max_wait": {"use": "max_wait"}
       },
       "example": {"id": ["3763565"]},
-      "x-cost": {"class": "job"},
+      "x-cost": {"class": "job", "growth": "plan"},
       "x-cost-report": {"class": "plan"},
       "reply": {
         "list": "removals",

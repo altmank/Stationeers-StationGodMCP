@@ -226,6 +226,24 @@ public sealed class VerbCatalogueTests
         }
     }
 
+    /// <summary>
+    /// How a call's cost may grow (COST-DESIGN A7), the promise the cost gate (scoreboard drivers/gate.py) measures:
+    /// by-id with the ids asked for, index with the matches, area with the room or box asked about, plan with the
+    /// plan's own bounds. A walk of the whole world is not a growth a call may declare.
+    /// </summary>
+    private static readonly string[] Growths = { "by-id", "index", "area", "plan" };
+
+    [Fact]
+    public void NoWhatDeclaresWholeWorldGrowth()
+    {
+        Assert.DoesNotContain("world", Growths);
+        foreach ((string verb, string what, JsonObject source) in VerbCatalogue.Whats())
+        {
+            Assert.False(source["x-cost"]?["growth"] is JsonValue growth && (string)growth! == "world",
+                $"{verb} {what}: growth world");
+        }
+    }
+
     [Fact]
     public void EveryWhatTheGameAnswersStatesItsCost()
     {
@@ -240,8 +258,10 @@ public sealed class VerbCatalogueTests
             }
 
             JsonObject cost = Assert.IsType<JsonObject>(source["x-cost"]);
-            Assert.True(cost.All(key => key.Key is "class" or "per" or "duration"), $"{verb} {what}: x-cost keys");
+            Assert.True(cost.All(key => key.Key is "class" or "per" or "duration" or "growth"), $"{verb} {what}: x-cost keys");
             Assert.Contains((string)cost["class"]!, classes);
+            Assert.True(cost["growth"] is JsonValue growth && Growths.Contains((string)growth!),
+                $"{verb} {what}: x-cost growth '{cost["growth"]}' is not one of {string.Join(", ", Growths)}");
             IEnumerable<string> per = cost["per"] switch
             {
                 JsonArray many => many.Select(option => (string)option!),

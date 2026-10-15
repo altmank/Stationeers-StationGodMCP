@@ -12,8 +12,8 @@ announces in `welcome`, and every library checks it (below).
 - `<verb>.json`, one per verb: the tool `description`, extra help `text`, `read_only`, the tool list's own short
   texts (`tool.options`), and `whats` — the kinds of call the verb takes (`catalogue/verbs/README.md:7-11`).
 - Per what: `summary` and the shorter `brief`; `options` (schema, help text, `default`, `x-default-when`,
-  `required`, `x-script`, `x-wire`); the notes (`text`, `x-script-text`); `example`; `x-cost` (the class and how the
-  call's size counts); `reply` (the main list, typed `keys`, small `types`, `x-wire` keys); `id_list`; and for a
+  `required`, `x-script`, `x-wire`); the notes (`text`, `x-script-text`); `example`; `x-cost` (the class, how the
+  call's size counts, and the growth the cost gate holds it to); `reply` (the main list, typed `keys`, small `types`, `x-wire` keys); `id_list`; and for a
   write what a `write` block (route, cheat, `x-undo`, `x-target`) (`catalogue/verbs/README.md:16-32`).
 - A what carrying `"hub": true` is answered by the hub, not the game: the saved-script parts of `find`, `inspect`,
   `remove` and `write`, and all of `run_script` (`catalogue/verbs/find.json:565`, `inspect.json:881`,

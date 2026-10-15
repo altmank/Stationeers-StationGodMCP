@@ -54,6 +54,9 @@ public sealed class StationGodMod : ModBehaviour
     /// <summary>Real time since the mod loaded (server info runtime uptime_s).</summary>
     internal static System.Diagnostics.Stopwatch SinceLoad { get; } = System.Diagnostics.Stopwatch.StartNew();
 
+    /// <summary>StationGod's whole Update per frame, job steps included: server info's update_ms.</summary>
+    internal static UpdateStats Updates { get; } = new UpdateStats();
+
     /// <summary>The local pipe's name, read once at load ([Pipe] Name, STATIONGODMCP_PIPE_NAME).</summary>
     internal static PipeName Pipe { get; private set; } = PipeName.Default;
 
@@ -177,6 +180,7 @@ public sealed class StationGodMod : ModBehaviour
     private void Update()
     {
         ProfilingControl.Tick();
+        long updateStarted = System.Diagnostics.Stopwatch.GetTimestamp();
         long frameStarted = Prof.BeginFrame();
         try
         {
@@ -256,6 +260,9 @@ public sealed class StationGodMod : ModBehaviour
         finally
         {
             Prof.EndFrame(frameStarted, Time.frameCount);
+            long updateTicks = System.Diagnostics.Stopwatch.GetTimestamp() - updateStarted;
+            Updates.Frame(Time.frameCount, updateTicks * 1000.0 / System.Diagnostics.Stopwatch.Frequency,
+                PerformanceSettings.RequestBudgetMs);
         }
     }
 

@@ -61,6 +61,12 @@
   - Five unused members are gone.
   - The catalogue's integer bounds, stated defaults and stated maximums match the code.
 
+- **Every call states how its cost may grow, and server info shows StationGod's worst frame.** Each what's `x-cost`
+  gains `growth` (`by-id`, `index`, `area` or `plan`; a walk of the whole world is not one), the promise the cost gate
+  measures on a normal and a large world. `server info` with `include: ["counters"]` adds `update_ms`: StationGod's
+  whole frame, job steps included (`frame`, `frames`, `worst_ms`, `worst_frame`, `over_budget`, `buckets`, and
+  `recent`, the latest frames over 1 ms with their numbers).
+
 ## 1.33.2
 
 First release of the 1.33 changes (tags v1.33.0 and v1.33.1 were never built: the Workshop ChangeLog was over 8000 characters; every entry is now one shortened line).

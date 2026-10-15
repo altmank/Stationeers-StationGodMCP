@@ -66,7 +66,7 @@
         "order": {"use": "order"}
       },
       "example": {"prefab": "*Battery*", "near": "player", "radius": 30},
-      "x-cost": {"class": "world"},
+      "x-cost": {"class": "world", "growth": "index"},
       "reply": {
         "list": "things",
         "variants": [
@@ -143,7 +143,7 @@
       "text": ["group_by place takes no offset, order or exclude_in_use (the totals are not paged)."],
       "x-script-text": ["group_by place takes no order or exclude_in_use (the totals are not paged)."],
       "example": {"prefab": "ItemIronIngot", "group_by": "place"},
-      "x-cost": {"class": "world"},
+      "x-cost": {"class": "world", "growth": "index"},
       "reply": {
         "list": "items",
         "variants": [
@@ -191,7 +191,7 @@
         "Paging and prefab parts are applied by the verb layer to the handler's whole list (it walks every device either way)."
       ],
       "example": {"prefab": "*GasSensor*"},
-      "x-cost": {"class": "world"},
+      "x-cost": {"class": "world", "growth": "index"},
       "reply": {
         "list": "devices",
         "variants": [
@@ -223,7 +223,7 @@
         "order": {"use": "order"}
       },
       "example": {"prefab": "*Locker*", "near": "player", "radius": 15},
-      "x-cost": {"class": "world"},
+      "x-cost": {"class": "world", "growth": "index"},
       "reply": {
         "list": "containers",
         "variants": [
@@ -260,7 +260,7 @@
         "order": {"use": "order"}
       },
       "example": {"near": "player", "radius": 20},
-      "x-cost": {"class": "world"},
+      "x-cost": {"class": "world", "growth": "index"},
       "reply": {
         "list": "frames",
         "variants": [
@@ -289,7 +289,7 @@
       "options": {},
       "text": ["No options."],
       "example": {},
-      "x-cost": {"class": "instant"},
+      "x-cost": {"class": "instant", "growth": "index"},
       "reply": {
         "list": "pads",
         "variants": [
@@ -318,7 +318,7 @@
         }
       },
       "example": {"min_mol": 50},
-      "x-cost": {"class": "world"},
+      "x-cost": {"class": "world", "growth": "index"},
       "reply": {
         "list": "sources",
         "variants": [
@@ -378,7 +378,7 @@
         }
       },
       "example": {"ores": ["Cobalt"]},
-      "x-cost": {"class": "world"},
+      "x-cost": {"class": "world", "growth": "area"},
       "reply": {
         "list": "spots",
         "variants": [
@@ -401,7 +401,7 @@
       "options": {},
       "text": ["No options."],
       "example": {},
-      "x-cost": {"class": "world"},
+      "x-cost": {"class": "world", "growth": "index"},
       "reply": {
         "list": "food",
         "variants": [
@@ -436,7 +436,7 @@
         "verbose": {"use": "verbose"}
       },
       "example": {},
-      "x-cost": {"class": "world"},
+      "x-cost": {"class": "world", "growth": "index"},
       "reply": {
         "list": "plants",
         "variants": [
@@ -470,7 +470,7 @@
         "One id answers the wrapper below; a list of ids answers one row per id, {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count, local_player_room_id}, each row's payload the room itself (the rooms item's keys) - not the wrapper - or the error for a thing in no room."
       ],
       "example": {"id": "4820585"},
-      "x-cost": {"class": "world"},
+      "x-cost": {"class": "world", "growth": "index"},
       "reply": {
         "list": "rooms",
         "variants": [
@@ -494,7 +494,7 @@
       "options": {},
       "text": ["No options."],
       "example": {},
-      "x-cost": {"class": "instant"},
+      "x-cost": {"class": "instant", "growth": "index"},
       "reply": {
         "list": "gateways",
         "variants": [
@@ -534,7 +534,7 @@
         "cursor": {"use": "cursor"}
       },
       "example": {"min_damage": 0.25, "structures_only": true},
-      "x-cost": {"class": "world"},
+      "x-cost": {"class": "world", "growth": "index"},
       "reply": {
         "list": "things",
         "variants": [

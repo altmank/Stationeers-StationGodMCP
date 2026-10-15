@@ -56,7 +56,8 @@ internal static class ServerInfo
             FrameBudget.For(PerformanceSettings.RequestBudgetMs, false), StationGodRequestDispatcher.Stats.Snapshot(),
             Memory(), MethodStats.Called(), Connections(), ProfilingControl.Summary(),
             new JobSettlesView(SettleGate.Run, SettleGate.Skipped, SettleGate.Unchecked), ThingIndex.View(counters),
-            counters ? Counters() : null, shape);
+            counters ? Counters() : null, shape,
+            counters ? StationGodMod.Updates.Read(UnityEngine.Time.frameCount) : null);
 
     private static GameCountersView Counters() =>
         new GameCountersView(new JobHoldsView(HeldTickJobs.HoldCounts()),

@@ -18,7 +18,7 @@
       "options": {},
       "text": ["No options."],
       "example": {},
-      "x-cost": {"class": "instant"},
+      "x-cost": {"class": "instant", "growth": "index"},
       "reply": {
         "list": "contacts",
         "variants": [
@@ -43,7 +43,7 @@
         }
       },
       "example": {"id": "7"},
-      "x-cost": {"class": "instant"},
+      "x-cost": {"class": "instant", "growth": "by-id"},
       "reply": {
         "list": "contacts",
         "variants": [
@@ -90,7 +90,7 @@
         "confirm": {"use": "confirm"}
       },
       "example": {"id": "7", "items": [{"prefab": "ItemIronIngot", "quantity": 50}], "confirm": true},
-      "x-cost": {"class": "instant"},
+      "x-cost": {"class": "instant", "growth": "by-id"},
       "x-cost-report": {"class": "instant"},
       "reply": {
         "list": "delivered",
@@ -184,7 +184,7 @@
         "confirm": {"use": "confirm"}
       },
       "example": {"id": "7", "items": [{"prefab": "ItemGoldIngot", "quantity": 20}]},
-      "x-cost": {"class": "instant"},
+      "x-cost": {"class": "instant", "growth": "by-id"},
       "x-cost-report": {"class": "instant"},
       "reply": {
         "list": "delivered",

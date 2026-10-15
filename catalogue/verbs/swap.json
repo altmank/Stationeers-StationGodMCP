@@ -49,7 +49,7 @@
         "max_wait": {"use": "max_wait"}
       },
       "example": {"room": "17", "into": "StructureCompositeWall"},
-      "x-cost": {"class": "job"},
+      "x-cost": {"class": "job", "growth": "plan"},
       "x-cost-report": {"class": "plan"},
       "reply": {
         "list": "pieces",
@@ -139,7 +139,7 @@
         "max_wait": {"use": "max_wait"}
       },
       "example": {"room": "17"},
-      "x-cost": {"class": "job"},
+      "x-cost": {"class": "job", "growth": "plan"},
       "x-cost-report": {"class": "plan"},
       "reply": {
         "list": "pieces",
@@ -265,7 +265,7 @@
       },
       "text": ["Give into (upgrade) or tidy, not both."],
       "example": {"network": "3768865", "into": "super_heavy"},
-      "x-cost": {"class": "job"},
+      "x-cost": {"class": "job", "growth": "plan"},
       "x-cost-report": {"class": "plan"},
       "reply": {
         "list": "pieces",
@@ -409,7 +409,7 @@
       },
       "text": ["Give into (upgrade) or tidy, not both."],
       "example": {"network": "5012345", "into": "insulated"},
-      "x-cost": {"class": "job"},
+      "x-cost": {"class": "job", "growth": "plan"},
       "x-cost-report": {"class": "plan"},
       "reply": {
         "list": "pieces",
@@ -518,7 +518,7 @@
         "max_wait": {"use": "max_wait"}
       },
       "example": {"network": "6100100"},
-      "x-cost": {"class": "job"},
+      "x-cost": {"class": "job", "growth": "plan"},
       "x-cost-report": {"class": "plan"},
       "reply": {
         "list": "pieces",

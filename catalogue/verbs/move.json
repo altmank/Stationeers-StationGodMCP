@@ -105,7 +105,7 @@
         "Into a silo by filter: sg.move('item', to='5200100', prefab='*Ore*', location='player')."
       ],
       "example": {"id": "3311223", "to": "player"},
-      "x-cost": {"class": "instant"},
+      "x-cost": {"class": "instant", "growth": "by-id"},
       "reply": {
         "list": "results",
         "variants": [
@@ -281,7 +281,7 @@
         "Applied at the next atmospherics tick. A confirmed move waits for it (max_wait, default 30 s) and answers status applied or failed; past max_wait it answers queued and its id (inspect job)."
       ],
       "example": {"source": "2005300", "gases": ["Hydrogen"], "delete": true},
-      "x-cost": {"class": "job"},
+      "x-cost": {"class": "job", "growth": "by-id"},
       "x-cost-report": {"class": "instant"},
       "reply": {
         "variants": [
@@ -334,7 +334,7 @@
         "confirm": {"use": "confirm"}
       },
       "example": {"to_player": "xceled", "confirm": true},
-      "x-cost": {"class": "instant"},
+      "x-cost": {"class": "instant", "growth": "by-id"},
       "x-cost-report": {"class": "instant"},
       "reply": {
         "variants": [

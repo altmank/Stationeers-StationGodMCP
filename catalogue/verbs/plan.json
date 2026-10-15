@@ -151,7 +151,7 @@
         }
       },
       "example": {"kind": "pipe", "grade": "gas", "start": {"id": "720259", "port": 1}, "end": {"network": "5012345"}},
-      "x-cost": {"class": "plan"},
+      "x-cost": {"class": "plan", "growth": "plan"},
       "reply": {
         "variants": [
           {
@@ -218,7 +218,7 @@
         }
       },
       "example": {"kind": "cable", "network": "3768865"},
-      "x-cost": {"class": "plan"},
+      "x-cost": {"class": "plan", "growth": "plan"},
       "reply": {
         "list": "removals",
         "variants": [
@@ -308,7 +308,7 @@
         }
       },
       "example": {"prefab": "StructureWallLight", "looking": true},
-      "x-cost": {"class": "plan"},
+      "x-cost": {"class": "plan", "growth": "plan"},
       "reply": {
         "list": "spots",
         "variants": [
@@ -424,7 +424,7 @@
         }
       },
       "example": {"id": "4067059", "node": "pad"},
-      "x-cost": {"class": "plan"},
+      "x-cost": {"class": "plan", "growth": "plan"},
       "reply": {
         "list": "legs",
         "variants": [
@@ -475,7 +475,7 @@
         }
       },
       "example": {"collectable_only": true},
-      "x-cost": {"class": "instant"},
+      "x-cost": {"class": "instant", "growth": "plan"},
       "reply": {
         "list": "sites",
         "variants": [
@@ -514,7 +514,7 @@
         "Write the answer with write logic (Horizontal, Vertical)."
       ],
       "example": {"id": "3300111"},
-      "x-cost": {"class": "plan"},
+      "x-cost": {"class": "plan", "growth": "by-id"},
       "reply": {
         "variants": [
           {

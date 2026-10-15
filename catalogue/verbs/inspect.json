@@ -27,7 +27,7 @@
         "A list of ids answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply below; fields name its keys."
       ],
       "example": {"id": "4820585"},
-      "x-cost": {"class": "instant"},
+      "x-cost": {"class": "instant", "growth": "by-id"},
       "reply": {
         "list": "logic_types",
         "variants": [
@@ -64,7 +64,7 @@
         }
       },
       "example": {"prefab": "StructureWallLight"},
-      "x-cost": {"class": "instant"},
+      "x-cost": {"class": "instant", "growth": "by-id"},
       "reply": {
         "list": "ports",
         "variants": [
@@ -120,7 +120,7 @@
         "A list of ids answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply below; fields name its keys."
       ],
       "example": {"id": "1199811"},
-      "x-cost": {"class": "instant"},
+      "x-cost": {"class": "instant", "growth": "by-id"},
       "reply": {
         "list": "slots",
         "variants": [
@@ -175,7 +175,7 @@
         "Iteration goes over slots; a silo's stored entries are not iterated."
       ],
       "example": {"id": "player"},
-      "x-cost": {"class": "instant"},
+      "x-cost": {"class": "instant", "growth": "by-id"},
       "reply": {
         "list": "slots",
         "variants": [
@@ -218,7 +218,7 @@
         "cursor": {"use": "cursor"}
       },
       "example": {"network": "5012345", "kind": "pipe", "damaged_only": true},
-      "x-cost": {"class": "bounded", "per": "id"},
+      "x-cost": {"class": "bounded", "per": "id", "growth": "by-id"},
       "reply": {
         "list": "things",
         "variants": [
@@ -304,7 +304,7 @@
         "A list of ids answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply below; fields name its keys."
       ],
       "example": {"id": ["2514519", "3575779"]},
-      "x-cost": {"class": "bounded"},
+      "x-cost": {"class": "bounded", "growth": "by-id"},
       "reply": {
         "list": "ends",
         "variants": [
@@ -338,7 +338,7 @@
         "A list of ids answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply below; fields name its keys."
       ],
       "example": {"id": "2005300"},
-      "x-cost": {"class": "instant"},
+      "x-cost": {"class": "instant", "growth": "by-id"},
       "reply": {
         "list": "atmospheres",
         "variants": [
@@ -371,7 +371,7 @@
         "A list of ids answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply below; fields name its keys."
       ],
       "example": {"id": "4191359"},
-      "x-cost": {"class": "instant"},
+      "x-cost": {"class": "instant", "growth": "by-id"},
       "reply": {
         "list": "reagents",
         "variants": [
@@ -404,7 +404,7 @@
         }
       },
       "example": {"id": "3311223"},
-      "x-cost": {"class": "bounded"},
+      "x-cost": {"class": "bounded", "growth": "by-id"},
       "reply": {
         "list": "genes",
         "variants": [
@@ -479,7 +479,7 @@
         "A source is often longer than the reply cap: add whole: True to read it all."
       ],
       "example": {"id": "4820585", "parts": ["status", "source"]},
-      "x-cost": {"class": "instant"},
+      "x-cost": {"class": "instant", "growth": "by-id"},
       "reply": {
         "list": "pins",
         "variants": [
@@ -583,7 +583,7 @@
         "cursor": {"use": "cursor"}
       },
       "example": {"id": "4860097", "text": "error"},
-      "x-cost": {"class": "instant"},
+      "x-cost": {"class": "instant", "growth": "by-id"},
       "reply": {
         "list": "elements",
         "variants": [
@@ -633,7 +633,7 @@
         }
       },
       "example": {"compact": true},
-      "x-cost": {"class": "world"},
+      "x-cost": {"class": "world", "growth": "index"},
       "reply": {
         "list": "rockets",
         "variants": [
@@ -653,7 +653,7 @@
       "summary": "what each Ingot Vault stores, and every Remote Vault's link",
       "options": {"id": {"use": "id", "description": "One Ingot or Remote Vault; default every vault."}},
       "example": {},
-      "x-cost": {"class": "instant"},
+      "x-cost": {"class": "instant", "growth": "by-id"},
       "reply": {
         "list": "vaults",
         "variants": [
@@ -688,7 +688,7 @@
         }
       },
       "example": {},
-      "x-cost": {"class": "instant"},
+      "x-cost": {"class": "instant", "growth": "by-id"},
       "reply": {
         "variants": [
           {
@@ -710,7 +710,7 @@
       "options": {},
       "text": ["No options."],
       "example": {},
-      "x-cost": {"class": "instant"},
+      "x-cost": {"class": "instant", "growth": "by-id"},
       "reply": {
         "variants": [
           {
@@ -748,7 +748,7 @@
       "options": {},
       "text": ["No options."],
       "example": {},
-      "x-cost": {"class": "instant"},
+      "x-cost": {"class": "instant", "growth": "by-id"},
       "reply": {
         "list": "gases",
         "variants": [
@@ -803,7 +803,7 @@
       "options": {},
       "text": ["No options."],
       "example": {},
-      "x-cost": {"class": "instant"},
+      "x-cost": {"class": "instant", "growth": "by-id"},
       "reply": {
         "variants": [
           {
@@ -844,7 +844,7 @@
         "On a live confirmed run it answers within 30 s, whatever max_wait says."
       ],
       "example": {"id": "place-41"},
-      "x-cost": {"class": "instant"},
+      "x-cost": {"class": "instant", "growth": "by-id"},
       "reply": {
         "variants": [
           {"label": "a build or removal job", "job_view": "BuildJob"},
@@ -862,7 +862,7 @@
       "options": {"id": {"use": "id", "description": "The device(s).", "required": true}},
       "x-script-summary": "What can write or override a device: IC chips (pins, batch writers on its data network), logic writers, Lua screen scripts, other runs.",
       "example": {"id": "4936423"},
-      "x-cost": {"class": "instant"},
+      "x-cost": {"class": "instant", "growth": "by-id"},
       "reply": {
         "variants": [
           {

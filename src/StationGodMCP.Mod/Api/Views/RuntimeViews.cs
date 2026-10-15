@@ -23,7 +23,7 @@ internal sealed class RuntimeView : ITruncatingView
     internal RuntimeView(double uptimeS, long worldEpoch, FrameBudget budget, DispatchSnapshot frames,
         MemoryView memory, List<MethodTiming> methods, List<ConnectionView>? connections = null,
         ProfilingSummaryView? profiling = null, JobSettlesView? jobSettles = null, PrefabIndexView? prefabIndex = null,
-        GameCountersView? counters = null, ShapeRequest? shape = null)
+        GameCountersView? counters = null, ShapeRequest? shape = null, UpdateReading? updates = null)
     {
         PrefabIndex = prefabIndex ?? new PrefabIndexView(false, false, 0, 0, 0, 0);
         JobHolds = counters?.JobHolds;
@@ -31,6 +31,7 @@ internal sealed class RuntimeView : ITruncatingView
         LintChipPrograms = counters?.LintChipPrograms;
         BatchConsole = counters?.BatchConsole;
         FrameMs = counters != null ? new FrameHistogramView(frames.Histogram) : null;
+        UpdateMs = counters != null && updates != null ? new UpdateMsView(updates) : null;
         Restores = counters?.Restores;
         JobStores = counters?.JobStores;
         Connections = connections;
@@ -97,6 +98,10 @@ internal sealed class RuntimeView : ITruncatingView
     /// <summary>The busy frames' request ms percentiles (FrameHistogram), only with include_counters.</summary>
     [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
     public FrameHistogramView? FrameMs { get; }
+
+    /// <summary>StationGod's whole Update per frame, job steps included (UpdateStats), only with include_counters.</summary>
+    [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+    public UpdateMsView? UpdateMs { get; }
 
     /// <summary>Held restores applied, skipped and dropped since load (RestoreCountsView), only with include_counters.</summary>
     [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
@@ -578,4 +583,58 @@ internal sealed class FrameHistogramView
     public long[] Buckets { get; }
 
     private static double? Rounded(double? ms) => ms.HasValue ? Math.Round(ms.Value, Decimals) : null;
+}
+
+/// <summary>
+/// StationGod's whole Update per frame since the mod loaded (UpdateStats): the frame this reading was taken in, frames
+/// counted, the longest frame and its number, the frames over the request budget, every bucket's count (frame_ms's
+/// edges), and the latest frames over 1 ms with their numbers, oldest first (at most 256). The cost gate takes a
+/// call's worst frame from recent: the frames strictly between two readings' frame numbers.
+/// </summary>
+internal sealed class UpdateMsView
+{
+    private const int Decimals = 2;
+
+    internal UpdateMsView(UpdateReading reading)
+    {
+        Frame = reading.Frame;
+        Frames = reading.Histogram.Frames;
+        WorstMs = reading.WorstMs.HasValue ? Math.Round(reading.WorstMs.Value, Decimals) : null;
+        WorstFrame = reading.WorstFrame;
+        OverBudget = reading.OverBudget;
+        Buckets = reading.Histogram.Buckets;
+        Recent = new List<RecentFrameView>(reading.RecentFrames.Length);
+        for (int index = 0; index < reading.RecentFrames.Length; index++)
+        {
+            Recent.Add(new RecentFrameView(reading.RecentFrames[index], Math.Round(reading.RecentMs[index], Decimals)));
+        }
+    }
+
+    public long Frame { get; }
+
+    public long Frames { get; }
+
+    public double? WorstMs { get; }
+
+    public long? WorstFrame { get; }
+
+    public long OverBudget { get; }
+
+    public long[] Buckets { get; }
+
+    public List<RecentFrameView> Recent { get; }
+}
+
+/// <summary>One recent frame of UpdateMsView: its number and StationGod's ms in it.</summary>
+internal sealed class RecentFrameView
+{
+    internal RecentFrameView(long frame, double ms)
+    {
+        Frame = frame;
+        Ms = ms;
+    }
+
+    public long Frame { get; }
+
+    public double Ms { get; }
 }
