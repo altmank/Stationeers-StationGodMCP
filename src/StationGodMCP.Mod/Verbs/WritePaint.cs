@@ -2,6 +2,7 @@
 
 using System.Collections.Generic;
 using Assets.Scripts.Objects;
+using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Verbs;
@@ -12,7 +13,8 @@ namespace StationGodMCP.Verbs;
 /// write paint (catalogue write.json): things painted as a spray can paints them (Paints): ids in one color, items a
 /// color each, or a pipe, cable or chute network's pieces (and devices with include devices) in one color. One row per
 /// thing, {previous_color, color} or its error, each failing alone. Without confirm the call reports every paint and
-/// changes nothing. With no target it lists the game's colours.
+/// changes nothing. With no target it lists the game's colours. The paints are work over frames, a batch a step
+/// (Paints.WriteSteps).
 /// </summary>
 [ReplyFact(FactRule.Live, "what it changes, read and checked when it acts")]
 internal static class WritePaint
@@ -43,7 +45,7 @@ internal static class WritePaint
         }
 
         bool report = !options.Report.Acts;
-        List<PaintResult> results = Paints.WriteMany(orders, report, label, swatches);
-        return new VerbOutcome.Answered(report ? PaintReplies.Reported(results) : PaintReplies.Acted(results));
+        return WorkResult<List<PaintResult>>.Of(results => Paints.WriteSteps(orders, report, label, swatches, results),
+            results => report ? PaintReplies.Reported(results) : PaintReplies.Acted(results));
     }
 }

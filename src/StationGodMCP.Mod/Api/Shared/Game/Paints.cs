@@ -8,6 +8,7 @@ using Assets.Scripts.Objects;
 using Assets.Scripts.Util;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure.Scheduling;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Api.Shared.Game;
@@ -75,39 +76,53 @@ internal static class Paints
         return orders;
     }
 
-    /// <summary>
-    /// The paints in order, each failing alone: checked and reported (report), or painted, with the colour before and
-    /// after. An id may be "looking_at".
-    /// </summary>
-    internal static List<PaintResult> WriteMany(IReadOnlyList<PaintOrder> orders, bool report, string label,
-        List<ColorSwatch> swatches)
-    {
-        List<PaintResult> results = new List<PaintResult>(orders.Count);
-        foreach (PaintOrder order in orders)
-        {
-            try
-            {
-                Thing thing = TargetIds.Thing(order.Id, label);
-                int index = Painter.Check(thing, order.Color, swatches);
-                ThingColorView previous = ThingColors.ColorOf(thing, swatches);
-                if (report)
-                {
-                    results.Add(new PaintResult.Planned(new ThingId(thing.ReferenceId), thing.DisplayName, previous,
-                        NameOf(index, swatches) ?? order.Color));
-                    continue;
-                }
+    // Paints checked or applied per step of WriteSteps (a network paint holds thousands of pieces).
+    private const int PaintsAStep = 32;
 
-                Painter.Apply(thing, index);
-                results.Add(new PaintResult.Painted(new ThingId(thing.ReferenceId), previous,
-                    ThingColors.ColorOf(thing, swatches)));
-            }
-            catch (ApiException refused)
+    /// <summary>
+    /// The paints in order, each failing alone, as work over frames (review D, R-D-11): a batch a step, checked and
+    /// reported (report), or painted, with the colour before and after; the results into results. An id may be
+    /// "looking_at". A colour change needs no single-frame apply: each paint stands alone.
+    /// </summary>
+    internal static IEnumerable<object?> WriteSteps(IReadOnlyList<PaintOrder> orders, bool report, string label,
+        List<ColorSwatch> swatches, Answer<List<PaintResult>> results)
+    {
+        List<PaintResult> written = new List<PaintResult>(orders.Count);
+        for (int index = 0; index < orders.Count; index++)
+        {
+            Write(orders[index], report, label, swatches, written);
+            if ((index + 1) % PaintsAStep == 0 && index + 1 < orders.Count)
             {
-                results.Add(new PaintResult.Failed(order.Index, order.Id, VerbError.Of(refused)));
+                yield return null;
             }
         }
 
-        return results;
+        results.Value = written;
+    }
+
+    private static void Write(PaintOrder order, bool report, string label, List<ColorSwatch> swatches,
+        List<PaintResult> results)
+    {
+        try
+        {
+            Thing thing = TargetIds.Thing(order.Id, label);
+            int index = Painter.Check(thing, order.Color, swatches);
+            ThingColorView previous = ThingColors.ColorOf(thing, swatches);
+            if (report)
+            {
+                results.Add(new PaintResult.Planned(new ThingId(thing.ReferenceId), thing.DisplayName, previous,
+                    NameOf(index, swatches) ?? order.Color));
+                return;
+            }
+
+            Painter.Apply(thing, index);
+            results.Add(new PaintResult.Painted(new ThingId(thing.ReferenceId), previous,
+                ThingColors.ColorOf(thing, swatches)));
+        }
+        catch (ApiException refused)
+        {
+            results.Add(new PaintResult.Failed(order.Index, order.Id, VerbError.Of(refused)));
+        }
     }
 
     private static string? NameOf(int index, List<ColorSwatch> swatches) =>
