@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of help, in verb names (catalogue/verbs/help.json).</summary>
 internal sealed class HelpOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("help", "-", null, null, null, null, null,
+    internal static WhatSpec Spec { get; } = new WhatSpec("help", "-", null, null, null, null, null, null,
         new OptionSpec("verb", "{\"type\":\"string\"}"),
         new OptionSpec("lang", "{\"type\":\"string\",\"enum\":[\"python\"]}"),
         new OptionSpec("what", "{\"type\":\"string\"}"),

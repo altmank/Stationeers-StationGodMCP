@@ -157,6 +157,7 @@
       },
       "example": {"id": "2005300"},
       "x-cost": {"class": "world", "growth": "index"},
+      "x-default-limits": {"items": 12},
       "reply": {
         "list": "items",
         "variants": [

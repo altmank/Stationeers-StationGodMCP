@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of find ore, in verb names (catalogue/verbs/find.json).</summary>
 internal sealed class FindOreOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("find", "ore", "spots", null, null, new WhatCost(CostClass.World), null,
+    internal static WhatSpec Spec { get; } = new WhatSpec("find", "ore", "spots", null, null, new WhatCost(CostClass.World), null, null,
         new OptionSpec("near", "{\"type\":\"array\"}"),
         new OptionSpec("ores", "{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"maxItems\":4}"),
         new OptionSpec("radius", "{\"type\":\"number\",\"minimum\":1,\"maximum\":3000}", false, "500"),

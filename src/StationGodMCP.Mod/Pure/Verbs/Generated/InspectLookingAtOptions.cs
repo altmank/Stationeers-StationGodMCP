@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of inspect looking_at, in verb names (catalogue/verbs/inspect.json).</summary>
 internal sealed class InspectLookingAtOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("inspect", "looking_at", null, null, null, new WhatCost(CostClass.Instant), null,
+    internal static WhatSpec Spec { get; } = new WhatSpec("inspect", "looking_at", null, null, null, new WhatCost(CostClass.Instant), null, null,
         new OptionSpec("distance", "{\"type\":\"number\",\"minimum\":0,\"maximum\":50}", false, "10"),
         new OptionSpec("include", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"player\",\"interactable\",\"view\",\"hit\",\"body\",\"all\"]}}"));
 

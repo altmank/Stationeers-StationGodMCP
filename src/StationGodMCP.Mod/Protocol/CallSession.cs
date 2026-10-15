@@ -344,7 +344,8 @@ internal sealed class CallSession : Session
     // it the main thread checks them before the handler runs. A write verb or what is ordered on its stream. It is
     // scheduled by its what's cost (x-cost for an acting call, x-cost-report for a report: its class and per-list items,
     // keyed find.thing for the cost predictor), and waits in the queue for its deadline plus the seconds the what runs
-    // for (x-cost duration).
+    // for (x-cost duration). Its shape gets the what's default list caps (x-default-limits) for every list the call
+    // does not limit itself.
     private void AcceptVerb(ClientMessage.Call call)
     {
         VerbSpec verb = VerbSurface.Verb(call.Method)!;
@@ -372,12 +373,17 @@ internal sealed class CallSession : Session
         }
         else
         {
-            shape = ShapeRequest.Lenient(call.Shape);
+            shape = Fields.LenientShapeOf(call.Shape, call.Params);
         }
 
         what ??= verb.What(call.Params?[OptionCheck.WhatKey]?.Type == JTokenType.String
             ? (string)call.Params[OptionCheck.WhatKey]!
             : null);
+        if (what != null)
+        {
+            shape = ShapeRequest.WithDefaultLimits(shape, what.DefaultLimits);
+        }
+
         CallProfile profile = what != null
             ? CallProfile.Of(verb, what, call.Params)
             : new CallProfile(call.Method, verb.ReadOnly ? MethodClass.Read : MethodClass.Write, WhatCost.Unstated.At(call.Params));

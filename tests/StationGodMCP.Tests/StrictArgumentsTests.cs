@@ -135,6 +135,28 @@ public sealed class StrictArgumentsTests
         Assert.Equal("invalid_shape", (string?)refused["error"]!["code"]);
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task AWhatsDefaultListCapsAreTheShapesLimitsTheCallDoesNotSet(bool strict)
+    {
+        // review D, R-D-2: find food cuts food, drinks and packages at 3 and not_counted at 5 (x-default-limits)
+        using PipeRig rig = new PipeRig(settings: new ProtocolSettings(32, strictArguments: strict));
+        ConcurrentQueue<CallRequest> reached = Reaching(rig);
+        using V2Client client = await V2Client.Connect(rig);
+
+        client.Call("a", "find", JObject.Parse("""{"what":"food"}"""));
+        client.Call("b", "find", JObject.Parse("""{"what":"food","list_limits":{"drinks":40}}"""));
+        client.Call("c", "find", JObject.Parse("""{"what":"thing"}"""));
+
+        CallRequest[] calls = reached.ToArray();
+        Assert.Equal(3, calls[0].Shape!.LimitOf("food"));
+        Assert.Equal(5, calls[0].Shape!.LimitOf("not_counted"));
+        Assert.Equal(40, calls[1].Shape!.LimitOf("drinks"));
+        Assert.Equal(3, calls[1].Shape!.LimitOf("packages"));
+        Assert.Null(calls[2].Shape);
+    }
+
     [Fact]
     public void TheLenientReadingReportsWhatTheStrictOneRefuses()
     {

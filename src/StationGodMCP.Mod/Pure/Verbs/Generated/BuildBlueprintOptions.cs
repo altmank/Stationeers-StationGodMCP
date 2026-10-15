@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of build blueprint, in verb names (catalogue/verbs/build.json).</summary>
 internal sealed class BuildBlueprintOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("build", "blueprint", null, null, new WriteSpec("confirm", "mixed", "[undo] the newest paste only"), new WhatCost(CostClass.Job), new WhatCost(CostClass.Instant),
+    internal static WhatSpec Spec { get; } = new WhatSpec("build", "blueprint", null, null, new WriteSpec("confirm", "mixed", "[undo] the newest paste only"), new WhatCost(CostClass.Job), new WhatCost(CostClass.Instant), null,
         new OptionSpec("blueprint", "{\"type\":\"string\"}", true),
         new OptionSpec("at", "{\"type\":\"array\",\"items\":{\"type\":\"number\"},\"maxItems\":3}", true),
         new OptionSpec("turn", "{\"type\":\"integer\",\"enum\":[0,90,180,270]}", false, "0"),

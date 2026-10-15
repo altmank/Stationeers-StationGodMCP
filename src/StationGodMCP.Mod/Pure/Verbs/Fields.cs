@@ -50,14 +50,25 @@ internal sealed class Fields
     /// option replacing the wire shape's key. Null when neither gives one; problems get what cannot be used.
     /// </summary>
     internal static ShapeRequest? ShapeOf(JToken? wireShape, JObject? parameters, ICollection<string>? replyLists,
-        List<string> problems)
+        List<string> problems) =>
+        ShapeRequest.Strict(WireShape(wireShape, parameters), replyLists, problems);
+
+    /// <summary>
+    /// The call's shape read leniently ([Server] StrictArguments false): the same folding as ShapeOf, read by
+    /// ShapeRequest.Lenient, which never refuses.
+    /// </summary>
+    internal static ShapeRequest? LenientShapeOf(JToken? wireShape, JObject? parameters) =>
+        ShapeRequest.Lenient(WireShape(wireShape, parameters));
+
+    // The wire shape with the options fields, omit and list_limits put in it; the wire shape itself when none is given.
+    private static JToken? WireShape(JToken? wireShape, JObject? parameters)
     {
         JToken? fields = Given(parameters, "fields");
         JToken? omit = Given(parameters, "omit");
         JToken? limits = Given(parameters, "list_limits");
         if (fields == null && omit == null && limits == null)
         {
-            return ShapeRequest.Strict(wireShape, replyLists, problems);
+            return wireShape;
         }
 
         JObject shape = wireShape is JObject given ? (JObject)given.DeepClone() : new JObject();
@@ -76,7 +87,7 @@ internal sealed class Fields
             shape["limit"] = limits.DeepClone();
         }
 
-        return ShapeRequest.Strict(shape, replyLists, problems);
+        return shape;
     }
 
     private static JToken? Given(JObject? parameters, string name) =>

@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of swap cable, in verb names (catalogue/verbs/swap.json).</summary>
 internal sealed class SwapCableOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("swap", "cable", "pieces", null, new WriteSpec("confirm", "cannot", "[cannot undo: change job]"), new WhatCost(CostClass.Job), new WhatCost(CostClass.Plan),
+    internal static WhatSpec Spec { get; } = new WhatSpec("swap", "cable", "pieces", null, new WriteSpec("confirm", "cannot", "[cannot undo: change job]"), new WhatCost(CostClass.Job), new WhatCost(CostClass.Plan), new Dictionary<string, int> { ["devices"] = 5 },
         new OptionSpec("network", "{\"type\":[\"string\",\"object\"]}"),
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}"),
         new OptionSpec("into", "{\"type\":\"string\",\"enum\":[\"heavy\",\"super_heavy\"]}"),

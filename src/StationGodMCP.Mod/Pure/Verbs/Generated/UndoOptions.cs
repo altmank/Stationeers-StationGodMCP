@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of undo, in verb names (catalogue/verbs/undo.json).</summary>
 internal sealed class UndoOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("undo", "-", "plans", null, new WriteSpec("confirm", "cannot", "[cannot undo]"), new WhatCost(CostClass.Job), new WhatCost(CostClass.Plan),
+    internal static WhatSpec Spec { get; } = new WhatSpec("undo", "-", "plans", null, new WriteSpec("confirm", "cannot", "[cannot undo]"), new WhatCost(CostClass.Job), new WhatCost(CostClass.Plan), null,
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}", true),
         new OptionSpec("allow_bridge", "{\"type\":\"array\",\"items\":{},\"maxItems\":64}"),
         new OptionSpec("materials", "{\"type\":\"string\"}"),

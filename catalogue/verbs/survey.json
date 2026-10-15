@@ -83,6 +83,7 @@
       "x-script-text": ["A big area is many pages (125 cells each); r['cells'].walk() goes through them all."],
       "example": {"room": "17", "sections": ["pieces", "devices"]},
       "x-cost": {"class": "world", "growth": "area"},
+      "x-default-limits": {"pieces": 40, "devices": 20},
       "reply": {
         "list": "cells",
         "variants": [
@@ -273,6 +274,7 @@
       },
       "example": {"id": "720259"},
       "x-cost": {"class": "plan", "growth": "plan"},
+      "x-default-limits": {"devices": 15, "unreached": 10},
       "reply": {
         "list": "devices",
         "variants": [

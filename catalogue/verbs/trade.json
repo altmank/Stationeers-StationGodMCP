@@ -44,6 +44,7 @@
       },
       "example": {"id": "7"},
       "x-cost": {"class": "instant", "growth": "by-id"},
+      "x-default-limits": {"contacts": 2},
       "reply": {
         "list": "contacts",
         "variants": [

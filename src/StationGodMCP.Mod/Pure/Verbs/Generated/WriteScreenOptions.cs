@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of write screen, in verb names (catalogue/verbs/write.json).</summary>
 internal sealed class WriteScreenOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("write", "screen", null, null, new WriteSpec("acts", "cannot", "[cannot undo: screen press]"), new WhatCost(CostClass.Instant), null,
+    internal static WhatSpec Spec { get; } = new WhatSpec("write", "screen", null, null, new WriteSpec("acts", "cannot", "[cannot undo: screen press]"), new WhatCost(CostClass.Instant), null, null,
         new OptionSpec("id", "{\"type\":\"string\"}", true),
         new OptionSpec("gateway", "{\"type\":\"string\"}", false, "world"),
         new OptionSpec("surface", "{\"type\":\"string\"}"),

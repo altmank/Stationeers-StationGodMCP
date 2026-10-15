@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of inspect genes, in verb names (catalogue/verbs/inspect.json).</summary>
 internal sealed class InspectGenesOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("inspect", "genes", "genes", null, null, new WhatCost(CostClass.Bounded), null,
+    internal static WhatSpec Spec { get; } = new WhatSpec("inspect", "genes", "genes", null, null, new WhatCost(CostClass.Bounded), null, null,
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}", true),
         new OptionSpec("unit", "{\"type\":\"integer\",\"minimum\":0}"),
         new OptionSpec("include", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"notes\"]}}"));

@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of build chute, in verb names (catalogue/verbs/build.json).</summary>
 internal sealed class BuildChuteOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("build", "chute", "cells", null, new WriteSpec("confirm", "undo", "[undo]"), new WhatCost(CostClass.Job), new WhatCost(CostClass.Plan),
+    internal static WhatSpec Spec { get; } = new WhatSpec("build", "chute", "cells", null, new WriteSpec("confirm", "undo", "[undo]"), new WhatCost(CostClass.Job), new WhatCost(CostClass.Plan), null,
         new OptionSpec("grade", "{\"type\":\"string\",\"enum\":[\"chute\"]}", false, "chute"),
         new OptionSpec("waypoints", "{\"type\":\"array\",\"items\":{\"type\":\"array\"},\"maxItems\":1024}"),
         new OptionSpec("cells", "{\"type\":\"array\",\"items\":{\"type\":\"array\"},\"maxItems\":1024}"),

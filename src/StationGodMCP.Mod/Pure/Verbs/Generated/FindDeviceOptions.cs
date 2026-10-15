@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of find device, in verb names (catalogue/verbs/find.json).</summary>
 internal sealed class FindDeviceOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("find", "device", "devices", null, null, new WhatCost(CostClass.World), null,
+    internal static WhatSpec Spec { get; } = new WhatSpec("find", "device", "devices", null, null, new WhatCost(CostClass.World), null, null,
         new OptionSpec("gateway", "{\"type\":\"string\"}", false, "world"),
         new OptionSpec("prefab", "{\"type\":[\"string\",\"integer\",\"array\"],\"items\":{\"type\":[\"string\",\"integer\"]}}"),
         new OptionSpec("name", "{\"type\":\"string\"}"),

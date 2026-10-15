@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of write paint, in verb names (catalogue/verbs/write.json).</summary>
 internal sealed class WritePaintOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("write", "paint", "colors", null, new WriteSpec("acts", "undo", "[undo]"), new WhatCost(CostClass.Instant), null,
+    internal static WhatSpec Spec { get; } = new WhatSpec("write", "paint", "colors", null, new WriteSpec("acts", "undo", "[undo]"), new WhatCost(CostClass.Instant), null, null,
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}"),
         new OptionSpec("network", "{\"type\":[\"string\",\"object\"]}"),
         new OptionSpec("kind", "{\"type\":\"string\",\"enum\":[\"pipe\",\"cable\",\"chute\"]}"),

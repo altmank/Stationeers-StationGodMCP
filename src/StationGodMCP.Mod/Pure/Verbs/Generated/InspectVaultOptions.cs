@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of inspect vault, in verb names (catalogue/verbs/inspect.json).</summary>
 internal sealed class InspectVaultOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("inspect", "vault", "vaults", null, null, new WhatCost(CostClass.Instant), null,
+    internal static WhatSpec Spec { get; } = new WhatSpec("inspect", "vault", "vaults", null, null, new WhatCost(CostClass.Instant), null, null,
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}"));
 
     internal Selector Selector { get; private set; } = Selector.None;

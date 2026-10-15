@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of survey network, in verb names (catalogue/verbs/survey.json).</summary>
 internal sealed class SurveyNetworkOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("survey", "network", "members", null, null, new WhatCost(CostClass.Bounded), null,
+    internal static WhatSpec Spec { get; } = new WhatSpec("survey", "network", "members", null, null, new WhatCost(CostClass.Bounded), null, null,
         new OptionSpec("network", "{\"type\":[\"string\",\"object\"]}"),
         new OptionSpec("box", "{\"type\":\"array\",\"minItems\":2,\"maxItems\":2}"),
         new OptionSpec("kind", "{\"type\":\"string\",\"enum\":[\"pipe\",\"cable\",\"chute\"]}"),

@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of read flight_log, in verb names (catalogue/verbs/read.json).</summary>
 internal sealed class ReadFlightLogOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("read", "flight_log", "rows", null, null, new WhatCost(CostClass.Instant), null,
+    internal static WhatSpec Spec { get; } = new WhatSpec("read", "flight_log", "rows", null, null, new WhatCost(CostClass.Instant), null, null,
         new OptionSpec("action", "{\"type\":\"string\",\"enum\":[\"read\",\"list\"]}", false, "read"),
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}"),
         new OptionSpec("every", "{\"type\":\"integer\",\"minimum\":1,\"maximum\":100000}", false, "1"),

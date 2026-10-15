@@ -91,15 +91,19 @@ internal sealed class VerbSpec
 
 /// <summary>
 /// One what: its options in catalogue order, the reply's main list, the list option an id list fills (id_list), its
-/// cost (x-cost) and what a report call of it counts as (x-cost-report), and for a write its write rules.
+/// cost (x-cost) and what a report call of it counts as (x-cost-report), the lists the writer cuts when the call does
+/// not say (x-default-limits), and for a write its write rules.
 /// </summary>
 internal sealed class WhatSpec
 {
+    private static readonly IReadOnlyDictionary<string, int> NoLimits = new Dictionary<string, int>(StringComparer.Ordinal);
+
     private readonly Dictionary<string, OptionSpec> _options = new Dictionary<string, OptionSpec>(StringComparer.Ordinal);
 
     internal WhatSpec(string verb, string name, string? mainList, string? idList, WriteSpec? write, WhatCost? cost,
-        WhatCost? reportCost, params OptionSpec[] options)
+        WhatCost? reportCost, IReadOnlyDictionary<string, int>? defaultLimits, params OptionSpec[] options)
     {
+        DefaultLimits = defaultLimits ?? NoLimits;
         Verb = verb;
         Name = name;
         MainList = mainList;
@@ -137,6 +141,13 @@ internal sealed class WhatSpec
 
     /// <summary>What the scheduler counts a report call of this what as (x-cost-report); null where the catalogue states none.</summary>
     internal WhatCost? ReportCost { get; }
+
+    /// <summary>
+    /// The most entries the writer keeps of each named top-level list when the call's shape does not limit it
+    /// (x-default-limits, 1.33.2's caps); empty where the catalogue states none. The hub lifts them on the script and
+    /// program faces.
+    /// </summary>
+    internal IReadOnlyDictionary<string, int> DefaultLimits { get; }
 
     /// <summary>
     /// The cost a call of this what is scheduled by: an acting call counts as x-cost; a confirm-route call without

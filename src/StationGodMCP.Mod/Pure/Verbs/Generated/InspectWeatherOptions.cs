@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of inspect weather, in verb names (catalogue/verbs/inspect.json).</summary>
 internal sealed class InspectWeatherOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("inspect", "weather", null, null, null, new WhatCost(CostClass.Instant), null);
+    internal static WhatSpec Spec { get; } = new WhatSpec("inspect", "weather", null, null, null, new WhatCost(CostClass.Instant), null, null);
 
     internal Fields Fields { get; private set; } = Fields.None;
 

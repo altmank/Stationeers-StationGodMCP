@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of read snapshot, in verb names (catalogue/verbs/read.json).</summary>
 internal sealed class ReadSnapshotOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("read", "snapshot", "devices", null, null, new WhatCost(CostClass.World), null,
+    internal static WhatSpec Spec { get; } = new WhatSpec("read", "snapshot", "devices", null, null, new WhatCost(CostClass.World), null, null,
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}"),
         new OptionSpec("prefab", "{\"type\":[\"string\",\"integer\",\"array\"],\"items\":{\"type\":[\"string\",\"integer\"]}}"),
         new OptionSpec("name", "{\"type\":\"string\"}"),

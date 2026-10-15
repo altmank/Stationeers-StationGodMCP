@@ -40,7 +40,7 @@ public sealed partial class VerbPipeline
         }
 
         HubCursor cursor = _cursors.Open(call.Stream, what, (JsonObject)options.DeepClone(), what.MainList!, walk,
-            Shape(options).Shape);
+            Shape(call.Face, what, options).Shape);
         page["cursor"] = cursor.Id;
         page["main"] = cursor.Main;
         return reply;

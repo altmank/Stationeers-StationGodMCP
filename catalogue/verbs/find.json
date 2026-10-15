@@ -321,6 +321,7 @@
       },
       "example": {"min_mol": 50},
       "x-cost": {"class": "world", "growth": "index"},
+      "x-default-limits": {"sources": 15},
       "reply": {
         "list": "sources",
         "variants": [
@@ -404,6 +405,7 @@
       "text": ["No options."],
       "example": {},
       "x-cost": {"class": "world", "growth": "index"},
+      "x-default-limits": {"food": 3, "drinks": 3, "packages": 3, "not_counted": 5},
       "reply": {
         "list": "food",
         "variants": [
@@ -439,6 +441,7 @@
       },
       "example": {},
       "x-cost": {"class": "world", "growth": "index"},
+      "x-default-limits": {"plants": 15},
       "reply": {
         "list": "plants",
         "variants": [
@@ -473,6 +476,7 @@
       ],
       "example": {"id": "4820585"},
       "x-cost": {"class": "world", "growth": "index"},
+      "x-default-limits": {"rooms": 10},
       "reply": {
         "list": "rooms",
         "variants": [

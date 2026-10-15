@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of check ignition, in verb names (catalogue/verbs/check.json).</summary>
 internal sealed class CheckIgnitionOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("check", "ignition", "items", null, null, new WhatCost(CostClass.World), null,
+    internal static WhatSpec Spec { get; } = new WhatSpec("check", "ignition", "items", null, null, new WhatCost(CostClass.World), null, new Dictionary<string, int> { ["items"] = 12 },
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}"),
         new OptionSpec("include", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"prefabs\"]}}"));
 

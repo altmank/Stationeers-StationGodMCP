@@ -107,7 +107,7 @@ public sealed class OptionKindTests
         // a confirm-route what that states no x-cost-report reports as it acts
         WhatSpec silent = new WhatSpec("test", "what", null, null,
             new WriteSpec("confirm", "cannot", "[cannot undo]"),
-            new WhatCost(StationGodMCP.Pure.Catalogue.CostClass.Job), null);
+            new WhatCost(StationGodMCP.Pure.Catalogue.CostClass.Job), null, null);
         Assert.Equal(StationGodMCP.Pure.Catalogue.CostClass.Job, silent.CostFor(new JObject()).Class);
         Assert.Equal(StationGodMCP.Pure.Catalogue.CostClass.Job,
             silent.CostFor(JObject.Parse("""{"confirm": true}""")).Class);
@@ -115,7 +115,7 @@ public sealed class OptionKindTests
         // a what that acts at once always counts as its cost
         WhatSpec acts = new WhatSpec("test", "acts", null, null, new WriteSpec("acts", "undo", "[undo]"),
             new WhatCost(StationGodMCP.Pure.Catalogue.CostClass.Instant),
-            new WhatCost(StationGodMCP.Pure.Catalogue.CostClass.Plan));
+            new WhatCost(StationGodMCP.Pure.Catalogue.CostClass.Plan), null);
         Assert.Equal(StationGodMCP.Pure.Catalogue.CostClass.Instant, acts.CostFor(new JObject()).Class);
         Assert.Equal(StationGodMCP.Pure.Catalogue.CostClass.Instant,
             acts.CostFor(JObject.Parse("""{"confirm": true}""")).Class);

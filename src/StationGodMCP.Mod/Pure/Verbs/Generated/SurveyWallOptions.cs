@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of survey wall, in verb names (catalogue/verbs/survey.json).</summary>
 internal sealed class SurveyWallOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("survey", "wall", "things", null, null, new WhatCost(CostClass.World), null,
+    internal static WhatSpec Spec { get; } = new WhatSpec("survey", "wall", "things", null, null, new WhatCost(CostClass.World), null, null,
         new OptionSpec("plane", "{\"type\":\"string\"}"),
         new OptionSpec("side", "{\"type\":\"string\",\"enum\":[\"+x\",\"-x\",\"+y\",\"-y\",\"+z\",\"-z\"]}"),
         new OptionSpec("looking", "{\"type\":\"boolean\"}"),

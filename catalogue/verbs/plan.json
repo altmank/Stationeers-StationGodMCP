@@ -476,6 +476,7 @@
       },
       "example": {"collectable_only": true},
       "x-cost": {"class": "instant", "growth": "plan"},
+      "x-default-limits": {"sites": 3},
       "reply": {
         "list": "sites",
         "variants": [

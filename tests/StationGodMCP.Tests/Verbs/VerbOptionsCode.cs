@@ -122,7 +122,8 @@ internal static class VerbOptionsCode
         code.Append("    internal static WhatSpec Spec { get; } = new WhatSpec(").Append(Literal(verbName)).Append(", ")
             .Append(Literal(what)).Append(", ").Append(Literal((string?)source["reply"]?["list"])).Append(", ")
             .Append(Literal((string?)source["id_list"])).Append(", ").Append(WriteSpec(source)).Append(", ")
-            .Append(CostSpec(source)).Append(", ").Append(ReportCostSpec(source));
+            .Append(CostSpec(source)).Append(", ").Append(ReportCostSpec(source)).Append(", ")
+            .Append(DefaultLimitsSpec(source));
         foreach ((string name, JsonObject option) in options)
         {
             code.Append(",\n        ").Append(OptionSpec(name, option));
@@ -282,6 +283,14 @@ internal static class VerbOptionsCode
     // x-cost then).
     private static string ReportCostSpec(JsonObject source) =>
         source["x-cost-report"] is JsonObject report ? CostCode(report) : "null";
+
+    // x-default-limits: the most entries the writer keeps of each named top-level list when the call does not say;
+    // null where the what states none.
+    private static string DefaultLimitsSpec(JsonObject source) =>
+        source["x-default-limits"] is JsonObject limits
+            ? "new Dictionary<string, int> { " + string.Join(", ", limits.Select(limit =>
+                "[" + Literal(limit.Key) + "] = " + ((int)limit.Value!).ToString(CultureInfo.InvariantCulture))) + " }"
+            : "null";
 
     private static string CostCode(JsonObject cost)
     {

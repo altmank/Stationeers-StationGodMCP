@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of show preview, in verb names (catalogue/verbs/show.json).</summary>
 internal sealed class ShowPreviewOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("show", "preview", null, null, null, new WhatCost(CostClass.Instant), null,
+    internal static WhatSpec Spec { get; } = new WhatSpec("show", "preview", null, null, null, new WhatCost(CostClass.Instant), null, null,
         new OptionSpec("placements", "{\"type\":\"array\",\"items\":{\"type\":\"object\"},\"maxItems\":64}"),
         new OptionSpec("prefab", "{\"type\":[\"string\",\"integer\"]}"),
         new OptionSpec("at", "{\"type\":[\"array\",\"object\",\"string\"]}"),

@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of read clock, in verb names (catalogue/verbs/read.json).</summary>
 internal sealed class ReadClockOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("read", "clock", null, null, null, new WhatCost(CostClass.Instant), null);
+    internal static WhatSpec Spec { get; } = new WhatSpec("read", "clock", null, null, null, new WhatCost(CostClass.Instant), null, null);
 
     internal Fields Fields { get; private set; } = Fields.None;
 

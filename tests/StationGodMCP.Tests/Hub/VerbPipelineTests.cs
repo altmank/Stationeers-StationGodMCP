@@ -61,6 +61,32 @@ public sealed class VerbPipelineTests : IDisposable
         Assert.Equal("""{"what":"job","id":"place-2"}""", call.Params().ToJsonString());
     }
 
+    // review D, R-D-2: the mod cuts find plant's plants at 15 by default (x-default-limits); a script's and a
+    // program's replies are never cut (D4), so on those faces the hub lifts every default cap the call does not set.
+    [Fact]
+    public void ADirectCallLeavesTheModsDefaultCapsInPlace()
+    {
+        Assert.Null(Sent("find", "plant", "{}").Shape);
+    }
+
+    [Fact]
+    public void AScriptCallLiftsTheModsDefaultCaps()
+    {
+        GameCall call = Sent("find", "plant", "{}", Face.Script);
+
+        Assert.Equal(VerbPipeline.LiftedLimit, call.Shape!.Value.GetProperty("limit").GetProperty("plants").GetInt32());
+    }
+
+    [Fact]
+    public void AProgramsOwnListLimitsStandAndTheRestAreLifted()
+    {
+        GameCall call = Sent("find", "food", """{"list_limits":{"food":2}}""", Face.Program);
+
+        JsonElement limits = call.Shape!.Value.GetProperty("limit");
+        Assert.Equal(2, limits.GetProperty("food").GetInt32());
+        Assert.Equal(VerbPipeline.LiftedLimit, limits.GetProperty("drinks").GetInt32());
+    }
+
     [Fact]
     public void AnIdListGoesWholeInOneCall()
     {

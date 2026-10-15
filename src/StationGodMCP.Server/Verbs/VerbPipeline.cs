@@ -469,7 +469,7 @@ public sealed partial class VerbPipeline
             return unreadable;
         }
 
-        (JsonElement? shape, Unparsed unparsed) = Shape(options);
+        (JsonElement? shape, Unparsed unparsed) = Shape(call.Face, what, options);
         GameReply reply = await SendAsync(what, sent, call.Stream, shape, cancellation, call).ConfigureAwait(false);
         if (reply is not GameReply.Ok ok)
         {
@@ -646,11 +646,13 @@ public sealed partial class VerbPipeline
     }
 
     // fields, omit and list_limits go to the mod as the call's shape; selectors that cannot parse are reported unmatched.
-    private static (JsonElement? Shape, Unparsed Unparsed) Shape(JsonObject options)
+    // On the script and program faces a reply is never cut for size (D4), so the mod's default list caps
+    // (x-default-limits) are lifted there: each list the call does not limit itself is sent with the largest limit.
+    private static (JsonElement? Shape, Unparsed Unparsed) Shape(Face face, WhatEntry what, JsonObject options)
     {
         JsonElement? fields = Given(options, SidecarArguments.FieldsArgument);
         JsonElement? omit = Given(options, SidecarArguments.OmitArgument);
-        JsonElement? limits = Given(options, SidecarArguments.LimitsArgument);
+        JsonElement? limits = face == Face.Direct ? Given(options, SidecarArguments.LimitsArgument) : Lifted(what, options);
         return fields == null && omit == null && limits == null
             ? (null, new Unparsed([], []))
             : new SidecarArguments(default, fields, new OutputChoice.Inline(), omit, limits).Shape();
@@ -658,6 +660,31 @@ public sealed partial class VerbPipeline
 
     private static JsonElement? Given(JsonObject options, string name) =>
         options[name] is { } value ? JsonNodes.ToElement(value) : null;
+
+    /// <summary>The largest list limit the mod takes (its ShapeRequest.MaximumLimit).</summary>
+    internal const int LiftedLimit = 100000;
+
+    // The call's list_limits with every default-limited list it leaves out at LiftedLimit; as given when the what has
+    // no default caps or list_limits is not an object (the mod judges that).
+    private static JsonElement? Lifted(WhatEntry what, JsonObject options)
+    {
+        JsonNode? given = options[SidecarArguments.LimitsArgument];
+        if (what.DefaultLimited.Count == 0 || (given != null && given is not JsonObject))
+        {
+            return given != null ? JsonNodes.ToElement(given) : null;
+        }
+
+        JsonObject limits = given != null ? (JsonObject)given.DeepClone() : new JsonObject();
+        foreach (string list in what.DefaultLimited)
+        {
+            if (!limits.ContainsKey(list))
+            {
+                limits[list] = LiftedLimit;
+            }
+        }
+
+        return JsonNodes.ToElement(limits);
+    }
 
     /// <summary>The wire params of a verb call: {what, ...options} without the hub's own options.</summary>
     internal static JsonObject WireParams(WhatEntry what, JsonObject options)

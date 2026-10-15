@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of show highlight, in verb names (catalogue/verbs/show.json).</summary>
 internal sealed class ShowHighlightOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("show", "highlight", null, null, null, new WhatCost(CostClass.Instant), null,
+    internal static WhatSpec Spec { get; } = new WhatSpec("show", "highlight", null, null, null, new WhatCost(CostClass.Instant), null, null,
         new OptionSpec("targets", "{\"type\":\"array\",\"items\":{\"type\":\"object\"},\"maxItems\":64}"),
         new OptionSpec("seconds", "{\"type\":\"number\",\"minimum\":0,\"maximum\":600}", false, "60"),
         new OptionSpec("keep", "{\"type\":\"boolean\"}", false, "false"),

@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of write uplink, in verb names (catalogue/verbs/write.json).</summary>
 internal sealed class WriteUplinkOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("write", "uplink", null, null, new WriteSpec("acts", "cannot", "[cannot undo: uplink]"), new WhatCost(CostClass.Instant), null,
+    internal static WhatSpec Spec { get; } = new WhatSpec("write", "uplink", null, null, new WriteSpec("acts", "cannot", "[cannot undo: uplink]"), new WhatCost(CostClass.Instant), null, null,
         new OptionSpec("id", "{\"type\":\"string\"}", true),
         new OptionSpec("downlink", "{\"type\":\"string\"}", true),
         new OptionSpec("gateway", "{\"type\":\"string\"}", false, "world"));

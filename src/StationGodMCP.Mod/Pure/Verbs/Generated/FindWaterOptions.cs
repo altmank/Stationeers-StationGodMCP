@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of find water, in verb names (catalogue/verbs/find.json).</summary>
 internal sealed class FindWaterOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("find", "water", "sources", null, null, new WhatCost(CostClass.World), null,
+    internal static WhatSpec Spec { get; } = new WhatSpec("find", "water", "sources", null, null, new WhatCost(CostClass.World), null, new Dictionary<string, int> { ["sources"] = 15 },
         new OptionSpec("min_mol", "{\"type\":\"number\"}", false, "1"));
 
     internal Fields Fields { get; private set; } = Fields.None;

@@ -121,6 +121,7 @@
       ],
       "example": {"id": "1199811"},
       "x-cost": {"class": "instant", "growth": "by-id"},
+      "x-default-limits": {"slots": 5},
       "reply": {
         "list": "slots",
         "variants": [
@@ -480,6 +481,7 @@
       ],
       "example": {"id": "4820585", "parts": ["status", "source"]},
       "x-cost": {"class": "instant", "growth": "by-id"},
+      "x-default-limits": {"stable_selectors": 12},
       "reply": {
         "list": "pins",
         "variants": [

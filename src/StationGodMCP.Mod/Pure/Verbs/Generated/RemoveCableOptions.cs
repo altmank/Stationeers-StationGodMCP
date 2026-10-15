@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of remove cable, in verb names (catalogue/verbs/remove.json).</summary>
 internal sealed class RemoveCableOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("remove", "cable", "removals", null, new WriteSpec("confirm", "undo", "[undo]"), new WhatCost(CostClass.Job), new WhatCost(CostClass.Plan),
+    internal static WhatSpec Spec { get; } = new WhatSpec("remove", "cable", "removals", null, new WriteSpec("confirm", "undo", "[undo]"), new WhatCost(CostClass.Job), new WhatCost(CostClass.Plan), null,
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}"),
         new OptionSpec("waypoints", "{\"type\":\"array\",\"items\":{\"type\":\"array\"},\"maxItems\":1024}"),
         new OptionSpec("cells", "{\"type\":\"array\",\"items\":{\"type\":\"array\"},\"maxItems\":1024}"),

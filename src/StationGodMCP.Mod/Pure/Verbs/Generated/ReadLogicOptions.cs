@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of read logic, in verb names (catalogue/verbs/read.json).</summary>
 internal sealed class ReadLogicOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("read", "logic", "results", null, null, new WhatCost(CostClass.Bounded, new[] { "id", "reads" }), null,
+    internal static WhatSpec Spec { get; } = new WhatSpec("read", "logic", "results", null, null, new WhatCost(CostClass.Bounded, new[] { "id", "reads" }), null, null,
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}"),
         new OptionSpec("logic", "{\"type\":[\"string\",\"integer\",\"array\"]}"),
         new OptionSpec("reads", "{\"type\":\"array\",\"items\":{\"type\":\"object\"},\"maxItems\":256}"),

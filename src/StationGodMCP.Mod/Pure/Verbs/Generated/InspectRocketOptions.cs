@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of inspect rocket, in verb names (catalogue/verbs/inspect.json).</summary>
 internal sealed class InspectRocketOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("inspect", "rocket", "rockets", null, null, new WhatCost(CostClass.World), null,
+    internal static WhatSpec Spec { get; } = new WhatSpec("inspect", "rocket", "rockets", null, null, new WhatCost(CostClass.World), null, null,
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}"),
         new OptionSpec("compact", "{\"type\":\"boolean\"}", false, "true"),
         new OptionSpec("self_test", "{\"type\":\"boolean\"}", false, "true", "[{\"when\":{\"compact\":true},\"default\":\"false\"}]"),

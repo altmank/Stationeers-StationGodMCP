@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of server info, in verb names (catalogue/verbs/server.json).</summary>
 internal sealed class ServerInfoOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("server", "info", "methods", null, null, new WhatCost(CostClass.Instant), null,
+    internal static WhatSpec Spec { get; } = new WhatSpec("server", "info", "methods", null, null, new WhatCost(CostClass.Instant), null, new Dictionary<string, int> { ["methods"] = 10, ["reflection"] = 10 },
         new OptionSpec("include", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"counters\"]}}"));
 
     internal Fields Fields { get; private set; } = Fields.None;

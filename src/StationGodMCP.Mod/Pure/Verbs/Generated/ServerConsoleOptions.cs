@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of server console, in verb names (catalogue/verbs/server.json).</summary>
 internal sealed class ServerConsoleOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("server", "console", "lines", null, null, new WhatCost(CostClass.Instant), null,
+    internal static WhatSpec Spec { get; } = new WhatSpec("server", "console", "lines", null, null, new WhatCost(CostClass.Instant), null, null,
         new OptionSpec("lines", "{\"type\":\"integer\",\"minimum\":1,\"maximum\":500}", false, "40"));
 
     internal Fields Fields { get; private set; } = Fields.None;

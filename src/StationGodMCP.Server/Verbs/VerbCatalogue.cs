@@ -186,13 +186,16 @@ internal sealed class VerbEntry
 
 /// <summary>
 /// One what: its options (resolved), the write rules of a write what, the list option an id list goes into (id_list),
-/// the reply's main list and the example; a what the hub answers itself ("hub": true) never reaches the mod.
+/// the reply's main list, the lists the mod cuts by default (x-default-limits) and the example; a what the hub answers
+/// itself ("hub": true) never reaches the mod.
 /// </summary>
 internal sealed class WhatEntry
 {
     private WhatEntry(string verb, string name, Dictionary<string, OptionEntry> options, List<string> optionNames,
-        bool wireCursor, WriteRules? write, string? idList, string? mainList, JsonObject? example, bool hub)
+        bool wireCursor, WriteRules? write, string? idList, string? mainList, JsonObject? example, bool hub,
+        List<string> defaultLimited)
     {
+        DefaultLimited = defaultLimited;
         Verb = verb;
         Name = name;
         Options = options;
@@ -237,6 +240,9 @@ internal sealed class WhatEntry
 
     internal string? MainList { get; }
 
+    /// <summary>The top-level lists the mod cuts when the call's shape does not limit them (x-default-limits).</summary>
+    internal List<string> DefaultLimited { get; }
+
     internal JsonObject? Example { get; }
 
     /// <summary>The hub answers it itself ("hub": true): the mod never dispatches it, and neither VerbSurface nor the
@@ -270,8 +276,15 @@ internal sealed class WhatEntry
         }
 
         WriteRules? write = source["write"] is JsonObject rules ? WriteRules.Of(rules) : null;
+        List<string> defaultLimited = [];
+        foreach ((string list, JsonNode? _) in source["x-default-limits"] as JsonObject ?? [])
+        {
+            defaultLimited.Add(list);
+        }
+
         return new WhatEntry(verb, name, options, optionNames, wireCursor, write, (string?)source["id_list"],
-            (string?)source["reply"]?["list"], source["example"] as JsonObject, (bool?)source["hub"] ?? false);
+            (string?)source["reply"]?["list"], source["example"] as JsonObject, (bool?)source["hub"] ?? false,
+            defaultLimited);
     }
 
     // A shared definition with the what's own keys replacing its keys.

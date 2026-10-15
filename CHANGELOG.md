@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **The default list caps are back** (1.33.2's `x-default-limits`, lost in the verb move): find plant (plants 15),
+  room (10), water (sources 15), food (3 each, not_counted 5), check ignition (items 12), inspect slots (5), inspect
+  chip (stable_selectors 12), plan mining (sites 3), trade inventory (contacts 2), server info (methods and
+  reflection 10), server profiling (scopes 10, calls 8), survey feeds (devices 15, unreached 10), survey area (pieces
+  40, devices 20), swap cable, pipe and chute (devices 5). A cut list says so in `truncated`, and `list_limits` keeps
+  more. Scripts and programs are never cut: the hub lifts the caps there. With StrictArguments off, `fields`, `omit`
+  and `list_limits` given as options now shape the reply too.
 - **build structure's and show preview's `at` read the help's words.** `"looking_at"`, `{looking_at: true, right, up,
   forward}`, `{relative_to: "player" | "looking_at" | id, frame, right, up, forward, anchor}` and `{on_face: true,
   along_right, along_up}`: a relative offset was read under the old names and silently dropped, `"looking_at"` was

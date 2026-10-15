@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of find food, in verb names (catalogue/verbs/find.json).</summary>
 internal sealed class FindFoodOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("find", "food", "food", null, null, new WhatCost(CostClass.World), null);
+    internal static WhatSpec Spec { get; } = new WhatSpec("find", "food", "food", null, null, new WhatCost(CostClass.World), null, new Dictionary<string, int> { ["food"] = 3, ["drinks"] = 3, ["packages"] = 3, ["not_counted"] = 5 });
 
     internal Fields Fields { get; private set; } = Fields.None;
 
