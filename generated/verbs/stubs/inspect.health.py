@@ -5,7 +5,7 @@ def inspect(what: Literal['health'], *,
     kind: Literal['pipe', 'cable', 'chute'] = 'pipe',  # The network's kind.
     damaged_only: bool = False,  # Network: only damaged and broken pieces.
     limit: int = 8,  # The first n in order (entries); left out, every one.
-) -> dict:  # main list: r['things']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['things']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Damage state of things, or of every piece of a network, worst first.
     Reply, one of:
     (Health)

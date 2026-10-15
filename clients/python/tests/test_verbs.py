@@ -6,7 +6,7 @@ import unittest
 from _support import HubCase, ok, refused
 import sg
 from sg._errors import _PassEnd
-from sg._replies import MainList
+from sg._replies import MainList, plain
 
 
 class VerbCallTests(HubCase):
@@ -79,40 +79,42 @@ class MainListTests(HubCase):
 
         self.handler = handler
 
-    def test_a_single_for_walks_page_by_page(self):
+    def test_walk_goes_page_by_page_and_only_when_asked(self):
         things = sg.find("thing")["things"]
         self.assertIsInstance(things, MainList)
+        self.assertTrue(things.more)
         seen = []
-        for thing in things:
+        for thing in things.walk():
             seen.append((thing, len(self.hub.calls)))
         self.assertEqual([(1, 1), (2, 1), (3, 2), (4, 2), (5, 3)], seen)
         self.assertEqual([{"cursor": "c1", "line": None}, {"cursor": "c2", "line": None}], self.params("more"))
+        self.assertFalse(things.more)
 
-    def test_len_pages_in_the_rest_first(self):
+    def test_reading_a_reply_fetches_no_page(self):
         things = sg.find("thing")["things"]
-        self.assertEqual(5, len(things))
-        self.assertEqual(["verb", "more", "more"], self.hub.methods())
+        self.assertEqual(2, len(things))
+        self.assertEqual([1, 2], list(things))
+        self.assertEqual(2, things[-1])
+        self.assertEqual([2, 1], sorted(things, reverse=True))
+        self.assertNotIn(4, things)
+        self.assertEqual([1, 2], plain(things))
+        self.assertEqual(["verb"], self.hub.methods())
 
-    def test_an_index_sorted_reversed_and_in_page_in_too(self):
-        self.assertEqual(5, sg.find("thing")["things"][-1])
-        self.assertEqual([5, 4, 3, 2, 1], sorted(sg.find("thing")["things"], reverse=True))
-        self.assertEqual([5, 4, 3, 2, 1], list(reversed(sg.find("thing")["things"])))
-        self.assertIn(4, sg.find("thing")["things"])
-
-    def test_a_second_pass_after_a_partial_walk_pages_in_the_rest_once(self):
+    def test_all_pages_in_the_rest_once(self):
         things = sg.find("thing")["things"]
-        for thing in things:
+        for thing in things.walk():
             if thing == 1:
                 break
-        self.assertEqual([1, 2, 3, 4, 5], list(things))
-        self.assertEqual([1, 2, 3, 4, 5], list(things))
+        self.assertEqual([1, 2, 3, 4, 5], things.all())
+        self.assertEqual([1, 2, 3, 4, 5], list(things.walk()))
+        self.assertEqual(5, len(things))
         self.assertEqual(["verb", "more", "more"], self.hub.methods())
 
     def test_without_a_cursor_it_is_the_full_list(self):
         self.handler = lambda method, params: ok({"things": [1, 2], "count": 2})
         things = sg.find("thing")["things"]
-        self.assertEqual(2, len(things))
-        self.assertEqual([1, 2], sorted(things))
+        self.assertFalse(things.more)
+        self.assertEqual([1, 2], list(things.walk()))
         self.assertEqual(["verb"], self.hub.methods())
 
     def test_the_catalogue_names_the_main_list_when_the_hub_does_not(self):
@@ -120,7 +122,7 @@ class MainListTests(HubCase):
         pieces = sg.swap("cable", network="9")["pieces"]
         self.assertIsInstance(pieces, MainList)
         self.handler = lambda method, params: ok({"entries": [2]})
-        self.assertEqual([1, 2], list(pieces))
+        self.assertEqual([1, 2], list(pieces.walk()))
 
 
 class ErrorTests(HubCase):
@@ -161,11 +163,12 @@ class MainListUsesTests(HubCase):
         self.handler = lambda method, params: ok({"things": [1, 2], "cursor": "c", "main": "things"}) \
             if method == "verb" else ok({"entries": [3]})
 
-    def test_adding_to_a_plain_list_copy_deepcopy_and_pickle_see_every_page(self):
-        self.assertEqual([0, 1, 2, 3], [0] + sg.find("thing")["things"])
-        self.assertEqual([1, 2, 3], copy.copy(sg.find("thing")["things"]))
-        self.assertEqual([1, 2, 3], copy.deepcopy(sg.find("thing")["things"]))
-        self.assertEqual([1, 2, 3], pickle.loads(pickle.dumps(sg.find("thing")["things"])))
+    def test_adding_copy_deepcopy_and_pickle_see_the_fetched_entries_and_all_sees_every_page(self):
+        self.assertEqual([0, 1, 2], [0] + sg.find("thing")["things"])
+        self.assertEqual([1, 2], copy.copy(sg.find("thing")["things"]))
+        self.assertEqual([1, 2], copy.deepcopy(sg.find("thing")["things"]))
+        self.assertEqual([1, 2], pickle.loads(pickle.dumps(sg.find("thing")["things"])))
+        self.assertEqual([0, 1, 2, 3], [0] + sg.find("thing")["things"].all())
 
 
 class NestedRowTests(HubCase):

@@ -1,7 +1,7 @@
 def server(what: Literal['info'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
     include: list[Literal['counters']] = None,  # counters: job holds, print log, lint chip programs, batch console, prefab index, frame_ms and update_ms (StationGod's whole frame, job steps included).
-) -> dict:  # main list: r['methods']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['methods']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """The running mod: version, per-method calls and times, game members, its cost to the game.
     Reply:
       mod_id: str

@@ -1,7 +1,7 @@
 def inspect(what: Literal['atmosphere'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
     id: str | list[str],  # A thing, a pipe or landing pad network, or an atmosphere id.
-) -> dict:  # main list: r['atmospheres']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['atmospheres']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """The gas or liquid one thing holds: canister, tank, a rocket's tanks (rocket id or name), suit, pipe or pad network, a device's networks.
     A list of ids answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply below; fields name its keys.
     Reply:

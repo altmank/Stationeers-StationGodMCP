@@ -6,7 +6,7 @@ def write(what: Literal['logic'], *,
     writes: list = None,  # Separate writes, each {id, logic, value}, applied in order.
     gateway: str = 'world',  # "world" (default) or a gateway id: only devices on its data networks.
     allow: list[Literal['lint']] = None,  # lint: a write that turns on or opens a vent, valve or pump runs the network lint rules (no oxidiser vented outdoors, fuel mix temperature) on the network it opens to, and is refused on a problem unless lint is allowed (passed lists it).
-) -> dict:  # main list: r['results']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['results']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Logic values on devices, as a chip or console writes them; answers previous and read-back values.
     id or writes is required (missing_target names them); gateway only narrows where ids are looked up. To write every device of a kind, find them and pass their ids as a list (in a confirmed run an id you have not seen stops the run: run it as a report first, then again with confirm: true).
     Reply, one of:

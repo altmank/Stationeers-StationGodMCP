@@ -4,7 +4,7 @@ def read(what: Literal['flight_log'], *,
     id: str | list[str] = None,  # A rocket's id, name, network or any part; left out when there is one rocket.
     every: int = 1,  # read: every n-th row.
     limit: int = 12,  # The first n in order (read: rows); left out, every one.
-) -> dict:  # main list: r['rows']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['rows']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """A rocket flight recorder's samples: a page of rows, or the list of recordings (start and stop: write flight_log).
     Reply, one of:
     (FlightLog)

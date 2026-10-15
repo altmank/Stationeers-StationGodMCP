@@ -11,7 +11,7 @@ def plan(what: Literal['removal'], *,
     refund_to: str | int | list = None,  # Where removed materials go: a word (inventory, source, storage, ground, none), a container id, or a list tried in turn. (default [inventory, source, storage, ground]) (default [inventory, source, storage, ground])
     include: list[Literal['links', 'notes', 'network_devices']] = None,  # Parts to add to the reply.
     rows: int = 5,  # Pieces listed; 0 for none.
-) -> dict:  # main list: r['removals']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['removals']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Price a removal of cable, pipe or chute pieces without doing it, ever: ids, cells or a whole network.
     Reply:
       grade: str | None

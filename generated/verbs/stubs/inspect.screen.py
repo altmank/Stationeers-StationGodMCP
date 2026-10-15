@@ -8,7 +8,7 @@ def inspect(what: Literal['screen'], *,
     shown_only: bool = True,  # Leave out hidden elements.
     include: list[Literal['style', 'image']] = None,  # style: colours and fonts; image: a PNG (not on a dedicated server).
     limit: int = 25,  # The first n in order (entries); left out, every one.
-) -> dict:  # main list: r['elements']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['elements']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """What a ScriptedScreens screen shows: surfaces and one surface's elements.
     Reply:
       holder: Thing

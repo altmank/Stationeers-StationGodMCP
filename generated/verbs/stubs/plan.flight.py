@@ -19,7 +19,7 @@ def plan(what: Literal['flight'], *,
     limits: bool = True,  # Landing limits, profiles and least fuel.
     column_check: bool = True,  # Scan the landing column above the pad.
     include: list[Literal['explain']] = None,  # explain: the model's fixed rules.
-) -> dict:  # main list: r['legs']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['legs']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Fly a copy of a rocket to a node or pad, tick by tick: launch, hops, re-entry, landing, fuel, power and the verdict; the landing check.
     Reply:
       rocket_id: str

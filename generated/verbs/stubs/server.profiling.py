@@ -3,7 +3,7 @@ def server(what: Literal['profiling'], *,
     action: Literal['on', 'off', 'reset', 'report'],  # on, off, reset, or report the scopes so far.
     slow_frame_ms: float = 8,  # on: frames over this are logged.
     csv: bool = None,  # on: True starts the rolling CSV, False stops it.
-) -> dict:  # main list: r['scopes']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['scopes']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Profile StationGod's main-thread cost: on, off, reset, report.
     Reply:
       enabled: bool

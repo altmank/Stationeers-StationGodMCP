@@ -21,7 +21,7 @@ def find(what: Literal['thing'], *,
     box: list = None,  # Two corners [[x, y, z], [x, y, z]].
     limit: int = 8,  # The first n in order (entries); left out, every one.
     order: Literal['nearest', 'id'] = 'nearest',  # nearest (default) or id (stable pages).
-) -> dict:  # main list: r['things']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['things']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Any object: structures, devices, tanks, loose items, players, animals.
     Reply:
       things: list[{made: {maker_id: str | None, maker_prefab: str | None, maker_name: str | None, game_time_s: float, quantity: int, split_from: str
@@ -57,7 +57,7 @@ def find(what: Literal['item'], *,
     exclude_in_use: bool = False,  # Leave out parts a device is using (chips in holders, a running filter's filters).
     limit: int = None,  # The first n in order (items (or groups)); left out, every one. (default 10; group_by place 12)
     order: Literal['nearest', 'id'] = 'nearest',  # nearest (default) or id (stable pages).
-) -> dict:  # main list: r['items']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['items']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Stackable items and kits with quantity and holders, anywhere: ground, carried, stored, machine stock, silos; a kit such as Kit (Battery Large) is an item to find and move, a built structure is not; group_by sums them.
     group_by place takes no order or exclude_in_use (the totals are not paged).
     Reply, one of:
@@ -98,7 +98,7 @@ def find(what: Literal['device'], *,
     prefab: str | int | list = None,  # Prefab: a whole name, a hash, or parts with * ('*Battery*', '*Tank*Insulated*': each part, any order); or a list of them.
     name: str = None,  # Part of the shown name or label, any case.
     limit: int = 25,  # The first n in order (entries); left out, every one.
-) -> dict:  # main list: r['devices']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['devices']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Devices with logic, in the world or on one gateway's data networks.
     Paging and prefab parts are applied by the verb layer to the handler's whole list (it walks every device either way).
     Reply:
@@ -122,7 +122,7 @@ def find(what: Literal['container'], *,
     radius: float = None,  # Metres around near.
     limit: int = 12,  # The first n in order (entries); left out, every one.
     order: Literal['nearest', 'id'] = 'nearest',  # nearest (default) or id (stable pages).
-) -> dict:  # main list: r['containers']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['containers']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Outermost holders with at least one item: lockers, crates, machines, a backpack on the floor.
     Reply:
       containers: list[{reference_id: str, prefab_name: str | None, display_name: str | None, slot_count: int, used_slot_count: int, item_count: int,
@@ -145,7 +145,7 @@ def find(what: Literal['frame'], *,
     include: list[Literal['inner']] = None,  # inner: list inner frames too.
     limit: int = 20,  # The first n in order (entries); left out, every one.
     order: Literal['nearest', 'id'] = 'nearest',  # nearest (default) or id (stable pages).
-) -> dict:  # main list: r['frames']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['frames']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Outer frames (a face on outside air), with exposed faces and airtightness.
     Reply:
       frames: list[{reference_id: str, prefab_name: str | None, display_name: str | None, position: Vec3, distance_m: float | None, exposed_faces:
@@ -166,7 +166,7 @@ def find(what: Literal['frame'], *,
 @overload
 def find(what: Literal['pad'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
-) -> dict:  # main list: r['pads']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['pads']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Landing pads for traders and rockets (not power or teleport pads), by the game's checks: size, runway, which ships fit.
     No options.
     Reply:
@@ -186,7 +186,7 @@ def find(what: Literal['pad'], *,
 def find(what: Literal['water'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
     min_mol: float = 1,  # Skip sources holding less water, polluted water and steam together.
-) -> dict:  # main list: r['sources']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['sources']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Canisters, tanks, devices and pipe networks holding water or steam, largest first.
     Reply:
       sources: list[{kind: str, owner: Any, atmosphere_id: str, volume_l: float, pressure_kpa: float, temperature_k: float, water: {liquid_mol: float,
@@ -212,7 +212,7 @@ def find(what: Literal['ore'], *,
     separation: float = 100,  # Least distance between two spots.
     step: float = None,  # Sample spacing; default the finest within the budget.
     limit: int = 5,  # The first n in order (spots returned, nearest first); left out, every one.
-) -> dict:  # main list: r['spots']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['spots']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Deep miner spots: the ore profile at a point, and the nearest spots holding given ores.
     Reply:
       at: {position: Vec3, regions: list[{set: str, region: str, name: str | None}], profile_id: str | None}
@@ -229,7 +229,7 @@ def find(what: Literal['ore'], *,
 @overload
 def find(what: Literal['food'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
-) -> dict:  # main list: r['food']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['food']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Every food and drink: nutrition, hydration, decay, totals.
     No options.
     Reply:
@@ -262,7 +262,7 @@ def find(what: Literal['plant'], *,
     id: str | list[str] = None,  # One plant, in full.
     include: list[Literal['unplanted']] = None,  # unplanted: crops and seeds not planted.
     verbose: bool = False,  # The long form of the reply.
-) -> dict:  # main list: r['plants']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['plants']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Plants in trays, planters and stations: stage, health, problems, time to harvest.
     Reply:
       plants: list[{reference_id: str, prefab_name: str | None, display_name: str | None, planted: bool, tray: {reference_id: str, prefab_name: str |
@@ -305,7 +305,7 @@ def find(what: Literal['room'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
     id: str | list[str] = None,  # A thing: only the room it is in.
     include: list[Literal['cells', 'devices']] = None,  # cells: every cell centre; devices: the devices in each room.
-) -> dict:  # main list: r['rooms']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['rooms']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Closed rooms measured cell by cell: volume, pressure, temperature, gases; or the room one thing is in.
     One id answers the wrapper below; a list of ids answers one row per id, {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count, local_player_room_id}, each row's payload the room itself (the rooms item's keys) - not the wrapper - or the error for a thing in no room.
     Reply:
@@ -325,7 +325,7 @@ def find(what: Literal['room'], *,
 @overload
 def find(what: Literal['gateway'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
-) -> dict:  # main list: r['gateways']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['gateways']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """The device scopes: 'world' and each StationGod Gateway with its status.
     No options.
     Reply:
@@ -347,7 +347,7 @@ def find(what: Literal['damaged'], *,
     near: str | list = None,  # "player" only.
     radius: float = None,  # Metres around near.
     limit: int = 8,  # The first n in order (entries); left out, every one.
-) -> dict:  # main list: r['things']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['things']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Damaged and broken things in the world, worst first.
     Reply:
       things: list[{reference_id: str, prefab_name: str | None, display_name: str | None, custom_name: str | None, build_state: {current: int, last:
@@ -376,7 +376,7 @@ def find(what: Literal['damaged'], *,
 def find(what: Literal['script'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
     text: str = None,  # Keep scripts whose name or description holds this text, any case.
-) -> dict:  # main list: r['scripts']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['scripts']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """The saved scripts a run in this world can see: name, description, parameters and version.
     A run sees the shared scripts and the scripts of the world it runs in (inspect script shows one in full; write script saves them). The parameters are main(...)'s, one line each as its signature reads; run_script {name, args} checks its arguments against them.
     Reply:
@@ -392,7 +392,7 @@ def inspect(what: Literal['device'], *,
     id: str | list[str],  # Target: an id, a list of ids, or "looking_at" (the thing the crosshair is on); "player" where the what says.
     gateway: str = 'world',  # "world" (default) or a gateway id: only devices on its data networks.
     include: list[Literal['logic_types']] = None,  # logic_types: every logic type with id and access.
-) -> dict:  # main list: r['logic_types']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['logic_types']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """A device: logic types it reads and writes, writable ones by name, rocket, umbilical and uplink details.
     A list of ids answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply below; fields name its keys.
     Reply:
@@ -420,7 +420,7 @@ def inspect(what: Literal['prefab'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
     prefab: str | int,  # Whole prefab name or hash.
     include: list[Literal['small_cells']] = None,  # small_cells: each cell's offset.
-) -> dict:  # main list: r['ports']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['ports']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """A buildable prefab before it stands anywhere: placement kind, turns, cells, ports.
     Reply:
       prefab_name: str | None
@@ -456,7 +456,7 @@ def inspect(what: Literal['slots'], *,
     id: str | list[str],  # Target: an id, a list of ids, or "looking_at" (the thing the crosshair is on); "player" where the what says.
     gateway: str = 'world',  # "world" (default) or a gateway id: only devices on its data networks.
     slot: int = None,  # One slot index; left out, every slot.
-) -> dict:  # main list: r['slots']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['slots']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """A device's slots: occupants, what each takes, slot logic values.
     A list of ids answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply below; fields name its keys.
     Reply:
@@ -484,7 +484,7 @@ def inspect(what: Literal['contents'], *,
     prefab: str | int | list = None,  # Only slots holding this prefab (part with *) at any depth.
     name: str = None,  # Part of the shown name or label, any case.
     limit: int = 10,  # The first n in order (a silo's stored entries listed); left out, every one.
-) -> dict:  # main list: r['slots']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['slots']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Any holder's slots and what is in them, nested (a locker, machine, suit; 'player' for the player).
     A list of ids answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply below; fields name its keys.
     Iteration goes over slots; a silo's stored entries are not iterated.
@@ -499,7 +499,7 @@ def inspect(what: Literal['contents'], *,
       empty_slots_omitted: int | None
       silo: {count: int, entries_known: bool, importing: bool | None, exporting: bool | None, dispense_slot: int | None, total: int, offset: int,
           entries: list[{index: int, prefab_name: str | None, display_name: str | None, quantity: float, max_quantity: float | None, children: int,
-          contents: list[{prefab_name: str | None, quantity: float}], rots_when_taken: bool}]} | None
+          contents: list[{prefab_name: str | None, quantity: float}], rots_when_taken: bool}], cursor_id: str | None} | None
     Types: Vec3 = {x: float, y: float, z: float}
     Example: sg.inspect('contents', id='player')
     In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
@@ -513,7 +513,7 @@ def inspect(what: Literal['health'], *,
     kind: Literal['pipe', 'cable', 'chute'] = 'pipe',  # The network's kind.
     damaged_only: bool = False,  # Network: only damaged and broken pieces.
     limit: int = 8,  # The first n in order (entries); left out, every one.
-) -> dict:  # main list: r['things']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['things']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Damage state of things, or of every piece of a network, worst first.
     Reply, one of:
     (Health)
@@ -579,7 +579,7 @@ def inspect(what: Literal['health'], *,
 def inspect(what: Literal['connections'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
     id: str | list[str],  # Target: an id, a list of ids, or "looking_at" (the thing the crosshair is on); "player" where the what says.
-) -> dict:  # main list: r['ends']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['ends']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """One pipe, cable, chute or device: its ends and what each joins.
     A list of ids answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply below; fields name its keys.
     Reply:
@@ -601,7 +601,7 @@ def inspect(what: Literal['connections'], *,
 def inspect(what: Literal['atmosphere'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
     id: str | list[str],  # A thing, a pipe or landing pad network, or an atmosphere id.
-) -> dict:  # main list: r['atmospheres']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['atmospheres']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """The gas or liquid one thing holds: canister, tank, a rocket's tanks (rocket id or name), suit, pipe or pad network, a device's networks.
     A list of ids answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply below; fields name its keys.
     Reply:
@@ -620,7 +620,7 @@ def inspect(what: Literal['atmosphere'], *,
 def inspect(what: Literal['reagents'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
     id: str | list[str],  # Target: an id, a list of ids, or "looking_at" (the thing the crosshair is on); "player" where the what says.
-) -> dict:  # main list: r['reagents']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['reagents']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """The reagents a furnace, centrifuge, mixer or microwave holds.
     A list of ids answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply below; fields name its keys.
     Reply:
@@ -639,7 +639,7 @@ def inspect(what: Literal['genes'], *,
     id: str | list[str],  # Up to 256 plants, seeds or produce.
     unit: int = None,  # With one id: which gene set, 0-based; default the top.
     include: list[Literal['notes']] = None,  # notes: the tool's fixed text.
-) -> dict:  # main list: r['genes']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['genes']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """The genes of plants, seeds and produce.
     Reply, one of:
     (PlantGenes)
@@ -670,7 +670,7 @@ def inspect(what: Literal['chip'], *,
     count: int = 64,  # status: stack values; 0 for none.
     log: int = 5,  # status: last Lua log lines; 0 for none.
     targets: list[str] = None,  # selectors: devices to evaluate; default those on the holder's data network.
-) -> dict:  # main list: r['pins']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['pins']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """A circuit holder's chip: status (line, registers, stack, pins, errors, Lua log), source, selectors. Any device's memory: read memory.
     One part answers that part's reply as it is; several answer {status, source, selectors}.
     A source is often longer than the reply cap: add whole: True to read it all.
@@ -742,7 +742,7 @@ def inspect(what: Literal['screen'], *,
     shown_only: bool = True,  # Leave out hidden elements.
     include: list[Literal['style', 'image']] = None,  # style: colours and fonts; image: a PNG (not on a dedicated server).
     limit: int = 25,  # The first n in order (entries); left out, every one.
-) -> dict:  # main list: r['elements']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['elements']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """What a ScriptedScreens screen shows: surfaces and one surface's elements.
     Reply:
       holder: Thing
@@ -771,7 +771,7 @@ def inspect(what: Literal['rocket'], *,
     compact: bool = True,  # Short form (default): no mass parts, tanks, power devices or checks; False: the whole report.
     self_test: bool = None,  # self_test (boolean, default True (False with compact)): Compare the forecast's formulas with the game's numbers. (default true (false with compact))
     include: list[Literal['parts', 'explain']] = None,  # parts: every part with pose and slots; explain: what the numbers mean.
-) -> dict:  # main list: r['rockets']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['rockets']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Every rocket now, or one by id or name ('Tanker'): position, target, mass, fuel, engines, landing confidence, cargo, power. For a flight or landing check use plan flight.
     Reply:
       rockets: list[{reference_id: str, network_id: str, name: str, automated_landing: bool, auto_shut_off: bool, manned: bool, re_entry_profile: str,
@@ -808,7 +808,7 @@ def inspect(what: Literal['rocket'], *,
 def inspect(what: Literal['vault'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
     id: str | list[str] = None,  # One Ingot or Remote Vault; default every vault.
-) -> dict:  # main list: r['vaults']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['vaults']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """What each Ingot Vault stores, and every Remote Vault's link.
     Reply:
       vaults: list[{vault: Thing, position: Vec3, on_off: bool, powered: bool, stock: list[{kind: str, prefab_name: str | None, display_name: str |
@@ -884,7 +884,7 @@ def inspect(what: Literal['player'], *,
 @overload
 def inspect(what: Literal['planet'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
-) -> dict:  # main list: r['gases']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['gases']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """The planet's atmosphere: gases, pressure, temperature, day range, sea, ice caps.
     No options.
     Reply, one of:
@@ -1030,9 +1030,9 @@ def survey(what: Literal['area'], *,
     cell_detail: Literal['occupancy', 'full'] = 'occupancy',  # occupancy: cells {at, empty, frame_id, faces, small}; full: cells {at, room_id, frame, walls, small, support} in place of those.
     occupied_only: bool = False,  # Only cells holding something.
     limit: int = 8,  # The first n in order (2 m cells); left out, every one.
-) -> dict:  # main list: r['cells']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['cells']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """The 2 m cells of a box or room: what occupies each, the pieces, devices, ports and networks.
-    A big area is many pages (125 cells each); iterating r['cells'] walks them all.
+    A big area is many pages (125 cells each); r['cells'].walk() goes through them all.
     Reply:
       legend: str | None
       cells: list[{at: Vec3, room_id: str | None, frame: {reference_id: str, prefab_name: str | None, build_state: int, build_states: int, blocks_air:
@@ -1069,7 +1069,7 @@ def survey(what: Literal['wall'], *,
     at: list = None,  # The map's centre.
     half_width: float = 4,  # Half-width of the map in metres.
     free_rects: dict = None,  # {w, h, one_section, require_wall, limit}: where a w x h rectangle fits.
-) -> dict:  # main list: r['things']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['things']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """A text elevation of one 2 m face plane, 0.5 m per character; free_rects finds where a rectangle fits.
     Reply:
       plane: str
@@ -1099,7 +1099,7 @@ def survey(what: Literal['network'], *,
     near: str | list = None,  # Centre: [x, y, z], "player", "looking_at" or a thing's id (its position); with radius.
     radius: float = None,  # Metres around near.
     limit: int = None,  # The first n in order (members); left out, every one. (default 30; box 25; summarize 10)
-) -> dict:  # main list: r['members']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['members']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """A cable, pipe or chute network's members (or the pieces in a box), with filters or a summary.
     Reply, one of:
     (NetworkMembers)
@@ -1156,7 +1156,7 @@ def survey(what: Literal['feeds'], *,
     network: str | dict = None,  # A network: its id, a piece or device on it, or {id, port}.
     port: int = None,  # Or the root's port whose network to trace.
     kind: Literal['cable', 'pipe', 'chute'] = 'cable',  # The network's kind when root is a device on several.
-) -> dict:  # main list: r['devices']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['devices']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """How a network feeds its devices from a root device: pieces and rooms each feed passes, daisy chains, unreached devices.
     Reply:
       root: Thing
@@ -1182,7 +1182,7 @@ def read(what: Literal['logic'], *,
     reads: list = None,  # Separate reads, each {id, logic, slots: [{index, logic}], atmosphere: {of, port}, reagents: True}: up to 256 pairs, or 128 per-item reads.
     gateway: str = 'world',  # "world" (default) or a gateway id: only devices on its data networks.
     include: list[Literal['clock']] = None,  # clock: the game clock in the same frame.
-) -> dict:  # main list: r['results']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['results']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Logic values of devices, by type name or number; also slot logic, atmosphere and reagents in one frame.
     One rule for the reply: one id and one logic type answer {reference_id, logic_type {id, name}, value}. id and logic lists, or reads whose every entry is a pair, answer one row per (id, logic) pair, index counting the pairs: results [{index, ok, reference_id, logic_type, value} or {index, ok, reference_id, error}], up to 256. Any entry with a logic list, slots, atmosphere or reagents, or include, answers one row per item in one frame: results [{index, ok, reference_id, logic {Type: value}, logic_errors, slots, atmosphere, reagents, errors} or {index, ok, reference_id, error}], up to 128 items and 1,024 values; more is refused, naming the bound.
     The two list forms: id: [a, b], logic: ["On", "Power"] answers 4 rows, one per (id, logic) pair: {index, ok, reference_id, logic_type {id, name}, value}. reads: [{id: a, logic: ["On", "Power"]}, {id: b, logic: ["On", "Power"]}] answers 2 rows, one per id: {index, ok, reference_id, logic {On: 1, Power: 40.2}}.
@@ -1228,7 +1228,7 @@ def read(what: Literal['snapshot'], *,
     gateway: str = 'world',  # "world" (default) or a gateway id: only devices on its data networks.
     include: list[Literal['zero_ratios']] = None,  # zero_ratios: keep gas and liquid ratios reading 0.
     limit: int = 2,  # The first n in order (devices returned); left out, every one.
-) -> dict:  # main list: r['devices']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['devices']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Every readable logic value of matching devices, in one frame.
     Reply:
       gateway_id: str
@@ -1237,7 +1237,6 @@ def read(what: Literal['snapshot'], *,
           zero_ratios_omitted: int | None}]
       count: int
       matched_count: int
-      truncated: bool
     Example: sg.read('snapshot', prefab='StructureBatteryLarge', limit=10)
     In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
     """
@@ -1306,7 +1305,7 @@ def read(what: Literal['flight_log'], *,
     id: str | list[str] = None,  # A rocket's id, name, network or any part; left out when there is one rocket.
     every: int = 1,  # read: every n-th row.
     limit: int = 12,  # The first n in order (read: rows); left out, every one.
-) -> dict:  # main list: r['rows']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['rows']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """A rocket flight recorder's samples: a page of rows, or the list of recordings (start and stop: write flight_log).
     Reply, one of:
     (FlightLog)
@@ -1361,7 +1360,7 @@ def write(what: Literal['logic'], *,
     writes: list = None,  # Separate writes, each {id, logic, value}, applied in order.
     gateway: str = 'world',  # "world" (default) or a gateway id: only devices on its data networks.
     allow: list[Literal['lint']] = None,  # lint: a write that turns on or opens a vent, valve or pump runs the network lint rules (no oxidiser vented outdoors, fuel mix temperature) on the network it opens to, and is refused on a problem unless lint is allowed (passed lists it).
-) -> dict:  # main list: r['results']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['results']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Logic values on devices, as a chip or console writes them; answers previous and read-back values.
     id or writes is required (missing_target names them); gateway only narrows where ids are looked up. To write every device of a kind, find them and pass their ids as a list (in a confirmed run an id you have not seen stops the run: run it as a report first, then again with confirm: true).
     Reply, one of:
@@ -1503,7 +1502,7 @@ def write(what: Literal['label'], *,
     id: str | list[str] = None,  # One id; a list names each '<label> 1', '<label> 2' in id order.
     label: str = None,  # The new name; empty gives back the game's name.
     labels: list = None,  # Several renames, each {id, label}, in order.
-) -> dict:  # main list: r['results']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['results']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Rename things as the hand Labeller does; empty name gives back the game's name.
     Pipe, cable and chute pieces cannot be renamed (not_labelable, per entry).
     Reply, one of:
@@ -1538,7 +1537,7 @@ def write(what: Literal['paint'], *,
     include: list[Literal['devices']] = None,  # devices: also paint the network's devices.
     color: str = None,  # A colour name, an index, or 'default'.
     items: list = None,  # {id, color} pairs, a colour each.
-) -> dict:  # main list: r['colors']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['colors']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Paint things as a spray can does; network: a pipe's id, or a device's with kind, paints that network's pieces; with no target, list the colours.
     Reply, one of:
     (PaintColors)
@@ -1564,7 +1563,7 @@ def write(what: Literal['flight_log'], *,
     interval_s: float = 1,  # start: game seconds between samples.
     capacity: int = 3600,  # start: samples kept.
     csv: bool = False,  # start: also write a CSV next to the save.
-) -> dict:  # main list: r['events']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['events']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Start, stop or clear a rocket flight recorder (server state; never the world); read it with read flight_log.
     One id only: a list is refused (this write cannot be undone).
     Reply, one of:
@@ -1641,7 +1640,7 @@ def write(what: Literal['battery'], *,
     within: str = None,  # Every cell in this holder's slots, nested; "player" for the player.
     ratio: float = 'full',  # Charge as a share of capacity. (default full)
     joules: float = 'full',  # Charge in joules, clamped. (default full)
-) -> dict:  # main list: r['results']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['results']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Set the charge of batteries and cells: full by default, or a ratio or joules.
     Reports in a report run; acts in a confirmed run.
     Cheat: ask the user first.
@@ -1668,7 +1667,7 @@ def write(what: Literal['genes'], *,
     unit: int = None,  # Which gene set; default the top.
     genes: dict,  # Gene name to new value, -1 to 1 ({"GrowthSpeedMultiplier": 1}).
     allow: list[Literal['out_of_range']] = None,  # out_of_range: write values outside -1..1 too.
-) -> dict:  # main list: r['results']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['results']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Edit plant genes as the Gene Splicer does.
     Reports in a report run; acts in a confirmed run.
     Cheat: ask the user first.
@@ -1797,7 +1796,7 @@ def plan(what: Literal['removal'], *,
     refund_to: str | int | list = None,  # Where removed materials go: a word (inventory, source, storage, ground, none), a container id, or a list tried in turn. (default [inventory, source, storage, ground]) (default [inventory, source, storage, ground])
     include: list[Literal['links', 'notes', 'network_devices']] = None,  # Parts to add to the reply.
     rows: int = 5,  # Pieces listed; 0 for none.
-) -> dict:  # main list: r['removals']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['removals']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Price a removal of cable, pipe or chute pieces without doing it, ever: ids, cells or a whole network.
     Reply:
       grade: str | None
@@ -1851,7 +1850,7 @@ def plan(what: Literal['spot'], *,
     require: dict = None,  # {one_section, min_bottom_above_floor_m, ports_reachable, avoid_doors, front_clear_m, no_visual_overlap}.
     limit: int = 5,  # The first n in order (spots returned); left out, every one.
     max_checks: int = 40,  # Spots checked with the cursor.
-) -> dict:  # main list: r['spots']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['spots']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Free places to put one prefab you are about to build, near a point, on a face plane or a room's walls, checked by the game's cursor; answers build_arguments.
     Reply:
       prefab_name: str | None
@@ -1891,7 +1890,7 @@ def plan(what: Literal['flight'], *,
     limits: bool = True,  # Landing limits, profiles and least fuel.
     column_check: bool = True,  # Scan the landing column above the pad.
     include: list[Literal['explain']] = None,  # explain: the model's fixed rules.
-) -> dict:  # main list: r['legs']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['legs']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Fly a copy of a rocket to a node or pad, tick by tick: launch, hops, re-entry, landing, fuel, power and the verdict; the landing check.
     Reply:
       rocket_id: str
@@ -1931,7 +1930,7 @@ def plan(what: Literal['mining'], *,
     node: str = None,  # A node: its deposit and sites; left out, every charted node with a deposit.
     collectable_only: bool = False,  # Only sites this loadout collects at.
     include: list[Literal['explain']] = None,  # explain: how Mine mode and the yield work.
-) -> dict:  # main list: r['sites']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['sites']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """What a rocket can collect per site, by the game's formulas: yield per cycle and hour, what stops it.
     Reply:
       rocket_id: str
@@ -2012,7 +2011,7 @@ def check(what: Literal['layout'], *,
     id: str | list[str] = None,  # Narrows: only findings on these things (up to 256); room or box is still needed.
     since: str = None,  # Only findings on this id and higher ids (what was made after it).
     limit: int = 25,  # The first n in order (findings returned); left out, every one.
-) -> dict:  # main list: r['findings']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['findings']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Lint a room or a box against the layout rules: replaceability, doors, ports, floating runs, overlaps and more.
     Reply:
       region: str
@@ -2045,7 +2044,7 @@ def check(what: Literal['rules'], *,
     port: int = None,  # explain: the port index.
     other: str = None,  # explain: the other thing of a pair rule.
     at: list = None,  # explain: a cell.
-) -> dict:  # main list: r['rules']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['rules']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """The lint rule set: list, validate a file, fields, functions, run examples, explain a finding.
     Reply:
       action: str
@@ -2070,7 +2069,7 @@ def check(what: Literal['rules'], *,
 def check(what: Literal['replaceable'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
     id: str | list[str],  # Things to check (1 to 1024).
-) -> dict:  # main list: r['results']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['results']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Could a player place each thing again exactly where it stands, every neighbour present.
     Reply, one of:
     (Replaceable)
@@ -2094,7 +2093,7 @@ def check(what: Literal['ignition'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
     id: str | list[str] = None,  # A tank, canister or pipe network: its contents' autoignition margin; left out, the player's carried items.
     include: list[Literal['prefabs']] = None,  # prefabs: every prefab's ignition temperatures.
-) -> dict:  # main list: r['items']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['items']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Whether carried items, or a tank or network by id, would catch fire in the air around them.
     Reply, one of:
     (IgnitionRisk)
@@ -2148,7 +2147,7 @@ def build(what: Literal['structure'], *,
     verbose: bool = False,  # Report: layouts a refused report leaves out; real run: the whole preflight.
     acknowledge_gas_lost: str = None,  # The job id whose gas loss you accept (with the user's agreement); lifts the gas hold.
     from_plan: str = None,  # A plan route or plan spot reply (p = sg.plan('route', ...)), or one spot (p['spots'][2]): build its build_arguments. With from_plan, what may be left out: sg.build(from_plan=p).
-) -> dict:  # main list: r['placements']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['placements']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Any structure a kit builds (light, device, frame, wall, tank, rocket part) by prefab, at a point with a turn; several placements are one job.
     A build that pays from the player's inventory (materials left out, or "player") carries the warning materials_from_player. With from_plan, what may be left out: it comes from the plan.
     Reports in a report run; acts in a confirmed run.
@@ -2221,7 +2220,7 @@ def build(what: Literal['cable'], *,
     rows: int = 5,  # Cells listed; 0 for none.
     verbose: bool = False,  # The long form of the reply.
     from_plan: str = None,  # A plan route or plan spot reply (p = sg.plan('route', ...)), or one spot (p['spots'][2]): build its build_arguments. With from_plan, what may be left out: sg.build(from_plan=p).
-) -> dict:  # main list: r['cells']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['cells']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """A cable run or pieces, as a coil builds it, of a grade; guards for bridging, splitting and overload.
     A build that pays from the player's inventory (materials left out, or "player") carries the warning materials_from_player. With from_plan, what may be left out: it comes from the plan.
     Reports in a report run; acts in a confirmed run.
@@ -2301,7 +2300,7 @@ def build(what: Literal['pipe'], *,
     verbose: bool = False,  # The long form of the reply.
     from_plan: str = None,  # A plan route or plan spot reply (p = sg.plan('route', ...)), or one spot (p['spots'][2]): build its build_arguments. With from_plan, what may be left out: sg.build(from_plan=p).
     acknowledge_gas_lost: str = None,  # The job id whose gas loss you accept (with the user's agreement); lifts the gas hold.
-) -> dict:  # main list: r['cells']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['cells']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """A pipe run or pieces from the grade's kit, with the pipe guards and a gas check.
     A build that pays from the player's inventory (materials left out, or "player") carries the warning materials_from_player. With from_plan, what may be left out: it comes from the plan.
     Reports in a report run; acts in a confirmed run.
@@ -2380,7 +2379,7 @@ def build(what: Literal['chute'], *,
     rows: int = 5,  # Cells listed; 0 for none.
     verbose: bool = False,  # The long form of the reply.
     from_plan: str = None,  # A plan route or plan spot reply (p = sg.plan('route', ...)), or one spot (p['spots'][2]): build its build_arguments. With from_plan, what may be left out: sg.build(from_plan=p).
-) -> dict:  # main list: r['cells']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['cells']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """A chute run or pieces from Kit (Chute), source to sink, with flow guards.
     A build that pays from the player's inventory (materials left out, or "player") carries the warning materials_from_player. With from_plan, what may be left out: it comes from the plan.
     Reports in a report run; acts in a confirmed run.
@@ -2534,7 +2533,7 @@ def swap(what: Literal['wall'], *,
     include: list[Literal['notes']] = None,  # Parts to add to the reply.
     rows: int = 5,  # Pieces listed per list.
     verbose: bool = False,  # The long form of the reply.
-) -> dict:  # main list: r['pieces']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['pieces']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Replace walls and windows with another wall or window prefab without opening a face.
     Reports in a report run; acts in a confirmed run.
     Reply, one of:
@@ -2591,7 +2590,7 @@ def swap(what: Literal['frame'], *,
     include: list[Literal['notes']] = None,  # Parts to add to the reply.
     rows: int = 5,  # Pieces listed per list.
     verbose: bool = False,  # The long form of the reply.
-) -> dict:  # main list: r['pieces']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['pieces']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Replace frames with another frame prefab, or finish unfinished frames, without opening a cell.
     Reports in a report run; acts in a confirmed run.
     Reply, one of:
@@ -2652,7 +2651,7 @@ def swap(what: Literal['cable'], *,
     include: list[Literal['notes']] = None,  # Parts to add to the reply.
     rows: int = 5,  # Pieces listed per list.
     verbose: bool = False,  # The long form of the reply.
-) -> dict:  # main list: r['pieces']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['pieces']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Upgrade cable in place (into heavy or super_heavy) or tidy a network (tidy: remove dead ends, loops...).
     Give into (upgrade) or tidy, not both.
     Reports in a report run; acts in a confirmed run.
@@ -2728,7 +2727,7 @@ def swap(what: Literal['pipe'], *,
     include: list[Literal['notes']] = None,  # Parts to add to the reply.
     rows: int = 5,  # Pieces listed per list.
     verbose: bool = False,  # The long form of the reply.
-) -> dict:  # main list: r['pieces']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['pieces']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Upgrade pipe in place (into insulated, or repair burst pieces) or tidy a network, keeping its contents.
     Give into (upgrade) or tidy, not both.
     Reports in a report run; acts in a confirmed run.
@@ -2800,7 +2799,7 @@ def swap(what: Literal['chute'], *,
     include: list[Literal['notes']] = None,  # Parts to add to the reply.
     rows: int = 5,  # Pieces listed per list.
     verbose: bool = False,  # The long form of the reply.
-) -> dict:  # main list: r['pieces']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['pieces']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Remove chute pieces no item can pass to a consumer; junctions left with one way become straights.
     Reports in a report run; acts in a confirmed run.
     Reply, one of:
@@ -2868,7 +2867,7 @@ def remove(what: Literal['structure'], *,
     include: list[Literal['notes']] = None,  # Parts to add to the reply.
     verbose: bool = False,  # Dry run: each port a split cuts; real run: the whole job.
     acknowledge_gas_lost: str = None,  # The job id whose gas loss you accept (with the user's agreement); lifts the gas hold.
-) -> dict:  # main list: r['removals']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['removals']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Built structures by id (up to 256, one job), taken apart; every build state is refunded down to the kit.
     Reports in a report run; acts in a confirmed run.
     Reply, one of:
@@ -2916,7 +2915,7 @@ def remove(what: Literal['cable'], *,
     include: list[Literal['links', 'notes', 'network_devices']] = None,  # Parts to add to the reply.
     rows: int = 5,  # Pieces listed; 0 for none.
     verbose: bool = False,  # The long form of the reply.
-) -> dict:  # main list: r['removals']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['removals']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Cable pieces as wire cutters remove them: by id, or the piece in each cell of waypoints or cells.
     Reports in a report run; acts in a confirmed run.
     Reply, one of:
@@ -2983,7 +2982,7 @@ def remove(what: Literal['pipe'], *,
     rows: int = 5,  # Pieces listed; 0 for none.
     verbose: bool = False,  # The long form of the reply.
     acknowledge_gas_lost: str = None,  # The job id whose gas loss you accept (with the user's agreement); lifts the gas hold.
-) -> dict:  # main list: r['removals']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['removals']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Pipe pieces as a player remove them: by id, or the piece in each cell of waypoints or cells, never emptying or splitting a network that holds gas.
     Reports in a report run; acts in a confirmed run.
     Reply, one of:
@@ -3049,7 +3048,7 @@ def remove(what: Literal['chute'], *,
     include: list[Literal['links', 'notes', 'network_devices']] = None,  # Parts to add to the reply.
     rows: int = 5,  # Pieces listed; 0 for none.
     verbose: bool = False,  # The long form of the reply.
-) -> dict:  # main list: r['removals']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['removals']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Chute pieces as a player remove them: by id, or the piece in each cell of waypoints or cells.
     Reports in a report run; acts in a confirmed run.
     Reply, one of:
@@ -3140,7 +3139,7 @@ def move(what: Literal['item'], *,
     radius: float = None,  # Metres around near.
     category: Literal['any', 'ingot', 'ore', 'ice'] = 'any',  # Into a vault: filter.
     at_most: int = None,  # Into a store: move at most this many things, nearest first. (default vault 256, silo 64) (default vault 256, silo 64)
-) -> dict:  # main list: r['results']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['results']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Items and kits (a kit such as Kit (Battery Large) is an item; a built structure is not) into a slot or the player's hands with the game's own moves; into or out of a vault or silo store.
     Which handler runs: with slot or moves, a slot move. Otherwise a vault or silo as to or source makes a store move; everything else is a slot move. The reply's first key route names it: slot, into_vault, out_of_vault, vault_to_vault, into_silo or out_of_silo.
     Filters (prefab parts, name, location, within, near, category) work for moves into a store; slot moves take ids.
@@ -3172,7 +3171,6 @@ def move(what: Literal['item'], *,
       via: Thing | None
       matched: int | None
       skipped: int
-      truncated: bool
       items: {results: list[{index: int, ok: bool, reference_id: str, prefab_name: str | None, display_name: str | None, kind: str, from: {id: str,
           slot: int} | None, quantity: float, left_in_source: float} | {index: int, ok: bool, reference_id: str | None, prefab_name: str | None,
           error: Error} | {index: int, ok: bool, asked: str, error: Error} | {index: int, ok: bool, kind: str, prefab_name: str | None, display_name:
@@ -3206,7 +3204,6 @@ def move(what: Literal['item'], *,
       powered: bool
       matched: int | None
       skipped: int
-      truncated: bool
       items: {results: list[{index: int, ok: bool, reference_id: str, prefab_name: str | None, display_name: str | None, from: {id: str, slot: int} |
           None, quantity: float, left_in_source: float, children: int, entry: int} | {index: int, ok: bool, error: Error}], count: int, success_count:
           int, error_count: int}
@@ -3298,7 +3295,7 @@ def move(what: Literal['player'], *,
 @overload
 def trade(what: Literal['contacts'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
-) -> dict:  # main list: r['contacts']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['contacts']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Every trader contact in the sky and every satellite dish with where it points.
     No options.
     Reply:
@@ -3317,7 +3314,7 @@ def trade(what: Literal['inventory'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
     id: str | list[str] = None,  # One contact; left out, every contact.
     card: str = None,  # The card whose holder's goods count; default the player's.
-) -> dict:  # main list: r['contacts']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['contacts']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """What each contact buys and sells: prices, stock, conditions, and what you hold that meets them.
     Reply, one of:
     (Inventory)
@@ -3345,7 +3342,7 @@ def trade(what: Literal['buy'], *,
     id: str | list[str],  # The trader contact. A list is one row per id; a contact that is not landed answers an error row, and the others still trade.
     card: str = None,  # The credit card; default the one the player carries.
     items: list,  # Up to 32 lines {name or prefab, quantity}, in order.
-) -> dict:  # main list: r['delivered']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['delivered']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Buy from the landed trader as the trade window's Buy does.
     Reports in a report run; acts in a confirmed run.
     Reply, one of:
@@ -3413,7 +3410,7 @@ def trade(what: Literal['sell'], *,
     id: str | list[str],  # The trader contact. A list is one row per id; a contact that is not landed answers an error row, and the others still trade.
     card: str = None,  # The credit card paid into; default the one the player carries.
     items: list,  # Up to 32 lines {name or prefab, quantity}.
-) -> dict:  # main list: r['delivered']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['delivered']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Sell to the landed trader as the trade window's Sell does.
     Reports in a report run; acts in a confirmed run.
     Reply, one of:
@@ -3553,7 +3550,7 @@ def undo(*,
     id: str | list[str] = None,  # see sg.help('undo')
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
     id: str | list[str],  # The job, the bulk write (write-N), the script run (script-14), or "paste" on its own; a list is undone newest first, in one report.
-) -> dict:  # main list: r['plans']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['plans']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """A job id (place-12, run-4, remove-3...), a bulk write (write-N), a script run (script-14: the whole run), or "paste" on its own.
     A bulk write undo lists every step with its mark: build and removal jobs [undo] (undo of each, newest first); swap jobs [cannot undo: change job]; logic writes of held settings, memory, label, paint, pins, uplink and genes [undo] (previous values written back); action and pulse logic types [cannot undo: action]; battery [undo: restores the value, not what happened since]; item slot moves [undo] unless merged; chip source, run controls, screen presses, gas moves, player moves, trades, console commands and store moves [cannot undo].
     A script run (script-14) is reverted whole, newest first, each target restored to its value before the run; jobs still in flight at a stop are included once they settle, and groups that cannot be undone are named [cannot undo]. Each target is compared with the run's last written value: where it changed since (the user, a chip, another run), the target is reported and not written unless allow: ["overwrite"]. Undo of a running run is refused: stop it first (server {what: "stop", id}). Past the memory bound undo answers undo_expired, naming what it can no longer revert.
@@ -3610,8 +3607,8 @@ def undo(*,
 @overload
 def server(what: Literal['info'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
-    include: list[Literal['counters']] = None,  # counters: job holds, print log, lint chip programs, batch console, prefab index.
-) -> dict:  # main list: r['methods']; iterating or indexing it walks every page, in order
+    include: list[Literal['counters']] = None,  # counters: job holds, print log, lint chip programs, batch console, prefab index, frame_ms and update_ms (StationGod's whole frame, job steps included).
+) -> dict:  # main list: r['methods']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """The running mod: version, per-method calls and times, game members, its cost to the game.
     Reply:
       mod_id: str
@@ -3631,12 +3628,13 @@ def server(what: Literal['info'], *,
           max: float}, reply_bytes: {total: float, mean: float | None, max: float}}], method_count: int, connections: list[{client_id: str, client:
           str | None, label: str | None, transport: str, protocol: int | None, in_flight: int, served: int, bytes_sent: int, subscriptions: int,
           methods: list[{method: str, calls: int, errors: int, total_ms: float}], method_count: int}] | None, job_settles: {run: int, skipped: int,
-          unchecked: int}, prefab_index: {ready: bool, verify: bool, things: int, names: int, verified: int, differences: int, arrived: int | None,
-          left: int | None}, job_holds: {under_100ms: int, under_1s: int, under_10s: int, under_60s: int, over_60s: int} | None, print_log: {records:
-          int, capacity: int} | None, lint_chip_programs: int | None, batch_console: {lines: int, lines_per_minute: float} | None, frame_ms: {frames:
-          int, p50: float | None, p90: float | None, p99: float | None, over_8ms: int, buckets: list[int]} | None, profiling: {since_s: float,
-          slow_frame_ms: float, frame_ms: {p50: float | None, p95: float | None, max: float | None}, worst_frame_ms: float | None, top: list[{name:
-          str, ms: float}]} | None}
+          unchecked: int}, world_index: {ready: bool, verify: bool, things: int, names: int, classes: {str: int}, verified: int, differences: int,
+          arrived: int | None, left: int | None}, job_holds: {under_100ms: int, under_1s: int, under_10s: int, under_60s: int, over_60s: int} | None,
+          print_log: {records: int, capacity: int} | None, lint_chip_programs: int | None, batch_console: {lines: int, lines_per_minute: float} |
+          None, frame_ms: {frames: int, p50: float | None, p90: float | None, p99: float | None, over_8ms: int, buckets: list[int]} | None, update_ms:
+          {frame: int, frames: int, worst_ms: float | None, worst_frame: int | None, over_budget: int, buckets: list[int], recent: list[{frame: int,
+          ms: float}]} | None, profiling: {since_s: float, slow_frame_ms: float, frame_ms: {p50: float | None, p95: float | None, max: float | None},
+          worst_frame_ms: float | None, top: list[{name: str, ms: float}]} | None}
     Example: sg.server('info')
     """
 
@@ -3646,7 +3644,7 @@ def server(what: Literal['profiling'], *,
     action: Literal['on', 'off', 'reset', 'report'],  # on, off, reset, or report the scopes so far.
     slow_frame_ms: float = 8,  # on: frames over this are logged.
     csv: bool = None,  # on: True starts the rolling CSV, False stops it.
-) -> dict:  # main list: r['scopes']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['scopes']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Profile StationGod's main-thread cost: on, off, reset, report.
     Reply:
       enabled: bool
@@ -3675,7 +3673,7 @@ def server(what: Literal['profiling'], *,
 def server(what: Literal['console'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
     lines: int = 40,  # How many recent lines.
-) -> dict:  # main list: r['lines']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['lines']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """The latest in-game console lines, oldest first.
     Reply:
       requested_lines: int
@@ -3690,7 +3688,7 @@ def server(what: Literal['command'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
     command: str,  # The whole command line.
     lines: int = 100,  # Most lines returned (the oldest kept).
-) -> dict:  # main list: r['output']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['output']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Run any console command and answer what it printed: spawn, delete, teleport, storms, settings.
     Read-only commands (help, rocket print) also only report in a report run; the game does not mark which commands change nothing.
     Reports in a report run; acts in a confirmed run.
@@ -3706,7 +3704,6 @@ def server(what: Literal['command'], *,
       completes_asynchronously: bool
       output_complete: bool
       output_line_count: int
-      truncated: bool
       concurrent_log_lines: int
       output: list[{time: str | None, level: str | None, text: str | None}]
       note: str

@@ -3,7 +3,7 @@ def inspect(what: Literal['device'], *,
     id: str | list[str],  # Target: an id, a list of ids, or "looking_at" (the thing the crosshair is on); "player" where the what says.
     gateway: str = 'world',  # "world" (default) or a gateway id: only devices on its data networks.
     include: list[Literal['logic_types']] = None,  # logic_types: every logic type with id and access.
-) -> dict:  # main list: r['logic_types']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['logic_types']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """A device: logic types it reads and writes, writable ones by name, rocket, umbilical and uplink details.
     A list of ids answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply below; fields name its keys.
     Reply:

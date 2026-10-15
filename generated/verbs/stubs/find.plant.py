@@ -3,7 +3,7 @@ def find(what: Literal['plant'], *,
     id: str | list[str] = None,  # One plant, in full.
     include: list[Literal['unplanted']] = None,  # unplanted: crops and seeds not planted.
     verbose: bool = False,  # The long form of the reply.
-) -> dict:  # main list: r['plants']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['plants']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Plants in trays, planters and stations: stage, health, problems, time to harvest.
     Reply:
       plants: list[{reference_id: str, prefab_name: str | None, display_name: str | None, planted: bool, tray: {reference_id: str, prefab_name: str |

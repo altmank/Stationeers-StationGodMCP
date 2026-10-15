@@ -1,7 +1,7 @@
 def inspect(what: Literal['reagents'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
     id: str | list[str],  # Target: an id, a list of ids, or "looking_at" (the thing the crosshair is on); "player" where the what says.
-) -> dict:  # main list: r['reagents']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['reagents']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """The reagents a furnace, centrifuge, mixer or microwave holds.
     A list of ids answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply below; fields name its keys.
     Reply:

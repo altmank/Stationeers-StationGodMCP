@@ -11,9 +11,9 @@ def survey(what: Literal['area'], *,
     cell_detail: Literal['occupancy', 'full'] = 'occupancy',  # occupancy: cells {at, empty, frame_id, faces, small}; full: cells {at, room_id, frame, walls, small, support} in place of those.
     occupied_only: bool = False,  # Only cells holding something.
     limit: int = 8,  # The first n in order (2 m cells); left out, every one.
-) -> dict:  # main list: r['cells']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['cells']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """The 2 m cells of a box or room: what occupies each, the pieces, devices, ports and networks.
-    A big area is many pages (125 cells each); iterating r['cells'] walks them all.
+    A big area is many pages (125 cells each); r['cells'].walk() goes through them all.
     Reply:
       legend: str | None
       cells: list[{at: Vec3, room_id: str | None, frame: {reference_id: str, prefab_name: str | None, build_state: int, build_states: int, blocks_air:

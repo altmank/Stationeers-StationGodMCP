@@ -7,7 +7,7 @@ def inspect(what: Literal['chip'], *,
     count: int = 64,  # status: stack values; 0 for none.
     log: int = 5,  # status: last Lua log lines; 0 for none.
     targets: list[str] = None,  # selectors: devices to evaluate; default those on the holder's data network.
-) -> dict:  # main list: r['pins']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['pins']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """A circuit holder's chip: status (line, registers, stack, pins, errors, Lua log), source, selectors. Any device's memory: read memory.
     One part answers that part's reply as it is; several answer {status, source, selectors}.
     A source is often longer than the reply cap: add whole: True to read it all.

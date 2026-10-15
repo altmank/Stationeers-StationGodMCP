@@ -9,7 +9,7 @@ def survey(what: Literal['network'], *,
     near: str | list = None,  # Centre: [x, y, z], "player", "looking_at" or a thing's id (its position); with radius.
     radius: float = None,  # Metres around near.
     limit: int = None,  # The first n in order (members); left out, every one. (default 30; box 25; summarize 10)
-) -> dict:  # main list: r['members']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['members']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """A cable, pipe or chute network's members (or the pieces in a box), with filters or a summary.
     Reply, one of:
     (NetworkMembers)

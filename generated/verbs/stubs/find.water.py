@@ -1,7 +1,7 @@
 def find(what: Literal['water'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
     min_mol: float = 1,  # Skip sources holding less water, polluted water and steam together.
-) -> dict:  # main list: r['sources']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['sources']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Canisters, tanks, devices and pipe networks holding water or steam, largest first.
     Reply:
       sources: list[{kind: str, owner: Any, atmosphere_id: str, volume_l: float, pressure_kpa: float, temperature_k: float, water: {liquid_mol: float,

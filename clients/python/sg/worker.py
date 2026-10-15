@@ -205,8 +205,8 @@ def end_state(stop, exception, source):
 
 
 def returnable(value):
-    """The returned value as JSON can carry it: main lists paged in, else its repr when JSON cannot hold it (NaN,
-    a set, an int too long to print). Paging may meet a stop; the run's state then says stopped."""
+    """The returned value as JSON can carry it: main lists as fetched (no page is fetched here), else its repr when
+    JSON cannot hold it (NaN, a set, an int too long to print)."""
     try:
         value = plain(value)
     except BaseException:  # noqa: BLE001 - paging after a stop may be refused; keep what the code had

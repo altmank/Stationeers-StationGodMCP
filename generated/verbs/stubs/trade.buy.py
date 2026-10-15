@@ -3,7 +3,7 @@ def trade(what: Literal['buy'], *,
     id: str | list[str],  # The trader contact. A list is one row per id; a contact that is not landed answers an error row, and the others still trade.
     card: str = None,  # The credit card; default the one the player carries.
     items: list,  # Up to 32 lines {name or prefab, quantity}, in order.
-) -> dict:  # main list: r['delivered']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['delivered']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Buy from the landed trader as the trade window's Buy does.
     Reports in a report run; acts in a confirmed run.
     Reply, one of:

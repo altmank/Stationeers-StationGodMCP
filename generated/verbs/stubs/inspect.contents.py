@@ -6,7 +6,7 @@ def inspect(what: Literal['contents'], *,
     prefab: str | int | list = None,  # Only slots holding this prefab (part with *) at any depth.
     name: str = None,  # Part of the shown name or label, any case.
     limit: int = 10,  # The first n in order (a silo's stored entries listed); left out, every one.
-) -> dict:  # main list: r['slots']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['slots']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Any holder's slots and what is in them, nested (a locker, machine, suit; 'player' for the player).
     A list of ids answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply below; fields name its keys.
     Iteration goes over slots; a silo's stored entries are not iterated.

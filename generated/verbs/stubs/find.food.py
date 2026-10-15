@@ -1,6 +1,6 @@
 def find(what: Literal['food'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
-) -> dict:  # main list: r['food']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['food']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Every food and drink: nutrition, hydration, decay, totals.
     No options.
     Reply:

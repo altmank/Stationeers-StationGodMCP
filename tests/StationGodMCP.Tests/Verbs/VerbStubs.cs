@@ -76,7 +76,8 @@ internal static class VerbStubs
         text.Append(") -> dict:");
         if (mainList != null)
         {
-            text.Append("  # main list: r['").Append(mainList).Append("']; iterating or indexing it walks every page, in order");
+            text.Append("  # main list: r['").Append(mainList)
+                .Append("']: the page answered; .walk() goes through every entry, .all() pages in the rest");
         }
 
         text.Append('\n');

@@ -5,7 +5,7 @@ def read(what: Literal['logic'], *,
     reads: list = None,  # Separate reads, each {id, logic, slots: [{index, logic}], atmosphere: {of, port}, reagents: True}: up to 256 pairs, or 128 per-item reads.
     gateway: str = 'world',  # "world" (default) or a gateway id: only devices on its data networks.
     include: list[Literal['clock']] = None,  # clock: the game clock in the same frame.
-) -> dict:  # main list: r['results']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['results']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Logic values of devices, by type name or number; also slot logic, atmosphere and reagents in one frame.
     One rule for the reply: one id and one logic type answer {reference_id, logic_type {id, name}, value}. id and logic lists, or reads whose every entry is a pair, answer one row per (id, logic) pair, index counting the pairs: results [{index, ok, reference_id, logic_type, value} or {index, ok, reference_id, error}], up to 256. Any entry with a logic list, slots, atmosphere or reagents, or include, answers one row per item in one frame: results [{index, ok, reference_id, logic {Type: value}, logic_errors, slots, atmosphere, reagents, errors} or {index, ok, reference_id, error}], up to 128 items and 1,024 values; more is refused, naming the bound.
     The two list forms: id: [a, b], logic: ["On", "Power"] answers 4 rows, one per (id, logic) pair: {index, ok, reference_id, logic_type {id, name}, value}. reads: [{id: a, logic: ["On", "Power"]}, {id: b, logic: ["On", "Power"]}] answers 2 rows, one per id: {index, ok, reference_id, logic {On: 1, Power: 40.2}}.

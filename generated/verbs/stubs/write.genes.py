@@ -4,7 +4,7 @@ def write(what: Literal['genes'], *,
     unit: int = None,  # Which gene set; default the top.
     genes: dict,  # Gene name to new value, -1 to 1 ({"GrowthSpeedMultiplier": 1}).
     allow: list[Literal['out_of_range']] = None,  # out_of_range: write values outside -1..1 too.
-) -> dict:  # main list: r['results']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['results']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Edit plant genes as the Gene Splicer does.
     Reports in a report run; acts in a confirmed run.
     Cheat: ask the user first.

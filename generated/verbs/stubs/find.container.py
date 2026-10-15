@@ -6,7 +6,7 @@ def find(what: Literal['container'], *,
     radius: float = None,  # Metres around near.
     limit: int = 12,  # The first n in order (entries); left out, every one.
     order: Literal['nearest', 'id'] = 'nearest',  # nearest (default) or id (stable pages).
-) -> dict:  # main list: r['containers']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['containers']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Outermost holders with at least one item: lockers, crates, machines, a backpack on the floor.
     Reply:
       containers: list[{reference_id: str, prefab_name: str | None, display_name: str | None, slot_count: int, used_slot_count: int, item_count: int,

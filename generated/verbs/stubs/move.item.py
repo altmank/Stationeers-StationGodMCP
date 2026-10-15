@@ -19,7 +19,7 @@ def move(what: Literal['item'], *,
     radius: float = None,  # Metres around near.
     category: Literal['any', 'ingot', 'ore', 'ice'] = 'any',  # Into a vault: filter.
     at_most: int = None,  # Into a store: move at most this many things, nearest first. (default vault 256, silo 64) (default vault 256, silo 64)
-) -> dict:  # main list: r['results']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['results']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Items and kits (a kit such as Kit (Battery Large) is an item; a built structure is not) into a slot or the player's hands with the game's own moves; into or out of a vault or silo store.
     Which handler runs: with slot or moves, a slot move. Otherwise a vault or silo as to or source makes a store move; everything else is a slot move. The reply's first key route names it: slot, into_vault, out_of_vault, vault_to_vault, into_silo or out_of_silo.
     Filters (prefab parts, name, location, within, near, category) work for moves into a store; slot moves take ids.

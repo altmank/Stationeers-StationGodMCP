@@ -1,6 +1,6 @@
 def find(what: Literal['gateway'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
-) -> dict:  # main list: r['gateways']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['gateways']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """The device scopes: 'world' and each StationGod Gateway with its status.
     No options.
     Reply:

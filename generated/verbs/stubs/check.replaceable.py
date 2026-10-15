@@ -1,7 +1,7 @@
 def check(what: Literal['replaceable'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
     id: str | list[str],  # Things to check (1 to 1024).
-) -> dict:  # main list: r['results']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['results']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Could a player place each thing again exactly where it stands, every neighbour present.
     Reply, one of:
     (Replaceable)

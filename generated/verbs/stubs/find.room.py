@@ -2,7 +2,7 @@ def find(what: Literal['room'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
     id: str | list[str] = None,  # A thing: only the room it is in.
     include: list[Literal['cells', 'devices']] = None,  # cells: every cell centre; devices: the devices in each room.
-) -> dict:  # main list: r['rooms']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['rooms']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Closed rooms measured cell by cell: volume, pressure, temperature, gases; or the room one thing is in.
     One id answers the wrapper below; a list of ids answers one row per id, {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count, local_player_room_id}, each row's payload the room itself (the rooms item's keys) - not the wrapper - or the error for a thing in no room.
     Reply:

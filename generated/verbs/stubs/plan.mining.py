@@ -4,7 +4,7 @@ def plan(what: Literal['mining'], *,
     node: str = None,  # A node: its deposit and sites; left out, every charted node with a deposit.
     collectable_only: bool = False,  # Only sites this loadout collects at.
     include: list[Literal['explain']] = None,  # explain: how Mine mode and the yield work.
-) -> dict:  # main list: r['sites']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['sites']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """What a rocket can collect per site, by the game's formulas: yield per cycle and hour, what stops it.
     Reply:
       rocket_id: str

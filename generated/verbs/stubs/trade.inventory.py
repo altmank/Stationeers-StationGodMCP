@@ -2,7 +2,7 @@ def trade(what: Literal['inventory'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
     id: str | list[str] = None,  # One contact; left out, every contact.
     card: str = None,  # The card whose holder's goods count; default the player's.
-) -> dict:  # main list: r['contacts']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['contacts']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """What each contact buys and sells: prices, stock, conditions, and what you hold that meets them.
     Reply, one of:
     (Inventory)

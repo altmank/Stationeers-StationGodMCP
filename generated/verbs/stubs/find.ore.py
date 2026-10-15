@@ -6,7 +6,7 @@ def find(what: Literal['ore'], *,
     separation: float = 100,  # Least distance between two spots.
     step: float = None,  # Sample spacing; default the finest within the budget.
     limit: int = 5,  # The first n in order (spots returned, nearest first); left out, every one.
-) -> dict:  # main list: r['spots']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['spots']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Deep miner spots: the ore profile at a point, and the nearest spots holding given ores.
     Reply:
       at: {position: Vec3, regions: list[{set: str, region: str, name: str | None}], profile_id: str | None}

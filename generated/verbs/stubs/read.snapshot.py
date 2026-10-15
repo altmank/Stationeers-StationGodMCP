@@ -7,7 +7,7 @@ def read(what: Literal['snapshot'], *,
     gateway: str = 'world',  # "world" (default) or a gateway id: only devices on its data networks.
     include: list[Literal['zero_ratios']] = None,  # zero_ratios: keep gas and liquid ratios reading 0.
     limit: int = 2,  # The first n in order (devices returned); left out, every one.
-) -> dict:  # main list: r['devices']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['devices']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Every readable logic value of matching devices, in one frame.
     Reply:
       gateway_id: str

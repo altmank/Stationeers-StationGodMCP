@@ -4,7 +4,7 @@ def survey(what: Literal['feeds'], *,
     network: str | dict = None,  # A network: its id, a piece or device on it, or {id, port}.
     port: int = None,  # Or the root's port whose network to trace.
     kind: Literal['cable', 'pipe', 'chute'] = 'cable',  # The network's kind when root is a device on several.
-) -> dict:  # main list: r['devices']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['devices']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """How a network feeds its devices from a root device: pieces and rooms each feed passes, daisy chains, unreached devices.
     Reply:
       root: Thing

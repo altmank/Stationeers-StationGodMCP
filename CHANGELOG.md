@@ -86,6 +86,10 @@
   kept entries instead of searching again. One thing's list (screen, flight log, silo store) walks for a call that
   names one id; a call naming several pages each by offset. A later `read flight_log` page's `offset` counts the rows
   its walk passed.
+- **Scripts walk a list only when they ask.** In `sg`, a reply's main list is the page the call answered: `.walk()`
+  goes through every entry page by page, `.all()` pages in the rest, `.more` says entries remain. A `for`, `len`, an
+  index or a returned value no longer fetch pages behind your back. The hub pages every list on the mod's own walk
+  (no more offset re-scans) and keeps at most 256 walks, dropping one idle for ten minutes (`cursor_expired`).
 
 ## 1.33.2
 

@@ -3,7 +3,7 @@ def inspect(what: Literal['slots'], *,
     id: str | list[str],  # Target: an id, a list of ids, or "looking_at" (the thing the crosshair is on); "player" where the what says.
     gateway: str = 'world',  # "world" (default) or a gateway id: only devices on its data networks.
     slot: int = None,  # One slot index; left out, every slot.
-) -> dict:  # main list: r['slots']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['slots']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """A device's slots: occupants, what each takes, slot logic values.
     A list of ids answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply below; fields name its keys.
     Reply:

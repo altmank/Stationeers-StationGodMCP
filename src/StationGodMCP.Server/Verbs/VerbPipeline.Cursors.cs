@@ -5,9 +5,10 @@ namespace StationGodMCP.Server;
 
 /// <summary>
 /// Main lists on the script and program faces (hub.md Faces, D3): the first page is the mod's first page, asked for
-/// the mod's walk cursor (cursor: "open") where the what offers one; when more remain the reply carries cursor (a hub
-/// cursor) and main (the main list's key), and MoreAsync gives the next entries on the mod's walk cursor where the
-/// reply carried its cursor_id, by offset pages of the same verb call where it did not.
+/// the mod's walk cursor (cursor: "open") where the what offers one; when more remain and the mod kept a walk
+/// (cursor_id), the reply carries cursor (a hub cursor) and main (the main list's key), and MoreAsync gives the next
+/// entries on the mod's walk cursor. Every paged list keeps one (cost design A4); a reply with more but no walk names
+/// the rest unreachable rather than paging the call again by offset.
 /// </summary>
 public sealed partial class VerbPipeline
 {
@@ -31,18 +32,15 @@ public sealed partial class VerbPipeline
             return reply;
         }
 
-        if (!what.Options.ContainsKey("offset"))
+        if (JsonNodes.Text(page["cursor_id"]) is not { } walk)
         {
-            // No offset: the rest cannot be paged to.
-            page["rest_unreachable"] = $"{what.Label} answers one page and takes no offset; narrow the call for the rest.";
+            // No walk kept: the rest cannot be paged to.
+            page["rest_unreachable"] = $"{what.Label} answers one page and keeps no walk; narrow the call for the rest.";
             return reply;
         }
 
-        HubCursor cursor = _cursors.Open(call.Stream, what, (JsonObject)options.DeepClone(), what.MainList!,
+        HubCursor cursor = _cursors.Open(call.Stream, what, (JsonObject)options.DeepClone(), what.MainList!, walk,
             Shape(options).Shape);
-        cursor.NextOffset = (int)(JsonNodes.Number(page["offset"]) ?? JsonNodes.Number(options["offset"]) ?? 0) +
-                            entries.Count;
-        cursor.ModCursor = JsonNodes.Text(page["cursor_id"]);
         page["cursor"] = cursor.Id;
         page["main"] = cursor.Main;
         return reply;
@@ -50,8 +48,8 @@ public sealed partial class VerbPipeline
 
     /// <summary>
     /// The next entries of a script or program reply's main list: {entries, cursor?}; no cursor once the list is done
-    /// (the hub cursor is freed then). Pages on the mod's walk cursor (cursor_id) where the first page opened one, and
-    /// by offset otherwise. An unknown, freed or other stream's cursor answers cursor_expired.
+    /// (the hub cursor is freed then), on the mod's walk cursor. An unknown, freed, evicted, idle or other stream's
+    /// cursor answers cursor_expired.
     /// </summary>
     public async Task<VerbReply> MoreAsync(long stream, string cursorId, int? limit, CancellationToken cancellation)
     {
@@ -59,19 +57,13 @@ public sealed partial class VerbPipeline
         if (cursor == null)
         {
             return new VerbReply.Failed("cursor_expired",
-                $"No cursor '{cursorId}' on this stream: it ended, the world changed, or the list was done. Start the walk again.",
+                $"No cursor '{cursorId}' on this stream: it ended, the world changed, the list was done, or it was " +
+                "dropped (idle too long, or the oldest of too many). Start the walk again.",
                 data: new JsonObject { ["cursor"] = cursorId });
         }
 
         JsonObject options = (JsonObject)cursor.Options.DeepClone();
-        if (cursor.ModCursor is { } walking)
-        {
-            options["cursor"] = walking;
-        }
-        else
-        {
-            options["offset"] = cursor.NextOffset;
-        }
+        options["cursor"] = cursor.ModCursor;
 
         if (limit is { } most)
         {
@@ -87,7 +79,6 @@ public sealed partial class VerbPipeline
 
         JsonNode? page = JsonNodes.FromElement(ok.Result);
         JsonArray entries = HubCursors.Entries(page, cursor.Main);
-        cursor.NextOffset += entries.Count;
         JsonObject answer = new() { ["entries"] = entries };
         if (JsonNodes.IsTrue(page?["has_more"]) && entries.Count > 0)
         {

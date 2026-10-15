@@ -2,7 +2,7 @@ def inspect(what: Literal['prefab'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
     prefab: str | int,  # Whole prefab name or hash.
     include: list[Literal['small_cells']] = None,  # small_cells: each cell's offset.
-) -> dict:  # main list: r['ports']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['ports']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """A buildable prefab before it stands anywhere: placement kind, turns, cells, ports.
     Reply:
       prefab_name: str | None

@@ -1,6 +1,6 @@
 def find(what: Literal['pad'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
-) -> dict:  # main list: r['pads']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['pads']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Landing pads for traders and rockets (not power or teleport pads), by the game's checks: size, runway, which ships fit.
     No options.
     Reply:

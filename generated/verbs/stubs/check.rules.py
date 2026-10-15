@@ -8,7 +8,7 @@ def check(what: Literal['rules'], *,
     port: int = None,  # explain: the port index.
     other: str = None,  # explain: the other thing of a pair rule.
     at: list = None,  # explain: a cell.
-) -> dict:  # main list: r['rules']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['rules']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """The lint rule set: list, validate a file, fields, functions, run examples, explain a finding.
     Reply:
       action: str

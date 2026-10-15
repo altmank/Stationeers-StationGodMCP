@@ -11,7 +11,7 @@ def remove(what: Literal['pipe'], *,
     rows: int = 5,  # Pieces listed; 0 for none.
     verbose: bool = False,  # The long form of the reply.
     acknowledge_gas_lost: str = None,  # The job id whose gas loss you accept (with the user's agreement); lifts the gas hold.
-) -> dict:  # main list: r['removals']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['removals']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Pipe pieces as a player remove them: by id, or the piece in each cell of waypoints or cells, never emptying or splitting a network that holds gas.
     Reports in a report run; acts in a confirmed run.
     Reply, one of:

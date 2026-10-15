@@ -8,7 +8,7 @@ def remove(what: Literal['structure'], *,
     include: list[Literal['notes']] = None,  # Parts to add to the reply.
     verbose: bool = False,  # Dry run: each port a split cuts; real run: the whole job.
     acknowledge_gas_lost: str = None,  # The job id whose gas loss you accept (with the user's agreement); lifts the gas hold.
-) -> dict:  # main list: r['removals']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['removals']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Built structures by id (up to 256, one job), taken apart; every build state is refunded down to the kit.
     Reports in a report run; acts in a confirmed run.
     Reply, one of:

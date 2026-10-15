@@ -373,8 +373,8 @@ public sealed class C2bReviewTests
         FakeGameLink game = new();
         game.Answer = call => (string?)call.Params()["what"] == "pad"
             ? FakeGameLink.Ok("""{"pads":[{"reference_id":"1"}],"has_more":true}""")
-            : FakeGameLink.Ok(call.Params()["offset"] == null
-                ? """{"things":[{"reference_id":"1"}],"has_more":true}"""
+            : FakeGameLink.Ok((string?)call.Params()["cursor"] == "open"
+                ? """{"things":[{"reference_id":"1"}],"has_more":true,"cursor_id":"k1"}"""
                 : """{"things":[{"reference_id":"2"}],"has_more":false}""");
         VerbPipeline pipeline = game.Pipeline();
 
@@ -383,7 +383,7 @@ public sealed class C2bReviewTests
         JsonNode pads = pipeline.Call("find", "pad", "{}", Face.Script).Done()!;
 
         Assert.Equal("""{"fields":["reference_id"]}""", game.CallsTo("find")[1].Shape!.Value.GetRawText());
-        Assert.Contains("takes no offset", (string)pads["rest_unreachable"]!);
+        Assert.Contains("keeps no walk", (string)pads["rest_unreachable"]!);
         Assert.Null(pads["cursor"]);
     }
 

@@ -18,9 +18,9 @@ using static StationGodMCP.Tests.Hub.Verbs;
 namespace StationGodMCP.Tests.Hub;
 
 /// <summary>
-/// Script and program main lists with a hub cursor walked by MoreAsync (the mod's walk cursor where its reply carries
-/// cursor_id, offset pages of the same verb call where it does not), freed at the end, with the stream and on a world
-/// change; job waits on the jobs topic with one poll after (a null after a reconnect included), finality by the mod's
+/// Script and program main lists with a hub cursor walked by MoreAsync on the mod's walk cursor (a reply with more but
+/// no walk names the rest unreachable), freed at the end, with the stream, on a world change and by the store's count
+/// and idle bounds; job waits on the jobs topic with one poll after (a null after a reconnect included), finality by the mod's
 /// final states, and a refused poll answered.
 /// </summary>
 public sealed class CursorAndJobTests
@@ -29,28 +29,23 @@ public sealed class CursorAndJobTests
         pipeline.MoreAsync(stream, cursor, limit, CancellationToken.None).GetAwaiter().GetResult();
 
     [Fact]
-    public void AListPagesByOffset()
+    public void AListWithMoreButNoWalkNamesTheRestUnreachableAndPagesNothingByOffset()
     {
         FakeGameLink game = new();
-        game.Answer = call => (int?)call.Params()["offset"] switch
-        {
-            null => FakeGameLink.Ok("""{"items":[{"reference_id":"1"},{"reference_id":"2"}],"offset":0,"has_more":true}"""),
-            2 => FakeGameLink.Ok("""{"items":[{"reference_id":"3"}],"offset":2,"has_more":false}"""),
-            _ => FakeGameLink.Refused("invalid_argument", "unexpected page")
-        };
+        game.Answer = _ => FakeGameLink.Ok(
+            """{"items":[{"reference_id":"1"},{"reference_id":"2"}],"offset":0,"has_more":true}""");
         VerbPipeline pipeline = game.Pipeline();
 
-        string cursor = (string)pipeline.Call("find", "item", """{"prefab":"ItemIronOre"}""", Face.Script).Done()!["cursor"]!;
-        JsonNode page = More(pipeline, 0, cursor).Done()!;
+        JsonNode reply = pipeline.Call("find", "item", """{"prefab":"ItemIronOre"}""", Face.Script).Done()!;
 
-        // This list pages by offset only (its reply carries no cursor_id), so the walk is offset pages of the call.
-        Same("""{"what":"item","prefab":"ItemIronOre","cursor":"open"}""", game.CallsTo("find")[0].Params());
-        Same("""{"what":"item","prefab":"ItemIronOre","offset":2}""", game.CallsTo("find")[1].Params());
-        Same("""{"entries":[{"reference_id":"3"}]}""", page);
+        Assert.Null(reply["cursor"]);
+        Assert.Contains("keeps no walk", (string)reply["rest_unreachable"]!);
+        Assert.Single(game.CallsTo("find"));
+        Assert.Equal(0, pipeline.Cursors.Count);
     }
 
     // find device's reply for one page, as its handler writes it: 30 devices found, 25 offered of it (ListReply).
-    private static string DevicePage(int offset, int count)
+    private static string DevicePage(int offset, int count, string? cursorId)
     {
         List<DeviceView> devices = new List<DeviceView>();
         for (int index = offset; index < offset + count; index++)
@@ -61,29 +56,36 @@ public sealed class CursorAndJobTests
         }
 
         Newtonsoft.Json.JsonSerializer serializer = ApiJson.Fresh();
-        return ListReply.OfPage("devices", new Page<DeviceView>(devices, 30, offset, 25, offset + count < 30),
-            device => JToken.FromObject(device, serializer), ReplyFields.Of(("gateway_id", "world")))
-            .ToString(Formatting.None);
+        JObject reply = ListReply.OfPage("devices", new Page<DeviceView>(devices, 30, offset, 25, offset + count < 30),
+            device => JToken.FromObject(device, serializer), ReplyFields.Of(("gateway_id", "world")));
+        if (cursorId != null)
+        {
+            reply["cursor_id"] = cursorId;
+        }
+
+        return reply.ToString(Formatting.None);
     }
 
     [Fact]
     public void AProgramFaceFindDeviceWalksTheWholeListThroughMore()
     {
         FakeGameLink game = new();
-        game.Answer = call => FakeGameLink.Ok(call.Params()["offset"] == null ? DevicePage(0, 25) : DevicePage(25, 5));
+        game.Answer = call => FakeGameLink.Ok((string?)call.Params()["cursor"] == "open"
+            ? DevicePage(0, 25, "k3")
+            : DevicePage(25, 5, null));
         VerbPipeline pipeline = game.Pipeline();
 
         JsonNode reply = pipeline.Call("find", "device", "{}", Face.Program).Done()!;
         JsonNode page = More(pipeline, 0, (string)reply["cursor"]!).Done()!;
 
-        // The mod's page marks itself (has_more, total, offset, limit), so the hub walks it by offset, not cursor_id.
+        // The mod's first page keeps its walk (cursor_id), and the hub goes on with it.
         Assert.True((bool)reply["has_more"]!);
         Assert.Equal(25, reply["devices"]!.AsArray().Count);
         Assert.Equal(30, (int)reply["total"]!);
         Assert.Equal(25, (int)reply["limit"]!);
         Assert.Equal("world", (string?)reply["gateway_id"]);
         Same("""{"what":"device","cursor":"open"}""", game.CallsTo("find")[0].Params());
-        Same("""{"what":"device","offset":25}""", game.CallsTo("find")[1].Params());
+        Same("""{"what":"device","cursor":"k3"}""", game.CallsTo("find")[1].Params());
         Assert.Equal(5, page["entries"]!.AsArray().Count);
         Assert.Equal("525", (string?)page["entries"]![0]!["reference_id"]);
         Assert.Equal(30, reply["devices"]!.AsArray().Count + page["entries"]!.AsArray().Count);
@@ -145,7 +147,7 @@ public sealed class CursorAndJobTests
     public void CursorsGoWithTheirStreamAndOnAWorldChangeAndBelongToTheirStream()
     {
         FakeGameLink game = new();
-        game.Answer = _ => FakeGameLink.Ok("""{"things":[{"reference_id":"1"}],"has_more":true}""");
+        game.Answer = _ => FakeGameLink.Ok("""{"things":[{"reference_id":"1"}],"has_more":true,"cursor_id":"k1"}""");
         VerbPipeline pipeline = game.Pipeline();
 
         string first = Open(pipeline, 3);
@@ -156,6 +158,43 @@ public sealed class CursorAndJobTests
         game.ChangeWorld("world-2");
         Assert.Equal("cursor_expired", More(pipeline, 5, second).Failed().Code);
         Assert.Equal(0, pipeline.Cursors.Count);
+    }
+
+    [Fact]
+    public void TheLeastRecentlyUsedCursorGoesWhenTooManyAreHeld()
+    {
+        HubCursors cursors = new(maximumCursors: 3, clockMs: () => 0);
+        WhatEntry what = VerbExampleTests.WhatOf("find.thing");
+        string first = cursors.Open(1, what, new JsonObject(), "things", "k1").Id;
+        string second = cursors.Open(1, what, new JsonObject(), "things", "k2").Id;
+        string third = cursors.Open(1, what, new JsonObject(), "things", "k3").Id;
+        Assert.NotNull(cursors.Get(1, first));
+
+        string fourth = cursors.Open(1, what, new JsonObject(), "things", "k4").Id;
+
+        Assert.Equal(3, cursors.Count);
+        Assert.Null(cursors.Get(1, second));
+        Assert.NotNull(cursors.Get(1, first));
+        Assert.NotNull(cursors.Get(1, third));
+        Assert.NotNull(cursors.Get(1, fourth));
+    }
+
+    [Fact]
+    public void ACursorIdleLongerThanTheBoundIsDropped()
+    {
+        long now = 0;
+        HubCursors cursors = new(maximumIdleMs: 1000, clockMs: () => now);
+        WhatEntry what = VerbExampleTests.WhatOf("find.thing");
+        string paged = cursors.Open(1, what, new JsonObject(), "things", "k1").Id;
+        string idle = cursors.Open(1, what, new JsonObject(), "things", "k2").Id;
+
+        now = 900;
+        Assert.NotNull(cursors.Get(1, paged));
+        now = 1500;
+
+        Assert.NotNull(cursors.Get(1, paged));
+        Assert.Null(cursors.Get(1, idle));
+        Assert.Equal(1, cursors.Count);
     }
 
     private static string Open(VerbPipeline pipeline, long stream) =>

@@ -22,7 +22,7 @@ def build(what: Literal['chute'], *,
     rows: int = 5,  # Cells listed; 0 for none.
     verbose: bool = False,  # The long form of the reply.
     from_plan: str = None,  # A plan route or plan spot reply (p = sg.plan('route', ...)), or one spot (p['spots'][2]): build its build_arguments. With from_plan, what may be left out: sg.build(from_plan=p).
-) -> dict:  # main list: r['cells']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['cells']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """A chute run or pieces from Kit (Chute), source to sink, with flow guards.
     A build that pays from the player's inventory (materials left out, or "player") carries the warning materials_from_player. With from_plan, what may be left out: it comes from the plan.
     Reports in a report run; acts in a confirmed run.

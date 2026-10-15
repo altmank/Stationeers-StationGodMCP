@@ -4,7 +4,7 @@ def inspect(what: Literal['rocket'], *,
     compact: bool = True,  # Short form (default): no mass parts, tanks, power devices or checks; False: the whole report.
     self_test: bool = None,  # self_test (boolean, default True (False with compact)): Compare the forecast's formulas with the game's numbers. (default true (false with compact))
     include: list[Literal['parts', 'explain']] = None,  # parts: every part with pose and slots; explain: what the numbers mean.
-) -> dict:  # main list: r['rockets']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['rockets']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Every rocket now, or one by id or name ('Tanker'): position, target, mass, fuel, engines, landing confidence, cargo, power. For a flight or landing check use plan flight.
     Reply:
       rockets: list[{reference_id: str, network_id: str, name: str, automated_landing: bool, auto_shut_off: bool, manned: bool, re_entry_profile: str,

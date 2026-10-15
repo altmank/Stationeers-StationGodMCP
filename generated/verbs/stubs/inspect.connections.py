@@ -1,7 +1,7 @@
 def inspect(what: Literal['connections'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
     id: str | list[str],  # Target: an id, a list of ids, or "looking_at" (the thing the crosshair is on); "player" where the what says.
-) -> dict:  # main list: r['ends']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['ends']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """One pipe, cable, chute or device: its ends and what each joins.
     A list of ids answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply below; fields name its keys.
     Reply:

@@ -5,7 +5,7 @@ def find(what: Literal['frame'], *,
     include: list[Literal['inner']] = None,  # inner: list inner frames too.
     limit: int = 20,  # The first n in order (entries); left out, every one.
     order: Literal['nearest', 'id'] = 'nearest',  # nearest (default) or id (stable pages).
-) -> dict:  # main list: r['frames']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['frames']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Outer frames (a face on outside air), with exposed faces and airtightness.
     Reply:
       frames: list[{reference_id: str, prefab_name: str | None, display_name: str | None, position: Vec3, distance_m: float | None, exposed_faces:

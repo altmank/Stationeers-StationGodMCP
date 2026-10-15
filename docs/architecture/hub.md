@@ -97,9 +97,11 @@ line has waited 35 s is ended (`slow_client`); a mod method a session may not pa
 
 On the script and program faces a list reply's first page is the handler's first page (or the first `limit`
 entries, D3); when more remain, the reply's top level carries `"cursor": "<hub cursor>"` and the main list's key is
-named in `"main": "<key>"`. `sg`'s main list (a list subclass, note 23) walks a single `for` page by page with `more`,
-and pages in the rest on `len`, an index, `sorted` or a second pass. The hub backs a cursor with the mod's walk cursor
-where the handler has one (`find thing`), and otherwise with `offset` pages.
+named in `"main": "<key>"`. `sg`'s main list (a list subclass, note 23) is the page the call answered: `walk()` goes on
+page by page with `more` and `all()` pages in the rest; nothing else fetches a page. The hub backs a cursor with the
+mod's walk cursor (every paged list keeps one, cost design A4) and opens none when the mod kept no walk (the reply
+says `rest_unreachable`). Hub cursors are bounded: 256 per hub, the least recently used evicted first, and none kept
+idle past ten minutes (`Verbs/HubCursors.cs`); a dropped one answers `cursor_expired`.
 
 The program face is a reading: PLAN names programs as `sg` users but gives no write rule for them; they get the
 direct rule, since nothing reviews a program's run as a whole. So a program's pass-through takes only read-class mod

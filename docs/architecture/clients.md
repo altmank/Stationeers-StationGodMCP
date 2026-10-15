@@ -93,9 +93,10 @@ its stdin is closed at exit, and on Windows it is in a kill-on-close Job Object 
 - Every call is the hub's `verb` method with `{verb, what, args, line}`; `line` is the calling line of the run's code,
   `None` in a program (`_session.py:108-124`).
 - A reply is a `Reply` (a dict). Iterating one raises `TypeError` naming its main list; every dict in a reply is a
-  `Row`, whose `KeyError` carries the keys it has (`_replies.py:1-11`, `:17-38`). The main list is a `MainList`: a
-  single `for` walks it page by page with the hub's `more`; `len`, an index, `in`, `sorted`, `reversed`, `+` or a
-  second pass page in the rest first (`_replies.py:45-95`).
+  `Row`, whose `KeyError` carries the keys it has (`_replies.py:1-11`, `:17-38`). The main list is a `MainList`: the
+  page the call answered; `walk()` goes through every entry page by page with the hub's `more`, `all()` pages in the
+  rest, `more` says entries remain, and nothing else fetches a page (cost design A4): a `for`, `len`, an index, `in`,
+  `sorted`, `+`, a copy and `plain()` see the entries fetched so far (`_replies.py`, `MainList`).
 - Errors raise `sg.Error(code, message, fix, maybe_ran, call)`; the run's write rule and a stop raise `sg.Stopped`
   (a `BaseException`, so `finally` and `with sg.hold` still run); a report pass ends with a private `BaseException`
   (`_errors.py:1-11`, `:46-53`).

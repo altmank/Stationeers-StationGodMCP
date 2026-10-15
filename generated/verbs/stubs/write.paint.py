@@ -6,7 +6,7 @@ def write(what: Literal['paint'], *,
     include: list[Literal['devices']] = None,  # devices: also paint the network's devices.
     color: str = None,  # A colour name, an index, or 'default'.
     items: list = None,  # {id, color} pairs, a colour each.
-) -> dict:  # main list: r['colors']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['colors']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Paint things as a spray can does; network: a pipe's id, or a device's with kind, paints that network's pieces; with no target, list the colours.
     Reply, one of:
     (PaintColors)

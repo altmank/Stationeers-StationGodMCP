@@ -5,7 +5,7 @@ def write(what: Literal['flight_log'], *,
     interval_s: float = 1,  # start: game seconds between samples.
     capacity: int = 3600,  # start: samples kept.
     csv: bool = False,  # start: also write a CSV next to the save.
-) -> dict:  # main list: r['events']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['events']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Start, stop or clear a rocket flight recorder (server state; never the world); read it with read flight_log.
     One id only: a list is refused (this write cannot be undone).
     Reply, one of:

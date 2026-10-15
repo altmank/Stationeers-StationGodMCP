@@ -1,6 +1,6 @@
 def trade(what: Literal['contacts'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
-) -> dict:  # main list: r['contacts']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['contacts']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Every trader contact in the sky and every satellite dish with where it points.
     No options.
     Reply:

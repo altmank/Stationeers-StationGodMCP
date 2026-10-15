@@ -15,7 +15,7 @@ def find(what: Literal['thing'], *,
     box: list = None,  # Two corners [[x, y, z], [x, y, z]].
     limit: int = 8,  # The first n in order (entries); left out, every one.
     order: Literal['nearest', 'id'] = 'nearest',  # nearest (default) or id (stable pages).
-) -> dict:  # main list: r['things']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['things']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Any object: structures, devices, tanks, loose items, players, animals.
     Reply:
       things: list[{made: {maker_id: str | None, maker_prefab: str | None, maker_name: str | None, game_time_s: float, quantity: int, split_from: str

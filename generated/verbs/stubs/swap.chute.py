@@ -11,7 +11,7 @@ def swap(what: Literal['chute'], *,
     include: list[Literal['notes']] = None,  # Parts to add to the reply.
     rows: int = 5,  # Pieces listed per list.
     verbose: bool = False,  # The long form of the reply.
-) -> dict:  # main list: r['pieces']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['pieces']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Remove chute pieces no item can pass to a consumer; junctions left with one way become straights.
     Reports in a report run; acts in a confirmed run.
     Reply, one of:

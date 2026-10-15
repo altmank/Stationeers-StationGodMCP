@@ -4,7 +4,7 @@ In a run_script run, `sg` is already connected to the hub that runs the code. A 
 
     import sg
     sg.connect()                      # starts a child hub (StationGodMCP.Server --hub) for this program
-    for thing in sg.find('thing', prefab='*Battery*', near='player', radius=30)['things']:
+    for thing in sg.find('thing', prefab='*Battery*', near='player', radius=30)['things'].walk():
         print(thing['reference_id'])
 
 sg never talks to the mod directly: every call is the hub protocol over the hub's stdin and stdout

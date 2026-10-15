@@ -3,7 +3,7 @@ def write(what: Literal['label'], *,
     id: str | list[str] = None,  # One id; a list names each '<label> 1', '<label> 2' in id order.
     label: str = None,  # The new name; empty gives back the game's name.
     labels: list = None,  # Several renames, each {id, label}, in order.
-) -> dict:  # main list: r['results']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['results']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Rename things as the hand Labeller does; empty name gives back the game's name.
     Pipe, cable and chute pieces cannot be renamed (not_labelable, per entry).
     Reply, one of:

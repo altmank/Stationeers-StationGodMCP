@@ -5,7 +5,7 @@ def write(what: Literal['battery'], *,
     within: str = None,  # Every cell in this holder's slots, nested; "player" for the player.
     ratio: float = 'full',  # Charge as a share of capacity. (default full)
     joules: float = 'full',  # Charge in joules, clamped. (default full)
-) -> dict:  # main list: r['results']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['results']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Set the charge of batteries and cells: full by default, or a ratio or joules.
     Reports in a report run; acts in a confirmed run.
     Cheat: ask the user first.

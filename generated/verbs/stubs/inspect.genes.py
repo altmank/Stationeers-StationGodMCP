@@ -3,7 +3,7 @@ def inspect(what: Literal['genes'], *,
     id: str | list[str],  # Up to 256 plants, seeds or produce.
     unit: int = None,  # With one id: which gene set, 0-based; default the top.
     include: list[Literal['notes']] = None,  # notes: the tool's fixed text.
-) -> dict:  # main list: r['genes']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['genes']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """The genes of plants, seeds and produce.
     Reply, one of:
     (PlantGenes)

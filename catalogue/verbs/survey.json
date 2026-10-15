@@ -80,7 +80,7 @@
       "text": [
         "A big area is many pages (125 cells at most each), and output_file writes one page. For a whole area, page with offset (has_more) or use a smaller box per call."
       ],
-      "x-script-text": ["A big area is many pages (125 cells each); iterating r['cells'] walks them all."],
+      "x-script-text": ["A big area is many pages (125 cells each); r['cells'].walk() goes through them all."],
       "example": {"room": "17", "sections": ["pieces", "devices"]},
       "x-cost": {"class": "world", "growth": "area"},
       "reply": {

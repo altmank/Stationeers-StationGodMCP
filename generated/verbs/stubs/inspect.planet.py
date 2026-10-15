@@ -1,6 +1,6 @@
 def inspect(what: Literal['planet'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
-) -> dict:  # main list: r['gases']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['gases']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """The planet's atmosphere: gases, pressure, temperature, day range, sea, ice caps.
     No options.
     Reply, one of:

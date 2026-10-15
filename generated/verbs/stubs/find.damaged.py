@@ -6,7 +6,7 @@ def find(what: Literal['damaged'], *,
     near: str | list = None,  # "player" only.
     radius: float = None,  # Metres around near.
     limit: int = 8,  # The first n in order (entries); left out, every one.
-) -> dict:  # main list: r['things']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['things']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Damaged and broken things in the world, worst first.
     Reply:
       things: list[{reference_id: str, prefab_name: str | None, display_name: str | None, custom_name: str | None, build_state: {current: int, last:

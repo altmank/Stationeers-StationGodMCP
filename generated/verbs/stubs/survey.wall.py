@@ -6,7 +6,7 @@ def survey(what: Literal['wall'], *,
     at: list = None,  # The map's centre.
     half_width: float = 4,  # Half-width of the map in metres.
     free_rects: dict = None,  # {w, h, one_section, require_wall, limit}: where a w x h rectangle fits.
-) -> dict:  # main list: r['things']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['things']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """A text elevation of one 2 m face plane, 0.5 m per character; free_rects finds where a rectangle fits.
     Reply:
       plane: str

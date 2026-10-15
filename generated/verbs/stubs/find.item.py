@@ -12,7 +12,7 @@ def find(what: Literal['item'], *,
     exclude_in_use: bool = False,  # Leave out parts a device is using (chips in holders, a running filter's filters).
     limit: int = None,  # The first n in order (items (or groups)); left out, every one. (default 10; group_by place 12)
     order: Literal['nearest', 'id'] = 'nearest',  # nearest (default) or id (stable pages).
-) -> dict:  # main list: r['items']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['items']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Stackable items and kits with quantity and holders, anywhere: ground, carried, stored, machine stock, silos; a kit such as Kit (Battery Large) is an item to find and move, a built structure is not; group_by sums them.
     group_by place takes no order or exclude_in_use (the totals are not paged).
     Reply, one of:

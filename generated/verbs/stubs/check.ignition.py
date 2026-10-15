@@ -2,7 +2,7 @@ def check(what: Literal['ignition'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
     id: str | list[str] = None,  # A tank, canister or pipe network: its contents' autoignition margin; left out, the player's carried items.
     include: list[Literal['prefabs']] = None,  # prefabs: every prefab's ignition temperatures.
-) -> dict:  # main list: r['items']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['items']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Whether carried items, or a tank or network by id, would catch fire in the air around them.
     Reply, one of:
     (IgnitionRisk)

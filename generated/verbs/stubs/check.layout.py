@@ -7,7 +7,7 @@ def check(what: Literal['layout'], *,
     id: str | list[str] = None,  # Narrows: only findings on these things (up to 256); room or box is still needed.
     since: str = None,  # Only findings on this id and higher ids (what was made after it).
     limit: int = 25,  # The first n in order (findings returned); left out, every one.
-) -> dict:  # main list: r['findings']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['findings']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Lint a room or a box against the layout rules: replaceability, doors, ports, floating runs, overlaps and more.
     Reply:
       region: str

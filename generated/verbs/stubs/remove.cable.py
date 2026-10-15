@@ -10,7 +10,7 @@ def remove(what: Literal['cable'], *,
     include: list[Literal['links', 'notes', 'network_devices']] = None,  # Parts to add to the reply.
     rows: int = 5,  # Pieces listed; 0 for none.
     verbose: bool = False,  # The long form of the reply.
-) -> dict:  # main list: r['removals']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['removals']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Cable pieces as wire cutters remove them: by id, or the piece in each cell of waypoints or cells.
     Reports in a report run; acts in a confirmed run.
     Reply, one of:

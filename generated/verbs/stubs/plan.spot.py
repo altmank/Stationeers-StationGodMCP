@@ -12,7 +12,7 @@ def plan(what: Literal['spot'], *,
     require: dict = None,  # {one_section, min_bottom_above_floor_m, ports_reachable, avoid_doors, front_clear_m, no_visual_overlap}.
     limit: int = 5,  # The first n in order (spots returned); left out, every one.
     max_checks: int = 40,  # Spots checked with the cursor.
-) -> dict:  # main list: r['spots']; iterating or indexing it walks every page, in order
+) -> dict:  # main list: r['spots']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Free places to put one prefab you are about to build, near a point, on a face plane or a room's walls, checked by the game's cursor; answers build_arguments.
     Reply:
       prefab_name: str | None
