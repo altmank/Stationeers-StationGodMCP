@@ -304,12 +304,13 @@ public sealed class SubscriptionEngineTests
     }
 
     [Fact]
-    public void TheProjectedLoadRefusesWithTheProjection()
+    public void TheProjectedLoadRefusesWithTheProjectionFromWhatTheFirstReadMeasured()
     {
         // Default limits: 1.5 ms lane share, half of it at 30 frames a second = 22.5 ms per game second.
-        SubscriptionEngine<FakeReading> engine = Engine();
+        double ms = 0.0;
+        SubscriptionEngine<FakeReading> engine = Engine(clockMs: () => ms += 5.12);
         Assert.Equal(22.5, engine.Limits.MaxProjectedMsPerSecond, 9);
-        // 1,024 values at 0.005 ms = 5.12 ms per sample; every 0.5 s = 10.24 ms per second.
+        // Each read measures 5.12 ms; every 0.5 s = 10.24 ms per second.
         DeviceSubscriptionQuery heavy = Queries.Logic(items: 16, logicPerItem: 64);
         Subscribed(engine.Subscribe(A, heavy, Queries.Interval(0.5), At(0, 0)));
         Subscribed(engine.Subscribe(B, heavy, Queries.Interval(0.5), At(0, 0)));
@@ -320,7 +321,27 @@ public sealed class SubscriptionEngineTests
         Assert.Equal(30.72, refusal.Requested, 9);
         Assert.Equal(30.72, refusal.ProjectedMsPerSecond, 9);
         Assert.Equal(22.5, refusal.Maximum, 9);
+        Assert.Equal(3, _reader.Reads);
+        Assert.Equal(1, engine.CountOf(A));
         Subscribed(engine.Subscribe(A, heavy, Queries.Interval(5.0), At(0, 0)));
+    }
+
+    [Fact]
+    public void ASubscriptionsProjectedLoadFollowsWhatItsSamplesCost()
+    {
+        double step = 4.0;
+        double ms = 0.0;
+        SubscriptionEngine<FakeReading> engine = Engine(clockMs: () => ms += step);
+        Subscribe(engine, A, intervalS: 1.0);
+        Assert.Equal(4.0, engine.ProjectedMsPerSecond(), 9);
+
+        step = 0.0;
+        for (int second = 1; second <= 20; second++)
+        {
+            Poll(engine, second, second);
+        }
+
+        Assert.True(engine.ProjectedMsPerSecond() < 0.02);
     }
 
     [Fact]

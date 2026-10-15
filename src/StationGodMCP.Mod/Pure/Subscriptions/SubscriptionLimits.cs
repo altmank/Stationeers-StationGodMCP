@@ -34,50 +34,53 @@ internal readonly struct SamplingInterval
 }
 
 /// <summary>
-/// What one sample of a devices subscription reads and is expected to cost: the values read logic counts (a slot
-/// without logic counts DeviceReadBounds.AllSlotValuesWeight), the items, and the main-thread milliseconds per sample
-/// from the starting figures of scheduling.md (GUESS until measured).
+/// What one sample of a devices subscription reads: the values read logic counts (a slot without logic counts
+/// DeviceReadBounds.AllSlotValuesWeight) and the items. What it costs is measured, not guessed (MeasuredCost).
 /// </summary>
 internal readonly struct SubscriptionPlan
 {
-    /// <summary>Per logic or slot logic value.</summary>
-    internal const double ValueCostMs = 0.005;
-
-    internal const double AtmosphereCostMs = 0.08;
-
-    internal const double ReagentsCostMs = 0.05;
-
-    internal SubscriptionPlan(int items, int values, double costMs)
+    internal SubscriptionPlan(int items, int values)
     {
         Items = items;
         Values = values;
-        CostMs = costMs;
     }
 
     internal int Items { get; }
 
     internal int Values { get; }
 
-    internal double CostMs { get; }
-
     internal static SubscriptionPlan Of(DeviceReadRequest request)
     {
         int values = 0;
-        int atmospheres = 0;
-        int reagents = 0;
         foreach (DeviceReadItem item in request.Items)
         {
             values += item.Weight;
-            atmospheres += item.Atmosphere != null ? 1 : 0;
-            reagents += item.Reagents ? 1 : 0;
         }
 
-        return new SubscriptionPlan(request.Items.Count, values,
-            values * ValueCostMs + atmospheres * AtmosphereCostMs + reagents * ReagentsCostMs);
+        return new SubscriptionPlan(request.Items.Count, values);
+    }
+}
+
+/// <summary>
+/// What one sample (or one find evaluation) of a subscription costs the main thread, measured (cost design A6): its
+/// first read's milliseconds, then a running mean over its samples (stream_costs' sample_ms), each new sample weighing
+/// a quarter, so the projection follows a cost that moves without one slow frame swinging it.
+/// </summary>
+internal sealed class MeasuredCost
+{
+    private const double Weight = 0.25;
+
+    internal MeasuredCost(double firstMs)
+    {
+        Ms = Math.Max(0.0, firstMs);
     }
 
+    internal double Ms { get; private set; }
+
+    internal void Add(double ms) => Ms += Weight * (Math.Max(0.0, ms) - Ms);
+
     /// <summary>Main-thread milliseconds per game second at the interval.</summary>
-    internal double ProjectedMsPerSecond(SamplingInterval interval) => CostMs / interval.Seconds;
+    internal double PerSecond(double intervalS) => Ms / intervalS;
 }
 
 /// <summary>

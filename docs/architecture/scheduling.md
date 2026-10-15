@@ -149,14 +149,19 @@ on the mod's schedule, so it has its own limits (`Pure/Subscriptions/Subscriptio
 
 - **Interval.** 0.5 to 3,600 game seconds, 1 by default; game time stops while the game is paused, so a paused game
   samples nothing (`Pure/Subscriptions/SubscriptionLimits.cs:7-16`).
-- **Cost estimate.** From the values read, the atmospheres and the reagents asked for, with starting figures (0.005
-  ms per logic or slot value, 0.08 ms per atmosphere, 0.05 ms per reagents read) until the game has measured better
-  ones (`SubscriptionLimits.cs:38-52`, `:60-75`).
+- **Shared reads.** Every subscription sampled in a frame takes a device's logic value, slot value, atmosphere or
+  reagents from the frame's first read of it (`Pure/Subscriptions/SampleReads.cs`), so subscribers of one device, on
+  any connection or hub session, cost one read between them; and every subscription with the same interval is due on
+  the same grid (multiples of the interval in game time), so they are sampled in the same frame (`SubscriptionEngine.NextDue`).
+- **Cost, measured.** A subscription's cost is what its reads measure: `subscribe` reads the first reading, timed,
+  and each sample's milliseconds (stream_costs' `sample_ms`) move it, a quarter at a time (`MeasuredCost`). Nothing is
+  guessed.
 - **Admission.** A `subscribe` is refused `subscription_limit` with data `{name, limit, requested, projected_ms_per_s}`
   when it would pass one `read logic` call's bounds (128 items, 1,024 values), when the connection would hold more
-  than 64 subscriptions or 8,192 values, or when every subscription's projected load together would pass half the
-  subscription lane's share at 30 frames a second — 22.5 ms of sampling per second with the defaults
-  (`SubscriptionLimits.cs:88-116`, `:122-147`; `Pure/DeviceReads/DeviceReadRequest.cs:17-22`).
+  than 64 subscriptions or 8,192 values (both before anything is read), or, after its first read, when every
+  subscription's measured load per game second together would pass half the subscription lane's share at 30 frames a
+  second — 22.5 ms of sampling per second with the defaults (`SubscriptionLimits.cs`;
+  `Pure/DeviceReads/DeviceReadRequest.cs:17-22`). A refused read keeps nothing.
 - **A refused client polls** the same items with `read logic` at the same interval instead, which is what `sg.watch`
   and `sg.changes` do ([clients.md](clients.md)).
 

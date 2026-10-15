@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Subscriptions share their reads and are admitted by what they cost.** Every subscription sampled in a frame
+  reads a device's value once, whoever subscribed to it (any connection, any hub session), and subscriptions with the
+  same interval are sampled on one grid of game time (multiples of the interval), so they come due together. A
+  gateway-scoped read (`read logic`, a subscription's or `read sample`'s sample) finds its devices in the gateway's
+  kept map. `subscribe` measures its first read and admits against the projected load from measured costs (each
+  sample moves it), not fixed per-value guesses; a subscription past the load is refused `subscription_limit` after
+  that read, keeping nothing.
 - **Frames' faces, damaged things and gateways' devices are followed, not rebuilt per call.** The mod keeps them from
   the game's change points (structures placed, removed or rebuilt, doors, rooms, terrain edits, every damage write,
   cable networks' device lists). `find frame` measures a frame's faces again only after something near it changed; `find

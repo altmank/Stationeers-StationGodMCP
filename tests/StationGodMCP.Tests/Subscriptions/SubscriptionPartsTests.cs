@@ -219,7 +219,6 @@ public sealed class SubscriptionPartsTests
             """[{"id": "5", "slots": [{"index": 0}], "atmosphere": {}, "reagents": true}]""").Request);
 
         Assert.Equal(32, plan.Values);
-        Assert.Equal(32 * 0.005 + 0.08 + 0.05, plan.CostMs, 9);
     }
 
     [Fact]

@@ -57,7 +57,8 @@ internal abstract class SubscribeOutcome<TReading> where TReading : class
 /// reading offered (or a resync asked for the next reading whatever it holds). Due samples are taken round-robin
 /// across connections, the oldest due first within one, while the lane's budget allows; the connection the budget
 /// stopped at goes first next frame. Admission keeps one subscription to one read logic call, a connection to
-/// MaxSubscriptions and MaxConnectionValues, and the projected load of all of them to MaxProjectedMsPerSecond.
+/// MaxSubscriptions and MaxConnectionValues, and the projected load of all of them to MaxProjectedMsPerSecond, each
+/// subscription's load its measured sample cost (MeasuredCost: its first read's, then its samples') per game second.
 /// </para>
 /// <para>
 /// The world and jobs topics sample nothing: their events come from the mod's own news (a world, a game state, a
@@ -122,24 +123,32 @@ internal sealed class SubscriptionEngine<TReading> where TReading : class
     }
 
     /// <summary>
-    /// A devices subscription: admitted, then read once now for the reply's first reading, which is also the
-    /// baseline later readings are compared with. A read that throws leaves no subscription behind; the call fails
-    /// as read logic would.
+    /// A devices subscription: checked against the bounds, then read once now for the reply's first reading, which is
+    /// also the baseline later readings are compared with, then admitted against the projected load with what that
+    /// read measured (its cost from then on follows its samples). A read that throws leaves no subscription behind; the
+    /// call fails as read logic would. A refusal after the read keeps nothing of it.
     /// </summary>
     internal SubscribeOutcome<TReading> Subscribe(ConnectionId connection, DeviceSubscriptionQuery query,
         SamplingInterval interval, SamplingTick tick, long stream = 0)
     {
         SubscriptionPlan plan = SubscriptionPlan.Of(query.Request);
-        if (Admit(connection, plan, interval) is SubscriptionRefusal refusal)
+        if (AdmitBounds(connection, plan) is SubscriptionRefusal refusal)
         {
             return new SubscribeOutcome<TReading>.Refused(refusal);
         }
 
+        double startedMs = _clockMs();
         TReading first = _reader.Read(query);
+        MeasuredCost cost = new MeasuredCost(_clockMs() - startedMs);
+        if (AdmitLoad(cost.PerSecond(interval.Seconds)) is SubscriptionRefusal overLoad)
+        {
+            return new SubscribeOutcome<TReading>.Refused(overLoad);
+        }
+
         SubscriptionId id = new SubscriptionId(++_lastId);
         DeviceSubscription subscription = new DeviceSubscription(id, query, plan, interval,
             new UpdateSlot<TReading>(connection, id, stream), first,
-            NextDue(double.NegativeInfinity, interval.Seconds, tick.GameTimeS), stream);
+            NextDue(double.NegativeInfinity, interval.Seconds, tick.GameTimeS), stream, cost);
         Held(connection).Add(subscription);
         return new SubscribeOutcome<TReading>.Subscribed(id, interval, plan.Values, tick.Frame, first);
     }
@@ -424,8 +433,9 @@ internal sealed class SubscriptionEngine<TReading> where TReading : class
             return;
         }
 
-        // The read succeeded: the due sample is paid for now, changed or not.
+        // The read succeeded: the due sample is paid for now, changed or not, and its cost is what admission projects.
         events.Sampled(held.Connection, subscription.Stream, sampleMs);
+        subscription.Cost.Add(sampleMs);
         subscription.NextDueS = NextDue(dueS, subscription.Interval.Seconds, tick.GameTimeS);
         bool changed = subscription.ForceNext || !_comparer.SameValues(subscription.Baseline, reading);
         if (!changed)
@@ -475,9 +485,11 @@ internal sealed class SubscriptionEngine<TReading> where TReading : class
             : null;
     }
 
-    private SubscriptionRefusal? Admit(ConnectionId connection, SubscriptionPlan plan, SamplingInterval interval)
+    // The bounds a subscription is checked against before anything is read: on, its items and values, the
+    // connection's subscriptions and values.
+    private SubscriptionRefusal? AdmitBounds(ConnectionId connection, SubscriptionPlan plan)
     {
-        double projected = ProjectedMsPerSecond() + plan.ProjectedMsPerSecond(interval);
+        double projected = ProjectedMsPerSecond();
         if (!Limits.Enabled)
         {
             return new SubscriptionRefusal(SubscriptionLimitKind.SubscriptionsOff, 0, 1, projected);
@@ -503,12 +515,16 @@ internal sealed class SubscriptionEngine<TReading> where TReading : class
         }
 
         int values = ValuesOf(connection) + plan.Values;
-        if (values > Limits.MaxConnectionValues)
-        {
-            return new SubscriptionRefusal(SubscriptionLimitKind.ValuesPerConnection, Limits.MaxConnectionValues,
-                values, projected);
-        }
+        return values > Limits.MaxConnectionValues
+            ? new SubscriptionRefusal(SubscriptionLimitKind.ValuesPerConnection, Limits.MaxConnectionValues, values,
+                projected)
+            : null;
+    }
 
+    // The projected load with a new subscription's measured ms per game second added.
+    private SubscriptionRefusal? AdmitLoad(double addedMsPerSecond)
+    {
+        double projected = ProjectedMsPerSecond() + addedMsPerSecond;
         return projected > Limits.MaxProjectedMsPerSecond
             ? new SubscriptionRefusal(SubscriptionLimitKind.ProjectedLoad, Limits.MaxProjectedMsPerSecond, projected,
                 projected)
@@ -572,9 +588,11 @@ internal sealed class SubscriptionEngine<TReading> where TReading : class
     private sealed class DeviceSubscription
     {
         internal DeviceSubscription(SubscriptionId id, DeviceSubscriptionQuery query, SubscriptionPlan plan,
-            SamplingInterval interval, UpdateSlot<TReading> slot, TReading baseline, double nextDueS, long stream)
+            SamplingInterval interval, UpdateSlot<TReading> slot, TReading baseline, double nextDueS, long stream,
+            MeasuredCost cost)
         {
             Id = id;
+            Cost = cost;
             Stream = stream;
             Query = query;
             Plan = plan;
@@ -607,7 +625,10 @@ internal sealed class SubscriptionEngine<TReading> where TReading : class
 
         internal long LastSampledFrame { get; set; }
 
-        internal double ProjectedMsPerSecond => Plan.ProjectedMsPerSecond(Interval);
+        /// <summary>One sample's main-thread ms, measured.</summary>
+        internal MeasuredCost Cost { get; }
+
+        internal double ProjectedMsPerSecond => Cost.PerSecond(Interval.Seconds);
     }
 
     /// <summary>A world-topic subscription and the stream of the call that made it.</summary>
