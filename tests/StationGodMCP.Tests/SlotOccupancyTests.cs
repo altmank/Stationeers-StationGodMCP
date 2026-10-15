@@ -7,7 +7,7 @@ using Xunit;
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// move_item never replaces, drops or destroys what a slot holds: it fills an empty slot, or joins a stack of the
+/// move item never replaces, drops or destroys what a slot holds: it fills an empty slot, or joins a stack of the
 /// same prefab that has room for the whole moved stack. "auto" passes over every other occupied slot.
 /// </summary>
 public sealed class SlotOccupancyTests

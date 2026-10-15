@@ -13,7 +13,7 @@ using Xunit;
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// mod_info's game counters: the job tick-hold histogram (HoldLengths), the event rate behind batch_console
+/// server info's game counters: the job tick-hold histogram (HoldLengths), the event rate behind batch_console
 /// (EventRate), the prefab index's arrived and left totals, and their place in runtime's wire with include_counters.
 /// </summary>
 public sealed class GameCountersTests

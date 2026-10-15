@@ -441,7 +441,7 @@ public sealed class JobSlotTests
     [Fact]
     public void BusyNamesTheRunningJob()
     {
-        JObject json = JObject.Parse(WireCheck.New(new JobBusyView("place_cables", "run-7", 1, "Job run-7 runs.")));
+        JObject json = JObject.Parse(WireCheck.New(new JobBusyView("build cable", "run-7", 1, "Job run-7 runs.")));
         Assert.Equal("busy", (string?)json["status"]);
         Assert.Equal("run-7", (string?)json["running_job_id"]);
         Assert.Equal(1, (int)json["waiting"]!);
@@ -450,7 +450,7 @@ public sealed class JobSlotTests
     [Fact]
     public void QueuedHasItsOwnJobId()
     {
-        JObject json = JObject.Parse(WireCheck.New(new JobQueuedView("run-8", "remove_cables", 1, "run-7", null)));
+        JObject json = JObject.Parse(WireCheck.New(new JobQueuedView("run-8", "remove cable", 1, "run-7", null)));
         Assert.Equal("queued", (string?)json["status"]);
         Assert.Equal("run-8", (string?)json["job_id"]);
         Assert.Equal(1, (int)json["position"]!);

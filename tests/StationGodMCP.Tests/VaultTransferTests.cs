@@ -11,7 +11,7 @@ using Xunit;
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// vault_transfer without the game: its arguments, which amounts move off the source's lines (all by default, partial
+/// move item without the game: its arguments, which amounts move off the source's lines (all by default, partial
 /// when more is asked than held, later entries taking what earlier ones left), both vaults' amounts around each entry,
 /// the refusals, and the reply.
 /// </summary>

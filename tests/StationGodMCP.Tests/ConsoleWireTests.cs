@@ -6,7 +6,7 @@ using Xunit;
 
 namespace StationGodMCP.Tests;
 
-/// <summary>run_console_command and read_console: the old StationApi and ConsoleBridge shapes; no renames.</summary>
+/// <summary>server command and server console: the old StationApi and ConsoleBridge shapes; no renames.</summary>
 public sealed class ConsoleWireTests
 {
     [Fact]

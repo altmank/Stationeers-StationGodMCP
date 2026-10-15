@@ -6,7 +6,7 @@ using Xunit;
 
 namespace StationGodMCP.Tests;
 
-/// <summary>Fixes from round 4 of the cables live test of 1.4.4, and the pipe-only gas model of remove_structure.</summary>
+/// <summary>Fixes from round 4 of the cables live test of 1.4.4, and the pipe-only gas model of remove structure.</summary>
 public sealed class CablesRound4Tests
 {
     private static GridStep S(string name) => RunModels.Step(name);

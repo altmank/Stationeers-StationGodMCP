@@ -7,7 +7,7 @@ using Xunit;
 
 namespace StationGodMCP.Tests;
 
-/// <summary>The reply envelope, game_clock and mod_info: the wire shapes against the views.</summary>
+/// <summary>The reply envelope, read clock and server info: the wire shapes against the views.</summary>
 public sealed class HostWireTests
 {
     [Fact]
@@ -45,7 +45,7 @@ public sealed class HostWireTests
             informational_version = (string?)null, pipe_name = "StationGodMCP-Test",
             methods = new List<object>
             {
-                new { method = "game_clock", calls = 2L, errors = 0L, total_ms = 0.5, mean_ms = (double?)0.25,
+                new { method = "read.clock", calls = 2L, errors = 0L, total_ms = 0.5, mean_ms = (double?)0.25,
                     max_ms = 0.3 },
                 new { method = "planet", calls = 0L, errors = 0L, total_ms = 0.0, mean_ms = (double?)null,
                     max_ms = 0.0 }
@@ -58,7 +58,7 @@ public sealed class HostWireTests
             new ModIdentity("net.xceled.stationeers.stationgodmcp", "1.0.0", "1.0.0.0", null, "StationGodMCP-Test"),
             new List<MethodStatsView>
             {
-                new MethodStatsView("game_clock", 2, 0, 0.5, 0.3), new MethodStatsView("planet", 0, 0, 0.0, 0.0)
+                new MethodStatsView("read.clock", 2, 0, 0.5, 0.3), new MethodStatsView("planet", 0, 0, 0.0, 0.0)
             },
             new List<ReflectionMemberView> { new ReflectionMemberView("Plant._stageTime", true, false) }, 0,
             RuntimeWireTests.EmptyRuntime());

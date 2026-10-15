@@ -130,7 +130,7 @@ public sealed class GridSurveyOccupancyTests(ITestOutputHelper output)
 
         int before = Survey(full, SurveyLegends.Full).Length;
         int after = Survey(occupancy, SurveyLegends.Occupancy).Length;
-        output.WriteLine($"grid_survey sections [cells], {PageCells} cells: full {before} bytes, occupancy {after} bytes");
+        output.WriteLine($"survey area sections [cells], {PageCells} cells: full {before} bytes, occupancy {after} bytes");
 
         Assert.InRange(before, 90_000, 110_000);
         Assert.True(after <= 15_000, $"occupancy page is {after} bytes");

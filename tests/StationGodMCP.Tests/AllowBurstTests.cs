@@ -11,7 +11,7 @@ using Xunit;
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// remove_structure allow_burst (LU 2026-09-29): an in-line tank or passive vent whose removal squeezes the network left
+/// remove structure allow_burst (LU 2026-09-29): an in-line tank or passive vent whose removal squeezes the network left
 /// past its weakest pipe is refused (would_burst) unless allow_burst, e.g. outdoors, where a burst into the atmosphere
 /// is acceptable. With it the removal goes ahead and warns will_burst with the forecast, the pipes expected to burst,
 /// where they leak and the gas expected out; the job's gas check expects that release (none to all of it gone).

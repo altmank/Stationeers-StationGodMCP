@@ -9,7 +9,7 @@ using Xunit;
 
 namespace StationGodMCP.Tests;
 
-/// <summary>place_structure's relative at and named facings (1.4.3): the pure math and the parsing.</summary>
+/// <summary>build structure's relative at and named facings (1.4.3): the pure math and the parsing.</summary>
 public sealed class RelativeAtTests
 {
     private static GridStep S(string name) => RunModels.Step(name);

@@ -12,7 +12,7 @@ namespace StationGodMCP.Tests;
 /// pipe, deleting the gas (only the gas check's refill put it back, under a new id); the build now merges the new
 /// piece's network into the old one (RunBuilder.Change, live check needed) and grows the run's new pieces outward from
 /// the changed ones. pipes-24: a chute start never leaves through an open end the line's flow sends items in by.
-/// pipes-25: remove_structure refuses a tank removal that splits a network holding gas, as remove_pipes does.
+/// pipes-25: remove structure refuses a tank removal that splits a network holding gas, as remove pipe does.
 /// </summary>
 public sealed class PipesRound4Tests
 {

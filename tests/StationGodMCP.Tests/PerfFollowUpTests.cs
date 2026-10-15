@@ -11,7 +11,7 @@ namespace StationGodMCP.Tests;
 
 /// <summary>
 /// The settle gate (skip only when the game provably has nothing queued; unreadable queues settle), a connection's
-/// per-method counts, the slow water_sources warning, and the three whats costed for the heavy lane.
+/// per-method counts, the slow find water warning, and the three whats costed for the heavy lane.
 /// </summary>
 public sealed class PerfFollowUpTests
 {
@@ -48,18 +48,18 @@ public sealed class PerfFollowUpTests
         ConnectionCalls calls = new ConnectionCalls();
         for (int index = 0; index < 3; index++)
         {
-            calls.Record("game_clock", true, 0.5);
+            calls.Record("read.clock", true, 0.5);
         }
 
         calls.Record("find.thing", false, 40.0);
         calls.Record("find.thing", true, 10.0);
-        calls.Record("dish_aim", true, 2.0);
-        calls.Record("atmosphere_contents", true, 1.0);
+        calls.Record("plan.aim", true, 2.0);
+        calls.Record("inspect.atmosphere", true, 1.0);
 
         MethodCallCount[] top = calls.Top(3).ToArray();
 
         Assert.Equal(4, calls.MethodCount);
-        Assert.Equal(new[] { "game_clock", "find.thing", "atmosphere_contents" }, top.Select(count => count.Method));
+        Assert.Equal(new[] { "read.clock", "find.thing", "inspect.atmosphere" }, top.Select(count => count.Method));
         Assert.Equal(3, top[0].Calls);
         Assert.Equal(1.5, top[0].TotalMs);
         Assert.Equal(1, top[1].Errors);
@@ -70,15 +70,15 @@ public sealed class PerfFollowUpTests
     public void AConnectionViewCarriesItsMethodsAndSubscriptions()
     {
         ConnectionCalls calls = new ConnectionCalls();
-        calls.Record("read_devices", true, 1.234);
-        calls.Record("thing_health", false, 2.0);
+        calls.Record("read.sample", true, 1.234);
+        calls.Record("inspect.health", false, 2.0);
 
         string json = StationGodMCP.Api.Shared.ApiJson.WriteShared(new StationGodMCP.Api.Views.ConnectionView("c2",
             "dash", "stationgod-py", "tcp", 2, 1, 2, 300, calls, 4));
 
         Assert.EndsWith(
-            "\"subscriptions\":4,\"methods\":[{\"method\":\"read_devices\",\"calls\":1,\"errors\":0,\"total_ms\":1.23}," +
-            "{\"method\":\"thing_health\",\"calls\":1,\"errors\":1,\"total_ms\":2.0}],\"method_count\":2}", json);
+            "\"subscriptions\":4,\"methods\":[{\"method\":\"inspect.health\",\"calls\":1,\"errors\":1,\"total_ms\":2.0}," +
+            "{\"method\":\"read.sample\",\"calls\":1,\"errors\":0,\"total_ms\":1.23}],\"method_count\":2}", json);
     }
 
     [Fact]

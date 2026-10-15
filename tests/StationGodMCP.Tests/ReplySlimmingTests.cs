@@ -13,7 +13,7 @@ using Xunit;
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// 1.9.0 slimmer replies on the mod's side: find_things location, connections' member filters, brief confirmed runs
+/// 1.9.0 slimmer replies on the mod's side: find thing location, connections' member filters, brief confirmed runs
 /// (6-10 KB of preflight again) and network device lists as counts (~10 KB).
 /// </summary>
 public sealed class ReplySlimmingTests
@@ -70,7 +70,7 @@ public sealed class ReplySlimmingTests
     [Fact]
     public void AConfirmedRunAnswersItsJobAndThePreflightInShort()
     {
-        RunJobView started = new RunJobView("run-5", "place_cables", "waiting", Report(), null);
+        RunJobView started = new RunJobView("run-5", "build cable", "waiting", Report(), null);
 
         JObject json = JObject.Parse(WireCheck.New(JobStartReplies.Brief(started, JobPreflightSummaryView.Of(Report()))));
 
@@ -86,7 +86,7 @@ public sealed class ReplySlimmingTests
     [Fact]
     public void AQueuedRunLeavesItsPreflightOutToo()
     {
-        JobQueuedView queued = new JobQueuedView("run-6", "place_cables", 2, "run-5", Report());
+        JobQueuedView queued = new JobQueuedView("run-6", "build cable", 2, "run-5", Report());
 
         JObject json = JObject.Parse(WireCheck.New(JobStartReplies.Brief(queued, JobPreflightSummaryView.Of(Report()))));
 
@@ -99,17 +99,17 @@ public sealed class ReplySlimmingTests
     [Fact]
     public void ABusyReplyAndAPollAreUnchanged()
     {
-        JobBusyView busy = new JobBusyView("place_cables", "run-5", 0, "busy");
+        JobBusyView busy = new JobBusyView("build cable", "run-5", 0, "busy");
 
         Assert.Same(busy, JobStartReplies.Brief(busy, JobPreflightSummaryView.Of(Report())));
         Assert.Null(JObject.Parse(WireCheck.New(RunJobView.Brief(
-            new RunJobView("run-5", "place_cables", "waiting", Report(), null))))["preflight_summary"]);
+            new RunJobView("run-5", "build cable", "waiting", Report(), null))))["preflight_summary"]);
     }
 
     [Fact]
     public void AStartedStructureJobCountsItsPlacements()
     {
-        BuildJobView started = new BuildJobView("place-3", "place_structure", "waiting", new { big = true }, null);
+        BuildJobView started = new BuildJobView("place-3", "build structure", "waiting", new { big = true }, null);
         PlaceReportView report = new PlaceReportView(
             new BuildHeader("scheduled", null, new List<BuildIssueView>(),
                 new List<BuildIssueView> { new BuildIssueView("network_piece", "m", 0) }, new List<string>()),
@@ -198,7 +198,7 @@ public sealed class ReplySlimmingTests
     private static ThingView Device(long id) => new ThingView(new ThingId(id), "StructureBattery", "Battery");
 
     private static RunReportView Report() => new RunReportView(
-        new RunHeaderView("place_cables", "scheduled", null, "heavy", null),
+        new RunHeaderView("build cable", "scheduled", null, "heavy", null),
         new RunCellsView(new List<RunCellView>(), 12, 10, 2, 0, new List<RunRemovalView>(), 0),
         new RunMaterialsView(null, new List<UpgradeCoilView>(), true, new List<UpgradeAmountView>()),
         new RunNetworksView(new List<object>(), new List<RunNetworkAfterView>(), new List<RunBridgeView>(),

@@ -125,14 +125,14 @@ public sealed class FileOutputTests : IDisposable
         JsonElement reply = Json(
             $$$"""{"count":2,"total":270,"has_more":false,"things":[{"a":1},{"a":2}],"local_player":{"name":"LU"},"preflight":{"text":"{{{big}}}"}}""");
 
-        JsonElement pointer = folder.Write("find_things", new OutputTarget.Named("ores.json"), reply);
+        JsonElement pointer = folder.Write("find_thing", new OutputTarget.Named("ores.json"), reply);
 
         string path = pointer.GetProperty("output_file").GetString()!;
         Assert.Equal(Path.Combine(folder.Path, "ores.json"), path);
         using JsonDocument written = JsonDocument.Parse(File.ReadAllText(path));
         Assert.Equal(JsonSerializer.Serialize(reply), JsonSerializer.Serialize(written.RootElement));
         Assert.Equal(new FileInfo(path).Length, pointer.GetProperty("bytes").GetInt64());
-        Assert.Equal("find_things", pointer.GetProperty("tool").GetString());
+        Assert.Equal("find_thing", pointer.GetProperty("tool").GetString());
         Assert.Equal(2, pointer.GetProperty("counts").GetProperty("things").GetInt32());
         Assert.Equal(270, pointer.GetProperty("summary").GetProperty("total").GetInt32());
         Assert.Equal("LU", pointer.GetProperty("summary").GetProperty("local_player").GetProperty("name").GetString());
@@ -145,11 +145,11 @@ public sealed class FileOutputTests : IDisposable
     {
         OutputFolder folder = new(_folder);
 
-        JsonElement first = folder.Write("grid_survey", new OutputTarget.Auto(), Json("""{"cells":[]}"""));
-        JsonElement second = folder.Write("grid_survey", new OutputTarget.Auto(), Json("""{"cells":[]}"""));
+        JsonElement first = folder.Write("survey_area", new OutputTarget.Auto(), Json("""{"cells":[]}"""));
+        JsonElement second = folder.Write("survey_area", new OutputTarget.Auto(), Json("""{"cells":[]}"""));
 
         string name = Path.GetFileName(first.GetProperty("output_file").GetString()!);
-        Assert.StartsWith("grid_survey-", name);
+        Assert.StartsWith("survey_area-", name);
         Assert.EndsWith(".json", name);
         Assert.NotEqual(first.GetProperty("output_file").GetString(), second.GetProperty("output_file").GetString());
     }
@@ -173,7 +173,7 @@ public sealed class FileOutputTests : IDisposable
         string other = Path.Combine(_folder, "notes.txt");
         File.WriteAllText(other, "kept: not ours");
 
-        folder.Write("find_things", new OutputTarget.Named("fresh.json"), Json("{}"));
+        folder.Write("find_thing", new OutputTarget.Named("fresh.json"), Json("{}"));
 
         Assert.Equal(OutputFolder.MaximumFiles, Directory.GetFiles(_folder, "*.json").Length);
         Assert.True(File.Exists(Path.Combine(_folder, "fresh.json")));
@@ -189,7 +189,7 @@ public sealed class FileOutputTests : IDisposable
         File.WriteAllText(_folder, "a file where the folder should be");
         try
         {
-            JsonElement reply = new OutputFolder(_folder).Write("find_things", new OutputTarget.Auto(),
+            JsonElement reply = new OutputFolder(_folder).Write("find_thing", new OutputTarget.Auto(),
                 Json("""{"things":[{"a":1}]}"""));
 
             Assert.Equal(1, reply.GetProperty("things").GetArrayLength());

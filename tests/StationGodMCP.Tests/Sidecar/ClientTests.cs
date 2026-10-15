@@ -93,7 +93,7 @@ public sealed class ClientTests
         await using FakeGame game = FakeGame.OnPipe();
         await using StationGodClient client = new(new ClientOptions(game.Target) { ReadEnvironment = _ => "c2VjcmV0" });
 
-        Assert.IsType<CallOutcome.Answered>(await client.CallAsync("game_clock", Json("{}")));
+        Assert.IsType<CallOutcome.Answered>(await client.CallAsync("read.clock", Json("{}")));
 
         JsonElement hello = game.Received.First();
         Assert.Equal("hello", hello.GetProperty("type").GetString());
@@ -110,7 +110,7 @@ public sealed class ClientTests
         await using FakeGame game = FakeGame.OnPipe();
         await using StationGodClient client = new(new ClientOptions(game.Target) { ClientName = "agents", ReadEnvironment = _ => null });
 
-        Assert.IsType<CallOutcome.Answered>(await client.CallAsync("game_clock", Json("{}")));
+        Assert.IsType<CallOutcome.Answered>(await client.CallAsync("read.clock", Json("{}")));
 
         JsonElement hello = game.Received.First();
         Assert.Equal("agents", hello.GetProperty("client").GetProperty("name").GetString());
@@ -123,7 +123,7 @@ public sealed class ClientTests
         await using FakeGame game = FakeGame.OnTcp();
         await using StationGodClient client = new(new ClientOptions(game.Target) { ReadEnvironment = _ => null });
 
-        CallOutcome.Refused refused = Assert.IsType<CallOutcome.Refused>(await client.CallAsync("mod_info", Json("{}")));
+        CallOutcome.Refused refused = Assert.IsType<CallOutcome.Refused>(await client.CallAsync("server.info", Json("{}")));
 
         Assert.Equal("unauthorized", refused.Code);
         Assert.Contains("STATIONGODMCP_SECRET", refused.Error.GetProperty("message").GetString());
@@ -138,7 +138,7 @@ public sealed class ClientTests
             ReadEnvironment = name => name == ClientOptions.DefaultSecretVariable ? FakeGame.TestSecret : null
         });
 
-        Assert.IsType<CallOutcome.Answered>(await client.CallAsync("mod_info", Json("{}")));
+        Assert.IsType<CallOutcome.Answered>(await client.CallAsync("server.info", Json("{}")));
 
         Assert.Equal(1, game.Connections);
         Assert.Equal(FakeGame.TestSecret, game.Received.First().GetProperty("secret").GetString());
@@ -151,7 +151,7 @@ public sealed class ClientTests
         TaskCompletionSource allArrived = new(TaskCreationOptions.RunContinuationsAsynchronously);
         game.Answer = async call =>
         {
-            if (game.CallsTo("read_logic").Count() == 5)
+            if (game.CallsTo("read.logic").Count() == 5)
             {
                 allArrived.TrySetResult();
             }
@@ -162,7 +162,7 @@ public sealed class ClientTests
         await using StationGodClient client = new(new ClientOptions(game.Target));
 
         CallOutcome[] outcomes = await Task.WhenAll(Enumerable.Range(0, 5)
-            .Select(n => client.CallAsync("read_logic", Json($$"""{"n":{{n}}}"""))));
+            .Select(n => client.CallAsync("read.logic", Json($$"""{"n":{{n}}}"""))));
 
         Assert.Equal(Enumerable.Range(0, 5), outcomes.Select(outcome =>
             Assert.IsType<CallOutcome.Answered>(outcome).Result.GetProperty("value").GetInt32()));
@@ -274,25 +274,25 @@ public sealed class ClientTests
         game.Answer = call => Task.FromResult<string?>(call.Error("game_timeout", "Not started in time."));
         await using StationGodClient client = new(new ClientOptions(game.Target));
 
-        CallOutcome outcome = await client.CallAsync("game_clock", Json("{}"));
+        CallOutcome outcome = await client.CallAsync("read.clock", Json("{}"));
 
         Assert.Equal("game_timeout", Assert.IsType<CallOutcome.Refused>(outcome).Code);
-        Assert.Single(game.CallsTo("game_clock"));
+        Assert.Single(game.CallsTo("read.clock"));
     }
 
     [Fact]
     public async Task ACallWithNoReplyInTimeIsCancelledAndSaysItMayHaveRun()
     {
         await using FakeGame game = FakeGame.OnPipe();
-        game.Answer = call => Task.FromResult<string?>(call.Method == "write_logic" ? null : call.Ok("{}"));
+        game.Answer = call => Task.FromResult<string?>(call.Method == "write.logic" ? null : call.Ok("{}"));
         await using StationGodClient client = new(new ClientOptions(game.Target) { ConnectTimeout = TimeSpan.FromMilliseconds(200) });
 
         CallOutcome.NoAnswer noAnswer = Assert.IsType<CallOutcome.NoAnswer>(
-            await client.CallAsync("write_logic", Json("""{"reference_id":"1","logic_type":"On","value":1}"""), deadlineMs: 100));
+            await client.CallAsync("write.logic", Json("""{"reference_id":"1","logic_type":"On","value":1}"""), deadlineMs: 100));
 
         Assert.True(noAnswer.MaybeRan);
         Assert.StartsWith("The game took the request through pipe ", noAnswer.Message);
-        FakeCall call = Assert.Single(game.CallsTo("write_logic"));
+        FakeCall call = Assert.Single(game.CallsTo("write.logic"));
         Assert.Equal(100, call.Message.GetProperty("deadline_ms").GetInt32());
         await Eventually(() => game.Received.Any(message =>
             message.TryGetProperty("type", out JsonElement type) && type.ValueEquals("cancel") &&
@@ -306,9 +306,9 @@ public sealed class ClientTests
         game.Features = ["cancel"];
         await using StationGodClient client = new(new ClientOptions(game.Target));
 
-        await client.CallAsync("find_things", Json("{}"), Json("""{"fields":["reference_id"]}"""));
+        await client.CallAsync("find.thing", Json("{}"), Json("""{"fields":["reference_id"]}"""));
 
-        JsonElement call = Assert.Single(game.CallsTo("find_things")).Message;
+        JsonElement call = Assert.Single(game.CallsTo("find.thing")).Message;
         Assert.False(call.TryGetProperty("deadline_ms", out _));
         Assert.False(call.TryGetProperty("shape", out _));
     }
@@ -318,7 +318,7 @@ public sealed class ClientTests
     {
         await using StationGodClient client = new(new ClientOptions(new GameTarget.Pipe("StationGodMCP-absent-" + Guid.NewGuid().ToString("N"))));
 
-        CallOutcome.NoAnswer noAnswer = Assert.IsType<CallOutcome.NoAnswer>(await client.CallAsync("game_clock", Json("{}")));
+        CallOutcome.NoAnswer noAnswer = Assert.IsType<CallOutcome.NoAnswer>(await client.CallAsync("read.clock", Json("{}")));
 
         Assert.False(noAnswer.MaybeRan);
         Assert.StartsWith("No StationGodMCP pipe ", noAnswer.Message);
@@ -334,10 +334,10 @@ public sealed class ClientTests
         List<string> changes = [];
         client.CatalogueChanged += catalogue => changes.Add(catalogue.Hash);
 
-        await client.CallAsync("game_clock", Json("{}"));
+        await client.CallAsync("read.clock", Json("{}"));
         game.DropAll();
         await Eventually(() => game.OpenConnections == 0);
-        await client.CallAsync("game_clock", Json("{}"));
+        await client.CallAsync("read.clock", Json("{}"));
 
         Assert.Equal([game.CatalogueHash], changes);
         Assert.Equal(game.CatalogueHash, client.Catalogue.Hash);
@@ -353,7 +353,7 @@ public sealed class ClientTests
         game.CatalogueJson = "[]";
         await using StationGodClient client = new(new ClientOptions(game.Target));
 
-        Assert.IsType<CallOutcome.Answered>(await client.CallAsync("game_clock", Json("{}")));
+        Assert.IsType<CallOutcome.Answered>(await client.CallAsync("read.clock", Json("{}")));
 
         Assert.Same(GameCatalogue.BuiltIn, client.Catalogue);
     }
@@ -365,7 +365,7 @@ public sealed class ClientTests
         await using StationGodClient client = new(new ClientOptions(game.Target));
         List<string> worlds = [];
         client.WorldChanged += world => worlds.Add(world.GetProperty("id").GetString()!);
-        await client.CallAsync("game_clock", Json("{}"));
+        await client.CallAsync("read.clock", Json("{}"));
 
         await game.PushAsync("""{"type":"event","event":"world_changed","world":{"id":"world-2","save":"x","epoch":1}}""");
         await game.PushAsync("""{"type":"event","event":"world_changed","world":{"id":"world-2","save":"x","epoch":1}}""");
@@ -382,7 +382,7 @@ public sealed class ClientTests
         await using FakeGame game = FakeGame.OnPipe();
         await using StationGodClient client = new(new ClientOptions(game.Target));
 
-        await client.CallAsync("game_clock", Json("{}"));
+        await client.CallAsync("read.clock", Json("{}"));
 
         await Eventually(() => game.CallsTo("subscribe").Any(call => call.Params.GetRawText() == """{"topic":"world"}"""));
     }
@@ -450,7 +450,7 @@ public sealed class ClientTests
     {
         await using FakeGame game = FakeGame.OnPipe();
         StationGodClient client = new(new ClientOptions(game.Target));
-        await client.CallAsync("game_clock", Json("{}"));
+        await client.CallAsync("read.clock", Json("{}"));
 
         await client.DisposeAsync();
 

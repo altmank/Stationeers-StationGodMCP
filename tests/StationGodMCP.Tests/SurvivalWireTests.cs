@@ -8,7 +8,7 @@ using Xunit;
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// player_vitals and atmosphere_contents: the old StationApi.Survival shapes against the
+/// inspect player and inspect atmosphere: the old StationApi.Survival shapes against the
 /// new views, with the renames each test lists. Each note is compared as the new text: it names renamed
 /// fields.
 /// </summary>

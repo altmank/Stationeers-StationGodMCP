@@ -95,7 +95,7 @@ public sealed class SchedulerInvariantTests
                 FakeCall light = calls[next++];
                 rig.Scheduler.Enqueue(connections[index], light, SchedulerRig.Read(), double.PositiveInfinity);
                 FakeCall other = calls[next++];
-                CallProfile profile = index == 0 ? SchedulerRig.Heavy() : index == 1 ? SchedulerRig.Write() : SchedulerRig.Read("read_devices", CostClass.Bounded, 4);
+                CallProfile profile = index == 0 ? SchedulerRig.Heavy() : index == 1 ? SchedulerRig.Write() : SchedulerRig.Read("read.sample", CostClass.Bounded, 4);
                 rig.Scheduler.Enqueue(connections[index], other, profile, index == 2 ? rig.Clock.NowMs - 1.0 : double.PositiveInfinity);
             }
 
@@ -247,7 +247,7 @@ public sealed class SchedulerInvariantTests
                 rig.Scheduler.Enqueue(connections[index], 0, calls[next++], SchedulerRig.Read(), double.PositiveInfinity);
                 rig.Scheduler.Enqueue(connections[index], run, calls[next++], SchedulerRig.Read(), double.PositiveInfinity);
                 CallProfile profile = index == 0 ? SchedulerRig.Heavy() : index == 1 ? SchedulerRig.Write()
-                    : SchedulerRig.Read("read_devices", CostClass.Bounded, 4);
+                    : SchedulerRig.Read("read.sample", CostClass.Bounded, 4);
                 rig.Scheduler.Enqueue(connections[index], run, calls[next++], profile,
                     index == 2 ? rig.Clock.NowMs - 1.0 : double.PositiveInfinity);
                 rig.Scheduler.Enqueue(connections[index], 1, calls[next++], SchedulerRig.Heavy(), double.PositiveInfinity);

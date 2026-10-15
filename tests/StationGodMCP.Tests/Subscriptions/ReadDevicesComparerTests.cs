@@ -10,7 +10,7 @@ using Xunit;
 namespace StationGodMCP.Tests.Subscriptions;
 
 /// <summary>
-/// The comparison of two read_devices readings, value by value: the clock never counts, every value does, an item that
+/// The comparison of two read sample readings, value by value: the clock never counts, every value does, an item that
 /// starts failing does, errors compare by code, and the subscription and update wire shapes.
 /// </summary>
 public sealed class ReadDevicesComparerTests

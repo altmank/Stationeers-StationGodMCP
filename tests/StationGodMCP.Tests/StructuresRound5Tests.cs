@@ -10,8 +10,8 @@ namespace StationGodMCP.Tests;
 
 /// <summary>
 /// The structures fixes from round 5 of the headless live test (2026-09-29): the frame note is read from the snapped
-/// placement (structures-36), a burst pipe or burnt cable is broken for remove_structure (structures-37), and a paste
-/// is refused while another still places (structures-38); remove_structure's pipe wording (pipes-28).
+/// placement (structures-36), a burst pipe or burnt cable is broken for remove structure (structures-37), and a paste
+/// is refused while another still places (structures-38); remove structure's pipe wording (pipes-28).
 /// </summary>
 public sealed class StructuresRound5Tests
 {
@@ -54,7 +54,7 @@ public sealed class StructuresRound5Tests
         Assert.Equal(2290, LargeCells.StoodIn(new Vec3(-1063, 230, -715), new Vec3(0, -1, 0)).Y);
     }
 
-    // structures-37: a burst pipe and a burnt cable are wrecks (Wrecks.IsBroken), and remove_structure judges a wreck
+    // structures-37: a burst pipe and a burnt cable are wrecks (Wrecks.IsBroken), and remove structure judges a wreck
     // as broken: refused without allow_broken, a warning with it.
     [Theory]
     [InlineData(false, true, false)]
@@ -113,7 +113,7 @@ public sealed class StructuresRound5Tests
     [Fact]
     public void ALongPieceNamesItsOwnCleanTool()
     {
-        Assert.Equal(" (clean_pipes with split_long_straights)", RunLayoutPlanner.SplitHow("clean_pipes"));
+        Assert.Equal(" (swap pipe with split_long_straights)", RunLayoutPlanner.SplitHow("swap pipe"));
         Assert.Equal(string.Empty, RunLayoutPlanner.SplitHow(null));
     }
 }

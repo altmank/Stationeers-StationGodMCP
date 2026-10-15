@@ -10,7 +10,7 @@ using Xunit;
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// atmosphere_contents sources, mounted_pipe_network included (live: a Pipe Analyzer answered no_atmosphere while the
+/// inspect atmosphere sources, mounted_pipe_network included (live: a Pipe Analyzer answered no_atmosphere while the
 /// game read the pipe network in its cell): every source the handler writes is one the catalogue describes, and an
 /// entry carries it as written.
 /// </summary>

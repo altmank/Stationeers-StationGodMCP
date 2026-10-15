@@ -175,7 +175,7 @@ public sealed class CallContextTests
         private readonly CallContext _context;
 
         internal ContextCall(object source, CallContext context)
-            : base(DeadlineAfterMs(60000), new CallProfile("read_logic", MethodClass.Read, new CallCost(CostClass.Instant, 1)))
+            : base(DeadlineAfterMs(60000), new CallProfile("read.logic", MethodClass.Read, new CallCost(CostClass.Instant, 1)))
         {
             _source = source;
             _context = context;

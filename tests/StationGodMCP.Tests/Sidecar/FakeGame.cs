@@ -252,9 +252,8 @@ internal sealed class FakeGame : IAsyncDisposable
         string resume = hello.TryGetProperty("resume", out JsonElement token)
             ? ",\"resume\":{\"token\":" + token.GetRawText() + ",\"resumed\":" + (Resumed ? "true" : "false") + ",\"window_s\":60}"
             : "";
-        await peer.WriteAsync(
+        await peer.WelcomeAsync(
             $$"""{"type":"welcome","protocol":2,"client_id":"c{{peer.Number}}","client":"{{peer.Client}}","server":{"mod_version":"1.10.0","instance_id":"fake","pipe_name":"fake","transport":"pipe","role":"host","dedicated":false,"world":{"id":"{{WorldId}}","save":"fake","epoch":0},"game_state":"Running"},"catalogue":{"hash":"{{CatalogueHash}}","methods":92,"protocol_methods":3},"limits":{{{limits}}},"features":[{{features}}]{{resume}}}""");
-        peer.Welcomed = true;
         if (DropAfterWelcome?.Invoke(peer.Number) == true)
         {
             return;
@@ -322,12 +321,22 @@ internal sealed class FakeGame : IAsyncDisposable
 
         public string Client { get; set; } = "anonymous";
 
-        public async Task WriteAsync(string line)
+        public Task WriteAsync(string line) => WriteAsync(line, welcome: false);
+
+        /// <summary>
+        /// Writes the welcome and marks the peer welcomed under the same write lock. The client can read the welcome and
+        /// push before this continuation runs, so a push must already see the peer as welcomed, and waits on the lock
+        /// rather than overtaking the welcome.
+        /// </summary>
+        public Task WelcomeAsync(string line) => WriteAsync(line, welcome: true);
+
+        private async Task WriteAsync(string line, bool welcome)
         {
             byte[] bytes = Encoding.UTF8.GetBytes(line + "\n");
             await _writing.WaitAsync();
             try
             {
+                Welcomed |= welcome;
                 await stream.WriteAsync(bytes);
                 await stream.FlushAsync();
             }

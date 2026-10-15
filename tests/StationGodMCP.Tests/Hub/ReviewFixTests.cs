@@ -77,7 +77,7 @@ public sealed class ReviewFixTests : IDisposable
         public long NewStream() => throw new NotSupportedException();
 
         public System.Threading.Tasks.Task<GameReply> CallAsync(GameCall call, System.Threading.CancellationToken cancellation) =>
-            throw new InvalidOperationException("game_clock exploded in describe_device");
+            throw new InvalidOperationException("read clock exploded in inspect device");
 
         public System.Threading.Tasks.Task EndStreamAsync(long stream) => throw new NotSupportedException();
 

@@ -7,7 +7,7 @@ using Xunit;
 
 namespace StationGodMCP.Tests;
 
-/// <summary>remove_structure gas_to picks the first network that can take a device's gas, and its gas check expects it.</summary>
+/// <summary>remove structure gas_to picks the first network that can take a device's gas, and its gas check expects it.</summary>
 public sealed class GasHandOverTests
 {
     [Fact]

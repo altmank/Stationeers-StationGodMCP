@@ -1,6 +1,6 @@
 {
   "description": "The reply's truncated notice is carried whole into the pointer, never counted or left to the file.",
-  "method": "find_things",
+  "method": "find_thing",
   "output_file": "truncated",
   "result": {
     "count": 8,
@@ -20,7 +20,7 @@
   },
   "expected_file_name": "truncated.json",
   "expected_pointer": {
-    "tool": "find_things",
+    "tool": "find_thing",
     "counts": {
       "things": 1
     },

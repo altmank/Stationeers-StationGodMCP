@@ -243,20 +243,20 @@ public sealed class DeferredStreamHoldTests
 
     private LoggedCall Write(CallContext context, int deadlineMs = 60000) =>
         new LoggedCall(_connection, context, "write",
-            new CallProfile("write_logic", MethodClass.Write, new CallCost(CostClass.Instant, 1)), deadlineMs,
+            new CallProfile("write.logic", MethodClass.Write, new CallCost(CostClass.Instant, 1)), deadlineMs,
             run: _ =>
             {
                 _world[0]++;
                 _log.Add("write");
-                return new CallOutcome("wrote", "write_logic");
+                return new CallOutcome("wrote", "write.logic");
             });
 
     private LoggedCall Read(CallContext context) =>
-        new LoggedCall(_connection, context, "read", Read("read_logic"), 60000,
+        new LoggedCall(_connection, context, "read", Read("read.logic"), 60000,
             run: _ =>
             {
                 _log.Add("read");
-                return new CallOutcome("read", "read_logic");
+                return new CallOutcome("read", "read.logic");
             });
 
     private static CallProfile Read(string method) =>

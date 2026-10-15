@@ -16,7 +16,7 @@ namespace StationGodMCP.Tests;
 /// <summary>
 /// The 1.2.0 planner features on made-up worlds (the 2026-09-27 solar beams and a synthetic base with a floor slab):
 /// planning as if old pieces were gone (assume_removed), prefer hidden, bus mode (a trunk and its drops), sixteen
-/// starts, grid_survey's inside class and floating report, feed paths and the new report fields on the wire.
+/// starts, survey area's inside class and floating report, feed paths and the new report fields on the wire.
 /// </summary>
 public sealed class PlannerFeaturesTests
 {

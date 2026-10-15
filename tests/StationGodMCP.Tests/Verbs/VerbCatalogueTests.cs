@@ -765,6 +765,48 @@ public sealed class VerbCatalogueTests
         Assert.True(found.Count == 0, "old names in verb help or errors:\n" + string.Join("\n", found.Distinct().Take(60)));
     }
 
+    /// <summary>
+    /// No old tool name in the code, its messages, the Python client, the tools or the tests (LU: no 1.33.2 names
+    /// left). The three test files that name old tools on purpose, to check they are refused or absent, are skipped.
+    /// </summary>
+    [Fact]
+    public void NoOldToolNameIsInTheCodeTheClientTheToolsOrTheTests()
+    {
+        string root = Path.GetFullPath(Path.Combine(VerbCatalogue.SourceRoot, "..", ".."));
+        HashSet<string> guards = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "VerbCatalogueTests.cs", "VerbWireTests.cs", "FinishStepTests.cs"
+        };
+        Regex old = new(@"\b(" + string.Join("|", OldNames) + @")\b");
+        List<string> found = new();
+        foreach ((string folder, string pattern) in new[]
+                 {
+                     ("src", "*.cs"), ("tests/StationGodMCP.Tests", "*.cs"), ("clients/python", "*.py"), ("tools", "*.py"),
+                     ("clients/fixtures", "*.json")
+                 })
+        {
+            foreach (string path in Directory.EnumerateFiles(Path.Combine(root, folder), pattern, SearchOption.AllDirectories))
+            {
+                string relative = Path.GetRelativePath(root, path).Replace('\\', '/');
+                if (relative.Contains("/bin/") || relative.Contains("/obj/") || guards.Contains(Path.GetFileName(path)))
+                {
+                    continue;
+                }
+
+                string[] lines = File.ReadAllLines(path);
+                for (int i = 0; i < lines.Length; i++)
+                {
+                    if (old.Match(lines[i]) is { Success: true } match)
+                    {
+                        found.Add($"{relative}:{i + 1}: {match.Value}");
+                    }
+                }
+            }
+        }
+
+        Assert.True(found.Count == 0, "old tool names:\n" + string.Join("\n", found.Take(60)));
+    }
+
     [Fact]
     public void EveryVerbErrorCodePointsAtVerbHelp()
     {

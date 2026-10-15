@@ -10,7 +10,7 @@ using Xunit;
 
 namespace StationGodMCP.Tests;
 
-/// <summary>place_structure: two placements of one request in one slot.</summary>
+/// <summary>build structure: two placements of one request in one slot.</summary>
 public sealed class PlacementSpotTests
 {
     private static GridStep Step(string name)
@@ -44,7 +44,7 @@ public sealed class PlacementSpotTests
     }
 }
 
-/// <summary>place_structure: where the cursor sets a small-grid device down when aimed at a point in a cell.</summary>
+/// <summary>build structure: where the cursor sets a small-grid device down when aimed at a point in a cell.</summary>
 public sealed class CursorAimTests
 {
     private static GridStep Step(string name)
@@ -104,7 +104,7 @@ public sealed class GridTextTests
     }
 }
 
-/// <summary>remove_structure: one would_breach per face.</summary>
+/// <summary>remove structure: one would_breach per face.</summary>
 public sealed class BreachedFacesTests
 {
     [Fact]
@@ -135,8 +135,8 @@ public sealed class SourceRuleTests
     public void NoLocalPlayerIsOnlyAWarningForPlanRemoval()
     {
         Assert.Equal(GuardLevel.Warning, SourceRule.NoLocalPlayer(SourceRule.PlanRemoval));
-        Assert.Equal(GuardLevel.Refusal, SourceRule.NoLocalPlayer("remove_cables"));
-        Assert.Equal(GuardLevel.Refusal, SourceRule.NoLocalPlayer("place_cables"));
+        Assert.Equal(GuardLevel.Refusal, SourceRule.NoLocalPlayer("remove cable"));
+        Assert.Equal(GuardLevel.Refusal, SourceRule.NoLocalPlayer("build cable"));
     }
 }
 
@@ -167,7 +167,7 @@ public sealed class BuiltPartTests
         Assert.Equal("joined", RunShape.BuiltPart(null, At(9, 0, 0), true));
     }
 
-    // The pieces form (undo_job's rebuilds) was logged under "run".
+    // The pieces form (undo's rebuilds) was logged under "run".
     [Fact]
     public void PiecesFormIsLoggedAsPieces()
     {

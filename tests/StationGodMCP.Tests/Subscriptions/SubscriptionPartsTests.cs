@@ -183,7 +183,7 @@ public sealed class SubscriptionPartsTests
     [Fact]
     public void The1025thValueInOneSubscriptionIsASubscriptionLimit()
     {
-        // 16 items of 64 logic values = 1,024; one more value passes the bound of one read_devices call.
+        // 16 items of 64 logic values = 1,024; one more value passes the bound of one read sample call.
         StringBuilder items = new StringBuilder("[");
         for (int item = 0; item < 17; item++)
         {

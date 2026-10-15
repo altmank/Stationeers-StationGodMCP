@@ -15,7 +15,7 @@ namespace StationGodMCP.Tests;
 
 /// <summary>
 /// 1.7.0 smaller replies (live 2026-09-30: a 6 x 4 x 4 m survey area of 63 KB, a 22 KB Lua chip in every
-/// get_ic_status, 20 KB place_structure polls): every switch leaves the default reply as it was where that was
+/// inspect chip, 20 KB build structure polls): every switch leaves the default reply as it was where that was
 /// promised, and each part left out is absent rather than empty.
 /// </summary>
 public sealed class HeavyPayloadTests

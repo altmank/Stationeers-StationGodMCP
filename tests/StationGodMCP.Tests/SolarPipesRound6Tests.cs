@@ -55,7 +55,7 @@ public sealed class SolarPipesRound6Tests
         Assert.Equal(fits, rect.FitsOneSection);
     }
 
-    // pipes-30: remove_structure quoted remove_pipes' advice to pass allow_split and root, which it does not take.
+    // pipes-30: remove structure quoted remove pipe' advice to pass allow_split and root, which it does not take.
     [Fact]
     public void RemoveStructuresSplitWarningNamesNoArgumentItLacks()
     {

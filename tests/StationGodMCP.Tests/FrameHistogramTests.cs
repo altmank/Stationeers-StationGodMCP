@@ -15,7 +15,7 @@ using Xunit;
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// mod_info's frame_ms with include_counters: the busy frames' request ms in FrameHistogram's fixed buckets, the
+/// server info's frame_ms with include_counters: the busy frames' request ms in FrameHistogram's fixed buckets, the
 /// nearest-rank percentiles read from them, the frames over 8 ms, the raw bucket counts, the frames DispatchStats
 /// counts, the wire, and the edges the catalogue and the docs state.
 /// </summary>

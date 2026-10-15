@@ -5,7 +5,7 @@ using Xunit;
 
 namespace StationGodMCP.Tests;
 
-/// <summary>describe_prefab's engine block: each of the six engine classes has its feed, inputs and class limits.</summary>
+/// <summary>inspect prefab's engine block: each of the six engine classes has its feed, inputs and class limits.</summary>
 public sealed class EngineDesignTests
 {
     [Theory]

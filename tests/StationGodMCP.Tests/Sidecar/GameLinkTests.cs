@@ -61,10 +61,10 @@ public sealed class GameLinkTests
         await using FakeGame game = HubGame();
         await using GameLink link = new(new ClientOptions(game.Target));
 
-        Assert.IsType<GameReply.Ok>(await link.CallAsync(new GameCall("game_clock", Json("{}"), 0), default));
+        Assert.IsType<GameReply.Ok>(await link.CallAsync(new GameCall("read.clock", Json("{}"), 0), default));
         Assert.IsType<GameReply.Ok>(await link.CallAsync(new GameCall("weather", Json("{}"), 3), default));
 
-        Assert.False(Assert.Single(game.CallsTo("game_clock")).Message.TryGetProperty("stream", out _));
+        Assert.False(Assert.Single(game.CallsTo("read.clock")).Message.TryGetProperty("stream", out _));
         Assert.Equal(3, Assert.Single(game.CallsTo("weather")).Message.GetProperty("stream").GetInt64());
     }
 
@@ -93,7 +93,7 @@ public sealed class GameLinkTests
         game.Features.Remove("shape");
         game.DropAll();
         await Eventually(() => game.Connections == 2 && link.WorldId != null);
-        await link.CallAsync(new GameCall("game_clock", Json("{}"))
+        await link.CallAsync(new GameCall("read.clock", Json("{}"))
         {
             Shape = Json("""{"fields":["a"]}"""), DeadlineMs = 900
         }, default);
@@ -102,7 +102,7 @@ public sealed class GameLinkTests
         JsonElement first = Assert.Single(game.CallsTo("weather")).Message;
         Assert.Equal("""{"fields":["a"]}""", first.GetProperty("shape").GetRawText());
         Assert.Equal(1500, first.GetProperty("deadline_ms").GetInt32());
-        JsonElement second = Assert.Single(game.CallsTo("game_clock")).Message;
+        JsonElement second = Assert.Single(game.CallsTo("read.clock")).Message;
         Assert.False(second.TryGetProperty("shape", out _));
         Assert.Equal(900, second.GetProperty("deadline_ms").GetInt32());
         Assert.False(Assert.Single(game.CallsTo("weather_forecast")).Message.TryGetProperty("deadline_ms", out _));
@@ -222,13 +222,13 @@ public sealed class GameLinkTests
         ConcurrentQueue<string?> worlds = new();
         link.WorldChanged += worlds.Enqueue;
 
-        await link.CallAsync(new GameCall("game_clock", Json("{}")), default);
+        await link.CallAsync(new GameCall("read.clock", Json("{}")), default);
         Assert.Equal("world-1", link.WorldId);
         await game.PushAsync("""{"type":"event","event":"world_changed","world":{"id":"world-2","save":"x","epoch":1}}""");
         await Eventually(() => link.WorldId == "world-2");
         await link.CallAsync(new GameCall("weather", Json("{}")), default);
 
-        Assert.Equal("world-1", Assert.Single(game.CallsTo("game_clock")).Message.GetProperty("world").GetString());
+        Assert.Equal("world-1", Assert.Single(game.CallsTo("read.clock")).Message.GetProperty("world").GetString());
         Assert.Equal("world-2", Assert.Single(game.CallsTo("weather")).Message.GetProperty("world").GetString());
         Assert.Equal(["world-2"], worlds);
     }
@@ -337,7 +337,7 @@ public sealed class GameLinkTests
         await using GameLink link = new(new ClientOptions(new GameTarget.Pipe("StationGodMCP-absent-" + Guid.NewGuid().ToString("N"))));
 
         GameReply.Unreachable unreachable = Assert.IsType<GameReply.Unreachable>(
-            await link.CallAsync(new GameCall("game_clock", Json("{}")), default));
+            await link.CallAsync(new GameCall("read.clock", Json("{}")), default));
 
         Assert.False(unreachable.MaybeRan);
         Assert.Null(link.WorldId);
@@ -430,7 +430,7 @@ public sealed class GameLinkTests
         game.Resumed = true;
         game.DropAll();
         await Eventually(() => game.Connections == 2 && link.WorldId != null);
-        await link.CallAsync(new GameCall("game_clock", Json("{}")), default);
+        await link.CallAsync(new GameCall("read.clock", Json("{}")), default);
 
         Assert.Equal(2, Topics(game).Count);
     }
@@ -501,7 +501,7 @@ public sealed class GameLinkTests
         Assert.True(await link.ConnectAsync());
 
         await link.ReleaseAsync(3);
-        await link.CallAsync(new GameCall("game_clock", Json("{}")), default);
+        await link.CallAsync(new GameCall("read.clock", Json("{}")), default);
         Assert.DoesNotContain(game.Received, message => message.GetProperty("type").GetString() == "release");
 
         game.Features.Add("release");
@@ -813,7 +813,7 @@ public sealed class GameLinkTests
         await link.ConnectAsync();
 
         await Eventually(() => game.Connections >= 6 && link.WorldId != null);
-        Assert.IsType<GameReply.Ok>(await link.CallAsync(new GameCall("game_clock", Json("{}")), default));
+        Assert.IsType<GameReply.Ok>(await link.CallAsync(new GameCall("read.clock", Json("{}")), default));
     }
 
     [Fact]
@@ -831,7 +831,7 @@ public sealed class GameLinkTests
         await game.PushAsync("""{"type":"event","event":"world_changed","world":{"id":"world-2","save":"x","epoch":1}}""");
         await Eventually(() => worlds.Contains("world-2"));
 
-        Assert.IsType<GameReply.Ok>(await link.CallAsync(new GameCall("game_clock", Json("{}")), default));
+        Assert.IsType<GameReply.Ok>(await link.CallAsync(new GameCall("read.clock", Json("{}")), default));
         Assert.Equal(1, game.Connections);
     }
 
@@ -919,7 +919,7 @@ public sealed class GameLinkTests
 
     private static string JobEnded(string jobId, string status) =>
         "{\"type\":\"event\",\"event\":\"job_ended\",\"subscription\":\"s2\",\"seq\":1,\"frame\":9,\"job\":{\"job_id\":\"" +
-        jobId + "\",\"tool\":\"place_pipes\",\"status\":\"" + status + "\"}}";
+        jobId + "\",\"tool\":\"build pipe\",\"status\":\"" + status + "\"}}";
 
     private static JsonElement Json(string text)
     {

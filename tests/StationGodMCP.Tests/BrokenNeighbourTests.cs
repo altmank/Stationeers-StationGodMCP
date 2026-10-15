@@ -10,7 +10,7 @@ using Xunit;
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// Broken pieces a network no longer lists (thing_health and connections network forms), and the one-job place-tool
+/// Broken pieces a network no longer lists (inspect health and connections network forms), and the one-job place-tool
 /// replacement the upgrade tools name when they leave a piece alone (rocket pieces, broken build states, pieces off
 /// their line).
 /// </summary>

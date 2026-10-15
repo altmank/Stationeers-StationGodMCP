@@ -11,7 +11,7 @@ namespace StationGodMCP.Tests;
 
 /// <summary>
 /// find item's rows (machine stock like an item; group_by place's totals with stock and working loads) and
-/// container_contents: the old StationApi.Inventory shapes against the new views.
+/// inspect contents: the old StationApi.Inventory shapes against the new views.
 /// </summary>
 public sealed class InventoryWireTests
 {

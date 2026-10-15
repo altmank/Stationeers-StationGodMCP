@@ -121,7 +121,7 @@ public sealed class RotationReadoutTests
     }
 }
 
-/// <summary>place_structure's port preview: a planned device's ports where it would stand.</summary>
+/// <summary>build structure's port preview: a planned device's ports where it would stand.</summary>
 public sealed class PortPreviewTests
 {
     private const int Pipe = 1;

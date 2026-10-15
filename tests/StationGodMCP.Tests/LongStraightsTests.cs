@@ -7,7 +7,7 @@ using Xunit;
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// clean_cables and clean_pipes, split_long_straights: a long straight becomes one single per cell it covers, in its
+/// swap cable clean and swap pipe clean, split_long_straights: a long straight becomes one single per cell it covers, in its
 /// line, with the long piece's tip ends, id and content, and the links out of the run stay exactly the long piece's.
 /// Cells are in the game's units: Grid3 of a small cell's centre in tenths of a metre, so neighbours are 5 apart.
 /// </summary>

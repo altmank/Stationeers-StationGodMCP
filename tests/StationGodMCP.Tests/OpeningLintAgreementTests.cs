@@ -16,7 +16,7 @@ using Xunit;
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// lint_layout's audit and the write rules judge the same device the same way: the write world (OpeningWorld) is
+/// check layout's audit and the write rules judge the same device the same way: the write world (OpeningWorld) is
 /// built from the subjects the audit sees, and every rule on "write" finds on an opening what the audit finds there.
 /// The rule set decides which rules run on a write, so the mod's rules are the copy built into its DLL, never a
 /// lint-rules.json beside it that another version left.

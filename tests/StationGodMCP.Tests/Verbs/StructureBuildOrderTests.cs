@@ -183,7 +183,7 @@ public sealed class StructureBuildOrderTests
         Assert.False(order.AllowLint || order.AllowDoorKeepOut);
         Assert.True(order.Arguments(null, new List<ThingId>()).AllowPad);
 
-        // undo_job's replay gives no allow, so the pad approach guard stands on the placements it puts back.
+        // undo's replay gives no allow, so the pad approach guard stands on the placements it puts back.
         StructureBuildOrder replay = StructureBuildOrder.Replay(
             JArray.Parse("""[{"prefab": "A", "at": [0, 0, 0]}]"""), null, acts: true, queue: true,
             acknowledgeGasLost: null, problems: problems)!;

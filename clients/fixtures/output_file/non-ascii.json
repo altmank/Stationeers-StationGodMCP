@@ -1,6 +1,6 @@
 {
   "description": "The file is UTF-8 without escaping non-ASCII characters; files compare as parsed JSON.",
-  "method": "find_items",
+  "method": "find_item",
   "output_file": "items",
   "result": {
     "items": [
@@ -12,7 +12,7 @@
   },
   "expected_file_name": "items.json",
   "expected_pointer": {
-    "tool": "find_items",
+    "tool": "find_item",
     "counts": {
       "items": 1
     },

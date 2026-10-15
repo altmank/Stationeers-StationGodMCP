@@ -8,7 +8,7 @@ using Xunit;
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// The ring a dedicated server's console lines are kept in (live: run_console_command on the dedicated server
+/// The ring a dedicated server's console lines are kept in (live: server command on the dedicated server
 /// captured nothing, "console buffer not filled"): newest replacing oldest, read oldest first, safe across threads.
 /// </summary>
 public sealed class ConsoleRingTests

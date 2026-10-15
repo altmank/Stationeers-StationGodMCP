@@ -260,7 +260,7 @@ public sealed class PlanRunTests
     [Fact]
     public void ARemovalReplyHasNoJobKeys()
     {
-        JObject body = Replies.Tree(JobReports.Body(new { tool = "plan_removal", status = "dry_run", job_id = (string?)null,
+        JObject body = Replies.Tree(JobReports.Body(new { tool = "plan removal", status = "dry_run", job_id = (string?)null,
             ready = false, removed_count = 2 }, true));
 
         Assert.Equal(new[] { "ready", "removed_count" }, body.Properties().Select(key => key.Name));

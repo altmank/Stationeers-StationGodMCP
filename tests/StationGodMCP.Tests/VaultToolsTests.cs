@@ -10,7 +10,7 @@ using Xunit;
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// vault_withdraw's placement (StackPlacement): matching stacks first, then empty slots, the ground only when allowed,
+/// move item's placement (StackPlacement): matching stacks first, then empty slots, the ground only when allowed,
 /// and what nothing takes reported rather than dropped. And the vault tools' reply shapes.
 /// </summary>
 public sealed class VaultToolsTests

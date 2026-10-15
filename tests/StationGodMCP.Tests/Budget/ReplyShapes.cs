@@ -59,7 +59,7 @@ internal static class ReplyShapes
         return shapes;
     }
 
-    // clean_chutes' dry run at the default limit: removals and dead pieces kept each listed up to it. kept_pieces holds
+    // swap chute clean' dry run at the default limit: removals and dead pieces kept each listed up to it. kept_pieces holds
     // only pieces on a path left with an open end (a piece serving a path is not listed). riding: an item rides in a
     // dead piece only on its way to the floor, and in a junction for one tick, so two at once is already rare. It
     // builds nothing, so no warning (materials_from_player) is listed.

@@ -163,13 +163,13 @@ internal sealed class SchedulerRig
         new SchedulerSettings(requestBudgetMs, subscriptionBudgetMs, SchedulerSettings.DefaultHeavyThresholdMs,
             SchedulerSettings.DefaultHeavyMaxWaitFrames, maxInFlight, maxInFlightPerConnection);
 
-    internal static CallProfile Read(string method = "read_logic", CostClass cost = CostClass.Instant, int items = 1) =>
+    internal static CallProfile Read(string method = "read.logic", CostClass cost = CostClass.Instant, int items = 1) =>
         new CallProfile(method, MethodClass.Read, new CallCost(cost, items));
 
-    internal static CallProfile Write(string method = "write_logic", CostClass cost = CostClass.Instant) =>
+    internal static CallProfile Write(string method = "write.logic", CostClass cost = CostClass.Instant) =>
         new CallProfile(method, MethodClass.Write, new CallCost(cost, 1));
 
-    internal static CallProfile Heavy(string method = "grid_survey") => Read(method, CostClass.World);
+    internal static CallProfile Heavy(string method = "survey.area") => Read(method, CostClass.World);
 
     internal Admission Light(FrameScheduler<FakeCall>.Connection connection, string name, double costMs = 0.1) =>
         Add(connection, name, Read(), costMs);

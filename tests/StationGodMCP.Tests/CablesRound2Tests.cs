@@ -151,7 +151,7 @@ public sealed class CablesRound2Tests
         Assert.Equal(new long[] { 365 }, detail.CutOff);
     }
 
-    // devices cross-area: remove_cables refund false moves no item, so it needs neither a player nor from_id.
+    // devices cross-area: remove cable refund false moves no item, so it needs neither a player nor from_id.
     [Theory]
     [InlineData(false, false, false)]
     [InlineData(false, true, true)]

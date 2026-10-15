@@ -8,7 +8,7 @@ namespace StationGodMCP.Tests;
 
 /// <summary>
 /// The fixes of 1.4.4, from the live test of 1.4.3 on Vulcan (2026-09-29): mesh boxes for face occupancy, seams, the
-/// wall map and find_spot; the undo plan's pieces; the wall map's corner; the floor face plane; lint codes; bridging.
+/// wall map and plan spot; the undo plan's pieces; the wall map's corner; the floor face plane; lint codes; bridging.
 /// </summary>
 public sealed class LiveTest144Tests
 {

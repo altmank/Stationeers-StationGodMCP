@@ -5,7 +5,7 @@ using Xunit;
 
 namespace StationGodMCP.Tests;
 
-/// <summary>grid_survey occupied_only: a small cell holds something when a piece, device or other thing stands in it.</summary>
+/// <summary>survey area occupied_only: a small cell holds something when a piece, device or other thing stands in it.</summary>
 public sealed class SmallOccupancyTests
 {
     [Theory]

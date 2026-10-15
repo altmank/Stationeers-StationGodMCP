@@ -19,18 +19,18 @@ public sealed class CostPredictorTests
     {
         CostPredictor predictor = new CostPredictor();
 
-        Assert.Equal(Lane.Light, predictor.LaneFor(SchedulerRig.Read("read_devices", CostClass.Bounded, 128), Threshold));
-        Assert.Null(predictor.PredictMs(SchedulerRig.Read("read_devices", CostClass.Bounded, 128)));
+        Assert.Equal(Lane.Light, predictor.LaneFor(SchedulerRig.Read("read.sample", CostClass.Bounded, 128), Threshold));
+        Assert.Null(predictor.PredictMs(SchedulerRig.Read("read.sample", CostClass.Bounded, 128)));
     }
 
     [Fact]
     public void ThePredictionIsTheAverageTimePerItemTimesTheItems()
     {
         CostPredictor predictor = new CostPredictor();
-        predictor.Observe(SchedulerRig.Read("read_devices", CostClass.Bounded, 10), 0.3);
-        predictor.Observe(SchedulerRig.Read("read_devices", CostClass.Bounded, 30), 0.5);
+        predictor.Observe(SchedulerRig.Read("read.sample", CostClass.Bounded, 10), 0.3);
+        predictor.Observe(SchedulerRig.Read("read.sample", CostClass.Bounded, 30), 0.5);
 
-        double? predicted = predictor.PredictMs(SchedulerRig.Read("read_devices", CostClass.Bounded, 100));
+        double? predicted = predictor.PredictMs(SchedulerRig.Read("read.sample", CostClass.Bounded, 100));
 
         Assert.Equal(2.0, predicted!.Value, 9);
     }
@@ -41,27 +41,27 @@ public sealed class CostPredictorTests
         CostPredictor predictor = new CostPredictor();
         for (int index = 0; index < CostPredictor.Window; index++)
         {
-            predictor.Observe(SchedulerRig.Read("read_devices", CostClass.Bounded, 20), 0.2);
+            predictor.Observe(SchedulerRig.Read("read.sample", CostClass.Bounded, 20), 0.2);
         }
 
-        Assert.Equal(Lane.Light, predictor.LaneFor(SchedulerRig.Read("read_devices", CostClass.Bounded, 5), Threshold));
-        Assert.Equal(Lane.Heavy, predictor.LaneFor(SchedulerRig.Read("read_devices", CostClass.Bounded, 128), Threshold));
+        Assert.Equal(Lane.Light, predictor.LaneFor(SchedulerRig.Read("read.sample", CostClass.Bounded, 5), Threshold));
+        Assert.Equal(Lane.Heavy, predictor.LaneFor(SchedulerRig.Read("read.sample", CostClass.Bounded, 128), Threshold));
     }
 
     [Fact]
     public void APredictionExactlyAtTheThresholdIsLight()
     {
         CostPredictor predictor = new CostPredictor();
-        predictor.Observe(SchedulerRig.Read("game_clock"), 1.0);
+        predictor.Observe(SchedulerRig.Read("read.clock"), 1.0);
 
-        Assert.Equal(Lane.Light, predictor.LaneFor(SchedulerRig.Read("game_clock"), 1.0));
+        Assert.Equal(Lane.Light, predictor.LaneFor(SchedulerRig.Read("read.clock"), 1.0));
     }
 
     [Fact]
     public void TheAverageForgetsCallsOlderThanTheWindow()
     {
         CostPredictor predictor = new CostPredictor();
-        CallProfile call = SchedulerRig.Read("list_devices", CostClass.Bounded);
+        CallProfile call = SchedulerRig.Read("find.device", CostClass.Bounded);
         for (int index = 0; index < CostPredictor.Window; index++)
         {
             predictor.Observe(call, 50.0);
@@ -82,23 +82,23 @@ public sealed class CostPredictorTests
         CostPredictor predictor = new CostPredictor();
         for (int index = 0; index < CostPredictor.Window - 1; index++)
         {
-            predictor.Observe(SchedulerRig.Read("read_devices", CostClass.Bounded, 5), 0.05);
+            predictor.Observe(SchedulerRig.Read("read.sample", CostClass.Bounded, 5), 0.05);
         }
 
-        predictor.Observe(SchedulerRig.Read("read_devices", CostClass.Bounded, 128), 1.28);
+        predictor.Observe(SchedulerRig.Read("read.sample", CostClass.Bounded, 128), 1.28);
 
-        Assert.Equal(Lane.Light, predictor.LaneFor(SchedulerRig.Read("read_devices", CostClass.Bounded, 5), Threshold));
+        Assert.Equal(Lane.Light, predictor.LaneFor(SchedulerRig.Read("read.sample", CostClass.Bounded, 5), Threshold));
     }
 
     [Fact]
     public void MethodsAndCostClassesKeepSeparateHistories()
     {
         CostPredictor predictor = new CostPredictor();
-        predictor.Observe(SchedulerRig.Read("thing_health", CostClass.Bounded, 1), 5.0);
+        predictor.Observe(SchedulerRig.Read("inspect.health", CostClass.Bounded, 1), 5.0);
 
-        Assert.Equal(Lane.Light, predictor.LaneFor(SchedulerRig.Read("thing_health", CostClass.Instant), Threshold));
-        Assert.Equal(Lane.Light, predictor.LaneFor(SchedulerRig.Read("read_logic", CostClass.Bounded), Threshold));
-        Assert.Equal(Lane.Heavy, predictor.LaneFor(SchedulerRig.Read("thing_health", CostClass.Bounded), Threshold));
+        Assert.Equal(Lane.Light, predictor.LaneFor(SchedulerRig.Read("inspect.health", CostClass.Instant), Threshold));
+        Assert.Equal(Lane.Light, predictor.LaneFor(SchedulerRig.Read("read.logic", CostClass.Bounded), Threshold));
+        Assert.Equal(Lane.Heavy, predictor.LaneFor(SchedulerRig.Read("inspect.health", CostClass.Bounded), Threshold));
     }
 
     [Theory]
@@ -126,9 +126,9 @@ public sealed class CostPredictorTests
     {
         CostPredictor predictor = new CostPredictor();
 
-        predictor.Observe(SchedulerRig.Read("game_clock"), elapsedMs);
+        predictor.Observe(SchedulerRig.Read("read.clock"), elapsedMs);
 
-        Assert.Null(predictor.PredictMs(SchedulerRig.Read("game_clock")));
+        Assert.Null(predictor.PredictMs(SchedulerRig.Read("read.clock")));
     }
 
     // ---- the profile from the verb model ----

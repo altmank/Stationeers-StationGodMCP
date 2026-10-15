@@ -5,7 +5,7 @@ using Xunit;
 
 namespace StationGodMCP.Tests;
 
-/// <summary>rocket_mining_options with collectable_only and nothing kept says why.</summary>
+/// <summary>plan mining with collectable_only and nothing kept says why.</summary>
 public sealed class MiningEmptyReasonTests
 {
     [Fact]

@@ -32,11 +32,11 @@ public sealed class FrameSchedulerFairnessTests
         int joinFrame)
     {
         // seed 0: every hub call costs 1 ms, so the 4 ms budget stops each frame after about four; otherwise 0.4-2 ms,
-        // which moves atmosphere_contents between the lanes as its average crosses the threshold.
+        // which moves inspect atmosphere between the lanes as its average crosses the threshold.
         Random? random = seed == 0 ? null : new Random(seed);
-        Load load = new Load(oneConnection, random, SchedulerRig.Read("atmosphere_contents"), lightFiller: false);
+        Load load = new Load(oneConnection, random, SchedulerRig.Read("inspect.atmosphere"), lightFiller: false);
 
-        int worst = load.WorstWait(SchedulerRig.Read("read_logic_many"), joinFrame);
+        int worst = load.WorstWait(SchedulerRig.Read("read.snapshot"), joinFrame);
 
         Assert.InRange(worst, 0, 2);
     }
@@ -46,7 +46,7 @@ public sealed class FrameSchedulerFairnessTests
     [InlineData(false)]
     public void AOneCallClientsHeavyCallRunsInTheNextRoundBesideAHubWithAHeavyBacklog(bool oneConnection)
     {
-        Load load = new Load(oneConnection, new Random(7), SchedulerRig.Heavy("thing_health"), lightFiller: false);
+        Load load = new Load(oneConnection, new Random(7), SchedulerRig.Heavy("inspect.health"), lightFiller: false);
 
         int worst = load.WorstWait(SchedulerRig.Heavy("deep_survey"), joinFrame: 60);
 
@@ -58,7 +58,7 @@ public sealed class FrameSchedulerFairnessTests
     [InlineData(false)]
     public void UnderAlwaysBusyLightWorkAOneCallClientsHeavyCallWaitsOnlyTheHeavyBound(bool oneConnection)
     {
-        Load load = new Load(oneConnection, new Random(8), SchedulerRig.Heavy("thing_health"), lightFiller: true);
+        Load load = new Load(oneConnection, new Random(8), SchedulerRig.Heavy("inspect.health"), lightFiller: true);
 
         int worst = load.WorstWait(SchedulerRig.Heavy("deep_survey"), joinFrame: 60);
 

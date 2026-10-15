@@ -9,7 +9,7 @@ using Xunit;
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// clean_cables: which ends of a piece are connected, what that makes of the piece, and that the piece with only
+/// swap cable clean: which ends of a piece are connected, what that makes of the piece, and that the piece with only
 /// those ends is the one that matches and keeps every link.
 /// </summary>
 public sealed class CleanCablesTests
@@ -196,7 +196,7 @@ public sealed class CleanCablesTests
         Assert.Equal(expected, EndCleanup.CostDifference(oldCost, newCost));
 }
 
-/// <summary>clean_cables: reply shapes, and that the upgrade tools' replies keep theirs.</summary>
+/// <summary>swap cable clean: reply shapes, and that the upgrade tools' replies keep theirs.</summary>
 public sealed class CleanCablesWireTests
 {
     private static UpgradeReportView Report(UpgradeCleanView? ends, UpgradeDeadEnds? deadEnds)

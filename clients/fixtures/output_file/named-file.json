@@ -1,6 +1,6 @@
 {
   "description": "A named file: .json added; lists counted, short values in summary, long ones named in in_file_only.",
-  "method": "find_things",
+  "method": "find_thing",
   "output_file": "ores",
   "result": {
     "count": 2,
@@ -23,7 +23,7 @@
   },
   "expected_file_name": "ores.json",
   "expected_pointer": {
-    "tool": "find_things",
+    "tool": "find_thing",
     "counts": {
       "things": 2
     },

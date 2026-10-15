@@ -1,6 +1,6 @@
 {
   "description": "A name that already ends in .json, in any case, is kept as given.",
-  "method": "item_totals",
+  "method": "find_container",
   "output_file": "Totals.JSON",
   "result": {
     "totals": [
@@ -12,7 +12,7 @@
   },
   "expected_file_name": "Totals.JSON",
   "expected_pointer": {
-    "tool": "item_totals",
+    "tool": "find_container",
     "counts": {
       "totals": 1
     },

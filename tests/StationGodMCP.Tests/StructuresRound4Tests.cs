@@ -8,7 +8,7 @@ using Xunit;
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// Fixes from round 4 of the 1.4.4 live test of the structure tools (2026-09-29). structures-34: remove_structure with
+/// Fixes from round 4 of the 1.4.4 live test of the structure tools (2026-09-29). structures-34: remove structure with
 /// allow_contents on a split removal (F: chain 641-644-[tank 638]-645-646, 690 mol N2) deleted exactly the tank's share
 /// its dry run forecast (564.545 mol), and the job's gas check then took that for a merge loss and put it back into
 /// the two 10 L pipes left: 345 mol each, 84 MPa against a 60.8 MPa rating, both burst. The check now expects the

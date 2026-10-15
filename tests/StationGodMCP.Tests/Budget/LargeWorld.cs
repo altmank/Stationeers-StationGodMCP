@@ -42,12 +42,12 @@ internal static class LargeWorld
     internal const int SurveyPagePieces = 250;
     internal const int SurveyPageDevices = 40;
 
-    /// <summary>Items riding a busy chute network (live: 15 KB of networks_before.items in a place_chutes dry run).</summary>
+    /// <summary>Items riding a busy chute network (live: 15 KB of networks_before.items in a build chute dry run).</summary>
     internal const int ChuteRidingItems = 120;
 
     internal const int LuaSourceChars = 60000;
 
-    /// <summary>A batch a caller sends to a batch tool (read_logic_many, label, paint...): its reply is that long.</summary>
+    /// <summary>A batch a caller sends to a batch tool (read logic, label, paint...): its reply is that long.</summary>
     internal const int TypicalBatch = 8;
 
     internal static readonly string LuaSource = "-- hub\n" + new string('x', LuaSourceChars - 7);

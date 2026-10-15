@@ -87,7 +87,7 @@ public sealed class PipesRound3Tests
     [Fact]
     public void ARemovalWithNothingInItsCellsIsStillEmptied()
     {
-        // remove_pipes with allow_contents takes a lone pipe away; an unrelated new network elsewhere is its own family.
+        // remove pipe with allow_contents takes a lone pipe away; an unrelated new network elsewhere is its own family.
         List<NetworkGas> after = new List<NetworkGas>
         {
             Net(2000, 0, new long[] { 1999 }, new[] { AtZ(10) })

@@ -10,7 +10,7 @@ using Xunit;
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// move_item force (1.28.1): the cheat puts a whole item into an empty hidden slot whose class takes it, as
+/// move item force (1.28.1): the cheat puts a whole item into an empty hidden slot whose class takes it, as
 /// RocketPayload.AttackWith mounts a payload in a payload bay's hidden slot with OnServer.MoveToSlot.
 /// </summary>
 public sealed class MoveItemForceTests

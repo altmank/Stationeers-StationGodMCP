@@ -6,7 +6,7 @@ using Xunit;
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// The items fixes from the headless live test of 1.4.4 (2026-09-29): move_item, refunds and vault withdrawals never
+/// The items fixes from the headless live test of 1.4.4 (2026-09-29): move item, refunds and vault withdrawals never
 /// fill a hidden slot or a stack's own slot (a cable coil's destroyed the frame put there, and took refunded coils),
 /// refusals name the real reason and the slot by index, and a burst pipe counts as broken.
 /// </summary>

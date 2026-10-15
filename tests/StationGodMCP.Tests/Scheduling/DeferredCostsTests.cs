@@ -12,7 +12,7 @@ namespace StationGodMCP.Tests.Scheduling;
 
 /// <summary>
 /// A deferred call's slices cost the main thread too: each slice's ms count in its stream's main_thread_ms
-/// (stream_costs) and in its connection's ms for its method (mod_info connections), the call itself once.
+/// (stream_costs) and in its connection's ms for its method (server info connections), the call itself once.
 /// </summary>
 public sealed class DeferredCostsTests : IDisposable
 {

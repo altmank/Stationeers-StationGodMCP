@@ -492,7 +492,7 @@ internal sealed class TimedCall : QueuedCall
     private readonly object? _source;
 
     internal TimedCall(FakeClock clock, CallContext context, double handlerMs, double serialiseMs, object? source = null)
-        : base(long.MaxValue, new CallProfile("read_logic", MethodClass.Read, new CallCost(CostClass.Instant, 1)))
+        : base(long.MaxValue, new CallProfile("read.logic", MethodClass.Read, new CallCost(CostClass.Instant, 1)))
     {
         _clock = clock;
         _context = context;
@@ -512,7 +512,7 @@ internal sealed class TimedCall : QueuedCall
         _clock.Advance(_handlerMs);
         BudgetHitBeforeSerialising = CurrentFrame.BudgetReached(_clock.NowMs);
         _clock.Advance(_serialiseMs);
-        return new CallOutcome("{}", "read_logic");
+        return new CallOutcome("{}", "read.logic");
     }
 
     internal override string TimeoutReply() => "{}";

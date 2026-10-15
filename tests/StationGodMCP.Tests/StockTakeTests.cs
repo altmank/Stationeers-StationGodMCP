@@ -7,7 +7,7 @@ using Xunit;
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// Every builder (place_structure, the place, replace, upgrade and clean runs) takes its materials through one take:
+/// Every builder (build structure, the place, replace, upgrade and clean runs) takes its materials through one take:
 /// exactly the quantity a build state needs, the last stack used split and the rest of it left where it was.
 /// </summary>
 public sealed class StockTakeTests

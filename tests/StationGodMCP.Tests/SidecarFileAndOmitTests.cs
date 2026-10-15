@@ -15,7 +15,7 @@ namespace StationGodMCP.Tests;
 
 /// <summary>
 /// The omit option (sent as shape.omit, unparsed selectors reported in omit_unmatched) and the file options (write chip
-/// code_file: the file's text sent as set_ic_source's source, so a 60 KB Lua source never passes through the caller,
+/// code_file: the file's text sent as write chip's source, so a 60 KB Lua source never passes through the caller,
 /// refused in verb names), and inspect chip's source to output_file holding a 60 KB source.
 /// </summary>
 public sealed class SidecarFileAndOmitTests : IDisposable

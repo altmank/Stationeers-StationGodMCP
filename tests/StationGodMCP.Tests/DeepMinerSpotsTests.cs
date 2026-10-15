@@ -9,7 +9,7 @@ using StationGodMCP.Pure.Scheduling;
 
 namespace StationGodMCP.Tests;
 
-/// <summary>deep_miner_spots: the nearest-first disc search, bearings, ore matching and the sidecar schema.</summary>
+/// <summary>plan mining: the nearest-first disc search, bearings, ore matching and the sidecar schema.</summary>
 public sealed class DeepMinerSpotsTests
 {
     [Theory]

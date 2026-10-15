@@ -6,7 +6,7 @@ using Xunit;
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// remove_structure gives a filled cell back as the last hand deconstruction step does: only a structure that fills
+/// remove structure gives a filled cell back as the last hand deconstruction step does: only a structure that fills
 /// its cell and still blocks air there holds a cell without an atmosphere, so only its removal releases the cell.
 /// </summary>
 public sealed class FreedCellRuleTests

@@ -299,7 +299,7 @@ public sealed class ShapingTests
             ShapingChecks.Mod(ShapingChecks.Parse("""{"things":[{"x":1,"y":2}]}"""), shape).Json);
     }
 
-    // ---- fields on single-object replies (looking_at, describe_prefab) ----
+    // ---- fields on single-object replies (looking_at, inspect prefab) ----
 
     private const string LookingAt =
         """{"player":{"reference_id":"1","name":"Me"},"target":{"reference_id":"5","prefab_name":"StructureTank","display_name":"Tank","custom_name":"Fuel"},"interactable":null,"view":{"eye":{"x":1},"yaw_deg":90.0},"hit":{"point":{"x":2},"thing":"5"}}""";

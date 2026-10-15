@@ -28,7 +28,7 @@ public sealed class Round11FixesTests
         return skipped;
     }
 
-    // cables-1, pipes-structures note: clean_cables remove_dead_ends and a zero-charge replace_walls refused
+    // cables-1, pipes-structures note: swap cable clean remove_dead_ends and a zero-charge swap wall refused
     // no_local_player on a dedicated server although they take nothing and refund_to named a container.
     [Fact]
     public void OnlyAChargeOrTheSingleWordSourceNeedsAPlayer()

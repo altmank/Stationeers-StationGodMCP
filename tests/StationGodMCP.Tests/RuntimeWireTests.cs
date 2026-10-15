@@ -14,7 +14,7 @@ using Xunit;
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// 1.9.1 instrumentation: mod_info.runtime's wire, the per-method counters (thread-safe, handler / serialise / queue
+/// 1.9.1 instrumentation: server info.runtime's wire, the per-method counters (thread-safe, handler / serialise / queue
 /// wait / reply bytes) and the dispatcher's frame counters.
 /// </summary>
 public sealed class RuntimeWireTests
@@ -27,10 +27,10 @@ public sealed class RuntimeWireTests
     public void RuntimeWire()
     {
         MethodTimings timings = new MethodTimings();
-        timings.Record("inspect_slots", true, 0.2, 0.1, 9.0);
-        timings.Record("inspect_slots", false, 0.4, 0.3, 15.0);
-        timings.RecordReply("inspect_slots", 1600);
-        timings.RecordReply("inspect_slots", 1400);
+        timings.Record("inspect.slots", true, 0.2, 0.1, 9.0);
+        timings.Record("inspect.slots", false, 0.4, 0.3, 15.0);
+        timings.RecordReply("inspect.slots", 1600);
+        timings.RecordReply("inspect.slots", 1400);
         DispatchStats frames = new DispatchStats();
         frames.Frame(2, 1.5, false);
         frames.Frame(1, 4.5, true);
@@ -45,7 +45,7 @@ public sealed class RuntimeWireTests
             "\"expired\":1}," +
             "\"memory\":{\"gc_collections\":31,\"gc_max_generation\":0,\"gc_total_memory_bytes\":123456789," +
             "\"mono_used_bytes\":100000000,\"mono_heap_bytes\":null}," +
-            "\"methods\":[{\"method\":\"inspect_slots\",\"calls\":2,\"errors\":1,\"main_thread_ms\":0.6," +
+            "\"methods\":[{\"method\":\"inspect.slots\",\"calls\":2,\"errors\":1,\"main_thread_ms\":0.6," +
             "\"handler_ms\":{\"total\":0.6,\"mean\":0.3,\"max\":0.4}," +
             "\"serialize_ms\":{\"total\":0.4,\"mean\":0.2,\"max\":0.3}," +
             "\"queue_wait_ms\":{\"total\":24.0,\"mean\":12.0,\"max\":15.0}," +
@@ -76,12 +76,12 @@ public sealed class RuntimeWireTests
     public void MethodsMostMainThreadTimeFirst()
     {
         MethodTimings timings = new MethodTimings();
-        timings.Record("game_clock", true, 0.1, 0.1, 1.0);
-        timings.Record("grid_survey", true, 30.0, 8.0, 1.0);
-        timings.Record("atmosphere_contents", true, 0.1, 0.1, 1.0);
+        timings.Record("read.clock", true, 0.1, 0.1, 1.0);
+        timings.Record("survey.area", true, 30.0, 8.0, 1.0);
+        timings.Record("inspect.atmosphere", true, 0.1, 0.1, 1.0);
         List<MethodTiming> called = timings.Called();
 
-        Assert.Equal(new[] { "grid_survey", "atmosphere_contents", "game_clock" },
+        Assert.Equal(new[] { "survey.area", "inspect.atmosphere", "read.clock" },
             called.ConvertAll(static timing => timing.Method).ToArray());
     }
 
@@ -175,9 +175,9 @@ public sealed class RuntimeWireTests
     public void ReplySizeDoesNotCountACall()
     {
         MethodTimings timings = new MethodTimings();
-        timings.RecordReply("read_logic", 200);
+        timings.RecordReply("read.logic", 200);
 
-        MethodTiming timing = timings.Snapshot("read_logic");
+        MethodTiming timing = timings.Snapshot("read.logic");
         Assert.Equal(0, timing.Calls);
         Assert.Equal(200.0, timing.ReplyBytes.Total);
     }
@@ -194,16 +194,16 @@ public sealed class RuntimeWireTests
             {
                 if (worker % 2 == 0)
                 {
-                    timings.Record("read_logic_many", true, 1.0, 0.5, 2.0);
+                    timings.Record("read.snapshot", true, 1.0, 0.5, 2.0);
                 }
                 else
                 {
-                    timings.RecordReply("read_logic_many", 10);
+                    timings.RecordReply("read.snapshot", 10);
                 }
             }
         });
 
-        MethodTiming timing = timings.Snapshot("read_logic_many");
+        MethodTiming timing = timings.Snapshot("read.snapshot");
         Assert.Equal(4 * Each, timing.Calls);
         Assert.Equal(4 * Each * 1.0, timing.Handler.Total);
         Assert.Equal(4 * Each, timing.ReplyBytes.Count);

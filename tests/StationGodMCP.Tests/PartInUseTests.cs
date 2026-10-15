@@ -10,7 +10,7 @@ using Xunit;
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// Parts a device is using (LU 2026-10-08: an agent's move_item took the running "Hangar Doors Chip" out of its IC
+/// Parts a device is using (LU 2026-10-08: an agent's move item took the running "Hangar Doors Chip" out of its IC
 /// housing and the hangar door lever stopped working). A chip in a chip holder and a computer's motherboard are always
 /// in use; a running machine's filter, battery or canister only while it is switched on. Refused as in_use, naming the
 /// device, its label and the slot, unless allow: ["in_use"]; chargers, canister docks and carried gear are not guarded.

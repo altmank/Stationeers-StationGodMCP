@@ -10,7 +10,7 @@ using Xunit;
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// move_player in the low-orbit area (1.28.2): safe_ground stands the player on the highest structure in the column,
+/// move player in the low-orbit area (1.28.2): safe_ground stands the player on the highest structure in the column,
 /// not on the planet's terrain 2 km below, and a point or thing up there is a destination like any other.
 /// </summary>
 public sealed class MovePlayerOrbitTests

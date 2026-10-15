@@ -1,6 +1,6 @@
 {
   "description": "Refused before the call is sent: 'a..b'.",
-  "method": "find_things",
+  "method": "find_thing",
   "output_file": "a..b",
   "result": {
     "things": []

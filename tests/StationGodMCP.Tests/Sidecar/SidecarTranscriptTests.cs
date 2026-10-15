@@ -67,7 +67,7 @@ public sealed class SidecarTranscriptTests : IDisposable
 
         await sidecar.HandleAsync(Call(1, "read", """{"what":"clock"}"""));
         JsonElement tools = Result(await sidecar.HandleAsync("""{"jsonrpc":"2.0","id":2,"method":"tools/list"}""")).GetProperty("tools");
-        JsonElement old = await Reply(sidecar, Call(3, "game_clock", "{}"));
+        JsonElement old = await Reply(sidecar, Call(3, "read.clock", "{}"));
 
         Assert.Equal(17, tools.GetArrayLength());
         Assert.Equal(-32602, old.GetProperty("error").GetProperty("code").GetInt32());

@@ -27,7 +27,7 @@ class NotFound(GameError):
 
 
 class SubscriptionRefused(GameError):
-    """subscription_limit: poll read_devices with the same items instead."""
+    """subscription_limit: the game admits no more subscriptions; end one, or subscribe at a longer interval."""
 
 
 class Unauthorized(GameError):

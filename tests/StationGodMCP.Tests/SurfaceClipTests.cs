@@ -10,8 +10,8 @@ namespace StationGodMCP.Tests;
 
 /// <summary>
 /// clips_surface and controls_blocked's mesh check (LU 2026-10-08: Turbo Volume Pump 4755409 on bt built at y 212
-/// facing -y, up +z, sunk into the floor of its frame, its controls side against the furnace beside it; lint_layout
-/// reported neither). The pump's mesh box is the prefab's own (describe_prefab: -0.26..0.26, -0.22..0.31, -0.25..0.25);
+/// facing -y, up +z, sunk into the floor of its frame, its controls side against the furnace beside it; check layout
+/// reported neither). The pump's mesh box is the prefab's own (inspect prefab: -0.26..0.26, -0.22..0.31, -0.25..0.25);
 /// the floor is a Composite Wall facing +y on the top of the iron frame below (render 0..0.13 along its forward).
 /// </summary>
 public sealed class SurfaceClipTests

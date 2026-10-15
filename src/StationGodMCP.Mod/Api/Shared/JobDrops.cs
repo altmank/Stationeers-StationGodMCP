@@ -38,15 +38,15 @@ internal static class JobDrops
         if (runningId == id)
         {
             throw ApiErrors.Refused(NotWaitingCode,
-                $"Job {id} has started; it cannot be dropped. Poll it with job_id to follow it " +
+                $"Job {id} has started; it cannot be dropped. Follow it with inspect job {id} " +
                 "to its end.");
         }
 
         if (ended)
         {
             throw ApiErrors.Refused(NotWaitingCode,
-                $"Job {id} has ended; there is nothing to drop. Poll it with job_id for its " +
-                "result.");
+                $"Job {id} has ended; there is nothing to drop. Read its result with inspect " +
+                "job {id}.");
         }
 
         throw NotFound(id);

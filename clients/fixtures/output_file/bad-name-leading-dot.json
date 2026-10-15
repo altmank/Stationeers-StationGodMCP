@@ -1,6 +1,6 @@
 {
   "description": "Refused before the call is sent: '.hidden'.",
-  "method": "find_things",
+  "method": "find_thing",
   "output_file": ".hidden",
   "result": {
     "things": []

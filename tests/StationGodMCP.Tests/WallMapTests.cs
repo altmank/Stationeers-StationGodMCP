@@ -6,7 +6,7 @@ using Xunit;
 
 namespace StationGodMCP.Tests;
 
-/// <summary>wall_map and find_spot (1.4.3): the elevation text, free rectangles, the spot filter and rank.</summary>
+/// <summary>survey wall and plan spot (1.4.3): the elevation text, free rectangles, the spot filter and rank.</summary>
 public sealed class WallMapTests
 {
     // A wall z = 668 seen from +z: columns x 717 to 720 (right is -x seen from +z, so column 0 is x 720), rows y
@@ -100,7 +100,7 @@ public sealed class WallMapTests
     }
 }
 
-/// <summary>lint_layout (1.4.3): rule levels, report order, counts, controls.</summary>
+/// <summary>check layout (1.4.3): rule levels, report order, counts, controls.</summary>
 public sealed class LintLayoutTests
 {
     [Fact]

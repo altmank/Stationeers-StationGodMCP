@@ -614,10 +614,10 @@ public sealed class FrameSchedulerTests
     {
         SchedulerRig rig = new SchedulerRig();
         Connection a = rig.Scheduler.Open();
-        Admission first = rig.Add(a, "big", SchedulerRig.Read("list_devices", CostClass.Bounded), costMs: 3.0);
+        Admission first = rig.Add(a, "big", SchedulerRig.Read("find.device", CostClass.Bounded), costMs: 3.0);
         rig.Frame();
 
-        Admission second = rig.Add(a, "big", SchedulerRig.Read("list_devices", CostClass.Bounded), costMs: 3.0);
+        Admission second = rig.Add(a, "big", SchedulerRig.Read("find.device", CostClass.Bounded), costMs: 3.0);
 
         Assert.Equal(Lane.Light, first.Lane);
         Assert.Equal(Lane.Heavy, second.Lane);
@@ -630,12 +630,12 @@ public sealed class FrameSchedulerTests
         Connection a = rig.Scheduler.Open();
         for (int index = 0; index < CostPredictor.Window; index++)
         {
-            rig.Add(a, $"r{index}", SchedulerRig.Read("read_devices", CostClass.Bounded, 20), costMs: 0.2);
+            rig.Add(a, $"r{index}", SchedulerRig.Read("read.sample", CostClass.Bounded, 20), costMs: 0.2);
             rig.Frame();
         }
 
-        Admission small = rig.Add(a, "small", SchedulerRig.Read("read_devices", CostClass.Bounded, 5));
-        Admission large = rig.Add(a, "large", SchedulerRig.Read("read_devices", CostClass.Bounded, 128));
+        Admission small = rig.Add(a, "small", SchedulerRig.Read("read.sample", CostClass.Bounded, 5));
+        Admission large = rig.Add(a, "large", SchedulerRig.Read("read.sample", CostClass.Bounded, 128));
 
         Assert.Equal(Lane.Light, small.Lane);
         Assert.Equal(Lane.Heavy, large.Lane);

@@ -69,7 +69,7 @@ public sealed class JobDropTests
     [Fact]
     public void TheDroppedJobsPollAnswersStatusRefusedWithErrorDropped()
     {
-        JObject view = JObject.Parse(ApiJson.WriteShared(new JobDroppedView("upgrade-3", "upgrade_pipes", JobDrops.Dropped())));
+        JObject view = JObject.Parse(ApiJson.WriteShared(new JobDroppedView("upgrade-3", "swap pipe", JobDrops.Dropped())));
 
         Assert.Equal("refused", (string?)view["status"]);
         Assert.Equal("dropped", (string?)view["error"]!["code"]);
@@ -97,7 +97,7 @@ public sealed class JobDropTests
     [Fact]
     public void AJobDroppedAtASessionEndAnswersSessionEnded()
     {
-        JObject view = JObject.Parse(ApiJson.WriteShared(new JobDroppedView("upgrade-3", "upgrade_pipes",
+        JObject view = JObject.Parse(ApiJson.WriteShared(new JobDroppedView("upgrade-3", "swap pipe",
             JobDrops.SessionEnded())));
 
         Assert.Equal("refused", (string?)view["status"]);
@@ -111,7 +111,7 @@ public sealed class JobDropTests
         Assert.True(ProtocolMethods.RunsOnMainThread("drop_job"));
         Assert.True(ProtocolMethods.RunsOnMainThread("subscribe"));
         Assert.False(ProtocolMethods.RunsOnMainThread("catalogue"));
-        Assert.False(ProtocolMethods.RunsOnMainThread("game_clock"));
+        Assert.False(ProtocolMethods.RunsOnMainThread("read.clock"));
         Assert.False(ProtocolMethods.RunsOnMainThread(null));
 
         CallProfile profile = CallProfiles.Of("drop_job", new JObject { ["job_id"] = "upgrade-3" });

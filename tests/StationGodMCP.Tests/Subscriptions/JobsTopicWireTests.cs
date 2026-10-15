@@ -46,7 +46,7 @@ public sealed class JobsTopicWireTests
             ["frame"] = 120,
             ["job"] = new JObject
             {
-                ["job_id"] = "run-7", ["tool"] = "place_pipes", ["status"] = "applied",
+                ["job_id"] = "run-7", ["tool"] = "build pipe", ["status"] = "applied",
                 ["created_ids"] = new JArray("101", "102"), ["removed"] = new JArray("55"),
                 ["changed"] = new JArray(new JObject
                 {
@@ -70,9 +70,9 @@ public sealed class JobsTopicWireTests
         using V2Client client = await V2Client.Connect(rig);
         Call(rig, client, "1", "subscribe", new JObject { ["topic"] = "jobs" });
 
-        hub.JobEnded(new RunJobView("run-8", "place_cables", "stopped", null,
+        hub.JobEnded(new RunJobView("run-8", "build cable", "stopped", null,
             new RunJobResultView(null, new RunLogView(), null, new ErrorView("internal_error", "The step threw."))), 130);
-        hub.JobEnded(new JobDroppedView("place-9", "place_structure", JobDrops.Dropped()), 131);
+        hub.JobEnded(new JobDroppedView("place-9", "build structure", JobDrops.Dropped()), 131);
 
         JObject failed = client.Next();
         Assert.Equal(1, (long)failed["seq"]!);
@@ -82,7 +82,7 @@ public sealed class JobsTopicWireTests
         Assert.Equal(2, (long)dropped["seq"]!);
         Assert.Equal(new JObject
         {
-            ["job_id"] = "place-9", ["tool"] = "place_structure", ["status"] = "refused",
+            ["job_id"] = "place-9", ["tool"] = "build structure", ["status"] = "refused",
             ["error"] = new JObject
             {
                 ["code"] = "dropped", ["message"] = "Dropped from the queue before it started; nothing was changed."
@@ -158,7 +158,7 @@ public sealed class JobsTopicWireTests
         Assert.False(probe.Read);
     }
 
-    // A place_pipes run that built 101 (new) and 102 (a tee in place of 60), and removed 55.
+    // A build pipe run that built 101 (new) and 102 (a tee in place of 60), and removed 55.
     private static RunJobView FinishedRun()
     {
         RunLogView log = new RunLogView();
@@ -168,7 +168,7 @@ public sealed class JobsTopicWireTests
         log.PlacedPieces.Add(new ThingView(new ThingId(101), "StructurePipeStraight", "Pipe"));
         log.AddCreated("run", new ThingId(101));
         log.AddCreated("run", new ThingId(102));
-        return new RunJobView("run-7", "place_pipes", "applied", null, new RunJobResultView(null, log, null, null));
+        return new RunJobView("run-7", "build pipe", "applied", null, new RunJobResultView(null, log, null, null));
     }
 
     private static SubscriptionHub Hub() =>

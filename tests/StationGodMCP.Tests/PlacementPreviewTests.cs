@@ -8,7 +8,7 @@ using Xunit;
 
 namespace StationGodMCP.Tests;
 
-/// <summary>place_structure's layout preview (1.4.3): mount plane, sections, flow, uprightness, visual up.</summary>
+/// <summary>build structure's layout preview (1.4.3): mount plane, sections, flow, uprightness, visual up.</summary>
 public sealed class PlacementPreviewTests
 {
     private static GridStep S(string name) => RunModels.Step(name);
@@ -169,7 +169,7 @@ public sealed class VisualClashTests
     internal static readonly Box3 ConsoleCells = new Box3(new Vec3(718.25, 200.25, 667.75), new Vec3(719.25, 201.25, 668.25));
     private static readonly Box3 FlushSensorMesh = new Box3(new Vec3(719.35, 200.25, 667.96), new Vec3(719.65, 200.65, 668.17));
 
-    // A gas sensor's mesh (describe_prefab: x +-0.15, y -0.25..0.15, z -0.04..0.17) at a point on the wall.
+    // A gas sensor's mesh (inspect prefab: x +-0.15, y -0.25..0.15, z -0.04..0.17) at a point on the wall.
     internal static Box3 SensorAt(double x, double y) =>
         new Box3(new Vec3(x - 0.15, y - 0.25, 667.96), new Vec3(x + 0.15, y + 0.15, 668.17));
 
@@ -183,7 +183,7 @@ public sealed class VisualClashTests
     [Fact]
     public void ASmallDeviceUnderAConsolesOverhangClashes()
     {
-        // find_spot offered (719, 201.5) and (718.5, 201.5): outside the console's cells, inside its mesh.
+        // plan spot offered (719, 201.5) and (718.5, 201.5): outside the console's cells, inside its mesh.
         Assert.True(VisualClash.Clashes(ConsoleMesh, SensorAt(719, 201.5)));
         Assert.True(VisualClash.Clashes(ConsoleMesh, SensorAt(718.5, 201.5)));
         Assert.True(VisualClash.Clashes(SensorAt(719, 201.5), ConsoleMesh));

@@ -980,7 +980,7 @@ internal sealed class RunJobView : ITruncatingView
         if (Log != null && Log.Placed == null && Log.PlacedCount > 0)
         {
             Truncations.Note(path + "log.placed", 0, Log.PlacedCount,
-                "poll with job_id and verbose: true (log.created_ids lists every id " +
+                "inspect job {id} with verbose: true (log.created_ids lists every id " +
                     "built)");
         }
     }

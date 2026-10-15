@@ -159,7 +159,7 @@ internal static class PlacementRule
 internal static class SourceRule
 {
     /// <summary>The read-only removal planner: nothing is taken or given, its refund is an estimate.</summary>
-    internal const string PlanRemoval = "plan_removal";
+    internal const string PlanRemoval = "plan removal";
 
     /// <summary>
     /// How a missing player with no holder named in materials counts: a problem for a run that takes or gives items,

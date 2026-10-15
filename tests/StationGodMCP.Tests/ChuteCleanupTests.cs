@@ -7,7 +7,7 @@ using Xunit;
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// clean_chutes' rule on synthetic networks in the x-z plane: device ports feed and drain lines, and every piece is
+/// swap chute clean' rule on synthetic networks in the x-z plane: device ports feed and drain lines, and every piece is
 /// judged by whether an item can get from a source through it to a consumer.
 /// </summary>
 public sealed class ChuteCleanupTests

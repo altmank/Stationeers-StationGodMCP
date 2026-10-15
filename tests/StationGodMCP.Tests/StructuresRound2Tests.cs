@@ -69,7 +69,7 @@ public sealed class StructuresRound2Tests
         Assert.Single(breached.Unnamed(new[] { face }));
     }
 
-    // Devices round 2: find_spot answered 0 spots, 31 rejected, and no reason.
+    // Devices round 2: plan spot answered 0 spots, 31 rejected, and no reason.
     [Fact]
     public void SpotReasonsGroupByWordingWithoutNumbersMostFrequentFirst()
     {

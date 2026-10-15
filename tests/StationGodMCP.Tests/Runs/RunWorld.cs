@@ -17,8 +17,8 @@ using Xunit;
 namespace StationGodMCP.Tests.Runs;
 
 /// <summary>
-/// A hub link over a tiny world for runs: devices with logic values (read_logic_many, write_logic, write_logic_many),
-/// names (thing_health), one find result (999), held restores, stream costs, and a world change on demand. Every call
+/// A hub link over a tiny world for runs: devices with logic values (read logic, write logic, write logic),
+/// names (inspect health), one find result (999), held restores, stream costs, and a world change on demand. Every call
 /// and hold_restore is logged in order.
 /// </summary>
 internal sealed class RunWorld : IHubLink

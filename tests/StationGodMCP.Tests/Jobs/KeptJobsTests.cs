@@ -343,7 +343,7 @@ public sealed class KeptJobsTests
     [Fact]
     public void AFinalViewIsMeasuredAsPollsWriteIt()
     {
-        JobDroppedView view = new JobDroppedView("upgrade-4", "upgrade_cables", JobDrops.Dropped());
+        JobDroppedView view = new JobDroppedView("upgrade-4", "swap cable", JobDrops.Dropped());
 
         Assert.Equal(ApiJson.WriteShared(view).Length, ApiJson.Length(view));
         Assert.Equal(4, ApiJson.Length(null));
@@ -382,7 +382,7 @@ public sealed class KeptJobsTests
             snapshots[snapshot.Id] = snapshot;
         }
 
-        return new RecordedJob("remove_structure", snapshots, JobSource.Unknown);
+        return new RecordedJob("remove structure", snapshots, JobSource.Unknown);
     }
 
     private static ThingSnapshot Thing(long id, string? label, int cells)

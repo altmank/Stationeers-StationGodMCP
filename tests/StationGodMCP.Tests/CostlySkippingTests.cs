@@ -16,7 +16,7 @@ namespace StationGodMCP.Tests;
 /// <summary>
 /// Skipping costly reply parts (protocol.md, Shaping before the reply is built): ShapeRequest.Wants answers false only
 /// for a key the shaping writer would leave out, so a reply built without that part, shaped, equals the full reply
-/// shaped. Held for every thing_health form whose list entries carry networks.
+/// shaped. Held for every inspect health form whose list entries carry networks.
 /// </summary>
 public sealed class CostlySkippingTests
 {

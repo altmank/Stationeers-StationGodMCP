@@ -9,7 +9,7 @@ namespace StationGodMCP.Tests;
 /// <summary>
 /// Fixes from the cables live test of 1.4.4: a run end at a device port stops there, a new piece that takes a free
 /// port's cell warns, would_split roots by the network a supplier feeds, a cut root port cuts off what is left, and
-/// undo_job's source.
+/// undo's source.
 /// </summary>
 public sealed class CablesLiveTestTests
 {

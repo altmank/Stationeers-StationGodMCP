@@ -371,7 +371,7 @@ public sealed class DeferredCallsTests
         private readonly double _costMs;
 
         internal CostCall(object source, CallContext context, FakeClock clock, double costMs)
-            : base(DeadlineAfterMs(60000), new CallProfile("game_clock", MethodClass.Read,
+            : base(DeadlineAfterMs(60000), new CallProfile("read.clock", MethodClass.Read,
                 new CallCost(CostClass.Instant, 1)))
         {
             _source = source;

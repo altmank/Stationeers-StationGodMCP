@@ -7,7 +7,7 @@ using Xunit;
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// move_gas's queue bookkeeping (a known id is never "not found" while it is applied) and the room rule for arriving
+/// move gas's queue bookkeeping (a known id is never "not found" while it is applied) and the room rule for arriving
 /// liquid the room's air would lose.
 /// </summary>
 public sealed class GasMoveLedgerTests
@@ -17,7 +17,7 @@ public sealed class GasMoveLedgerTests
     [Fact]
     public void AnyWaitingSeesQueuedAndApplyingMovesButNotDoneOnes()
     {
-        // serial-4: upgrade_pipes and clean_pipes ask whether a queued move touches their network.
+        // serial-4: swap pipe and swap pipe clean ask whether a queued move touches their network.
         TransferLedger<string, string> ledger = Ledger();
         ledger.TryEnqueue(_ => "a");
         ledger.TryEnqueue(_ => "b");

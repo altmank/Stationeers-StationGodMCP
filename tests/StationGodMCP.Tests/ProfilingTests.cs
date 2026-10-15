@@ -111,7 +111,7 @@ public sealed class ProfilingTests
             {
                 long call = recorder.Now();
                 Scope(recorder, clock, ProfId.CallExecute, 9);
-                recorder.Call("read_devices", call);
+                recorder.Call("read.sample", call);
             });
             Scope(recorder, clock, ProfId.HeldTickJobs, 2);
         });
@@ -124,7 +124,7 @@ public sealed class ProfilingTests
         Assert.Equal(20.0, worst.Ms);
         Assert.Equal(new[] { ("call_execute", 9.0), ("unscoped", 6.0), ("run_frame", 3.0), ("held_tick_jobs", 2.0) },
             worst.Scopes.Select(scope => (scope.Name, scope.Ms)));
-        Assert.Equal(("read_devices", 9.0), (worst.Calls.Single().Name, worst.Calls.Single().Ms));
+        Assert.Equal(("read.sample", 9.0), (worst.Calls.Single().Name, worst.Calls.Single().Ms));
         SlotStat runFrame = report.Slots.Single(slot => slot.Name == "run_frame");
         Assert.Equal(12.0, runFrame.TotalMs);
         Assert.Equal(3.0, runFrame.SelfMs);
@@ -154,10 +154,10 @@ public sealed class ProfilingTests
         ScriptedClock clock = new ScriptedClock();
         ProfileRecorder recorder = Recorder(clock);
         Frame(recorder, clock, 30, 1);
-        recorder.TickHeld("upgrade-1", "upgrade_cables", 10);
+        recorder.TickHeld("upgrade-1", "swap cable", 10);
         clock.Now += 40;
         recorder.TickReleased(12);
-        recorder.TickHeld("upgrade-2", "upgrade_pipes", 20);
+        recorder.TickHeld("upgrade-2", "swap pipe", 20);
         recorder.Reset();
         clock.Now += 25;
         recorder.TickReleased(23);
@@ -169,7 +169,7 @@ public sealed class ProfilingTests
         Assert.Null(report.Worst);
         Assert.Equal(1, report.TickHolds.Count);
         Assert.Equal(25.0, report.TickHolds.MaxMs);
-        Assert.Equal(new[] { ("upgrade-2", "upgrade_pipes", true), ("upgrade-2", "upgrade_pipes", false) },
+        Assert.Equal(new[] { ("upgrade-2", "swap pipe", true), ("upgrade-2", "swap pipe", false) },
             report.TickHolds.Recent.Select(hold => (hold.Job, hold.Tool, hold.Holding)));
         Assert.Equal(3, report.TickHolds.Recent[1].Frames);
     }
@@ -222,10 +222,10 @@ public sealed class ProfilingTests
             }
 
             Prof.EndFrame(Prof.BeginFrame(), run);
-            Prof.CallEnded("read_logic", Prof.CallStarted());
+            Prof.CallEnded("read.logic", Prof.CallStarted());
             Prof.TickHeld("job-1", "tool", run);
             Prof.TickReleased(run);
-            Prof.CallTimes("read_logic", true, 1.0, 1.0, 1.0);
+            Prof.CallTimes("read.logic", true, 1.0, 1.0, 1.0);
             Prof.MethodExit(0, Prof.MethodEnter(0));
         }
     }
@@ -259,7 +259,7 @@ public sealed class ProfilingTests
             {
                 long call = recorder.Now();
                 Scope(recorder, clock, ProfId.CallExecute, 7);
-                recorder.Call("grid_survey", call);
+                recorder.Call("survey.area", call);
                 Scope(recorder, clock, ProfId.JobStep, 3);
                 Scope(recorder, clock, ProfId.PublishFacts, 1);
             });
@@ -268,7 +268,7 @@ public sealed class ProfilingTests
             Assert.Single(warnings);
             Assert.Equal(
                 "Slow frame 2: StationGod took 12.00 ms on the main thread (slow_frame_ms 8.00); top: call_execute 7.00 ms, " +
-                "job_step 3.00 ms, publish_facts 1.00 ms; calls: grid_survey 7.00 ms.", warnings[0]);
+                "job_step 3.00 ms, publish_facts 1.00 ms; calls: survey.area 7.00 ms.", warnings[0]);
             Assert.Equal(2, recorder.Report(true).SlowFrames);
         }
         finally
@@ -287,10 +287,10 @@ public sealed class ProfilingTests
                 queueRows: 4);
             ProfileRow row = new ProfileRow(ProfileRowKind.Frame, new DateTime(2026, 1, 2, 3, 4, 5, DateTimeKind.Utc).Ticks,
                 42, 1, 12.3456, 12.3456, null, 2, new NamedSlot("call_execute", 7), new NamedSlot("job,step", 3), default,
-                new NamedSlot("grid_survey", 6.5));
+                new NamedSlot("survey.area", 6.5));
 
             Assert.Equal(
-                "frame,2026-01-02T03:04:05.000Z,42,1,12.346,12.346,,2,call_execute,7,?,3,,,grid_survey,6.5",
+                "frame,2026-01-02T03:04:05.000Z,42,1,12.346,12.346,,2,call_execute,7,?,3,,,survey.area,6.5",
                 writer.Format(in row));
             for (int index = 0; index < 6; index++)
             {
@@ -385,7 +385,7 @@ public sealed class ProfilingTests
             {
                 long started = recorder.Now();
                 clock.Now += call % 7;
-                recorder.Call("read_logic", started);
+                recorder.Call("read.logic", started);
             }
         });
 

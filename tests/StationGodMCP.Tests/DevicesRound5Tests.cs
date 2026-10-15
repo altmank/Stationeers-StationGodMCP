@@ -12,7 +12,7 @@ namespace StationGodMCP.Tests;
 /// <summary>
 /// Fixes from round 5 of the headless live test (2026-09-29), devices: an enum argument names exactly one member
 /// ("Error,PressureInternal" wrote Setting); a numeric logic_type string out of range gets the range message; the
-/// gateway codes and statuses are documented; mod_info no longer promises elapsed_ms in MCP results.
+/// gateway codes and statuses are documented; server info no longer promises elapsed_ms in MCP results.
 /// </summary>
 public sealed class DevicesRound5Tests
 {

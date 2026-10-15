@@ -10,7 +10,7 @@ using Xunit.Abstractions;
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// network_snapshot without logic_types leaves out gas and liquid ratios reading 0 and counts them per device in
+/// read snapshot without logic_types leaves out gas and liquid ratios reading 0 and counts them per device in
 /// zero_ratios_omitted; include_zero_ratios, or naming logic_types, keeps them. One filtration unit's snapshot drops
 /// from about 10 KB to about 2 KB.
 /// </summary>
@@ -73,7 +73,7 @@ public sealed class ZeroRatioTests(ITestOutputHelper output)
 
         int before = WireCheck.New(new DeviceSnapshotView(DeviceViewFixtures.NewDevice(), all)).Length;
         int after = WireCheck.New(new DeviceSnapshotView(DeviceViewFixtures.NewDevice(), kept, skipped)).Length;
-        output.WriteLine($"network_snapshot, one filtration unit: every value {before} bytes, zero ratios left out " +
+        output.WriteLine($"read snapshot, one filtration unit: every value {before} bytes, zero ratios left out " +
                          $"{after} bytes ({skipped} left out)");
 
         Assert.Equal(108, skipped);

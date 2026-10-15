@@ -9,7 +9,7 @@ using Xunit;
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// upgrade_cables and upgrade_pipes: the connection rule the preflight predicts with, and the reply shapes the tool
+/// swap cable and swap pipe: the connection rule the preflight predicts with, and the reply shapes the tool
 /// descriptions promise.
 /// </summary>
 public sealed class UpgradeConnectivityTests
@@ -200,12 +200,12 @@ public sealed class CablePiecesTests
         Assert.Equal(expected, CablePieces.IsCoilPiece(blocksMerge, isStraight, length));
 }
 
-/// <summary>upgrade_cables and upgrade_pipes: reply shapes.</summary>
+/// <summary>swap cable and swap pipe: reply shapes.</summary>
 public sealed class UpgradeWireTests
 {
     private static UpgradeReportView Report(List<UpgradeProblemView> problems)
     {
-        UpgradeHeader header = new UpgradeHeader("upgrade_cables", "heavy", "dry_run", null, new List<string>());
+        UpgradeHeader header = new UpgradeHeader("swap cable", "heavy", "dry_run", null, new List<string>());
         UpgradeTargetView target =
             new UpgradeTargetView("StructureCableStraightH", new RotationView(0, 90, 0), true, 1);
         UpgradePieceView piece = new UpgradePieceView(
@@ -234,7 +234,7 @@ public sealed class UpgradeWireTests
     {
         string json = WireCheck.New(Report(new List<UpgradeProblemView>()));
         Assert.StartsWith(
-            "{\"tool\":\"upgrade_cables\",\"target\":\"heavy\",\"status\":\"dry_run\",\"job_id\":null,\"ready\":true,"
+            "{\"tool\":\"swap cable\",\"target\":\"heavy\",\"status\":\"dry_run\",\"job_id\":null,\"ready\":true,"
             + "\"problems\":[],\"pieces_total\":4,\"to_swap\":3,\"kept\":1,\"unmatched\":0,\"pieces\":[{"
             + "\"reference_id\":\"101\",\"prefab_name\":\"StructureCableStraight\",\"position\":{\"x\":1.0,\"y\":2.0,"
             + "\"z\":3.0},\"rotation_deg\":{\"x\":0.0,\"y\":90.0,\"z\":0.0},"
@@ -259,7 +259,7 @@ public sealed class UpgradeWireTests
     [Fact]
     public void AReportWithNothingToSwapHasNoConnectivityRatherThanZeroLinks()
     {
-        UpgradeHeader header = new UpgradeHeader("upgrade_cables", "heavy", "dry_run", null, new List<string>());
+        UpgradeHeader header = new UpgradeHeader("swap cable", "heavy", "dry_run", null, new List<string>());
         UpgradeLists lists = new UpgradeLists(
             new List<UpgradeProblemView> { new UpgradeProblemView("nothing_to_swap", "none", null) },
             new List<UpgradePieceView>(), new List<object>(), new List<UpgradeSkippedView>(),
@@ -302,10 +302,10 @@ public sealed class UpgradeWireTests
     [Fact]
     public void AWaitingJobHasNoResultYet()
     {
-        UpgradeJobView job = new UpgradeJobView("upgrade-1", "upgrade_pipes", "waiting",
+        UpgradeJobView job = new UpgradeJobView("upgrade-1", "swap pipe", "waiting",
             Report(new List<UpgradeProblemView>()), null);
         string json = WireCheck.New(job);
-        Assert.StartsWith("{\"job_id\":\"upgrade-1\",\"tool\":\"upgrade_pipes\",\"status\":\"waiting\",", json);
+        Assert.StartsWith("{\"job_id\":\"upgrade-1\",\"tool\":\"swap pipe\",\"status\":\"waiting\",", json);
         Assert.EndsWith(
             "\"final_check\":null,\"swapped\":[],\"swapped_count\":0,\"not_swapped\":[],\"stopped_at\":null,"
             + "\"used\":[],\"refund_delivered\":[],\"refund_error\":null,\"verification\":null,\"error\":null}",
@@ -317,9 +317,9 @@ public sealed class UpgradeWireTests
     {
         UpgradeReportView report = Report(new List<UpgradeProblemView>());
         UpgradeSwapLog log = new UpgradeSwapLog();
-        UpgradeJobView applied = new UpgradeJobView("upgrade-3", "upgrade_pipes", "applied", report,
+        UpgradeJobView applied = new UpgradeJobView("upgrade-3", "swap pipe", "applied", report,
             new UpgradeJobResult(report, log, null, null));
-        UpgradeJobView refused = new UpgradeJobView("upgrade-4", "upgrade_pipes", "refused", report,
+        UpgradeJobView refused = new UpgradeJobView("upgrade-4", "swap pipe", "refused", report,
             new UpgradeJobResult(report, log, null, null));
         JobPreflightSummaryView summary = new JobPreflightSummaryView(null, 3, null, new List<string>());
 
@@ -342,7 +342,7 @@ public sealed class UpgradeWireTests
         log.StoppedAt = new UpgradeStopView(new ThingId(102), new ErrorView("create_failed", "no"), true, null);
         UpgradeVerificationView verification = new UpgradeVerificationView(new List<UpgradeProblemView>(),
             new UpgradeLinkCounts(6, 6), new List<UpgradeLinkView>(), new List<UpgradeLinkView>(), new List<object>());
-        UpgradeJobView job = new UpgradeJobView("upgrade-2", "upgrade_cables", "stopped",
+        UpgradeJobView job = new UpgradeJobView("upgrade-2", "swap cable", "stopped",
             Report(new List<UpgradeProblemView>()), new UpgradeJobResult(null, log, verification, null));
         Assert.EndsWith(
             "\"final_check\":null,\"swapped\":[{\"old_reference_id\":\"101\",\"new_reference_id\":\"201\","

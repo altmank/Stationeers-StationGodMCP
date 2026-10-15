@@ -142,7 +142,7 @@ public sealed class TruncationNoticeTests
         {
             using JsonDocument reply = JsonDocument.Parse(
                 """{"count":8,"things":[],"truncated":[{"list":"things","returned":8,"total":412,"more":"pass limit"}]}""");
-            JsonElement pointer = new StationGodMCP.Client.OutputFolder(folder).Write("find_things",
+            JsonElement pointer = new StationGodMCP.Client.OutputFolder(folder).Write("find_thing",
                 new StationGodMCP.Client.OutputTarget.Auto(), reply.RootElement);
 
             Assert.Equal(412, pointer.GetProperty("truncated")[0].GetProperty("total").GetInt32());

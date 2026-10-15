@@ -195,7 +195,7 @@ public sealed class RunEndAndUndoTests : IDisposable
         await using RunBench bench = new(adjust: settings => new RunHostSettings
         {
             SgRoot = settings.SgRoot,
-            CleanupWindow = TimeSpan.FromMilliseconds(300)
+            CleanupWindow = TimeSpan.FromSeconds(2)
         });
         TaskCompletionSource arrived = new(TaskCreationOptions.RunContinuationsAsynchronously);
         Task never = new TaskCompletionSource().Task;
@@ -215,8 +215,10 @@ public sealed class RunEndAndUndoTests : IDisposable
         Stopwatch eof = Stopwatch.StartNew();
         await bench.Host.EndSessionAsync();
 
-        // The cleanup write never ends; session_end still goes once the window is over.
-        Assert.True(eof.Elapsed >= TimeSpan.FromMilliseconds(300), "session_end went before the window ended");
+        // The cleanup write never ends; session_end still goes once the window is over. The window is seconds, not
+        // milliseconds: the stop crosses to the Python worker and its finally write crosses back, which under a loaded
+        // thread pool can take longer than a short window, and this test is about a write that was sent and is waiting.
+        Assert.True(eof.Elapsed >= TimeSpan.FromSeconds(2), "session_end went before the window ended");
         Assert.NotNull(bench.World.SessionEndedAt);
         Assert.True(arrived.Task.IsCompleted);
     }

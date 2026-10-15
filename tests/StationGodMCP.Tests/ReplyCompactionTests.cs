@@ -19,7 +19,7 @@ namespace StationGodMCP.Tests;
 /// <summary>
 /// The general means a default reply stays small: a method's x-default-limits cut its top-level lists unless the call
 /// limits them itself (the sidecar's list_limits), and the per-tool compact forms: a brief job log, chute items with the
-/// network devices, plants in short, grid_survey kinds, mod_info's runtime methods.
+/// network devices, plants in short, survey area kinds, server info's runtime methods.
 /// </summary>
 public sealed class ReplyCompactionTests
 {

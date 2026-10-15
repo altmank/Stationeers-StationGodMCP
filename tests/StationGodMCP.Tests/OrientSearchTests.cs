@@ -7,7 +7,7 @@ using Xunit;
 
 namespace StationGodMCP.Tests;
 
-/// <summary>place_structure orient (1.4.3): scoring turns against an intent.</summary>
+/// <summary>build structure orient (1.4.3): scoring turns against an intent.</summary>
 public sealed class OrientSearchTests
 {
     private static GridStep S(string name) => RunModels.Step(name);

@@ -9,7 +9,7 @@ namespace StationGodMCP.Tests;
 
 /// <summary>
 /// LIVE 2026-10-08: a client joined to the dedicated server threw in Pipe.DeserializeOnJoin while applying the state
-/// packet of a place_pipes run with seven branches (run-18, 71 pieces, joined to a standing network), lost the rest of
+/// packet of a build pipe run with seven branches (run-18, 71 pieces, joined to a standing network), lost the rest of
 /// that packet (Thing.DeserializeDeltaState later threw for the run's last pipe, 4980680), and then threw at
 /// StructureNetwork.DeserializeDeltaState on every packet: the host kept 4980670, the network of the sixth branch's
 /// first piece, which the client no longer had. The run was built in the plan's order with nothing standing to grow

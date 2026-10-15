@@ -168,8 +168,8 @@ internal abstract class GasHoldVerdict
         internal override string Code => "gas_check_failed";
 
         internal override string Message =>
-            $"Job {Hold!.JobId}'s gas check failed: {Hold.Summary} Poll that job with job_id for " +
-            "its gas_check. Pipe jobs stay refused until the world is loaded again, or until a run passes " +
+            $"Job {Hold!.JobId}'s gas check failed: {Hold.Summary} Read that job's gas_check with " +
+            "inspect job {id}. Pipe jobs stay refused until the world is loaded again, or until a run passes " +
             $"{AcknowledgeArgument}: \"{Hold.JobId}\" to accept the loss; ask the user before " +
             "acknowledging it. Nothing was changed.";
     }

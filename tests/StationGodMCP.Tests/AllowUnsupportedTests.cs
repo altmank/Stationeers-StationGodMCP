@@ -11,7 +11,7 @@ using Xunit;
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// remove_structure allow_unsupported (LU 2026-10-05): a frame under a device that rests on nothing else (a solar
+/// remove structure allow_unsupported (LU 2026-10-05): a frame under a device that rests on nothing else (a solar
 /// panel on a frame) is refused as has_mounted by default. The game lets a player deconstruct it and checks support
 /// only when a thing is placed, so with allow_unsupported it goes and warns left_unsupported: the device stays and
 /// works but cannot be rebuilt in place until something supports it again. A device the game counts as attached is

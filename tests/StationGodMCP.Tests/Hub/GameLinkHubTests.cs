@@ -65,7 +65,7 @@ public sealed class GameLinkHubTests
 
         GameReply.Ok ok = Assert.IsType<GameReply.Ok>(await link.CallAsync(new GameCall("find", Json("""{"what":"thing"}""")), default));
         GameReply.Refused refused = Assert.IsType<GameReply.Refused>(
-            await link.CallAsync(new GameCall("game_clock", Json("{}")), default));
+            await link.CallAsync(new GameCall("read.clock", Json("{}")), default));
 
         Assert.True(ok.Shaped);
         Assert.Equal(0.2, ok.QueueMs);

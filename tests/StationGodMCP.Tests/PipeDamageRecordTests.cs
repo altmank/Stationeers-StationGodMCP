@@ -5,7 +5,7 @@ using Xunit;
 
 namespace StationGodMCP.Tests;
 
-/// <summary>thing_health damage_record: the game's flags as the causes its tooltip names, in its order.</summary>
+/// <summary>inspect health damage_record: the game's flags as the causes its tooltip names, in its order.</summary>
 public sealed class PipeDamageRecordTests
 {
     [Theory]

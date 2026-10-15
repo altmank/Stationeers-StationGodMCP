@@ -10,7 +10,7 @@ using Xunit;
 
 namespace StationGodMCP.Tests;
 
-/// <summary>place_structure: quarter-turn rotations in Unity's conventions.</summary>
+/// <summary>build structure: quarter-turn rotations in Unity's conventions.</summary>
 public sealed class CubeRotationTests
 {
     private static GridStep Step(string name)
@@ -138,7 +138,7 @@ public sealed class CubeRotationTests
     }
 }
 
-/// <summary>place_structure: resolving the turn, the build state and free placement.</summary>
+/// <summary>build structure: resolving the turn, the build state and free placement.</summary>
 public sealed class PlacementResolutionTests
 {
     private static GridStep Step(string name)
@@ -208,7 +208,7 @@ public sealed class PlacementResolutionTests
     }
 }
 
-/// <summary>remove_structure's guards: what refuses, what an allow flag turns into a warning.</summary>
+/// <summary>remove structure's guards: what refuses, what an allow flag turns into a warning.</summary>
 public sealed class RemovalRuleTests
 {
     private static readonly RemovalAllowance None = new RemovalAllowance(false, false);
@@ -326,7 +326,7 @@ public sealed class RemovalRuleTests
     }
 }
 
-/// <summary>place_structure's and remove_structure's wire shapes.</summary>
+/// <summary>build structure's and remove structure's wire shapes.</summary>
 public sealed class BuildViewTests
 {
     [Fact]
