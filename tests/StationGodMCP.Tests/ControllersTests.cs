@@ -242,6 +242,27 @@ public sealed class ControllersTests
     }
 
     [Fact]
+    public void AHoldersSameSourceStringIsFoundWithoutLookingUpItsText()
+    {
+        // review D, R-D-9: the controllers scan finds a holder's program by its source string first
+        ChipProgramCache cache = new ChipProgramCache();
+        string source = "s d0 On 1";
+        string copy = new string(source.ToCharArray());
+
+        List<ChipOperation> first = cache.OfHolder(7, "ic10", source);
+        List<ChipOperation> again = cache.OfHolder(7, "ic10", source);
+        List<ChipOperation> sameText = cache.OfHolder(7, "ic10", copy);
+        List<ChipOperation> otherHolder = cache.OfHolder(8, "ic10", source);
+        List<ChipOperation> changed = cache.OfHolder(7, "ic10", "s d0 On 0");
+
+        Assert.Same(first, again);
+        Assert.Same(first, sameText);
+        Assert.Same(first, otherHolder);
+        Assert.NotSame(first, changed);
+        Assert.Equal(2, cache.Parses);
+    }
+
+    [Fact]
     public void TheCacheIsBoundedAndForgetsOnClear()
     {
         ChipProgramCache cache = new ChipProgramCache(capacity: 2);

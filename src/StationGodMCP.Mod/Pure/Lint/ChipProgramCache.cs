@@ -17,6 +17,7 @@ internal sealed class ChipProgramCache
 
     private readonly Dictionary<string, List<ChipOperation>> _ic10 = new Dictionary<string, List<ChipOperation>>(StringComparer.Ordinal);
     private readonly Dictionary<string, List<ChipOperation>> _lua = new Dictionary<string, List<ChipOperation>>(StringComparer.Ordinal);
+    private readonly Dictionary<long, HolderProgram> _byHolder = new Dictionary<long, HolderProgram>();
     private readonly object _gate = new object();
     private readonly int _capacity;
     private long _parses;
@@ -79,6 +80,37 @@ internal sealed class ChipProgramCache
         return operations;
     }
 
+    /// <summary>
+    /// A holder's program (Of), found first by the holder and the very source string it gave last time, so a holder
+    /// whose source is the same string object costs a lookup, not a hash of its whole text (review D, R-D-9: the
+    /// controllers scan of every write logic); a new string is looked up by its text as Of does.
+    /// </summary>
+    internal List<ChipOperation> OfHolder(long holder, string language, string source)
+    {
+        bool lua = language == "lua";
+        lock (_gate)
+        {
+            if (_byHolder.TryGetValue(holder, out HolderProgram? kept) && ReferenceEquals(kept.Source, source) &&
+                kept.Lua == lua)
+            {
+                return kept.Operations;
+            }
+        }
+
+        List<ChipOperation> operations = Of(language, source);
+        lock (_gate)
+        {
+            if (_byHolder.Count >= _capacity)
+            {
+                _byHolder.Clear();
+            }
+
+            _byHolder[holder] = new HolderProgram(source, lua, operations);
+        }
+
+        return operations;
+    }
+
     /// <summary>Forgets every parsed program.</summary>
     internal void Clear()
     {
@@ -86,6 +118,24 @@ internal sealed class ChipProgramCache
         {
             _ic10.Clear();
             _lua.Clear();
+            _byHolder.Clear();
         }
+    }
+
+    // A holder's last source string and its program.
+    private sealed class HolderProgram
+    {
+        internal HolderProgram(string source, bool lua, List<ChipOperation> operations)
+        {
+            Source = source;
+            Lua = lua;
+            Operations = operations;
+        }
+
+        internal string Source { get; }
+
+        internal bool Lua { get; }
+
+        internal List<ChipOperation> Operations { get; }
     }
 }

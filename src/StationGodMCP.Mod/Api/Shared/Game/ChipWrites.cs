@@ -37,6 +37,7 @@ internal static class ChipWrites
         program.RequireWritable(code);
         return () =>
         {
+            Controllers.Forget();
             List<SourceNote> notes = program.Write(ic, chip, code);
             IcChip written = program.Describe(ic, chip, 0);
             return new IcSourceSetView(IcRuntime.PlaceOf(scope, ic), echo ? written : written.WithoutSource(),
@@ -73,6 +74,7 @@ internal static class ChipWrites
     private static SetIcPinsView SetPins(DeviceScope scope, IcTarget ic, CircuitHousing housing,
         SortedDictionary<int, Device?> planned)
     {
+        Controllers.Forget();
         List<PinChangeView> changes = new List<PinChangeView>(planned.Count);
         foreach (KeyValuePair<int, Device?> entry in planned)
         {

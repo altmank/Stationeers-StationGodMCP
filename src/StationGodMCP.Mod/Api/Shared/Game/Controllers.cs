@@ -30,12 +30,17 @@ namespace StationGodMCP.Api.Shared.Game;
 /// </list>
 /// Logic Memory holds a value and writes no device; a Logic Transmitter's link is to another transmitter, not a device.
 /// Each network's sources are gathered at most once per scan, and indexed once the scan has asked enough of its
-/// devices (NetworkControllers); a scan lives for one call (Open), so nothing is kept between calls but the parsed
-/// programs, and no world change can leave it stale. Main thread only.
+/// devices (NetworkControllers); a scan lives for one call (Open) or, outside one, for the frame (every lookup of a
+/// frame shares it: the game does not tick between them, so it reads the world as it is in that frame; review D,
+/// R-D-9), so nothing is kept between frames but the parsed programs, and no world change can leave it stale. A
+/// gather fetches a program only from the circuit holders among the network's devices and their slots, and finds a
+/// holder's program by its source string before hashing it (ChipProgramCache.OfHolder). Main thread only.
 /// </summary>
 internal static class Controllers
 {
     private static ControllerScan? _open;
+    private static ControllerScan? _frameScan;
+    private static int _frame = -1;
 
     /// <summary>
     /// Shares one scan among every lookup until the scope is disposed, so a batch builds each network's index once.
@@ -47,8 +52,24 @@ internal static class Controllers
         return new Scope(previous);
     }
 
-    /// <summary>The controllers that can write the device, through the open scan or a scan of its own.</summary>
-    internal static List<Controller> Of(Device device) => (_open ?? new ControllerScan()).Of(device);
+    /// <summary>The controllers that can write the device, through the open scan or the frame's.</summary>
+    internal static List<Controller> Of(Device device) => (_open ?? FrameScan()).Of(device);
+
+    /// <summary>A write that changed what can write a device (a chip's source): the frame's scan is read again.</summary>
+    internal static void Forget() => _frameScan = null;
+
+    // The scan every lookup of this frame shares outside an open scope.
+    private static ControllerScan FrameScan()
+    {
+        int frame = UnityEngine.Time.frameCount;
+        if (_frameScan == null || frame != _frame)
+        {
+            _frameScan = new ControllerScan();
+            _frame = frame;
+        }
+
+        return _frameScan;
+    }
 
     /// <summary>
     /// inspect controllers: what can write the device with this id, one entry per controller (ControllerGroups), each
@@ -58,7 +79,7 @@ internal static class Controllers
     {
         Device device = Require(id.Value);
         List<ControllerEntryView> entries = new List<ControllerEntryView>();
-        foreach (ControllerGroup group in ControllerGroups.Of((_open ?? new ControllerScan()).Of(device)))
+        foreach (ControllerGroup group in ControllerGroups.Of((_open ?? FrameScan()).Of(device)))
         {
             Thing? thing = Thing.Find(group.ReferenceId);
             entries.Add(new ControllerEntryView(group, thing != null ? Names.Of(thing) : group.PrefabName,
@@ -145,17 +166,43 @@ internal sealed class ControllerScan
         {
             members.Add(device.ReferenceId);
             AddWriter(network, device, sources);
-            foreach (Thing holder in LintChips.HoldersOn(device))
-            {
-                ProgramSource? program = ProgramOf(holder, device);
-                if (program != null)
-                {
-                    sources.Add(program);
-                }
-            }
+            AddPrograms(device, sources);
         }
 
         return new NetworkControllers(members, sources);
+    }
+
+    // The device's programs: its own when it is a circuit holder, else those of the holders in its slots (as
+    // LintChips.HoldersOn finds them, without a list per device).
+    private static void AddPrograms(Device device, List<IControllerSource> sources)
+    {
+        if (device is ICircuitHolder)
+        {
+            AddProgram(device, device, sources);
+            return;
+        }
+
+        if (device.Slots == null)
+        {
+            return;
+        }
+
+        for (int index = 0; index < device.Slots.Count; index++)
+        {
+            if (device.Slots[index]?.Get() is Thing occupant && occupant != null && occupant is ICircuitHolder)
+            {
+                AddProgram(occupant, device, sources);
+            }
+        }
+    }
+
+    private static void AddProgram(Thing holder, Device owner, List<IControllerSource> sources)
+    {
+        ProgramSource? program = ProgramOf(holder, owner);
+        if (program != null)
+        {
+            sources.Add(program);
+        }
     }
 
     // The logic unit kinds that write another device; a writer counts on the network its output is on.
@@ -202,7 +249,7 @@ internal sealed class ControllerScan
         ProgrammableChip? chip = LintChips.ChipIn(holderThing);
         string language = chip != null && !LuaChips.IsLua(chip) ? "ic10" : "lua";
         return new ProgramSource(owner.ReferenceId, owner.PrefabName, PinsOf(holderThing),
-            LintChipPrograms.Programs.Of(language, source!));
+            LintChipPrograms.Programs.OfHolder(holderThing.ReferenceId, language, source!));
     }
 
     private static long[] PinsOf(Thing holder)
