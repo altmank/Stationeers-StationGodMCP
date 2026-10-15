@@ -99,8 +99,8 @@ public sealed class C5ReviewTests : IDisposable
         };
         await bench.RunAsync("sg.write('logic', id='1', logic='On', value=1)", confirm: true, maxWait: 0);
         await arrived.Task.WaitAsync(TimeSpan.FromSeconds(30));
-        bench.Host.Stop(new JsonObject { ["id"] = "script-1" });
-        bench.Host.Stop(new JsonObject { ["id"] = "script-1" });
+        await bench.Host.StopAsync(new JsonObject { ["id"] = "script-1" });
+        await bench.Host.StopAsync(new JsonObject { ["id"] = "script-1" });
         await bench.EndedAsync("script-1");
 
         VerbReply early = (await bench.Host.UndoAsync(new JsonObject { ["id"] = "script-1", ["confirm"] = true }))!;
@@ -207,7 +207,7 @@ public sealed class C5ReviewTests : IDisposable
             new JsonObject { ["code"] = "sg.write('logic', id='1', logic='On', value=1)", ["confirm"] = true, ["max_wait"] = 0 },
             ReplyHooks.None);
         await arrived.Task.WaitAsync(TimeSpan.FromSeconds(30));
-        host.Stop(new JsonObject { ["id"] = "script-1" });
+        await host.StopAsync(new JsonObject { ["id"] = "script-1" });
         await RunBench.UntilAsync(() => !host.Find("script-1")!.IsLive, "script-1 to end");
         RunRecord record = host.Find("script-1")!;
         await RunBench.UntilAsync(() => !pipeline.Unsettled(record.Stream), "the write to be given up on");
@@ -273,7 +273,7 @@ public sealed class C5ReviewTests : IDisposable
         {
             if (change.TryGetProperty("set", out _))
             {
-                bench.Host.Stop(new JsonObject { ["id"] = "script-1" });
+                bench.Host.StopAsync(new JsonObject { ["id"] = "script-1" }).GetAwaiter().GetResult();
             }
 
             return null;
@@ -435,7 +435,7 @@ public sealed class C5ReviewTests : IDisposable
         bench.World.RefusesWrite = (id, _, value) => id == "7" && value == 0;
         await bench.RunAsync("with sg.hold('7', 'On', 1):\n    while True:\n        pass", confirm: true, maxWait: 0);
         await RunBench.UntilAsync(() => bench.World.Value("7", "On") == 1, "the hold's write");
-        bench.Host.Stop(new JsonObject { ["id"] = "script-1" });
+        await bench.Host.StopAsync(new JsonObject { ["id"] = "script-1" });
         await bench.EndedAsync("script-1");
         List<string> info = await bench.Host.NoticesAsync("server", "info", null);
 

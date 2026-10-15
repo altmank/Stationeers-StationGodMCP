@@ -340,7 +340,7 @@ internal sealed class McpAdapter : IAsyncDisposable
         }
         else if (verb == "server" && what == "stop")
         {
-            reply = _runs!.Stop(options);
+            reply = await _runs!.StopAsync(options).ConfigureAwait(false);
         }
         else if (verb == "undo")
         {

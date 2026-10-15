@@ -48,7 +48,7 @@ public sealed class RunReviewTests
             "        r = _session.request('hold', {'phase': 'exit', 'ids': ['7'], 'logic': 'On', 'after': 99})\n" +
             "        print('real', r['rows'][0]['ok'], r['rows'][0]['value'])\n",
             confirm: true, line: 3);
-        bench.Host.Stop(new JsonObject { ["id"] = "script-1" });
+        await bench.Host.StopAsync(new JsonObject { ["id"] = "script-1" });
         string text = await FinalAsync(bench, "script-1");
 
         Assert.Contains("forged False", text);
@@ -129,7 +129,7 @@ public sealed class RunReviewTests
         Assert.Contains("script-5 running", own);
         Assert.True(bench.Host.Find("script-1")!.IsLive);
         Assert.False(bench.Seen.Contains("4820585"));
-        bench.Host.Stop(new JsonObject { ["id"] = "script-1" });
+        await bench.Host.StopAsync(new JsonObject { ["id"] = "script-1" });
     }
 
     [PythonFact]
@@ -197,8 +197,8 @@ public sealed class RunReviewTests
 
         await bench.RunAsync("sg.write('logic', id='1', logic='On', value=1)", confirm: true, maxWait: 0);
         await arrived.Task.WaitAsync(TimeSpan.FromSeconds(30));
-        bench.Host.Stop(new JsonObject { ["id"] = "script-1" });
-        bench.Host.Stop(new JsonObject { ["id"] = "script-1" });
+        await bench.Host.StopAsync(new JsonObject { ["id"] = "script-1" });
+        await bench.Host.StopAsync(new JsonObject { ["id"] = "script-1" });
         string text = await FinalAsync(bench, "script-1");
 
         Assert.Contains("DONE write logic x1 [undo] held settings; [cannot undo: action] pulse and action types (maybe ran)", text);
@@ -256,7 +256,7 @@ public sealed class RunReviewTests
 
         await bench.StartAsync(StopInFinally(
             "    with sg.hold('1', 'On', 0) as held:\n        print('body ran')\n"), confirm: true, line: 3);
-        bench.Host.Stop(new JsonObject { ["id"] = "script-1" });
+        await bench.Host.StopAsync(new JsonObject { ["id"] = "script-1" });
         string text = await FinalAsync(bench, "script-1");
 
         Assert.Contains("body ran", text);
@@ -277,7 +277,7 @@ public sealed class RunReviewTests
 
         await bench.RunAsync("with sg.hold('7', 'On', 1):\n    while True:\n        pass", confirm: true, maxWait: 0);
         await RunBench.UntilAsync(() => bench.World.Value("7", "On") == 1, "the hold's write");
-        bench.Host.Stop(new JsonObject { ["id"] = "script-1" });
+        await bench.Host.StopAsync(new JsonObject { ["id"] = "script-1" });
         string text = await FinalAsync(bench, "script-1");
 
         Assert.StartsWith("script-1 killed", text);
@@ -366,7 +366,7 @@ public sealed class RunReviewTests
         await adapter.HandleAsync(
             """{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"run_script","arguments":{"code":"sg.write('logic', id='1', logic='On', value=1)\nsg.wait(30)","confirm":true,"max_wait":0}}}""");
         await RunBench.UntilAsync(() => adapter.Runs!.LineOf("script-1") == 2, "script-1 reaching its wait");
-        adapter.Runs!.Stop(new JsonObject { ["id"] = "script-1" });
+        await adapter.Runs!.StopAsync(new JsonObject { ["id"] = "script-1" });
         DateTime until = DateTime.UtcNow + TimeSpan.FromSeconds(60);
         while (adapter.Runs.Find("script-1")!.IsLive && DateTime.UtcNow < until)
         {

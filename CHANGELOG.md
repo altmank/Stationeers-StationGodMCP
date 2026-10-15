@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **undo of a build or remove job works again, and is spread over frames.** It failed with an internal error since
+  the handlers answer typed replies. Its replayed removal, placement and piece-run planners now run a step at a time
+  over frames, as every other call does, instead of in the call's frame.
+- **`server stop` answers what PLAN 2.2 says.** One run: `{id, first_line, state, line, left, in_flight, undo}`
+  (`left`: what the run has changed and not restored, with the code line of each write; `in_flight`: each job it
+  started that has not ended, with its fate; `undo`: `undo script-N` when there is something to undo). No id: `{runs,
+  count, left}`. A job id drops a job still waiting in the queue; a started job is refused `job_not_waiting` and runs
+  to its end (it was `method_not_found`).
 - **A find can be subscribed to.** `subscribe {topic: "find", what, ...the find's options, interval_s}` (thing,
   item, device, container, frame, damaged, pad, water, food, plant, room, gateway; no paging or shaping options)
   answers the whole list once, then sends `find_update` events with only what changed: entries added, changed and

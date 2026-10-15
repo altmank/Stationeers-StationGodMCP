@@ -629,6 +629,73 @@ internal sealed partial class Run : IRunChannel, IPipelineExtras, IVerbCalls
         });
     }
 
+    /// <summary>
+    /// The stop reply's left (PLAN 2.2): per logic target the run has written, the value it last wrote where that
+    /// differs from the value before the run, with the code line of that write. What the run's finally restores after
+    /// the stop is not known yet; the run's end reads the targets again for its notice (ReadLeftAsync).
+    /// </summary>
+    internal JsonArray LeftSoFar()
+    {
+        JsonArray left = [];
+        lock (Record.Sync)
+        {
+            foreach (string key in _writtenOrder)
+            {
+                WrittenTarget last = _lastWritten[key];
+                JsonNode? value = last.After ?? last.New;
+                if (SameValue(value, FirstBefore(key)))
+                {
+                    continue;
+                }
+
+                int cut = key.IndexOf('\n');
+                left.Add(new JsonObject
+                {
+                    ["id"] = key[..cut],
+                    ["logic"] = key[(cut + 1)..],
+                    ["value"] = value?.DeepClone(),
+                    ["line"] = LastLine(key)
+                });
+            }
+        }
+
+        return left;
+    }
+
+    /// <summary>Every job the run started, in id order.</summary>
+    internal List<string> StartedJobs()
+    {
+        lock (Record.Sync)
+        {
+            List<string> jobs = [.. _startedJobs];
+            jobs.Sort(StringComparer.Ordinal);
+            return jobs;
+        }
+    }
+
+    // Under Sync: the code line of the run's last acted write to the target.
+    private int? LastLine(string key)
+    {
+        for (int index = Record.Writes.Count - 1; index >= 0; index--)
+        {
+            WriteEntry write = Record.Writes[index];
+            if (!write.Acted)
+            {
+                continue;
+            }
+
+            foreach (WrittenTarget target in write.Targets)
+            {
+                if (target.Acted && target.Field != null && Key(target.Id, target.Field) == key)
+                {
+                    return write.Line;
+                }
+            }
+        }
+
+        return null;
+    }
+
     // left: per logic target the run wrote, its value now where that differs from the value before the run.
     private async Task ReadLeftAsync()
     {

@@ -6,7 +6,7 @@ whats:
 - profiling: profile StationGod's main-thread cost: on, off, reset, report
 - console: the latest in-game console lines, oldest first
 - command: run any console command and answer what it printed: spawn, delete, teleport, storms, settings (cheat)
-- stop: stop a script run or a job; with no id, every live run. The run gets sg.Stopped once, so its finally runs; held restores and logic writes to targets it already wrote act as CLEANUP until the kill (5 s, longer while a call is in flight, never past 30 s, or a second stop); other writes answer an error row
+- stop: stop a script run, or drop a job still waiting in the queue; with no id, every live run. The run gets sg.Stopped once, so its finally runs; held restores and logic writes to targets it already wrote act as CLEANUP until the kill (5 s, longer while a call is in flight, never past 30 s, or a second stop); other writes answer an error row. The reply lists what the run left changed (left), each job it started that is still in flight with its fate (a started job is not stopped: it runs to its end), and the undo of its writes
 
 Shaping on every call: fields, omit, list_limits, output_file, whole, repeat (help {topic: "shaping"}).
 help {verb: "server", what} gives a what's options, reply keys and an example.

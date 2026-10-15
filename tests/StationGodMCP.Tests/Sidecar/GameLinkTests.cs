@@ -841,7 +841,9 @@ public sealed class GameLinkTests
         await using FakeGame game = HubGame();
         await using GameLink link = new(new ClientOptions(game.Target));
         ConcurrentQueue<bool> connecting = new();
-        link.WorldChanged += _ => connecting.Enqueue(link.IsConnecting);
+        // Another connect (a topic call before the new connection reads as alive) may hold the lock for a moment; a
+        // handler raised under the adopting connect's lock would keep it for as long as it waits.
+        link.WorldChanged += _ => connecting.Enqueue(!link.ConnectLockFreeWithin(TimeSpan.FromSeconds(2)));
         Assert.True(await link.ConnectAsync());
 
         game.WorldId = "world-2";

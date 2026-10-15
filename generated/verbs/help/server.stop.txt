@@ -1,5 +1,5 @@
-Stop a script run or a job; with no id, every live run. The run gets sg.Stopped once, so its finally runs; held restores and logic writes to targets it already wrote act as CLEANUP until the kill (5 s, longer while a call is in flight, never past 30 s, or a second stop); other writes answer an error row.
+Stop a script run, or drop a job still waiting in the queue; with no id, every live run. The run gets sg.Stopped once, so its finally runs; held restores and logic writes to targets it already wrote act as CLEANUP until the kill (5 s, longer while a call is in flight, never past 30 s, or a second stop); other writes answer an error row. The reply lists what the run left changed (left), each job it started that is still in flight with its fate (a started job is not stopped: it runs to its end), and the undo of its writes.
 Options:
-- id (string): The run (script-14) or job (place-41). Left out: every live run, answered as one combined list.
-Reply: id, state, line, left [{id, logic, value, line}], in_flight [{job_id, fate}], undo
+- id (string): The run (script-14), or a job (place-41) still waiting in the queue: it is dropped; a job that has started is refused (job_not_waiting) and runs to its end. Left out: every live run, answered as one list with one combined left.
+Reply: () id, first_line, state, line, left [{id, logic, value, line}], in_flight [{job_id, fate}], undo | () runs [{id, first_line, state, line, left, in_flight, undo}], count, left [{run, id, logic, value, line}]
 Example: server {what: "stop", id: "script-14"}

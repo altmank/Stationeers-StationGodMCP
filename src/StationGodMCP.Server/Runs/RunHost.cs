@@ -461,13 +461,19 @@ public sealed partial class RunHost : IAsyncDisposable
         return new JsonObject { ["runs"] = runs, ["count"] = runs.Count };
     }
 
-    /// <summary>server stop for a run, or with no id every live run; null for a job id (not a run).</summary>
-    internal VerbReply? Stop(JsonObject options)
+    /// <summary>
+    /// server stop (PLAN 2.2; SPEC note 6): a run by id, or with no id every live run, each told to stop and answered at
+    /// once with what it has changed and not restored so far (left; its end reads the targets again for its notice),
+    /// each job it started that is still in flight with that job's fate, and the undo that reverts its writes. A job id
+    /// goes to the mod's drop_job: a job still waiting in the queue is taken out; a started job is not stopped, it
+    /// settles on its own (job_not_waiting).
+    /// </summary>
+    internal async Task<VerbReply> StopAsync(JsonObject options, CancellationToken cancellation = default)
     {
         string? id = JsonNodes.Text(options["id"])?.Trim();
-        if (id != null && !id.StartsWith(Prefix, StringComparison.OrdinalIgnoreCase))
+        if (id != null && !IsRunId(id))
         {
-            return null;
+            return await DropJobAsync(id, cancellation).ConfigureAwait(false);
         }
 
         if (id != null)
@@ -478,39 +484,134 @@ public sealed partial class RunHost : IAsyncDisposable
                 return new VerbReply.Failed("job_not_found", $"No run {id} in this session.");
             }
 
-            return new VerbReply.Done(notes.Run is { } run
-                ? Stopping(run)
-                : new JsonObject
-                {
-                    ["id"] = notes.Record.Id,
-                    ["first_line"] = notes.Record.FirstLine,
-                    ["state"] = Run.StateWord(notes.Record.State)
-                });
+            return new VerbReply.Done(await StoppedAsync(notes.Record, notes.Run, cancellation).ConfigureAwait(false));
         }
 
         JsonArray runs = [];
+        JsonArray left = [];
         foreach (Run run in LiveRuns())
         {
-            runs.Add(Stopping(run));
+            JsonObject stopped = await StoppedAsync(run.Record, run, cancellation).ConfigureAwait(false);
+            foreach (JsonNode? target in (JsonArray)stopped["left"]!)
+            {
+                JsonObject each = (JsonObject)target!.DeepClone();
+                each["run"] = run.Record.Id;
+                left.Add(each);
+            }
+
+            runs.Add(stopped);
         }
 
-        return new VerbReply.Done(new JsonObject { ["runs"] = runs, ["count"] = runs.Count });
+        return new VerbReply.Done(new JsonObject { ["runs"] = runs, ["count"] = runs.Count, ["left"] = left });
     }
 
-    private static JsonObject Stopping(Run run) => new()
+    // One run's stop reply: the stop requested (a live run), its state word, the line it is at, left, in_flight and the
+    // undo of its writes (null when it acted none that undo reverts).
+    private async Task<JsonObject> StoppedAsync(RunRecord record, Run? run, CancellationToken cancellation)
     {
-        ["id"] = run.Record.Id,
-        ["first_line"] = run.Record.FirstLine,
-        ["state"] = run.RequestStop("stopped", "stopped by server stop", world: false),
-        ["line"] = run.Line
-    };
+        string state = run?.RequestStop("stopped", "stopped by server stop", world: false) ?? Run.StateWord(record.State);
+        JsonArray inFlight = [];
+        foreach (string job in run?.StartedJobs() ?? [])
+        {
+            if (!await EndedAsync(job, cancellation).ConfigureAwait(false))
+            {
+                inFlight.Add(new JsonObject
+                {
+                    ["job_id"] = job,
+                    ["fate"] = $"settles: a started job runs to its end; inspect job {job} follows it"
+                });
+            }
+        }
+
+        return new JsonObject
+        {
+            ["id"] = record.Id,
+            ["first_line"] = record.FirstLine,
+            ["state"] = state,
+            ["line"] = run?.Line,
+            ["left"] = run != null ? run.LeftSoFar() : LeftOf(record),
+            ["in_flight"] = inFlight,
+            ["undo"] = Undoable(record) ? "undo " + record.Id : null
+        };
+    }
+
+    // Whether the job has ended, as the link's job waits know it (a link without them knows nothing: not ended).
+    private async Task<bool> EndedAsync(string job, CancellationToken cancellation)
+    {
+        try
+        {
+            return await _link.WaitJobAsync(job, TimeSpan.Zero, cancellation).ConfigureAwait(false) != null;
+        }
+        catch (NotSupportedException)
+        {
+            return false;
+        }
+    }
+
+    // An ended run's left, as its end read it.
+    private static JsonArray LeftOf(RunRecord record)
+    {
+        JsonArray left = [];
+        lock (record.Sync)
+        {
+            foreach (LeftTarget target in record.Left)
+            {
+                left.Add(new JsonObject
+                {
+                    ["id"] = target.Id,
+                    ["logic"] = target.Logic,
+                    ["value"] = target.Value?.DeepClone(),
+                    ["line"] = null
+                });
+            }
+        }
+
+        return left;
+    }
+
+    // Whether the run acted a write that its undo reverts.
+    private static bool Undoable(RunRecord record)
+    {
+        lock (record.Sync)
+        {
+            foreach (WriteEntry write in record.Writes)
+            {
+                if (write.Acted && write.Undo != "cannot")
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    // A job id: the mod's drop_job takes a job still waiting in the queue out of it, and refuses a started one
+    // (job_not_waiting: it settles on its own) and an id it never had (job_not_found).
+    private async Task<VerbReply> DropJobAsync(string id, CancellationToken cancellation)
+    {
+        GameReply reply = await _link.CallAsync(new GameCall("drop_job", HubLines.Parameters("job_id", id)), cancellation)
+            .ConfigureAwait(false);
+        return reply is GameReply.Ok
+            ? new VerbReply.Done(new JsonObject
+            {
+                ["id"] = id,
+                ["first_line"] = null,
+                ["state"] = "dropped",
+                ["line"] = null,
+                ["left"] = new JsonArray(),
+                ["in_flight"] = new JsonArray(),
+                ["undo"] = null
+            })
+            : VerbPipeline.Failure(reply);
+    }
 
     /// <summary>
     /// A script's own call of server stop, inspect job or undo for runs; null for every other call. A script may stop
     /// or inspect only its own run: anything about another run (or every run) is the agent's to ask, and nothing a
     /// worker is answered feeds the seen set or marks a run's notices done.
     /// </summary>
-    internal Task<VerbReply?> RunsCallAsync(VerbCall call, Run caller, CancellationToken cancellation)
+    internal async Task<VerbReply?> RunsCallAsync(VerbCall call, Run caller, CancellationToken cancellation)
     {
         string? id = JsonNodes.Text(call.Args["id"])?.Trim();
         bool aboutRuns = (call.Verb == "server" && call.What == "stop") ||
@@ -518,24 +619,22 @@ public sealed partial class RunHost : IAsyncDisposable
                          (call.Verb == "undo" && id != null && IsRunId(id));
         if (!aboutRuns)
         {
-            return Task.FromResult<VerbReply?>(null);
+            return null;
         }
 
         if (call.Verb == "undo" || id == null || !string.Equals(id, caller.Record.Id, StringComparison.OrdinalIgnoreCase))
         {
-            return Task.FromResult<VerbReply?>(new VerbReply.Failed("not_allowed",
-                "runs are inspected, stopped and undone by the agent directly; a script may stop or inspect only its own run"));
+            return new VerbReply.Failed("not_allowed",
+                "runs are inspected, stopped and undone by the agent directly; a script may stop or inspect only its own run");
         }
 
-        VerbReply own = call.Verb == "server"
-            ? new VerbReply.Done(Stopping(caller))
+        return call.Verb == "server"
+            ? new VerbReply.Done(await StoppedAsync(caller.Record, caller, cancellation).ConfigureAwait(false))
             : new VerbReply.Done(new JsonObject
             {
                 ["text"] = RunText.Running(caller.Record, caller.Line, caller.ActedWrites, caller.LastWrite, null)
             });
-        return Task.FromResult<VerbReply?>(own);
     }
-
     private static bool IsRunId(string id) => id.StartsWith(Prefix, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>sg.ref('script-N'): a finished run's whole returned value and printed output.</summary>

@@ -34,8 +34,9 @@ public sealed class CallWorldTests
         WaitUntil(() => Queued(rig));
         _world = WorldB;
 
-        rig.Mod.RunPending();
-        JObject refused = client.Next();
+        // In flight is counted when the connection reads the call, a moment before it reaches the main thread's queue:
+        // frames run until it answers, as the other tests do.
+        JObject refused = RunUntilReply(rig, client);
 
         Assert.Equal("1", (string?)refused["id"]);
         Assert.False((bool)refused["ok"]!);

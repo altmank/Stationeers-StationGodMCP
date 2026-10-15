@@ -210,6 +210,15 @@ A stop (`server {what: "stop", id?}`, a user cancel, the world change, an unseen
 The worker is killed 5 s after the stop, longer while a call is in flight but never past 30 s, or at once on a second
 stop. A swallowed stop ends at the kill.
 
+The stop answers at once (`RunHost.StopAsync`): `{id, first_line, state, line, left, in_flight, undo}`. `left` is each
+logic target the run has written whose last written value differs from its value before the run, with the code line
+of that write (what a `finally` restores after the stop shows in the run's end notice, which reads the targets again);
+`in_flight` is each job the run started that has not ended, with its fate (a started job is not stopped: it runs to its
+end); `undo` is `undo script-N` when the run acted a write its undo reverts. With no id every live run is stopped,
+answered as `{runs, count, left}` with one combined `left` (each entry naming its `run`). A job id (`place-41`) goes to
+the mod's `drop_job`: a job still waiting in the queue is taken out (`state: "dropped"`), a started one is refused
+`job_not_waiting`.
+
 ### Session end (the EOF order)
 
 On stdin EOF (MCP mode or `--hub`):

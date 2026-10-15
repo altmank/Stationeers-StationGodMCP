@@ -122,6 +122,21 @@ public sealed class GameLink : IHubLink, IAsyncDisposable
     /// <summary>True while a connection is being opened under the connect lock.</summary>
     internal bool IsConnecting => _connectLock.CurrentCount == 0;
 
+    /// <summary>
+    /// Whether the connect lock can be taken within wait: a connect that holds it briefly lets it go, while a handler
+    /// raised under it would hold it for as long as the handler waits here (what runs after a connect must not).
+    /// </summary>
+    internal bool ConnectLockFreeWithin(TimeSpan wait)
+    {
+        if (!_connectLock.Wait(wait))
+        {
+            return false;
+        }
+
+        _connectLock.Release();
+        return true;
+    }
+
     private bool Closed => _disposed || _ended;
 
     public long NewStream() => Interlocked.Increment(ref _lastStream);

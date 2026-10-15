@@ -184,7 +184,7 @@ internal sealed class FakeGame : IAsyncDisposable
             }
 
             int number = Interlocked.Increment(ref _connections);
-            Peer peer = new(number, stream);
+            Peer peer = new(number, stream, _stopping.Token);
             _peers[number] = peer;
             _ = Task.Run(async () =>
             {
@@ -297,7 +297,7 @@ internal sealed class FakeGame : IAsyncDisposable
 
     private async Task<JsonElement?> ReadAsync(Peer peer)
     {
-        string? line = await peer.Reader.ReadLineAsync(_stopping.Token);
+        string? line = await peer.Reader.ReadLineAsync(peer.Closing);
         if (line == null)
         {
             return null;
@@ -309,9 +309,15 @@ internal sealed class FakeGame : IAsyncDisposable
         return message;
     }
 
-    private sealed class Peer(int number, Stream stream)
+    private sealed class Peer(int number, Stream stream, CancellationToken stopping)
     {
         private readonly SemaphoreSlim _writing = new(1, 1);
+
+        // Disposing a pipe stream does not always end a read pending on it; cancelling the read does.
+        private readonly CancellationTokenSource _closing = CancellationTokenSource.CreateLinkedTokenSource(stopping);
+
+        /// <summary>Cancelled when the peer is closed (DropAll) or the game stops: it ends the peer's pending read.</summary>
+        public CancellationToken Closing => _closing.Token;
 
         public int Number { get; } = number;
 
@@ -352,6 +358,15 @@ internal sealed class FakeGame : IAsyncDisposable
 
         public void Close()
         {
+            try
+            {
+                _closing.Cancel();
+            }
+            catch (ObjectDisposedException)
+            {
+                // Closed before.
+            }
+
             try
             {
                 stream.Dispose();

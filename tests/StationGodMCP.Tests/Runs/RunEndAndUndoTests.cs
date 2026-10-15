@@ -81,7 +81,7 @@ public sealed class RunEndAndUndoTests : IDisposable
 
         Assert.Equal("run_live", live.Code);
         Assert.Equal("stop it first: server {what: \"stop\", id: \"script-1\"}", live.Fix);
-        bench.Host.Stop(new JsonObject { ["id"] = "script-1" });
+        await bench.Host.StopAsync(new JsonObject { ["id"] = "script-1" });
     }
 
     [PythonFact]
@@ -243,7 +243,7 @@ public sealed class RunEndAndUndoTests : IDisposable
         };
         string id = await bench.StartAsync("sg.write('logic', id='1', logic='On', value=1)\ntry:\n    sg.wait(30)\nfinally:\n" +
                                            "    sg.write('logic', id='1', logic='On', value=0)", confirm: true, line: 3);
-        bench.Host.Stop(new JsonObject { ["id"] = id });
+        await bench.Host.StopAsync(new JsonObject { ["id"] = id });
         await arrived.Task.WaitAsync(TimeSpan.FromSeconds(30));
 
         await bench.Host.EndSessionAsync();
@@ -280,7 +280,7 @@ public sealed class RunEndAndUndoTests : IDisposable
         await bench.RunAsync("try:\n    sg.read('logic', id='1', logic='On')\n    sg.wait(30)\nexcept BaseException:\n    pass\n" +
                              "while True:\n    pass", confirm: true, maxWait: 0);
         await arrived.Task.WaitAsync(TimeSpan.FromSeconds(30));
-        bench.Host.Stop(new JsonObject { ["id"] = "script-1" });
+        await bench.Host.StopAsync(new JsonObject { ["id"] = "script-1" });
         // Past KillAfter (1 s) with the read still held in flight: the run must still be alive.
         await Task.Delay(TimeSpan.FromSeconds(2));
         bool aliveWhileInFlight = bench.Host.Find("script-1")!.IsLive;
@@ -317,7 +317,7 @@ public sealed class RunEndAndUndoTests : IDisposable
         await bench.RunAsync("sg.read('logic', id='1', logic='On')", confirm: true, maxWait: 0);
         await arrived.Task.WaitAsync(TimeSpan.FromSeconds(30));
         Stopwatch since = Stopwatch.StartNew();
-        bench.Host.Stop(new JsonObject { ["id"] = "script-1" });
+        await bench.Host.StopAsync(new JsonObject { ["id"] = "script-1" });
         await EndedAsync(bench, "script-1");
 
         Assert.Equal(RunState.Killed, bench.Host.Find("script-1")!.State);
@@ -341,7 +341,7 @@ public sealed class RunEndAndUndoTests : IDisposable
                              "    except BaseException:\n        pass", confirm: true, maxWait: 0);
         await RunBench.UntilAsync(() => bench.World.Count("write.logic") >= 3, "the loop's writes");
         Stopwatch since = Stopwatch.StartNew();
-        bench.Host.Stop(new JsonObject { ["id"] = "script-1" });
+        await bench.Host.StopAsync(new JsonObject { ["id"] = "script-1" });
         await bench.EndedAsync("script-1");
 
         Assert.Equal(RunState.Killed, bench.Host.Find("script-1")!.State);
