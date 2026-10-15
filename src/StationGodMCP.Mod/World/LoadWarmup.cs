@@ -21,9 +21,10 @@ namespace StationGodMCP.WorldModel;
 /// Then the mod's own code is compiled (compiled, never run: RuntimeHelpers.PrepareMethod, and on the game's Mono the
 /// method's function pointer, which compiles it), CompileMsAFrame of each
 /// frame, type by type, so the first call of a kind after a load does not pay for compiling its handler, its reports
-/// and the planners and job states it reaches; with them every method they call directly (the game's, the runtime's,
-/// closed generic ones), read from their IL (CalledMethods). Open generic methods are left to their first call. Main
-/// thread.
+/// and the planners and job states it reaches; with them the methods they call (the game's, the runtime's, closed
+/// generic ones), read from their IL (CalledMethods), and theirs, CalleeDepth calls deep; and every method of a closed
+/// form of the mod's own generic types they name (a list page of frames, an iterator's state machine), which exists
+/// only for those type arguments. Open generic methods are left to their first call. Main thread.
 /// </summary>
 internal static class LoadWarmup
 {
@@ -52,8 +53,13 @@ internal static class LoadWarmup
     private static MethodBase[]? _members;
     private static int _member;
     private static readonly List<MethodBase> Called = new List<MethodBase>();
+    // How far below the mod's own methods callees are compiled: a callee's callees, and theirs.
+    private const int CalleeDepth = 3;
+
     private static readonly List<MethodBase> Callees = new List<MethodBase>();
+    private static readonly List<int> CalleeDepths = new List<int>();
     private static readonly HashSet<MethodBase> Seen = new HashSet<MethodBase>();
+    private static readonly HashSet<Type> SeenTypes = new HashSet<Type>();
     private static int _queued;
     private static int _callees;
     private static int _compiled;
@@ -114,13 +120,20 @@ internal static class LoadWarmup
         {
             if (_queued < Callees.Count)
             {
-                Prepare(Callees[_queued++]);
+                MethodBase callee = Callees[_queued];
+                int depth = CalleeDepths[_queued++];
+                Prepare(callee);
+                if (depth < CalleeDepth)
+                {
+                    Queue(callee, depth + 1);
+                }
+
                 _callees++;
             }
             else if (NextOwn() is { } own)
             {
                 Prepare(own);
-                Queue(own);
+                Queue(own, 1);
             }
             else
             {
@@ -136,7 +149,9 @@ internal static class LoadWarmup
 
         _compileMs += Elapsed(started);
         Callees.Clear();
+        CalleeDepths.Clear();
         Seen.Clear();
+        SeenTypes.Clear();
         StationGodMod.Log($"Compiled StationGod's code at load: {_compiled - _callees} of its methods and {_callees} " +
                           $"they call in {_compileMs:F0} ms of frames" +
                           (_failed > 0 ? $", {_failed} left to their first call" : string.Empty) + ".");
@@ -161,12 +176,12 @@ internal static class LoadWarmup
         return null;
     }
 
-    // The method's direct callees not seen yet, queued to be compiled.
-    private static void Queue(MethodBase own)
+    // The method's direct callees not seen yet, queued to be compiled at depth (1: called by one of the mod's own).
+    private static void Queue(MethodBase method, int depth)
     {
         try
         {
-            CalledMethods.Of(own, Called);
+            CalledMethods.Of(method, Called);
         }
         catch (Exception)
         {
@@ -175,13 +190,42 @@ internal static class LoadWarmup
 
         foreach (MethodBase callee in Called)
         {
-            if (Seen.Add(callee))
+            Add(callee, depth);
+            // A closed form of one of the mod's own generic types (a list page of frames, an iterator's state
+            // machine): its methods are made for these type arguments only, so they are compiled with it.
+            Type? owner = callee.DeclaringType;
+            if (owner is { IsGenericType: true, ContainsGenericParameters: false } &&
+                owner.Assembly == typeof(LoadWarmup).Assembly && SeenTypes.Add(owner))
             {
-                Callees.Add(callee);
+                foreach (MethodBase member in MembersOf(owner))
+                {
+                    Add(member, depth);
+                }
+
+                foreach (Type nested in owner.GetGenericTypeDefinition().GetNestedTypes(BindingFlags.NonPublic))
+                {
+                    if (nested.IsGenericTypeDefinition &&
+                        nested.GetGenericArguments().Length == owner.GetGenericArguments().Length)
+                    {
+                        foreach (MethodBase member in MembersOf(nested.MakeGenericType(owner.GetGenericArguments())))
+                        {
+                            Add(member, depth);
+                        }
+                    }
+                }
             }
         }
 
         Called.Clear();
+    }
+
+    private static void Add(MethodBase method, int depth)
+    {
+        if (Seen.Add(method))
+        {
+            Callees.Add(method);
+            CalleeDepths.Add(depth);
+        }
     }
 
     private static void Prepare(MethodBase method)

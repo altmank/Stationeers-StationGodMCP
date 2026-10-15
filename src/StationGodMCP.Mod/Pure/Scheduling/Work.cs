@@ -62,9 +62,10 @@ internal static class WorkStop
 /// The one form of work spread over frames (A3; scheduling.md, Work over frames): a body is an iterator that does a
 /// bounded step of its work and yields (one candidate, one batch of a search's expansions, one piece of an apply), and
 /// sets its Answer before it ends. Nested bodies are chained by yielding each of their steps
-/// (foreach (object? step in Sub(answer)) yield return step;). Step takes the body's steps until the clock reaches the
-/// slice's end, at least one, and stops early at a yield where the running call's stop says so (WorkStop), so a slice
-/// overruns its end by one step at most. Main thread only; a body that throws throws out of Step.
+/// (foreach (object? step in Sub(answer)) yield return step;). Step takes the body's steps while a step as long as
+/// the last one would still end within the slice, at least one, and stops early at a yield where the running call's
+/// stop says so (WorkStop), so a slice overruns its end only by a step longer than the one before it. Main thread
+/// only; a body that throws throws out of Step.
 /// </summary>
 internal sealed class Work<T>
 {
@@ -90,7 +91,10 @@ internal sealed class Work<T>
     /// <summary>The body's answer, once Done.</summary>
     internal T Value => Done ? _answer.Value : throw new InvalidOperationException("The work has not ended yet.");
 
-    /// <summary>Takes steps until the clock reaches untilMs, at least one, or the stop is met; true once Done.</summary>
+    /// <summary>
+    /// Takes steps while the last step's length still fits before untilMs, at least one, or until the stop is met;
+    /// true once Done.
+    /// </summary>
     internal bool Step(IMonotonicClock clock, double untilMs)
     {
         IEnumerator<object?>? steps = _steps;
@@ -99,7 +103,8 @@ internal sealed class Work<T>
             return true;
         }
 
-        do
+        double stepStarted = clock.NowMs;
+        while (true)
         {
             long began = WorkSteps.Long != null ? Stopwatch.GetTimestamp() : 0;
             if (!steps.MoveNext())
@@ -114,10 +119,16 @@ internal sealed class Work<T>
             {
                 WorkSteps.Measured(steps, began);
             }
-        }
-        while (clock.NowMs < untilMs && !WorkStop.Requested);
 
-        return false;
+            // The next step is taken only while one as long as this one still ends within the slice.
+            double now = clock.NowMs;
+            double lastStepMs = now - stepStarted;
+            stepStarted = now;
+            if (now >= untilMs || now + lastStepMs > untilMs || WorkStop.Requested)
+            {
+                return false;
+            }
+        }
     }
 }
 

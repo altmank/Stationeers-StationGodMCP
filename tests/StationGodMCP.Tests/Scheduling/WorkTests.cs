@@ -9,7 +9,8 @@ using Xunit;
 namespace StationGodMCP.Tests.Scheduling;
 
 /// <summary>
-/// Work over frames (A3): a body takes bounded steps and yields; Step goes on to the slice's end, at least one step,
+/// Work over frames (A3): a body takes bounded steps and yields; Step goes on while a step as long as the last still
+/// ends within the slice, at least one step,
 /// and stops at a yield where the call's stop says so; nested bodies chain; the answer is ready once the body ends.
 /// </summary>
 public sealed class WorkTests
@@ -26,6 +27,18 @@ public sealed class WorkTests
         Assert.Equal(6, work.Steps);
         Assert.True(work.Step(clock, 100.0));
         Assert.Equal(10, work.Value);
+    }
+
+    [Fact]
+    public void AStepAsLongAsTheLastIsNotStartedWhenItWouldEndPastTheSlice()
+    {
+        FakeClock clock = new FakeClock();
+        Work<int> work = new Work<int>(answer => Costing(clock, new[] { 1.0, 1.0, 2.0, 2.0, 2.0 }, answer));
+
+        // 1 + 1 + 2 ends at 4; another 2 ms step would end at 6, past the slice's 5.
+        Assert.False(work.Step(clock, 5.0));
+        Assert.Equal(3, work.Steps);
+        Assert.Equal(4.0, clock.NowMs);
     }
 
     [Fact]
@@ -114,6 +127,17 @@ public sealed class WorkTests
         }
 
         answer.Value = done;
+    }
+
+    private static IEnumerable<object?> Costing(FakeClock clock, double[] msEach, Answer<int> answer)
+    {
+        foreach (double ms in msEach)
+        {
+            clock.Advance(ms);
+            yield return null;
+        }
+
+        answer.Value = msEach.Length;
     }
 
     private static IEnumerable<object?> Outer(FakeClock clock, Answer<int> answer)

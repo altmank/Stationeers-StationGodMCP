@@ -366,7 +366,11 @@ internal static class UpgradePlanner
         PlanContext context = new PlanContext(plan, WorldModel.Prefabs.KitsOf(request.Family), new TwinFinder());
         foreach (SmallGrid member in members)
         {
-            request.Goal.Classify(context, member);
+            foreach (object? step in request.Goal.Classifying(context, member))
+            {
+                yield return step;
+            }
+
             yield return null;
         }
 

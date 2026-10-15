@@ -58,7 +58,7 @@ public sealed class ScanBuildTests
     }
 
     [Fact]
-    public void ASliceOverrunsItsEndByOneStepAtMost()
+    public void ASliceEndsWithinItsBudgetWhenItsStepsAreAlike()
     {
         FakeClock clock = new FakeClock();
         List<ListKey> world = World(400, new Random(2));
@@ -67,7 +67,7 @@ public sealed class ScanBuildTests
         double end = clock.NowMs + 1.0;
         build.Run(clock, end);
 
-        Assert.InRange(clock.NowMs, end, end + 0.1);
+        Assert.InRange(clock.NowMs, end - 0.1, end + 1e-9);
         Assert.False(build.Done);
     }
 

@@ -161,6 +161,7 @@ internal sealed class LinkSurvey
         answer.Value = survey;
     }
 
+    [Profiled]
     private static PieceModel LiveOf(PlannedSwap swap, SmallGrid thing)
     {
         foreach (OldPiece old in swap.Olds)

@@ -336,8 +336,9 @@ internal sealed class EndCleanupGoal : SwapGoal
         new List<string> { CleanupNote, family.CleanNote, CostNote, TickNote };
 
     // Every member is planned in Finish, together with the others.
-    internal override void Classify(PlanContext context, SmallGrid member)
+    internal override IEnumerable<object?> Classifying(PlanContext context, SmallGrid member)
     {
+        yield break;
     }
 
     internal override void Finish(PlanContext context, List<SmallGrid> members)

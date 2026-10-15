@@ -12,6 +12,7 @@ using Networks;
 using Objects.Items;
 using Objects.Rockets;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure.Profiling;
 using StationGodMCP.Pure.Rockets;
 
 namespace StationGodMCP.Api.Shared.Game.Flight;
@@ -181,6 +182,7 @@ internal sealed class RocketParts
 
     internal List<MassPartView> MassParts { get; } = new List<MassPartView>(16);
 
+    [Profiled]
     internal static RocketParts Of(Rocket rocket)
     {
         RocketParts parts = new RocketParts(rocket);

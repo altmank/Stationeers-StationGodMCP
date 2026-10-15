@@ -11,6 +11,7 @@ using Objects.Rockets.Mining;
 using Objects.Rockets.Scanning;
 using Reagents;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure.Profiling;
 using StationGodMCP.Pure.Rockets;
 using World = StationGodMCP.WorldModel.World;
 
@@ -106,6 +107,7 @@ internal static class MiningReads
     }
 
     /// <summary>The node and its discovered child sites, each with a deposit.</summary>
+    [Profiled]
     internal static List<SiteRead> SitesAt(SpaceMapNode node)
     {
         List<SiteRead> sites = new List<SiteRead>(4);

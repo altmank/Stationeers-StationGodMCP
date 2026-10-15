@@ -101,10 +101,12 @@ internal static class FrameFaces
     // The masks the changes told since the last Drop reach: each changed cell's and its neighbours'.
     private static void Drop()
     {
-        if (!WorldEvents.Cells.Take(Changed))
+        if (!WorldEvents.Cells.Take(Changed) || Masks.Count == 0)
         {
+            // Everything changed, or nothing is kept (a load tells every structure's cells): drop all at once.
             _dropped += Masks.Count;
             Masks.Clear();
+            Changed.Clear();
             return;
         }
 

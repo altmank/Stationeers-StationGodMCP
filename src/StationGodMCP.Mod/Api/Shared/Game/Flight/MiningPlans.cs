@@ -6,6 +6,7 @@ using Objects.Rockets;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure.Profiling;
 using StationGodMCP.Pure.Rockets;
 using StationGodMCP.Pure.Scheduling;
 
@@ -172,6 +173,7 @@ internal static class MiningPlans
             liquidLitres, collects);
     }
 
+    [Profiled]
     internal static MiningSiteView SiteView(SiteRead site, RocketParts parts)
     {
         List<MachineYieldView> machines = Machines(site, parts, out List<string> problems);

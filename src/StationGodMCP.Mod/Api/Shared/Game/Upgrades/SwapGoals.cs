@@ -36,8 +36,11 @@ internal abstract class SwapGoal
 
     internal abstract List<string> Notes(UpgradeFamily family);
 
-    /// <summary>Puts the member into the plan: a swap, kept, unmatched, a dead end, or a problem.</summary>
-    internal abstract void Classify(PlanContext context, SmallGrid member);
+    /// <summary>
+    /// Puts the member into the plan: a swap, kept, unmatched, a dead end, or a problem. A Work body: a replacement's
+    /// search takes a step per prefab it tries (TwinFinder.Finding).
+    /// </summary>
+    internal abstract IEnumerable<object?> Classifying(PlanContext context, SmallGrid member);
 
     /// <summary>Called once every member was classified: for goals that plan the members together.</summary>
     internal virtual void Finish(PlanContext context, List<SmallGrid> members)
@@ -67,20 +70,20 @@ internal abstract class GradeUpgrade : SwapGoal
     /// <summary>The grade a piece of this grade becomes; null when there is no upgrade for it.</summary>
     protected abstract Grade? UpgradeOf(Grade source);
 
-    internal override void Classify(PlanContext context, SmallGrid member)
+    internal override IEnumerable<object?> Classifying(PlanContext context, SmallGrid member)
     {
         UpgradeFamily family = context.Family;
         if (!family.IsPiece(member))
         {
             context.Plan.Kept.Add(PlanContext.NotAPiece(family, member));
-            return;
+            yield break;
         }
 
         if (AtOrAboveTarget(member))
         {
             context.Plan.Kept.Add(new SkippedPiece(member, "already_at_target",
                 $"{member.PrefabName} is already {Target} or better."));
-            return;
+            yield break;
         }
 
         Grade? grade = family.GradeOf(member);
@@ -88,7 +91,7 @@ internal abstract class GradeUpgrade : SwapGoal
         if (grade == null || upgrade == null)
         {
             context.Plan.Unmatched.Add(PlanContext.SpecialPiece(member, "a coil or kit this tool upgrades"));
-            return;
+            yield break;
         }
 
         Kit? source = context.Kits.For(grade);
@@ -97,26 +100,36 @@ internal abstract class GradeUpgrade : SwapGoal
         {
             context.Plan.Unmatched.Add(new SkippedPiece(member, "no_kit", NoKitMessage(context.Kits, member, grade,
                 upgrade)));
-            return;
+            yield break;
         }
 
-        PlanSwap(context, member, target);
+        foreach (object? step in PlanningSwap(context, member, target))
+        {
+            yield return step;
+        }
     }
 
-    internal static void PlanSwap(PlanContext context, SmallGrid member, Kit target)
+    /// <summary>The member's swap to the kit's twin of it, a Work body: the twin's search a prefab per step.</summary>
+    internal static IEnumerable<object?> PlanningSwap(PlanContext context, SmallGrid member, Kit target)
     {
         PieceModel live = PieceShapes.Live(member);
         if (!context.MatchesOwnPrefab(member, live))
         {
-            return;
+            yield break;
         }
 
-        Twin? twin = context.Twins.Find(member, live, target);
+        Pure.Scheduling.Answer<Twin?> found = new Pure.Scheduling.Answer<Twin?>();
+        foreach (object? step in context.Twins.Finding(member, live, target, found))
+        {
+            yield return step;
+        }
+
+        Twin? twin = found.Value;
         if (twin == null)
         {
             context.Plan.Unmatched.Add(new SkippedPiece(member, "no_twin", PlanContext.NoTwinMessage(member, target,
                 "the same cells and connection ends as")));
-            return;
+            yield break;
         }
 
         context.CheckCondition(member, twin);
@@ -212,19 +225,19 @@ internal sealed class PipeRepair : SwapGoal
 
     internal override List<string> Notes(UpgradeFamily family) => new List<string> { family.DeviceNote, TickNote };
 
-    internal override void Classify(PlanContext context, SmallGrid member)
+    internal override IEnumerable<object?> Classifying(PlanContext context, SmallGrid member)
     {
         UpgradeFamily family = context.Family;
         if (!family.IsPiece(member))
         {
             context.Plan.Kept.Add(PlanContext.NotAPiece(family, member));
-            return;
+            yield break;
         }
 
         if (!(member is Pipe pipe) || !Wrecks.IsBroken(pipe))
         {
             context.Plan.Kept.Add(new SkippedPiece(member, "not_burst", $"{member.PrefabName} is not burst."));
-            return;
+            yield break;
         }
 
         Grade? grade = family.GradeOf(member);
@@ -232,7 +245,7 @@ internal sealed class PipeRepair : SwapGoal
         if (kit == null || !kit.Places(member.PrefabHash))
         {
             context.Plan.Unmatched.Add(PlanContext.SpecialPiece(member, "a kit this tool places"));
-            return;
+            yield break;
         }
 
         if (!LineMembership.OnItsLine(pipe.PipeNetwork?.ReferenceId, AttachedNetworks(pipe)))
@@ -241,10 +254,13 @@ internal sealed class PipeRepair : SwapGoal
                 $"{member.PrefabName} {member.ReferenceId} is not on the network of the pipes its ends meet, so a " +
                 "swap would join its replacement to the network it is on and take the replacement off the line. " +
                 context.InPlaceAdvice(member), member);
-            return;
+            yield break;
         }
 
-        GradeUpgrade.PlanSwap(context, member, kit);
+        foreach (object? step in GradeUpgrade.PlanningSwap(context, member, kit))
+        {
+            yield return step;
+        }
     }
 
     // The network of every pipe attached at the piece's pipe ends (null for one on none).

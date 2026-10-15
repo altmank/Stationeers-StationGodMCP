@@ -6,6 +6,7 @@ using Assets.Scripts.GridSystem;
 using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Pipes;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Profiling;
 using UnityEngine;
 
 namespace StationGodMCP.Api.Shared.Game.Upgrades;
@@ -25,6 +26,7 @@ internal static class PieceShapes
     /// <summary>The 24 rotations that keep the grid's axes on axes.</summary>
     internal static readonly Quaternion[] AxisRotations = BuildAxisRotations();
 
+    [Profiled]
     internal static PieceModel Live(SmallGrid thing)
     {
         List<GridCell> cells = RegisteredCells(thing);
@@ -441,13 +443,31 @@ internal sealed class TwinFinder
     /// </summary>
     internal Twin? FindAt(int key, Vector3 position, Quaternion rotation, PieceModel live, Kit target)
     {
+        Pure.Scheduling.Answer<Twin?> found = new Pure.Scheduling.Answer<Twin?>();
+        foreach (object? _ in FindingAt(key, position, rotation, live, target, found))
+        {
+        }
+
+        return found.Value;
+    }
+
+    /// <summary>Find as a Work body: the remembered twin, then a prefab of the kit (at 25 rotations) per step.</summary>
+    internal IEnumerable<object?> Finding(SmallGrid old, PieceModel live, Kit target, Pure.Scheduling.Answer<Twin?> answer) =>
+        FindingAt(old.PrefabHash, PieceShapes.PlacementOf(old), old.ThingTransformRotation, live, target, answer);
+
+    private IEnumerable<object?> FindingAt(int key, Vector3 position, Quaternion rotation, PieceModel live, Kit target,
+        Pure.Scheduling.Answer<Twin?> answer)
+    {
         if (_known.TryGetValue(key, out KnownTwin known))
         {
             Twin? again = Try(known.Prefab, position, rotation * known.Relative, live);
             if (again != null)
             {
-                return again;
+                answer.Value = again;
+                yield break;
             }
+
+            yield return null;
         }
 
         foreach (Structure prefab in target.Pieces)
@@ -456,11 +476,14 @@ internal sealed class TwinFinder
             if (found != null)
             {
                 _known[key] = new KnownTwin(prefab, Quaternion.Inverse(rotation) * found.Rotation);
-                return found;
+                answer.Value = found;
+                yield break;
             }
+
+            yield return null;
         }
 
-        return null;
+        answer.Value = null;
     }
 
     private static Twin? TryAxes(Structure prefab, Vector3 position, PieceModel live)
