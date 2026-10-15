@@ -117,6 +117,7 @@ internal interface ISubscriptionEvents<TReading> where TReading : class
     /// <summary>
     /// One due sample of a devices subscription of the stream was read on the main thread and took ms, changed or
     /// not: stream_costs' samples and sample_ms count every sample where it is paid, whether or not an update follows.
+    /// A shared find evaluation is a sample of each of its subscribers' streams, its ms split evenly over them.
     /// </summary>
     void Sampled(ConnectionId connection, long stream, double ms);
 

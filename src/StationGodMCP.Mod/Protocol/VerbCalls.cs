@@ -123,6 +123,19 @@ internal static class VerbCalls
     }
 
     /// <summary>
+    /// A handler's run (Handled) for a lane with its own share, which ends at untilMs: work the handler steps in its
+    /// own call (WorkResult) stops there instead of at the frame's end (review D, R-D-8: a find subscription's
+    /// evaluation).
+    /// </summary>
+    internal static VerbOutcome HandledUntil(double untilMs, Func<VerbOutcome> run)
+    {
+        using (CurrentFrame.Capped(untilMs))
+        {
+            return Handled(run);
+        }
+    }
+
+    /// <summary>
     /// A handler's run at the request boundary: an ApiException is its refusal, a game member this build lacks
     /// game_changed, any other failure internal_error.
     /// </summary>

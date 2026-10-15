@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using StationGodMCP.Api.Shared;
+using StationGodMCP.Protocol;
 using StationGodMCP.Pure.Scheduling;
 using StationGodMCP.Pure.Verbs;
 using Xunit;
@@ -59,6 +60,29 @@ public sealed class ReplayStepsTests
             }
         });
         Assert.Equal("undo_refused", refused.Code);
+    }
+
+    [Fact]
+    public void AHandlerRunForALaneWithItsOwnShareStopsAtThatShare()
+    {
+        // review D, R-D-8: a find subscription's evaluation runs the find handler with the lane's end, so work that
+        // never ends is handed back pending at the share's end, never stepped to the frame's (here: no frame, no end)
+        double started = StopwatchClock.Instance.NowMs;
+
+        VerbOutcome outcome = VerbCalls.HandledUntil(started + 20.0,
+            () => WorkResult<int>.Of(Endless, value => value));
+
+        Assert.IsType<VerbOutcome.Pending>(outcome);
+        Assert.InRange(StopwatchClock.Instance.NowMs - started, 0.0, 1000.0);
+        Assert.Equal(double.PositiveInfinity, CurrentFrame.EndMs);
+    }
+
+    private static IEnumerable<object?> Endless(Answer<int> answer)
+    {
+        while (true)
+        {
+            yield return null;
+        }
     }
 
     [Fact]

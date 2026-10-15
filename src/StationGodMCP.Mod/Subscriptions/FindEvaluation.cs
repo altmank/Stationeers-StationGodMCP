@@ -18,7 +18,8 @@ namespace StationGodMCP.Subscriptions;
 /// Find queries evaluated through the find verb's own handler (cost design A6), so a find subscription answers exactly
 /// what find would: its options as given, and for a what that pages by cursor the whole walk, the first page with
 /// cursor "open" and the largest page its limit allows, then each later page by the cursor it answered. Each page is the
-/// handler's pending work stepped as a call's is; every evaluation runs under a call context of its own (owner
+/// handler's pending work stepped as a call's is, but to the subscription lane's end, never the frame's (the handler's
+/// own first steps too: VerbCalls.HandledUntil); every evaluation runs under a call context of its own (owner
 /// find-subscriptions, a stream per evaluation), which owns its walk's cursor.
 /// </summary>
 internal sealed class FindEvaluator : IFindEvaluator
@@ -92,7 +93,7 @@ internal sealed class FindEvaluation : IFindEvaluation
                 {
                     JObject page = _next!;
                     _next = null;
-                    outcome = VerbCalls.Handled(() => VerbHandlers.Dispatcher.Run(Verb, page, null));
+                    outcome = VerbCalls.HandledUntil(untilMs, () => VerbHandlers.Dispatcher.Run(Verb, page, null));
                 }
 
                 Take(outcome);

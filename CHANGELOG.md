@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **A find subscription's evaluation keeps to the subscription lane's share.** The find handler's own first steps ran
+  to the frame's end, so a new evaluation could take the frame's whole budget; they now stop at the lane's end.
+  `stream_costs` counts each evaluation as a sample of every subscriber's stream, its ms split evenly over them.
 - **find device with a prefab or a name, and find room with an id, are scheduled as bounded again** (1.33.2's
   `x-cost-when`, by the call's arguments): they go to the light lane by their measured cost instead of always waiting
   in the heavy lane.

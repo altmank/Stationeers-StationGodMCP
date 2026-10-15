@@ -235,7 +235,8 @@ internal sealed class SubscriptionEngine<TReading> where TReading : class
 
     /// <summary>
     /// One turn of the find lane: a step of the running evaluation, or the start of the query due longest. An
-    /// evaluation that ends offers its result to every subscriber not held for a resume; one that fails ends its
+    /// evaluation that ends offers its result to every subscriber not held for a resume, and its measured ms are split
+    /// over its subscribers' streams as one sample each (stream_costs, review D R-D-25); one that fails ends its
     /// subscriptions with read_failed. False when nothing was due.
     /// </summary>
     internal bool StepFinds(SamplingTick tick, double untilMs, ISubscriptionEvents<TReading> events)
@@ -250,8 +251,10 @@ internal sealed class SubscriptionEngine<TReading> where TReading : class
         if (step == FindStep.Finished)
         {
             SharedFind shared = _finds.Finished!;
+            double share = shared.Latest.CostMs / Math.Max(1, shared.Subscribers.Count);
             foreach (FindSubscription subscription in shared.Subscribers)
             {
+                events.Sampled(subscription.Connection, subscription.Stream, share);
                 if (!IsPaused(subscription) && subscription.Slot.Offer(shared.Latest))
                 {
                     events.EnqueueFind(subscription.Slot);

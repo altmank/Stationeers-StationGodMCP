@@ -178,6 +178,20 @@ public sealed class FindSubscriptionTests
     }
 
     [Fact]
+    public void AnEvaluationsMeasuredCostIsSplitOverItsSubscribersStreams()
+    {
+        // review D, R-D-25: stream_costs counts a shared find evaluation as a sample of each subscriber's stream
+        SubscriptionEngine<FakeReading> engine = Engine();
+        Subscribe(engine, A, Query("damaged"), 10.0, 0.0, stream: 4);
+        Subscribe(engine, B, Query("damaged"), 10.0, 0.0, stream: 5);
+        _finds.CostMs = 6.0;
+
+        Assert.True(engine.StepFinds(At(10.0, 11), double.PositiveInfinity, _events));
+
+        Assert.Equal(new[] { (A, 4L, 3.0), (B, 5L, 3.0) }, _events.Samples);
+    }
+
+    [Fact]
     public void AnEvaluationTakesAStepATurnUntilItEnds()
     {
         SubscriptionEngine<FakeReading> engine = Engine();
