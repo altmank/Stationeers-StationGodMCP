@@ -73,9 +73,8 @@ internal static class ConsoleCommands
         bool asynchronous = ConsoleBridge.CompletesAsynchronously(plan.Definition);
         ConsoleBridge.Echo(command);
         List<ConsoleLineView> output = ConsoleBridge.Execute(command, plan.MaximumLines, out int lineCount,
-            out bool truncated, out long concurrentLines);
-        ConsoleCapture capture = new ConsoleCapture(consoleAvailable, asynchronous, lineCount, truncated,
-            concurrentLines);
+            out long concurrentLines);
+        ConsoleCapture capture = new ConsoleCapture(consoleAvailable, asynchronous, lineCount, concurrentLines);
         ConsoleRunView run = new ConsoleRunView(plan.Info, ConsoleBridge.RunSimulation, capture, output,
             Note(capture, plan.Info.CommandKey));
         run.NoteTruncations(string.Empty);

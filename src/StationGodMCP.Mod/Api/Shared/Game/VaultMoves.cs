@@ -327,7 +327,6 @@ internal sealed class DepositPicks
 
     public int Taken { get; }
 
-    internal bool Truncated => Taken > Entries.Count;
 
     /// <summary>Things named by id, in the order given.</summary>
     internal static DepositPicks ById(List<DepositEntry> entries) => new DepositPicks(entries, null, 0, entries.Count);

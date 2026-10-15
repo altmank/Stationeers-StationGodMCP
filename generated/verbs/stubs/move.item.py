@@ -51,7 +51,6 @@ def move(what: Literal['item'], *,
       via: Thing | None
       matched: int | None
       skipped: int
-      truncated: bool
       items: {results: list[{index: int, ok: bool, reference_id: str, prefab_name: str | None, display_name: str | None, kind: str, from: {id: str,
           slot: int} | None, quantity: float, left_in_source: float} | {index: int, ok: bool, reference_id: str | None, prefab_name: str | None,
           error: Error} | {index: int, ok: bool, asked: str, error: Error} | {index: int, ok: bool, kind: str, prefab_name: str | None, display_name:
@@ -85,7 +84,6 @@ def move(what: Literal['item'], *,
       powered: bool
       matched: int | None
       skipped: int
-      truncated: bool
       items: {results: list[{index: int, ok: bool, reference_id: str, prefab_name: str | None, display_name: str | None, from: {id: str, slot: int} |
           None, quantity: float, left_in_source: float, children: int, entry: int} | {index: int, ok: bool, error: Error}], count: int, success_count:
           int, error_count: int}

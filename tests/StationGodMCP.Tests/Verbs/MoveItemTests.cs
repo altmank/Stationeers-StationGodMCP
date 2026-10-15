@@ -371,11 +371,11 @@ public sealed class MoveItemTests
         batch.Failed(new NotDepositedView(1, new ThingId(6), "ItemKitWall", ApiErrors.Refused("not_vault_material", "no")));
         VaultDepositView view = new VaultDepositView(
             new VaultRefView(new ThingView(new ThingId(132000), "StructureIngotVault", "Ingot Vault"), null, true, true),
-            2, 1, false, batch.Build(), new List<StockChangeView>());
+            2, 1, batch.Build(), new List<StockChangeView>());
 
         JObject report = ItemMoveReplies.DepositReport(ItemMoveReplies.Routed("into_vault", view));
 
-        Assert.Equal(new[] { "route", "vault", "via", "matched", "skipped", "truncated", "stock", "problems",
+        Assert.Equal(new[] { "route", "vault", "via", "matched", "skipped", "stock", "problems",
             "report_only", "targets" }, Keys(report));
         Assert.Equal("[5, Iron Ore, 50 -> 20] [cannot undo: store move]", (string?)report["targets"]![0]!["text"]);
         Assert.Equal((1, "6", "not_vault_material"), ((int)report["problems"]![0]!["index"]!,

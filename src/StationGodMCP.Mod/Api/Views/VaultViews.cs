@@ -232,14 +232,13 @@ internal sealed class NotDepositedView : BatchItemView
 /// <summary>move item's into_vault reply, after its route.</summary>
 internal sealed class VaultDepositView
 {
-    internal VaultDepositView(VaultRefView vault, int? matched, int skipped, bool truncated,
+    internal VaultDepositView(VaultRefView vault, int? matched, int skipped,
         BatchResultView items, List<StockChangeView> stock)
     {
         Vault = vault.Vault;
         Via = vault.Via;
         Matched = matched;
         Skipped = skipped;
-        Truncated = truncated;
         Items = items;
         Stock = stock;
     }
@@ -253,9 +252,6 @@ internal sealed class VaultDepositView
 
     /// <summary>Filter form: items left out because the vault does not take them (not ingot, ore or ice).</summary>
     public int Skipped { get; }
-
-    /// <summary>Filter form: more items matched than limit; only the first limit were taken.</summary>
-    public bool Truncated { get; }
 
     public BatchResultView Items { get; }
 

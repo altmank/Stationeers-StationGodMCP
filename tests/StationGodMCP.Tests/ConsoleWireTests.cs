@@ -16,14 +16,14 @@ public sealed class ConsoleWireTests
         {
             command = "help", command_key = "help", scope = "None", help_text = "Lists commands",
             arguments = new[] { "command" }, run_simulation = true, console_available = true,
-            completes_asynchronously = false, output_complete = true, output_line_count = 1, truncated = false,
+            completes_asynchronously = false, output_complete = true, output_line_count = 1,
             concurrent_log_lines = 0L,
             output = new List<object> { new { time = "12:00:00", level = "Info", text = "help: lists commands" } },
             note = "n"
         };
         ConsoleRunView view = new ConsoleRunView(
             new ConsoleCommandInfo("help", "help", "None", "Lists commands", new[] { "command" }), true,
-            new ConsoleCapture(true, false, 1, false, 0L),
+            new ConsoleCapture(true, false, 1, 0L),
             new List<ConsoleLineView> { new ConsoleLineView("12:00:00", "Info", "help: lists commands") }, "n");
         WireCheck.Same(old, view);
         WireCheck.Same(

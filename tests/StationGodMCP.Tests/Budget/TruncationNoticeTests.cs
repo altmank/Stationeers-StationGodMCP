@@ -84,6 +84,19 @@ public sealed class TruncationNoticeTests
     }
 
     [Fact]
+    public void AReadSnapshotCutAtItsLimitCarriesTruncatedOnce()
+    {
+        NetworkSnapshotView view = new NetworkSnapshotView("world", new List<DeviceSnapshotView>(), 3);
+        List<Truncation> notes = new List<Truncation> { new Truncation("devices", 0, 3, "pass limit (max 256)") };
+
+        string json = Reply(JObject.FromObject(view, ApiJson.Fresh()).ToString(Newtonsoft.Json.Formatting.None),
+            ShapeRequest.None, notes).Json;
+
+        Assert.Single(System.Text.RegularExpressions.Regex.Matches(json, "\"truncated\""));
+        Assert.Equal(3, (int)JObject.Parse(json)["truncated"]![0]!["total"]!);
+    }
+
+    [Fact]
     public void AWriterCutOfAPagedListKeepsTheRealTotalAndBothWays()
     {
         ShapeRequest shape = ShapeRequest.Lenient(JObject.Parse("""{"limit":{"things":1}}"""))!;

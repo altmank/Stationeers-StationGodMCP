@@ -260,7 +260,6 @@ internal static class ConsoleBridge
         string command,
         int maximumLines,
         out int totalLines,
-        out bool truncated,
         out long concurrentLines)
     {
         Captured.Clear();
@@ -278,7 +277,6 @@ internal static class ConsoleBridge
 
         concurrentLines = Interlocked.Read(ref _concurrentWrites);
         totalLines = _capturedTotal;
-        truncated = totalLines > maximumLines || Captured.Count < totalLines;
 
         List<ConsoleLineView> lines = new List<ConsoleLineView>(Math.Min(maximumLines, Captured.Count));
         for (int index = 0; index < Captured.Count && index < maximumLines; index++)

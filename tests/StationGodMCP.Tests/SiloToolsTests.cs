@@ -256,11 +256,11 @@ public sealed class SiloToolsTests
             new SlotRefView(new ThingId(273), 1), 1, 0, 4, 7));
         batch.Failed(new NotDepositedView(1, new ThingId(11), null, ApiErrors.Refused("silo_full", "full")));
         SiloDepositView view = new SiloDepositView(new SiloRefView(new ThingView(new ThingId(5001), "StructureSDBSilo", "SDB Silo"), true, false), null, 0,
-            false, batch.Build(), new SiloCountView(7, 8));
+            batch.Build(), new SiloCountView(7, 8));
         Assert.Equal(
             "{\"route\":\"into_silo\",\"silo\":{\"reference_id\":\"5001\",\"prefab_name\":\"StructureSDBSilo\"," +
             "\"display_name\":\"SDB Silo\"},\"on_off\":true,\"powered\":false,\"matched\":null,\"skipped\":0," +
-            "\"truncated\":false,\"items\":{\"results\":[{\"index\":0,\"ok\":true,\"reference_id\":\"10\"," +
+            "\"items\":{\"results\":[{\"index\":0,\"ok\":true,\"reference_id\":\"10\"," +
             "\"prefab_name\":\"ItemBackpack\",\"display_name\":\"Backpack\",\"from\":{\"id\":\"273\",\"slot\":1}," +
             "\"quantity\":1.0,\"left_in_source\":0.0,\"children\":4,\"entry\":7},{\"index\":1,\"ok\":false," +
             "\"reference_id\":\"11\",\"prefab_name\":null,\"error\":{\"code\":\"silo_full\",\"message\":\"full\"}}]," +

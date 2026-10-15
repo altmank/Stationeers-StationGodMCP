@@ -66,6 +66,9 @@
   measures on a normal and a large world. `server info` with `include: ["counters"]` adds `update_ms`: StationGod's
   whole frame, job steps included (`frame`, `frames`, `worst_ms`, `worst_frame`, `over_budget`, `buckets`, and
   `recent`, the latest frames over 1 ms with their numbers).
+- **`read snapshot` answers again.** Its reply carried `truncated` twice (its own flag and the reply's list), and the hub
+  refused it; `server command` (run) and `move item` into a vault or silo had the same flaw. Their own flags are gone:
+  a cut list is in the reply's `truncated` list, as everywhere else.
 
 ## 1.33.2
 

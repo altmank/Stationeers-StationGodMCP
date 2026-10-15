@@ -406,7 +406,10 @@ internal sealed class SlotLogicView
     public double Value { get; }
 }
 
-/// <summary>read snapshot: the readable logic of every matching device in the scope, up to max_devices.</summary>
+/// <summary>
+/// read snapshot: the readable logic of every matching device in the scope, up to limit; a cut list is noted in the
+/// reply's truncated (DeviceSnapshots), the writer's own key.
+/// </summary>
 internal sealed class NetworkSnapshotView
 {
     internal NetworkSnapshotView(string gatewayId, List<DeviceSnapshotView> devices, int matchedCount)
@@ -415,7 +418,6 @@ internal sealed class NetworkSnapshotView
         Devices = devices;
         Count = devices.Count;
         MatchedCount = matchedCount;
-        Truncated = matchedCount > devices.Count;
     }
 
     public string GatewayId { get; }
@@ -425,8 +427,6 @@ internal sealed class NetworkSnapshotView
     public int Count { get; }
 
     public int MatchedCount { get; }
-
-    public bool Truncated { get; }
 }
 
 internal sealed class DeviceSnapshotView

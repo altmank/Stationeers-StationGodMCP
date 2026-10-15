@@ -108,14 +108,14 @@ public sealed class VaultToolsTests
             new SlotRefView(new ThingId(9), 1), 30, 20));
         batch.Failed(new NotDepositedView(1, new ThingId(6), "ItemKitWall",
             ApiErrors.Refused("not_vault_material", "no")));
-        VaultDepositView view = new VaultDepositView(vault, 2, 1, false, batch.Build(),
+        VaultDepositView view = new VaultDepositView(vault, 2, 1, batch.Build(),
             new List<StockChangeView>
             {
                 new StockChangeView(new VaultItemView("ore", "ItemIronOre", "Iron Ore", null, 50), 10, 30, 40)
             });
         Assert.Equal(
             "{\"route\":\"into_vault\",\"vault\":{\"reference_id\":\"132000\",\"prefab_name\":\"StructureIngotVault\"," +
-            "\"display_name\":\"Ingot Vault\"},\"via\":null,\"matched\":2,\"skipped\":1,\"truncated\":false," +
+            "\"display_name\":\"Ingot Vault\"},\"via\":null,\"matched\":2,\"skipped\":1," +
             "\"items\":{\"results\":[{\"index\":0,\"ok\":true,\"reference_id\":\"5\",\"prefab_name\":\"ItemIronOre\"," +
             "\"display_name\":\"Iron Ore\",\"kind\":\"ore\",\"from\":{\"id\":\"9\",\"slot\":1},\"quantity\":30.0," +
             "\"left_in_source\":20.0},{\"index\":1,\"ok\":false,\"reference_id\":\"6\",\"prefab_name\":\"ItemKitWall\"," +

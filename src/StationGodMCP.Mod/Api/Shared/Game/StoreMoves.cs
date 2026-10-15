@@ -54,6 +54,12 @@ internal sealed class DepositAsk
 /// <summary>The holder a move out of a store makes the items into: anything with slots but a vault or silo.</summary>
 internal static class StoreHolders
 {
+    /// <summary>The deposit replies' list of things moved, as the reply's truncated names it when at_most cut it.</summary>
+    internal const string DepositedList = "items.results";
+
+    /// <summary>move.json's at_most maximum.</summary>
+    internal const int AtMostMaximum = 1000;
+
     internal static Thing Require(Thing holder)
     {
         if (holder.IsBeingDestroyed)
@@ -126,7 +132,8 @@ internal static class VaultDeposits
             store.Refresh();
         }
 
-        return new VaultDepositView(target.View(), picks.Matched, picks.Skipped, picks.Truncated, batch.Build(),
+        Truncations.Capped(StoreHolders.DepositedList, picks.Entries.Count, picks.Taken, "at_most", StoreHolders.AtMostMaximum);
+        return new VaultDepositView(target.View(), picks.Matched, picks.Skipped, batch.Build(),
             ledger.Views(readBack: act));
     }
 
@@ -369,7 +376,8 @@ internal static class SiloDeposits
         }
 
         int after = act ? SiloStore.Of(store.Silo).Entries.Count : before + plans.Count;
-        return new SiloDepositView(store.View(), list.Matched, list.Skipped, list.Truncated, batch.Build(),
+        Truncations.Capped(StoreHolders.DepositedList, list.Picks.Count, list.Taken, "at_most", StoreHolders.AtMostMaximum);
+        return new SiloDepositView(store.View(), list.Matched, list.Skipped, batch.Build(),
             new SiloCountView(before, after));
     }
 

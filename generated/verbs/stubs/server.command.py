@@ -18,7 +18,6 @@ def server(what: Literal['command'], *,
       completes_asynchronously: bool
       output_complete: bool
       output_line_count: int
-      truncated: bool
       concurrent_log_lines: int
       output: list[{time: str | None, level: str | None, text: str | None}]
       note: str

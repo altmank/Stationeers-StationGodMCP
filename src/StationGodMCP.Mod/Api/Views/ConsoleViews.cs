@@ -53,13 +53,11 @@ internal sealed class ConsoleCommandInfo
 /// <summary>What a console run printed on the main thread, and how complete that is.</summary>
 internal sealed class ConsoleCapture
 {
-    internal ConsoleCapture(bool consoleAvailable, bool asynchronous, int outputLineCount, bool truncated,
-        long concurrentLines)
+    internal ConsoleCapture(bool consoleAvailable, bool asynchronous, int outputLineCount, long concurrentLines)
     {
         ConsoleAvailable = consoleAvailable;
         Asynchronous = asynchronous;
         OutputLineCount = outputLineCount;
-        Truncated = truncated;
         ConcurrentLines = concurrentLines;
     }
 
@@ -69,7 +67,6 @@ internal sealed class ConsoleCapture
 
     internal int OutputLineCount { get; }
 
-    internal bool Truncated { get; }
 
     internal long ConcurrentLines { get; }
 }
@@ -90,7 +87,6 @@ internal sealed class ConsoleRunView : ITruncatingView
         CompletesAsynchronously = capture.Asynchronous;
         OutputComplete = capture.ConsoleAvailable && !capture.Asynchronous;
         OutputLineCount = capture.OutputLineCount;
-        Truncated = capture.Truncated;
         ConcurrentLogLines = capture.ConcurrentLines;
         Output = output;
         Note = note;
@@ -116,8 +112,6 @@ internal sealed class ConsoleRunView : ITruncatingView
     public bool OutputComplete { get; }
 
     public int OutputLineCount { get; }
-
-    public bool Truncated { get; }
 
     public long ConcurrentLogLines { get; }
 

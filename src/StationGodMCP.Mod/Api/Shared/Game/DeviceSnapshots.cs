@@ -18,6 +18,9 @@ namespace StationGodMCP.Api.Shared.Game;
 /// </summary>
 internal static class DeviceSnapshots
 {
+    // read.json's limit maximum: how many devices one call can return.
+    private const int MaximumLimit = 256;
+
     /// <summary>
     /// The devices kept: by prefab (null: any), part of the shown name, and the ids (null: any); logic the types to
     /// read (null: every readable one).
@@ -50,6 +53,7 @@ internal static class DeviceSnapshots
                 skipZeroRatios ? zeroRatios : null));
         }
 
+        Pure.Shaping.Truncations.Capped("devices", snapshots.Count, matches.Count, "limit", MaximumLimit);
         return new NetworkSnapshotView(scope.Id, snapshots, matches.Count);
     }
 

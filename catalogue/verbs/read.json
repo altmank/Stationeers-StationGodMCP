@@ -103,8 +103,7 @@
               "gateway_id": "str",
               "devices": "list[{device: {reference_id: str, prefab_name: str | None, prefab_hash: int, display_name: str | None, runtime_type: str | None, slot_count: int, is_gateway: bool, worn_by: str | None, worn_slot: str | None}, logic_values: list[Any], logic_value_count: int, zero_ratios_omitted: int | None}]",
               "count": "int",
-              "matched_count": "int",
-              "truncated": "bool"
+              "matched_count": "int"
             }
           }
         ]

@@ -233,6 +233,28 @@ public sealed class VerbCatalogueTests
     /// </summary>
     private static readonly string[] Growths = { "by-id", "index", "area", "plan" };
 
+    /// <summary>
+    /// The shaping writer adds truncated to every reply's top level (ShapingJsonWriter.TruncatedKey), so no reply may
+    /// carry a key of that name of its own: read snapshot did, and the hub refused the reply for the duplicate key.
+    /// </summary>
+    [Fact]
+    public void NoReplyDeclaresTheWritersTruncatedKey()
+    {
+        List<string> offenders = new List<string>();
+        foreach ((string verb, string what, JsonObject source) in VerbCatalogue.Whats())
+        {
+            foreach (JsonNode? variant in source["reply"]?["variants"]?.AsArray() ?? new JsonArray())
+            {
+                if (variant?["keys"]?["truncated"] != null)
+                {
+                    offenders.Add(verb + " " + what + " " + (string?)variant["label"]);
+                }
+            }
+        }
+
+        Assert.True(offenders.Count == 0, "replies declaring truncated: " + string.Join(", ", offenders));
+    }
+
     [Fact]
     public void NoWhatDeclaresWholeWorldGrowth()
     {

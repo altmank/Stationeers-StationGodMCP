@@ -44,7 +44,6 @@ internal sealed class SiloDepositList
     /// <summary>How many things the silo would take: more than Picks when the limit cut the list.</summary>
     internal int Taken { get; }
 
-    internal bool Truncated => Taken > Picks.Count;
 
     /// <summary>The prefab the filter form knew up front, for a refusal; null in the id forms.</summary>
     internal string? PrefabOf(int index) => index < _prefabs.Count ? _prefabs[index] : null;

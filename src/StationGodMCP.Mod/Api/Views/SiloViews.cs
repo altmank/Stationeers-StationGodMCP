@@ -280,7 +280,7 @@ internal sealed class SiloDepositedView : BatchItemView
 /// <summary>move item's into_silo reply, after its route.</summary>
 internal sealed class SiloDepositView
 {
-    internal SiloDepositView(SiloRefView silo, int? matched, int skipped, bool truncated,
+    internal SiloDepositView(SiloRefView silo, int? matched, int skipped,
         BatchResultView items, SiloCountView count)
     {
         Silo = silo.Silo;
@@ -288,7 +288,6 @@ internal sealed class SiloDepositView
         Powered = silo.Powered;
         Matched = matched;
         Skipped = skipped;
-        Truncated = truncated;
         Items = items;
         Count = count;
     }
@@ -304,9 +303,6 @@ internal sealed class SiloDepositView
 
     /// <summary>Filter form: items left out because the silo's import does not take them.</summary>
     public int Skipped { get; }
-
-    /// <summary>Filter form: more items matched than limit; only the first limit were taken.</summary>
-    public bool Truncated { get; }
 
     public BatchResultView Items { get; }
 
