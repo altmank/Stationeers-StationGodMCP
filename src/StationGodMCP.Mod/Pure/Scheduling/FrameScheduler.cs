@@ -247,7 +247,7 @@ internal sealed class FrameScheduler<TCall> where TCall : class
         try
         {
             LetGoOfAnswered();
-            int taken = RunSamples(samples, startMs, shares.SubscriptionMs);
+            int taken = RunSamples(samples, shares.SubscriptionMs);
             LetGoOfAnswered();
             int light = RunLight(startMs, shares.BudgetMs, out bool lightStopped);
             int heavy = RunHeavy(startMs, shares.BudgetMs, out bool heavyStopped);
@@ -261,7 +261,10 @@ internal sealed class FrameScheduler<TCall> where TCall : class
         }
     }
 
-    private int RunSamples(ISampleLane? samples, double startMs, double shareMs)
+    // The lane spends its share counted from its own start: what the frame did before it (StationGod's work ahead of
+    // the scheduler) is the request budget's, not the lane's, so the samples due together are taken together and
+    // share their reads (SampleReads).
+    private int RunSamples(ISampleLane? samples, double shareMs)
     {
         if (samples == null)
         {
@@ -269,8 +272,9 @@ internal sealed class FrameScheduler<TCall> where TCall : class
         }
 
         int taken = 0;
+        double laneStartMs = _clock.NowMs;
         using ProfScope lane = Prof.Scope(ProfId.SubscriptionLane);
-        while ((taken == 0 || _clock.NowMs - startMs < shareMs) && samples.RunNextDueSample(startMs + shareMs))
+        while ((taken == 0 || _clock.NowMs - laneStartMs < shareMs) && samples.RunNextDueSample(laneStartMs + shareMs))
         {
             taken++;
         }

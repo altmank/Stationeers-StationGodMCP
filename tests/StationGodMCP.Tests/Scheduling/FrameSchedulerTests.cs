@@ -681,6 +681,18 @@ public sealed class FrameSchedulerTests
     }
 
     [Fact]
+    public void TheSubscriptionLaneCountsItsShareFromItsOwnStartNotTheFramesWorkBeforeIt()
+    {
+        SchedulerRig rig = new SchedulerRig();
+        FakeSamples samples = new FakeSamples(rig.Clock, 0.5, due: 100);
+
+        // The frame spent 3 ms before the scheduler (the Update's start is earlier): the lane still has its 1.5 ms.
+        FrameOutcome outcome = rig.Scheduler.RunFrame(false, samples, startedMs: rig.Clock.NowMs - 3.0);
+
+        Assert.Equal(3, outcome.Samples);
+    }
+
+    [Fact]
     public void TheFirstDueSampleAlwaysRunsEvenWithNoSubscriptionShare()
     {
         SchedulerRig rig = new SchedulerRig(SchedulerRig.WithBudget(4.0, subscriptionBudgetMs: 0.0));

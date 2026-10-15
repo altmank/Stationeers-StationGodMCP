@@ -91,4 +91,17 @@ public class ReplyObjectTests
         Assert.Equal(Encoding.UTF8.GetByteCount(text), ReplyLength.Utf8Bytes(reply, ApiJson.Serializer));
         Assert.Equal(text.Length, ReplyLength.Characters(reply, ApiJson.Serializer));
     }
+
+    [Fact]
+    public void FindLooksIntoSpreadReplyObjectsAsAWalkPagesCursorIdSitsThere()
+    {
+        ReplyObject keys = new ReplyObject().Add("total_outer", 3).Add("cursor_id", "k7");
+        ReplyObject page = new ReplyObject().Add("frames", new List<object>()).Spread(keys)
+            .Spread(new SampleView("a", 1, 0.5));
+
+        Assert.Equal("k7", page.Find("cursor_id"));
+        Assert.Null(page["cursor_id"]);
+        Assert.Null(page.Find("name"));
+        Assert.Null(page.Find("missing"));
+    }
 }

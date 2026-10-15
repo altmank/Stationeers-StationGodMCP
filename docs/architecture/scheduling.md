@@ -13,9 +13,10 @@ from `StationGodMod.Update`, which calls the frame once per frame on the host
 
 `RunFrame` runs five lanes in order and one sweep (`src/StationGodMCP.Mod/Pure/Scheduling/FrameScheduler.cs:234-245`):
 
-1. **Samples.** The subscription lane takes due samples, oldest due first and round robin across connections, while
-   it has spent less than its share; the first sample of a frame always runs
-   (`FrameScheduler.cs:257-270`; `Pure/Subscriptions/SubscriptionEngine.cs:56-59`, `:676-694`).
+1. **Samples.** The subscription lane takes due samples, oldest due first and round robin across connections, then
+   steps of find subscriptions' evaluations, while it has spent less than its share, counted from the lane's own start
+   (what StationGod did earlier in the frame is the request budget's); the first sample of a frame always runs
+   (`FrameScheduler.cs`, `RunSamples`; `Pure/Subscriptions/SubscriptionEngine.cs`).
 2. **Light.** Calls predicted light are taken in rounds (one call per client per round, from its streams in turn)
    until the frame has spent the budget, or 64 calls, whichever comes first; the first light call always runs
    (`FrameScheduler.cs:293-326`; `SchedulerSettings.cs:25-27`).

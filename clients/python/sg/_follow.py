@@ -43,6 +43,7 @@ class Following:
     def __init__(self, params):
         self._params = params
         self._lock = threading.Lock()
+        self._arrived = threading.Condition(self._lock)
         self._transport = None
         self._id = None
         self._result = {}
@@ -80,16 +81,20 @@ class Following:
 
     def next(self, timeout):
         """The next change ({lists, rest} as the game sent it, after result took it in), or None when timeout seconds
-        pass first or the following ended. Inside a run it waits as sg.wait does, a second at a time."""
+        pass first or the following ended. Inside a run it waits as sg.wait does, a second at a time (the hub's wait,
+        so a stop ends it); a program waits on the change itself."""
         started = time.monotonic()
+        in_run = _session.current_run() is not None
         while True:
             with self._lock:
                 if self._changes:
                     return self._changes.popleft()
-                live = self._live
-            left = timeout - (time.monotonic() - started)
-            if left <= 0 or not live:
-                return None
+                left = timeout - (time.monotonic() - started)
+                if left <= 0 or not self._live:
+                    return None
+                if not in_run:
+                    self._arrived.wait(left)
+                    continue
             answer = _session.request("wait", {"s": min(_WAIT_S, left), "kind": "watch",
                                                "in_loop": _session.in_loop()})
             if isinstance(answer, dict) and answer.get("instant"):
@@ -164,11 +169,13 @@ class Following:
         self._result, self._keyed = apply_update(self._result, self._keyed, event)
         self._changes.append({"lists": event.get("lists") or {}, "rest": event.get("rest"),
                               "whole": bool(event.get("whole"))})
+        self._arrived.notify_all()
 
     def _ended(self, reason):
         self._live = False
         if self._end_reason is None:
             self._end_reason = reason
+        self._arrived.notify_all()
 
 
 def apply_update(result, keyed, event):

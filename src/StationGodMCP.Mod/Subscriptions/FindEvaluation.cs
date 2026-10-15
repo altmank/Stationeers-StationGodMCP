@@ -168,7 +168,7 @@ internal sealed class FindEvaluation : IFindEvaluation
         Spec(query)?.Option(LimitKey)?.Schema["maximum"]?.Value<int>() ?? 500;
 
     private static string? CursorOf(object reply) =>
-        reply is ReplyObject keys && keys["cursor_id"] is string cursor ? cursor : null;
+        reply is ReplyObject keys && keys.Find("cursor_id") is string cursor ? cursor : null;
 
     // A page as JSON, by the serializer of whichever thread writes it (a connection's writer).
     private static JObject Render(object page) => JObject.FromObject(page, ApiJson.Serializer);

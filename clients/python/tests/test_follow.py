@@ -38,9 +38,8 @@ class FollowTests(HubCase):
 
         def handler(method, params):
             if method == "subscribe":
+                self.hub.write(update)   # before the reply: kept until the reply names the subscription
                 return subscribed({"frames": [{"reference_id": "1", "c": 1}, {"reference_id": "2"}], "total_outer": 2})
-            if method == "wait":
-                self.hub.write(update)
             return ok({})
 
         self.handler = handler
@@ -54,10 +53,9 @@ class FollowTests(HubCase):
     def test_an_ended_subscription_ends_next_and_says_why(self):
         def handler(method, params):
             if method == "subscribe":
-                return subscribed({"frames": []})
-            if method == "wait":
                 self.hub.write({"type": "event", "event": "subscription_ended", "subscription": "s1",
                                 "reason": "world_changed"})
+                return subscribed({"frames": []})
             return ok({})
 
         self.handler = handler
@@ -65,6 +63,24 @@ class FollowTests(HubCase):
         self.assertIsNone(following.next(30))
         self.assertFalse(following.live)
         self.assertEqual("world_changed", following.end_reason)
+
+    def test_inside_a_run_next_waits_with_the_hubs_wait(self):
+        update = {"type": "event", "event": "find_update", "subscription": "s1", "seq": 1, "frame": 9,
+                  "as_of_s": 2.0, "keyed": {"frames": "reference_id"},
+                  "lists": {"frames": {"added": [{"reference_id": "5"}], "changed": [], "removed": []}}}
+
+        def handler(method, params):
+            if method == "subscribe":
+                return subscribed({"frames": []})
+            if method == "wait":
+                self.hub.write(update)
+            return ok({})
+
+        self.handler = handler
+        source = ("f = sg.follow('find', 'frame')\nchange = f.next(30)\nf.close()\n"
+                  "[change['lists']['frames']['added'][0]['reference_id'], len(f.result['frames'])]")
+        self.assertEqual(["5", 1], self.run_code(source))
+        self.assertEqual([("watch", 1.0)], [(p["kind"], p["s"]) for p in self.params("wait")])
 
     def test_a_refused_subscribe_raises_the_games_error(self):
         self.handler = lambda method, params: refused("subscription_limit", "too much")

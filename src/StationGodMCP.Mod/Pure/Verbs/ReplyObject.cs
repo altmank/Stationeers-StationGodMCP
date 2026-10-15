@@ -73,6 +73,28 @@ internal sealed class ReplyObject
         }
     }
 
+    /// <summary>
+    /// The value added under key here or in a reply object spread into this one (a list reply's own keys, ListReply),
+    /// the first found in written order; null when there is none. Views spread in are not looked into.
+    /// </summary>
+    internal object? Find(string key)
+    {
+        foreach (Part part in _parts)
+        {
+            if (part.Key == key)
+            {
+                return part.Value;
+            }
+
+            if (part.Key == null && part.Value is ReplyObject spread && spread.Find(key) is { } found)
+            {
+                return found;
+            }
+        }
+
+        return null;
+    }
+
     /// <summary>Whether key was added (spreads are not looked into).</summary>
     internal bool Has(string key)
     {
