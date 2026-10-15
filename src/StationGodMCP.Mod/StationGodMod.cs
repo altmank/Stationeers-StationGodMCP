@@ -111,6 +111,7 @@ public sealed class StationGodMod : ModBehaviour
             GameMembers.CheckAll();
             PatchEachClass(_harmony);
             WorldModel.ThingIndex.Enable(ModId);
+            WorldModel.WorldEvents.Enable(ModId);
             ConfigFile configuration = new ConfigFile(ConfigPath, true);
             Pipe = PipeSettings.Load(configuration);
             _remote = RemoteSettings.Load(configuration);
@@ -123,6 +124,9 @@ public sealed class StationGodMod : ModBehaviour
             PerformanceSettings.Load(configuration);
             ProfilingControl.Load(typeof(StationGodMod).Assembly, PerformanceSettings.Profiling);
             WorldModel.ThingIndex.Verify = PerformanceSettings.VerifyWorldIndex;
+            WorldModel.FrameFaces.Verify = PerformanceSettings.VerifyFacts;
+            WorldModel.DamagedThings.Verify = PerformanceSettings.VerifyFacts;
+            Api.Shared.Game.GatewayMaps.Verify = PerformanceSettings.VerifyFacts;
             Net.StationGodNet.Register(MultiplayerSettings.ShareViews(configuration));
             LaneScheduler scheduler = new LaneScheduler(PerformanceSettings.Scheduler, world: CallWorld);
             _dispatcher = new StationGodRequestDispatcher(Deadlines, scheduler);
@@ -223,6 +227,8 @@ public sealed class StationGodMod : ModBehaviour
             }
 
             WorldModel.ThingIndex.Tick();
+            WorldModel.DamagedThings.Tick();
+            WorldModel.FrameFaces.Tick();
             WorldModel.LoadWarmup.Tick();
 
             if (_pipeListener == null && !_pipeUnavailable)
@@ -649,6 +655,12 @@ internal static class PerformanceSettings
     /// </summary>
     internal static bool VerifyWorldIndex { get; private set; }
 
+    /// <summary>
+    /// Whether every read of a followed fact (frames' faces, damaged things, gateways' device maps) also reads it again
+    /// from the game and logs a difference ([Performance] VerifyFacts, a debug switch).
+    /// </summary>
+    internal static bool VerifyFacts { get; private set; }
+
     /// <summary>The frame scheduler's settings, from every [Performance] value.</summary>
     internal static SchedulerSettings Scheduler { get; private set; } = SchedulerSettings.Default;
 
@@ -695,6 +707,10 @@ internal static class PerformanceSettings
             "items, ...) also walks the game's own list for it and logs a warning when the two differ (server info " +
             "runtime.world_index counts the checks and differences). Costs a full walk per query. Restart the game to " +
             "apply.").Value;
+        VerifyFacts = configuration.Bind(Section, "VerifyFacts", false,
+            "Debug: every read of a followed fact (a frame's exposed faces, the damaged things, a gateway's device map) " +
+            "also reads it again from the game and logs a warning when the two differ (server info runtime.facts " +
+            "counts the checks and differences). find damaged then walks every thing. Restart the game to apply.").Value;
     }
 
     private static double NonNegative(ConfigEntry<double> entry, double fallback)

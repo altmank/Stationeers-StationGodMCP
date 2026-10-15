@@ -25,8 +25,6 @@ internal sealed class DeviceScope
 
     private readonly bool _isWorld;
 
-    private Dictionary<long, Device>? _gatewayDevices;
-
     private DeviceScope(StationGodGateway? gateway, bool isWorld)
     {
         Gateway = gateway;
@@ -51,21 +49,55 @@ internal sealed class DeviceScope
     internal bool IsGatewayItself(ScopedTarget device) =>
         _isWorld ? device.Thing is StationGodGateway : ReferenceEquals(device.Thing, Gateway);
 
-    /// <summary>Every target in the scope by reference id (Scan taken to its end).</summary>
+    /// <summary>
+    /// Every target in the scope by reference id, read now (a write's: a gateway's data networks walked, never its kept
+    /// map). The world scope's devices are the world index's Device class, checked against the game's pool.
+    /// </summary>
     internal Dictionary<long, ScopedTarget> DeviceMap()
     {
         Dictionary<long, ScopedTarget> devices = new Dictionary<long, ScopedTarget>();
-        foreach (object? _ in Scan(devices))
+        if (_isWorld)
         {
+            foreach (object? _ in Scan(devices))
+            {
+            }
+
+            return devices;
         }
 
+        foreach (Device device in GatewayMaps.Build(Gateway!).Values)
+        {
+            Add(devices, ScopedTarget.From(device));
+        }
+
+        AddWorn(devices);
         return devices;
+    }
+
+    /// <summary>Whether a gateway scope's data networks hold the device now (live; the world scope holds every one).</summary>
+    internal bool Reaches(Device device)
+    {
+        if (_isWorld)
+        {
+            return true;
+        }
+
+        foreach (CableNetwork network in Gateway!.GetDataNetworks())
+        {
+            List<Device>? visible = network?.DataDeviceList;
+            if (visible != null && visible.Contains(device))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>
     /// DeviceMap spread over frames (a Work or ScanBuild body): the world scope's Device class candidates checked one per
-    /// step, or the gateway's data networks' devices one per step; then the worn and held items, each joining where
-    /// no device holds its id. devices ends as DeviceMap answers.
+    /// step, or the gateway's devices (its followed map, GatewayMaps) one per step; then the worn and held items, each
+    /// joining where no device holds its id. Reads only: a write takes DeviceMap.
     /// </summary>
     internal IEnumerable<object?> Scan(Dictionary<long, ScopedTarget> devices)
     {
@@ -86,31 +118,19 @@ internal sealed class DeviceScope
         }
         else
         {
-            Dictionary<long, Device> gateway = new Dictionary<long, Device>();
-            foreach (CableNetwork network in Gateway!.GetDataNetworks())
-            {
-                List<Device>? visible = network?.DataDeviceList;
-                for (int index = 0; visible != null && index < visible.Count; index++)
-                {
-                    Device device = visible[index];
-                    Thing? thing = device != null ? ((ILogicable)device).GetAsThing : null;
-                    if (thing != null)
-                    {
-                        gateway[thing.ReferenceId] = device!;
-                    }
-
-                    yield return null;
-                }
-            }
-
-            _gatewayDevices = gateway;
-            foreach (Device device in gateway.Values)
+            foreach (Device device in GatewayMaps.Of(Gateway!).Values)
             {
                 Add(devices, ScopedTarget.From(device));
                 yield return null;
             }
         }
 
+        AddWorn(devices);
+    }
+
+    // The worn and held items, each joining where no device holds its id.
+    private static void AddWorn(Dictionary<long, ScopedTarget> devices)
+    {
         foreach (ScopedTarget worn in ScopedTarget.Worn())
         {
             if (!devices.ContainsKey(worn.ReferenceId))
@@ -120,50 +140,6 @@ internal sealed class DeviceScope
         }
     }
 
-    /// <summary>
-    /// The devices on the gateway's data networks (CableNetwork.DataDeviceList) by reference id, built once per scope
-    /// instance (a gateway scope is made per request). Null for the world scope.
-    /// </summary>
-    internal Dictionary<long, Device>? GatewayDevices()
-    {
-        if (_isWorld)
-        {
-            return null;
-        }
-
-        if (_gatewayDevices == null)
-        {
-            Dictionary<long, Device> devices = new Dictionary<long, Device>();
-            foreach (CableNetwork network in Gateway!.GetDataNetworks())
-            {
-                AddNetwork(devices, network);
-            }
-
-            _gatewayDevices = devices;
-        }
-
-        return _gatewayDevices;
-    }
-
-    private static void AddNetwork(Dictionary<long, Device> devices, CableNetwork? network)
-    {
-        List<Device>? visible = network?.DataDeviceList;
-        if (visible == null)
-        {
-            return;
-        }
-
-        foreach (Device device in visible)
-        {
-            Thing? thing = device != null ? ((ILogicable)device).GetAsThing : null;
-            if (thing != null)
-            {
-                devices[thing.ReferenceId] = device!;
-            }
-        }
-    }
-
-    /// <summary>How many targets DeviceMap would hold for the world scope, without building it.</summary>
     /// <summary>
     /// The scopes a gateway option takes: "world" first, every device in the world (its status "bypass"), then each
     /// StationGod Gateway (GatewayRegistry), whose id narrows a call to its data networks, with its status and counts.
@@ -186,11 +162,10 @@ internal sealed class DeviceScope
 
         foreach (StationGodGateway gateway in GatewayRegistry.Snapshot())
         {
-            List<CableNetwork> networks = gateway.GetDataNetworks();
             string? unavailable = gateway.GetUnavailableReason();
             gateways.Add(new Views.GatewayView(new ThingId(gateway.ReferenceId).ToString(), gateway.DisplayName,
                 gateway.PrefabName, new Views.GatewayState(unavailable == null, unavailable ?? "ready"),
-                new Views.GatewayCounts(networks.Count, CountDevices(networks), worn)));
+                new Views.GatewayCounts(gateway.GetDataNetworks().Count, GatewayMaps.Of(gateway).Count, worn)));
             yield return null;
         }
 
@@ -224,18 +199,6 @@ internal sealed class DeviceScope
         }
 
         answer.Value = ids.Count;
-    }
-
-    /// <summary>The devices on these data networks, each once.</summary>
-    internal static int CountDevices(List<CableNetwork> networks)
-    {
-        Dictionary<long, Device> devices = new Dictionary<long, Device>();
-        foreach (CableNetwork network in networks)
-        {
-            AddNetwork(devices, network);
-        }
-
-        return devices.Count;
     }
 
     private static void Add(Dictionary<long, ScopedTarget> devices, ScopedTarget? target)

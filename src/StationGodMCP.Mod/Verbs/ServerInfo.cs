@@ -58,7 +58,9 @@ internal static class ServerInfo
             new JobSettlesView(SettleGate.Run, SettleGate.Skipped, SettleGate.Unchecked),
             WorldModel.ThingIndex.View(counters),
             counters ? Counters() : null, shape,
-            counters ? StationGodMod.Updates.Read(UnityEngine.Time.frameCount) : null);
+            counters ? StationGodMod.Updates.Read(UnityEngine.Time.frameCount) : null,
+            new FactsView(WorldModel.FrameFaces.View(), WorldModel.DamagedThings.View(),
+                Api.Shared.Game.GatewayMaps.View()));
 
     private static GameCountersView Counters() =>
         new GameCountersView(new JobHoldsView(HeldTickJobs.HoldCounts()),

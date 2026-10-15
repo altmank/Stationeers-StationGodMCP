@@ -93,16 +93,9 @@ internal static class Devices
     internal static ScopedTarget? Find(DeviceScope scope, long referenceId)
     {
         ScopedTarget? device = null;
-        if (scope.IsWorld)
+        if (Thing.Find(referenceId) is Device found && found != null && IsInAllDevices(found) && scope.Reaches(found))
         {
-            if (Thing.Find(referenceId) is Device found && found != null && IsInAllDevices(found))
-            {
-                device = ScopedTarget.From(found);
-            }
-        }
-        else if (scope.GatewayDevices()!.TryGetValue(referenceId, out Device listed))
-        {
-            device = ScopedTarget.From(listed);
+            device = ScopedTarget.From(found);
         }
 
         if (device == null || device.ReferenceId != referenceId)

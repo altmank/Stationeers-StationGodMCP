@@ -139,6 +139,7 @@ internal sealed class FrameCensus
         return row;
     }
 
+    /// <summary>The frame's exposed faces, by name: the followed masks (FrameFaces), rule 4's air read now.</summary>
     internal static List<string> ExposedFaces(Frame frame, CellAir air)
     {
         List<string> exposed = new List<string>(FaceNames.Length);
@@ -148,10 +149,10 @@ internal sealed class FrameCensus
         }
 
         Grid3 cell = frame.WorldGrid.Value;
-        Grid3[] steps = { Grid3.East, Grid3.West, Grid3.Up, Grid3.Down, Grid3.North, Grid3.South };
-        for (int face = 0; face < steps.Length; face++)
+        int faces = FrameFaces.Exposed(cell, air);
+        for (int face = 0; face < FaceNames.Length; face++)
         {
-            if (air.FaceHoldsWorldAir(cell, steps[face]))
+            if ((faces & (1 << face)) != 0)
             {
                 exposed.Add(FaceNames[face]);
             }
@@ -206,21 +207,57 @@ internal sealed class CellAir
         _rooms = rooms;
     }
 
-    internal bool FaceHoldsWorldAir(Grid3 cell, Grid3 step)
+    /// <summary>The six faces' steps, in FaceNames' order (+x, -x, +y, -y, +z, -z): bit n of a face mask is face n.</summary>
+    internal static readonly Grid3[] Steps = { Grid3.East, Grid3.West, Grid3.Up, Grid3.Down, Grid3.North, Grid3.South };
+
+    /// <summary>
+    /// The cell's faces by rules (1) to (3), which read only structures, rooms and terrain (followed: FrameFaces):
+    /// open, the faces that hold the world's air; worldAirOnly, those that do when the neighbour's air passes rule (4),
+    /// read live (NeighbourAirIsWorld).
+    /// </summary>
+    internal void Measure(Grid3 cell, out int open, out int worldAirOnly)
     {
-        Grid3 neighbour = cell + step;
-        if (_rooms.GetRoom(neighbour) != null)
+        open = 0;
+        worldAirOnly = 0;
+        for (int face = 0; face < Steps.Length; face++)
         {
-            return false;
+            Grid3 neighbour = cell + Steps[face];
+            if (_rooms.GetRoom(neighbour) != null)
+            {
+                continue;
+            }
+
+            Cell other = _grid.GetCell(neighbour);
+            if ((other != null && !other.IsOpenAir()) || !AtmosphereHelper.CanContainAtmos(neighbour) ||
+                !FaceIsOpen(cell, neighbour, other))
+            {
+                continue;
+            }
+
+            if (BlocksGravityNotAir(other))
+            {
+                worldAirOnly |= 1 << face;
+            }
+            else
+            {
+                open |= 1 << face;
+            }
+        }
+    }
+
+    /// <summary>Rule (4) for the faces in worldAirOnly: those whose neighbour's air is the world's now.</summary>
+    internal static int WithWorldAir(Grid3 cell, int worldAirOnly)
+    {
+        int exposed = 0;
+        for (int face = 0; face < Steps.Length; face++)
+        {
+            if ((worldAirOnly & (1 << face)) != 0 && NeighbourAirIsWorld(cell + Steps[face]))
+            {
+                exposed |= 1 << face;
+            }
         }
 
-        Cell other = _grid.GetCell(neighbour);
-        if ((other != null && !other.IsOpenAir()) || !AtmosphereHelper.CanContainAtmos(neighbour))
-        {
-            return false;
-        }
-
-        return FaceIsOpen(cell, neighbour, other) && NeighbourAirIsWorld(neighbour, other);
+        return exposed;
     }
 
     // No terrain across the face (both sides) and no air-blocking face structure registered on either cell.
@@ -237,16 +274,16 @@ internal sealed class CellAir
         return (own == null || own.IsOpenAir(face)) && (other == null || other.IsOpenAir(face));
     }
 
-    // Rule 4: a centre structure that blocks gravity but not air (a one-sheet frame) keeps the cell out of every room,
-    // so its air must pass Structure.IsExposedToGlobal's test instead.
-    private static bool NeighbourAirIsWorld(Grid3 neighbour, Cell? other)
+    // Rule 4 applies when the neighbour's centre structure blocks gravity but not air (a one-sheet frame): it keeps the
+    // cell out of every room, so its air must pass Structure.IsExposedToGlobal's test instead.
+    private static bool BlocksGravityNotAir(Cell? other)
     {
         Structure? centre = other != null ? other.Lookup[StructureElement.Center] : null;
-        if (centre == null || centre.CanGravityPass)
-        {
-            return true;
-        }
+        return centre != null && !centre.CanGravityPass;
+    }
 
+    private static bool NeighbourAirIsWorld(Grid3 neighbour)
+    {
         Atmosphere? atmosphere = AtmosphericsController.World != null
             ? AtmosphericsController.World.GetAtmosphereLocal(new WorldGrid(neighbour))
             : null;

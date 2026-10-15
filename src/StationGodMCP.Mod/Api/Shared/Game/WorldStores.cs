@@ -61,6 +61,9 @@ internal static class WorldStores
         scope.Register("previews", static () => Previews.Clear());
         scope.Register("remote_views", Net.RemoteViews.Clear);
         scope.Register("world_index", WorldModel.ThingIndex.Reset);
+        scope.Register("frame_faces", WorldModel.FrameFaces.Clear);
+        scope.Register("damaged_things", WorldModel.DamagedThings.Clear);
+        scope.Register("gateway_maps", GatewayMaps.Clear);
         scope.Register("chip_programs", Pure.Lint.LintChipPrograms.Clear);
         scope.Register("stream_stores", Protocol.StreamStores.Main.WorldChanged);
         scope.Register("resume_holds", static () => StationGodMod.Holds?.WorldChanged());

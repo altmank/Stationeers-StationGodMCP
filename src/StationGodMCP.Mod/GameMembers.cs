@@ -545,6 +545,62 @@ internal static class GameMembers
         Target("OcclusionManager.ClearAll",
             () => AccessTools.Method(typeof(OcclusionManager), nameof(OcclusionManager.ClearAll)));
 
+    // ---- The facts' change points (World/WorldEvents) ----
+    internal static readonly GameMethod PatchUpdateAirState =
+        Target("GridController.UpdateAirState",
+            () => AccessTools.Method(typeof(GridController), nameof(GridController.UpdateAirState)));
+    internal static readonly GameMethod PatchRegisterRoom =
+        Target("RoomHelper.RegisterRoom",
+            () => AccessTools.Method(typeof(Rooms.RoomHelper), nameof(Rooms.RoomHelper.RegisterRoom)));
+    internal static readonly GameMethod PatchDeleteRoom =
+        Target("RoomHelper.DeleteRoom",
+            () => AccessTools.Method(typeof(Rooms.RoomHelper), nameof(Rooms.RoomHelper.DeleteRoom)));
+    internal static readonly GameMethod PatchRoomAddGrid =
+        Target("Room.AddGrid",
+            () => AccessTools.Method(typeof(Assets.Scripts.GridSystem.Room), nameof(Assets.Scripts.GridSystem.Room.AddGrid)));
+    internal static readonly GameMethod PatchRoomRemoveGrid =
+        Target("Room.RemoveGrid",
+            () => AccessTools.Method(typeof(Assets.Scripts.GridSystem.Room),
+                nameof(Assets.Scripts.GridSystem.Room.RemoveGrid)));
+    internal static readonly GameMethod PatchRoomControllerRegister =
+        Target("RoomController.Register",
+            () => AccessTools.Method(typeof(RoomController), nameof(RoomController.Register)));
+    internal static readonly GameMethod PatchRoomControllerDeregister =
+        Target("RoomController.Deregister",
+            () => AccessTools.Method(typeof(RoomController), nameof(RoomController.Deregister)));
+    internal static readonly GameMethod PatchSetDensityWorldSpace =
+        Target("VoxelTerrain.SetDensityWorldSpace",
+            () => AccessTools.Method(typeof(TerrainSystem.VoxelTerrain),
+                nameof(TerrainSystem.VoxelTerrain.SetDensityWorldSpace)));
+    internal static readonly GameMethod PatchApplyVoxelWorldEffects =
+        Target("VoxelTerrain.ApplyVoxelWorldEffects",
+            () => AccessTools.Method(typeof(TerrainSystem.VoxelTerrain),
+                nameof(TerrainSystem.VoxelTerrain.ApplyVoxelWorldEffects)));
+    internal static readonly GameMethod PatchDamage =
+        Target("IndestructableDamageState.Damage",
+            () => AccessTools.Method(typeof(IndestructableDamageState), nameof(IndestructableDamageState.Damage)));
+    internal static readonly GameMethod PatchDamageCopyState =
+        Target("IndestructableDamageState.Copy(IndestructableDamageState)",
+            () => AccessTools.Method(typeof(IndestructableDamageState), nameof(IndestructableDamageState.Copy),
+                new[] { typeof(IndestructableDamageState) }));
+    internal static readonly GameMethod PatchDamageCopyUpdate =
+        Target("IndestructableDamageState.Copy(DamageUpdate)",
+            () => AccessTools.Method(typeof(IndestructableDamageState), nameof(IndestructableDamageState.Copy),
+                new[] { typeof(DamageUpdate) }));
+    internal static readonly GameMethod PatchDamageRead =
+        Target("IndestructableDamageState.Read",
+            () => AccessTools.Method(typeof(IndestructableDamageState), nameof(IndestructableDamageState.Read)));
+    internal static readonly GameMethod PatchPipeBurst =
+        Target("Pipe.IsBurst (set)", () => AccessTools.PropertySetter(typeof(Pipe), nameof(Pipe.IsBurst)));
+    internal static readonly GameMethod PatchDirtyPowerAndDataDeviceLists =
+        Target("CableNetwork.DirtyPowerAndDataDeviceLists",
+            () => AccessTools.Method(typeof(Assets.Scripts.Networks.CableNetwork),
+                nameof(Assets.Scripts.Networks.CableNetwork.DirtyPowerAndDataDeviceLists)));
+    internal static readonly GameMethod PatchDirtyDataDeviceList =
+        Target("CableNetwork.DirtyDataDeviceList",
+            () => AccessTools.Method(typeof(Assets.Scripts.Networks.CableNetwork),
+                nameof(Assets.Scripts.Networks.CableNetwork.DirtyDataDeviceList)));
+
     internal static readonly GameMethod PatchWriteStateImmediate =
         Target("FragmentHandler.WriteStateImmediate",
             () => AccessTools.Method(typeof(FragmentHandler), "WriteStateImmediate"));

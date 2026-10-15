@@ -23,9 +23,10 @@ internal sealed class RuntimeView : ITruncatingView
     internal RuntimeView(double uptimeS, long worldEpoch, FrameBudget budget, DispatchSnapshot frames,
         MemoryView memory, List<MethodTiming> methods, List<ConnectionView>? connections = null,
         ProfilingSummaryView? profiling = null, JobSettlesView? jobSettles = null, WorldIndexView? worldIndex = null,
-        GameCountersView? counters = null, ShapeRequest? shape = null, UpdateReading? updates = null)
+        GameCountersView? counters = null, ShapeRequest? shape = null, UpdateReading? updates = null, FactsView? facts = null)
     {
         WorldIndex = worldIndex ?? new WorldIndexView(false, false, 0, 0, WorldIndexView.NoClasses, 0, 0);
+        Facts = facts ?? FactsView.Off;
         JobHolds = counters?.JobHolds;
         PrintLog = counters?.PrintLog;
         LintChipPrograms = counters?.LintChipPrograms;
@@ -78,6 +79,9 @@ internal sealed class RuntimeView : ITruncatingView
     public List<ConnectionView>? Connections { get; }
 
     public JobSettlesView JobSettles { get; }
+
+    /// <summary>The followed facts' keepers (cost design A2).</summary>
+    public FactsView Facts { get; }
 
     public WorldIndexView WorldIndex { get; }
 
@@ -390,6 +394,133 @@ internal sealed class WorldIndexView
 
     [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
     public long? Left { get; }
+}
+
+/// <summary>
+/// server info runtime.facts: the keepers of the followed facts (cost design A2) - whether each is on (its change
+/// points hooked), whether verify mode is on, what it keeps, and the checks verify mode made (verified) and the
+/// differences it found.
+/// </summary>
+internal sealed class FactsView
+{
+    internal static readonly FactsView Off = new FactsView(
+        new FrameFacesFactView(false, false, 0, 0, 0, 0, 0, 0, 0), new DamagedFactView(false, false, 0, 0, 0, 0, 0),
+        new GatewayMapsFactView(false, false, 0, 0, 0, 0, 0, 0));
+
+    internal FactsView(FrameFacesFactView frameFaces, DamagedFactView damaged, GatewayMapsFactView gatewayMaps)
+    {
+        FrameFaces = frameFaces;
+        Damaged = damaged;
+        GatewayMaps = gatewayMaps;
+    }
+
+    public FrameFacesFactView FrameFaces { get; }
+
+    public DamagedFactView Damaged { get; }
+
+    public GatewayMapsFactView GatewayMaps { get; }
+}
+
+/// <summary>
+/// Frames' exposed faces: masks kept, measured (on a miss), reused (a hit), dropped (by a change near them), and the
+/// changed cells the game told.
+/// </summary>
+internal sealed class FrameFacesFactView
+{
+    internal FrameFacesFactView(bool ready, bool verify, int kept, long measured, long reused, long dropped,
+        long cellsTold, long verified, long differences)
+    {
+        Ready = ready;
+        Verify = verify;
+        Kept = kept;
+        Measured = measured;
+        Reused = reused;
+        Dropped = dropped;
+        CellsTold = cellsTold;
+        Verified = verified;
+        Differences = differences;
+    }
+
+    public bool Ready { get; }
+
+    public bool Verify { get; }
+
+    public int Kept { get; }
+
+    public long Measured { get; }
+
+    public long Reused { get; }
+
+    public long Dropped { get; }
+
+    public long CellsTold { get; }
+
+    public long Verified { get; }
+
+    public long Differences { get; }
+}
+
+/// <summary>The damaged things: how many, how many wait to be filed, and how many were filed since the mod loaded.</summary>
+internal sealed class DamagedFactView
+{
+    internal DamagedFactView(bool ready, bool verify, int things, int waiting, long filed, long verified,
+        long differences)
+    {
+        Ready = ready;
+        Verify = verify;
+        Things = things;
+        Waiting = waiting;
+        Filed = filed;
+        Verified = verified;
+        Differences = differences;
+    }
+
+    public bool Ready { get; }
+
+    public bool Verify { get; }
+
+    public int Things { get; }
+
+    public int Waiting { get; }
+
+    public long Filed { get; }
+
+    public long Verified { get; }
+
+    public long Differences { get; }
+}
+
+/// <summary>Gateways' device maps: maps kept, built, reused, and the data-network changes the game told.</summary>
+internal sealed class GatewayMapsFactView
+{
+    internal GatewayMapsFactView(bool ready, bool verify, int kept, long built, long reused, long networkChanges,
+        long verified, long differences)
+    {
+        Ready = ready;
+        Verify = verify;
+        Kept = kept;
+        Built = built;
+        Reused = reused;
+        NetworkChanges = networkChanges;
+        Verified = verified;
+        Differences = differences;
+    }
+
+    public bool Ready { get; }
+
+    public bool Verify { get; }
+
+    public int Kept { get; }
+
+    public long Built { get; }
+
+    public long Reused { get; }
+
+    public long NetworkChanges { get; }
+
+    public long Verified { get; }
+
+    public long Differences { get; }
 }
 
 /// <summary>

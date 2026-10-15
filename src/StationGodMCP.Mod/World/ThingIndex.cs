@@ -75,7 +75,7 @@ internal static class ThingIndex
     // seconds of frames instead of on the first query's frame.
     private const int WarmBudget = 1024;
 
-    private static readonly WorldIndex<Thing> Index = new WorldIndex<Thing>(static thing => thing.PrefabName, ClassesOf);
+    private static readonly WorldIndex<Thing> Index = new WorldIndex<Thing>(static thing => thing.PrefabName, ClassesOf, DamagedThings.Filed);
     private static readonly Func<IEnumerable<Thing>> Seed = SeedThings;
     private static readonly Func<Thing, bool> InAnyList = static thing => InAllThings(thing) || InAllDynamicThings(thing);
     private static readonly Func<Thing, bool> InThings = InAllThings;
@@ -110,17 +110,13 @@ internal static class ThingIndex
         try
         {
             List<string> missing = new List<string>();
-            foreach (GameMethod target in new[]
-                     {
-                         GameMembers.PatchRegisterThing, GameMembers.PatchDeregisterThing,
-                         GameMembers.PatchRegisterDynamicThing, GameMembers.PatchDeregisterDynamicThing,
-                         GameMembers.PatchDynamicThingAwake, GameMembers.PatchOcclusionClearAll,
-                     })
+            string unhooked = WorldEvents.Missing(harmonyId, GameMembers.PatchRegisterThing,
+                GameMembers.PatchDeregisterThing, GameMembers.PatchRegisterDynamicThing,
+                GameMembers.PatchDeregisterDynamicThing, GameMembers.PatchDynamicThingAwake,
+                GameMembers.PatchOcclusionClearAll);
+            if (unhooked.Length > 0)
             {
-                if (!target.TryResolve() || !HasPostfix(target.Info, harmonyId))
-                {
-                    missing.Add(target.Name);
-                }
+                missing.Add(unhooked);
             }
 
             foreach (GameField field in new[]
@@ -164,25 +160,6 @@ internal static class ThingIndex
             _missing = exception.Message;
             StationGodMod.LogWarning($"World index off (every world query refuses game_changed): {exception.Message}");
         }
-    }
-
-    private static bool HasPostfix(MethodBase method, string harmonyId)
-    {
-        Patches? patches = Harmony.GetPatchInfo(method);
-        if (patches == null)
-        {
-            return false;
-        }
-
-        foreach (Patch patch in patches.Postfixes)
-        {
-            if (patch.owner == harmonyId)
-            {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     /// <summary>server info runtime.world_index; arrived and left only with include_counters.</summary>
@@ -287,6 +264,14 @@ internal static class ThingIndex
 
         using ProfScope scope = Prof.Scope(ProfId.WorldIndex);
         return Index.Candidates((int)worldClass, Seed, InAnyList);
+    }
+
+    /// <summary>Files everything waiting (the seed, the arrivals), so the keepers told of each filing are whole.</summary>
+    internal static void Settle()
+    {
+        RequireReady();
+        using ProfScope scope = Prof.Scope(ProfId.WorldIndex);
+        Index.Settle(Seed, InAnyList);
     }
 
     /// <summary>Whether a candidate is still in its class's game list (its pool slot), as OfClass checks.</summary>

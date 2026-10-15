@@ -39,6 +39,7 @@ internal sealed class WorldIndex<T> where T : class
     private readonly object _gate = new object();
     private readonly Func<T, string?> _nameOf;
     private readonly Func<T, int> _classesOf;
+    private readonly Action<T>? _filed;
     private readonly Dictionary<string, IndexedSet<T>> _byName =
         new Dictionary<string, IndexedSet<T>>(StringComparer.OrdinalIgnoreCase);
     private readonly IndexedSet<T>[] _byClass = new IndexedSet<T>[MaximumClasses];
@@ -54,11 +55,15 @@ internal sealed class WorldIndex<T> where T : class
     private long _arrivedTotal;
     private long _leftTotal;
 
-    /// <summary>nameOf: a thing's prefab name now; classesOf: its class bits, read once per thing.</summary>
-    internal WorldIndex(Func<T, string?> nameOf, Func<T, int>? classesOf = null)
+    /// <summary>
+    /// nameOf: a thing's prefab name now; classesOf: its class bits, read once per thing; filed: told once per thing
+    /// when it is first filed (after a seed, again), on the filing thread, inside the index's lock.
+    /// </summary>
+    internal WorldIndex(Func<T, string?> nameOf, Func<T, int>? classesOf = null, Action<T>? filed = null)
     {
         _nameOf = nameOf;
         _classesOf = classesOf ?? (static _ => 0);
+        _filed = filed;
         for (int index = 0; index < MaximumClasses; index++)
         {
             _byClass[index] = new IndexedSet<T>(ByReference.Instance);
@@ -252,6 +257,16 @@ internal sealed class WorldIndex<T> where T : class
         }
     }
 
+    /// <summary>Files everything waiting (the seed, the arrivals, the leaves), as a query would, answering nothing.</summary>
+    internal void Settle(Func<IEnumerable<T>> seed, Func<T, bool> inAnyList)
+    {
+        Seed(seed);
+        lock (_gate)
+        {
+            Drain(inAnyList);
+        }
+    }
+
     /// <summary>
     /// Once a frame: files up to budget things, the seed's first, then the arrivals told before the previous Warm; with
     /// every arrival filed, drops the leaves no list holds. Main thread.
@@ -424,6 +439,7 @@ internal sealed class WorldIndex<T> where T : class
         else
         {
             classes = _classesOf(thing);
+            _filed?.Invoke(thing);
         }
 
         if (!_byName.TryGetValue(name, out IndexedSet<T> bucket))

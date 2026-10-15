@@ -34,13 +34,16 @@ internal enum ProfId
     JobGasWalk,
 
     /// <summary>The load's static data and the compiling of the mod's code paths, a piece a frame (LoadWarmup).</summary>
-    LoadWarmup
+    LoadWarmup,
+
+    /// <summary>The followed facts' filing (frame faces, damaged things, gateway device maps: World/WorldEvents).</summary>
+    WorldFacts
 }
 
 /// <summary>Every scope's name as the reports write it, by ProfId.</summary>
 internal static class ProfIds
 {
-    internal const int Count = (int)ProfId.LoadWarmup + 1;
+    internal const int Count = (int)ProfId.WorldFacts + 1;
 
     /// <summary>The frame time no scope covers: the rest of StationGod's Update.</summary>
     internal const string Unscoped = "unscoped";
@@ -50,7 +53,8 @@ internal static class ProfIds
         "world_stores", "subscriptions_begin_frame", "publish_facts", "observe_game_state", "remote_views",
         "run_frame", "subscription_lane", "call_execute", "call_serialize", "held_tick_jobs", "job_step", "job_apply",
         "job_gas_open", "job_gas_settle", "job_gas_close", "atmosphere_wait", "previews", "highlights",
-        "rocket_flight_recorder", "pool_snapshot", "world_index", "job_gas_walk", "load_warmup"
+        "rocket_flight_recorder", "pool_snapshot", "world_index", "job_gas_walk", "load_warmup",
+        "world_facts"
     };
 
     internal static string Name(ProfId id) => Names[(int)id];

@@ -139,10 +139,11 @@ internal sealed class HealthScanFilter
 }
 
 /// <summary>
-/// A scan of every damaged thing registered (the world index's Thing class), broken first, then worst first; broken
-/// things are listed whatever their (healed) numbers say. It leaves out things being destroyed, indestructible damage
-/// states, entities and organs. Spread over frames: Scan is a ScanBuild body, one candidate per step, and WorstFirst
-/// its order.
+/// A scan of the damaged things (DamagedThings, followed: every registered wreck or thing damaged above 0), broken first,
+/// then worst first; broken things are listed whatever their (healed) numbers say. It leaves out things being destroyed,
+/// indestructible damage states, entities and organs, and reads each thing's damage now. Spread over frames: Scan is a
+/// ScanBuild body, one damaged thing per step, and WorstFirst its order. Its work is the damaged things', never the
+/// world's.
 /// </summary>
 internal sealed class HealthScanner
 {
@@ -160,16 +161,25 @@ internal sealed class HealthScanner
 
     internal int Broken { get; private set; }
 
+    /// <summary>The damaged things the scan looked at.</summary>
     internal int Scanned { get; private set; }
 
     /// <summary>A listed thing by reference id, once the scan has met it.</summary>
     internal Thing? Listed(long id) => _rows.TryGetValue(id, out HealthRow? row) ? row.Thing : null;
 
-    /// <summary>The scan: the Thing class's candidates, each checked and kept as its turn comes, one per step.</summary>
+    /// <summary>The scan: the damaged things, each checked and kept as its turn comes, one per step.</summary>
     internal IEnumerable<object?> Scan(ScanKeys keys)
     {
-        List<Thing> things = World.Candidates(WorldClass.Thing);
+        List<Thing> things = DamagedThings.Members();
         yield return null;
+        if (DamagedThings.Verify)
+        {
+            foreach (object? step in DamagedThings.Comparing(things))
+            {
+                yield return step;
+            }
+        }
+
         for (int index = 0; index < things.Count; index++)
         {
             keys.Candidates++;
