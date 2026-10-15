@@ -70,6 +70,11 @@ internal static class ThingIndex
 {
     private static readonly int ClassCount = Enum.GetValues(typeof(WorldClass)).Length;
 
+    // Things filed a frame ahead of the queries (WorldIndex.Warm): about 0.7 ms of a frame at most, so a world's load
+    // (some 76,000 seeded and told things on the test world, three times that on the large one) is filed in a few
+    // seconds of frames instead of on the first query's frame.
+    private const int WarmBudget = 1024;
+
     private static readonly WorldIndex<Thing> Index = new WorldIndex<Thing>(static thing => thing.PrefabName, ClassesOf);
     private static readonly Func<IEnumerable<Thing>> Seed = SeedThings;
     private static readonly Func<Thing, bool> InAnyList = static thing => InAllThings(thing) || InAllDynamicThings(thing);
@@ -220,6 +225,18 @@ internal static class ThingIndex
     }
 
     internal static void Reset() => Index.Reset();
+
+    /// <summary>Each server frame: files a slice of the seed and of the arrivals ahead of the queries.</summary>
+    internal static void Tick()
+    {
+        if (!Ready)
+        {
+            return;
+        }
+
+        using ProfScope scope = Prof.Scope(ProfId.WorldIndex);
+        Index.Warm(Seed, InAnyList, WarmBudget);
+    }
 
     // ---- queries (World's) ----
 

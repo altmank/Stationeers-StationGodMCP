@@ -221,6 +221,8 @@ public sealed class StationGodMod : ModBehaviour
                 Net.RemoteViews.Tick();
             }
 
+            WorldModel.ThingIndex.Tick();
+
             if (_pipeListener == null && !_pipeUnavailable)
             {
                 StartPipe();

@@ -14,8 +14,13 @@ namespace StationGodMCP.Pure;
 /// (Left) and each clearing of the lists (Reset). A thing is filed under the name it has when the next query runs,
 /// because the game sets a new thing's prefab name after its first registration (DynamicThing.Awake runs inside
 /// Instantiate); its classes (a bit set, bit n for class n) are read once, when it is first filed, since a thing's class
-/// never changes. The first query after a Reset files every thing the lists hold (the seed), so the index is whole even
-/// when the lists were filled before it heard of them.
+/// never changes. The first query or Warm after a Reset copies every thing the lists hold (the seed), so the index is
+/// whole even when the lists were filled before it heard of them.
+/// <para>
+/// Filing waits for a query, or for Warm, which the game side calls once a frame: it files up to a budget of the seed and
+/// of the arrivals told before its previous call (a whole frame back, so a new thing has its name), so a world's load is
+/// filed a slice a frame and no query pays for it. A query files whatever is still waiting.
+/// </para>
 /// <para>
 /// The index only proposes: every answer is checked against a list's own membership (isMember: for a class, its own
 /// pool), and a filed thing that is in no list any more (inAnyList) is dropped. Each thing sits in one name bucket, its
@@ -40,6 +45,10 @@ internal sealed class WorldIndex<T> where T : class
     private readonly Dictionary<T, Filing> _filedUnder = new Dictionary<T, Filing>(ByReference.Instance);
     private readonly List<T> _arrived = new List<T>();
     private readonly List<T> _left = new List<T>();
+    private readonly List<T> _seedWaiting = new List<T>();
+    private int _seedFiled;
+    private int _arrivedFiled;
+    private int _arrivedSettled;
     private bool _seeded;
     private long _generation;
     private long _arrivedTotal;
@@ -145,11 +154,11 @@ internal sealed class WorldIndex<T> where T : class
         }
     }
 
-    // Arrivals and leaves wait for a query; a game nobody queries would hold every thing it ever made. Past
-    // MaximumBacklog the index forgets everything and the next query seeds from the lists, which hold the same truth.
+    // Arrivals and leaves wait for a query or Warm; a game whose frames stop would hold every thing it ever made. Past
+    // MaximumBacklog waiting the index forgets everything and seeds again from the lists, which hold the same truth.
     private void ForgetWhenBacklogged()
     {
-        if (_arrived.Count + _left.Count > MaximumBacklog)
+        if (_arrived.Count - _arrivedFiled + _left.Count > MaximumBacklog)
         {
             Forget();
         }
@@ -166,6 +175,10 @@ internal sealed class WorldIndex<T> where T : class
         _filedUnder.Clear();
         _arrived.Clear();
         _left.Clear();
+        _seedWaiting.Clear();
+        _seedFiled = 0;
+        _arrivedFiled = 0;
+        _arrivedSettled = 0;
         _seeded = false;
         _generation++;
     }
@@ -173,7 +186,7 @@ internal sealed class WorldIndex<T> where T : class
     /// <summary>
     /// The things of one master list (isMember) whose filed name the match keeps: by bucket for exact names, by every
     /// bucket name holding the text for prefab_contains alone. seed lists every thing the master lists hold, read only
-    /// on the first query after a Reset. examined counts every filed thing in the matching buckets.
+    /// on the first query or Warm after a Reset. examined counts every filed thing in the matching buckets.
     /// </summary>
     internal List<T> Find(PrefabMatch match, Func<IEnumerable<T>> seed, Func<T, bool> inAnyList,
         Func<T, bool> isMember, out int examined)
@@ -222,6 +235,45 @@ internal sealed class WorldIndex<T> where T : class
         }
     }
 
+    /// <summary>
+    /// Once a frame: files up to budget things, the seed's first, then the arrivals told before the previous Warm; with
+    /// every arrival filed, drops the leaves no list holds. Main thread.
+    /// </summary>
+    internal void Warm(Func<IEnumerable<T>> seed, Func<T, bool> inAnyList, int budget)
+    {
+        Seed(seed);
+        lock (_gate)
+        {
+            int left = budget;
+            while (left > 0 && _seedFiled < _seedWaiting.Count)
+            {
+                File(_seedWaiting[_seedFiled++]);
+                left--;
+            }
+
+            if (_seedFiled == _seedWaiting.Count)
+            {
+                _seedWaiting.Clear();
+                _seedFiled = 0;
+            }
+
+            while (left > 0 && _arrivedFiled < _arrivedSettled)
+            {
+                File(_arrived[_arrivedFiled++]);
+                left--;
+            }
+
+            if (_arrivedFiled == _arrived.Count)
+            {
+                _arrived.Clear();
+                _arrivedFiled = 0;
+                DropLeaves(inAnyList);
+            }
+
+            _arrivedSettled = _arrived.Count;
+        }
+    }
+
     // The seed copies the game's lists under their own locks, so it is read outside the gate: a hook never waits for the
     // gate while a list's lock is held here. A Reset between the copy and the filing (another thread) takes the copy
     // again.
@@ -248,11 +300,7 @@ internal sealed class WorldIndex<T> where T : class
                     continue;
                 }
 
-                foreach (T thing in seeded)
-                {
-                    File(thing);
-                }
-
+                _seedWaiting.AddRange(seeded);
                 _seeded = true;
                 return;
             }
@@ -277,12 +325,26 @@ internal sealed class WorldIndex<T> where T : class
 
     private void Drain(Func<T, bool> inAnyList)
     {
-        foreach (T thing in _arrived)
+        for (int index = _seedFiled; index < _seedWaiting.Count; index++)
         {
-            File(thing);
+            File(_seedWaiting[index]);
+        }
+
+        _seedWaiting.Clear();
+        _seedFiled = 0;
+        for (int index = _arrivedFiled; index < _arrived.Count; index++)
+        {
+            File(_arrived[index]);
         }
 
         _arrived.Clear();
+        _arrivedFiled = 0;
+        _arrivedSettled = 0;
+        DropLeaves(inAnyList);
+    }
+
+    private void DropLeaves(Func<T, bool> inAnyList)
+    {
         foreach (T thing in _left)
         {
             if (!inAnyList(thing))

@@ -95,6 +95,9 @@ public sealed class WorldIndexTests
             return all;
         }
 
+        // A frame's Warm, as ThingIndex.Tick calls it.
+        internal void Warm(int budget) => Index.Warm(Seed, thing => InAll(thing) || InDynamic(thing), budget);
+
         internal List<Thing> Find(PrefabMatch match, bool dynamic = false) =>
             Find(match, dynamic, out _);
 
@@ -188,6 +191,59 @@ public sealed class WorldIndexTests
 
         Assert.Single(world.Find(new PrefabMatch("ItemKitWall", null), dynamic: true));
         Assert.Empty(world.Find(new PrefabMatch("Template", null), dynamic: true));
+    }
+
+    [Fact]
+    public void AWarmFilesOnlyTheArrivalsToldBeforeItsPreviousCall()
+    {
+        // A thing's name is set in the frame it arrives in; Warm runs once a frame, so it files a frame late.
+        World world = new World();
+        world.Warm(10);
+        Thing thing = world.Add("Template", dynamic: true);
+        world.Warm(10);
+        Assert.Equal(0, world.Index.Count);
+
+        thing.Name = "ItemKitWall";
+        world.Warm(10);
+
+        Assert.Equal(1, world.Index.Count);
+        Assert.Single(world.Find(new PrefabMatch("ItemKitWall", null), dynamic: true));
+        Assert.Empty(world.Find(new PrefabMatch("Template", null), dynamic: true));
+    }
+
+    [Fact]
+    public void AWarmFilesTheSeedASliceAtATimeAndAQueryTheRest()
+    {
+        World world = new World();
+        for (int index = 0; index < 5; index++)
+        {
+            world.Add("ItemIronOre", tell: false);
+        }
+
+        world.Warm(2);
+        Assert.Equal(2, world.Index.Count);
+        world.Warm(2);
+        Assert.Equal(4, world.Index.Count);
+
+        Assert.Equal(5, world.Find(new PrefabMatch("ItemIronOre", null)).Count);
+        Assert.Equal(1, world.Seeds);
+    }
+
+    [Fact]
+    public void AWarmDropsTheLeavesOnceEveryArrivalIsFiled()
+    {
+        World world = new World();
+        world.Warm(10);
+        Thing first = world.Add("ItemIronOre");
+        world.Add("ItemIronOre");
+        world.Warm(10);
+        world.Warm(10);
+        Assert.Equal(2, world.Index.Count);
+
+        world.Remove(first);
+        world.Warm(10);
+
+        Assert.Equal(1, world.Index.Count);
     }
 
     [Fact]
@@ -391,6 +447,10 @@ public sealed class WorldIndexTests
             {
                 world.Clear();
             }
+            else if (roll < 90)
+            {
+                world.Warm(random.Next(1, 8));
+            }
             else
             {
                 int classNumber = random.Next(4);
@@ -441,6 +501,10 @@ public sealed class WorldIndexTests
             else if (roll < 86)
             {
                 world.Clear();
+            }
+            else if (roll < 90)
+            {
+                world.Warm(random.Next(1, 8));
             }
             else
             {
