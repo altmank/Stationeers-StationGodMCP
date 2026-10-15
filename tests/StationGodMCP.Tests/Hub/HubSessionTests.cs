@@ -232,6 +232,33 @@ public sealed class HubSessionTests
     }
 
     [Fact]
+    public async Task AFindSubscriptionAndItsUpdatesAreRelayedUnderTheCallersId()
+    {
+        FakeHubLink link = new()
+        {
+            Answer = (call, _) => Task.FromResult(call.Method == "subscribe"
+                ? FakeGameLink.Ok("""{"subscription":"s41","topic":"find","what":"frame","interval_s":10.0,"frame":5,"as_of_s":1.0,"cost_ms":2.0,"keyed":{"frames":"reference_id"},"result":{"frames":[]}}""")
+                : FakeGameLink.Ok("""{"ended":true}"""))
+        };
+        await using HubCaller caller = HubCaller.Start(link);
+        await caller.HelloAsync();
+
+        JsonElement subscribed = await caller.CallAsync("1", "subscribe", """{"topic":"find","what":"frame"}""");
+        link.Raise("""{"type":"event","event":"find_update","subscription":"s41","seq":1,"frame":9,"as_of_s":11.0,"keyed":{"frames":"reference_id"},"lists":{"frames":{"added":[{"reference_id":"3"}],"changed":[],"removed":[]}}}""");
+        JsonElement update = await caller.NextAsync();
+        await caller.EndAsync();
+
+        Assert.Equal("s1", subscribed.GetProperty("result").GetProperty("subscription").GetString());
+        Assert.Equal("find", subscribed.GetProperty("result").GetProperty("topic").GetString());
+        Assert.Equal("find_update", update.GetProperty("event").GetString());
+        Assert.Equal("s1", update.GetProperty("subscription").GetString());
+        Assert.Equal("3", update.GetProperty("lists").GetProperty("frames").GetProperty("added")[0]
+            .GetProperty("reference_id").GetString());
+        Assert.Equal("""{"topic":"find","what":"frame"}""", Assert.Single(link.CallsTo("subscribe")).Parameters.GetRawText());
+        Assert.Equal("""{"subscription":"s41"}""", Assert.Single(link.CallsTo("unsubscribe")).Parameters.GetRawText());
+    }
+
+    [Fact]
     public async Task UnsubscribeEndsTheModSubscriptionAndAnotherSessionsIdIsUnknown()
     {
         FakeHubLink link = new()

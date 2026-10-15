@@ -13,6 +13,7 @@ sg never talks to the mod directly: every call is the hub protocol over the hub'
 from . import _session, _transport
 from . import lib
 from ._errors import Error, Stopped
+from ._follow import Following, follow
 from ._helpers import changes, help, hold, jobs, ref, script, wait, watch
 from ._replies import MainList, Reply, Row
 from ._transport import VERSION as __version__
@@ -22,7 +23,7 @@ from ._verbs import (build, check, find, inspect, move, plan, read, remove, serv
 __all__ = [
     "Error", "Stopped", "Reply", "MainList", "Row", "connect", "close",
     "find", "inspect", "survey", "read", "write", "plan", "check", "build", "swap", "remove", "move", "trade", "show",
-    "undo", "server", "help", "ref", "wait", "watch", "changes", "jobs", "hold", "script",
+    "undo", "server", "help", "ref", "wait", "watch", "changes", "jobs", "hold", "script", "follow", "Following",
 ]
 
 

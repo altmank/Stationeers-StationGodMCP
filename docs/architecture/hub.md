@@ -64,8 +64,11 @@ section says otherwise.
   is sent the mod's welcome once the link first gets it (one extra `welcome`, before any event); `sg` keeps the
   latest welcome, so a watch started after the game answers subscribes where it would otherwise have polled.
 - A `call` whose `method` is a mod method is passed to the mod on the caller's mapped stream, its reply passed back
-  with the caller's id. `subscribe` and `unsubscribe` are relayed: the hub holds one mod subscription per caller
-  subscription and passes its events through with the caller's subscription id.
+  with the caller's id. `subscribe` and `unsubscribe` are relayed, every topic (`find` too, whose first reply may
+  come frames later): the hub holds one mod subscription per caller subscription and passes its events (`update`,
+  `find_update`, ...) through with the caller's subscription id. Two callers following the same find or the same
+  devices share the mod's one evaluation or read of them (protocol.md, Subscriptions), so the hub keeps nothing shared
+  of its own.
 - Feature `pipeline` adds these methods, answered by the hub:
 
 | Method | Params | Result |

@@ -112,6 +112,11 @@ its stdin is closed at exit, and on Windows it is in a kill-on-close Job Object 
   a devices-form read; otherwise they poll `read logic`, 1 s for a light read and 5 s for one that asks atmosphere.
   A refused, ended or world-dropped subscription falls back to polling for the rest of the timeout
   (`_helpers.py:32-68`, `:185-202`).
+- `sg.follow("find", what, interval_s=10, **options)` subscribes to the find topic and returns a `Following`
+  (`_follow.py`): `.result` the find's reply with every list whole, kept current as `find_update` events arrive
+  (removed keys dropped, changed entries replaced, added ones appended, `rest` taken whole), `.as_of_s`, `.next(timeout)`
+  the next change or None, `.live`, `.end_reason`, `.close()` (and `with`). There is no polling fallback: a hub without
+  `subscriptions` raises `too_old`, a refused subscribe raises the game's error.
 - `hold` registers the restore with the mod before it writes, so the mod also applies it at session end or after an
   unresumed disconnect, in the same world, while the target still holds the run's last written value
   (`_helpers.py:387-430`).
