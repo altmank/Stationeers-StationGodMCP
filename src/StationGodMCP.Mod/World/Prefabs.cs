@@ -159,6 +159,9 @@ internal static class Prefabs
         }
     }
 
+    /// <summary>Whether the game's placement cursors are made (once a world runs): the build catalogue needs them.</summary>
+    internal static bool CursorsMade => (Cursors()?.Count ?? 0) > 0;
+
     // The game's placement cursors by name (InventoryManager._constructionCursors), made once a world runs.
     private static Dictionary<string, Structure>? Cursors() =>
         GameMembers.ConstructionCursors.TryResolve()

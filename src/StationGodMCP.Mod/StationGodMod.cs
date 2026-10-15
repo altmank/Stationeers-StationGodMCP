@@ -222,6 +222,7 @@ public sealed class StationGodMod : ModBehaviour
             }
 
             WorldModel.ThingIndex.Tick();
+            WorldModel.LoadWarmup.Tick();
 
             if (_pipeListener == null && !_pipeUnavailable)
             {
