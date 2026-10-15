@@ -10,7 +10,7 @@ Options:
 - facing (+x | -x | +y | -y | +z | -z | toward_player | away_from_player | out_of_face | into_room): Where the front points.
 - up (+x | -x | +y | -y | +z | -z, default +y (+z when facing is vertical)): Where the top points.
 - face (+x | -x | +y | -y | +z | -z): Face-placed pieces (walls): the cell face it sits on.
-- orient (object): {mount, upright, controls_toward, ports, flow}: choose the turn by intent.
+- orient (object): {mount, upright, controls_toward, ports: [{role, index, type, toward}], flow: {from, to}}: choose the turn by intent. mount: wall, floor, ceiling or an axis; a target (controls_toward, toward, from, to): an axis, room, player, a point or a thing's id.
 - above_floor (number): Bottom this many metres above the floor below at.
 - build_state (string or integer): finished (default), first, or a state index.
 - label (string): A name, as the Labeller writes it.

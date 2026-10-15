@@ -168,8 +168,35 @@ internal sealed class RouteOrder
         return problems.Count == before ? order : null;
     }
 
+    // An end's keys (start's, end's): {at}, {id}, {id, port}, start's {id, ports} and end's {network}; a list's items.
+    private static readonly string[] StartKeys = { "at", "id", "port", "ports" };
+    private static readonly string[] EndKeys = { "at", "id", "port", "network" };
+    private static readonly string[] RerouteKeys = { "id", "between" };
+    private static readonly string[] TrunkKeys = { "waypoints", "cells" };
+    private static readonly string[] PortKeys = { "id", "port" };
+
+    private static void EndKeysOf(JToken? given, string option, IReadOnlyList<string> keys, List<OptionProblem> problems)
+    {
+        if (given is JObject one)
+        {
+            NestedKeys.Check(one, option, keys, problems);
+        }
+        else if (given is JArray list)
+        {
+            for (int index = 0; index < list.Count; index++)
+            {
+                if (list[index] is JObject item)
+                {
+                    NestedKeys.Check(item, $"{option}[{index}]", keys, problems);
+                }
+            }
+        }
+    }
+
     private void ReadEnds(PlanRouteOptions options, List<OptionProblem> problems)
     {
+        EndKeysOf(options.Start, "start", StartKeys, problems);
+        EndKeysOf(options.End, "end", EndKeys, problems);
         if (options.Reroute != null)
         {
             if (Start != null || End != null)
@@ -215,6 +242,11 @@ internal sealed class RouteOrder
 
     private void ReadReroute(JToken reroute, List<OptionProblem> problems)
     {
+        if (reroute is JObject given)
+        {
+            NestedKeys.Check(given, "reroute", RerouteKeys, problems);
+        }
+
         JToken? pieces = (reroute as JObject)?["id"];
         JToken? between = (reroute as JObject)?["between"];
         if ((pieces == null) == (between == null))
@@ -243,6 +275,11 @@ internal sealed class RouteOrder
 
     private void ReadTrunk(JToken trunk, List<OptionProblem> problems)
     {
+        if (trunk is JObject given)
+        {
+            NestedKeys.Check(given, "trunk", TrunkKeys, problems);
+        }
+
         JToken? waypoints = (trunk as JObject)?["waypoints"];
         JToken? cells = (trunk as JObject)?["cells"];
         if ((waypoints == null) == (cells == null))
@@ -366,6 +403,10 @@ internal sealed class RouteOrder
             if (!(entry is JObject item) || !ThingId.TryRead(item["id"], out ThingId id))
             {
                 problems.Add(new OptionProblem(path, "must be {id, port}"));
+            }
+            else if (NestedKeys.First(item, path, PortKeys) is { } unknown)
+            {
+                problems.Add(unknown);
             }
             else if (port == null || port.Type != JTokenType.Integer || port.Value<long>() is < 0 or > MaximumPort)
             {

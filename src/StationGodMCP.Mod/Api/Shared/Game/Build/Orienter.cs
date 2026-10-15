@@ -17,8 +17,8 @@ namespace StationGodMCP.Api.Shared.Game.Build;
 /// <summary>
 /// build structure's orient, read against the world: {mount: wall|floor|ceiling|an axis (the side the surface is on),
 /// upright (default true), controls_toward: a target, ports: [{role, index, type, toward}], flow: {from, to}}. A target
-/// is an axis (+x .. -z), "room" (into the room), "player" (the player), a point [x, y, z] or {reference_id}
-/// (that thing's position).
+/// is an axis (+x .. -z), "room" (into the room), "player" (the player), a point [x, y, z] or {x, y, z}, or a thing's
+/// id (its position).
 /// </summary>
 internal static class Orienter
 {
@@ -77,9 +77,9 @@ internal static class Orienter
             }
         }
 
-        if (token is JObject thing && thing["reference_id"] != null)
+        if (ThingId.TryRead(token, out ThingId id))
         {
-            Thing found = GameLookup.RequireThing(new Args(thing).ThingId("reference_id"));
+            Thing found = GameLookup.RequireThing(id);
             return new OrientTarget.At(Bodies.V(found.Position), $"{Names.Of(found)} {found.ReferenceId}");
         }
 
@@ -91,7 +91,7 @@ internal static class Orienter
 
         throw ApiErrors.InvalidArgument(
             $"{name} must be an axis (+x .. -z), \"room\", \"player\", a point [x, y, z] or " +
-            "{reference_id}.");
+            "a thing's id.");
     }
 
     private static MountIntent? MountOf(string? text)

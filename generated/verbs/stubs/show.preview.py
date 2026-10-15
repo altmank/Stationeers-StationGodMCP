@@ -7,7 +7,7 @@ def show(what: Literal['preview'], *,
     facing: str = None,  # Where the front points (as build structure).
     up: str = None,  # Where the top points (as build structure).
     face: str = None,  # Face-placed pieces: the cell face it sits on.
-    orient: dict = None,  # {mount, upright, controls_toward, ports, flow}: choose the turn by intent.
+    orient: dict = None,  # {mount, upright, controls_toward, ports: [{role, index, type, toward}], flow: {from, to}}: choose the turn by intent. mount: wall, floor, ceiling or an axis; a target (controls_toward, toward, from, to): an axis, room, player, a point or a thing's id.
     above_floor: float = None,  # Bottom this many metres above the floor below at.
     build_state: str | int = None,  # finished (default), first, or a state index.
     allow: list[Literal['door_keepout']] = None,  # Guards to lift, by name.

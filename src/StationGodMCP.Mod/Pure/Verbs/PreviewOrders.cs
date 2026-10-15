@@ -84,6 +84,8 @@ internal sealed class PreviewOrder
     /// <summary>The most boxes one call draws (the option's maxItems).</summary>
     internal const int MaximumBoxes = 64;
 
+    private static readonly string[] BoxKeys = { "min", "max", "color" };
+
     /// <summary>How long it shows when the call gives no seconds (the option's default).</summary>
     internal const double DefaultSeconds = 30.0;
 
@@ -227,8 +229,7 @@ internal sealed class PreviewOrder
                 continue;
             }
 
-            PlacementOrders.Add(placements, PlacementOrders.Shared(item, path, problems), index, path + ".",
-                ShowPreviewOptions.Spec, problems);
+            PlacementOrders.Add(placements, item, index, path + ".", ShowPreviewOptions.Spec, problems);
         }
     }
 
@@ -274,7 +275,7 @@ internal sealed class PreviewOrder
 
         if (options.AboveFloor.HasValue)
         {
-            PlacementOrders.AboveFloor(new JValue(options.AboveFloor.Value), "above_floor", item, problems);
+            item["above_floor"] = options.AboveFloor.Value;
         }
 
         if (options.BuildState != null)
@@ -339,6 +340,13 @@ internal sealed class PreviewOrder
             if (!(items[index] is JObject item))
             {
                 problems.Add(new OptionProblem(path, "is an object: {min, max, color}"));
+                continue;
+            }
+
+            int before = problems.Count;
+            NestedKeys.Check(item, path, BoxKeys, problems);
+            if (problems.Count > before)
+            {
                 continue;
             }
 

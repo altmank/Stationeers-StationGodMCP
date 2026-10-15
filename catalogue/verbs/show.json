@@ -45,7 +45,7 @@
         },
         "orient": {
           "schema": {"type": "object"},
-          "description": "{mount, upright, controls_toward, ports, flow}: choose the turn by intent.",
+          "description": "{mount, upright, controls_toward, ports: [{role, index, type, toward}], flow: {from, to}}: choose the turn by intent. mount: wall, floor, ceiling or an axis; a target (controls_toward, toward, from, to): an axis, room, player, a point or a thing's id.",
           "x-script": "same"
         },
         "above_floor": {

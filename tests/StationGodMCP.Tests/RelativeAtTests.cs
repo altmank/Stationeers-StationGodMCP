@@ -81,10 +81,35 @@ public sealed class RelativeAtTests
     {
         Assert.IsType<AtForm.Absolute>(PlacementReader.AtOf(new JArray(719, 200.5, 668), "at"));
         Assert.IsType<AtForm.Absolute>(PlacementReader.AtOf(JObject.Parse("{\"x\":1,\"y\":2,\"z\":3}"), "at"));
-        Assert.IsType<AtForm.Relative>(PlacementReader.AtOf(JObject.Parse("{\"crosshair\":true}"), "at"));
+        Assert.IsType<AtForm.Relative>(PlacementReader.AtOf(new JValue("looking_at"), "at"));
+        Assert.IsType<AtForm.Relative>(PlacementReader.AtOf(JObject.Parse("{\"looking_at\":true,\"up\":1}"), "at"));
         Assert.IsType<AtForm.Relative>(PlacementReader.AtOf(
-            JObject.Parse("{\"relative_to\":\"player\",\"forward_m\":2}"), "at"));
-        Assert.IsType<AtForm.Relative>(PlacementReader.AtOf(JObject.Parse("{\"on_face_i_look_at\":true}"), "at"));
+            JObject.Parse("{\"relative_to\":\"player\",\"forward\":2,\"anchor\":\"top\"}"), "at"));
+        Assert.IsType<AtForm.Relative>(PlacementReader.AtOf(
+            JObject.Parse("{\"on_face\":true,\"along_right\":1,\"along_up\":0.5}"), "at"));
+    }
+
+    // R-D-4: the help's words are the only ones; an old or unknown key in a relative at is refused with the nearest
+    // names, never dropped (an offset read under the wrong name would build at the anchor).
+    [Theory]
+    [InlineData("{\"relative_to\":\"4820585\",\"right_m\":2}", "at.right_m")]
+    [InlineData("{\"relative_to\":\"4820585\",\"from\":\"top\"}", "at.from")]
+    [InlineData("{\"looking_at\":true,\"anchor\":\"top\"}", "at.anchor")]
+    [InlineData("{\"on_face\":true,\"along_right_m\":1}", "at.along_right_m")]
+    public void AnUnknownKeyInARelativeAtIsRefused(string at, string named)
+    {
+        ApiException error = Assert.Throws<ApiException>(() => PlacementReader.AtOf(JObject.Parse(at), "at"));
+        Assert.Equal(ApiErrors.InvalidArgumentCode, error.Code);
+        Assert.StartsWith(named + " is not a key here", error.Message);
+    }
+
+    [Fact]
+    public void ARelativeAtTakesOneFormAndItsFlagsAreTrue()
+    {
+        Assert.Throws<ApiException>(() => PlacementReader.AtOf(
+            JObject.Parse("{\"looking_at\":true,\"relative_to\":\"player\"}"), "at"));
+        Assert.Throws<ApiException>(() => PlacementReader.AtOf(JObject.Parse("{\"on_face\":false}"), "at"));
+        Assert.Throws<ApiException>(() => PlacementReader.AtOf(new JValue("crosshair"), "at"));
     }
 
     [Fact]
@@ -93,7 +118,7 @@ public sealed class RelativeAtTests
         List<OptionProblem> problems = new List<OptionProblem>();
         StructureBuildOrder order = StructureBuildOrder.Of(BuildStructureOptions.Bind(new OptionReader(
             BuildStructureOptions.Spec, JObject.Parse("{\"prefab\":\"StructureConsole3x3\"," +
-                "\"at\":{\"crosshair\":true},\"facing\":\"toward_player\",\"above_floor\":1.0}"))), problems,
+                "\"at\":\"looking_at\",\"facing\":\"toward_player\",\"above_floor\":1.0}"))), problems,
             out VerbError? missing)!;
 
         Assert.Empty(problems);

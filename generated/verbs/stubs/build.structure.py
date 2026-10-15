@@ -8,7 +8,7 @@ def build(what: Literal['structure'], *,
     facing: Literal['+x', '-x', '+y', '-y', '+z', '-z', 'toward_player', 'away_from_player', 'out_of_face', 'into_room'] = None,  # Where the front points.
     up: Literal['+x', '-x', '+y', '-y', '+z', '-z'] = None,  # up (+x | -x | +y | -y | +z | -z, default +y (+z when facing is vertical)): Where the top points. (default +y (+z when facing is vertical))
     face: Literal['+x', '-x', '+y', '-y', '+z', '-z'] = None,  # Face-placed pieces (walls): the cell face it sits on.
-    orient: dict = None,  # {mount, upright, controls_toward, ports, flow}: choose the turn by intent.
+    orient: dict = None,  # {mount, upright, controls_toward, ports: [{role, index, type, toward}], flow: {from, to}}: choose the turn by intent. mount: wall, floor, ceiling or an axis; a target (controls_toward, toward, from, to): an axis, room, player, a point or a thing's id.
     above_floor: float = None,  # Bottom this many metres above the floor below at.
     build_state: str | int = None,  # finished (default), first, or a state index.
     label: str = None,  # A name, as the Labeller writes it.

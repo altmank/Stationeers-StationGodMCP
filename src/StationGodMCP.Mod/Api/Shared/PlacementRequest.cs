@@ -1,5 +1,6 @@
 #nullable enable
 
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using Newtonsoft.Json.Linq;
@@ -68,7 +69,7 @@ internal abstract class AtForm
             Spec = spec;
         }
 
-        /// <summary>{crosshair}, {relative_to, frame, right_m, up_m, forward_m, from}, or {on_face_i_look_at, ...}.</summary>
+        /// <summary>{looking_at, right, up, forward}, {relative_to, frame, right, up, forward, anchor}, or {on_face, along_right, along_up}.</summary>
         internal JObject Spec { get; }
     }
 }
@@ -117,7 +118,7 @@ internal sealed class PlacementRequest
     /// <summary>facing as a word to resolve; null when facing is an axis or not given.</summary>
     internal NamedFacing? NamedFacing { get; }
 
-    /// <summary>above_floor_m: its footprint's bottom this far above the floor below at.</summary>
+    /// <summary>above_floor: its footprint's bottom this far above the floor below at.</summary>
     internal double? AboveFloorM { get; }
 
     internal RotationSpec Rotation { get; }
@@ -271,10 +272,27 @@ internal sealed class GasTarget
 /// {x, y, z} in metres, a point in the cell), at most one of rotation ([x, y, z] degrees, multiples of 90,
 /// Quaternion.Euler order), facing (+x, -x, +y, -y, +z, -z, or a word the world resolves, with an optional up) and
 /// face (for pieces placed on a cell face, with an optional up), build_state ("finished", "first" or an index), label,
-/// color, orient and above_floor_m.
+/// color, orient and above_floor: the catalogue's names (build.json placements; help positions), every other key
+/// refused with the nearest names.
 /// </summary>
 internal static class PlacementReader
 {
+    /// <summary>A placement's keys, as build structure's placements list and show preview's take them.</summary>
+    internal static readonly string[] PlacementKeys =
+    {
+        "prefab", "at", "rotation", "facing", "up", "face", "orient", "above_floor", "build_state", "label", "color"
+    };
+
+    private static readonly string[] OrientKeys = { "mount", "upright", "controls_toward", "ports", "flow" };
+    private static readonly string[] PortKeys = { "role", "index", "type", "toward" };
+    private static readonly string[] FlowKeys = { "from", "to" };
+    private static readonly string[] LookingAtKeys = { "looking_at", "right", "up", "forward" };
+    private static readonly string[] RelativeKeys = { "relative_to", "frame", "right", "up", "forward", "anchor" };
+    private static readonly string[] OnFaceKeys = { "on_face", "along_right", "along_up" };
+
+    /// <summary>The word at takes for where the player's look ray hits.</summary>
+    internal const string LookingAt = "looking_at";
+
     internal static PlacementRequest Placement(Args item, int index, string prefix)
     {
         PrefabRef prefab = PrefabOf(item.Optional("prefab"), prefix + "prefab");
@@ -290,11 +308,12 @@ internal static class PlacementReader
 
         if (orient != null)
         {
+            OrientKeysOf(orient, prefix + "orient");
             MountWordOf(orient, prefix);
         }
 
         NamedFacing? named = NamedFacingOf(item, prefix);
-        double? above = item.OptionalDouble("above_floor_m");
+        double? above = item.OptionalDouble("above_floor");
         if (above.HasValue && (above.Value < 0 || above.Value > 20))
         {
             throw ApiErrors.InvalidArgument($"{prefix}above_floor must be 0 " +
@@ -305,6 +324,27 @@ internal static class PlacementReader
             named != null ? RotationSpec.Default : RotationOf(item, prefix),
             StateOf(item.Optional("build_state"), prefix + "build_state"), Text(item, "label", prefix),
             ColorOf(item.Optional("color"), prefix + "color"), orient, named, above);
+    }
+
+    // orient's keys, its ports' and its flow's: the catalogue's names, every other key refused.
+    private static void OrientKeysOf(JObject orient, string path)
+    {
+        NestedKeys.Refuse(orient, path, OrientKeys);
+        if (orient["ports"] is JArray ports)
+        {
+            for (int index = 0; index < ports.Count; index++)
+            {
+                if (ports[index] is JObject port)
+                {
+                    NestedKeys.Refuse(port, $"{path}.ports[{index}]", PortKeys);
+                }
+            }
+        }
+
+        if (orient["flow"] is JObject flow)
+        {
+            NestedKeys.Refuse(flow, path + ".flow", FlowKeys);
+        }
     }
 
     // orient.mount's shape, checked with the other arguments (the rest of orient is read against the world).
@@ -320,26 +360,58 @@ internal static class PlacementReader
         }
     }
 
-    /// <summary>at: a point ([x, y, z] or {x, y, z}), or an object the world resolves (AtForm.Relative).</summary>
+    /// <summary>
+    /// at: a point ([x, y, z] or {x, y, z}), "looking_at", or a form the world resolves (AtForm.Relative; help
+    /// positions): {looking_at: true, right, up, forward}, {relative_to, frame, right, up, forward, anchor} or
+    /// {on_face: true, along_right, along_up}, each with only its own keys.
+    /// </summary>
     internal static AtForm AtOf(JToken token, string name)
     {
-        if (token is JObject item && (item["crosshair"] != null || item["relative_to"] != null ||
-                                      item["on_face_i_look_at"] != null))
+        if (token.Type == JTokenType.String && string.Equals(token.Value<string>()!.Trim(), LookingAt,
+                StringComparison.OrdinalIgnoreCase))
         {
-            RelativeWordsOf(new Args(item), name);
+            return new AtForm.Relative(new JObject { [LookingAt] = true });
+        }
+
+        if (token is JObject item && (item[LookingAt] != null || item["relative_to"] != null || item["on_face"] != null))
+        {
+            RelativeWordsOf(item, name);
             return new AtForm.Relative(item);
         }
 
         return new AtForm.Absolute(PositionOf(token, name));
     }
 
-    // A relative at's words, checked with the other arguments (structures-28: a bad from was a placement's problem
-    // while every other bad argument is a top-level invalid_argument); the rest is read against the world.
-    private static void RelativeWordsOf(Args at, string name)
+    // A relative at's form and words, checked with the other arguments (structures-28: a bad anchor is a top-level
+    // invalid_argument like every other bad argument); the rest is read against the world.
+    private static void RelativeWordsOf(JObject item, string name)
     {
-        if (RelativeMath.AnchorOf(at.OptionalString("from")) == null)
+        int forms = (item[LookingAt] != null ? 1 : 0) + (item["relative_to"] != null ? 1 : 0) +
+                    (item["on_face"] != null ? 1 : 0);
+        if (forms > 1)
         {
-            throw ApiErrors.InvalidArgument($"{name}.from must be origin, top, " +
+            throw ApiErrors.InvalidArgument($"{name} takes one of looking_at, relative_to and on_face.");
+        }
+
+        if (item[LookingAt] != null)
+        {
+            NestedKeys.Refuse(item, name, LookingAtKeys);
+            TrueOf(item[LookingAt]!, name + "." + LookingAt);
+            return;
+        }
+
+        if (item["on_face"] != null)
+        {
+            NestedKeys.Refuse(item, name, OnFaceKeys);
+            TrueOf(item["on_face"]!, name + ".on_face");
+            return;
+        }
+
+        NestedKeys.Refuse(item, name, RelativeKeys);
+        Args at = new Args(item);
+        if (RelativeMath.AnchorOf(at.OptionalString("anchor")) == null)
+        {
+            throw ApiErrors.InvalidArgument($"{name}.anchor must be origin, top, " +
                 "bottom, left, right, front or back.");
         }
 
@@ -348,6 +420,14 @@ internal static class PlacementReader
         {
             throw ApiErrors.InvalidArgument($"{name}.frame must be player, " +
                 "world or target.");
+        }
+    }
+
+    private static void TrueOf(JToken token, string name)
+    {
+        if (token.Type != JTokenType.Boolean || !token.Value<bool>())
+        {
+            throw ApiErrors.InvalidArgument($"{name} must be true.");
         }
     }
 

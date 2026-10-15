@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **build structure's and show preview's `at` read the help's words.** `"looking_at"`, `{looking_at: true, right, up,
+  forward}`, `{relative_to: "player" | "looking_at" | id, frame, right, up, forward, anchor}` and `{on_face: true,
+  along_right, along_up}`: a relative offset was read under the old names and silently dropped, `"looking_at"` was
+  refused. orient's thing target is an id. `above_floor` is read as itself (no `above_floor_m`).
+- **Unknown keys in nested options are refused with the nearest names**, never dropped: placements, `at`, `orient` (and
+  its `ports` and `flow`), `spread`, the build runs' `piece`, `pieces`, `branches` and `extra_ends`, plan route's
+  `start`, `end`, `reroute`, `trunk` and `reserve_ports`, plan spot's `require`, read sample's `reads`, show preview's
+  `boxes` and survey wall's `free_rects`.
 - **undo of a build or remove job works again, and is spread over frames.** It failed with an internal error since
   the handlers answer typed replies. Its replayed removal, placement and piece-run planners now run a step at a time
   over frames, as every other call does, instead of in the call's frame.

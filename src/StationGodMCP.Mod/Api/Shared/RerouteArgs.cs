@@ -26,6 +26,8 @@ internal static class RerouteArgs
     private const string Option = "reroute.between";
     private const int MaximumPort = 64;
 
+    private static readonly string[] EndKeys = { "id", "port" };
+
     /// <summary>The two ends; null with a problem added when the call does not give exactly two that read.</summary>
     internal static List<RerouteEndArg>? Between(JToken? token, List<OptionProblem> problems)
     {
@@ -58,6 +60,12 @@ internal static class RerouteArgs
         if (!(token is JObject item) || !ThingId.TryRead(item["id"], out id))
         {
             problems.Add(new OptionProblem(path, "must be an id or {id, port}"));
+            return null;
+        }
+
+        if (NestedKeys.First(item, path, EndKeys) is { } unknown)
+        {
+            problems.Add(unknown);
             return null;
         }
 

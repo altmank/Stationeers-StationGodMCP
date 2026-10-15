@@ -170,19 +170,31 @@ public sealed class PreviewOrderTests
     }
 
     [Fact]
-    public void AnItemKeyThatNamesNoPlacementFieldIsIgnored()
+    public void AnItemKeyThatNamesNoPlacementFieldIsRefused()
     {
-        // A placement item is read by the shared reader: a key that names no placement field is not read, as build
-        // structure's placements read one (the preview has no spread at all).
+        // R-D-22: a key that names no placement field is a problem with the nearest names, never dropped (the preview
+        // has no spread at all; above_floor_m is no name of this catalogue).
         List<OptionProblem> problems = new();
 
-        PreviewOrder order = Order(
-            """{"placements": [{"prefab": "A", "at": [0, 0, 0], "bogus": 1, "spread": {"from": [0, 0, 0]}}]}""",
-            problems)!;
+        Assert.Null(Order(
+            """{"placements": [{"prefab": "A", "at": [0, 0, 0], "bogus": 1, "spread": {"from": [0, 0, 0]}, "above_floor_m": 1}]}""",
+            problems));
 
-        Assert.Empty(problems);
-        PlacementRequest placement = Assert.Single(order.Arguments.Placements);
-        Assert.Equal("A", Assert.IsType<PrefabRef.Named>(placement.Prefab).Name);
+        Assert.Equal(new[] { "placements[0].bogus", "placements[0].spread", "placements[0].above_floor_m" },
+            problems.ConvertAll(problem => problem.Path));
+        Assert.Contains("above_floor", problems[2].Nearest!);
+    }
+
+    [Fact]
+    public void ABoxKeyThatNamesNoBoxFieldIsRefused()
+    {
+        List<OptionProblem> problems = new();
+
+        Assert.Null(Order("""{"boxes": [{"min": [0, 0, 0], "max": [1, 1, 1], "colour": "red"}]}""", problems));
+
+        OptionProblem problem = Assert.Single(problems);
+        Assert.Equal("boxes[0].colour", problem.Path);
+        Assert.Contains("color", problem.Nearest!);
     }
 
     [Fact]

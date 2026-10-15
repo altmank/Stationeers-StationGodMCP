@@ -85,6 +85,10 @@ internal static class BuildRuns
     /// <summary>The guards a lint problem was let through on, for the rows about it.</summary>
     private static readonly string[] LintLifted = { WriteLint.Guard };
 
+    private static readonly string[] BranchKeys = { "waypoints", "cells", "attach" };
+    private static readonly string[] ExtraEndKeys = { "at", "toward" };
+    private static readonly string[] PieceKeys = { "at", "ends" };
+
     internal static VerbOutcome Run(RunKind kind, RunBuildOrder order)
     {
         string label = order.Label;
@@ -263,6 +267,12 @@ internal static class BuildRuns
                 return null;
             }
 
+            if (NestedKeys.First(item, path, BranchKeys) is { } unknown)
+            {
+                problem = unknown;
+                return null;
+            }
+
             bool byWaypoints = item["waypoints"] != null;
             if (byWaypoints == (item["cells"] != null))
             {
@@ -306,6 +316,12 @@ internal static class BuildRuns
         for (int index = 0; index < items.Count; index++)
         {
             string path = $"extra_ends[{index}]";
+            if (items[index] is JObject end && NestedKeys.First(end, path, ExtraEndKeys) is { } unknown)
+            {
+                problem = unknown;
+                return;
+            }
+
             JToken? at = (items[index] as JObject)?["at"];
             JToken? toward = (items[index] as JObject)?["toward"];
             string? text = toward != null && toward.Type == JTokenType.String ? (string?)toward : null;
@@ -355,6 +371,12 @@ internal static class BuildRuns
     // One piece: the cell at names, and the ends it has there, each an extra end of that cell.
     private static List<GridCell>? Piece(JObject piece, string name, List<ExtraEnd> extra, out OptionProblem? problem)
     {
+        if (NestedKeys.First(piece, name, PieceKeys) is { } unknown)
+        {
+            problem = unknown;
+            return null;
+        }
+
         GridCell cell = RunArgs.CellOf(RunArgs.PositionOf(piece["at"] ?? JValue.CreateNull(), $"{name}.at"));
         if (!(piece["ends"] is JArray ends) || ends.Count == 0 || ends.Count > MaximumPieceEnds)
         {

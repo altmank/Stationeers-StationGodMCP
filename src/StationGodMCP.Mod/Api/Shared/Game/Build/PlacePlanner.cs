@@ -44,16 +44,16 @@ internal sealed class PlannedPlacement
 
     internal Vector3? Position { get; set; }
 
-    /// <summary>at as resolved (a relative at read against the world, above_floor_m applied); null until read.</summary>
+    /// <summary>at as resolved (a relative at read against the world, above_floor applied); null until read.</summary>
     internal Metres? At { get; set; }
 
     /// <summary>How at was read, for the reply.</summary>
     internal ResolvedAt? ResolvedAt { get; set; }
 
-    /// <summary>above_floor_m's adjustment, for the reply; null without it.</summary>
+    /// <summary>above_floor's adjustment, for the reply; null without it.</summary>
     internal string? AboveFloorHow { get; set; }
 
-    /// <summary>The floor above_floor_m measured from; null without it.</summary>
+    /// <summary>The floor above_floor measured from; null without it.</summary>
     internal double? FloorY { get; set; }
 
     /// <summary>How the point was set down on the surface behind it (the point as given was refused); null otherwise.</summary>
@@ -527,7 +527,7 @@ internal static class PlacePlanner
         return false;
     }
 
-    // above_floor_m: its bottom (the bottom of the box its meshes fill, what stands on the floor) that high over the
+    // above_floor: its bottom (the bottom of the box its meshes fill, what stands on the floor) that high over the
     // floor below at (FloorFound). Aimed once at that height, then moved by what the bottom missed it by; the cursor
     // snaps that to 0.5 m, so the snap below and above are tried too and the one whose bottom lands nearest the height
     // asked is kept (structures-24: 1.3 m gave 1.0 m). The small cells' box is not the measure: a standing device's
@@ -557,7 +557,7 @@ internal static class PlacePlanner
         placement.SetDownHow = null;
     }
 
-    // above_floor_m in the reply: where its bottom ended up, which the cursor's 0.5 m snap may put off the height asked.
+    // above_floor in the reply: where its bottom ended up, which the cursor's 0.5 m snap may put off the height asked.
     private static void AboveFloorResult(PlannedPlacement placement, Vector3 position)
     {
         if (!placement.FloorY.HasValue || !placement.Args.AboveFloorM.HasValue)

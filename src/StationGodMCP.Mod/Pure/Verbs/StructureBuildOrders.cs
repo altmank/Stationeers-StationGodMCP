@@ -25,7 +25,7 @@ internal sealed class StructureBuildOrder
     internal const string ByPrefab = "prefab";
 
     /// <summary>A placement's own fields, at the top level or in an item (above_floor read here: the shared reader
-    /// knows it as above_floor_m).</summary>
+    /// knows it as above_floor).</summary>
     private static readonly string[] PlacementFields =
     {
         "prefab", "at", "rotation", "facing", "up", "face", "orient", "above_floor", "build_state", "label", "color"
@@ -199,10 +199,10 @@ internal sealed class StructureBuildOrder
             {
                 problems.Add(new OptionProblem($"{path}.spread",
                     $"goes with the one top-level placement, not with {ByPlacements}"));
+                continue;
             }
 
-            PlacementOrders.Add(Placements, PlacementOrders.Shared(item, path, problems), index, path + ".",
-                BuildStructureOptions.Spec, problems);
+            PlacementOrders.Add(Placements, item, index, path + ".", BuildStructureOptions.Spec, problems);
         }
     }
 
@@ -248,7 +248,7 @@ internal sealed class StructureBuildOrder
 
         if (options.AboveFloor.HasValue)
         {
-            PlacementOrders.AboveFloor(new JValue(options.AboveFloor.Value), "above_floor", item, problems);
+            item["above_floor"] = options.AboveFloor.Value;
         }
 
         if (options.BuildState != null)
@@ -326,9 +326,18 @@ internal sealed class StructureBuildOrder
         return null;
     }
 
+    private static readonly string[] SpreadKeys = { "from", "to", "step" };
+
     // One spread line. Together with the lines before it it may make at most the what's MaximumPlacements placements.
     private static void Line(JObject line, string path, List<JArray> points, List<OptionProblem> problems)
     {
+        int before = problems.Count;
+        NestedKeys.Check(line, path, SpreadKeys, problems);
+        if (problems.Count > before)
+        {
+            return;
+        }
+
         JToken? from = line["from"];
         JToken? to = line["to"];
         double step = line["step"] is { Type: JTokenType.Integer or JTokenType.Float } given

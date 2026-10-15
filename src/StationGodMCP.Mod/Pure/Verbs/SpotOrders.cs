@@ -130,10 +130,17 @@ internal sealed class SpotOrder
         return null;
     }
 
+    private static readonly string[] RequireKeys =
+    {
+        "one_section", "min_bottom_above_floor_m", "ports_reachable", "avoid_doors", "front_clear_m",
+        "no_visual_overlap"
+    };
+
     // require's keys, each read as its type; a key left out takes its default.
     private static SpotRequirements Requirements(JObject? given, List<OptionProblem> problems)
     {
         JObject require = given ?? new JObject();
+        NestedKeys.Check(require, "require", RequireKeys, problems);
         bool Flag(string key, bool otherwise)
         {
             JToken? value = require[key];

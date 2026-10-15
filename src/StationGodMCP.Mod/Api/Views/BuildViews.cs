@@ -137,7 +137,7 @@ internal sealed class PlacementView
 
     /// <summary>
     /// resolved_at and resolved_facing: the point at was read as (and how: as given, the crosshair, an offset from a
-    /// thing or the player, a face; above_floor_m applied) and a named facing's axis.
+    /// thing or the player, a face; above_floor applied) and a named facing's axis.
     /// </summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public ResolvedPlacementView? Resolved { get; }

@@ -7,7 +7,7 @@ Options:
 - facing (string): Where the front points (as build structure).
 - up (string): Where the top points (as build structure).
 - face (string): Face-placed pieces: the cell face it sits on.
-- orient (object): {mount, upright, controls_toward, ports, flow}: choose the turn by intent.
+- orient (object): {mount, upright, controls_toward, ports: [{role, index, type, toward}], flow: {from, to}}: choose the turn by intent. mount: wall, floor, ceiling or an axis; a target (controls_toward, toward, from, to): an axis, room, player, a point or a thing's id.
 - above_floor (number): Bottom this many metres above the floor below at.
 - build_state (string or integer): finished (default), first, or a state index.
 - allow (list of door_keepout): Guards to lift, by name.

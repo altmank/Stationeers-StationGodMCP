@@ -101,11 +101,11 @@ public sealed class StructuresRound2Tests
             new List<SpotView>(), 0, 0, 0, 0)))["reasons"]!);
     }
 
-    // structures-28: a bad at.from or at.frame is a top-level invalid_argument, as every other bad argument is.
+    // structures-28: a bad at.anchor or at.frame is a top-level invalid_argument, as every other bad argument is.
     [Theory]
-    [InlineData("{\"relative_to\":\"1412\",\"from\":\"sideways\"}")]
+    [InlineData("{\"relative_to\":\"1412\",\"anchor\":\"sideways\"}")]
     [InlineData("{\"relative_to\":\"1412\",\"frame\":\"mine\"}")]
-    [InlineData("{\"crosshair\":true,\"from\":\"up\"}")]
+    [InlineData("{\"looking_at\":true,\"anchor\":\"up\"}")]
     public void BadRelativeWordsAreRefusedWithTheArguments(string at)
     {
         ApiException error = Assert.Throws<ApiException>(() => PlacementReader.AtOf(JObject.Parse(at), "at"));
@@ -117,6 +117,6 @@ public sealed class StructuresRound2Tests
     public void GoodRelativeWordsStillPass()
     {
         Assert.IsType<AtForm.Relative>(PlacementReader.AtOf(
-            JObject.Parse("{\"relative_to\":\"1412\",\"frame\":\"World\",\"from\":\"Top\"}"), "at"));
+            JObject.Parse("{\"relative_to\":\"1412\",\"frame\":\"World\",\"anchor\":\"Top\"}"), "at"));
     }
 }

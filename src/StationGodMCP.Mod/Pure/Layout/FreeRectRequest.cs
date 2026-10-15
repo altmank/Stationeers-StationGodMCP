@@ -31,6 +31,8 @@ internal sealed class FreeRectRequest
 
     public int Limit { get; }
 
+    private static readonly string[] Keys = { "w", "h", "one_section", "require_wall", "limit" };
+
     internal const int DefaultLimit = 20;
     internal const int MaximumLimit = 50;
 
@@ -38,6 +40,13 @@ internal sealed class FreeRectRequest
     internal static FreeRectRequest? Of(JToken? given, List<OptionProblem> problems)
     {
         if (given is not JObject request)
+        {
+            return null;
+        }
+
+        int unknown = problems.Count;
+        NestedKeys.Check(request, "free_rects", Keys, problems);
+        if (problems.Count > unknown)
         {
             return null;
         }

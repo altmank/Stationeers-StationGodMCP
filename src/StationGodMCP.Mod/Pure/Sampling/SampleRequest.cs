@@ -36,6 +36,8 @@ internal sealed class SampleTarget
 internal sealed class SampleRequest
 {
     internal const int MaximumTargets = 32;
+
+    private static readonly string[] ReadKeys = { "id", "logic" };
     internal const int MaximumSamples = 120;
 
     internal SampleRequest(string? gateway, IReadOnlyList<SampleTarget> targets, double seconds, double interval)
@@ -90,7 +92,11 @@ internal sealed class SampleRequest
         {
             for (int index = 0; index < reads.Count; index++)
             {
-                if (reads[index] is JObject { } read && read["id"] is JValue { Type: JTokenType.String } id &&
+                if (reads[index] is JObject unknown && NestedKeys.First(unknown, $"reads[{index}]", ReadKeys) is { } key)
+                {
+                    problems.Add(key);
+                }
+                else if (reads[index] is JObject { } read && read["id"] is JValue { Type: JTokenType.String } id &&
                     ((string)id!).Trim().Length > 0 && (read["logic"] ?? options.Logic) is { } type &&
                     type.Type is JTokenType.String or JTokenType.Integer)
                 {

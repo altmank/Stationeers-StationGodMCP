@@ -9,11 +9,10 @@ using StationGodMCP.Pure.Catalogue;
 namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>
-/// The placement readers the build orders share (build structure, show preview): one placement through the shared place
-/// reader (PlacementReader.Placement, so the refusals are the ones the old place surface made), a placement's fields with
-/// above_floor as this catalogue's name for the reader's above_floor_m, the one prefab a top-level prefab option may
-/// name, and a position. Every refusal the shared readers throw becomes an OptionProblem at the option's path, so a
-/// call answers with every problem at once.
+/// The placement readers the build orders share (build structure, show preview): one placement through the shared
+/// place reader (PlacementReader.Placement, which reads the catalogue's names), a list item's keys checked against a
+/// placement's own, the one prefab a top-level prefab option may name, and a position. Every refusal the shared
+/// readers throw becomes an OptionProblem at the option's path, so a call answers with every problem at once.
 /// </summary>
 internal static class PlacementOrders
 {
@@ -27,6 +26,16 @@ internal static class PlacementOrders
     internal static void Add(List<PlacementRequest> placements, JObject item, int index, string prefix, WhatSpec what,
         List<OptionProblem> problems)
     {
+        if (prefix.Length > 0)
+        {
+            int before = problems.Count;
+            NestedKeys.Check(item, prefix.TrimEnd('.'), PlacementReader.PlacementKeys, problems);
+            if (problems.Count > before)
+            {
+                return;
+            }
+        }
+
         try
         {
             placements.Add(PlacementReader.Placement(new Args(item), index, prefix));
@@ -36,46 +45,6 @@ internal static class PlacementOrders
             problems.Add(Problem(prefix.Length == 0 ? PrefabOption : prefix.TrimEnd('.'), prefix, what,
                 refused.Message));
         }
-    }
-
-    /// <summary>
-    /// A placement's fields as the shared reader reads them: an item that gives above_floor is read from a copy with
-    /// the reader's above_floor_m set; an item that does not is read as given, so nothing is copied.
-    /// </summary>
-    internal static JObject Shared(JObject item, string path, List<OptionProblem> problems)
-    {
-        JToken? above = item["above_floor"];
-        if (above == null)
-        {
-            return item;
-        }
-
-        JObject fields = new JObject();
-        foreach (JProperty key in item.Properties())
-        {
-            fields[key.Name] = key.Value.DeepClone();
-        }
-
-        AboveFloor(above, path + ".above_floor", fields, problems);
-        return fields;
-    }
-
-    /// <summary>above_floor: a placement's bottom this many metres above the floor below at, 0 to 20.</summary>
-    internal static void AboveFloor(JToken? given, string path, JObject item, List<OptionProblem> problems)
-    {
-        if (given == null)
-        {
-            return;
-        }
-
-        double metres = given.Type is JTokenType.Integer or JTokenType.Float ? given.Value<double>() : double.NaN;
-        if (double.IsNaN(metres) || double.IsInfinity(metres) || metres < 0.0 || metres > 20.0)
-        {
-            problems.Add(new OptionProblem(path, "is 0 to 20, in metres"));
-            return;
-        }
-
-        item["above_floor_m"] = metres;
     }
 
     /// <summary>

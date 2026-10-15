@@ -24,7 +24,7 @@ internal sealed class ResolvedAt
         FaceOutward = faceOutward;
     }
 
-    /// <summary>The player's view it was read from (crosshair, player frame, a face); null when none was read.</summary>
+    /// <summary>The player's view it was read from (looking_at, player frame, a face); null when none was read.</summary>
     internal ViewSourceView? View { get; private set; }
 
     internal ResolvedAt Seen(ViewSourceView? view)
@@ -37,17 +37,18 @@ internal sealed class ResolvedAt
 
     internal string How { get; }
 
-    /// <summary>The outward normal of the face the point was taken on (crosshair, on_face_i_look_at); null otherwise.</summary>
+    /// <summary>The outward normal of the face the point was taken on (looking_at, on_face); null otherwise.</summary>
     internal GridStep? FaceOutward { get; }
 }
 
 /// <summary>
-/// Reads build structure's relative at and named facings against the world. at: {crosshair: true} (where the look ray
-/// hits, within 10 m), {relative_to: "player" | "crosshair" | a reference id | {reference_id}, frame: player | world |
-/// target, right_m, up_m, forward_m, from: origin | top | bottom | left | right | front | back} (from a thing's body:
-/// the middle of that side of its footprint box, sides read in the frame), or {on_face_i_look_at: true, along_right_m,
-/// along_up_m} (on the face the look ray hits, right and up as the viewer sees them). The player frame is level: right
-/// and forward are the world axes nearest the player's own (ambiguous_axis within 10 degrees of a diagonal).
+/// Reads build structure's relative at and named facings against the world (help positions). at: {looking_at: true,
+/// right, up, forward} (where the look ray hits, within 10 m, moved in the player's frame), {relative_to: "player" |
+/// "looking_at" | an id, frame: player | world | target, right, up, forward, anchor: origin | top | bottom | left |
+/// right | front | back} (from a thing's body: the middle of that side of its footprint box, sides read in the frame),
+/// or {on_face: true, along_right, along_up} (on the face the look ray hits, right and up as the viewer sees them).
+/// Every length is metres. The player frame is level: right and forward are the world axes nearest the player's own
+/// (ambiguous_axis within 10 degrees of a diagonal).
 /// </summary>
 internal static class AtResolver
 {
@@ -68,25 +69,25 @@ internal static class AtResolver
 
     private static ResolvedAt Relative(Args spec, GridFacts facts, string name, CameraUse camera)
     {
-        if (spec.OptionalBool("on_face_i_look_at") ?? false)
+        if (spec.OptionalBool("on_face") ?? false)
         {
             return OnFace(spec, name, camera);
         }
 
-        if ((spec.OptionalBool("crosshair") ?? false) && !spec.Has("relative_to"))
+        if ((spec.OptionalBool(PlacementReader.LookingAt) ?? false) && !spec.Has("relative_to"))
         {
             Hit hit = Crosshair(name, camera);
             Vec3 offset = OffsetIn(spec, PlayerFrame(spec, name, camera), hit.Point);
-            return new ResolvedAt(ToMetres(offset), $"the crosshair's hit {hit.Point}" + OffsetText(spec),
+            return new ResolvedAt(ToMetres(offset), $"the look ray's hit {hit.Point}" + OffsetText(spec),
                 hit.Outward);
         }
 
         JToken reference = spec.Optional("relative_to") ??
-                           throw ApiErrors.InvalidArgument($"{name} needs crosshair, relative_to or " +
-                               "on_face_i_look_at.");
-        BodyAnchor anchor = RelativeMath.AnchorOf(spec.OptionalString("from")) ??
+                           throw ApiErrors.InvalidArgument($"{name} needs looking_at, relative_to or " +
+                               "on_face.");
+        BodyAnchor anchor = RelativeMath.AnchorOf(spec.OptionalString("anchor")) ??
                             throw ApiErrors.InvalidArgument(
-                                $"{name}.from must be origin, top, bottom, " +
+                                $"{name}.anchor must be origin, top, bottom, " +
                                 "left, right, front or back.");
         if (reference.Type == JTokenType.String && reference.Value<string>()!.Trim().ToLowerInvariant() == "player")
         {
@@ -97,21 +98,19 @@ internal static class AtResolver
                 $"the player at {origin} in the {frame.Name} frame" + OffsetText(spec), null);
         }
 
-        if (reference.Type == JTokenType.String && reference.Value<string>()!.Trim().ToLowerInvariant() == "crosshair")
+        if (reference.Type == JTokenType.String &&
+            reference.Value<string>()!.Trim().ToLowerInvariant() == PlacementReader.LookingAt)
         {
             Hit hit = Crosshair(name, camera);
             Frame3 frame = FrameOf(spec, "player", null, name, camera);
             return new ResolvedAt(ToMetres(OffsetIn(spec, frame, hit.Point)),
-                $"the crosshair's hit {hit.Point} in the {frame.Name} frame" + OffsetText(spec), hit.Outward);
+                $"the look ray's hit {hit.Point} in the {frame.Name} frame" + OffsetText(spec), hit.Outward);
         }
 
-        ThingId id = reference is JObject item
-            ? new Args(item).ThingId("reference_id")
-            : ThingId.TryRead(reference, out ThingId read)
-                ? read
-                : throw ApiErrors.InvalidArgument(
-                    $"{name}.relative_to must be \"player\", \"crosshair\", a " +
-                    "reference id or {reference_id}.");
+        ThingId id = ThingId.TryRead(reference, out ThingId read)
+            ? read
+            : throw ApiErrors.InvalidArgument(
+                $"{name}.relative_to must be \"player\", \"looking_at\" or an id.");
         Thing thing = GameLookup.RequireThing(id);
         Frame3 thingFrame = FrameOf(spec, "target", thing, name, camera);
         Vec3 start = Bodies.V(thing.ThingTransformPosition);
@@ -137,12 +136,12 @@ internal static class AtResolver
 
         ViewBasis basis = camera.Require(name).Basis;
         (GridStep right, GridStep up) = RelativeMath.FaceAxes(hit.Outward.Value, basis.LevelForward, basis.LevelRight);
-        Vec3 point = hit.Point + Vec3.Of(right) * (spec.OptionalDouble("along_right_m") ?? 0.0) +
-                     Vec3.Of(up) * (spec.OptionalDouble("along_up_m") ?? 0.0);
+        Vec3 point = hit.Point + Vec3.Of(right) * (spec.OptionalDouble("along_right") ?? 0.0) +
+                     Vec3.Of(up) * (spec.OptionalDouble("along_up") ?? 0.0);
         point = point.With(hit.Plane.Value.Axis, hit.Plane.Value.Metres);
         return new ResolvedAt(ToMetres(point),
             $"on the face {hit.Plane} facing {hit.Outward.Value.Name} (right {right.Name}, up {up.Name}) from the " +
-            $"crosshair's hit {hit.Point}", hit.Outward);
+            $"look ray's hit {hit.Point}", hit.Outward);
     }
 
     /// <summary>A named facing as an axis: toward_player, away_from_player, out_of_face, into_room.</summary>
@@ -168,7 +167,7 @@ internal static class AtResolver
                 if (!outward.HasValue)
                 {
                     throw ApiErrors.Refused("no_face", $"{name}: out_of_face needs a face: look at " +
-                        "a wall, floor or ceiling (or give at on it with on_face_i_look_at).");
+                        "a wall, floor or ceiling (or give at on it with on_face).");
                 }
 
                 how = $"out_of_face: the face looked at faces {outward.Value.Name}";
@@ -303,7 +302,7 @@ internal static class AtResolver
     private static Frame3 PlayerFrame(Args spec, string name, CameraUse camera)
     {
         ViewBasis basis = camera.Require(name).Basis;
-        bool moves = (spec.OptionalDouble("right_m") ?? 0.0) != 0.0 || (spec.OptionalDouble("forward_m") ?? 0.0) != 0.0;
+        bool moves = (spec.OptionalDouble("right") ?? 0.0) != 0.0 || (spec.OptionalDouble("forward") ?? 0.0) != 0.0;
         if (basis.Ambiguous && moves)
         {
             throw Ambiguous(name, System.FormattableString.Invariant($"you look {basis.YawDegrees:0} degrees round, near a diagonal between ") +
@@ -314,14 +313,14 @@ internal static class AtResolver
     }
 
     private static Vec3 OffsetIn(Args spec, Frame3 frame, Vec3 origin) =>
-        frame.Offset(origin, spec.OptionalDouble("right_m") ?? 0.0, spec.OptionalDouble("up_m") ?? 0.0,
-            spec.OptionalDouble("forward_m") ?? 0.0);
+        frame.Offset(origin, spec.OptionalDouble("right") ?? 0.0, spec.OptionalDouble("up") ?? 0.0,
+            spec.OptionalDouble("forward") ?? 0.0);
 
     private static string OffsetText(Args spec)
     {
-        double right = spec.OptionalDouble("right_m") ?? 0.0;
-        double up = spec.OptionalDouble("up_m") ?? 0.0;
-        double forward = spec.OptionalDouble("forward_m") ?? 0.0;
+        double right = spec.OptionalDouble("right") ?? 0.0;
+        double up = spec.OptionalDouble("up") ?? 0.0;
+        double forward = spec.OptionalDouble("forward") ?? 0.0;
         return right == 0 && up == 0 && forward == 0
             ? string.Empty
             : string.Format(System.Globalization.CultureInfo.InvariantCulture,
