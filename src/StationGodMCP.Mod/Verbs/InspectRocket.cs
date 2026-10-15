@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using Objects.Rockets;
 using StationGodMCP.Api.Shared.Game.Flight;
 using StationGodMCP.Pure.Verbs;
+using StationGodMCP.Api.Shared;
+using StationGodMCP.Api.Views;
 
 namespace StationGodMCP.Verbs;
 
@@ -23,14 +25,17 @@ internal static class InspectRocket
         bool explain = options.Fields.Includes("explain");
         if (options.Selector.Ids is not { } ids)
         {
-            return Answer.Of(RocketStatuses.Read(RocketLocator.All(), compact, selfTest, withParts, explain));
+            List<Rocket> rockets = RocketLocator.All();
+            return WorkResult<RocketStatusListView>.Of(answer => RocketStatuses.Reading(rockets, compact, selfTest,
+                withParts, explain, answer), statuses => Answer.Of(statuses));
         }
 
-        return IdAnswers.Of(ids, id =>
+        return IdWork.Of<RocketStatusListView>(ids, id =>
         {
             Rocket rocket = RocketLocator.Find(id);
             return (rocket.ReferenceId.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                RocketStatuses.Read(new List<Rocket> { rocket }, compact, selfTest, withParts, explain));
+                answer => RocketStatuses.Reading(new List<Rocket> { rocket }, compact, selfTest, withParts, explain,
+                    answer));
         });
     }
 }

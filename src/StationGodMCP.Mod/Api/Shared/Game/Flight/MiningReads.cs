@@ -128,10 +128,9 @@ internal static class MiningReads
         return sites;
     }
 
-    /// <summary>Every charted node with a deposit, in map order.</summary>
-    internal static List<SiteRead> AllSites()
+    /// <summary>Every charted node with a deposit, in map order, into sites: a Work body, a node per step.</summary>
+    internal static IEnumerable<object?> AllSites(List<SiteRead> sites)
     {
-        List<SiteRead> sites = new List<SiteRead>(32);
         for (int index = 0; index < World.SpaceMapNodes.Count; index++)
         {
             SpaceMapNode node = World.SpaceMapNodes[index];
@@ -140,9 +139,9 @@ internal static class MiningReads
             {
                 sites.Add(site);
             }
-        }
 
-        return sites;
+            yield return null;
+        }
     }
 
     internal static DrillHeadReading? HeadReading(RocketMiningDrillHead? head) =>

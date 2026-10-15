@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using StationGodMCP.Pure.Rockets;
+using StationGodMCP.Pure.Scheduling;
 using Xunit;
 
 namespace StationGodMCP.Tests;
@@ -106,6 +107,44 @@ public sealed class RocketForecastTests
         Assert.InRange(limits.ThrustDrop!.Value, 0.0, 0.2);
         Assert.NotNull(limits.ConfidentMassKg);
         Assert.True(limits.ConfidentMassKg!.Value < limits.MaxLandingMassKg!.Value + 50.0);
+    }
+
+    [Fact]
+    public void TheLimitsOverFramesAreTheLimitsInOneGo()
+    {
+        RocketCraft rocket = MkII(6000.0);
+        LandingLimits whole = LandingLimits.Of(Simulator, rocket, ReEntry(), 0.25f, 400f, -5.5f, 25000f);
+        int steps = 0;
+        Answer<LandingLimits> stepped = new Answer<LandingLimits>();
+        foreach (object? _ in LandingLimits.Finding(Simulator, rocket, ReEntry(), 0.25f, 400f, -5.5f, 25000f,
+                     stepped))
+        {
+            steps++;
+        }
+
+        Assert.True(steps > 10);
+        Assert.Equal(whole.MaxLandingMassKg, stepped.Value.MaxLandingMassKg);
+        Assert.Equal(whole.MinFuelMol, stepped.Value.MinFuelMol);
+        Assert.Equal(whole.MaxFuelMol, stepped.Value.MaxFuelMol);
+        Assert.Equal(whole.ThrustDrop, stepped.Value.ThrustDrop);
+        Assert.Equal(whole.ConfidentMassKg, stepped.Value.ConfidentMassKg);
+    }
+
+    [Fact]
+    public void ALegOverFramesTakesItsPhysicsStepsInBatches()
+    {
+        int steps = 0;
+        Answer<LegResult> flown = new Answer<LegResult>();
+        foreach (object? _ in ReEntry().Flying(Simulator, MkII(6000.0), flown))
+        {
+            steps++;
+        }
+
+        LegResult whole = ReEntry().Fly(Simulator, MkII(6000.0));
+        Assert.Equal(whole.Tally.Seconds, flown.Value.Tally.Seconds);
+        int expected = (int)(whole.Tally.Seconds / Step) / FlightSimulator.StepsPerYield;
+        Assert.True(expected > 1);
+        Assert.InRange(steps, expected - 2, expected + 2);
     }
 
     [Fact]

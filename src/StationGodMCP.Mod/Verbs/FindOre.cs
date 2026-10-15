@@ -1,5 +1,6 @@
 #nullable enable
 
+using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure.Verbs;
@@ -20,9 +21,9 @@ internal static class FindOre
             ? new Vector3((float)at.Point.X, (float)at.Point.Y, (float)at.Point.Z)
             : PlayerOrigin.RequireHuman().Position;
         double radius = options.Selector.Radius ?? FindOreOptions.Spec.Option("radius")?.DefaultNumber ?? 0.0;
-        DeepMinerSpotsView found = DeepMinerSpots.Report(centre, options.Ores, radius,
-            options.Paging.Limit ?? int.MaxValue, options.Separation ?? 0.0, options.Step);
-        return new VerbOutcome.Answered(ReplyFields.Of(("at", found.At), ("profiles", found.Profiles),
-            ("search", found.Search), ("spots", found.Spots), ("beacons", found.Beacons)));
+        return WorkResult<DeepMinerSpotsView>.Of(answer => DeepMinerSpots.Reporting(centre, options.Ores, radius,
+                options.Paging.Limit ?? int.MaxValue, options.Separation ?? 0.0, options.Step, answer),
+            found => new VerbOutcome.Answered(ReplyFields.Of(("at", found.At), ("profiles", found.Profiles),
+                ("search", found.Search), ("spots", found.Spots), ("beacons", found.Beacons))));
     }
 }

@@ -8,6 +8,7 @@ using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure.Rockets;
 using StationGodMCP.Pure.Verbs;
+using StationGodMCP.Pure.Scheduling;
 
 namespace StationGodMCP.Api.Shared.Game.Flight;
 
@@ -24,7 +25,12 @@ internal static class RocketForecast
 
     private const string Label = "plan flight";
 
-    internal static RocketForecastView Fly(Rocket rocket, ForecastRequest request)
+    /// <summary>
+    /// The forecast as a Work body: the flight, the landing limits, the profile table and the least fuel each in steps
+    /// of their own (the simulator's legs, StepsPerYield physics steps a step).
+    /// </summary>
+    internal static IEnumerable<object?> Flying(Rocket rocket, ForecastRequest request,
+        Answer<RocketForecastView> answer)
     {
         RocketParts parts = RocketParts.Of(rocket);
         Refuse(parts);
@@ -40,7 +46,13 @@ internal static class RocketForecast
         RocketCraft craft = RocketModel.Craft(parts, what);
         ForecastMiningView? mining = AddStop(request, rocket, parts, craft, target, profile, plan, assumptions);
 
-        FlightRun run = FlightForecast.Run(simulator, craft, plan.Legs);
+        Answer<FlightRun> flown = new Answer<FlightRun>();
+        foreach (object? step in FlightForecast.Running(simulator, craft, plan.Legs, flown))
+        {
+            yield return step;
+        }
+
+        FlightRun run = flown.Value;
         Assume(simulator, parts, what, craft, profile, request.Explain, assumptions);
 
         List<ForecastLegView> legs = new List<ForecastLegView>(run.Legs.Count);
@@ -56,15 +68,34 @@ internal static class RocketForecast
         {
             LandingLeg landing = run.Landing;
             float altitude = landing.Start is LandingStart.ReEntry entry ? entry.ProfileAltitude : RoutePlanner.AltitudeOf(profile);
-            LandingLimits landingLimits = LandingLimits.Of(simulator, run.BeforeLanding, landing, floor, landing.Distance,
-                landing.Gravity, altitude);
-            limitsView = new LandingLimitsView(landingLimits, parts.Network.DryMass - parts.CargoSlotsFilled, floor);
-            profiles = ProfileTable(simulator, run.BeforeLanding, landing);
+            Answer<LandingLimits> landingLimits = new Answer<LandingLimits>();
+            foreach (object? step in LandingLimits.Finding(simulator, run.BeforeLanding, landing, floor,
+                         landing.Distance, landing.Gravity, altitude, landingLimits))
+            {
+                yield return step;
+            }
+
+            limitsView = new LandingLimitsView(landingLimits.Value, parts.Network.DryMass - parts.CargoSlotsFilled,
+                floor);
+            Answer<List<ProfileLandingView>?> table = new Answer<List<ProfileLandingView>?>();
+            foreach (object? step in ProfileTable(simulator, run.BeforeLanding, landing, table))
+            {
+                yield return step;
+            }
+
+            profiles = table.Value;
         }
 
         if (limits && plan.Legs.Count > 0)
         {
-            leastFuel = FlightForecast.LeastFuel(simulator, craft, plan.Legs, Math.Max(craft.FuelMoles * 4.0, 60000.0));
+            Answer<double?> least = new Answer<double?>();
+            foreach (object? step in FlightForecast.LeastFuelSteps(simulator, craft, plan.Legs,
+                         Math.Max(craft.FuelMoles * 4.0, 60000.0), least))
+            {
+                yield return step;
+            }
+
+            leastFuel = least.Value;
         }
 
         List<RouteHopView> route = new List<RouteHopView>(plan.Hops.Count);
@@ -102,7 +133,8 @@ internal static class RocketForecast
         ColumnView? column = request.ColumnCheck && pad != null
             ? RocketColumn.Scan(rocket, pad)
             : null;
-        return new RocketForecastView(new ThingId(rocket.ReferenceId), rocket.DisplayName, rocket.RocketState.ToString(),
+        answer.Value = new RocketForecastView(new ThingId(rocket.ReferenceId), rocket.DisplayName,
+            rocket.RocketState.ToString(),
             SpaceRoutes.ViewOf(target), route, uncharted, assumptions, legs, run.Succeeded && plan.Problem == null,
             Verdict(run, plan, column, floor, mining), craft.FuelMoles, leastFuel, limitsView, profiles, column,
             new CombustionView(CombustionRates.Current()), mining);
@@ -434,12 +466,14 @@ internal static class RocketForecast
         return (moles, litres);
     }
 
-    private static List<ProfileLandingView>? ProfileTable(FlightSimulator simulator, RocketCraft before,
-        LandingLeg landing)
+    // Each re-entry profile's landing and the thrust loss it survives, each trial landing in steps of its own.
+    private static IEnumerable<object?> ProfileTable(FlightSimulator simulator, RocketCraft before,
+        LandingLeg landing, Answer<List<ProfileLandingView>?> answer)
     {
+        answer.Value = null;
         if (!(landing.Start is LandingStart.ReEntry entry))
         {
-            return null;
+            yield break;
         }
 
         List<ProfileLandingView> table = new List<ProfileLandingView>(Profiles.Length);
@@ -448,18 +482,38 @@ internal static class RocketForecast
             float altitude = RoutePlanner.AltitudeOf(Profiles[index]);
             LandingLeg leg = new LandingLeg(landing.From, landing.To, landing.Distance, landing.Gravity,
                 new LandingStart.ReEntry(altitude, entry.Orbital, entry.DistanceToOrbit, entry.WorldGravity));
-            LegResult result = leg.Fly(simulator, before.Copy());
-            double? lowest = Bisect.LowestPassing(0.0, before.ThrustScale, scale =>
+            Answer<LegResult> flown = new Answer<LegResult>();
+            foreach (object? step in leg.Flying(simulator, before.Copy(), flown))
             {
-                RocketCraft trial = before.Copy();
-                trial.ThrustScale = (float)scale;
-                return LandingLimits.Clean(leg.Fly(simulator, trial));
-            }, 0.001);
-            table.Add(new ProfileLandingView(Profiles[index].ToString(), altitude, result,
-                lowest.HasValue ? before.ThrustScale - lowest.Value : null));
+                yield return step;
+            }
+
+            Answer<double?> lowest = new Answer<double?>();
+            foreach (object? step in Bisect.LowestPassingSteps(0.0, before.ThrustScale,
+                         (scale, lands) => LandsAtScale(simulator, before, leg, scale, lands), 0.001, lowest))
+            {
+                yield return step;
+            }
+
+            table.Add(new ProfileLandingView(Profiles[index].ToString(), altitude, flown.Value,
+                lowest.Value.HasValue ? before.ThrustScale - lowest.Value.Value : null));
         }
 
-        return table;
+        answer.Value = table;
+    }
+
+    private static IEnumerable<object?> LandsAtScale(FlightSimulator simulator, RocketCraft before, LandingLeg leg,
+        double scale, Answer<bool> lands)
+    {
+        RocketCraft trial = before.Copy();
+        trial.ThrustScale = (float)scale;
+        Answer<LegResult> flown = new Answer<LegResult>();
+        foreach (object? step in leg.Flying(simulator, trial, flown))
+        {
+            yield return step;
+        }
+
+        lands.Value = LandingLimits.Clean(flown.Value);
     }
 
     // What the forecast takes for granted. The model's fixed rules (the same for every rocket) come only with explain;

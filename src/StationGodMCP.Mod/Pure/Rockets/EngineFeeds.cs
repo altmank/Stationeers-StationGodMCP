@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using StationGodMCP.Pure.Scheduling;
 
 namespace StationGodMCP.Pure.Rockets;
 
@@ -384,12 +385,28 @@ internal static class BurnTime
 {
     internal const int TickLimit = 200000;
 
+    /// <summary>The ticks Counting takes per step.</summary>
+    internal const int TicksPerStep = 2048;
+
     /// <summary>Seconds of burning (ticks x tick length), or null when nothing is drawn at all.</summary>
     internal static double? Seconds(RocketCraft rocket, float throttle, double tickSeconds)
     {
+        Answer<double?> answer = new Answer<double?>();
+        foreach (object? _ in Counting(rocket, throttle, tickSeconds, answer))
+        {
+        }
+
+        return answer.Value;
+    }
+
+    /// <summary>Seconds as a Work body: TicksPerStep ticks per step.</summary>
+    internal static IEnumerable<object?> Counting(RocketCraft rocket, float throttle, double tickSeconds,
+        Answer<double?> answer)
+    {
+        answer.Value = null;
         if (rocket.Engines.Count == 0 || throttle <= 0f)
         {
-            return null;
+            yield break;
         }
 
         RocketCraft craft = rocket.Copy();
@@ -413,8 +430,13 @@ internal static class BurnTime
             {
                 break;
             }
+
+            if (ticks % TicksPerStep == TicksPerStep - 1)
+            {
+                yield return null;
+            }
         }
 
-        return ticks == 0 ? null : ticks * tickSeconds;
+        answer.Value = ticks == 0 ? null : ticks * tickSeconds;
     }
 }

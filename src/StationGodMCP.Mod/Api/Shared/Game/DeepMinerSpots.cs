@@ -14,6 +14,7 @@ using StationGodMCP.Pure;
 using TerrainSystem;
 using Trading;
 using UnityEngine;
+using StationGodMCP.Pure.Scheduling;
 
 namespace StationGodMCP.Api.Shared.Game;
 
@@ -45,10 +46,11 @@ internal static class DeepMinerSpots
     /// The profile at centre and every profile of the world; with ores, the search: the count nearest spots within
     /// radius whose profile holds every ore, at least separation apart, sampled every step metres (null: the finest the
     /// budget allows, never finer than the region map). An ore no profile of this world holds is refused, naming those
-    /// they hold.
+    /// they hold. A Work body: the search SamplesPerStep samples a step; its time budget counts only the time spent in
+    /// its own steps.
     /// </summary>
-    internal static DeepMinerSpotsView Report(Vector3 centre, IReadOnlyList<string>? ores, double radius, int count,
-        double separation, double? step)
+    internal static IEnumerable<object?> Reporting(Vector3 centre, IReadOnlyList<string>? ores, double radius,
+        int count, double separation, double? step, Answer<DeepMinerSpotsView> answer)
     {
         List<DeepMinablesGenerationData> profiles = WorldSetting.Current?.Data?.DeepMinablesData ??
                                                     throw ApiErrors.Refused("no_world", "find ore: no world is loaded.");
@@ -58,7 +60,8 @@ internal static class DeepMinerSpots
             ProfileAt(profiles, centre.x, centre.z)?.Id);
         if (ores == null)
         {
-            return new DeepMinerSpotsView(at, profileViews, null, null, null);
+            answer.Value = new DeepMinerSpotsView(at, profileViews, null, null, null);
+            yield break;
         }
 
         OreQuery query = Ores(ores, facts);
@@ -73,12 +76,26 @@ internal static class DeepMinerSpots
 
         double finest = RegionMapStep();
         double sampled = Math.Max(finest, step ?? MinerSpotSearch.StepFor(radius, finest, MaximumSamples));
-        Stopwatch clock = Stopwatch.StartNew();
-        MinerSearchResult result = wanted.Count == 0
-            ? new MinerSearchResult(new List<MinerSample>(), 0, 0, radius, false)
-            : new MinerSpotSearch(sampled, radius, separation, count, MaximumSamples).Run(centre.x, centre.z,
-                (x, z) => ProfileAt(profiles, x, z) is DeepMinablesGenerationData found && wanted.Contains(found),
-                () => clock.ElapsedMilliseconds < SearchBudgetMs);
+        MinerSearchResult result = new MinerSearchResult(new List<MinerSample>(), 0, 0, radius, false);
+        if (wanted.Count > 0)
+        {
+            yield return null;
+            Stopwatch clock = Stopwatch.StartNew();
+            Answer<MinerSearchResult> searched = new Answer<MinerSearchResult>();
+            foreach (object? searchStep in new MinerSpotSearch(sampled, radius, separation, count, MaximumSamples)
+                         .Searching(centre.x, centre.z,
+                             (x, z) => ProfileAt(profiles, x, z) is DeepMinablesGenerationData found &&
+                                       wanted.Contains(found),
+                             () => clock.ElapsedMilliseconds < SearchBudgetMs, searched))
+            {
+                clock.Stop();
+                yield return searchStep;
+                clock.Start();
+            }
+
+            result = searched.Value;
+        }
+
         List<MinerSpotView> spots = new List<MinerSpotView>(result.Spots.Count);
         List<MinerBeaconView> beacons = new List<MinerBeaconView>(result.Spots.Count);
         string named = string.Join("+", query.Ores);
@@ -99,7 +116,7 @@ internal static class DeepMinerSpots
             }
         }
 
-        return new DeepMinerSpotsView(at, profileViews,
+        answer.Value = new DeepMinerSpotsView(at, profileViews,
             new MinerSearchView(query.Ores, profileIds, radius, sampled, separation, result.Samples, result.Matched,
                 result.SearchedRadius, result.Truncated), spots, beacons);
     }

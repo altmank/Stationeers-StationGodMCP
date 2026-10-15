@@ -11,6 +11,7 @@ using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Shared.Game.Trading;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure.Scheduling;
 using StationGodMCP.Pure.Verbs;
 using Trading;
 
@@ -40,23 +41,38 @@ internal static class TradeInventory
         List<LandingPadNetwork> everyPad = HeldGoods.EveryPadNetwork();
         if (order.Ids == null)
         {
-            List<TraderStockView> stocks = new List<TraderStockView>();
-            foreach (TraderContact contact in Contacts.All())
-            {
-                stocks.Add(Stock(contact, everyPad, holder));
-            }
-
-            return new VerbOutcome.Answered(
-                JObject.FromObject(new TraderInventoryView(stocks), ApiJson.Fresh()));
+            List<TraderContact> contacts = Contacts.All();
+            return WorkResult<List<TraderStockView>>.Of(answer => Stocks(contacts, everyPad, holder, answer),
+                stocks => new VerbOutcome.Answered(
+                    JObject.FromObject(new TraderInventoryView(stocks), ApiJson.Fresh())));
         }
 
-        return IdAnswers.Of(order.Ids, id =>
+        return IdWork.Of<TraderInventoryView>(order.Ids, id =>
         {
             TraderContact contact = Contacts.Require(id);
-            TraderInventoryView one = new TraderInventoryView(
-                new List<TraderStockView> { Stock(contact, everyPad, holder) });
-            return (contact.ReferenceId.ToString(), (object)one);
+            return (contact.ReferenceId.ToString(), answer => One(contact, everyPad, holder, answer));
         });
+    }
+
+    // Every contact's stock, a contact per step.
+    private static IEnumerable<object?> Stocks(List<TraderContact> contacts, List<LandingPadNetwork> everyPad,
+        ITradableInventory? holder, Answer<List<TraderStockView>> answer)
+    {
+        List<TraderStockView> stocks = new List<TraderStockView>(contacts.Count);
+        foreach (TraderContact contact in contacts)
+        {
+            stocks.Add(Stock(contact, everyPad, holder));
+            yield return null;
+        }
+
+        answer.Value = stocks;
+    }
+
+    private static IEnumerable<object?> One(TraderContact contact, List<LandingPadNetwork> everyPad,
+        ITradableInventory? holder, Answer<TraderInventoryView> answer)
+    {
+        answer.Value = new TraderInventoryView(new List<TraderStockView> { Stock(contact, everyPad, holder) });
+        yield break;
     }
 
     // One contact's stock, as the view the reply carries: the contact, its pads, and the goods held that meet it.

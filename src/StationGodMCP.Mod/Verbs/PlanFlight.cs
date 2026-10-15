@@ -5,6 +5,8 @@ using System.Globalization;
 using Objects.Rockets;
 using StationGodMCP.Api.Shared.Game.Flight;
 using StationGodMCP.Pure.Verbs;
+using StationGodMCP.Api.Shared;
+using StationGodMCP.Api.Views;
 
 namespace StationGodMCP.Verbs;
 
@@ -24,12 +26,18 @@ internal static class PlanFlight
             return new VerbOutcome.Refused(OptionProblem.Refusal(PlanFlightOptions.Spec.Label, problems));
         }
 
-        return options.Selector.Ids is { } ids
-            ? IdAnswers.Of(ids, id =>
+        if (options.Selector.Ids is { } ids)
+        {
+            return IdWork.Of<RocketForecastView>(ids, id =>
             {
                 Rocket rocket = RocketLocator.Find(id);
-                return (rocket.ReferenceId.ToString(CultureInfo.InvariantCulture), RocketForecast.Fly(rocket, request));
-            })
-            : Answer.Of(RocketForecast.Fly(RocketLocator.One((string?)null), request));
+                return (rocket.ReferenceId.ToString(CultureInfo.InvariantCulture),
+                    answer => RocketForecast.Flying(rocket, request, answer));
+            });
+        }
+
+        Rocket only = RocketLocator.One((string?)null);
+        return WorkResult<RocketForecastView>.Of(answer => RocketForecast.Flying(only, request, answer),
+            forecast => Answer.Of(forecast));
     }
 }

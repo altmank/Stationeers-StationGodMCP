@@ -1,6 +1,7 @@
 #nullable enable
 
 using System.Collections.Generic;
+using StationGodMCP.Pure.Scheduling;
 
 namespace StationGodMCP.Pure.Rockets;
 
@@ -82,7 +83,19 @@ internal abstract class FlightLeg
 
     internal abstract string Kind { get; }
 
-    internal abstract LegResult Fly(FlightSimulator simulator, RocketCraft craft);
+    internal LegResult Fly(FlightSimulator simulator, RocketCraft craft)
+    {
+        Answer<LegResult> answer = new Answer<LegResult>();
+        foreach (object? _ in Flying(simulator, craft, answer))
+        {
+        }
+
+        return answer.Value;
+    }
+
+    /// <summary>The leg flown on craft as a Work body (the simulator's leg bodies).</summary>
+    internal abstract IEnumerable<object?> Flying(FlightSimulator simulator, RocketCraft craft,
+        Answer<LegResult> answer);
 }
 
 /// <summary>Pad to orbit (or the rest of a launch under way): gravity until Progress reaches 1.</summary>
@@ -102,7 +115,8 @@ internal sealed class LaunchLeg : FlightLeg
 
     internal override string Kind => "launch";
 
-    internal override LegResult Fly(FlightSimulator simulator, RocketCraft craft) => simulator.Launch(this, craft);
+    internal override IEnumerable<object?> Flying(FlightSimulator simulator, RocketCraft craft,
+        Answer<LegResult> answer) => simulator.Launching(this, craft, answer);
 }
 
 /// <summary>A launch's starting point: on the mount, or climbing already.</summary>
@@ -139,7 +153,8 @@ internal sealed class SpaceHop : FlightLeg
 
     internal override string Kind => "hop";
 
-    internal override LegResult Fly(FlightSimulator simulator, RocketCraft craft) => simulator.Hop(this, craft);
+    internal override IEnumerable<object?> Flying(FlightSimulator simulator, RocketCraft craft,
+        Answer<LegResult> answer) => simulator.Hopping(this, craft, answer);
 }
 
 /// <summary>The hop down to a launch pad and the autopilot's landing.</summary>
@@ -159,7 +174,8 @@ internal sealed class LandingLeg : FlightLeg
 
     internal override string Kind => "landing";
 
-    internal override LegResult Fly(FlightSimulator simulator, RocketCraft craft) => simulator.Land(this, craft);
+    internal override IEnumerable<object?> Flying(FlightSimulator simulator, RocketCraft craft,
+        Answer<LegResult> answer) => simulator.Landing(this, craft, answer);
 }
 
 /// <summary>
@@ -206,7 +222,12 @@ internal sealed class ParkLeg : FlightLeg
 
     internal override string Kind => "park";
 
-    internal override LegResult Fly(FlightSimulator simulator, RocketCraft craft) => simulator.Park(this, craft);
+    internal override IEnumerable<object?> Flying(FlightSimulator simulator, RocketCraft craft,
+        Answer<LegResult> answer)
+    {
+        answer.Value = simulator.Park(this, craft);
+        yield break;
+    }
 }
 
 /// <summary>Moles a fuel line receives (positive) or gives (negative).</summary>

@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using StationGodMCP.Pure.Scheduling;
 
 namespace StationGodMCP.Pure.Rockets;
 
@@ -48,6 +49,18 @@ internal static class FlightForecast
 {
     internal static FlightRun Run(FlightSimulator simulator, RocketCraft rocket, IReadOnlyList<FlightLeg> plan)
     {
+        Answer<FlightRun> answer = new Answer<FlightRun>();
+        foreach (object? _ in Running(simulator, rocket, plan, answer))
+        {
+        }
+
+        return answer.Value;
+    }
+
+    /// <summary>Run as a Work body: each leg in steps of its own (FlightLeg.Flying).</summary>
+    internal static IEnumerable<object?> Running(FlightSimulator simulator, RocketCraft rocket,
+        IReadOnlyList<FlightLeg> plan, Answer<FlightRun> answer)
+    {
         RocketCraft craft = rocket.Copy();
         List<LegResult> results = new List<LegResult>(plan.Count + 1);
         RocketCraft? beforeLanding = null;
@@ -61,7 +74,13 @@ internal static class FlightForecast
                 landing = landingLeg;
             }
 
-            LegResult result = leg.Fly(simulator, craft);
+            Answer<LegResult> flown = new Answer<LegResult>();
+            foreach (object? step in leg.Flying(simulator, craft, flown))
+            {
+                yield return step;
+            }
+
+            LegResult result = flown.Value;
             results.Add(result);
             if (result.Outcome is LegOutcome.LaunchAborted aborted && leg is LaunchLeg launch)
             {
@@ -71,7 +90,13 @@ internal static class FlightForecast
                         Math.Min(aborted.Altitude, 1000f), true));
                 beforeLanding = craft.Copy();
                 landing = back;
-                results.Add(back.Fly(simulator, craft));
+                Answer<LegResult> landed = new Answer<LegResult>();
+                foreach (object? step in back.Flying(simulator, craft, landed))
+                {
+                    yield return step;
+                }
+
+                results.Add(landed.Value);
                 break;
             }
 
@@ -81,21 +106,39 @@ internal static class FlightForecast
             }
         }
 
-        return new FlightRun(results, craft, beforeLanding, landing);
+        answer.Value = new FlightRun(results, craft, beforeLanding, landing);
     }
 
     /// <summary>The least fuel (mol, the rocket's mix) the whole plan succeeds with, by bisection; null when even a full load fails.</summary>
     internal static double? LeastFuel(FlightSimulator simulator, RocketCraft rocket, IReadOnlyList<FlightLeg> plan,
         double ceilingMol)
     {
-        bool Works(double moles)
+        Answer<double?> answer = new Answer<double?>();
+        foreach (object? _ in LeastFuelSteps(simulator, rocket, plan, ceilingMol, answer))
+        {
+        }
+
+        return answer.Value;
+    }
+
+    /// <summary>LeastFuel as a Work body: each trial flight in steps of its own.</summary>
+    internal static IEnumerable<object?> LeastFuelSteps(FlightSimulator simulator, RocketCraft rocket,
+        IReadOnlyList<FlightLeg> plan, double ceilingMol, Answer<double?> answer)
+    {
+        IEnumerable<object?> Works(double moles, Answer<bool> works)
         {
             RocketCraft trial = rocket.Copy();
             trial.SetFuelMoles(moles);
-            return Run(simulator, trial, plan).Succeeded;
+            Answer<FlightRun> run = new Answer<FlightRun>();
+            foreach (object? step in Running(simulator, trial, plan, run))
+            {
+                yield return step;
+            }
+
+            works.Value = run.Value.Succeeded;
         }
 
-        return Bisect.LowestPassing(0.0, ceilingMol, Works, 1.0);
+        return Bisect.LowestPassingSteps(0.0, ceilingMol, Works, 1.0, answer);
     }
 }
 
@@ -131,6 +174,102 @@ internal static class Bisect
         }
 
         return high;
+    }
+
+    /// <summary>LowestPassing over a judgement that is itself a Work body: each judgement in steps of its own.</summary>
+    internal static IEnumerable<object?> LowestPassingSteps(double low, double high,
+        Func<double, Answer<bool>, IEnumerable<object?>> passes, double resolution, Answer<double?> answer)
+    {
+        Answer<bool> passed = new Answer<bool>();
+        foreach (object? step in passes(high, passed))
+        {
+            yield return step;
+        }
+
+        if (!passed.Value)
+        {
+            answer.Value = null;
+            yield break;
+        }
+
+        foreach (object? step in passes(low, passed))
+        {
+            yield return step;
+        }
+
+        if (passed.Value)
+        {
+            answer.Value = low;
+            yield break;
+        }
+
+        for (int step = 0; step < MaximumSteps && high - low > resolution; step++)
+        {
+            double middle = (low + high) / 2.0;
+            foreach (object? judged in passes(middle, passed))
+            {
+                yield return judged;
+            }
+
+            if (passed.Value)
+            {
+                high = middle;
+            }
+            else
+            {
+                low = middle;
+            }
+        }
+
+        answer.Value = high;
+    }
+
+    /// <summary>HighestPassing over a judgement that is itself a Work body: each judgement in steps of its own.</summary>
+    internal static IEnumerable<object?> HighestPassingSteps(double low, double high,
+        Func<double, Answer<bool>, IEnumerable<object?>> passes, double resolution, Answer<double?> answer)
+    {
+        Answer<bool> passed = new Answer<bool>();
+        foreach (object? step in passes(low, passed))
+        {
+            yield return step;
+        }
+
+        if (!passed.Value)
+        {
+            answer.Value = null;
+            yield break;
+        }
+
+        foreach (object? step in passes(high, passed))
+        {
+            yield return step;
+        }
+
+        if (passed.Value)
+        {
+            answer.Value = high;
+            yield break;
+        }
+
+        for (int step = 0; step < MaximumSteps && high - low > resolution; step++)
+        {
+            double middle = (low + high) / 2.0;
+            foreach (object? judged in passes(middle, passed))
+            {
+                yield return judged;
+            }
+
+            if (passed.Value)
+            {
+                low = middle;
+            }
+            else
+            {
+                high = middle;
+            }
+        }
+
+        answer.Value = low;
     }
 
     /// <summary>The highest value that passes; null when the bottom fails; the top when it passes.</summary>
@@ -203,37 +342,95 @@ internal sealed class LandingLimits
     internal static LandingLimits Of(FlightSimulator simulator, RocketCraft before, LandingLeg leg,
         float confidenceFloor, float distance, float gravity, float altitude)
     {
-        bool LandsAtMass(double massKg)
+        Answer<LandingLimits> answer = new Answer<LandingLimits>();
+        foreach (object? _ in Finding(simulator, before, leg, confidenceFloor, distance, gravity, altitude, answer))
+        {
+        }
+
+        return answer.Value;
+    }
+
+    /// <summary>Of as a Work body: each trial landing in steps of its own.</summary>
+    internal static IEnumerable<object?> Finding(FlightSimulator simulator, RocketCraft before, LandingLeg leg,
+        float confidenceFloor, float distance, float gravity, float altitude, Answer<LandingLimits> answer)
+    {
+        IEnumerable<object?> Lands(RocketCraft trial, Answer<bool> lands)
+        {
+            Answer<LegResult> flown = new Answer<LegResult>();
+            foreach (object? step in leg.Flying(simulator, trial, flown))
+            {
+                yield return step;
+            }
+
+            lands.Value = Clean(flown.Value);
+        }
+
+        IEnumerable<object?> LandsAtMass(double massKg, Answer<bool> lands)
         {
             RocketCraft trial = before.Copy();
             trial.StructureMassKg = (float)(massKg - trial.GasMassKg);
-            return Clean(leg.Fly(simulator, trial));
+            return Lands(trial, lands);
         }
 
-        bool LandsWithFuel(double moles)
+        IEnumerable<object?> LandsWithFuel(double moles, Answer<bool> lands)
         {
             RocketCraft trial = before.Copy();
             trial.SetFuelMoles(moles);
-            return Clean(leg.Fly(simulator, trial));
+            return Lands(trial, lands);
         }
 
-        bool LandsAtScale(double scale)
+        IEnumerable<object?> LandsAtScale(double scale, Answer<bool> lands)
         {
             RocketCraft trial = before.Copy();
             trial.ThrustScale = (float)scale;
-            return Clean(leg.Fly(simulator, trial));
+            return Lands(trial, lands);
         }
 
         double fuel = before.FuelMoles;
-        bool landsNow = LandsWithFuel(fuel);
-        double? maxMass = Bisect.HighestPassing(before.GasMassKg + 1.0, MassCeilingKg, LandsAtMass, 1.0);
-        double? minFuel = landsNow ? Bisect.LowestPassing(0.0, fuel, LandsWithFuel, 1.0) : null;
-        double? maxFuel = landsNow ? Bisect.HighestPassing(fuel, Math.Max(fuel * 20.0, 100000.0), LandsWithFuel, 1.0) : null;
-        double? lowestScale = Bisect.LowestPassing(0.0, before.ThrustScale, LandsAtScale, 0.001);
+        Answer<bool> now = new Answer<bool>();
+        foreach (object? step in LandsWithFuel(fuel, now))
+        {
+            yield return step;
+        }
+
+        bool landsNow = now.Value;
+        Answer<double?> found = new Answer<double?>();
+        foreach (object? step in Bisect.HighestPassingSteps(before.GasMassKg + 1.0, MassCeilingKg, LandsAtMass, 1.0,
+                     found))
+        {
+            yield return step;
+        }
+
+        double? maxMass = found.Value;
+        double? minFuel = null;
+        double? maxFuel = null;
+        if (landsNow)
+        {
+            foreach (object? step in Bisect.LowestPassingSteps(0.0, fuel, LandsWithFuel, 1.0, found))
+            {
+                yield return step;
+            }
+
+            minFuel = found.Value;
+            foreach (object? step in Bisect.HighestPassingSteps(fuel, Math.Max(fuel * 20.0, 100000.0), LandsWithFuel,
+                         1.0, found))
+            {
+                yield return step;
+            }
+
+            maxFuel = found.Value;
+        }
+
+        foreach (object? step in Bisect.LowestPassingSteps(0.0, before.ThrustScale, LandsAtScale, 0.001, found))
+        {
+            yield return step;
+        }
+
+        double? lowestScale = found.Value;
         double? drop = lowestScale.HasValue ? before.ThrustScale - lowestScale.Value : null;
         double? confident = Bisect.HighestPassing(1.0, MassCeilingKg,
             mass => FlightMath.Confidence(before.AutomatedLanding, distance, gravity, altitude, before.MaxExpectedThrust,
                 (float)mass).Ratio >= confidenceFloor, 1.0);
-        return new LandingLimits(maxMass, minFuel, maxFuel, drop, confident);
+        answer.Value = new LandingLimits(maxMass, minFuel, maxFuel, drop, confident);
     }
 }

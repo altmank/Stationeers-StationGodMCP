@@ -5,6 +5,7 @@ using System.Text.Json;
 using StationGodMCP.Pure;
 using StationGodMCP.Server;
 using Xunit;
+using StationGodMCP.Pure.Scheduling;
 
 namespace StationGodMCP.Tests;
 
@@ -85,6 +86,23 @@ public sealed class DeepMinerSpotsTests
         Assert.Equal(20, result.SearchedRadius);
         Assert.False(result.Truncated);
         Assert.Equal(0, result.Matched);
+    }
+
+    [Fact]
+    public void TheSearchOverFramesTakesItsSamplesInBatchesAndFindsTheSameSpots()
+    {
+        MinerSpotSearch search = new MinerSpotSearch(1, 200, 50, 3, 1000000);
+        MinerSearchResult whole = search.Run(0, 0, (x, _) => x >= 30, () => true);
+        int steps = 0;
+        Answer<MinerSearchResult> stepped = new Answer<MinerSearchResult>();
+        foreach (object? _ in search.Searching(0, 0, (x, _) => x >= 30, () => true, stepped))
+        {
+            steps++;
+        }
+
+        Assert.Equal(whole.Samples, stepped.Value.Samples);
+        Assert.Equal(whole.Spots.Count, stepped.Value.Spots.Count);
+        Assert.Equal(whole.Samples / MinerSpotSearch.SamplesPerStep, steps);
     }
 
     [Fact]

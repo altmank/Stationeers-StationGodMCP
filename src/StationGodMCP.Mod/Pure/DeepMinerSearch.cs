@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using StationGodMCP.Pure.Scheduling;
 
 namespace StationGodMCP.Pure;
 
@@ -78,6 +79,9 @@ internal sealed class MinerSearchResult
 /// </summary>
 internal sealed class MinerSpotSearch
 {
+    /// <summary>The samples Searching takes per step.</summary>
+    internal const int SamplesPerStep = 256;
+
     private readonly double _step;
     private readonly double _radius;
     private readonly double _separation;
@@ -107,6 +111,18 @@ internal sealed class MinerSpotSearch
     internal MinerSearchResult Run(double centreX, double centreZ, Func<double, double, bool> matches,
         Func<bool> timeLeft)
     {
+        Answer<MinerSearchResult> answer = new Answer<MinerSearchResult>();
+        foreach (object? _ in Searching(centreX, centreZ, matches, timeLeft, answer))
+        {
+        }
+
+        return answer.Value;
+    }
+
+    /// <summary>Run spread over frames (a Work body): SamplesPerStep samples per step.</summary>
+    internal IEnumerable<object?> Searching(double centreX, double centreZ, Func<double, double, bool> matches,
+        Func<bool> timeLeft, Answer<MinerSearchResult> answer)
+    {
         int rings = (int)Math.Ceiling(_radius / _step);
         List<MinerSample> found = new List<MinerSample>();
         int samples = 0;
@@ -114,8 +130,9 @@ internal sealed class MinerSpotSearch
         {
             if (!timeLeft() || samples >= _maximumSamples)
             {
-                return new MinerSearchResult(Pick(found, (ring - 1) * _step), samples, found.Count,
+                answer.Value = new MinerSearchResult(Pick(found, (ring - 1) * _step), samples, found.Count,
                     Math.Max(0, ring - 1) * _step, true);
+                yield break;
             }
 
             foreach ((int i, int j) in Ring(ring))
@@ -133,16 +150,22 @@ internal sealed class MinerSpotSearch
                 {
                     found.Add(new MinerSample(x, z, distance));
                 }
+
+                if (samples % SamplesPerStep == 0)
+                {
+                    yield return null;
+                }
             }
 
             List<MinerSample> settled = Pick(found, ring * _step);
             if (settled.Count >= _wanted)
             {
-                return new MinerSearchResult(settled, samples, found.Count, ring * _step, false);
+                answer.Value = new MinerSearchResult(settled, samples, found.Count, ring * _step, false);
+                yield break;
             }
         }
 
-        return new MinerSearchResult(Pick(found, _radius), samples, found.Count, _radius, false);
+        answer.Value = new MinerSearchResult(Pick(found, _radius), samples, found.Count, _radius, false);
     }
 
     /// <summary>The cells of square ring r around the origin (r = 0: the origin alone).</summary>

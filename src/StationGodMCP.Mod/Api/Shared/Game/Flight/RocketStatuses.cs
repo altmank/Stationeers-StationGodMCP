@@ -14,6 +14,7 @@ using StationGodMCP.Api.Views;
 using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Rockets;
 using UnityEngine;
+using StationGodMCP.Pure.Scheduling;
 
 namespace StationGodMCP.Api.Shared.Game.Flight;
 
@@ -44,40 +45,54 @@ internal static class RocketStatuses
 
     /// <summary>
     /// The rockets' statuses: compact the short form, selfTest the forecast's checks, withParts every part's pose,
-    /// explain what the numbers mean.
+    /// explain what the numbers mean. A Work body: a rocket's burn times in steps of their own.
     /// </summary>
-    internal static RocketStatusListView Read(List<Rocket> rockets, bool compact, bool selfTest, bool withParts,
-        bool explain)
+    internal static IEnumerable<object?> Reading(List<Rocket> rockets, bool compact, bool selfTest, bool withParts,
+        bool explain, Answer<RocketStatusListView> answer)
     {
         List<RocketStatusView> views = new List<RocketStatusView>(rockets.Count);
+        Answer<RocketStatusView> described = new Answer<RocketStatusView>();
         for (int index = 0; index < rockets.Count; index++)
         {
-            views.Add(Describe(rockets[index], selfTest, compact, withParts));
+            foreach (object? step in Describing(rockets[index], selfTest, compact, withParts, described))
+            {
+                yield return step;
+            }
+
+            views.Add(described.Value);
         }
 
-        return new RocketStatusListView(views, explain ? Explanations(compact) : null);
+        answer.Value = new RocketStatusListView(views, explain ? Explanations(compact) : null);
     }
 
     private static List<string> Explanations(bool compact) =>
         compact ? new List<string> { HowRecorded, ScreenCheck } : new List<string> { HowRecorded, ScreenCheck, PowerTick };
 
-    internal static RocketStatusView Describe(Rocket rocket, bool selfTest, bool compact = false, bool withParts = false)
+    // One rocket's status; its burn times (BurnTime.Counting) in steps of their own.
+    private static IEnumerable<object?> Describing(Rocket rocket, bool selfTest, bool compact, bool withParts,
+        Answer<RocketStatusView> answer)
     {
         RocketParts parts = RocketParts.Of(rocket);
         List<string> notes = new List<string>(4);
         float profileAltitude = RoutePlanner.AltitudeOf(rocket.ReEntryProfile);
         RocketCraft craft = RocketModel.Craft(parts, RocketWhatIf.None);
+        Answer<BurnTimeView> burnTime = new Answer<BurnTimeView>();
+        foreach (object? step in BurnTime(rocket, parts, craft, burnTime))
+        {
+            yield return step;
+        }
+
         RocketStatusView view = new RocketStatusView(new ThingId(rocket.ReferenceId),
             new ThingId(rocket.RocketNetwork.ReferenceId), rocket.DisplayName, rocket.AutomatedLanding,
             rocket.AutomatedShutOff, rocket.ReEntryProfile.ToString(), profileAltitude, Where(rocket, notes),
             Mass(rocket, parts, compact), Fuel(parts, compact), PipeNetworks(parts), Engines(parts),
             Thrust(rocket, craft, notes),
             LandingCheck(rocket, parts, profileAltitude), Cargo(parts), Power(parts, compact),
-            BurnTime(rocket, parts, craft), selfTest ? Checks(rocket, parts, craft, profileAltitude) : null, notes,
+            burnTime.Value, selfTest ? Checks(rocket, parts, craft, profileAltitude) : null, notes,
             rocket.IsManned, LandingAtPad(rocket, profileAltitude), MiningPlans.Loadout(parts).Collects,
             withParts ? Poses(parts) : null);
         Notes(rocket, parts, notes);
-        return view;
+        answer.Value = view;
     }
 
     private static RocketWhereView Where(Rocket rocket, List<string> notes)
@@ -375,12 +390,25 @@ internal static class RocketStatuses
     }
 
     // The game's own estimate, and ours: the engines' feed laws run tick by tick on a copy until nothing is drawn.
-    private static BurnTimeView BurnTime(Rocket rocket, RocketParts parts, RocketCraft craft)
+    private static IEnumerable<object?> BurnTime(Rocket rocket, RocketParts parts, RocketCraft craft,
+        Answer<BurnTimeView> answer)
     {
         double tick = Assets.Scripts.GameManager.GameTickSpeedSeconds;
         float throttle = RocketModel.FirstThrottle(parts);
-        return new BurnTimeView(rocket.EstimatedRemainingBurnTimeSeconds, Pure.Rockets.BurnTime.Seconds(craft, 100f, tick),
-            throttle > 0f ? Pure.Rockets.BurnTime.Seconds(craft, throttle, tick) : null);
+        Answer<double?> full = new Answer<double?>();
+        foreach (object? step in Pure.Rockets.BurnTime.Counting(craft, 100f, tick, full))
+        {
+            yield return step;
+        }
+
+        Answer<double?> atThrottle = new Answer<double?>();
+        foreach (object? step in Pure.Rockets.BurnTime.Counting(craft, throttle, tick, atThrottle))
+        {
+            yield return step;
+        }
+
+        answer.Value = new BurnTimeView(rocket.EstimatedRemainingBurnTimeSeconds, full.Value,
+            throttle > 0f ? atThrottle.Value : null);
     }
 
     // The kg RocketNetwork.CalculateGasMass counts for one fuel line: its pipe and the tanks it lists.

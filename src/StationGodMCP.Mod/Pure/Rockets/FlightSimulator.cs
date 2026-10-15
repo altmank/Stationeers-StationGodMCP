@@ -1,6 +1,8 @@
 #nullable enable
 
 using System;
+using System.Collections.Generic;
+using StationGodMCP.Pure.Scheduling;
 
 namespace StationGodMCP.Pure.Rockets;
 
@@ -15,6 +17,9 @@ namespace StationGodMCP.Pure.Rockets;
 /// </summary>
 internal sealed class FlightSimulator
 {
+    /// <summary>The physics steps a leg's body takes per step.</summary>
+    internal const int StepsPerYield = 1024;
+
     /// <summary>The longest simulated time one leg may take.</summary>
     internal const float LegLimitSeconds = 7200f;
 
@@ -36,6 +41,17 @@ internal sealed class FlightSimulator
 
     internal LegResult Launch(LaunchLeg leg, RocketCraft craft)
     {
+        Answer<LegResult> answer = new Answer<LegResult>();
+        foreach (object? _ in Launching(leg, craft, answer))
+        {
+        }
+
+        return answer.Value;
+    }
+
+    /// <summary>Launch as a Work body: StepsPerYield physics steps per step.</summary>
+    internal IEnumerable<object?> Launching(LaunchLeg leg, RocketCraft craft, Answer<LegResult> answer)
+    {
         LegTally tally = Begin(craft);
         craft.EnginesOn = true;
         bool onPad = leg.Start.OnPad;
@@ -45,6 +61,11 @@ internal sealed class FlightSimulator
         float limit = LegLimitSeconds / PhysicsStep;
         for (int step = 0; step < limit; step++)
         {
+            if (step % StepsPerYield == StepsPerYield - 1)
+            {
+                yield return null;
+            }
+
             Tick(craft, step, tally, false);
             RecordThrust(craft);
             if (onPad && progress > 0f)
@@ -59,7 +80,8 @@ internal sealed class FlightSimulator
 
             if (progress >= 1f)
             {
-                return End(leg, LegOutcome.Arrived.Instance, craft, tally);
+                answer.Value = End(leg, LegOutcome.Arrived.Instance, craft, tally);
+                yield break;
             }
 
             float engine = craft.Force / craft.MassKg;
@@ -73,7 +95,8 @@ internal sealed class FlightSimulator
                     // Rocket.PhysicsUpdate on the mount (Rocket.cs:2055-2067): too little thrust and nothing moves.
                     if (step % StepsPerTick == StepsPerTick - 1)
                     {
-                        return End(leg, new LegOutcome.Stalled(StallReason(craft, "on the pad")), craft, tally);
+                        answer.Value = End(leg, new LegOutcome.Stalled(StallReason(craft, "on the pad")), craft, tally);
+                        yield break;
                     }
 
                     continue;
@@ -88,16 +111,29 @@ internal sealed class FlightSimulator
             float apex = FlightMath.Apex(altitude, velocity, acceleration);
             if ((velocity < 0f && float.IsNegativeInfinity(apex)) || apex < 0f)
             {
-                return End(leg, new LegOutcome.LaunchAborted(altitude, velocity, acceleration), craft, tally);
+                answer.Value = End(leg, new LegOutcome.LaunchAborted(altitude, velocity, acceleration), craft, tally);
+                yield break;
             }
 
             progress += change / leg.Distance;
         }
 
-        return End(leg, new LegOutcome.TimedOut(LegLimitSeconds), craft, tally);
+        answer.Value = End(leg, new LegOutcome.TimedOut(LegLimitSeconds), craft, tally);
+        yield break;
     }
 
     internal LegResult Hop(SpaceHop leg, RocketCraft craft)
+    {
+        Answer<LegResult> answer = new Answer<LegResult>();
+        foreach (object? _ in Hopping(leg, craft, answer))
+        {
+        }
+
+        return answer.Value;
+    }
+
+    /// <summary>Hop as a Work body: StepsPerYield physics steps per step.</summary>
+    internal IEnumerable<object?> Hopping(SpaceHop leg, RocketCraft craft, Answer<LegResult> answer)
     {
         LegTally tally = Begin(craft);
         craft.EnginesOn = true;
@@ -105,11 +141,17 @@ internal sealed class FlightSimulator
         float limit = LegLimitSeconds / PhysicsStep;
         for (int step = 0; step < limit; step++)
         {
+            if (step % StepsPerYield == StepsPerYield - 1)
+            {
+                yield return null;
+            }
+
             Tick(craft, step, tally, false);
             RecordThrust(craft);
             if (progress >= 1f)
             {
-                return End(leg, LegOutcome.Arrived.Instance, craft, tally);
+                answer.Value = End(leg, LegOutcome.Arrived.Instance, craft, tally);
+                yield break;
             }
 
             float engine = craft.Force / craft.MassKg;
@@ -117,11 +159,13 @@ internal sealed class FlightSimulator
             progress += engine * PhysicsStep / leg.Distance;
             if (!Burning(craft) && step % StepsPerTick == StepsPerTick - 1)
             {
-                return End(leg, new LegOutcome.Stalled(StallReason(craft, "in space")), craft, tally);
+                answer.Value = End(leg, new LegOutcome.Stalled(StallReason(craft, "in space")), craft, tally);
+                yield break;
             }
         }
 
-        return End(leg, new LegOutcome.TimedOut(LegLimitSeconds), craft, tally);
+        answer.Value = End(leg, new LegOutcome.TimedOut(LegLimitSeconds), craft, tally);
+        yield break;
     }
 
     internal LegResult Park(ParkLeg leg, RocketCraft craft)
@@ -156,6 +200,17 @@ internal sealed class FlightSimulator
 
     internal LegResult Land(LandingLeg leg, RocketCraft craft)
     {
+        Answer<LegResult> answer = new Answer<LegResult>();
+        foreach (object? _ in Landing(leg, craft, answer))
+        {
+        }
+
+        return answer.Value;
+    }
+
+    /// <summary>Land as a Work body: StepsPerYield physics steps per step.</summary>
+    internal IEnumerable<object?> Landing(LandingLeg leg, RocketCraft craft, Answer<LegResult> answer)
+    {
         LegTally tally = Begin(craft);
         float altitude;
         float velocity;
@@ -181,8 +236,9 @@ internal sealed class FlightSimulator
 
                 if (!Burning(craft) && step % StepsPerTick == StepsPerTick - 1)
                 {
-                    return End(leg, new LegOutcome.Stalled(StallReason(craft, "at the start of the re-entry hop")),
+                    answer.Value = End(leg, new LegOutcome.Stalled(StallReason(craft, "at the start of the re-entry hop")),
                         craft, tally);
+                    yield break;
                 }
             }
 
@@ -194,7 +250,8 @@ internal sealed class FlightSimulator
                 craft.MassKg);
             if (craft.AutomatedLanding && check.Ratio <= 0f)
             {
-                return End(leg, new LegOutcome.LandingAborted(detail), craft, tally);
+                answer.Value = End(leg, new LegOutcome.LandingAborted(detail), craft, tally);
+                yield break;
             }
 
             velocity = 0f - leg.Distance;
@@ -221,6 +278,11 @@ internal sealed class FlightSimulator
         float limit = step + LegLimitSeconds / PhysicsStep;
         for (; step < limit; step++)
         {
+            if (step % StepsPerYield == StepsPerYield - 1)
+            {
+                yield return null;
+            }
+
             bool tick = step % StepsPerTick == 0;
             if (tick && craft.AutomatedLanding)
             {
@@ -252,14 +314,16 @@ internal sealed class FlightSimulator
             altitude += velocity * PhysicsStep;
             if (altitude < 0.1f && velocity > -2f)
             {
-                return Touchdown(leg, craft, tally, detail, before, (step - start) * PhysicsStep, soft: true);
+                answer.Value = Touchdown(leg, craft, tally, detail, before, (step - start) * PhysicsStep, soft: true);
+                yield break;
             }
 
             // Rocket.MoveToTarget: the parent transform lerps after the target; below the mount it is a crash landing.
             visual += (Math.Min(altitude, VisualCeiling) - visual) * UnityFloat.Clamp01(PhysicsStep * 2f);
             if (visual < 0f)
             {
-                return Touchdown(leg, craft, tally, detail, before, (step - start) * PhysicsStep, soft: false);
+                answer.Value = Touchdown(leg, craft, tally, detail, before, (step - start) * PhysicsStep, soft: false);
+                yield break;
             }
 
             float engine = craft.Force / craft.MassKg;
@@ -269,7 +333,8 @@ internal sealed class FlightSimulator
             velocity += change;
         }
 
-        return End(leg, new LegOutcome.TimedOut(LegLimitSeconds), craft, tally);
+        answer.Value = End(leg, new LegOutcome.TimedOut(LegLimitSeconds), craft, tally);
+        yield break;
     }
 
     // Rocket.InitAutomatedLanding (Rocket.cs:2530-2541).

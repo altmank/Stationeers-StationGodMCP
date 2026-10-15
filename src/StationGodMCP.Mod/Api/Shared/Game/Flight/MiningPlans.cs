@@ -7,6 +7,7 @@ using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure.Rockets;
+using StationGodMCP.Pure.Scheduling;
 
 namespace StationGodMCP.Api.Shared.Game.Flight;
 
@@ -27,10 +28,25 @@ internal static class RocketMining
         "(MineableDeposit.cs:184-190, 425-434)."
     };
 
-    internal static MiningPlanView Plan(Rocket rocket, string? to, bool collectableOnly, bool explain)
+    /// <summary>The plan as a Work body: the sites a node per step, then a site's view per step.</summary>
+    internal static IEnumerable<object?> Planning(Rocket rocket, string? to, bool collectableOnly, bool explain,
+        Answer<MiningPlanView> answer)
     {
         RocketParts parts = RocketParts.Of(rocket);
-        List<SiteRead> sites = to != null ? MiningReads.SitesAt(SpaceRoutes.Resolve(to)) : MiningReads.AllSites();
+        List<SiteRead> sites;
+        if (to != null)
+        {
+            sites = MiningReads.SitesAt(SpaceRoutes.Resolve(to));
+        }
+        else
+        {
+            sites = new List<SiteRead>(32);
+            foreach (object? step in MiningReads.AllSites(sites))
+            {
+                yield return step;
+            }
+        }
+
         List<MiningSiteView> views = new List<MiningSiteView>(sites.Count);
         for (int index = 0; index < sites.Count; index++)
         {
@@ -39,6 +55,8 @@ internal static class RocketMining
             {
                 views.Add(view);
             }
+
+            yield return null;
         }
 
         List<string> notes = explain ? new List<string>(HowMiningWorks) : new List<string>(1);
@@ -51,7 +69,7 @@ internal static class RocketMining
             notes.Add(EmptyReason(sites, parts, to));
         }
 
-        return new MiningPlanView(new ThingId(rocket.ReferenceId), rocket.DisplayName,
+        answer.Value = new MiningPlanView(new ThingId(rocket.ReferenceId), rocket.DisplayName,
             MiningPlans.Loadout(parts), views, notes);
     }
 
