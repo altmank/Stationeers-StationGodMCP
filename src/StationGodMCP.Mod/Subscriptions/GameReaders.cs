@@ -14,7 +14,8 @@ namespace StationGodMCP.Subscriptions;
 /// <summary>
 /// A devices subscription's sample through read logic's own read path (DeviceReads), so a subscription reads exactly
 /// what the same read would, in the calling frame, from the request parsed once at subscribe; only the gateway is
-/// looked up again, since it may be gone. Errors of the whole read (gateway_not_found) throw as they do there.
+/// looked up again, since it may be gone. Errors of the whole read (gateway_not_found) throw as they do there. Every
+/// sample of a frame shares its reads (SampleReads): subscribers of one device, on any connection, read it once.
 /// </summary>
 internal sealed class ReadDevicesReader : IDeviceReader<ReadDevicesView>
 {
@@ -24,8 +25,14 @@ internal sealed class ReadDevicesReader : IDeviceReader<ReadDevicesView>
     {
     }
 
-    public ReadDevicesView Read(DeviceSubscriptionQuery query) =>
-        DeviceReads.Read(Devices.Scope(query.GatewayId), query.Request, Label);
+    /// <summary>The frame's shared reads (server info runtime.subscriptions counts them).</summary>
+    internal SampleReads Shared { get; } = new SampleReads();
+
+    public ReadDevicesView Read(DeviceSubscriptionQuery query)
+    {
+        Shared.Begin(UnityEngine.Time.frameCount);
+        return DeviceReads.Read(Devices.Scope(query.GatewayId), query.Request, Label, Shared);
+    }
 
     private const string Label = "subscribe";
 }

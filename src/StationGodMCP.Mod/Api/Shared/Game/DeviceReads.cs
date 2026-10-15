@@ -13,6 +13,7 @@ using StationGodMCP.Api.Views;
 using StationGodMCP.Pure.DeviceReads;
 using StationGodMCP.Pure.Profiling;
 using StationGodMCP.Pure.Protocol;
+using StationGodMCP.Pure.Subscriptions;
 
 namespace StationGodMCP.Api.Shared.Game;
 
@@ -23,7 +24,8 @@ namespace StationGodMCP.Api.Shared.Game;
 /// as inspect slots reads it, one atmosphere compact (its own, its internal one, or the pipe network at a device port),
 /// and reagents as inspect reagents reads them. Values come back keyed by the name the client sent. An id that names
 /// nothing fails its item; a part that cannot be read (the device out of scope) fails in the item's errors; a logic
-/// name that does not read fails in logic_errors. Read only.
+/// name that does not read fails in logic_errors. A subscription's sample passes the frame's shared reads
+/// (SampleReads): what another sample of the frame read already is taken from there. Read only.
 /// </summary>
 internal static class DeviceReads
 {
@@ -34,7 +36,8 @@ internal static class DeviceReads
     /// the thing under the crosshair; label names the call in that refusal), failing alone.
     /// </summary>
     [Profiled]
-    internal static ReadDevicesView Read(DeviceScope scope, DeviceReadRequest request, string label)
+    internal static ReadDevicesView Read(DeviceScope scope, DeviceReadRequest request, string label,
+        SampleReads? shared = null)
     {
         BatchBuilder batch = new BatchBuilder(request.Items.Count);
         for (int index = 0; index < request.Items.Count; index++)
@@ -58,13 +61,13 @@ internal static class DeviceReads
                 continue;
             }
 
-            batch.Succeeded(new DeviceReadItemView(index, id, Read(scope, item, subject)));
+            batch.Succeeded(new DeviceReadItemView(index, id, Read(scope, item, subject, shared)));
         }
 
         return new ReadDevicesView(scope.Id, request.Clock ? WorldClock.Now() : null, batch.Build());
     }
 
-    private static DeviceReadParts Read(DeviceScope scope, DeviceReadItem item, Subject subject)
+    private static DeviceReadParts Read(DeviceScope scope, DeviceReadItem item, Subject subject, SampleReads? shared)
     {
         Dictionary<string, ErrorView> errors = new Dictionary<string, ErrorView>();
         ScopedTarget? device = null;
@@ -90,50 +93,122 @@ internal static class DeviceReads
             }
         }
 
-        LogicReadings? logic = device != null && item.Logic != null ? Logic(device, item.Logic) : null;
-        List<SlotReadView>? slots = device != null && item.Slots != null ? Slots(device, item.Slots) : null;
+        LogicReadings? logic = device != null && item.Logic != null ? Logic(device, item.Logic, shared) : null;
+        List<SlotReadView>? slots = device != null && item.Slots != null ? Slots(device, item.Slots, shared) : null;
         AtmosphereReadView? atmosphere = item.Atmosphere != null
-            ? Part("atmosphere", errors, () => Atmosphere(subject, item.Atmosphere))
+            ? Part<AtmosphereReadView>("atmosphere", errors, shared, new SampleReadKey(subject.Id.Value,
+                SampleReadPart.Atmosphere, PortOf(item.Atmosphere), KindOf(item.Atmosphere)), subject, item.Atmosphere)
             : null;
         ReagentsReadView? reagents = item.Reagents
-            ? Part("reagents", errors, () => ThingReagents.ReadingOf(subject.RequireThing()))
+            ? Part<ReagentsReadView>("reagents", errors, shared,
+                new SampleReadKey(subject.Id.Value, SampleReadPart.Reagents, 0, 0), subject, null)
             : null;
         return new DeviceReadParts(logic, slots, atmosphere, reagents, errors);
     }
 
-    private static T? Part<T>(string name, Dictionary<string, ErrorView> errors, System.Func<T> read) where T : class
+    // An atmosphere part (target given) or the reagents (none), from the frame's shared reads when a sample of the
+    // frame read it already; a refusal goes in errors under name.
+    private static T? Part<T>(string name, Dictionary<string, ErrorView> errors, SampleReads? shared,
+        SampleReadKey key, Subject subject, AtmosphereTarget? target) where T : class
+    {
+        SampleRead read;
+        if (shared == null || !shared.TryTake(key, out read))
+        {
+            read = ReadPart(subject, target);
+            shared?.Keep(key, read);
+        }
+
+        if (read.Other is ErrorView error)
+        {
+            errors[name] = error;
+            return null;
+        }
+
+        return (T?)read.Other;
+    }
+
+    private static SampleRead ReadPart(Subject subject, AtmosphereTarget? target)
     {
         try
         {
-            return read();
+            return new SampleRead(0.0, target != null
+                ? Atmosphere(subject, target)
+                : ThingReagents.ReadingOf(subject.RequireThing()));
         }
         catch (ApiException refused)
         {
-            errors[name] = new ErrorView(refused.Code, refused.Message);
-            return null;
+            return new SampleRead(0.0, new ErrorView(refused.Code, refused.Message));
         }
     }
 
-    private static LogicReadings Logic(ScopedTarget device, IReadOnlyList<SentName> names)
+    private static int KindOf(AtmosphereTarget target) =>
+        target switch
+        {
+            AtmosphereTarget.Internal => 1,
+            AtmosphereTarget.AtPort => 2,
+            _ => 0,
+        };
+
+    private static int PortOf(AtmosphereTarget target) => target is AtmosphereTarget.AtPort port ? port.Port : 0;
+
+    private static LogicReadings Logic(ScopedTarget device, IReadOnlyList<SentName> names, SampleReads? shared)
     {
         Dictionary<string, double> values = new Dictionary<string, double>(names.Count, System.StringComparer.Ordinal);
         Dictionary<string, ErrorView> errors = new Dictionary<string, ErrorView>(System.StringComparer.Ordinal);
         foreach (SentName name in names)
         {
+            LogicType type;
             try
             {
-                values[name.Key] = LogicOps.ReadValue(device, LogicTypes.Parse(name.Token));
+                type = LogicTypes.Parse(name.Token);
             }
             catch (ApiException refused)
             {
                 errors[name.Key] = new ErrorView(refused.Code, refused.Message);
+                continue;
             }
+
+            SampleReadKey key = new SampleReadKey(device.ReferenceId, SampleReadPart.Logic, 0, (int)type);
+            SampleRead read;
+            if (shared == null || !shared.TryTake(key, out read))
+            {
+                read = ReadLogic(device, type);
+                shared?.Keep(key, read);
+            }
+
+            Put(values, errors, name.Key, read);
         }
 
         return new LogicReadings(values, errors);
     }
 
-    private static List<SlotReadView> Slots(ScopedTarget device, IReadOnlyList<SlotReadRequest> slots)
+    private static SampleRead ReadLogic(ScopedTarget device, LogicType type)
+    {
+        try
+        {
+            return new SampleRead(LogicOps.ReadValue(device, type), null);
+        }
+        catch (ApiException refused)
+        {
+            return new SampleRead(0.0, new ErrorView(refused.Code, refused.Message));
+        }
+    }
+
+    private static void Put(Dictionary<string, double> values, Dictionary<string, ErrorView> errors, string key,
+        SampleRead read)
+    {
+        if (read.Other is ErrorView error)
+        {
+            errors[key] = error;
+        }
+        else
+        {
+            values[key] = read.Number;
+        }
+    }
+
+    private static List<SlotReadView> Slots(ScopedTarget device, IReadOnlyList<SlotReadRequest> slots,
+        SampleReads? shared)
     {
         List<SlotReadView> views = new List<SlotReadView>(slots.Count);
         foreach (SlotReadRequest slot in slots)
@@ -149,31 +224,69 @@ internal static class DeviceReads
             }
 
             views.Add(SlotReadView.Read(slot.Index, slot.Logic == null
-                ? new LogicReadings(SlotLogicTypes.ReadAll(device, slot.Index),
-                    new Dictionary<string, ErrorView>())
-                : SlotLogic(device, slot.Index, slot.Logic)));
+                ? new LogicReadings(SlotValues(device, slot.Index, shared), new Dictionary<string, ErrorView>())
+                : SlotLogic(device, slot.Index, slot.Logic, shared)));
         }
 
         return views;
     }
 
-    private static LogicReadings SlotLogic(ScopedTarget device, int index, IReadOnlyList<SentName> names)
+    // Every value at the slot; a dictionary the frame's shared reads keep is never changed after.
+    private static Dictionary<string, double> SlotValues(ScopedTarget device, int index, SampleReads? shared)
+    {
+        SampleReadKey key = new SampleReadKey(device.ReferenceId, SampleReadPart.SlotAll, index, 0);
+        if (shared != null && shared.TryTake(key, out SampleRead kept))
+        {
+            return (Dictionary<string, double>)kept.Other!;
+        }
+
+        Dictionary<string, double> values = SlotLogicTypes.ReadAll(device, index);
+        shared?.Keep(key, new SampleRead(0.0, values));
+        return values;
+    }
+
+    private static LogicReadings SlotLogic(ScopedTarget device, int index, IReadOnlyList<SentName> names,
+        SampleReads? shared)
     {
         Dictionary<string, double> values = new Dictionary<string, double>(names.Count, System.StringComparer.Ordinal);
         Dictionary<string, ErrorView> errors = new Dictionary<string, ErrorView>(System.StringComparer.Ordinal);
         foreach (SentName name in names)
         {
+            LogicSlotType type;
             try
             {
-                values[name.Key] = SlotLogicTypes.Read(device, SlotLogicTypes.Parse(name.Token), index);
+                type = SlotLogicTypes.Parse(name.Token);
             }
             catch (ApiException refused)
             {
                 errors[name.Key] = new ErrorView(refused.Code, refused.Message);
+                continue;
             }
+
+            SampleReadKey key = new SampleReadKey(device.ReferenceId, SampleReadPart.SlotLogic, index, (int)type);
+            SampleRead read;
+            if (shared == null || !shared.TryTake(key, out read))
+            {
+                read = ReadSlot(device, type, index);
+                shared?.Keep(key, read);
+            }
+
+            Put(values, errors, name.Key, read);
         }
 
         return new LogicReadings(values, errors);
+    }
+
+    private static SampleRead ReadSlot(ScopedTarget device, LogicSlotType type, int index)
+    {
+        try
+        {
+            return new SampleRead(SlotLogicTypes.Read(device, type, index), null);
+        }
+        catch (ApiException refused)
+        {
+            return new SampleRead(0.0, new ErrorView(refused.Code, refused.Message));
+        }
     }
 
     private static AtmosphereReadView Atmosphere(Subject subject, AtmosphereTarget target) =>

@@ -600,7 +600,23 @@ public sealed class SubscriptionEngineTests
         Assert.Equal(1, Poll(engine, 6.0, 3));
     }
 
+    [Fact]
+    public void SubscriptionsWithOneIntervalComeDueInTheSameFrameWhenEverTheySubscribed()
+    {
+        SubscriptionEngine<FakeReading> engine = Engine();
+        Subscribe(engine, A, intervalS: 2.0, atS: 0.3);
+        Subscribe(engine, B, intervalS: 2.0, atS: 1.7);
+
+        Assert.Equal(0, Poll(engine, 1.9, 1));
+        Assert.Equal(2, Poll(engine, 2.0, 2));
+        Assert.Equal(0, Poll(engine, 3.9, 3));
+        Assert.Equal(2, Poll(engine, 4.0, 4));
+    }
+
     [Theory]
+    [InlineData(double.NegativeInfinity, 2.0, 0.3, 2.0)]
+    [InlineData(double.NegativeInfinity, 2.0, 2.0, 4.0)]
+    [InlineData(double.NegativeInfinity, 0.5, 7.25, 7.5)]
     [InlineData(1.0, 1.0, 1.5, 2.0)]
     [InlineData(1.0, 1.0, 1.0, 2.0)]
     [InlineData(1.0, 0.5, 2.6, 3.0)]

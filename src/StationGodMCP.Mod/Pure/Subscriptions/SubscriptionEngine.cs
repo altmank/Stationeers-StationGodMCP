@@ -138,7 +138,8 @@ internal sealed class SubscriptionEngine<TReading> where TReading : class
         TReading first = _reader.Read(query);
         SubscriptionId id = new SubscriptionId(++_lastId);
         DeviceSubscription subscription = new DeviceSubscription(id, query, plan, interval,
-            new UpdateSlot<TReading>(connection, id, stream), first, tick.GameTimeS + interval.Seconds, stream);
+            new UpdateSlot<TReading>(connection, id, stream), first,
+            NextDue(double.NegativeInfinity, interval.Seconds, tick.GameTimeS), stream);
         Held(connection).Add(subscription);
         return new SubscribeOutcome<TReading>.Subscribed(id, interval, plan.Values, tick.Frame, first);
     }
@@ -443,13 +444,21 @@ internal sealed class SubscriptionEngine<TReading> where TReading : class
 
     /// <summary>
     /// The first point of the subscription's grid (due + k * interval) after now, so a late sample does not make the
-    /// next ones late too, and a frame that missed several points takes one sample, not a burst.
+    /// next ones late too, and a frame that missed several points takes one sample, not a burst. With no due time yet
+    /// (a new subscription, a resync) the grid is the interval's own (k * interval game seconds), the one every
+    /// subscription with that interval is on, so they come due in the same frame and share their reads (SampleReads).
     /// </summary>
     internal static double NextDue(double dueS, double intervalS, double nowS)
     {
-        if (double.IsNegativeInfinity(dueS) || dueS + intervalS > nowS)
+        if (double.IsNegativeInfinity(dueS))
         {
-            return double.IsNegativeInfinity(dueS) ? nowS + intervalS : dueS + intervalS;
+            double point = (Math.Floor(nowS / intervalS) + 1.0) * intervalS;
+            return point > nowS ? point : point + intervalS;
+        }
+
+        if (dueS + intervalS > nowS)
+        {
+            return dueS + intervalS;
         }
 
         double missed = Math.Floor((nowS - dueS) / intervalS) + 1.0;
