@@ -17,6 +17,8 @@
     <AssemblySearchPaths>{HintPathFromItem};{TargetFrameworkDirectory};{RawFileName}</AssemblySearchPaths>
     <Deterministic>true</Deterministic>
     <NoWarn>$(NoWarn);MSB3277</NoWarn>
+    <!-- The LINQ ban (BannedSymbols.txt) is an error, not a warning: the cost gate's source rule (CostSourceRulesTests). -->
+    <WarningsAsErrors>$(WarningsAsErrors);RS0030</WarningsAsErrors>
     <!-- Override with -p:StationeersPath=... or the STATIONEERS_DIR environment variable. -->
     <StationeersPath Condition="'$(StationeersPath)' == '' And '$(STATIONEERS_DIR)' != ''">$(STATIONEERS_DIR)</StationeersPath>
     <StationeersPath Condition="'$(StationeersPath)' == ''">C:\Program Files (x86)\Steam\steamapps\common\Stationeers</StationeersPath>
