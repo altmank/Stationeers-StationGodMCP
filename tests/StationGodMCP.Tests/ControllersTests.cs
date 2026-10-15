@@ -382,11 +382,11 @@ public sealed class ControllersTests
     }
 
     private static JObject Acted(LogicWrite write, bool rows) =>
-        ((VerbOutcome.Answered)LogicWriteReplies.Acted("world",
-            new LogicWriteResult[] { new LogicWriteResult.Written(0, "Door", write) }, rows)).Reply;
+        Replies.Tree(((VerbOutcome.Answered)LogicWriteReplies.Acted("world",
+            new LogicWriteResult[] { new LogicWriteResult.Written(0, "Door", write) }, rows)).Reply);
 
     private static JObject Reported(LogicWriteChecked write) =>
-        LogicWriteReplies.Reported("world", new LogicWriteResult[] { new LogicWriteResult.Planned(0, "Door", write) });
+        Replies.Tree(LogicWriteReplies.Reported("world", new LogicWriteResult[] { new LogicWriteResult.Planned(0, "Door", write) }));
 
     private static ProgramSource Chip(string source, params long[] pins) =>
         new ProgramSource(Housing, "StructureCircuitHousing", pins, LintChipPrograms.Ic10(source));

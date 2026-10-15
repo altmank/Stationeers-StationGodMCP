@@ -78,21 +78,21 @@ internal static class ConsoleCommands
         ConsoleRunView run = new ConsoleRunView(plan.Info, ConsoleBridge.RunSimulation, capture, output,
             Note(capture, plan.Info.CommandKey));
         run.NoteTruncations(string.Empty);
-        return new VerbOutcome.Answered(JObject.FromObject(run, ApiJson.Fresh()));
+        return new VerbOutcome.Answered(JObject.FromObject(run, ApiJson.Serializer));
     }
 
     /// <summary>
     /// The report: the command the console would run and what it is, as the run's own reply keys, and the note saying
     /// nothing was run; the what takes no target, so the report lists none.
     /// </summary>
-    internal static JObject Reported(ConsolePlan plan) =>
+    internal static ReportReply Reported(ConsolePlan plan) =>
         Report.Of(Array.Empty<ReportTarget>(), Body(plan), new List<ReportProblem>());
 
     // The plan as the run's reply says it, without what a run printed: the command, its scope, its help and arguments,
     // and whether this game would run it (run_simulation) and could capture its output.
     private static JObject Body(ConsolePlan plan)
     {
-        JObject body = JObject.FromObject(plan.Info, ApiJson.Fresh());
+        JObject body = JObject.FromObject(plan.Info, ApiJson.Serializer);
         body["run_simulation"] = ConsoleBridge.RunSimulation;
         body["console_available"] = ConsoleBridge.CanCapture();
         body["completes_asynchronously"] = ConsoleBridge.CompletesAsynchronously(plan.Definition);

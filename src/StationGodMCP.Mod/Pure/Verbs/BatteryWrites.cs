@@ -84,13 +84,13 @@ internal static class BatteryReplies
             }
         }
 
-        return JObject.FromObject(new SetBatteryChargeView(goal, foundIn, batch.Build(), added), ApiJson.Fresh());
+        return JObject.FromObject(new SetBatteryChargeView(goal, foundIn, batch.Build(), added), ApiJson.Serializer);
     }
 
-    internal static JObject Reported(ChargeGoal goal, ThingView? foundIn, IReadOnlyList<BatteryResult> results,
+    internal static ReportReply Reported(ChargeGoal goal, ThingView? foundIn, IReadOnlyList<BatteryResult> results,
         string undoMark)
     {
-        JsonSerializer serializer = ApiJson.Fresh();
+        JsonSerializer serializer = ApiJson.Serializer;
         List<ReportTarget> targets = new List<ReportTarget>(results.Count);
         List<ReportProblem> problems = new List<ReportProblem>();
         foreach (BatteryResult result in results)

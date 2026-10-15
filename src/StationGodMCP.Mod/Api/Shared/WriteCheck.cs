@@ -53,7 +53,7 @@ internal sealed class WriteCheck<TPlan> where TPlan : class
     /// answers. act and describe run in the step the plan is ready in.
     /// </summary>
     internal static VerbOutcome Planned(Func<Answer<TPlan>, IEnumerable<object?>> checks, ReportConfirm report,
-        Func<TPlan, VerbOutcome> act, Func<TPlan, JObject> describe) =>
+        Func<TPlan, VerbOutcome> act, Func<TPlan, object> describe) =>
         WorkResult<WriteCheck<TPlan>>.Of(answer => Stepped(checks, answer),
             check => check.Outcome(report, act, describe));
 
@@ -96,7 +96,7 @@ internal sealed class WriteCheck<TPlan> where TPlan : class
     /// reporting, describe the plan (a Report.Of reply), or a report that lists the refusal as its one problem. act is
     /// only reached with a plan, and never on a report.
     /// </summary>
-    internal VerbOutcome Outcome(ReportConfirm report, Func<TPlan, VerbOutcome> act, Func<TPlan, JObject> describe)
+    internal VerbOutcome Outcome(ReportConfirm report, Func<TPlan, VerbOutcome> act, Func<TPlan, object> describe)
     {
         if (Plan == null)
         {

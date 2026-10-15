@@ -46,6 +46,6 @@ internal static class ShowHighlight
         }
 
         HighlightView view = order.Clear ? HighlightScreen.Clear() : HighlightScreen.Show(order.Request!);
-        return new VerbOutcome.Answered(JObject.FromObject(view, ApiJson.Fresh()));
+        return new VerbOutcome.Answered(JObject.FromObject(view, ApiJson.Serializer));
     }
 }

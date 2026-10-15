@@ -24,9 +24,9 @@ public sealed class WriteLintTests
     private static readonly ReportConfirm Reporting = new ReportConfirm(true, false, null);
 
     private static JObject Acted(LogicWriteChecked written, double current) =>
-        ((VerbOutcome.Answered)LogicWriteReplies.Acted("world",
+        Replies.Tree(((VerbOutcome.Answered)LogicWriteReplies.Acted("world",
             new LogicWriteResult[] { new LogicWriteResult.Written(0, "Vent", new LogicWrite(written, current)) },
-            false)).Reply;
+            false)).Reply);
 
     // ---- the opening transition ----
 
@@ -92,7 +92,7 @@ public sealed class WriteLintTests
             .Outcome(Reporting, _ => throw new InvalidOperationException("a report never acts"),
                 written => LogicWriteReplies.Reported("world",
                     new LogicWriteResult[] { new LogicWriteResult.Planned(0, "Vent", written) }));
-        JObject wire = ((VerbOutcome.Answered)report).Reply;
+        JObject wire = Replies.Tree(((VerbOutcome.Answered)report).Reply);
         Assert.True((bool)wire["report_only"]!);
         Assert.Equal("lint_refused", (string?)wire["problems"]![0]!["code"]);
         Assert.Equal("no_oxidiser_vented_outdoors", (string?)wire["problems"]![0]!["data"]!["rules"]![0]!["rule"]);
@@ -194,11 +194,11 @@ public sealed class WriteLintTests
         LogicWriteChecked closing = site.CheckVentOn(1.0, allow: false, requested: 0.0);
         ApiException refused = Assert.Throws<ApiException>(() => site.CheckVentOn(0.0, allow: false));
 
-        JObject wire = LogicWriteReplies.Reported("world", new LogicWriteResult[]
+        JObject wire = Replies.Tree(LogicWriteReplies.Reported("world", new LogicWriteResult[]
         {
             new LogicWriteResult.Planned(0, "Vent", closing),
             new LogicWriteResult.Failed(1, "60", VerbError.Of(refused))
-        });
+        }));
 
         Assert.True((bool)wire["report_only"]!);
         JToken problem = Assert.Single(wire["problems"]!);

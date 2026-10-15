@@ -84,5 +84,5 @@ public sealed class UndoFactsSourceTests
         return new RunJobView("run-7", "build pipe", "applied", null, new RunJobResultView(null, log, null, null));
     }
 
-    private static JObject Wire(object view) => JObject.FromObject(view, ApiJson.Fresh());
+    private static JObject Wire(object view) => JObject.FromObject(view, ApiJson.Serializer);
 }

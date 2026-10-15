@@ -25,7 +25,7 @@ internal static class ItemMoveReplies
     internal static JObject Routed(string route, object view)
     {
         JObject reply = new JObject { ["route"] = route };
-        foreach (JProperty key in JObject.FromObject(view, ApiJson.Fresh()).Properties())
+        foreach (JProperty key in JObject.FromObject(view, ApiJson.Serializer).Properties())
         {
             reply[key.Name] = key.Value;
         }
@@ -43,14 +43,14 @@ internal static class ItemMoveReplies
             force ? ForceMark : mergedInto is { } into ? $"[cannot undo: merged into {into}]" : UndoMark);
 
     /// <summary>A slot move's report: {route}, then its targets, and a refused move as a problem with its index.</summary>
-    internal static JObject SlotReport(IReadOnlyList<ReportTarget> targets, IReadOnlyList<ReportProblem> problems) =>
+    internal static ReportReply SlotReport(IReadOnlyList<ReportTarget> targets, IReadOnlyList<ReportProblem> problems) =>
         Report.Of(targets, new JObject { ["route"] = ItemMoveRoutes.Slot }, problems);
 
     /// <summary>
     /// A deposit's report (into a vault or a silo): every thing it would store, [id, name, held -> left in its source],
     /// and every refused one a problem; the body is the reply without items.
     /// </summary>
-    internal static JObject DepositReport(JObject reply)
+    internal static ReportReply DepositReport(JObject reply)
     {
         List<ReportTarget> targets = new List<ReportTarget>();
         List<ReportProblem> problems = new List<ReportProblem>();
@@ -75,7 +75,7 @@ internal static class ItemMoveReplies
     /// A move from vault to vault's report: every line it would move, on the source vault [vault, "vault (line)",
     /// before -> after], and every refused line a problem; the body is the reply without items.
     /// </summary>
-    internal static JObject TransferReport(JObject reply)
+    internal static ReportReply TransferReport(JObject reply)
     {
         string? vault = (string?)reply["from_vault"]?["reference_id"];
         string? vaultName = (string?)reply["from_vault"]?["display_name"];
@@ -101,7 +101,7 @@ internal static class ItemMoveReplies
     /// A move out of a store's report: the store it takes from, [store, "store (thing)", stock before -> after]; the
     /// body is the whole reply (where the items would go, and the stock).
     /// </summary>
-    internal static JObject TakeReport(JObject reply, string storeKey)
+    internal static ReportReply TakeReport(JObject reply, string storeKey)
     {
         JToken? stock = reply["stock"] is JArray lines && lines.Count > 0 ? lines[0] : reply["stock"];
         string thing = (string?)stock?["display_name"] ?? (string?)stock?["prefab_name"] ?? (string?)stock?["reagent"] ??

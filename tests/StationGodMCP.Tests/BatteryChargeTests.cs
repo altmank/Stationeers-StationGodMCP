@@ -144,7 +144,7 @@ public sealed class BatteryChargeTests
             new BatteryResult.Refused(1, new ThingId(102), ApiErrors.Refused("not_a_battery", "Wall 102 stores no power."))
         };
 
-        JObject report = BatteryReplies.Reported(ChargeGoal.Full, null, results, "[undo]");
+        JObject report = Replies.Tree(BatteryReplies.Reported(ChargeGoal.Full, null, results, "[undo]"));
 
         Assert.Equal(new List<string>
         {

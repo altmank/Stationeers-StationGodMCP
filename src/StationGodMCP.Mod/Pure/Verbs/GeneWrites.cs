@@ -49,11 +49,11 @@ internal static class GeneReplies
     private const string ResultsKey = "results";
 
     internal static JObject Acted(GeneSetHeader header, BatchResultView results) =>
-        JObject.FromObject(new GenesWrittenView(header, results), ApiJson.Fresh());
+        JObject.FromObject(new GenesWrittenView(header, results), ApiJson.Serializer);
 
-    internal static JObject Reported(GeneSetHeader header, BatchResultView results, string undoMark)
+    internal static ReportReply Reported(GeneSetHeader header, BatchResultView results, string undoMark)
     {
-        JsonSerializer serializer = ApiJson.Fresh();
+        JsonSerializer serializer = ApiJson.Serializer;
         string plant = header.Thing.ReferenceId.ToString();
         List<ReportTarget> targets = new List<ReportTarget>(results.Results.Count);
         List<ReportProblem> problems = new List<ReportProblem>();

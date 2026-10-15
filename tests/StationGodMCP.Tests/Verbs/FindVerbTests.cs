@@ -186,7 +186,7 @@ public sealed class FindVerbTests
         rows.Add("5", () => new JObject { ["room_id"] = "77" });
         rows.Add("6", () => throw new ApiException("not_in_room", "Thing 6 is in no closed room."));
 
-        JObject reply = rows.Reply(ReplyFields.Of(("local_player_room_id", null)));
+        JObject reply = Replies.Tree(rows.Reply(ReplyFields.Of(("local_player_room_id", null))));
 
         Assert.Equal(JTokenType.Null, reply["local_player_room_id"]!.Type);
         Assert.Equal("77", (string?)reply["results"]![0]!["room_id"]);
@@ -198,7 +198,7 @@ public sealed class FindVerbTests
     [Fact]
     public void TheFieldWriterKeepsTheDeclaredOrderAndWritesNullAsNull()
     {
-        JObject reply = ReplyFields.Of(("pads", new List<int> { 1, 2 }), ("count", 2), ("search", null));
+        JObject reply = Replies.Tree(ReplyFields.Of(("pads", new List<int> { 1, 2 }), ("count", 2), ("search", null)));
 
         Assert.Equal(new[] { "pads", "count", "search" }, reply.Properties().Select(key => key.Name));
         Assert.Equal(JTokenType.Null, reply["search"]!.Type);

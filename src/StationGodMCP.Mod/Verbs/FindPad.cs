@@ -20,7 +20,7 @@ internal static class FindPad
     internal static VerbOutcome Run(FindPadOptions options)
     {
         List<LandingPadView> pads = LandingPads.All();
-        JsonSerializer serializer = ApiJson.Fresh();
+        JsonSerializer serializer = ApiJson.Serializer;
         return new VerbOutcome.Answered(ListReply.Of("pads", pads, Paging.All,
             pad => JToken.FromObject(pad, serializer)));
     }

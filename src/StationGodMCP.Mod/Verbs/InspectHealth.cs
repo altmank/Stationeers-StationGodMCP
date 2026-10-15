@@ -79,7 +79,7 @@ internal static class InspectHealth
             : null;
 
     // HealthNetwork's keys: the page of things, the network's facts, then cursor_id while the walk has more.
-    private static Newtonsoft.Json.Linq.JObject Reply(Page<HealthView> page, string? cursorId, NetworkHealthFacts facts) =>
+    private static ReplyObject Reply(Page<HealthView> page, string? cursorId, NetworkHealthFacts facts) =>
         ThingListReply.Of("things", page, cursorId, ("network_id", facts.NetworkId), ("kind", facts.Kind),
             ("pieces", facts.Pieces), ("damaged_only", facts.DamagedOnly), ("warning", facts.Broken.Warning),
             ("broken_neighbour_count", facts.Broken.Count), ("broken_neighbours", facts.Broken.OrNull));

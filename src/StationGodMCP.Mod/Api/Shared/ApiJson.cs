@@ -1,5 +1,6 @@
 #nullable enable
 
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -19,9 +20,14 @@ internal static class ApiJson
 {
     internal static readonly JsonSerializerSettings Settings = Create();
 
-    // Built once from Settings and never reconfigured. Used on the main thread only (ApiHost.Serialize); the listener
-    // threads' few replies (game_timeout, the TCP handshake) use WriteFresh.
-    private static readonly JsonSerializer Shared = JsonSerializer.CreateDefault(Settings);
+    [ThreadStatic]
+    private static JsonSerializer? _serializer;
+
+    /// <summary>
+    /// This thread's serializer over Settings, built once per thread and never reconfigured: the game thread's, each
+    /// connection writer's. A serializer is not shared between threads; one is never made per call.
+    /// </summary>
+    internal static JsonSerializer Serializer => _serializer ??= JsonSerializer.CreateDefault(Settings);
 
     /// <summary>
     /// A reply as JSON text, byte for byte what JsonConvert.SerializeObject(reply, Settings) writes, through one shared
@@ -32,8 +38,8 @@ internal static class ApiJson
         StringWriter text = new StringWriter(new StringBuilder(256), CultureInfo.InvariantCulture);
         using (JsonTextWriter writer = new JsonTextWriter(text))
         {
-            writer.Formatting = Shared.Formatting;
-            Shared.Serialize(writer, reply, null);
+            writer.Formatting = Serializer.Formatting;
+            Serializer.Serialize(writer, reply, null);
         }
 
         return text.ToString();
@@ -48,8 +54,8 @@ internal static class ApiJson
         CharacterCount count = new CharacterCount();
         using (JsonTextWriter writer = new JsonTextWriter(count))
         {
-            writer.Formatting = Shared.Formatting;
-            Shared.Serialize(writer, value, null);
+            writer.Formatting = Serializer.Formatting;
+            Serializer.Serialize(writer, value, null);
         }
 
         return count.Characters;
@@ -59,11 +65,11 @@ internal static class ApiJson
     /// A reply envelope as JSON text with its result shaped as it is written (ShapingJsonWriter). Without anything to
     /// leave out the text is byte for byte WriteShared's. Main thread only.
     /// </summary>
-    internal static ShapedText WriteShaped(object reply, ShapeRequest shape) => WriteShaped(Shared, reply, shape, ShapingRoot.Envelope);
+    internal static ShapedText WriteShaped(object reply, ShapeRequest shape) => WriteShaped(Serializer, reply, shape, ShapingRoot.Envelope);
 
     /// <summary>A call's reply: shaped, with the handler's truncation notes, and truncated always written.</summary>
     internal static ShapedText WriteReply(object reply, ShapeRequest shape, IReadOnlyList<Truncation> truncations) =>
-        WriteShaped(Shared, reply, shape, ShapingRoot.Envelope, truncations, announce: true);
+        WriteShaped(Serializer, reply, shape, ShapingRoot.Envelope, truncations, announce: true);
 
     /// <summary>
     /// As WriteShaped, through the given serializer and with the result where root says. When fields selectors matched
@@ -95,9 +101,6 @@ internal static class ApiJson
 
         return new ShapedText(text.ToString(), outcome);
     }
-
-    /// <summary>A serializer of its own over Settings, for callers off the main thread (tests).</summary>
-    internal static JsonSerializer Fresh() => JsonSerializer.CreateDefault(Settings);
 
     // The settings the serializer sets on a writer it is given, set here on the writer that formats behind the
     // shaping one, so both write the same text.

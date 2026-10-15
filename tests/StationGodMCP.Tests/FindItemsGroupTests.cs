@@ -134,11 +134,10 @@ public sealed class FindItemsGroupTests(ITestOutputHelper output)
     // find item's reply: one page of 500 under items, with the player measured from.
     private static string Page(List<IFoundItemView> entries)
     {
-        JsonSerializer serializer = ApiJson.Fresh();
-        return ListReply.Of("items", entries, new Pure.Verbs.Paging(500, 0, ListOrder.Nearest),
-                entry => JToken.FromObject(entry, serializer),
-                ReplyFields.Of(("local_player", new LocalPlayerView(new ThingId(1), "Player", new PositionView(593, 211, 627)))))
-            .ToString(Formatting.None);
+        JsonSerializer serializer = ApiJson.Serializer;
+        return ApiJson.WriteShared(ListReply.Of("items", entries, new Pure.Verbs.Paging(500, 0, ListOrder.Nearest),
+            entry => JToken.FromObject(entry, serializer),
+            ReplyFields.Of(("local_player", new LocalPlayerView(new ThingId(1), "Player", new PositionView(593, 211, 627))))));
     }
 
     private static FoundGroupFacts Facts(long? holder, string prefab) =>

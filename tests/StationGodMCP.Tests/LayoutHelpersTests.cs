@@ -260,7 +260,7 @@ public sealed class MoveGasReportAndLabelTests
     {
         MoveGasView view = new MoveGasView(null, MoveGasView.Queued, true, true, null, null,
             new List<MovedGasView> { new MovedGasView("Oxygen", 10.0, 2000.0) }, null);
-        JObject json = StationGodMCP.Pure.Verbs.GasReplies.Reported(view, "[cannot undo: gas move]");
+        JObject json = Replies.Tree(StationGodMCP.Pure.Verbs.GasReplies.Reported(view, "[cannot undo: gas move]"));
         Assert.Null(json["transfer_id"]);
         Assert.Null(json["status"]);
         Assert.True((bool)json["report_only"]!);

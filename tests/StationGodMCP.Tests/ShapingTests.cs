@@ -221,7 +221,7 @@ public sealed class ShapingTests
         CallReplyView reply = CallReplyView.Of("r8", ShapingChecks.Parse("""{"id":"x","source":"long"}"""), true, 0.5, 0.25, 3, false);
         ShapeRequest shape = ShapeRequest.Lenient(JObject.Parse("""{"omit":["source","id"]}"""))!;
 
-        string text = ApiJson.WriteShaped(ApiJson.Fresh(), reply, shape, ShapingRoot.Envelope).Json;
+        string text = ApiJson.WriteShaped(ApiJson.Serializer, reply, shape, ShapingRoot.Envelope).Json;
 
         Assert.Equal("""{"type":"reply","id":"r8","ok":true,"shaped":true,"result":{},"elapsed_ms":0.5,"queue_ms":0.25,"frame":3}""", text);
     }
@@ -439,7 +439,7 @@ public sealed class ShapingTests
     {
         CallReplyView reply = CallReplyView.Of("r7", ShapingChecks.Parse("""{"things":[{"a":1,"b":2}],"count":1}"""), true, 0.5, 0.25, 3, false);
 
-        string text = ApiJson.WriteShaped(ApiJson.Fresh(), reply, ShapingChecks.Fields(new[] { "a" }), ShapingRoot.Envelope).Json;
+        string text = ApiJson.WriteShaped(ApiJson.Serializer, reply, ShapingChecks.Fields(new[] { "a" }), ShapingRoot.Envelope).Json;
 
         Assert.Equal("""{"type":"reply","id":"r7","ok":true,"shaped":true,"result":{"things":[{"a":1}],"count":1},"elapsed_ms":0.5,"queue_ms":0.25,"frame":3}""", text);
     }

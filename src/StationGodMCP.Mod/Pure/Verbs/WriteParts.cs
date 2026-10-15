@@ -41,7 +41,7 @@ internal static class WriteParts
 
     private static VerbOutcome Act(IReadOnlyList<string> parts, IReadOnlyList<Func<object>> acts)
     {
-        JsonSerializer serializer = ApiJson.Fresh();
+        JsonSerializer serializer = ApiJson.Serializer;
         JObject reply = new JObject();
         for (int index = 0; index < parts.Count; index++)
         {

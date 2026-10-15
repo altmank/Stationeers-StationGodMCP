@@ -258,8 +258,7 @@ internal static class LogicWriteReplies
     /// <summary>The acting answer: one write's reply or refusal, or every write's row.</summary>
     internal static VerbOutcome Acted(string gatewayId, IReadOnlyList<LogicWriteResult> results, bool answersRows)
     {
-        JsonSerializer serializer = ApiJson.Fresh();
-        JObject top = new JObject { ["gateway_id"] = gatewayId };
+        ReplyObject top = new ReplyObject().Add("gateway_id", gatewayId);
         if (!answersRows && results.Count == 1)
         {
             switch (results[0])
@@ -267,14 +266,9 @@ internal static class LogicWriteReplies
                 case LogicWriteResult.Failed failed:
                     return new VerbOutcome.Refused(failed.Error);
                 case LogicWriteResult.Written written:
-                    JObject one = (JObject)top.DeepClone();
-                    foreach (JProperty key in Payload(written.Write.Checked, written.Write.CurrentValue, serializer)
-                                 .Properties())
-                    {
-                        one[key.Name] = key.Value;
-                    }
-
-                    AddChecks(one, results, serializer);
+                    ReplyObject one = new ReplyObject().Spread(top)
+                        .Spread(Payload(written.Write.Checked, written.Write.CurrentValue));
+                    AddChecks(one, results);
                     return new VerbOutcome.Answered(one);
             }
         }
@@ -286,7 +280,7 @@ internal static class LogicWriteReplies
             {
                 case LogicWriteResult.Written written:
                     rows.Succeeded(written.Write.Checked.ReferenceId.ToString(),
-                        Payload(written.Write.Checked, written.Write.CurrentValue, serializer));
+                        Payload(written.Write.Checked, written.Write.CurrentValue));
                     break;
                 case LogicWriteResult.Failed failed:
                     rows.Failed(failed.Id, failed.Error);
@@ -294,15 +288,15 @@ internal static class LogicWriteReplies
             }
         }
 
-        JObject reply = rows.Reply(top);
-        AddChecks(reply, results, serializer);
+        ReplyObject reply = rows.Reply(top);
+        AddChecks(reply, results);
         return new VerbOutcome.Answered(reply);
     }
 
     /// <summary>The report: every checked write a target, every refused one a problem, and the writes' warnings.</summary>
-    internal static JObject Reported(string gatewayId, IReadOnlyList<LogicWriteResult> results)
+    internal static ReportReply Reported(string gatewayId, IReadOnlyList<LogicWriteResult> results)
     {
-        JsonSerializer serializer = ApiJson.Fresh();
+        JsonSerializer serializer = ApiJson.Serializer;
         List<ReportTarget> targets = new List<ReportTarget>();
         List<ReportProblem> problems = new List<ReportProblem>();
         foreach (LogicWriteResult result in results)
@@ -322,8 +316,8 @@ internal static class LogicWriteReplies
             }
         }
 
-        JObject body = new JObject { ["gateway_id"] = gatewayId };
-        AddChecks(body, results, serializer);
+        ReplyObject body = new ReplyObject().Add("gateway_id", gatewayId);
+        AddChecks(body, results);
         return Report.Of(targets, body, problems);
     }
 
@@ -331,26 +325,24 @@ internal static class LogicWriteReplies
         $"{name ?? "?"} ({type.Name ?? type.Id.ToString(System.Globalization.CultureInfo.InvariantCulture)})";
 
     // {reference_id, logic_type, requested_value, previous_value, current_value, driven_by?}
-    private static JObject Payload(LogicWriteChecked write, double? current, JsonSerializer serializer)
+    private static ReplyObject Payload(LogicWriteChecked write, double? current)
     {
-        JObject payload = new JObject
-        {
-            ["reference_id"] = write.ReferenceId.ToString(),
-            ["logic_type"] = JToken.FromObject(write.LogicType, serializer),
-            ["requested_value"] = write.RequestedValue,
-            ["previous_value"] = ReplyFields.Value(write.PreviousValue, serializer),
-            ["current_value"] = ReplyFields.Value(current, serializer)
-        };
+        ReplyObject payload = new ReplyObject()
+            .Add("reference_id", write.ReferenceId.ToString())
+            .Add("logic_type", write.LogicType)
+            .Add("requested_value", write.RequestedValue)
+            .Add("previous_value", write.PreviousValue)
+            .Add("current_value", current);
         if (write.DrivenBy != null)
         {
-            payload["driven_by"] = JToken.FromObject(write.DrivenBy, serializer);
+            payload.Add("driven_by", write.DrivenBy);
         }
 
         return payload;
     }
 
     // The writes' warnings, each with its index in a list, and passed: ["lint"] when allow let a lint problem through.
-    private static void AddChecks(JObject reply, IReadOnlyList<LogicWriteResult> results, JsonSerializer serializer)
+    private static void AddChecks(ReplyObject reply, IReadOnlyList<LogicWriteResult> results)
     {
         List<BuildIssueView> warnings = new List<BuildIssueView>();
         bool passed = false;
@@ -371,12 +363,12 @@ internal static class LogicWriteReplies
 
         if (warnings.Count > 0)
         {
-            reply["warnings"] = JToken.FromObject(warnings, serializer);
+            reply.Add("warnings", warnings);
         }
 
         if (passed)
         {
-            reply["passed"] = new JArray(WriteLint.Guard);
+            reply.Add("passed", new[] { WriteLint.Guard });
         }
     }
 }

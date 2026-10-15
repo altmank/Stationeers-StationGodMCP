@@ -49,5 +49,5 @@ internal static class InspectVault
 internal static class Answer
 {
     internal static VerbOutcome Of(object view) =>
-        new VerbOutcome.Answered(IdAnswers.Payload(view, ApiJson.Fresh()));
+        new VerbOutcome.Answered(view);
 }

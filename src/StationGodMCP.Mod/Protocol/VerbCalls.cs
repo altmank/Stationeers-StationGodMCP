@@ -68,18 +68,9 @@ internal sealed class VerbNotes
         _gasHold = GasHoldReply.Take() ?? _gasHold;
     }
 
-    /// <summary>The reply with gas_hold added when the run met one.</summary>
-    internal JObject Attach(JObject reply)
-    {
-        if (_gasHold == null)
-        {
-            return reply;
-        }
-
-        JObject noted = (JObject)reply.DeepClone();
-        noted["gas_hold"] = JToken.FromObject(_gasHold, ApiJson.Fresh());
-        return noted;
-    }
+    /// <summary>The reply with gas_hold added when the run met one (its keys spread, nothing copied).</summary>
+    internal object Attach(object reply) =>
+        _gasHold == null ? reply : new ReplyObject().Spread(reply).Add("gas_hold", _gasHold);
 }
 
 /// <summary>
@@ -130,6 +121,11 @@ internal static class VerbCalls
         long started = Stopwatch.GetTimestamp();
         bool ok;
         string json;
+        if (outcome is VerbOutcome.Answered { Reply: IReplyForm form })
+        {
+            outcome = Handled(() => new VerbOutcome.Answered(form.Form(ApiJson.Serializer)));
+        }
+
         switch (outcome)
         {
             case VerbOutcome.Answered answered:
@@ -175,7 +171,7 @@ internal static class VerbCalls
         catch (ApiException refused)
         {
             return new VerbOutcome.Refused(new VerbError(refused.Code, refused.Message,
-                refused.Details == null ? null : JToken.FromObject(refused.Details, ApiJson.Fresh())));
+                refused.Details == null ? null : JToken.FromObject(refused.Details, ApiJson.Serializer)));
         }
         catch (GameChangedException changed)
         {

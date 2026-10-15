@@ -153,7 +153,7 @@ internal static class FinishReplies
     /// <summary>The call acted: the rows, or one id's own step as the what's single shape.</summary>
     internal static VerbOutcome Acted(PerIdList ids, IReadOnlyList<FinishResult> results)
     {
-        JsonSerializer serializer = ApiJson.Fresh();
+        JsonSerializer serializer = ApiJson.Serializer;
         Rows rows = new Rows();
         foreach (FinishResult result in results)
         {
@@ -175,9 +175,9 @@ internal static class FinishReplies
     }
 
     /// <summary>The report: the body (ready, free, from, materials, steps, warnings), every problem, and the targets.</summary>
-    internal static JObject Reported(IReadOnlyList<FinishResult> results, bool free, string mark)
+    internal static ReportReply Reported(IReadOnlyList<FinishResult> results, bool free, string mark)
     {
-        JsonSerializer serializer = ApiJson.Fresh();
+        JsonSerializer serializer = ApiJson.Serializer;
         List<ReportTarget> targets = new List<ReportTarget>();
         List<ReportProblem> problems = new List<ReportProblem>();
         List<JObject> steps = new List<JObject>();

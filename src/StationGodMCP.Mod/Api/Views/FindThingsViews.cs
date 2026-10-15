@@ -30,9 +30,9 @@ internal static class FoundThings
 {
     internal const string List = "things";
 
-    internal static JObject Reply(Page<FoundThingView> page, int scanned, LocalPlayerView? localPlayer, string? cursorId)
+    internal static ReplyObject Reply(Page<FoundThingView> page, int scanned, LocalPlayerView? localPlayer, string? cursorId)
     {
-        JsonSerializer serializer = ApiJson.Fresh();
+        JsonSerializer serializer = ApiJson.Serializer;
         JObject rest = new JObject
         {
             ["scanned"] = scanned,

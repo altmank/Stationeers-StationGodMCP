@@ -55,7 +55,7 @@ public sealed class FinishStepTests
         return step;
     }
 
-    private static JObject Reply(VerbOutcome outcome) => ((VerbOutcome.Answered)outcome).Reply;
+    private static JObject Reply(VerbOutcome outcome) => Replies.Tree(((VerbOutcome.Answered)outcome).Reply);
 
     // ---- the call ----
 
@@ -181,7 +181,7 @@ public sealed class FinishStepTests
         Assert.False((bool)rows["results"]![0]!["ok"]!);
         Assert.Equal("not_enough_materials", (string?)rows["results"]![0]!["error"]!["code"]);
 
-        JObject report = FinishReplies.Reported(results, free: false, "[cannot undo: change job]");
+        JObject report = Replies.Tree(FinishReplies.Reported(results, free: false, "[cannot undo: change job]"));
         Assert.False((bool)report["ready"]!);
         Assert.Equal(0, (int)report["problems"]![0]!["index"]!);
         Assert.Equal("not_enough_materials", (string?)report["problems"]![0]!["code"]);
@@ -199,7 +199,7 @@ public sealed class FinishStepTests
             new FinishResult.Stepped(Step(1, 12, 1, 2, 2, quantity: 3, paidByPlayer: true))
         };
 
-        JObject report = FinishReplies.Reported(results, free: false, "[cannot undo: change job]");
+        JObject report = Replies.Tree(FinishReplies.Reported(results, free: false, "[cannot undo: change job]"));
 
         Assert.Equal(new[] { "ready", "free", "from", "materials", "steps", "warnings", "problems", "report_only", "targets" },
             report.Properties().Select(key => key.Name).ToArray());
@@ -220,9 +220,9 @@ public sealed class FinishStepTests
     [Fact]
     public void AFreeReportTakesNoMaterialsAndHasNoSource()
     {
-        JObject report = FinishReplies.Reported(
+        JObject report = Replies.Tree(FinishReplies.Reported(
             new List<FinishResult> { new FinishResult.Stepped(Step(0, 11, 0, 1, 2, available: null, sourced: false)) },
-            free: true, "[cannot undo: change job]");
+            free: true, "[cannot undo: change job]"));
 
         Assert.True((bool)report["free"]!);
         Assert.Equal(JTokenType.Null, report["from"]!.Type);
@@ -232,7 +232,7 @@ public sealed class FinishStepTests
     [Fact]
     public void NoStepAtAllIsAReadyReportWithNothingInIt()
     {
-        JObject report = FinishReplies.Reported(new List<FinishResult>(), free: false, "[cannot undo: change job]");
+        JObject report = Replies.Tree(FinishReplies.Reported(new List<FinishResult>(), free: false, "[cannot undo: change job]"));
 
         Assert.True((bool)report["ready"]!);
         Assert.Empty((JArray)report["targets"]!);

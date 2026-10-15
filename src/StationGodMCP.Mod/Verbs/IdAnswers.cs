@@ -29,10 +29,9 @@ internal static class IdAnswers
     internal static VerbOutcome Of(PerIdList ids, Func<string, (string ReferenceId, object View)> read,
         JObject? top = null)
     {
-        JsonSerializer serializer = ApiJson.Fresh();
         if (!ids.AnswersRows)
         {
-            return new VerbOutcome.Answered(Payload(read(ids.Ids[0]).View, serializer));
+            return new VerbOutcome.Answered(read(ids.Ids[0]).View);
         }
 
         Rows rows = new Rows();
@@ -46,17 +45,13 @@ internal static class IdAnswers
             catch (ApiException refused)
             {
                 rows.Failed(id, new VerbError(refused.Code, refused.Message,
-                    refused.Details == null ? null : JToken.FromObject(refused.Details, serializer)));
+                    refused.Details == null ? null : JToken.FromObject(refused.Details, ApiJson.Serializer)));
                 continue;
             }
 
-            rows.Succeeded(found.ReferenceId, Payload(found.View, serializer));
+            rows.Succeeded(found.ReferenceId, found.View);
         }
 
         return new VerbOutcome.Answered(rows.Reply(top));
     }
-
-    /// <summary>A view as a reply object, in the reply views' names.</summary>
-    internal static JObject Payload(object view, JsonSerializer serializer) =>
-        view as JObject ?? JObject.FromObject(view, serializer);
 }

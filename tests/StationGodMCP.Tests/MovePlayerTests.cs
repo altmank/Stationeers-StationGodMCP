@@ -270,7 +270,7 @@ public sealed class MovePlayerTests
             new PlaceView(new PositionView(0, 0, 0), null, null), new PlaceView(new PositionView(1, 0, 0), null, null),
             new MoveDestinationView("at", null, false), 1.0, null);
 
-        JObject report = PlayerMoveReplies.Reported(view, "[cannot undo: player move]");
+        JObject report = Replies.Tree(PlayerMoveReplies.Reported(view, "[cannot undo: player move]"));
 
         Assert.Null(report["note"]);
         Assert.Null(report["dry_run"]);

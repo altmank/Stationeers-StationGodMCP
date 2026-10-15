@@ -54,7 +54,7 @@ internal static class FindFrame
             (page, cursorId, counts) => Reply(page, cursorId, counts!, includeInner, origin));
     }
 
-    private static JObject Reply(Page<FrameView> page, string? cursorId, FrameCounts counts, bool includeInner,
+    private static ReplyObject Reply(Page<FrameView> page, string? cursorId, FrameCounts counts, bool includeInner,
         PlayerOrigin origin) =>
         ThingListReply.Of(List, page, cursorId, ("total_frames", counts.TotalFrames),
             ("total_outer", counts.TotalOuter), ("include_inner", includeInner), ("local_player", origin.View));

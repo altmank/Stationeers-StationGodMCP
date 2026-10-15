@@ -101,8 +101,8 @@ public sealed class InventoryWireTests
                 new PrefabTotalView(null, "Iron", "Iron", 0, new PlaceAmounts(30.0, 0.0, 0.0, 0.0, 30.0, 0.0),
                     new List<HolderTotalView>())
             };
-        JObject view = ReplyFields.Of(("totals", totals), ("prefab_count", 2), ("item_count", 1),
-            ("machine_stock_entries", 2), ("silo_entries", 0));
+        JObject view = Replies.Tree(ReplyFields.Of(("totals", totals), ("prefab_count", 2), ("item_count", 1),
+            ("machine_stock_entries", 2), ("silo_entries", 0)));
         var expected = new
         {
             totals = new List<object>

@@ -62,7 +62,7 @@ internal static class FindDamaged
             Cost, (page, cursorId, counts) => Reply(page, cursorId, counts!, minimum, origin));
     }
 
-    private static JObject Reply(Page<HealthView> page, string? cursorId, DamageCounts counts, double minimum,
+    private static ReplyObject Reply(Page<HealthView> page, string? cursorId, DamageCounts counts, double minimum,
         PlayerOrigin origin) =>
         ThingListReply.Of(List, page, cursorId, ("structures", counts.Structures), ("broken", counts.Broken),
             ("scanned", counts.Scanned), ("min_damage_ratio", minimum), ("local_player", origin.View));

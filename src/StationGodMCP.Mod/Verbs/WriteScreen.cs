@@ -28,6 +28,6 @@ internal static class WriteScreen
 
         DeviceScope scope = Devices.Scope(options.Gateway);
         IcTarget holder = CircuitHolders.Require(scope, TargetIds.Of(options.Selector.Ids!.Ids[0], label));
-        return new VerbOutcome.Answered(IdAnswers.Payload(Screens.Press(holder, press), ApiJson.Fresh()));
+        return new VerbOutcome.Answered(Screens.Press(holder, press));
     }
 }

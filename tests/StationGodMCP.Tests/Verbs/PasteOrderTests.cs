@@ -93,7 +93,7 @@ public sealed class PasteOrderTests
         BlueprintPasteReportView body = new BlueprintPasteReportView(
             new BlueprintFileView(@"C:\Blueprints\airlock.blueprint", 2), new[] { 700.0, 202.0, 660.0 }, 90, 180f, 2.0);
 
-        JObject report = PasteReplies.Reported(pieces, body, "[undo] the newest paste only");
+        JObject report = Replies.Tree(PasteReplies.Reported(pieces, body, "[undo] the newest paste only"));
 
         Assert.True((bool)report["report_only"]!);
         Assert.Empty(report["problems"]!);
@@ -124,10 +124,10 @@ public sealed class PasteOrderTests
 
         VerbOutcome.Answered answered = Assert.IsType<VerbOutcome.Answered>(outcome);
         Assert.Equal(0, acts);
-        Assert.True((bool)answered.Reply["report_only"]!);
-        Assert.Equal("paste_refused", (string?)answered.Reply["problems"]![0]!["code"]);
+        Assert.True((bool)Replies.Tree(answered.Reply)["report_only"]!);
+        Assert.Equal("paste_refused", (string?)Replies.Tree(answered.Reply)["problems"]![0]!["code"]);
         Assert.Equal("Another paste is still placing (12 pieces created so far); nothing was started.",
-            (string?)answered.Reply["problems"]![0]!["message"]);
+            (string?)Replies.Tree(answered.Reply)["problems"]![0]!["message"]);
     }
 
     private static ReportConfirm Reporting { get; } = new ReportConfirm(true, false, null);

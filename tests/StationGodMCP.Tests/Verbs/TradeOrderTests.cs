@@ -245,8 +245,8 @@ public sealed class TradeOrderTests
     [Fact]
     public void AOneIdReportNamesTheContactAndTheCard()
     {
-        JObject report = TradeReplies.Reported(
-            new List<TradeResult> { Traded(id: 7, creditsAfter: 90f) }, asList: false, "[cannot undo: trade]");
+        JObject report = Replies.Tree(TradeReplies.Reported(
+            new List<TradeResult> { Traded(id: 7, creditsAfter: 90f) }, asList: false, "[cannot undo: trade]"));
 
         Assert.True((bool)report["report_only"]!);
         Assert.Empty(report["problems"]!);
@@ -271,7 +271,7 @@ public sealed class TradeOrderTests
                 new VerbError("not_landed", "This trader is not landed at a pad; no trader is landed."))
         };
 
-        JObject report = TradeReplies.Reported(results, asList: true, "[cannot undo: trade]");
+        JObject report = Replies.Tree(TradeReplies.Reported(results, asList: true, "[cannot undo: trade]"));
 
         Assert.True((bool)report["report_only"]!);
         Assert.Equal(2, ((JArray)report["targets"]!).Count);
@@ -292,18 +292,18 @@ public sealed class TradeOrderTests
 
         VerbOutcome.Answered one = Assert.IsType<VerbOutcome.Answered>(
             TradeReplies.Acted(Ids("7", asList: false), results));
-        Assert.Equal("7", (string?)one.Reply["reference_id"]);
-        Assert.Equal("Gas Trader", (string?)one.Reply["name"]);
-        Assert.Equal(90f, (float)one.Reply["credits_after"]!);
-        Assert.Null(one.Reply["ok"]);
+        Assert.Equal("7", (string?)Replies.Tree(one.Reply)["reference_id"]);
+        Assert.Equal("Gas Trader", (string?)Replies.Tree(one.Reply)["name"]);
+        Assert.Equal(90f, (float)Replies.Tree(one.Reply)["credits_after"]!);
+        Assert.Null(Replies.Tree(one.Reply)["ok"]);
 
         VerbOutcome.Answered many = Assert.IsType<VerbOutcome.Answered>(
             TradeReplies.Acted(Ids("7", asList: true), results));
-        Assert.Equal(1, (int)many.Reply["count"]!);
-        Assert.Equal(1, (int)many.Reply["success_count"]!);
-        Assert.Equal(0, (int)many.Reply["error_count"]!);
-        Assert.Equal("7", (string?)many.Reply["results"]![0]!["reference_id"]);
-        Assert.Equal(90f, (float)many.Reply["results"]![0]!["credits_after"]!);
+        Assert.Equal(1, (int)Replies.Tree(many.Reply)["count"]!);
+        Assert.Equal(1, (int)Replies.Tree(many.Reply)["success_count"]!);
+        Assert.Equal(0, (int)Replies.Tree(many.Reply)["error_count"]!);
+        Assert.Equal("7", (string?)Replies.Tree(many.Reply)["results"]![0]!["reference_id"]);
+        Assert.Equal(90f, (float)Replies.Tree(many.Reply)["results"]![0]!["credits_after"]!);
     }
 
     [Fact]
@@ -320,9 +320,9 @@ public sealed class TradeOrderTests
 
         VerbOutcome.Answered rows = Assert.IsType<VerbOutcome.Answered>(
             TradeReplies.Acted(Ids("7", asList: true), results));
-        Assert.Equal(0, (int)rows.Reply["success_count"]!);
-        Assert.Equal(1, (int)rows.Reply["error_count"]!);
-        Assert.Equal("not_landed", (string?)rows.Reply["results"]![0]!["error"]!["code"]);
+        Assert.Equal(0, (int)Replies.Tree(rows.Reply)["success_count"]!);
+        Assert.Equal(1, (int)Replies.Tree(rows.Reply)["error_count"]!);
+        Assert.Equal("not_landed", (string?)Replies.Tree(rows.Reply)["results"]![0]!["error"]!["code"]);
     }
 
     // ---- helpers ----

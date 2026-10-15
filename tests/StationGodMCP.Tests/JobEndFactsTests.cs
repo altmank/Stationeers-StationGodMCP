@@ -80,5 +80,5 @@ public sealed class JobEndFactsTests
         Assert.True(facts < 48 * 1024, $"facts {facts} bytes");
     }
 
-    private static JObject Wire(object view) => JObject.FromObject(view, ApiJson.Fresh());
+    private static JObject Wire(object view) => JObject.FromObject(view, ApiJson.Serializer);
 }

@@ -2,6 +2,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
 using System.Text;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -20,14 +22,15 @@ internal abstract class VerbOutcome
     {
     }
 
+    /// <summary>An answer: a view or a reply object (ReplyObject), plain data the reply's writer writes once.</summary>
     internal sealed class Answered : VerbOutcome
     {
-        internal Answered(JObject reply)
+        internal Answered(object reply)
         {
             Reply = reply;
         }
 
-        public JObject Reply { get; }
+        public object Reply { get; }
     }
 
     internal sealed class Refused : VerbOutcome
@@ -42,7 +45,7 @@ internal abstract class VerbOutcome
 
     /// <summary>
     /// The call goes on over later frames: Work is stepped in the scheduler's slice lane, and its Result is the call's
-    /// answer (an Answered or Refused outcome, or the reply object itself).
+    /// answer (an Answered or Refused outcome, or the reply itself).
     /// </summary>
     internal sealed class Pending : VerbOutcome
     {
@@ -72,40 +75,37 @@ internal abstract class VerbOutcome
         return Of(pending.Work.Result());
     }
 
-    /// <summary>A pending result's outcome: Answered or Refused as given, a reply object as Answered.</summary>
+    /// <summary>A pending result's outcome: Answered or Refused as given, any other reply as Answered.</summary>
     internal static VerbOutcome Of(object? result) => result switch
     {
         Answered answered => answered,
         Refused refused => refused,
-        JObject reply => new Answered(reply),
-        _ => throw new System.InvalidOperationException("A pending verb result is an answer, a refusal or a reply object.")
+        Pending => throw new System.InvalidOperationException("A pending verb result is an answer, a refusal or a reply."),
+        null => throw new System.InvalidOperationException("A pending verb result is an answer, a refusal or a reply."),
+        _ => new Answered(result)
     };
 }
 
 /// <summary>
 /// The per-id rows (PLAN 2.0; SPEC-NOTES 14): one row per id, in the order given, {index, ok, reference_id, payload}
 /// or {index, ok: false, reference_id, error}, and the counts count, success_count and error_count. A payload's keys go
-/// into its row.
+/// into its row (a spread: nothing is copied).
 /// </summary>
 internal sealed class Rows
 {
-    private readonly JArray _rows = new JArray();
+    private static readonly string[] RowKeys = { "index", "ok", "reference_id" };
+    private static readonly string[] Counted = { "index", "ok" };
+
+    private readonly List<ReplyObject> _rows = new List<ReplyObject>();
+    private readonly List<VerbError?> _errors = new List<VerbError?>();
     private int _succeeded;
 
     internal int Count => _rows.Count;
 
-    internal void Succeeded(string? referenceId, JObject payload)
+    internal void Succeeded(string? referenceId, object payload)
     {
-        JObject row = Start(referenceId, true);
-        foreach (JProperty key in payload.Properties())
-        {
-            if (key.Name is not ("index" or "ok" or "reference_id"))
-            {
-                row[key.Name] = key.Value.DeepClone();
-            }
-        }
-
-        _rows.Add(row);
+        _rows.Add(Start(referenceId, true).Spread(payload, RowKeys));
+        _errors.Add(null);
         _succeeded++;
     }
 
@@ -113,9 +113,9 @@ internal sealed class Rows
     /// One id's row from its read: the payload read gives, or, when read refuses (an ApiException), that refusal as the
     /// row's error.
     /// </summary>
-    internal void Add(string referenceId, System.Func<JObject> read)
+    internal void Add(string referenceId, System.Func<object> read)
     {
-        JObject payload;
+        object payload;
         try
         {
             payload = read();
@@ -131,58 +131,38 @@ internal sealed class Rows
 
     internal void Failed(string? referenceId, VerbError error)
     {
-        JObject row = Start(referenceId, false);
-        row["error"] = error.ToJson();
-        _rows.Add(row);
+        _rows.Add(Start(referenceId, false).Add("error", error.ToJson()));
+        _errors.Add(error);
     }
 
     /// <summary>{...top, results, count, success_count, error_count}: top's keys (gateway_id) first.</summary>
-    internal JObject Reply(JObject? top = null)
-    {
-        JObject reply = top != null ? (JObject)top.DeepClone() : new JObject();
-        reply["results"] = _rows.DeepClone();
-        reply["count"] = _rows.Count;
-        reply["success_count"] = _succeeded;
-        reply["error_count"] = _rows.Count - _succeeded;
-        return reply;
-    }
+    internal ReplyObject Reply(object? top = null) => new ReplyObject()
+        .Spread(top)
+        .Add("results", _rows)
+        .Add("count", _rows.Count)
+        .Add("success_count", _succeeded)
+        .Add("error_count", _rows.Count - _succeeded);
 
     /// <summary>
     /// The answer for the ids a call gave (D13, direct face): a list answers the rows; one id answers its row's
     /// payload as the what's single shape, or its error as the call's refusal.
     /// </summary>
-    internal VerbOutcome For(PerIdList ids, JObject? top = null)
+    internal VerbOutcome For(PerIdList ids, object? top = null)
     {
         if (ids.AnswersRows || _rows.Count != 1)
         {
             return new VerbOutcome.Answered(Reply(top));
         }
 
-        JObject row = (JObject)_rows[0];
-        if (row["error"] is JObject error)
-        {
-            return new VerbOutcome.Refused(new VerbError((string)error["code"]!, (string)error["message"]!,
-                error["data"]));
-        }
-
-        JObject single = top != null ? (JObject)top.DeepClone() : new JObject();
-        foreach (JProperty key in row.Properties())
-        {
-            if (key.Name is not ("index" or "ok"))
-            {
-                single[key.Name] = key.Value.DeepClone();
-            }
-        }
-
-        return new VerbOutcome.Answered(single);
+        return _errors[0] is { } error
+            ? new VerbOutcome.Refused(error)
+            : new VerbOutcome.Answered(new ReplyObject().Spread(top).Spread(_rows[0], Counted));
     }
 
-    private JObject Start(string? referenceId, bool ok) => new JObject
-    {
-        ["index"] = _rows.Count,
-        ["ok"] = ok,
-        ["reference_id"] = referenceId
-    };
+    private ReplyObject Start(string? referenceId, bool ok) => new ReplyObject()
+        .Add("index", _rows.Count)
+        .Add("ok", ok)
+        .Add("reference_id", referenceId);
 }
 
 /// <summary>
@@ -191,42 +171,35 @@ internal sealed class Rows
 /// </summary>
 internal static class ListReply
 {
-    internal static JObject Of<T>(string list, IReadOnlyList<T> entries, Paging paging, System.Func<T, JToken> entry,
-        JObject? rest = null) =>
+    internal static ReplyObject Of<T>(string list, IReadOnlyList<T> entries, Paging paging, System.Func<T, object?> entry,
+        object? rest = null) =>
         OfPage(list, paging.Of(entries), entry, rest);
 
     /// <summary>A page already cut (taken over frames, or from a walk's cursor), in the same shape.</summary>
-    internal static JObject OfPage<T>(string list, Page<T> page, System.Func<T, JToken> entry, JObject? rest = null)
+    internal static ReplyObject OfPage<T>(string list, Page<T> page, System.Func<T, object?> entry, object? rest = null)
     {
-        JArray shown = new JArray();
+        List<object?> shown = new List<object?>(page.Entries.Count);
         foreach (T item in page.Entries)
         {
             shown.Add(entry(item));
         }
 
-        JObject reply = new JObject
-        {
-            [list] = shown,
-            ["count"] = shown.Count,
-            ["total"] = page.Total,
-            ["offset"] = page.Offset
-        };
+        ReplyObject reply = new ReplyObject()
+            .Add(list, shown)
+            .Add("count", shown.Count)
+            .Add("total", page.Total)
+            .Add("offset", page.Offset);
         if (page.Limit is { } limit)
         {
-            reply["limit"] = limit;
+            reply.Add("limit", limit);
         }
 
-        reply["has_more"] = page.HasMore;
-        if (rest != null)
-        {
-            foreach (JProperty key in rest.Properties())
-            {
-                reply[key.Name] = key.Value.DeepClone();
-            }
-        }
-
-        return reply;
+        return reply.Add("has_more", page.HasMore).Spread(rest);
     }
+
+    /// <summary>A page whose entries are the views themselves.</summary>
+    internal static ReplyObject OfPage<T>(string list, Page<T> page, object? rest = null) =>
+        OfPage(list, page, static view => view, rest);
 }
 
 /// <summary>
@@ -235,13 +208,12 @@ internal static class ListReply
 /// </summary>
 internal static class ReplyFields
 {
-    internal static JObject Of(params (string Key, object? Value)[] fields)
+    internal static ReplyObject Of(params (string Key, object? Value)[] fields)
     {
-        Newtonsoft.Json.JsonSerializer serializer = ApiJson.Fresh();
-        JObject reply = new JObject();
+        ReplyObject reply = new ReplyObject(fields.Length);
         foreach ((string key, object? value) in fields)
         {
-            reply[key] = Value(value, serializer);
+            reply.Add(key, value);
         }
 
         return reply;
@@ -258,12 +230,14 @@ internal static class ReplyFields
 
 /// <summary>
 /// One report target (SPEC-NOTES 18): [id or cell, name, current -> new], with its undo mark, the guards lifted for it
-/// (PASSED) and what drives it (driven_by: a chip or writer that may write it back).
+/// (PASSED) and what drives it (driven_by: a chip or writer that may write it back). Its values are plain (a number, a
+/// string, a view, a list); it is written by its converter, its text made as it is written.
 /// </summary>
+[JsonConverter(typeof(ReportTargetConverter))]
 internal sealed class ReportTarget
 {
-    internal ReportTarget(string? id, JToken? cell, string? name, JToken? current, JToken? @new, string mark,
-        IReadOnlyList<string>? passed = null, JToken? drivenBy = null)
+    internal ReportTarget(string? id, object? cell, string? name, object? current, object? @new, string mark,
+        IReadOnlyList<string>? passed = null, object? drivenBy = null)
     {
         Id = id;
         Cell = cell;
@@ -277,58 +251,87 @@ internal sealed class ReportTarget
 
     public string? Id { get; }
 
-    public JToken? Cell { get; }
+    public object? Cell { get; }
 
     public string? Name { get; }
 
-    public JToken? Current { get; }
+    public object? Current { get; }
 
-    public JToken? New { get; }
+    public object? New { get; }
 
     public string Mark { get; }
 
     public IReadOnlyList<string>? Passed { get; }
 
-    public JToken? DrivenBy { get; }
+    public object? DrivenBy { get; }
 
-    internal JObject ToJson()
+    /// <summary>Kept whole in a report's summary form: a lifted guard or a driver.</summary>
+    internal bool KeptWhole => Passed is { Count: > 0 } || DrivenBy != null;
+
+    internal void WriteTo(JsonWriter writer, JsonSerializer serializer)
     {
-        JObject row = new JObject();
+        writer.WriteStartObject();
         if (Id != null)
         {
-            row["id"] = Id;
+            writer.WritePropertyName("id");
+            writer.WriteValue(Id);
         }
 
         if (Cell != null)
         {
-            row["cell"] = Cell.DeepClone();
+            writer.WritePropertyName("cell");
+            serializer.Serialize(writer, Cell);
         }
 
-        row["name"] = Name;
-        row["current"] = Current?.DeepClone();
-        row["new"] = New?.DeepClone();
-        row["undo"] = Mark;
+        writer.WritePropertyName("name");
+        writer.WriteValue(Name);
+        writer.WritePropertyName("current");
+        serializer.Serialize(writer, Current);
+        writer.WritePropertyName("new");
+        serializer.Serialize(writer, New);
+        writer.WritePropertyName("undo");
+        writer.WriteValue(Mark);
         if (Passed is { Count: > 0 })
         {
-            row["passed"] = new JArray(Passed);
+            writer.WritePropertyName("passed");
+            serializer.Serialize(writer, Passed);
         }
 
         if (DrivenBy != null)
         {
-            row["driven_by"] = DrivenBy.DeepClone();
+            writer.WritePropertyName("driven_by");
+            serializer.Serialize(writer, DrivenBy);
         }
 
-        row["text"] = Text();
-        return row;
+        writer.WritePropertyName("text");
+        writer.WriteValue(Text(serializer));
+        writer.WriteEndObject();
+    }
+
+    /// <summary>The summary form's [id or cell, name] pair.</summary>
+    internal void WritePair(JsonWriter writer, JsonSerializer serializer)
+    {
+        writer.WriteStartArray();
+        if (Id != null)
+        {
+            writer.WriteValue(Id);
+        }
+        else
+        {
+            serializer.Serialize(writer, Cell);
+        }
+
+        writer.WriteValue(Name);
+        writer.WriteEndArray();
     }
 
     /// <summary>"[id, name, current -> new] mark", then PASSED: the lifted guards.</summary>
-    internal string Text()
+    internal string Text(JsonSerializer serializer)
     {
         StringBuilder text = new StringBuilder();
-        text.Append('[').Append(Id ?? Cell?.ToString(Newtonsoft.Json.Formatting.None) ?? "?").Append(", ")
-            .Append(Name ?? "?").Append(", ").Append(Shown(Current)).Append(" -> ").Append(Shown(New)).Append("] ")
-            .Append(Mark);
+        text.Append('[').Append(Id ?? (Cell != null ? Compact(Cell, serializer) : "?")).Append(", ")
+            .Append(Name ?? "?").Append(", ").Append(Shown(Current, serializer)).Append(" -> ")
+            .Append(Shown(New, serializer)).Append("] ").Append(Mark);
         if (Passed is { Count: > 0 })
         {
             text.Append(" PASSED: ").Append(string.Join(", ", Passed));
@@ -337,14 +340,41 @@ internal sealed class ReportTarget
         return text.ToString();
     }
 
-    private static string Shown(JToken? value) => value switch
+    private static string Shown(object? value, JsonSerializer serializer) => value switch
     {
         null => "?",
-        { Type: JTokenType.Null } => "?",
-        { Type: JTokenType.String } => (string)value!,
-        { Type: JTokenType.Float } => ((double)value).ToString("R", System.Globalization.CultureInfo.InvariantCulture),
-        _ => value.ToString(Newtonsoft.Json.Formatting.None)
+        JToken { Type: JTokenType.Null } => "?",
+        JToken { Type: JTokenType.String } token => (string)token!,
+        JToken { Type: JTokenType.Float } token => ((double)token).ToString("R", CultureInfo.InvariantCulture),
+        string given => given,
+        double number => number.ToString("R", CultureInfo.InvariantCulture),
+        _ => Compact(value, serializer)
     };
+
+    private static string Compact(object value, JsonSerializer serializer)
+    {
+        StringWriter text = new StringWriter(CultureInfo.InvariantCulture);
+        using (JsonTextWriter writer = new JsonTextWriter(text))
+        {
+            serializer.Serialize(writer, value);
+        }
+
+        return text.ToString();
+    }
+}
+
+/// <summary>Writes a report target.</summary>
+internal sealed class ReportTargetConverter : JsonConverter
+{
+    public override bool CanRead => false;
+
+    public override bool CanConvert(Type objectType) => objectType == typeof(ReportTarget);
+
+    public override void WriteJson(JsonWriter writer, object? value, JsonSerializer serializer) =>
+        ((ReportTarget)value!).WriteTo(writer, serializer);
+
+    public override object ReadJson(JsonReader reader, Type objectType, object? existingValue, JsonSerializer serializer) =>
+        throw new NotSupportedException("A report target is only written.");
 }
 
 /// <summary>
@@ -361,41 +391,40 @@ internal sealed class ReportProblem
         Error = error;
     }
 
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public int? Index { get; }
 
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public string? ReferenceId { get; }
 
+    [JsonIgnore]
     public VerbError Error { get; }
 
-    internal JObject ToJson()
-    {
-        JObject problem = new JObject();
-        if (Index is { } index)
-        {
-            problem["index"] = index;
-        }
+    public string Code => Error.Code;
 
-        if (ReferenceId != null)
-        {
-            problem["reference_id"] = ReferenceId;
-        }
+    public string Message => Error.Message;
 
-        foreach (JProperty key in Error.ToJson().Properties())
-        {
-            problem[key.Name] = key.Value.DeepClone();
-        }
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public JToken? Data => Error.Data;
+}
 
-        return problem;
-    }
+/// <summary>
+/// A reply whose form is chosen when it is written (a report: whole, its summary form, or report_too_large): the
+/// writer asks for the form before it writes the call's reply, and a refusal it throws answers the call.
+/// </summary>
+internal interface IReplyForm
+{
+    /// <summary>The reply to write; throws ApiException when it is to be refused.</summary>
+    object Form(JsonSerializer serializer);
 }
 
 /// <summary>
 /// The one report shape (PLAN 2.0, direct write rule; SPEC-NOTES 18): what a write would do, nothing changed. The
-/// what's own report keys, then report_only: true and targets, every target listed whole. rows (ReportConfirm.Rows)
-/// cuts the what's own lists only, through Shown. A report over SummaryBytes answers its summary form (DESIGN 3.3):
-/// the what's own keys that are no list, every protected key in full, and each target as an [id, name] pair but those
-/// with a lifted guard or a driver, which stay whole. A summary form still over MostCharacters is too large for the
-/// client: report_too_large, with the target count and how to narrow it.
+/// what's own report keys, then report_only: true and targets, every target listed whole. A report over SummaryBytes
+/// answers its summary form (DESIGN 3.3): the what's own keys that are no list, every protected key in full, and each
+/// target as an [id, name] pair but those with a lifted guard or a driver, which stay whole. A summary form still over
+/// MostCharacters is too large for the client: report_too_large, with the target count and how to narrow it. The form
+/// is chosen where the reply is written (ReportReply), off the game's thread.
 /// </summary>
 internal static class Report
 {
@@ -409,101 +438,133 @@ internal static class Report
 
     internal const string TooLarge = "report_too_large";
 
+    /// <summary>
+    /// The report: body's keys, then problems (what the acting call would refuse, each with its entry; left out when
+    /// null), report_only: true and every target; its summary form when it is very large, chosen when it is written.
+    /// </summary>
+    internal static ReportReply Of(IReadOnlyList<ReportTarget> targets, object? body = null,
+        IReadOnlyList<ReportProblem>? problems = null) => new ReportReply(targets, body, problems);
+}
+
+/// <summary>A report (Report.Of): its parts as given; its form chosen when it is written.</summary>
+[JsonConverter(typeof(ReplyFormConverter))]
+internal sealed class ReportReply : IReplyForm
+{
     // The keys a report keeps whole, whatever its size (DESIGN 3.3, 3.4 rule 2).
     private static readonly string[] Protected = { "problems", "warnings", "will_burst", "gas_check", "passed" };
 
-    /// <summary>
-    /// The report: body's keys, then problems (what the acting call would refuse, each with its entry; left out when
-    /// null), report_only: true and every target; its summary form when it is very large. Throws report_too_large
-    /// when even the summary form is too large for the client.
-    /// </summary>
-    [Profiled]
-    internal static JObject Of(IReadOnlyList<ReportTarget> targets, JObject? body = null,
-        IReadOnlyList<ReportProblem>? problems = null)
+    internal ReportReply(IReadOnlyList<ReportTarget> targets, object? body, IReadOnlyList<ReportProblem>? problems)
     {
-        JObject whole = Whole(targets, body, problems);
-        if (Encoding.UTF8.GetByteCount(whole.ToString(Formatting.None)) <= SummaryBytes)
+        Targets = targets;
+        Body = body;
+        Problems = problems;
+    }
+
+    internal IReadOnlyList<ReportTarget> Targets { get; }
+
+    internal object? Body { get; }
+
+    internal IReadOnlyList<ReportProblem>? Problems { get; }
+
+    /// <summary>The whole report: body's keys, problems, report_only and every target.</summary>
+    internal ReplyObject Whole()
+    {
+        ReplyObject report = new ReplyObject().Spread(Body);
+        if (Problems != null)
+        {
+            report.Add("problems", Problems);
+        }
+
+        return report.Add("report_only", true).Add("targets", Targets);
+    }
+
+    public object Form(JsonSerializer serializer)
+    {
+        ReplyObject whole = Whole();
+        if (ReplyLength.Utf8Bytes(whole, serializer) <= Report.SummaryBytes)
         {
             return whole;
         }
 
-        JObject summary = Summary(whole, targets);
-        return summary.ToString(Formatting.None).Length <= MostCharacters
+        ReplyObject summary = Summary(serializer);
+        return ReplyLength.Characters(summary, serializer) <= Report.MostCharacters
             ? summary
-            : throw new ApiException(TooLarge,
-                $"The report lists {targets.Count} targets, more than the client takes even in its summary form; " +
+            : throw new ApiException(Report.TooLarge,
+                $"The report lists {Targets.Count} targets, more than the client takes even in its summary form; " +
                 "nothing changed. Narrow the target: a filter on the find, a smaller ref, fewer spread lines.",
                 new JObject
                 {
-                    ["targets"] = targets.Count,
-                    ["limit_tokens"] = ClientTokens,
+                    ["targets"] = Targets.Count,
+                    ["limit_tokens"] = Report.ClientTokens,
                     ["fix"] = "narrow the target: a filter on the find, a smaller ref, fewer spread lines"
                 });
     }
 
-    // The summary form: the body's keys that hold no list, the protected keys whole, report_only, and the targets as
-    // [id, name] pairs, a target with a lifted guard or a driver kept whole.
-    private static JObject Summary(JObject whole, IReadOnlyList<ReportTarget> targets)
+    // The summary form: the whole report's keys that hold no list, the protected keys whole, report_only, and the
+    // targets as [id, name] pairs, a target with a lifted guard or a driver kept whole.
+    private ReplyObject Summary(JsonSerializer serializer)
     {
-        JObject summary = new JObject();
-        foreach (JProperty key in whole.Properties())
+        ReplyObject summary = new ReplyObject();
+        foreach (KeyValuePair<string, object?> key in ViewKeys.Pairs(serializer, Whole(), null))
         {
-            if (key.Name == "targets" || (key.Value is JArray && Array.IndexOf(Protected, key.Name) < 0))
+            if (key.Key == "targets" || (ViewKeys.IsList(key.Value) && Array.IndexOf(Protected, key.Key) < 0))
             {
                 continue;
             }
 
-            summary[key.Name] = key.Value.DeepClone();
+            summary.Add(key.Key, key.Value);
         }
 
-        JArray pairs = new JArray();
-        foreach (ReportTarget target in targets)
-        {
-            pairs.Add(target.Passed is { Count: > 0 } || target.DrivenBy != null
-                ? target.ToJson()
-                : new JArray(target.Id != null ? new JValue(target.Id) : target.Cell?.DeepClone(), target.Name));
-        }
-
-        summary["targets"] = pairs;
-        return summary;
+        return summary.Add("targets", new SummaryTargets(Targets));
     }
 
-    private static JObject Whole(IReadOnlyList<ReportTarget> targets, JObject? body,
-        IReadOnlyList<ReportProblem>? problems)
+    [JsonConverter(typeof(SummaryTargetsConverter))]
+    private sealed class SummaryTargets
     {
-        JObject report = body != null ? (JObject)body.DeepClone() : new JObject();
-        if (problems != null)
+        internal SummaryTargets(IReadOnlyList<ReportTarget> targets) => Targets = targets;
+
+        internal IReadOnlyList<ReportTarget> Targets { get; }
+    }
+
+    private sealed class SummaryTargetsConverter : JsonConverter
+    {
+        public override bool CanRead => false;
+
+        public override bool CanConvert(Type objectType) => objectType == typeof(SummaryTargets);
+
+        public override void WriteJson(JsonWriter writer, object? value, JsonSerializer serializer)
         {
-            JArray listed = new JArray();
-            foreach (ReportProblem problem in problems)
+            writer.WriteStartArray();
+            foreach (ReportTarget target in ((SummaryTargets)value!).Targets)
             {
-                listed.Add(problem.ToJson());
+                if (target.KeptWhole)
+                {
+                    target.WriteTo(writer, serializer);
+                }
+                else
+                {
+                    target.WritePair(writer, serializer);
+                }
             }
 
-            report["problems"] = listed;
+            writer.WriteEndArray();
         }
 
-        report["report_only"] = true;
-        JArray rows = new JArray();
-        foreach (ReportTarget target in targets)
-        {
-            rows.Add(target.ToJson());
-        }
-
-        report["targets"] = rows;
-        return report;
+        public override object ReadJson(JsonReader reader, Type objectType, object? existingValue,
+            JsonSerializer serializer) => throw new NotSupportedException("A summary is only written.");
     }
+}
 
-    /// <summary>The first rows entries of a report list (all when rows is left out; none for 0).</summary>
-    internal static JArray Shown(IReadOnlyList<JToken> entries, ReportConfirm report)
-    {
-        JArray shown = new JArray();
-        int most = report.Rows ?? int.MaxValue;
-        for (int index = 0; index < entries.Count && index < most; index++)
-        {
-            shown.Add(entries[index].DeepClone());
-        }
+/// <summary>Writes a reply whose form is chosen as it is written (IReplyForm) in that form.</summary>
+internal sealed class ReplyFormConverter : JsonConverter
+{
+    public override bool CanRead => false;
 
-        return shown;
-    }
+    public override bool CanConvert(Type objectType) => typeof(IReplyForm).IsAssignableFrom(objectType);
+
+    public override void WriteJson(JsonWriter writer, object? value, JsonSerializer serializer) =>
+        serializer.Serialize(writer, ((IReplyForm)value!).Form(serializer));
+
+    public override object ReadJson(JsonReader reader, Type objectType, object? existingValue, JsonSerializer serializer) =>
+        throw new NotSupportedException("A reply is only written.");
 }

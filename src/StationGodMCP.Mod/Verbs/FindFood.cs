@@ -20,7 +20,7 @@ internal static class FindFood
     internal static VerbOutcome Run(FindFoodOptions options)
     {
         ConsumablesView found = Consumables.Take().ToView();
-        JsonSerializer serializer = ApiJson.Fresh();
+        JsonSerializer serializer = ApiJson.Serializer;
         return new VerbOutcome.Answered(ListReply.Of("food", found.Food, Paging.All,
             food => JToken.FromObject(food, serializer),
             ReplyFields.Of(("drinks", found.Drinks), ("packages", found.Packages), ("not_counted", found.NotCounted),

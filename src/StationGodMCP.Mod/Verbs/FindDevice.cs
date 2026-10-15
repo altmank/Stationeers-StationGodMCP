@@ -71,6 +71,6 @@ internal static class FindDevice
     private static DeviceView? ViewOf(DeviceScope scope, ScopedTarget? device) =>
         device != null && !device.Thing.IsBeingDestroyed ? Devices.ViewOf(device, scope) : null;
 
-    private static JObject Reply(Page<DeviceView> page, DeviceScope scope, string? cursorId) =>
+    private static ReplyObject Reply(Page<DeviceView> page, DeviceScope scope, string? cursorId) =>
         ThingListReply.Of(List, page, cursorId, ("gateway_id", scope.Id));
 }

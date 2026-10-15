@@ -55,22 +55,22 @@ internal static class MemoryWrites
         return problems.Count == problemsBefore ? values : null;
     }
 
-    internal static JObject Written(MemoryPlace place, IReadOnlyList<double> requested, IReadOnlyList<double>? previous,
+    internal static ReplyObject Written(MemoryPlace place, IReadOnlyList<double> requested, IReadOnlyList<double>? previous,
         IReadOnlyList<double>? current) =>
         ReplyFields.Of(("gateway_id", place.GatewayId), ("reference_id", place.ReferenceId.ToString()),
             ("start_address", place.StartAddress), ("requested_values", requested), ("previous_values", previous),
             ("current_values", current), ("count", requested.Count), ("stack_size", place.StackSize));
 
-    internal static JObject Reported(MemoryPlace place, string? name, IReadOnlyList<double> requested,
+    internal static ReportReply Reported(MemoryPlace place, string? name, IReadOnlyList<double> requested,
         IReadOnlyList<double>? previous)
     {
-        JsonSerializer serializer = ApiJson.Fresh();
+        JsonSerializer serializer = ApiJson.Serializer;
         ReportTarget target = new ReportTarget(place.ReferenceId.ToString(), null, name,
             ReplyFields.Value(previous, serializer), ReplyFields.Value(requested, serializer), Undo);
         return Report.Of(new[] { target }, Body(place, requested, previous), new List<ReportProblem>());
     }
 
-    private static JObject Body(MemoryPlace place, IReadOnlyList<double> requested, IReadOnlyList<double>? previous) =>
+    private static ReplyObject Body(MemoryPlace place, IReadOnlyList<double> requested, IReadOnlyList<double>? previous) =>
         ReplyFields.Of(("gateway_id", place.GatewayId), ("reference_id", place.ReferenceId.ToString()),
             ("start_address", place.StartAddress), ("requested_values", requested), ("previous_values", previous),
             ("count", requested.Count), ("stack_size", place.StackSize));

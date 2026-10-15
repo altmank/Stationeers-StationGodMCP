@@ -90,7 +90,7 @@ public sealed class MoveGasReplyTests
         MoveGasView predicted = new MoveGasView(null, "queued", true, true, NewSide(), RoomSide(),
             new List<MovedGasView> { new MovedGasView("Oxygen", 6.25, 1200.5) }, null);
 
-        JObject report = GasReplies.Reported(predicted, "[cannot undo: gas move]");
+        JObject report = Replies.Tree(GasReplies.Reported(predicted, "[cannot undo: gas move]"));
 
         Assert.Equal(new[]
         {
@@ -107,7 +107,7 @@ public sealed class MoveGasReplyTests
     {
         JObject removal = new JObject { ["status"] = "queued", ["from"] = "planet", ["amount_mol"] = 5.0, ["ticks"] = 1 };
 
-        JObject report = GasReplies.ReportedPlanet(removal, 20.0, 15.0, "[cannot undo: gas move]");
+        JObject report = Replies.Tree(GasReplies.ReportedPlanet(removal, 20.0, 15.0, "[cannot undo: gas move]"));
 
         Assert.Null(report["status"]);
         Assert.Equal("[planet, the planet's air, 20 -> 15] [cannot undo: gas move]",

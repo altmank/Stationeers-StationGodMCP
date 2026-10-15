@@ -32,7 +32,7 @@ internal sealed class PastePiece
 /// </summary>
 internal static class PasteReplies
 {
-    internal static JObject Reported(IReadOnlyList<PastePiece> pieces, BlueprintPasteReportView body, string mark)
+    internal static ReportReply Reported(IReadOnlyList<PastePiece> pieces, BlueprintPasteReportView body, string mark)
     {
         List<ReportTarget> targets = new List<ReportTarget>(pieces.Count);
         foreach (PastePiece piece in pieces)
@@ -41,7 +41,7 @@ internal static class PasteReplies
                 new JValue(piece.Prefab), mark));
         }
 
-        return Report.Of(targets, JObject.FromObject(body, ApiJson.Fresh()), new List<ReportProblem>());
+        return Report.Of(targets, JObject.FromObject(body, ApiJson.Serializer), new List<ReportProblem>());
     }
 
     // A piece's cell, in metres and hundredths, as a waypoint is given: [x, y, z].

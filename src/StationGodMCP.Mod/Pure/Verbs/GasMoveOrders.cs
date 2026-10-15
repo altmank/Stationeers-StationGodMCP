@@ -112,11 +112,11 @@ internal static class GasReplies
     private const string TransferIdKey = "transfer_id";
     private const string StatusKey = "status";
 
-    internal static JObject Acted(object view) => JObject.FromObject(view, ApiJson.Fresh());
+    internal static JObject Acted(object view) => JObject.FromObject(view, ApiJson.Serializer);
 
-    internal static JObject Reported(MoveGasView predicted, string undoMark)
+    internal static ReportReply Reported(MoveGasView predicted, string undoMark)
     {
-        JsonSerializer serializer = ApiJson.Fresh();
+        JsonSerializer serializer = ApiJson.Serializer;
         List<ReportTarget> targets = new List<ReportTarget>(2);
         foreach (GasSideView? side in new[] { predicted.From, predicted.To })
         {
@@ -133,9 +133,9 @@ internal static class GasReplies
     }
 
     /// <summary>A planet removal's report: its keys without status, and the planet's air as the one target.</summary>
-    internal static JObject ReportedPlanet(JObject removal, double beforeMol, double afterMol, string undoMark)
+    internal static ReportReply ReportedPlanet(JObject removal, double beforeMol, double afterMol, string undoMark)
     {
-        JsonSerializer serializer = ApiJson.Fresh();
+        JsonSerializer serializer = ApiJson.Serializer;
         JObject body = (JObject)removal.DeepClone();
         body.Remove(StatusKey);
         ReportTarget target = new ReportTarget("planet", null, "the planet's air",

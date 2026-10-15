@@ -1,8 +1,6 @@
 #nullable enable
 
 using System.Collections.Generic;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
@@ -30,15 +28,12 @@ internal static class ReadLogic
         }
 
         DeviceScope scope = Devices.Scope(options.Gateway);
-        JsonSerializer serializer = ApiJson.Fresh();
         string label = ReadLogicOptions.Spec.Label;
         return request switch
         {
-            LogicReadRequest.One one => new VerbOutcome.Answered(IdAnswers.Payload(
-                new LogicReadView(scope.Id, Read(scope, one.Pair, label)), serializer)),
-            LogicReadRequest.Pairs pairs => new VerbOutcome.Answered(Pairs(scope, pairs.Entries, label, serializer)),
-            LogicReadRequest.Items items => new VerbOutcome.Answered(Items(
-                DeviceReads.Read(scope, items.Request, label), serializer)),
+            LogicReadRequest.One one => new VerbOutcome.Answered(new LogicReadView(scope.Id, Read(scope, one.Pair, label))),
+            LogicReadRequest.Pairs pairs => new VerbOutcome.Answered(Pairs(scope, pairs.Entries, label)),
+            LogicReadRequest.Items items => new VerbOutcome.Answered(Items(DeviceReads.Read(scope, items.Request, label))),
             _ => throw new System.InvalidOperationException("read logic has three forms.")
         };
     }
@@ -47,8 +42,7 @@ internal static class ReadLogic
         LogicOps.Read(scope, TargetIds.Of(pair.Id, label), pair.Logic);
 
     // One row per pair: {index, ok, reference_id, logic_type, value}, or the pair's error.
-    private static JObject Pairs(DeviceScope scope, IReadOnlyList<LogicPair> pairs, string label,
-        JsonSerializer serializer)
+    private static ReplyObject Pairs(DeviceScope scope, IReadOnlyList<LogicPair> pairs, string label)
     {
         Rows rows = new Rows();
         foreach (LogicPair pair in pairs)
@@ -64,38 +58,36 @@ internal static class ReadLogic
                 continue;
             }
 
-            rows.Succeeded(read.ReferenceId.ToString(), new JObject
-            {
-                ["logic_type"] = JToken.FromObject(read.LogicType, serializer),
-                ["value"] = ReplyFields.Value(read.Value, serializer)
-            });
+            rows.Succeeded(read.ReferenceId.ToString(),
+                new ReplyObject(2).Add("logic_type", read.LogicType).Add("value", read.Value));
         }
 
-        return rows.Reply(new JObject { ["gateway_id"] = scope.Id });
+        return rows.Reply(new ReplyObject(1).Add("gateway_id", scope.Id));
     }
 
     // One row per entry: the parts it read, keyed by the names sent, or its error.
-    private static JObject Items(ReadDevicesView read, JsonSerializer serializer)
+    private static ReplyObject Items(ReadDevicesView read)
     {
         Rows rows = new Rows();
         foreach (BatchItemView item in read.Results)
         {
-            JObject row = JObject.FromObject(item, serializer);
-            string? referenceId = (string?)row["reference_id"];
-            if (row["error"] is JObject error)
+            switch (item)
             {
-                rows.Failed(referenceId, new VerbError((string)error["code"]!, (string)error["message"]!, error["data"]));
-            }
-            else
-            {
-                rows.Succeeded(referenceId, row);
+                case DeviceReadItemView found:
+                    rows.Succeeded(found.ReferenceId.ToString(), found);
+                    break;
+                case DeviceReadFailedView failed:
+                    rows.Failed(failed.ReferenceId, new VerbError(failed.Error.Code, failed.Error.Message));
+                    break;
+                default:
+                    throw new System.InvalidOperationException("A device read is an item read or a failed one.");
             }
         }
 
-        JObject top = new JObject { ["gateway_id"] = read.GatewayId };
+        ReplyObject top = new ReplyObject(2).Add("gateway_id", read.GatewayId);
         if (read.Clock != null)
         {
-            top["clock"] = JToken.FromObject(read.Clock, serializer);
+            top.Add("clock", read.Clock);
         }
 
         return rows.Reply(top);

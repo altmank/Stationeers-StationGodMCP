@@ -67,7 +67,7 @@ internal static class TradeReplies
     /// <summary>The call trades: the rows, or one id's own trade as the what's single shape.</summary>
     internal static VerbOutcome Acted(PerIdList ids, IReadOnlyList<TradeResult> results)
     {
-        JsonSerializer serializer = ApiJson.Fresh();
+        JsonSerializer serializer = ApiJson.Serializer;
         Rows rows = new Rows();
         foreach (TradeResult result in results)
         {
@@ -89,9 +89,9 @@ internal static class TradeReplies
     /// The report: the targets, the trade as the body, and the problems. asList is true when the call gave a list of
     /// ids: the body is then every trade in trades, one id's own trade otherwise.
     /// </summary>
-    internal static JObject Reported(IReadOnlyList<TradeResult> results, bool asList, string mark)
+    internal static ReportReply Reported(IReadOnlyList<TradeResult> results, bool asList, string mark)
     {
-        JsonSerializer serializer = ApiJson.Fresh();
+        JsonSerializer serializer = ApiJson.Serializer;
         List<ReportTarget> targets = new List<ReportTarget>();
         List<ReportProblem> problems = new List<ReportProblem>();
         JArray trades = new JArray();

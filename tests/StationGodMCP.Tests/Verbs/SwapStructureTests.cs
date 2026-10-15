@@ -96,8 +96,8 @@ public sealed class SwapStructureTests
         }, named);
 
         Assert.Equal("""{"index":2,"reference_id":"13","code":"thing_not_found","message":"No thing with reference id 13."}""",
-            problems[0].ToJson().ToString(Newtonsoft.Json.Formatting.None));
+            StationGodMCP.Api.Shared.ApiJson.WriteShared(problems[0]));
         Assert.Equal("""{"code":"unmatched_pieces","message":"2 piece(s) cannot be swapped."}""",
-            problems[1].ToJson().ToString(Newtonsoft.Json.Formatting.None));
+            StationGodMCP.Api.Shared.ApiJson.WriteShared(problems[1]));
     }
 }

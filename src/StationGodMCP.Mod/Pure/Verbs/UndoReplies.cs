@@ -49,7 +49,7 @@ internal abstract class UndoResult
         internal JObject Payload()
         {
             JObject payload = (JObject)Body.DeepClone();
-            JsonSerializer serializer = ApiJson.Fresh();
+            JsonSerializer serializer = ApiJson.Serializer;
             JArray jobs = new JArray();
             foreach (object job in Jobs)
             {
@@ -121,7 +121,7 @@ internal static class UndoReplies
     /// The report: every target, the plan as the body, and every problem. asList is true when the call gave a list of
     /// ids: the body is then every plan in plans, one id's own plan otherwise.
     /// </summary>
-    internal static JObject Reported(IReadOnlyList<UndoResult> results, bool asList)
+    internal static ReportReply Reported(IReadOnlyList<UndoResult> results, bool asList)
     {
         List<ReportTarget> targets = new List<ReportTarget>();
         List<ReportProblem> problems = new List<ReportProblem>();
@@ -333,7 +333,7 @@ internal static class UndoReplies
     internal static JObject Pasted(JObject body, object reply)
     {
         JObject payload = (JObject)body.DeepClone();
-        payload["reply"] = ReplyFields.Value(reply, ApiJson.Fresh());
+        payload["reply"] = ReplyFields.Value(reply, ApiJson.Serializer);
         return payload;
     }
 

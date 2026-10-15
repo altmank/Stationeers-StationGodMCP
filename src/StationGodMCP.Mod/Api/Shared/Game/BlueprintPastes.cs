@@ -91,14 +91,14 @@ internal static class BlueprintPastes
         BlueprintPasteStartedView started = new BlueprintPasteStartedView(plan.File,
             new[] { order.At.X, order.At.Y, order.At.Z }, order.Turn.Degrees, plan.CopyYAngle,
             BlueprintFiles.ExpectedDurationSeconds(plan.File.Entries));
-        return new VerbOutcome.Answered(JObject.FromObject(started, ApiJson.Fresh()));
+        return new VerbOutcome.Answered(JObject.FromObject(started, ApiJson.Serializer));
     }
 
     /// <summary>
     /// The paste's report: one target per piece the file holds, at the cell BlueprintMod's own paste geometry puts it,
     /// and the call's own body. Nothing is started.
     /// </summary>
-    internal static JObject Describe(PastePlan plan, PasteOrder order)
+    internal static ReportReply Describe(PastePlan plan, PasteOrder order)
     {
         Vec3 offset = VectorOf(GameMembers.BlueprintPlayerLocalOffset, plan.Data);
         List<PastePiece> pieces = new List<PastePiece>(plan.Entries.Count);

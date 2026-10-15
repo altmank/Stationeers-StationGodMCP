@@ -278,7 +278,7 @@ internal static class MoveItem
 
     // A store move: checked and described without acting for a report; done when it acts.
     private static VerbOutcome Store(string route, ReportConfirm report, System.Func<bool, object> move,
-        System.Func<JObject, JObject> describe)
+        System.Func<JObject, object> describe)
     {
         if (report.Acts)
         {

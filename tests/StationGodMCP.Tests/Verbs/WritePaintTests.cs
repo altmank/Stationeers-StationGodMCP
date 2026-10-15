@@ -86,11 +86,11 @@ public sealed class WritePaintTests
     public void APaintIsARowWithTheColourBeforeAndAfterForTheHubsUndo()
     {
         ThingColorView was = new ThingColorView(3, "Orange", true);
-        JObject reply = PaintReplies.Acted(new PaintResult[]
+        JObject reply = Replies.Tree(PaintReplies.Acted(new PaintResult[]
         {
             new PaintResult.Painted(new ThingId(11), was, new ThingColorView(0, "Blue", false)),
             new PaintResult.Failed(1, "12", new VerbError("not_paintable", "no"))
-        });
+        }));
 
         Assert.Equal(
             """{"results":[{"index":0,"ok":true,"reference_id":"11","previous_color":{"index":3,"name":"Orange","is_default":true},"color":{"index":0,"name":"Blue","is_default":false}},{"index":1,"ok":false,"reference_id":"12","error":{"code":"not_paintable","message":"no"}}],"count":2,"success_count":1,"error_count":1}""",
@@ -100,11 +100,11 @@ public sealed class WritePaintTests
     [Fact]
     public void AReportListsEachThingWithItsColourNowAndTheColourAsked()
     {
-        JObject report = PaintReplies.Reported(new PaintResult[]
+        JObject report = Replies.Tree(PaintReplies.Reported(new PaintResult[]
         {
             new PaintResult.Planned(new ThingId(11), "Pipe", new ThingColorView(3, "Orange", true), "Red"),
             new PaintResult.Failed(1, "12", new VerbError("has_color_state", "no"))
-        });
+        }));
 
         Assert.Equal("[11, Pipe, Orange -> Red] [undo]", (string?)Assert.Single(report["targets"]!)["text"]);
         Assert.Equal("has_color_state", (string?)Assert.Single(report["problems"]!)["code"]);

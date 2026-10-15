@@ -27,7 +27,7 @@ internal static class ShapingChecks
     /// reference does not do: reading a near miss as its close key, and fields_closest.
     /// </summary>
     internal static ShapedText Mod(object? value, ShapeRequest shape, bool nearMisses = true) =>
-        ApiJson.WriteShaped(ApiJson.Fresh(), value, shape, ShapingRoot.Result, nearMisses: nearMisses);
+        ApiJson.WriteShaped(ApiJson.Serializer, value, shape, ShapingRoot.Result, nearMisses: nearMisses);
 
     /// <summary>The mod's text for a JSON reply with fields, read leniently.</summary>
     internal static string ModFields(string reply, IEnumerable<string> fields) =>
@@ -66,7 +66,7 @@ internal static class ShapingChecks
         {
             CallReplyView envelope = CallReplyView.Of("w1", view, false, 1.25, 0.5, 1, false);
             Assert.Equal(JsonConvert.SerializeObject(envelope, ApiJson.Settings),
-                ApiJson.WriteShaped(ApiJson.Fresh(), envelope, Nothing, ShapingRoot.Envelope).Json);
+                ApiJson.WriteShaped(ApiJson.Serializer, envelope, Nothing, ShapingRoot.Envelope).Json);
         }
 
         List<string> keys = EntryKeys(serialised);

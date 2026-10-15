@@ -351,13 +351,13 @@ public sealed class MoveItemTests
 
         Assert.Equal("[1, Iron Ore, 57 slot 2 -> 273 slot 3] [undo]",
             ItemMoveReplies.SlotTarget(new ThingId(1), "Iron Ore", new SlotRefView(new ThingId(57), 2), to, null, false)
-                .Text());
+                .Text(ApiJson.Serializer));
         Assert.Equal("[1, Iron Ore, world -> 273 slot 3] [cannot undo: merged into 9]",
-            ItemMoveReplies.SlotTarget(new ThingId(1), "Iron Ore", null, to, new ThingId(9), false).Text());
-        JObject report = ItemMoveReplies.SlotReport(new[]
+            ItemMoveReplies.SlotTarget(new ThingId(1), "Iron Ore", null, to, new ThingId(9), false).Text(ApiJson.Serializer));
+        JObject report = Replies.Tree(ItemMoveReplies.SlotReport(new[]
         {
             ItemMoveReplies.SlotTarget(new ThingId(1), "Payload", null, to, null, true)
-        }, new List<ReportProblem>());
+        }, new List<ReportProblem>()));
         Assert.Equal(new[] { "route", "problems", "report_only", "targets" }, Keys(report));
         Assert.Equal("[cannot undo: force]", (string?)report["targets"]![0]!["undo"]);
     }
@@ -373,7 +373,7 @@ public sealed class MoveItemTests
             new VaultRefView(new ThingView(new ThingId(132000), "StructureIngotVault", "Ingot Vault"), null, true, true),
             2, 1, batch.Build(), new List<StockChangeView>());
 
-        JObject report = ItemMoveReplies.DepositReport(ItemMoveReplies.Routed("into_vault", view));
+        JObject report = Replies.Tree(ItemMoveReplies.DepositReport(ItemMoveReplies.Routed("into_vault", view)));
 
         Assert.Equal(new[] { "route", "vault", "via", "matched", "skipped", "stock", "problems",
             "report_only", "targets" }, Keys(report));
@@ -392,7 +392,7 @@ public sealed class MoveItemTests
             {
                 new StockChangeView(new VaultItemView("ingot", "ItemIronIngot", "Iron Ingot", "Iron", 500), 100, -5, 95)
             });
-        JObject take = ItemMoveReplies.TakeReport(ItemMoveReplies.Routed("out_of_vault", withdraw), "vault");
+        JObject take = Replies.Tree(ItemMoveReplies.TakeReport(ItemMoveReplies.Routed("out_of_vault", withdraw), "vault"));
         Assert.Equal("[132000, Ingot Vault (Iron Ingot), 100 -> 95] [cannot undo: store move]",
             (string?)take["targets"]![0]!["text"]);
         Assert.Equal("route", ((JProperty)take.First!).Name);
@@ -400,8 +400,8 @@ public sealed class MoveItemTests
         BatchBuilder lines = new BatchBuilder(1);
         lines.Succeeded(new TransferredView(0, new VaultItemView("ore", "ItemIce", "Ice", null, 50), null, 30, false,
             new TransferSideView(30, 0), new TransferSideView(5, 35)));
-        JObject transfer = ItemMoveReplies.TransferReport(ItemMoveReplies.Routed("vault_to_vault",
-            new VaultTransferView(vault, vault, lines.Build(), 0)));
+        JObject transfer = Replies.Tree(ItemMoveReplies.TransferReport(ItemMoveReplies.Routed("vault_to_vault",
+            new VaultTransferView(vault, vault, lines.Build(), 0))));
         Assert.Equal("[132000, Ingot Vault (Ice), 30 -> 0] [cannot undo: store move]",
             (string?)transfer["targets"]![0]!["text"]);
         Assert.Null(transfer["items"]);

@@ -171,7 +171,7 @@ public sealed class CostlySkippingTests
             Health(701, "ItemKitPipe", structure: false, withNetworks),
             Health(702, "StructureCableStraight", structure: true, withNetworks)
         };
-        JsonSerializer json = ApiJson.Fresh();
+        JsonSerializer json = ApiJson.Serializer;
         switch (form)
         {
             case "scan":

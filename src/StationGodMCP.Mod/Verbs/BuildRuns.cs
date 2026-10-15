@@ -423,10 +423,10 @@ internal static class BuildRuns
         object reply = order.Fields.Verbose
             ? started
             : JobStartReplies.Brief(started, JobPreflightSummaryView.Of(preflight));
-        return new VerbOutcome.Answered(JObject.FromObject(reply, ApiJson.Fresh()));
+        return new VerbOutcome.Answered(JObject.FromObject(reply, ApiJson.Serializer));
     }
 
-    private static JObject Described(RunPlan plan, RunRequest request, RunBuildOrder order, List<ThingId?> named,
+    private static ReportReply Described(RunPlan plan, RunRequest request, RunBuildOrder order, List<ThingId?> named,
         List<ReportProblem> unread)
     {
         List<ReportProblem> problems = new List<ReportProblem>(unread);

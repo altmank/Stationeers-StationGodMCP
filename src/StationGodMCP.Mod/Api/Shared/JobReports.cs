@@ -21,7 +21,7 @@ internal static class JobReports
     [Profiled]
     internal static JObject Body(object view, bool ready)
     {
-        JObject body = JObject.FromObject(view, ApiJson.Fresh());
+        JObject body = JObject.FromObject(view, ApiJson.Serializer);
         foreach (string key in JobKeys)
         {
             body.Remove(key);

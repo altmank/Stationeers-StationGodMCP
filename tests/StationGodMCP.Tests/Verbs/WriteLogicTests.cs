@@ -109,7 +109,7 @@ public sealed class WriteLogicTests
 
         Assert.Equal(
             """{"gateway_id":"world","reference_id":"5","logic_type":{"id":28,"name":"On"},"requested_value":1.0,"previous_value":0.0,"current_value":1.0}""",
-            ((VerbOutcome.Answered)outcome).Reply.ToString(Newtonsoft.Json.Formatting.None));
+            StationGodMCP.Api.Shared.ApiJson.WriteShared(((VerbOutcome.Answered)outcome).Reply));
     }
 
     [Fact]
@@ -127,11 +127,11 @@ public sealed class WriteLogicTests
     [Fact]
     public void SeveralWritesAnswerARowEachForTheHubsWriteBack()
     {
-        JObject reply = ((VerbOutcome.Answered)LogicWriteReplies.Acted("world", new LogicWriteResult[]
+        JObject reply = Replies.Tree(((VerbOutcome.Answered)LogicWriteReplies.Acted("world", new LogicWriteResult[]
         {
             Written(0, 5, 0, 1, 1),
             new LogicWriteResult.Failed(1, "6", new VerbError("device_not_found", "Gone."))
-        }, true)).Reply;
+        }, true)).Reply);
 
         Assert.Equal("world", (string?)reply["gateway_id"]);
         JObject row = (JObject)reply["results"]![0]!;
@@ -149,8 +149,8 @@ public sealed class WriteLogicTests
     [Fact]
     public void AWriteOnlyTypeHasNoValueBeforeOrAfter()
     {
-        JObject reply = ((VerbOutcome.Answered)LogicWriteReplies.Acted("world",
-            new[] { Written(0, 5, null, 1, null) }, false)).Reply;
+        JObject reply = Replies.Tree(((VerbOutcome.Answered)LogicWriteReplies.Acted("world",
+            new[] { Written(0, 5, null, 1, null) }, false)).Reply);
 
         Assert.Equal(JTokenType.Null, reply["previous_value"]!.Type);
         Assert.Equal(JTokenType.Null, reply["current_value"]!.Type);
@@ -160,11 +160,11 @@ public sealed class WriteLogicTests
     public void AReportListsEveryWriteAsATargetWithItsMarkAndNothingActs()
     {
         LogicTypeView pulse = new LogicTypeView(250, "Activate");
-        JObject report = LogicWriteReplies.Reported("world", new LogicWriteResult[]
+        JObject report = Replies.Tree(LogicWriteReplies.Reported("world", new LogicWriteResult[]
         {
             new LogicWriteResult.Planned(0, "Door", Checked(5, On, 0, 1)),
             new LogicWriteResult.Planned(1, "Sorter", Checked(6, pulse, 0, 1))
-        });
+        }));
 
         Assert.True((bool)report["report_only"]!);
         Assert.Empty((JArray)report["problems"]!);

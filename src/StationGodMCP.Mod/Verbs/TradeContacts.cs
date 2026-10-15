@@ -46,7 +46,7 @@ internal static class TradeContacts
         }
 
         return new VerbOutcome.Answered(
-            JObject.FromObject(new TraderContactsView(now, contacts, dishes), ApiJson.Fresh()));
+            JObject.FromObject(new TraderContactsView(now, contacts, dishes), ApiJson.Serializer));
     }
 
     // TraderContact.EndLifetime = InitialLifeTime (game time at spawn or load) + Lifetime; 0 once the slot ended it.

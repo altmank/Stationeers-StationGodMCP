@@ -96,10 +96,10 @@ internal static class RemoveStructureRun
         object reply = order.SplitDetail
             ? started
             : JobStartReplies.Brief(started, JobPreflightSummaryView.Of(preflight));
-        return new VerbOutcome.Answered(JObject.FromObject(reply, ApiJson.Fresh()));
+        return new VerbOutcome.Answered(JObject.FromObject(reply, ApiJson.Serializer));
     }
 
-    private static JObject Described(RemovePlan plan, RemoveStructureOrder order)
+    private static ReportReply Described(RemovePlan plan, RemoveStructureOrder order)
     {
         string mark = order.Mark;
         List<ReportProblem> problems = new List<ReportProblem>(order.Unread);

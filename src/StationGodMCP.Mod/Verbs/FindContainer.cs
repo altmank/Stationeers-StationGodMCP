@@ -52,6 +52,6 @@ internal static class FindContainer
             (page, cursorId, _) => Reply(page, origin, cursorId));
     }
 
-    private static Newtonsoft.Json.Linq.JObject Reply(Page<ContainerView> page, PlayerOrigin origin, string? cursorId) =>
+    private static ReplyObject Reply(Page<ContainerView> page, PlayerOrigin origin, string? cursorId) =>
         ThingListReply.Of(List, page, cursorId, ("local_player", origin.View));
 }

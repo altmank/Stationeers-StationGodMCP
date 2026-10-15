@@ -53,8 +53,8 @@ public sealed class FindThingReplyTests
                 "Pipe (Straight)", "structure", "Pipe", false, FoundThingView.Built, null, new List<HeldInView>(),
                 new PositionView(703.0, 202.0, 681.0), 2.3, false, false, null, true, "broken")
         };
-        JObject reply = FoundThings.Reply(new Page<FoundThingView>(things, 7, 0, 2, true), 48210,
-            new LocalPlayerView(new ThingId(151), "xceled", new PositionView(700.9, 202.0, 679.5)), null);
+        JObject reply = Replies.Tree(FoundThings.Reply(new Page<FoundThingView>(things, 7, 0, 2, true), 48210,
+            new LocalPlayerView(new ThingId(151), "xceled", new PositionView(700.9, 202.0, 679.5)), null));
         WireCheck.Same(expected, reply);
     }
 

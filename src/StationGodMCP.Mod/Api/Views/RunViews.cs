@@ -1145,7 +1145,7 @@ internal sealed class PlanRouteView
     /// </summary>
     internal JObject Reply(string key, JObject? report)
     {
-        JObject reply = JObject.FromObject(this, ApiJson.Fresh());
+        JObject reply = JObject.FromObject(this, ApiJson.Serializer);
         if (report != null)
         {
             reply.Property("notes")!.AddBeforeSelf(new JProperty(key, report));

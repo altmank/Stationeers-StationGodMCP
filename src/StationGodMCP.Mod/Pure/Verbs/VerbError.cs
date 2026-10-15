@@ -44,7 +44,7 @@ internal sealed class VerbError
     /// <summary>A game check's refusal as a verb error: its code, its message, and its data as the replies write it.</summary>
     internal static VerbError Of(ApiException refused) =>
         new VerbError(refused.Code, refused.Message,
-            refused.Details == null ? null : JToken.FromObject(refused.Details, ApiJson.Fresh()));
+            refused.Details == null ? null : JToken.FromObject(refused.Details, ApiJson.Serializer));
 
     /// <summary>{code, message, data?}: a row's error.</summary>
     internal JObject ToJson()

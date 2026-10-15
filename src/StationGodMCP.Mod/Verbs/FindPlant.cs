@@ -25,7 +25,7 @@ internal static class FindPlant
     internal static VerbOutcome Run(FindPlantOptions options)
     {
         PlantClock clock = Plants.Clock();
-        JsonSerializer serializer = ApiJson.Fresh();
+        JsonSerializer serializer = ApiJson.Serializer;
         PerIdList? ids = options.Selector.Ids;
         if (ids is { AnswersRows: true })
         {

@@ -59,7 +59,7 @@ internal static class FindRoom
         RoomMeasure measure = found.Measure;
         if (ids is { AnswersRows: true })
         {
-            JsonSerializer serializer = ApiJson.Fresh();
+            JsonSerializer serializer = ApiJson.Serializer;
             Rows rows = new Rows();
             foreach (string id in ids.Ids)
             {
@@ -88,9 +88,9 @@ internal static class FindRoom
     }
 
     // The rooms, whole, as one page.
-    private static JObject RoomsReply(List<RoomView> rooms, RoomMeasure measure)
+    private static ReplyObject RoomsReply(List<RoomView> rooms, RoomMeasure measure)
     {
-        JsonSerializer serializer = ApiJson.Fresh();
+        JsonSerializer serializer = ApiJson.Serializer;
         return ListReply.Of("rooms", rooms, Paging.All, room => JToken.FromObject(room, serializer),
             ReplyFields.Of((PlayerRoom, measure.PlayerRoomId)));
     }

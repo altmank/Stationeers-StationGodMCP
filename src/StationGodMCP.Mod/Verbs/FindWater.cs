@@ -19,7 +19,7 @@ internal static class FindWater
     {
         double minimum = options.MinMol ?? 0.0;
         WaterFound found = WaterSources.Collect(minimum);
-        JsonSerializer serializer = ApiJson.Fresh();
+        JsonSerializer serializer = ApiJson.Serializer;
         return new VerbOutcome.Answered(ListReply.Of("sources", found.Sources, Paging.All,
             source => JToken.FromObject(source, serializer),
             ReplyFields.Of(("totals", found.Totals), ("min_mol", minimum), ("local_player", found.LocalPlayer))));

@@ -116,14 +116,14 @@ internal static class SurveyNetwork
     private static string KindOf(SurveyNetworkOptions options, NetworkTarget network) =>
         (options.Kind is { } kind ? FamilyNamed(kind) : NetworkHandles.FamilyOf(network, Option)).NetworkKind;
 
-    private static JObject Members(Page<NetworkMemberView> page, string? cursorId, MembersHead head) =>
+    private static ReplyObject Members(Page<NetworkMemberView> page, string? cursorId, MembersHead head) =>
         ThingListReply.Of(List, page, cursorId, ("network", head.Network), ("summary", head.Summary),
             ("warning", head.Warning), ("structure_count", head.Structures), ("device_count", head.Devices));
 
-    private static JObject OpenEnds(Page<NetworkMemberView> page, string? cursorId) =>
+    private static ReplyObject OpenEnds(Page<NetworkMemberView> page, string? cursorId) =>
         ThingListReply.Of(List, page, cursorId);
 
-    private static JObject Overview(NetworkOverviewView overview) =>
+    private static ReplyObject Overview(NetworkOverviewView overview) =>
         ReplyFields.Of(("network", overview.Network), ("summary", overview.Summary), ("warning", overview.Warning),
             ("broken_neighbour_count", overview.BrokenNeighbourCount), ("broken_neighbours", overview.BrokenNeighbours),
             ("structure_count", overview.StructureCount), ("device_count", overview.DeviceCount),

@@ -247,11 +247,11 @@ internal static class PaintReplies
 {
     private const string Undo = "[undo]";
 
-    internal static JObject Colors(PaintColorsView colors) => JObject.FromObject(colors, ApiJson.Fresh());
+    internal static JObject Colors(PaintColorsView colors) => JObject.FromObject(colors, ApiJson.Serializer);
 
-    internal static JObject Acted(IReadOnlyList<PaintResult> results)
+    internal static ReplyObject Acted(IReadOnlyList<PaintResult> results)
     {
-        JsonSerializer serializer = ApiJson.Fresh();
+        JsonSerializer serializer = ApiJson.Serializer;
         Rows rows = new Rows();
         foreach (PaintResult result in results)
         {
@@ -273,7 +273,7 @@ internal static class PaintReplies
         return rows.Reply();
     }
 
-    internal static JObject Reported(IReadOnlyList<PaintResult> results)
+    internal static ReportReply Reported(IReadOnlyList<PaintResult> results)
     {
         List<ReportTarget> targets = new List<ReportTarget>();
         List<ReportProblem> problems = new List<ReportProblem>();

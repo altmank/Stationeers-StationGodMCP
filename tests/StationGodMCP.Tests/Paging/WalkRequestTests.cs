@@ -237,8 +237,8 @@ public sealed class WalkRequestTests
             }
 
             FramedResult<Api.Views.FoundThingView> result = page.Result(page.IsScan ? page.Scanned : null);
-            return Api.Views.FoundThings.Reply(result.Page, result.Kept is int scanned ? scanned : 0, null,
-                result.CursorId);
+            return Replies.Tree(Api.Views.FoundThings.Reply(result.Page, result.Kept is int scanned ? scanned : 0, null,
+                result.CursorId));
         }
 
         private Api.Views.FoundThingView? Live(long id) =>

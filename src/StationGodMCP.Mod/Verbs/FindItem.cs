@@ -81,7 +81,7 @@ internal static class FindItem
             index => build.List!.Entry(index, origin), Cost, (page, cursorId, kept) => Reply(page, cursorId, origin, kept));
     }
 
-    private static JObject Reply(Page<IFoundItemView> page, string? cursorId, PlayerOrigin origin, FoundList? list)
+    private static ReplyObject Reply(Page<IFoundItemView> page, string? cursorId, PlayerOrigin origin, FoundList? list)
     {
         return list?.InUseLeftOut is { } inUse
             ? ThingListReply.Of(List, page, cursorId, ("local_player", origin.View), ("in_use_left_out", inUse))
@@ -89,7 +89,7 @@ internal static class FindItem
     }
 
     // group_by place: the first limit prefabs' totals, most first, each with its holders top holders (0: none listed).
-    private static JObject Totals(ItemFilter filter, PlayerOrigin origin, int limit, int holders)
+    private static ReplyObject Totals(ItemFilter filter, PlayerOrigin origin, int limit, int holders)
     {
         Totalled totalled = ItemTotals.Of(filter, origin);
         List<PrefabTotalView> totals = new List<PrefabTotalView>(Math.Min(limit, totalled.Rows.Count));

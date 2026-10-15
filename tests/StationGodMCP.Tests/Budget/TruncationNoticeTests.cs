@@ -23,7 +23,7 @@ namespace StationGodMCP.Tests.Budget;
 public sealed class TruncationNoticeTests
 {
     private static ShapedText Reply(string json, ShapeRequest shape, IReadOnlyList<Truncation> notes) =>
-        ApiJson.WriteShaped(ApiJson.Fresh(), ShapingChecks.Parse(json), shape, ShapingRoot.Result, notes, announce: true);
+        ApiJson.WriteShaped(ApiJson.Serializer, ShapingChecks.Parse(json), shape, ShapingRoot.Result, notes, announce: true);
 
     [Fact]
     public void AReplyThatHoldsNothingBackSaysSo()
@@ -89,7 +89,7 @@ public sealed class TruncationNoticeTests
         NetworkSnapshotView view = new NetworkSnapshotView("world", new List<DeviceSnapshotView>(), 3);
         List<Truncation> notes = new List<Truncation> { new Truncation("devices", 0, 3, "pass limit (max 256)") };
 
-        string json = Reply(JObject.FromObject(view, ApiJson.Fresh()).ToString(Newtonsoft.Json.Formatting.None),
+        string json = Reply(JObject.FromObject(view, ApiJson.Serializer).ToString(Newtonsoft.Json.Formatting.None),
             ShapeRequest.None, notes).Json;
 
         Assert.Single(System.Text.RegularExpressions.Regex.Matches(json, "\"truncated\""));

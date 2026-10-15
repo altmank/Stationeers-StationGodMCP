@@ -234,7 +234,7 @@ internal static class LabelReplies
 
     internal static VerbOutcome Acted(IReadOnlyList<LabelResult> results, bool answersRows)
     {
-        JsonSerializer serializer = ApiJson.Fresh();
+        JsonSerializer serializer = ApiJson.Serializer;
         if (!answersRows && results.Count == 1)
         {
             switch (results[0])
@@ -269,7 +269,7 @@ internal static class LabelReplies
         return new VerbOutcome.Answered(rows.Reply());
     }
 
-    internal static JObject Reported(IReadOnlyList<LabelResult> results)
+    internal static ReportReply Reported(IReadOnlyList<LabelResult> results)
     {
         List<ReportTarget> targets = new List<ReportTarget>();
         List<ReportProblem> problems = new List<ReportProblem>();

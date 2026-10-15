@@ -20,7 +20,7 @@ internal static class SurveyAreaReply
     internal static JObject Of(Page<SurveyCell> page, SurveyContents contents, SurveySections sections, string? legend,
         string? cursorId = null)
     {
-        JsonSerializer serializer = ApiJson.Fresh();
+        JsonSerializer serializer = ApiJson.Serializer;
         JObject reply = new JObject();
         if (legend != null)
         {

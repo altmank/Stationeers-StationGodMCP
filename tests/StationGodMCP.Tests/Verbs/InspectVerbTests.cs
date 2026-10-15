@@ -150,7 +150,7 @@ public sealed class InspectVerbTests
         Assert.Contains("selectors cannot be answered", error.Message);
     }
 
-    private static JObject Answered(VerbOutcome outcome) => Assert.IsType<VerbOutcome.Answered>(outcome).Reply;
+    private static JObject Answered(VerbOutcome outcome) => Replies.Tree(Assert.IsType<VerbOutcome.Answered>(outcome).Reply);
 
     // ---- inspect job ----
 

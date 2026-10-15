@@ -119,7 +119,7 @@ internal static class SampleReply
         return new JObject
         {
             ["gateway_id"] = result.GatewayId ?? World,
-            ["started_at_utc"] = JToken.FromObject(result.StartedAtUtc, ApiJson.Fresh()),
+            ["started_at_utc"] = JToken.FromObject(result.StartedAtUtc, ApiJson.Serializer),
             ["duration_seconds"] = result.DurationSeconds,
             ["interval_seconds"] = result.IntervalSeconds,
             ["sample_count"] = result.SampleCount,

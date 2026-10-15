@@ -34,7 +34,7 @@ public sealed class WriteChipTests
     private static readonly LuaStateView Compiling =
         new LuaStateView(new LuaRuntimeFlags(true, false, false, false), 3, null, null, null);
 
-    private static JObject Answered(VerbOutcome outcome) => ((VerbOutcome.Answered)outcome).Reply;
+    private static JObject Answered(VerbOutcome outcome) => Replies.Tree(((VerbOutcome.Answered)outcome).Reply);
 
     // ---- the parts ----
 

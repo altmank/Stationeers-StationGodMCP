@@ -186,11 +186,11 @@ internal static class SwapNetworks
         object started = UpgradeJobs.Start(request, plan, call.Queue, call.AcknowledgeGasLost);
         object reply = JobBrief.Started(started,
             JobPreflightSummaryView.Of(UpgradeReports.Of(plan, UpgradeReports.DryRun, null)), call.Fields.Verbose);
-        return new VerbOutcome.Answered(JObject.FromObject(reply, ApiJson.Fresh()));
+        return new VerbOutcome.Answered(JObject.FromObject(reply, ApiJson.Serializer));
     }
 
     [Profiled]
-    private static JObject Described(UpgradePlan plan, List<ThingId?> named, List<ReportProblem> unread,
+    private static ReportReply Described(UpgradePlan plan, List<ThingId?> named, List<ReportProblem> unread,
         string mark, bool pipes, string? acknowledge)
     {
         List<ReportProblem> problems = new List<ReportProblem>(unread);

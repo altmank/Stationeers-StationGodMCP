@@ -99,7 +99,7 @@ public sealed class PlayerPlacementRuleTests
     [Fact]
     public void CheckReplaceableAnswersOneRowPerId()
     {
-        Newtonsoft.Json.JsonSerializer serializer = StationGodMCP.Api.Shared.ApiJson.Fresh();
+        Newtonsoft.Json.JsonSerializer serializer = StationGodMCP.Api.Shared.ApiJson.Serializer;
         Newtonsoft.Json.Linq.JObject Payload(string? prefab, PlacementVerdict verdict) =>
             Newtonsoft.Json.Linq.JObject.FromObject(new StationGodMCP.Api.Views.ReplaceableView(prefab, verdict), serializer);
         StationGodMCP.Pure.Verbs.Rows rows = new();
@@ -111,7 +111,7 @@ public sealed class PlayerPlacementRuleTests
             PlacementVerdict.Refuse("no kit builds StructureWreck, so no player can place one", PlacementRules.NoKit)));
 
         Assert.Equal("""{"results":[{"index":0,"ok":true,"reference_id":"7","prefab_name":"StructureActiveVent","replaceable":false,"rule":"support","reason":"Placement requires support"},{"index":1,"ok":true,"reference_id":"8","prefab_name":"StructureFrame","replaceable":true,"rule":null,"reason":null},{"index":2,"ok":false,"reference_id":"9","error":{"code":"thing_not_found","message":"No thing with reference id 9."}},{"index":3,"ok":true,"reference_id":"10","prefab_name":"StructureWreck","replaceable":false,"rule":"no_kit","reason":"no kit builds StructureWreck, so no player can place one"}],"count":4,"success_count":3,"error_count":1}""",
-            rows.Reply().ToString(Newtonsoft.Json.Formatting.None));
+            StationGodMCP.Api.Shared.ApiJson.WriteShared(rows.Reply()));
     }
 
     [Theory]

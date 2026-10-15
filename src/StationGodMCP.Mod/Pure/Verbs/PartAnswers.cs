@@ -18,7 +18,7 @@ internal static class PartAnswers
 {
     internal static VerbOutcome Of(string label, IReadOnlyList<string> parts, Func<string, object> answer)
     {
-        JsonSerializer serializer = ApiJson.Fresh();
+        JsonSerializer serializer = ApiJson.Serializer;
         List<OptionProblem> problems = new List<OptionProblem>();
         JObject replies = new JObject();
         for (int index = 0; index < parts.Count; index++)

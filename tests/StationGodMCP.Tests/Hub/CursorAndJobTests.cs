@@ -55,9 +55,9 @@ public sealed class CursorAndJobTests
                 new DeviceWear(false, null, null)));
         }
 
-        Newtonsoft.Json.JsonSerializer serializer = ApiJson.Fresh();
-        JObject reply = ListReply.OfPage("devices", new Page<DeviceView>(devices, 30, offset, 25, offset + count < 30),
-            device => JToken.FromObject(device, serializer), ReplyFields.Of(("gateway_id", "world")));
+        Newtonsoft.Json.JsonSerializer serializer = ApiJson.Serializer;
+        JObject reply = Replies.Tree(ListReply.OfPage("devices", new Page<DeviceView>(devices, 30, offset, 25, offset + count < 30),
+            device => JToken.FromObject(device, serializer), ReplyFields.Of(("gateway_id", "world"))));
         if (cursorId != null)
         {
             reply["cursor_id"] = cursorId;

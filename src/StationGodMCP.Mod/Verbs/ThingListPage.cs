@@ -23,10 +23,10 @@ internal sealed class ThingListPage<TView, TCounts> : IPendingResult where TView
     private readonly FramedPage<TView> _page;
     private readonly EntryCost _cost;
     private readonly Func<TCounts?> _counts;
-    private readonly Func<Page<TView>, string?, TCounts?, JObject> _reply;
+    private readonly Func<Page<TView>, string?, TCounts?, object> _reply;
 
     private ThingListPage(FramedPage<TView> page, EntryCost cost, Func<TCounts?> counts,
-        Func<Page<TView>, string?, TCounts?, JObject> reply)
+        Func<Page<TView>, string?, TCounts?, object> reply)
     {
         _page = page;
         _cost = cost;
@@ -39,7 +39,7 @@ internal sealed class ThingListPage<TView, TCounts> : IPendingResult where TView
     /// id's entry, reply the what's reply for the page, the cursor id (null when none) and the counts.
     /// </summary>
     internal static VerbOutcome First(WalkRequest walk, Paging paging, long[] sorted, int scanned, TCounts counts,
-        Func<long, TView?> live, EntryCost cost, Func<Page<TView>, string?, TCounts?, JObject> reply) =>
+        Func<long, TView?> live, EntryCost cost, Func<Page<TView>, string?, TCounts?, object> reply) =>
         Run(new ThingListPage<TView, TCounts>(
             FramedPage<TView>.Scan(walk, paging.Offset, LimitOf(paging), new ReadyWalk(sorted, scanned), live), cost,
             () => counts, reply));
@@ -49,7 +49,7 @@ internal sealed class ThingListPage<TView, TCounts> : IPendingResult where TView
     /// kept under the cursor as First keeps them; live gives an id's entry, reply the what's reply.
     /// </summary>
     internal static VerbOutcome Scan(WalkRequest walk, Paging paging, IWalkBuild build, Func<TCounts> counts,
-        Func<long, TView?> live, EntryCost cost, Func<Page<TView>, string?, TCounts?, JObject> reply) =>
+        Func<long, TView?> live, EntryCost cost, Func<Page<TView>, string?, TCounts?, object> reply) =>
         Run(new ThingListPage<TView, TCounts>(
             FramedPage<TView>.Scan(walk, paging.Offset, LimitOf(paging), build, live), cost, counts, reply));
 
@@ -58,7 +58,7 @@ internal sealed class ThingListPage<TView, TCounts> : IPendingResult where TView
     /// answered (null only when the walk kept none).
     /// </summary>
     internal static VerbOutcome Later(WalkRequest walk, Paging paging, Func<long, TView?> live, EntryCost cost,
-        Func<Page<TView>, string?, TCounts?, JObject> reply) =>
+        Func<Page<TView>, string?, TCounts?, object> reply) =>
         Run(new ThingListPage<TView, TCounts>(FramedPage<TView>.Later(walk, LimitOf(paging), live), cost,
             static () => null, reply));
 
@@ -84,16 +84,15 @@ internal static class ThingListReply
     /// The list's reply: ListReply's page under list, the what's other keys, then cursor_id while the walk has more
     /// pages (a wire key the hub and sg read, never shown to an agent).
     /// </summary>
-    internal static JObject Of<TView>(string list, Page<TView> page, string? cursorId,
+    internal static ReplyObject Of<TView>(string list, Page<TView> page, string? cursorId,
         params (string Key, object? Value)[] rest)
     {
-        JObject keys = ReplyFields.Of(rest);
+        ReplyObject keys = ReplyFields.Of(rest);
         if (cursorId != null)
         {
-            keys["cursor_id"] = cursorId;
+            keys.Add("cursor_id", cursorId);
         }
 
-        Newtonsoft.Json.JsonSerializer serializer = ApiJson.Fresh();
-        return ListReply.OfPage(list, page, view => JToken.FromObject(view!, serializer), keys);
+        return ListReply.OfPage(list, page, keys);
     }
 }

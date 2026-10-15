@@ -84,7 +84,7 @@ public sealed class WriteLabelTests
     [Fact]
     public void OneRenameAnswersItsShape()
     {
-        JObject reply = ((VerbOutcome.Answered)LabelReplies.Acted(new[] { Renamed(91234, "T2", "T1") }, false)).Reply;
+        JObject reply = Replies.Tree(((VerbOutcome.Answered)LabelReplies.Acted(new[] { Renamed(91234, "T2", "T1") }, false)).Reply);
 
         Assert.Equal(
             """{"reference_id":"91234","prefab_name":"DynamicGasCanisterEmpty","written":"T2","sent_to_host":false,"previous":{"display_name":"T1","custom_name":"T1"},"current":{"display_name":"T2","custom_name":"T2"}}""",
@@ -94,11 +94,11 @@ public sealed class WriteLabelTests
     [Fact]
     public void SeveralRenamesAnswerARowEachForTheHubsUndo()
     {
-        JObject reply = ((VerbOutcome.Answered)LabelReplies.Acted(new LabelResult[]
+        JObject reply = Replies.Tree(((VerbOutcome.Answered)LabelReplies.Acted(new LabelResult[]
         {
             Renamed(91234, "Tank 1", null),
             new LabelResult.Failed(1, "555", new VerbError("not_labelable", "no"))
-        }, true)).Reply;
+        }, true)).Reply);
 
         JObject row = (JObject)reply["results"]![0]!;
         Assert.Equal(JTokenType.Null, row["previous"]!["custom_name"]!.Type);
@@ -120,11 +120,11 @@ public sealed class WriteLabelTests
     [Fact]
     public void AReportListsEachRenameAndEachRefusal()
     {
-        JObject report = LabelReplies.Reported(new LabelResult[]
+        JObject report = Replies.Tree(LabelReplies.Reported(new LabelResult[]
         {
             new LabelResult.Planned(new ThingId(5), "Portable Gas Tank", "Portable Gas Tank", "O2 Tank 1"),
             new LabelResult.Failed(1, "6", new VerbError("not_labelable", "Pipe (6) is a Pipe."))
-        });
+        }));
 
         Assert.True((bool)report["report_only"]!);
         Assert.Equal("[5, Portable Gas Tank, Portable Gas Tank -> O2 Tank 1] [undo]",

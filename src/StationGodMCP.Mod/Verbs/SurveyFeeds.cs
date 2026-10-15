@@ -28,7 +28,7 @@ internal static class SurveyFeeds
         return rows.For(ids);
     }
 
-    private static JObject Reply(FeedPathsView feeds) =>
+    private static ReplyObject Reply(FeedPathsView feeds) =>
         ReplyFields.Of(("root", feeds.Root), ("network_id", feeds.NetworkId), ("kind", feeds.Kind),
             ("root_room_id", feeds.RootRoomId), ("daisy_chains", feeds.DaisyChains),
             ("multiple_feeds", feeds.MultipleFeeds), ("devices", feeds.Devices), ("rooms", feeds.Rooms),

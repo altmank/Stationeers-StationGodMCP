@@ -161,8 +161,8 @@ public sealed class SurveyVerbTests
         rows.Add("551", () => new JObject { ["network_id"] = "17" });
         rows.Add("9", () => throw new ApiException("thing_not_found", "No thing has id 9."));
 
-        JObject feeds = Assert.IsType<VerbOutcome.Answered>(single.For(one)).Reply;
-        JObject listed = Assert.IsType<VerbOutcome.Answered>(rows.For(two)).Reply;
+        JObject feeds = Replies.Tree(Assert.IsType<VerbOutcome.Answered>(single.For(one)).Reply);
+        JObject listed = Replies.Tree(Assert.IsType<VerbOutcome.Answered>(rows.For(two)).Reply);
 
         Assert.Equal("17", (string?)feeds["network_id"]);
         Assert.Null(feeds["results"]);

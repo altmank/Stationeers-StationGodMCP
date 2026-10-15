@@ -57,7 +57,7 @@ public sealed class WriteCheckTests
             plan => Report.Of(new[] { new ReportTarget("5", null, (string)counter.Describe(plan), 0, 1, "[undo]") }));
 
         Assert.Equal(0, counter.Acts);
-        JObject report = ((VerbOutcome.Answered)outcome).Reply;
+        JObject report = Replies.Tree(((VerbOutcome.Answered)outcome).Reply);
         Assert.True((bool)report["report_only"]!);
         Assert.Equal("[5, described, 0 -> 1] [undo]", (string?)report["targets"]![0]!["text"]);
     }
@@ -71,7 +71,7 @@ public sealed class WriteCheckTests
             plan => throw new InvalidOperationException("an acting call does not report"));
 
         Assert.Equal((1, 0), (counter.Acts, counter.Descriptions));
-        Assert.Equal("acted", (string?)((VerbOutcome.Answered)outcome).Reply["acted"]);
+        Assert.Equal("acted", (string?)Replies.Tree(outcome)["acted"]);
     }
 
     [Fact]
@@ -82,8 +82,8 @@ public sealed class WriteCheckTests
 
         VerbError refused = ((VerbOutcome.Refused)WriteCheck<Plan>.Run(checks)
             .Outcome(Confirmed, _ => throw new InvalidOperationException(), _ => new JObject())).Error;
-        JObject report = ((VerbOutcome.Answered)WriteCheck<Plan>.Run(checks)
-            .Outcome(Reporting, _ => throw new InvalidOperationException(), _ => new JObject())).Reply;
+        JObject report = Replies.Tree(((VerbOutcome.Answered)WriteCheck<Plan>.Run(checks)
+            .Outcome(Reporting, _ => throw new InvalidOperationException(), _ => new JObject())).Reply);
 
         Assert.Equal(0, counter.Acts);
         Assert.Equal("memory_not_writable", refused.Code);
@@ -107,8 +107,8 @@ public sealed class WriteCheckTests
     [Fact]
     public void AMemoryReportGivesTheTargetTheValuesAndWhatIsThereNowAndNoCurrentValues()
     {
-        JObject report = MemoryWrites.Reported(new MemoryPlace("local", new ThingId(5), 2, 512), "IC Housing",
-            new List<double> { 1, 2 }, new List<double> { 0, 7 });
+        JObject report = Replies.Tree(MemoryWrites.Reported(new MemoryPlace("local", new ThingId(5), 2, 512), "IC Housing",
+            new List<double> { 1, 2 }, new List<double> { 0, 7 }));
 
         Assert.Equal(
             "{\"gateway_id\":\"local\",\"reference_id\":\"5\",\"start_address\":2,\"requested_values\":[1.0,2.0]," +
@@ -121,8 +121,8 @@ public sealed class WriteCheckTests
     [Fact]
     public void AMemoryWriteGivesTheMemoryBeforeAndAfter()
     {
-        JObject written = MemoryWrites.Written(new MemoryPlace("world", new ThingId(5), 0, null),
-            new List<double> { 3 }, new List<double> { 0 }, new List<double> { 3 });
+        JObject written = Replies.Tree(MemoryWrites.Written(new MemoryPlace("world", new ThingId(5), 0, null),
+            new List<double> { 3 }, new List<double> { 0 }, new List<double> { 3 }));
 
         Assert.Equal(new[] { "gateway_id", "reference_id", "start_address", "requested_values", "previous_values",
             "current_values", "count", "stack_size" }, written.Properties().Select(key => key.Name));
@@ -172,9 +172,9 @@ public sealed class WriteCheckTests
         genes.Succeeded(new GeneWrittenView(0, "WaterUsage", 0.5f, 1f));
         genes.Failed(new GeneNotWrittenView(1, "LightPerDay", -0.25f,
             ApiErrors.Refused("out_of_range", "Gene LightPerDay: 2 is outside the game's range -1 to 1.")));
-        JObject report = GeneReplies.Reported(
+        JObject report = Replies.Tree(GeneReplies.Reported(
             new GeneSetHeader(new ThingView(new ThingId(9), "SeedBag_Corn", "Corn Seeds"), "seed", 3, true),
-            genes.Build(), "[undo]");
+            genes.Build(), "[undo]"));
 
         Assert.Equal(new[]
         {
@@ -203,9 +203,9 @@ public sealed class WriteCheckTests
 
     private static string? ProblemCode(Func<Plan> checks)
     {
-        JObject report = ((VerbOutcome.Answered)WriteCheck<Plan>.Run(checks)
+        JObject report = Replies.Tree(((VerbOutcome.Answered)WriteCheck<Plan>.Run(checks)
             .Outcome(Reporting, _ => throw new InvalidOperationException("a report does not act"),
-                _ => new JObject())).Reply;
+                _ => new JObject())).Reply);
 
         Assert.True((bool)report["report_only"]!);
         return (string?)report["problems"]![0]!["code"];

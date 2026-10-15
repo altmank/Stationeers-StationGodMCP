@@ -21,6 +21,6 @@ internal static class WriteUplink
         ThingId downlink = ThingId.TryRead(new Newtonsoft.Json.Linq.JValue(options.Downlink), out ThingId id)
             ? id
             : throw ApiErrors.Refused("invalid_downlink", $"downlink: '{options.Downlink}' is not a thing's id.");
-        return new VerbOutcome.Answered(IdAnswers.Payload(DataLinks.Point(uplink, downlink), ApiJson.Fresh()));
+        return new VerbOutcome.Answered(DataLinks.Point(uplink, downlink));
     }
 }

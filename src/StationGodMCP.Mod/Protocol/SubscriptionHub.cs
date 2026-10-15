@@ -234,7 +234,7 @@ internal sealed class SubscriptionHub : ISubscriptionEvents<ReadDevicesView>, IS
 
         try
         {
-            JObject facts = JobEndFacts.Of(JObject.FromObject(finalView, ApiJson.Fresh()));
+            JObject facts = JobEndFacts.Of(JObject.FromObject(finalView, ApiJson.Serializer));
             _engine.JobEnded(facts, frame, this);
         }
         catch (Exception exception)

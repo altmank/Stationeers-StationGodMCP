@@ -86,11 +86,11 @@ public sealed class UndoReplyTests
     [Fact]
     public void TheReportListsTheTargetsThePlansAndEveryProblemsId()
     {
-        JObject report = UndoReplies.Reported(new[]
+        JObject report = Replies.Tree(UndoReplies.Reported(new[]
         {
             Done("run-7"),
             new UndoResult.Failed(1, "run-10", UndoReplies.Refused(Diverged()))
-        }, asList: true);
+        }, asList: true));
 
         Assert.True((bool)report["report_only"]!);
         Assert.Equal("run-7", (string?)report["plans"]![0]!["id"]);
@@ -106,7 +106,7 @@ public sealed class UndoReplyTests
     [Fact]
     public void OneIdsReportIsThatIdsPlanAtTheTopLevel()
     {
-        JObject report = UndoReplies.Reported(new[] { Done("run-7") }, asList: false);
+        JObject report = Replies.Tree(UndoReplies.Reported(new[] { Done("run-7") }, asList: false));
 
         Assert.Equal("run-7", (string?)report["id"]);
         Assert.Equal("build cable", (string?)report["tool"]);
@@ -174,7 +174,7 @@ public sealed class UndoReplyTests
         new UndoResult.Undone(id, Body(id), Targets(),
             new List<object> { new JObject { ["job_id"] = "remove-9", ["status"] = "queued" } });
 
-    private static JObject Answered(VerbOutcome outcome) => ((VerbOutcome.Answered)outcome).Reply;
+    private static JObject Answered(VerbOutcome outcome) => Replies.Tree(((VerbOutcome.Answered)outcome).Reply);
 
     private static List<ReportTarget> Targets()
     {

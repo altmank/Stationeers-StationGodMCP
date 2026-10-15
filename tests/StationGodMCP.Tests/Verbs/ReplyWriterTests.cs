@@ -19,6 +19,8 @@ public sealed class ReplyWriterTests
 {
     private static string Text(JToken token) => token.ToString(Formatting.None);
 
+    private static string Text(object reply) => StationGodMCP.Api.Shared.ApiJson.WriteShared(reply);
+
     private static PerIdList Ids(params string[] ids) => new(ids, ids.Length != 1, null);
 
     [Fact]
@@ -28,7 +30,7 @@ public sealed class ReplyWriterTests
         rows.Succeeded("1", new JObject { ["value"] = 1.0 });
         rows.Failed("2", new VerbError("not_found", "No thing 2."));
 
-        JObject reply = rows.Reply(new JObject { ["gateway_id"] = "world" });
+        JObject reply = Replies.Tree(rows.Reply(new JObject { ["gateway_id"] = "world" }));
 
         Assert.Equal(
             """{"gateway_id":"world","results":[{"index":0,"ok":true,"reference_id":"1","value":1.0},""" +
@@ -43,7 +45,7 @@ public sealed class ReplyWriterTests
         Rows rows = new();
         rows.Succeeded("1", new JObject { ["index"] = 9, ["ok"] = false, ["reference_id"] = "x", ["value"] = 2 });
 
-        Assert.Equal("""{"index":0,"ok":true,"reference_id":"1","value":2}""", Text(rows.Reply()["results"]![0]!));
+        Assert.Equal("""{"index":0,"ok":true,"reference_id":"1","value":2}""", Text(Replies.Tree(rows.Reply())["results"]![0]!));
     }
 
     [Fact]
@@ -54,7 +56,7 @@ public sealed class ReplyWriterTests
 
         VerbOutcome.Answered answered = Assert.IsType<VerbOutcome.Answered>(rows.For(new PerIdList(new[] { "1" }, true, null)));
 
-        Assert.Equal(1, (int)answered.Reply["count"]!);
+        Assert.Equal(1, (int)Replies.Tree(answered.Reply)["count"]!);
     }
 
     [Fact]
@@ -85,14 +87,14 @@ public sealed class ReplyWriterTests
     {
         Pure.Verbs.Paging paging = new(2, 1, Pure.ListOrder.Nearest);
 
-        JObject reply = ListReply.Of("things", new[] { "a", "b", "c", "d" }, paging, entry => new JValue(entry),
-            new JObject { ["scanned"] = 40 });
+        JObject reply = Replies.Tree(ListReply.Of("things", new[] { "a", "b", "c", "d" }, paging, entry => new JValue(entry),
+            new JObject { ["scanned"] = 40 }));
 
         Assert.Equal(
             """{"things":["b","c"],"count":2,"total":4,"offset":1,"limit":2,"has_more":true,"scanned":40}""",
             Text(reply));
-        Assert.DoesNotContain("limit", ListReply.Of("things", new[] { 1 }, Pure.Verbs.Paging.All, entry => new JValue(entry))
-            .Properties().Select(key => key.Name));
+        Assert.DoesNotContain("limit", Replies.Tree(ListReply.Of("things", new[] { 1 }, Pure.Verbs.Paging.All,
+            entry => new JValue(entry))).Properties().Select(key => key.Name));
     }
 
     [Fact]
@@ -107,7 +109,7 @@ public sealed class ReplyWriterTests
                 JArray.Parse("""[{"reference_id":"5","kind":"chip"}]"""))
         };
 
-        JObject report = Report.Of(targets, new JObject { ["placed"] = new JArray() });
+        JObject report = Replies.Tree(Report.Of(targets, new JObject { ["placed"] = new JArray() }));
 
         Assert.Equal(
             """{"placed":[],"report_only":true,"targets":[""" +
@@ -139,8 +141,8 @@ public sealed class ReplyWriterTests
             ["pieces"] = pieces
         };
 
-        JObject report = Report.Of(targets, body,
-            new[] { new ReportProblem(null, "5000", new VerbError("not_replaceable", "no")) });
+        JObject report = Replies.Tree(Report.Of(targets, body,
+            new[] { new ReportProblem(null, "5000", new VerbError("not_replaceable", "no")) }));
 
         Assert.Equal(new[] { "pieces_total", "warnings", "problems", "report_only", "targets" },
             report.Properties().Select(key => key.Name).ToArray());
@@ -149,7 +151,7 @@ public sealed class ReplyWriterTests
         Assert.Equal("""["5000","Cable"]""", Text(listed[0]));
         Assert.Equal(new JArray("lint"), listed[200]["passed"]);
 
-        JObject small = Report.Of(targets.GetRange(0, 3), new JObject { ["pieces"] = new JArray(pieces[0]) });
+        JObject small = Replies.Tree(Report.Of(targets.GetRange(0, 3), new JObject { ["pieces"] = new JArray(pieces[0]) }));
         Assert.True(Encoding.UTF8.GetByteCount(Text(small)) <= Report.SummaryBytes);
         Assert.Equal(new[] { "pieces", "report_only", "targets" }, small.Properties().Select(key => key.Name).ToArray());
         Assert.Equal("[5000, Cable, StructureCableStraight -> StructureCableStraightH] [cannot undo: change job]",
@@ -167,21 +169,11 @@ public sealed class ReplyWriterTests
         }
 
         StationGodMCP.Api.Shared.ApiException refused =
-            Assert.Throws<StationGodMCP.Api.Shared.ApiException>(() => Report.Of(targets));
+            Assert.Throws<StationGodMCP.Api.Shared.ApiException>(() => Report.Of(targets).Form(StationGodMCP.Api.Shared.ApiJson.Serializer));
 
         Assert.Equal("report_too_large", refused.Code);
         Assert.Equal("""{"targets":5000,"limit_tokens":25000,"fix":"narrow the target: a filter on the find, a smaller ref, fewer spread lines"}""",
             Text((JObject)refused.Details!));
-    }
-
-    [Fact]
-    public void RowsCutAReportsOwnListsOnly()
-    {
-        JToken[] pieces = { new JValue(1), new JValue(2), new JValue(3) };
-
-        Assert.Equal("[1,2]", Text(Report.Shown(pieces, new ReportConfirm(true, false, 2))));
-        Assert.Equal("[]", Text(Report.Shown(pieces, new ReportConfirm(true, false, 0))));
-        Assert.Equal("[1,2,3]", Text(Report.Shown(pieces, new ReportConfirm(true, false, null))));
     }
 
     [Fact]

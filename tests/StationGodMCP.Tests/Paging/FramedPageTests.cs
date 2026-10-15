@@ -177,7 +177,7 @@ public sealed class FramedPageTests
             step.CursorId));
     }
 
-    private static string Json(JObject reply) => reply.ToString(Newtonsoft.Json.Formatting.None);
+    private static string Json(object reply) => StationGodMCP.Api.Shared.ApiJson.WriteShared(reply);
 
     // Describing a thing costs the clock costMs.
     private static Func<long, FoundThingView?> Costing(FakeClock clock, double costMs) => id =>

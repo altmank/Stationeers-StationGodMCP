@@ -81,10 +81,10 @@ internal static class StructureBuild
         object reply = order.Fields.Verbose
             ? started
             : JobStartReplies.Brief(started, JobPreflightSummaryView.Of(preflight));
-        return new VerbOutcome.Answered(JObject.FromObject(reply, ApiJson.Fresh()));
+        return new VerbOutcome.Answered(JObject.FromObject(reply, ApiJson.Serializer));
     }
 
-    private static JObject Described(PlacePlan plan, StructureBuildOrder order)
+    private static ReportReply Described(PlacePlan plan, StructureBuildOrder order)
     {
         List<ReportProblem> problems = new List<ReportProblem>(plan.Problems.Count);
         foreach (BuildIssueView issue in plan.Problems)
