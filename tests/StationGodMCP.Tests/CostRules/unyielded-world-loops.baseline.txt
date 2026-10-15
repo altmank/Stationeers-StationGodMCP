@@ -1,4 +1,4 @@
-# unyielded-world-loops: today's violations per file (CostSourceRulesTests); 41 in all
+# unyielded-world-loops: today's violations per file (CostSourceRulesTests); 40 in all
 Api/MovePlayer.cs	1
 Api/RocketFlightLog.cs	1
 Api/Shared/Game/Build/KitBuiltNames.cs	1
@@ -17,7 +17,6 @@ Api/Shared/Game/ScopedTarget.cs	1
 Api/Shared/Game/Structures/FrameFamily.cs	1
 Api/Shared/Game/Structures/StructureAirRecord.cs	1
 Api/Shared/Game/Structures/StructureTargets.cs	1
-Api/Shared/Game/ThingIndex.cs	1
 Api/Shared/Game/ThingReagents.cs	1
 Api/Shared/Game/Trading/Contacts.cs	2
 Api/Shared/Game/Trading/HeldGoods.cs	1

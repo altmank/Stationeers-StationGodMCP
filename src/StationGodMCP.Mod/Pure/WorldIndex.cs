@@ -8,28 +8,36 @@ using StationGodMCP.Pure.Protocol;
 namespace StationGodMCP.Pure;
 
 /// <summary>
-/// Which things carry which prefab name, kept beside the game's master lists so a list filtered by prefab reads a few
-/// buckets instead of every thing. The game side reports each thing a master list took in (Arrived), each one a list
-/// may have let go (Left) and each clearing of the lists (Reset). A thing is filed under the name it has when the next
-/// query runs, because the game sets a new thing's prefab name after its first registration (DynamicThing.Awake runs
-/// inside Instantiate). The first query after a Reset files every thing the lists hold (the seed), so the index is
-/// whole even when the lists were filled before it heard of them.
+/// The world model's one index (cost design A1): which things carry which prefab name, and which things are of which
+/// class, kept beside the game's master lists so a list filtered by prefab or class reads a few buckets instead of
+/// every thing. The game side reports each thing a master list took in (Arrived), each one a list may have let go
+/// (Left) and each clearing of the lists (Reset). A thing is filed under the name it has when the next query runs,
+/// because the game sets a new thing's prefab name after its first registration (DynamicThing.Awake runs inside
+/// Instantiate); its classes (a bit set, bit n for class n) are read once, when it is first filed, since a thing's class
+/// never changes. The first query after a Reset files every thing the lists hold (the seed), so the index is whole even
+/// when the lists were filled before it heard of them.
 /// <para>
-/// The index only proposes: every answer is checked against a master list's own membership (isMember), and a filed
-/// thing that is in no list any more (inAnyList) is dropped. Each thing sits in one bucket, its name's; a name that
-/// several classes or prefabs carry is one bucket, names compared ignoring case as PrefabMatch compares them.
+/// The index only proposes: every answer is checked against a list's own membership (isMember: for a class, its own
+/// pool), and a filed thing that is in no list any more (inAnyList) is dropped. Each thing sits in one name bucket, its
+/// name's (a name that several classes or prefabs carry is one bucket, names compared ignoring case as PrefabMatch
+/// compares them), and in one class bucket per class it has.
 /// </para>
 /// </summary>
-internal sealed class PrefabIndex<T> where T : class
+internal sealed class WorldIndex<T> where T : class
 {
     /// <summary>Arrivals and leaves held for the next query before the index forgets and seeds again.</summary>
     internal const int MaximumBacklog = 200_000;
 
+    /// <summary>Classes a thing can have: one bit each.</summary>
+    internal const int MaximumClasses = 31;
+
     private readonly object _gate = new object();
     private readonly Func<T, string?> _nameOf;
+    private readonly Func<T, int> _classesOf;
     private readonly Dictionary<string, HashSet<T>> _byName =
         new Dictionary<string, HashSet<T>>(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<T, string> _filedUnder = new Dictionary<T, string>(ByReference.Instance);
+    private readonly HashSet<T>[] _byClass = new HashSet<T>[MaximumClasses];
+    private readonly Dictionary<T, Filing> _filedUnder = new Dictionary<T, Filing>(ByReference.Instance);
     private readonly List<T> _arrived = new List<T>();
     private readonly List<T> _left = new List<T>();
     private bool _seeded;
@@ -37,9 +45,15 @@ internal sealed class PrefabIndex<T> where T : class
     private long _arrivedTotal;
     private long _leftTotal;
 
-    internal PrefabIndex(Func<T, string?> nameOf)
+    /// <summary>nameOf: a thing's prefab name now; classesOf: its class bits, read once per thing.</summary>
+    internal WorldIndex(Func<T, string?> nameOf, Func<T, int>? classesOf = null)
     {
         _nameOf = nameOf;
+        _classesOf = classesOf ?? (static _ => 0);
+        for (int index = 0; index < MaximumClasses; index++)
+        {
+            _byClass[index] = new HashSet<T>(ByReference.Instance);
+        }
     }
 
     /// <summary>Things filed, after the last query (pending arrivals are not counted).</summary>
@@ -90,6 +104,16 @@ internal sealed class PrefabIndex<T> where T : class
         }
     }
 
+    /// <summary>Things filed under one class, after the last query.</summary>
+    internal int ClassCount(int classNumber)
+    {
+        HashSet<T> bucket = _byClass[ClassIndex(classNumber)];
+        lock (_gate)
+        {
+            return bucket.Count;
+        }
+    }
+
     /// <summary>A master list took the thing in; filed at the next query. Any thread.</summary>
     internal void Arrived(T thing)
     {
@@ -134,6 +158,11 @@ internal sealed class PrefabIndex<T> where T : class
     private void Forget()
     {
         _byName.Clear();
+        foreach (HashSet<T> bucket in _byClass)
+        {
+            bucket.Clear();
+        }
+
         _filedUnder.Clear();
         _arrived.Clear();
         _left.Clear();
@@ -155,9 +184,49 @@ internal sealed class PrefabIndex<T> where T : class
                 "prefab_contains.", nameof(match));
         }
 
-        // The seed copies the game's lists under their own locks, so it is read outside the gate: a hook never waits
-        // for the gate while a list's lock is held here.
-        // A Reset between the copy and the filing (another thread) takes the copy again.
+        Seed(seed);
+        lock (_gate)
+        {
+            Drain(inAnyList);
+            List<T> found = new List<T>();
+            List<T>? gone = null;
+            examined = 0;
+            foreach (HashSet<T> bucket in BucketsFor(match))
+            {
+                examined += bucket.Count;
+                Collect(bucket, inAnyList, isMember, found, ref gone);
+            }
+
+            Unfile(gone);
+            return found;
+        }
+    }
+
+    /// <summary>
+    /// The things of one class (classNumber, 0 to MaximumClasses - 1) its own list holds (isMember); a filed thing in no
+    /// list any more is dropped. seed as for Find.
+    /// </summary>
+    internal List<T> OfClass(int classNumber, Func<IEnumerable<T>> seed, Func<T, bool> inAnyList,
+        Func<T, bool> isMember)
+    {
+        HashSet<T> bucket = _byClass[ClassIndex(classNumber)];
+        Seed(seed);
+        lock (_gate)
+        {
+            Drain(inAnyList);
+            List<T> found = new List<T>(bucket.Count);
+            List<T>? gone = null;
+            Collect(bucket, inAnyList, isMember, found, ref gone);
+            Unfile(gone);
+            return found;
+        }
+    }
+
+    // The seed copies the game's lists under their own locks, so it is read outside the gate: a hook never waits for the
+    // gate while a list's lock is held here. A Reset between the copy and the filing (another thread) takes the copy
+    // again.
+    private void Seed(Func<IEnumerable<T>> seed)
+    {
         while (true)
         {
             long generation;
@@ -165,7 +234,7 @@ internal sealed class PrefabIndex<T> where T : class
             {
                 if (_seeded)
                 {
-                    break;
+                    return;
                 }
 
                 generation = _generation;
@@ -185,42 +254,24 @@ internal sealed class PrefabIndex<T> where T : class
                 }
 
                 _seeded = true;
-                break;
+                return;
             }
         }
+    }
 
-        lock (_gate)
+    private static void Collect(HashSet<T> bucket, Func<T, bool> inAnyList, Func<T, bool> isMember, List<T> found,
+        ref List<T>? gone)
+    {
+        foreach (T thing in bucket)
         {
-            Drain(inAnyList);
-            List<HashSet<T>> buckets = BucketsFor(match);
-            List<T> found = new List<T>();
-            List<T>? gone = null;
-            examined = 0;
-            foreach (HashSet<T> bucket in buckets)
+            if (isMember(thing))
             {
-                foreach (T thing in bucket)
-                {
-                    examined++;
-                    if (isMember(thing))
-                    {
-                        found.Add(thing);
-                    }
-                    else if (!inAnyList(thing))
-                    {
-                        (gone ??= new List<T>()).Add(thing);
-                    }
-                }
+                found.Add(thing);
             }
-
-            if (gone != null)
+            else if (!inAnyList(thing))
             {
-                foreach (T thing in gone)
-                {
-                    Unfile(thing);
-                }
+                (gone ??= new List<T>()).Add(thing);
             }
-
-            return found;
         }
     }
 
@@ -270,17 +321,29 @@ internal sealed class PrefabIndex<T> where T : class
         return buckets;
     }
 
+    private static int ClassIndex(int classNumber) =>
+        classNumber >= 0 && classNumber < MaximumClasses
+            ? classNumber
+            : throw new ArgumentOutOfRangeException(nameof(classNumber));
+
     private void File(T thing)
     {
         string name = _nameOf(thing) ?? string.Empty;
-        if (_filedUnder.TryGetValue(thing, out string? filed))
+        int classes;
+        if (_filedUnder.TryGetValue(thing, out Filing filed))
         {
-            if (string.Equals(filed, name, StringComparison.Ordinal))
+            if (string.Equals(filed.Name, name, StringComparison.Ordinal))
             {
                 return;
             }
 
+            // A new name (the game names a thing after its first registration): its classes stay as filed.
+            classes = filed.Classes;
             Unfile(thing);
+        }
+        else
+        {
+            classes = _classesOf(thing);
         }
 
         if (!_byName.TryGetValue(name, out HashSet<T> bucket))
@@ -290,25 +353,68 @@ internal sealed class PrefabIndex<T> where T : class
         }
 
         bucket.Add(thing);
-        _filedUnder[thing] = name;
+        for (int index = 0; index < MaximumClasses; index++)
+        {
+            if ((classes & (1 << index)) != 0)
+            {
+                _byClass[index].Add(thing);
+            }
+        }
+
+        _filedUnder[thing] = new Filing(name, classes);
+    }
+
+    private void Unfile(List<T>? gone)
+    {
+        if (gone == null)
+        {
+            return;
+        }
+
+        foreach (T thing in gone)
+        {
+            Unfile(thing);
+        }
     }
 
     private void Unfile(T thing)
     {
-        if (!_filedUnder.TryGetValue(thing, out string? filed))
+        if (!_filedUnder.TryGetValue(thing, out Filing filed))
         {
             return;
         }
 
         _filedUnder.Remove(thing);
-        if (_byName.TryGetValue(filed, out HashSet<T> bucket))
+        if (_byName.TryGetValue(filed.Name, out HashSet<T> bucket))
         {
             bucket.Remove(thing);
             if (bucket.Count == 0)
             {
-                _byName.Remove(filed);
+                _byName.Remove(filed.Name);
             }
         }
+
+        for (int index = 0; index < MaximumClasses; index++)
+        {
+            if ((filed.Classes & (1 << index)) != 0)
+            {
+                _byClass[index].Remove(thing);
+            }
+        }
+    }
+
+    // Where a thing is filed: its name's bucket and its classes' buckets.
+    private readonly struct Filing
+    {
+        internal Filing(string name, int classes)
+        {
+            Name = name;
+            Classes = classes;
+        }
+
+        internal string Name { get; }
+
+        internal int Classes { get; }
     }
 
     // Unity objects compare by native instance and a destroyed one equals null; the index holds the managed object

@@ -272,7 +272,7 @@ public sealed class FrameHistogramTests
 
     private static RuntimeView Runtime(DispatchStats stats, bool counters) =>
         new RuntimeView(0.0, 0, FrameBudget.For(4.0, false), stats.Snapshot(), new MemoryView(0, 0, 0, null, null),
-            new List<MethodTiming>(), prefabIndex: new PrefabIndexView(true, false, 1, 1, 0, 0),
+            new List<MethodTiming>(), worldIndex: new WorldIndexView(true, false, 1, 1, WorldIndexView.NoClasses, 0, 0),
             counters: counters
                 ? new GameCountersView(new JobHoldsView(new long[5]), new PrintLogView(0, 0), 0, new BatchConsoleView(0, 0))
                 : null);

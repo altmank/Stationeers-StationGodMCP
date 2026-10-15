@@ -210,12 +210,17 @@ internal static class GameMembers
     // ---- World and devices ----
     internal static readonly GameField DeviceDensePool = Field(typeof(Device), "_deviceDensePool");
 
-    // ---- The master lists' membership (ThingIndex: a thing's slot in OcclusionManager.AllThings / AllDynamicThings) ----
+    // ---- The lists' membership (World/ThingIndex: a thing's slot in OcclusionManager.AllThings / AllDynamicThings,
+    // GridController.AllStructuresPool and Device.AllDevices) ----
     internal static readonly GameField ThingAllThingsSlot = Field(typeof(Thing), "_allThingsPool");
     internal static readonly GameField DynamicThingPoolSlot = Field(typeof(DynamicThing), "_dynamicThingsDensePool");
+    internal static readonly GameField StructurePoolSlot = Field(typeof(Structure), "_structuresDensePool");
     internal static readonly GameField ThingPoolEntries = Field(typeof(Assets.Scripts.Util.DensePool<Thing>), "_entries");
     internal static readonly GameField DynamicThingPoolEntries =
         Field(typeof(Assets.Scripts.Util.DensePool<DynamicThing>), "_entries");
+    internal static readonly GameField StructurePoolEntries =
+        Field(typeof(Assets.Scripts.Util.DensePool<Structure>), "_entries");
+    internal static readonly GameField DevicePoolEntries = Field(typeof(Assets.Scripts.Util.DensePool<Device>), "_entries");
     internal static readonly GameField SolarPanelArms = Field(typeof(SolarPanel), "_panelArms");
     internal static readonly GameField DishMinWattage = Field(typeof(SatelliteDish), "minWattage");
     internal static readonly GameField DishMaxWattage = Field(typeof(SatelliteDish), "maxWattage");

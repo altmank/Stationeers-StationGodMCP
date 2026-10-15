@@ -55,7 +55,8 @@ internal static class ServerInfo
         new RuntimeView(StationGodMod.SinceLoad.Elapsed.TotalSeconds, WorldStores.Epoch,
             FrameBudget.For(PerformanceSettings.RequestBudgetMs, false), StationGodRequestDispatcher.Stats.Snapshot(),
             Memory(), MethodStats.Called(), Connections(), ProfilingControl.Summary(),
-            new JobSettlesView(SettleGate.Run, SettleGate.Skipped, SettleGate.Unchecked), ThingIndex.View(counters),
+            new JobSettlesView(SettleGate.Run, SettleGate.Skipped, SettleGate.Unchecked),
+            WorldModel.ThingIndex.View(counters),
             counters ? Counters() : null, shape,
             counters ? StationGodMod.Updates.Read(UnityEngine.Time.frameCount) : null);
 

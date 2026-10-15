@@ -110,7 +110,7 @@ public sealed class StationGodMod : ModBehaviour
             _harmony = new Harmony(ModId);
             GameMembers.CheckAll();
             PatchEachClass(_harmony);
-            Api.Shared.Game.ThingIndex.Enable(ModId);
+            WorldModel.ThingIndex.Enable(ModId);
             ConfigFile configuration = new ConfigFile(ConfigPath, true);
             Pipe = PipeSettings.Load(configuration);
             _remote = RemoteSettings.Load(configuration);
@@ -121,7 +121,7 @@ public sealed class StationGodMod : ModBehaviour
             Api.Shared.Game.Runs.LayoutSettings.Load(configuration);
             PerformanceSettings.Load(configuration);
             ProfilingControl.Load(typeof(StationGodMod).Assembly, PerformanceSettings.Profiling);
-            Api.Shared.Game.ThingIndex.Verify = PerformanceSettings.VerifyPrefabIndex;
+            WorldModel.ThingIndex.Verify = PerformanceSettings.VerifyWorldIndex;
             Net.StationGodNet.Register(MultiplayerSettings.ShareViews(configuration));
             LaneScheduler scheduler = new LaneScheduler(PerformanceSettings.Scheduler, world: CallWorld);
             _dispatcher = new StationGodRequestDispatcher(Deadlines, scheduler);
@@ -139,7 +139,7 @@ public sealed class StationGodMod : ModBehaviour
             _dispatcher.Restores = Restores;
             Api.ApiHost.Prepare();
             Prefab.OnPrefabsLoaded += RegisterPrefabs;
-            if (Prefab.AllPrefabs != null && Prefab.AllPrefabs.Count > 0)
+            if (WorldModel.World.PrefabsLoaded)
             {
                 RegisterPrefabs();
             }
@@ -630,10 +630,10 @@ internal static class PerformanceSettings
     internal static bool Profiling { get; private set; }
 
     /// <summary>
-    /// Whether every list query the prefab index answers also walks the game's list and logs a difference
-    /// ([Performance] VerifyPrefabIndex, a debug switch).
+    /// Whether every query the world index answers also walks the game's list and logs a difference
+    /// ([Performance] VerifyWorldIndex, a debug switch).
     /// </summary>
-    internal static bool VerifyPrefabIndex { get; private set; }
+    internal static bool VerifyWorldIndex { get; private set; }
 
     /// <summary>The frame scheduler's settings, from every [Performance] value.</summary>
     internal static SchedulerSettings Scheduler { get; private set; } = SchedulerSettings.Default;
@@ -676,10 +676,10 @@ internal static class PerformanceSettings
             $"slow_frame_ms {SlowFrameLimits.DefaultMs} and no CSV). It times StationGod's main-thread work per frame, " +
             "call and job tick hold; off, it costs one check per timed piece. The server profiling method switches it at any " +
             "time. Restart the game to apply.").Value;
-        VerifyPrefabIndex = configuration.Bind(Section, "VerifyPrefabIndex", false,
-            "Debug: every find thing or find item call filtered by prefab, answered from the prefab " +
-            "index, also walks every thing in the world and logs a warning when the two differ (server info " +
-            "runtime.prefab_index counts the checks and differences). Costs a full walk per call. Restart the game to " +
+        VerifyWorldIndex = configuration.Bind(Section, "VerifyWorldIndex", false,
+            "Debug: every query the world index answers (things by prefab or by class: structures, frames, devices, " +
+            "items, ...) also walks the game's own list for it and logs a warning when the two differ (server info " +
+            "runtime.world_index counts the checks and differences). Costs a full walk per query. Restart the game to " +
             "apply.").Value;
     }
 

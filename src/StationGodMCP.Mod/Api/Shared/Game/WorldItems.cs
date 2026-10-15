@@ -9,38 +9,29 @@ using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Verbs;
+using World = StationGodMCP.WorldModel.World;
 
 namespace StationGodMCP.Api.Shared.Game;
 
 /// <summary>
-/// Every item in the world wherever it is. Items come from OcclusionManager.AllDynamicThings, the list the game's own
-/// deletelooseitems command walks (a filter naming prefabs reads only that list's things the prefab index files under
-/// matching names), and an item is loose when it has no ParentSlot (that command's rule). Organs
-/// (lungs, brain, stomach) are Items in the game and are left out.
+/// Every item in the world wherever it is. Items come from the world model (World.Items: the Items of
+/// OcclusionManager.AllDynamicThings, the list the game's own deletelooseitems command walks; a filter naming prefabs
+/// reads only the items the world index files under matching names), and an item is loose when it has no ParentSlot
+/// (that command's rule). Organs (lungs, brain, stomach) are Items in the game and are left out.
 /// </summary>
 internal static class WorldItems
 {
-    internal static List<Item> All() => Keep(Pools.Snapshot(OcclusionManager.AllDynamicThings));
+    internal static List<Item> All() => Keep(World.Items());
 
-    /// <summary>
-    /// Every item whose prefab name the match may keep: from the prefab index when it can answer (ThingIndex), else
-    /// every item.
-    /// </summary>
-    internal static List<Item> Named(PrefabMatch match) =>
-        ThingIndex.DynamicThings(match) is { } indexed ? Keep(indexed) : All();
+    /// <summary>Every item whose prefab name the match may keep (the world index's); every item for no match.</summary>
+    internal static List<Item> Named(PrefabMatch match) => match.IsActive ? Keep(World.Items(match)) : All();
 
-    private static List<Item> Keep(List<DynamicThing> things)
+    /// <summary>Every food, drink and rotten food item (World.Consumables), as All keeps items.</summary>
+    internal static List<Item> Consumables() => Keep(World.Consumables());
+
+    private static List<Item> Keep(List<Item> items)
     {
-        List<Item> items = new List<Item>(things.Count);
-        for (int index = 0; index < things.Count; index++)
-        {
-            if (things[index] is Item item && item != null && !(item is Organ) && !item.IsCursor &&
-                !item.IsBeingDestroyed)
-            {
-                items.Add(item);
-            }
-        }
-
+        items.RemoveAll(static item => item == null || item is Organ || item.IsCursor || item.IsBeingDestroyed);
         return items;
     }
 

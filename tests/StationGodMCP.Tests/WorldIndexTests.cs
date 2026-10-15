@@ -11,11 +11,11 @@ using Xunit;
 namespace StationGodMCP.Tests;
 
 /// <summary>
-/// The prefab index (Pure/PrefabIndex) against a model of the game's two master lists, and the prefabs argument
+/// The world index (Pure/WorldIndex), by prefab and by class, against a model of the game's two master lists, and the prefabs argument
 /// (PrefabMatch.OfNames, PrefabMatch.ForIndex). The index must answer what a walk of a list answers, whatever order
 /// things arrive, leave, change name or get cleared in.
 /// </summary>
-public sealed class PrefabIndexTests
+public sealed class WorldIndexTests
 {
     // ---- a model of the game's lists ----
 
@@ -29,6 +29,9 @@ public sealed class PrefabIndexTests
 
         internal string? Name { get; set; }
 
+        // Class bits; the index reads them once, when it first files the thing.
+        internal int Classes { get; set; }
+
         internal int Id { get; }
 
         // Unity objects override equality; the index must not depend on it.
@@ -41,13 +44,14 @@ public sealed class PrefabIndexTests
     {
         internal readonly List<Thing> All = new List<Thing>();
         internal readonly List<Thing> Dynamic = new List<Thing>();
-        internal readonly PrefabIndex<Thing> Index = new PrefabIndex<Thing>(static thing => thing.Name);
+        internal readonly WorldIndex<Thing> Index =
+            new WorldIndex<Thing>(static thing => thing.Name, static thing => thing.Classes);
         internal int Seeds;
 
         // As the game: a thing is added, then told; removed, then told.
-        internal Thing Add(string name, bool dynamic = false, bool tell = true)
+        internal Thing Add(string name, bool dynamic = false, bool tell = true, int classes = 0)
         {
-            Thing thing = new Thing(name, All.Count + Dynamic.Count + 1);
+            Thing thing = new Thing(name, All.Count + Dynamic.Count + 1) { Classes = classes };
             All.Add(thing);
             if (dynamic)
             {
@@ -101,6 +105,20 @@ public sealed class PrefabIndexTests
         // What a walk of the list answers.
         internal List<Thing> Walk(PrefabMatch match, bool dynamic = false) =>
             (dynamic ? Dynamic : All).FindAll(thing => match.Keeps(thing.Name));
+
+        // A class's members: things of the class its list (the dynamic one, as items are AllDynamicThings') holds.
+        internal List<Thing> OfClass(int classNumber, bool dynamic = false) =>
+            Index.OfClass(classNumber, Seed, thing => InAll(thing) || InDynamic(thing), dynamic ? InDynamic : InAll);
+
+        internal List<Thing> WalkClass(int classNumber, bool dynamic) =>
+            (dynamic ? Dynamic : All).FindAll(thing => (thing.Classes & (1 << classNumber)) != 0);
+    }
+
+    private static List<int> Ids(List<Thing> things)
+    {
+        List<int> ids = things.ConvertAll(static thing => thing.Id);
+        ids.Sort();
+        return ids;
     }
 
     private static void SameThings(List<Thing> expected, List<Thing> indexed, PrefabMatch match)
@@ -266,7 +284,7 @@ public sealed class PrefabIndexTests
         world.Add("ItemIronOre");
         world.Find(ore);
         Thing churn = new Thing("ItemIronOre", -1);
-        for (int index = 0; index <= PrefabIndex<Thing>.MaximumBacklog; index++)
+        for (int index = 0; index <= WorldIndex<Thing>.MaximumBacklog; index++)
         {
             world.Index.Left(churn);
         }
@@ -275,6 +293,111 @@ public sealed class PrefabIndexTests
 
         Assert.Equal(2, world.Find(ore).Count);
         Assert.Equal(2, world.Seeds);
+    }
+
+    // ---- classes ----
+
+    private const int FrameClass = 0;
+    private const int ItemClass = 3;
+
+    [Fact]
+    public void AClassQueryAnswersTheThingsOfThatClassItsListHolds()
+    {
+        World world = new World();
+        Thing frame = world.Add("StructureFrame", classes: 1 << FrameClass);
+        Thing corner = world.Add("StructureFrameCorner", classes: 1 << FrameClass);
+        Thing ore = world.Add("ItemIronOre", dynamic: true, classes: 1 << ItemClass);
+        world.Add("StructureWall");
+
+        Assert.Equal(new[] { frame.Id, corner.Id }, Ids(world.OfClass(FrameClass)));
+        Assert.Equal(new[] { ore.Id }, Ids(world.OfClass(ItemClass, dynamic: true)));
+        Assert.Equal(2, world.Index.ClassCount(FrameClass));
+    }
+
+    [Fact]
+    public void AClassIsReadOnceWhenTheThingIsFirstFiled()
+    {
+        World world = new World();
+        Thing frame = world.Add("StructureFrame", classes: 1 << FrameClass);
+        world.OfClass(FrameClass);
+
+        frame.Classes = 1 << ItemClass;
+        frame.Name = "StructureFrameIron";
+        world.Index.Arrived(frame);
+
+        Assert.Equal(new[] { frame.Id }, Ids(world.OfClass(FrameClass)));
+        Assert.Empty(world.OfClass(ItemClass));
+    }
+
+    [Fact]
+    public void AThingInNoListLeavesItsClassBucket()
+    {
+        World world = new World();
+        Thing frame = world.Add("StructureFrame", classes: 1 << FrameClass);
+        world.Add("StructureFrame", classes: 1 << FrameClass);
+        world.OfClass(FrameClass);
+
+        world.Remove(frame, tell: false);
+
+        Assert.Single(world.OfClass(FrameClass));
+        Assert.Equal(1, world.Index.ClassCount(FrameClass));
+    }
+
+    [Fact]
+    public void AThingItsClassListDoesNotHoldIsNotAnsweredButStaysFiled()
+    {
+        World world = new World();
+        Thing item = world.Add("ItemIronOre", classes: 1 << ItemClass);
+
+        Assert.Empty(world.OfClass(ItemClass, dynamic: true));
+        world.Dynamic.Add(item);
+        Assert.Equal(new[] { item.Id }, Ids(world.OfClass(ItemClass, dynamic: true)));
+    }
+
+    [Fact]
+    public void AClassOutsideTheBitsIsRefused()
+    {
+        World world = new World();
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => world.OfClass(WorldIndex<Thing>.MaximumClasses));
+        Assert.Throws<ArgumentOutOfRangeException>(() => world.OfClass(-1));
+    }
+
+    [Fact]
+    public void RandomClassQueriesAlwaysMatchAWalk()
+    {
+        string[] names = { "ItemIronOre", "StructureFrame", "StructureWall" };
+        Random random = new Random(20261014);
+        World world = new World();
+        for (int step = 0; step < 4000; step++)
+        {
+            int roll = random.Next(100);
+            if (roll < 45 || world.All.Count == 0)
+            {
+                world.Add(names[random.Next(names.Length)], dynamic: random.Next(2) == 0, classes: random.Next(16));
+            }
+            else if (roll < 80)
+            {
+                world.Remove(world.All[random.Next(world.All.Count)], tell: random.Next(10) != 0);
+            }
+            else if (roll < 85)
+            {
+                // Renamed and told again (Awake, then Register): its class stays.
+                Thing renamed = world.All[random.Next(world.All.Count)];
+                renamed.Name = names[random.Next(names.Length)];
+                world.Index.Arrived(renamed);
+            }
+            else if (roll < 86)
+            {
+                world.Clear();
+            }
+            else
+            {
+                int classNumber = random.Next(4);
+                bool dynamic = random.Next(2) == 0;
+                Assert.Equal(Ids(world.WalkClass(classNumber, dynamic)), Ids(world.OfClass(classNumber, dynamic)));
+            }
+        }
     }
 
     [Fact]

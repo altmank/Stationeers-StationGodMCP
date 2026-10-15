@@ -69,6 +69,12 @@
 - **`read snapshot` answers again.** Its reply carried `truncated` twice (its own flag and the reply's list), and the hub
   refused it; `server command` (run) and `move item` into a vault or silo had the same flaw. Their own flags are gone:
   a cut list is in the reply's `truncated` list, as everywhere else.
+- **One world index.** The mod keeps its own index of the world's things, by prefab and by class (structures, frames,
+  devices, items, plants, pads, silos, dishes, food and machines that hold reagents), kept by hooks on the game's own
+  add and remove paths; calls ask it instead of copying the game's lists. `server info` `runtime.prefab_index` is now
+  `runtime.world_index`, with `classes` (things filed per class). When a game update breaks its hooks, world queries
+  refuse `game_changed` instead of walking everything. The `[Performance]` debug switch `VerifyPrefabIndex` is now
+  `VerifyWorldIndex` and checks every class query too.
 
 ## 1.33.2
 

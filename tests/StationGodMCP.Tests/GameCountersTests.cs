@@ -132,9 +132,9 @@ public sealed class GameCountersTests
     }
 
     [Fact]
-    public void PrefabIndexArrivalsAndLeavesSurviveAReset()
+    public void WorldIndexArrivalsAndLeavesSurviveAReset()
     {
-        PrefabIndex<string> index = new PrefabIndex<string>(static name => name);
+        WorldIndex<string> index = new WorldIndex<string>(static name => name);
         index.Arrived("a");
         index.Arrived("b");
         index.Left("a");
@@ -153,22 +153,22 @@ public sealed class GameCountersTests
     {
         string wire = WireCheck.New(new RuntimeView(0.0, 0, FrameBudget.For(4.0, false), new DispatchStats().Snapshot(),
             new MemoryView(0, 0, 0, null, null), new List<MethodTiming>(),
-            prefabIndex: new PrefabIndexView(true, false, 10, 3, 0, 0)));
+            worldIndex: new WorldIndexView(true, false, 10, 3, WorldIndexView.NoClasses, 0, 0)));
 
         Assert.EndsWith("\"differences\":0}}", wire);
     }
 
     [Fact]
-    public void CountersSitBesidePrefabIndexOnTheWire()
+    public void CountersSitBesideTheWorldIndexOnTheWire()
     {
         GameCountersView counters = new GameCountersView(new JobHoldsView(new long[] { 7, 3, 2, 1, 0 }),
             new PrintLogView(120, PrintLog.DefaultCapacity), 4, new BatchConsoleView(250, 12.345));
         RuntimeView view = new RuntimeView(0.0, 0, FrameBudget.For(4.0, false), new DispatchStats().Snapshot(),
             new MemoryView(0, 0, 0, null, null), new List<MethodTiming>(),
-            prefabIndex: new PrefabIndexView(true, false, 10, 3, 0, 0, 40, 30), counters: counters);
+            worldIndex: new WorldIndexView(true, false, 10, 3, WorldIndexView.NoClasses, 0, 0, 40, 30), counters: counters);
 
         Assert.EndsWith(
-            "\"prefab_index\":{\"ready\":true,\"verify\":false,\"things\":10,\"names\":3,\"verified\":0," +
+            "\"world_index\":{\"ready\":true,\"verify\":false,\"things\":10,\"names\":3,\"classes\":{},\"verified\":0," +
             "\"differences\":0,\"arrived\":40,\"left\":30}," +
             "\"job_holds\":{\"under_100ms\":7,\"under_1s\":3,\"under_10s\":2,\"under_60s\":1,\"over_60s\":0}," +
             "\"print_log\":{\"records\":120,\"capacity\":2048},\"lint_chip_programs\":4," +
@@ -185,7 +185,7 @@ public sealed class GameCountersTests
             new BatchConsoleView(0, 0), new RestoreCountsView(4, 1, 2));
         RuntimeView view = new RuntimeView(0.0, 0, FrameBudget.For(4.0, false), new DispatchStats().Snapshot(),
             new MemoryView(0, 0, 0, null, null), new List<MethodTiming>(),
-            prefabIndex: new PrefabIndexView(true, false, 10, 3, 0, 0), counters: counters);
+            worldIndex: new WorldIndexView(true, false, 10, 3, WorldIndexView.NoClasses, 0, 0), counters: counters);
 
         Assert.EndsWith("\"buckets\":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}," +
                         "\"restores\":{\"applied\":4,\"skipped\":1,\"dropped\":2}}", WireCheck.New(view));
@@ -204,7 +204,7 @@ public sealed class GameCountersTests
             new BatchConsoleView(0, 0), new RestoreCountsView(0, 0, 0), JobStoresView.Of(kept));
         RuntimeView view = new RuntimeView(0.0, 0, FrameBudget.For(4.0, false), new DispatchStats().Snapshot(),
             new MemoryView(0, 0, 0, null, null), new List<MethodTiming>(),
-            prefabIndex: new PrefabIndexView(true, false, 10, 3, 0, 0), counters: counters);
+            worldIndex: new WorldIndexView(true, false, 10, 3, WorldIndexView.NoClasses, 0, 0), counters: counters);
 
         Assert.EndsWith("\"restores\":{\"applied\":0,\"skipped\":0,\"dropped\":0}," +
                         "\"job_stores\":{\"snapshots\":{\"bytes\":512,\"budget_bytes\":1000,\"entries\":1,\"pinned\":1}," +

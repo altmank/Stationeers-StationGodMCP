@@ -305,7 +305,7 @@ wait for the next frame, in order (see [configuration](configuration.md)).
 `runtime.job_settles` counts pipe jobs' settles after each piece: `run`, `skipped` (the game had no gas change queued,
 so applying the queues would have done nothing) and `unchecked` (settled because the game's queues could not be read).
 
-`include: ["counters"]` adds the counters of the mod's game-side work. `runtime.prefab_index` then counts the things
+`include: ["counters"]` adds the counters of the mod's game-side work. `runtime.world_index` then counts the things
 the game reported spawning (`arrived`) and despawning (`left`) since load, and `runtime.job_holds` counts jobs' holds
 of the game tick by length, profiling on or off: `under_100ms`, `under_1s`, `under_10s`, `under_60s` and `over_60s`
 (60 s or more), each bucket from its lower edge. `runtime.print_log` gives the
@@ -347,7 +347,7 @@ loads.
   `world_stores`, `subscriptions_begin_frame`, `publish_facts`, `observe_game_state`, `remote_views`, `run_frame` (the
   request frame), `subscription_lane`, `call_execute`, `call_serialize`, `held_tick_jobs`, `job_step`, `job_apply`,
   `job_gas_open`, `job_gas_settle`, `job_gas_close`, `atmosphere_wait`, `previews`, `highlights`,
-  `rocket_flight_recorder`, `pool_snapshot` (copying a game list), `prefab_index` (a lookup in the prefab index),
+  `rocket_flight_recorder`, `pool_snapshot` (reading a locked game pool), `world_index` (a lookup in the world index),
   `job_gas_walk` (a pipe job's main-thread walks of every pipe network; its pool-thread walks count in
   `atmosphere_wait`), and `unscoped`, the rest of the update. Methods (`kind: method`): the shared read handlers
   (`DeviceReads.Read`, `DeviceSnapshots.Read`) and the game hooks the mod patches (the route planners, the console,

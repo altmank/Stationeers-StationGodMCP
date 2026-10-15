@@ -233,7 +233,7 @@ public sealed class CostSourceRulesTests
     private static bool OverWorld(SyntaxNode node) =>
         node.DescendantNodesAndSelf().OfType<MemberAccessExpressionSyntax>().Any(access =>
             access.Expression is IdentifierNameSyntax { Identifier.Text: "World" } ||
-            Normalized(access.Expression).EndsWith("StationGodMCP.World.World", StringComparison.Ordinal));
+            Normalized(access.Expression).EndsWith("StationGodMCP.WorldModel.World", StringComparison.Ordinal));
 
     private static List<string[]> LoadCollections() =>
         File.ReadAllLines(Path.Combine(Here(), "GameCollections.txt"))

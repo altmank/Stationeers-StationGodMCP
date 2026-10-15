@@ -28,7 +28,7 @@ internal enum ProfId
     Highlights,
     RocketFlightRecorder,
     PoolSnapshot,
-    PrefabIndex,
+    WorldIndex,
 
     /// <summary>A pipe job's main-thread walks of every pipe network; the walks on the pool thread count in AtmosphereWait.</summary>
     JobGasWalk
@@ -47,7 +47,7 @@ internal static class ProfIds
         "world_stores", "subscriptions_begin_frame", "publish_facts", "observe_game_state", "remote_views",
         "run_frame", "subscription_lane", "call_execute", "call_serialize", "held_tick_jobs", "job_step", "job_apply",
         "job_gas_open", "job_gas_settle", "job_gas_close", "atmosphere_wait", "previews", "highlights",
-        "rocket_flight_recorder", "pool_snapshot", "prefab_index", "job_gas_walk"
+        "rocket_flight_recorder", "pool_snapshot", "world_index", "job_gas_walk"
     };
 
     internal static string Name(ProfId id) => Names[(int)id];

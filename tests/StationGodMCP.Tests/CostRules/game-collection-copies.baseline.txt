@@ -1,4 +1,4 @@
-# game-collection-copies: today's violations per file (CostSourceRulesTests); 18 in all
+# game-collection-copies: today's violations per file (CostSourceRulesTests); 17 in all
 Api/MovePlayer.cs	1
 Api/Shared/Game/CarriedIgnition.cs	1
 Api/Shared/Game/ClosedRooms.cs	2
@@ -9,7 +9,6 @@ Api/Shared/Game/MachineStock.cs	1
 Api/Shared/Game/OuterFrames.cs	1
 Api/Shared/Game/PlayerOrigin.cs	1
 Api/Shared/Game/ScopedTarget.cs	1
-Api/Shared/Game/Silos.cs	1
 Api/Shared/Game/Structures/FrameFamily.cs	1
 Api/Shared/Game/Structures/StructureAirRecord.cs	1
 Api/Shared/Game/Trading/HeldGoods.cs	1

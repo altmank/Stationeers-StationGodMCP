@@ -22,10 +22,10 @@ internal sealed class RuntimeView : ITruncatingView
 
     internal RuntimeView(double uptimeS, long worldEpoch, FrameBudget budget, DispatchSnapshot frames,
         MemoryView memory, List<MethodTiming> methods, List<ConnectionView>? connections = null,
-        ProfilingSummaryView? profiling = null, JobSettlesView? jobSettles = null, PrefabIndexView? prefabIndex = null,
+        ProfilingSummaryView? profiling = null, JobSettlesView? jobSettles = null, WorldIndexView? worldIndex = null,
         GameCountersView? counters = null, ShapeRequest? shape = null, UpdateReading? updates = null)
     {
-        PrefabIndex = prefabIndex ?? new PrefabIndexView(false, false, 0, 0, 0, 0);
+        WorldIndex = worldIndex ?? new WorldIndexView(false, false, 0, 0, WorldIndexView.NoClasses, 0, 0);
         JobHolds = counters?.JobHolds;
         PrintLog = counters?.PrintLog;
         LintChipPrograms = counters?.LintChipPrograms;
@@ -79,7 +79,7 @@ internal sealed class RuntimeView : ITruncatingView
 
     public JobSettlesView JobSettles { get; }
 
-    public PrefabIndexView PrefabIndex { get; }
+    public WorldIndexView WorldIndex { get; }
 
     /// <summary>The game counters (GameCountersView), only with include_counters.</summary>
     [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
@@ -348,20 +348,23 @@ internal sealed class MemoryView
 }
 
 /// <summary>
-/// The prefab index (ThingIndex): ready (lists filtered by prefab read it; false: they walk every thing), verify
-/// ([Performance] VerifyPrefabIndex), things and names filed, with verify the queries checked against a full walk
-/// and those that differed, and with include_counters the things the game's master lists reported taking in (arrived)
-/// and letting go (left) since the mod loaded.
+/// The world index (World/ThingIndex): ready (false: its hooks are missing and every world query refuses
+/// game_changed), verify ([Performance] VerifyWorldIndex), things and prefab names filed, things filed per class, with
+/// verify the queries checked against a walk of their game list and those that differed, and with include_counters the
+/// things the game's master lists reported taking in (arrived) and letting go (left) since the mod loaded.
 /// </summary>
-internal sealed class PrefabIndexView
+internal sealed class WorldIndexView
 {
-    internal PrefabIndexView(bool ready, bool verify, int things, int names, long verified, long differences,
-        long? arrived = null, long? left = null)
+    internal static readonly IReadOnlyDictionary<string, int> NoClasses = new SortedDictionary<string, int>();
+
+    internal WorldIndexView(bool ready, bool verify, int things, int names, IReadOnlyDictionary<string, int> classes,
+        long verified, long differences, long? arrived = null, long? left = null)
     {
         Ready = ready;
         Verify = verify;
         Things = things;
         Names = names;
+        Classes = classes;
         Verified = verified;
         Differences = differences;
         Arrived = arrived;
@@ -376,6 +379,8 @@ internal sealed class PrefabIndexView
 
     public int Names { get; }
 
+    public IReadOnlyDictionary<string, int> Classes { get; }
+
     public long Verified { get; }
 
     public long Differences { get; }
@@ -388,7 +393,7 @@ internal sealed class PrefabIndexView
 }
 
 /// <summary>
-/// The counters server info's runtime lists beside prefab_index with include_counters: job tick holds, the print log, the
+/// The counters server info's runtime lists beside world_index with include_counters: job tick holds, the print log, the
 /// lint chip-program cache, a dedicated server's console lines, held restores and the kept jobs' stores.
 /// </summary>
 internal sealed class GameCountersView

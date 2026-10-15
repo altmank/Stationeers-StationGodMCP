@@ -1,4 +1,4 @@
-# game-collections-outside-world: today's violations per file (CostSourceRulesTests); 74 in all
+# game-collections-outside-world: today's violations per file (CostSourceRulesTests); 60 in all
 Api/MovePlayer.cs	1
 Api/RocketFlightLog.cs	2
 Api/Shared/Game/Build/KitBuiltNames.cs	1
@@ -18,22 +18,17 @@ Api/Shared/Game/OuterFrames.cs	1
 Api/Shared/Game/Plants.cs	2
 Api/Shared/Game/PlayerOrigin.cs	1
 Api/Shared/Game/ScopedTarget.cs	1
-Api/Shared/Game/Silos.cs	1
 Api/Shared/Game/Structures/FrameFamily.cs	1
 Api/Shared/Game/Structures/StructureAirRecord.cs	1
 Api/Shared/Game/Structures/StructureTargets.cs	1
-Api/Shared/Game/ThingIndex.cs	9
 Api/Shared/Game/ThingReagents.cs	1
-Api/Shared/Game/ThingSearch.cs	1
 Api/Shared/Game/Trading/Contacts.cs	3
 Api/Shared/Game/Trading/HeldGoods.cs	1
 Api/Shared/Game/Trading/TradeSession.cs	2
 Api/Shared/Game/Upgrades/PieceShapes.cs	1
 Api/Shared/Game/VaultMoves.cs	1
 Api/Shared/Game/WaterSources.cs	2
-Api/Shared/Game/WorldItems.cs	1
 Api/Shared/Game/XRay.cs	1
 Net/RemoteViews.cs	1
 PrefabRegistrar.cs	1
-StationGodMod.cs	2
 Verbs/TradeContacts.cs	1

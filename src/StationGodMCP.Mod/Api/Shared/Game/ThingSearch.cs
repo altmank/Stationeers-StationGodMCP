@@ -13,13 +13,14 @@ using StationGodMCP.Pure;
 using StationGodMCP.Pure.Paging;
 using StationGodMCP.Pure.Verbs;
 using UnityEngine;
+using World = StationGodMCP.WorldModel.World;
 
 namespace StationGodMCP.Api.Shared.Game;
 
 /// <summary>
 /// Every thing in the world a filter keeps, whatever it is: items, portable tanks and other dynamic things, structures
-/// and devices, players and animals. The candidates are OcclusionManager.AllThings (every registered thing, cursors
-/// excluded), or with whole prefab names (or one part) only the things the prefab index (ThingIndex) files under them.
+/// and devices, players and animals. The candidates are the world model's registered things (World.Things: cursors
+/// are never registered), or with whole prefab names (or one part) only the things the world index files under them.
 /// Things being destroyed and organs are never kept. A name matches on the name the game shows (the Labeller's name
 /// when there is one) and on the prefab's own name under a label (Labels). Distances are measured from where the
 /// player stands, a thing in a slot where its outermost holder is. Every thing reports is_broken and condition from the
@@ -27,9 +28,9 @@ namespace StationGodMCP.Api.Shared.Game;
 /// </summary>
 internal static class ThingSearch
 {
-    /// <summary>The things a search looks at: those the prefab index files under the filter's prefabs, else every one.</summary>
+    /// <summary>The things a search looks at: those the world index files under the filter's prefabs, else every one.</summary>
     internal static List<Thing> Candidates(ThingFilter filter) =>
-        ThingIndex.Things(filter.IndexMatch) ?? Pools.Snapshot(OcclusionManager.AllThings);
+        filter.IndexMatch.IsActive ? World.Things(filter.IndexMatch) : World.Things();
 
     /// <summary>The filter as a walk's build asks it, distances from where the player stood when the walk started.</summary>
     internal static IWalkFilter<Thing> WalkFilter(ThingFilter filter, Vector3? from) => new Walk(filter, from);
