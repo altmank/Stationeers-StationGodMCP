@@ -210,7 +210,25 @@ internal static class RoutePlanner
     internal static IEnumerable<object?> Searching(RouteEnd start, IReadOnlyList<RouteEnd> goals,
         Func<GridCell, CellCost> costOf, RouteRules rules, AirBound? air, Answer<RouteResult> answer)
     {
-        Dictionary<GridCell, RouteEnd> goalAt = new Dictionary<GridCell, RouteEnd>();
+        SearchTables tables = SearchTables.Take();
+        try
+        {
+            foreach (object? step in Searching(start, goals, costOf, rules, air, answer, tables))
+            {
+                yield return step;
+            }
+        }
+        finally
+        {
+            SearchTables.Give(tables);
+        }
+    }
+
+    private static IEnumerable<object?> Searching(RouteEnd start, IReadOnlyList<RouteEnd> goals,
+        Func<GridCell, CellCost> costOf, RouteRules rules, AirBound? air, Answer<RouteResult> answer,
+        SearchTables tables)
+    {
+        Dictionary<GridCell, RouteEnd> goalAt = tables.GoalAt;
         foreach (RouteEnd end in goals)
         {
             goalAt[end.Cell] = end;
@@ -231,11 +249,11 @@ internal static class RoutePlanner
                 return cells + air.Extra(cell, cells);
             };
 
-        Dictionary<GridCell, CellCost> costs = new Dictionary<GridCell, CellCost>();
-        // One entry per state reached (its cost, length and the state it came from): one table grows, and rehashes,
-        // where three did in step.
-        Dictionary<SearchState, Visit> visits = new Dictionary<SearchState, Visit>();
-        StateHeap open = new StateHeap();
+        Dictionary<GridCell, CellCost> costs = tables.Costs;
+        // One entry per state reached (its cost, length and the state it came from): one table, kept between
+        // searches (SearchTables), so a search grows it only past the largest before it.
+        Dictionary<SearchState, Visit> visits = tables.Visits;
+        StateHeap open = tables.Open;
         SearchState first = new SearchState(start.Cell, -1, false);
         visits[first] = new Visit(0.0, 1, first, false);
         open.Push(first, heuristic(start.Cell));
@@ -472,8 +490,46 @@ internal static class RoutePlanner
     }
 
     // A binary min-heap on priority; ties keep insertion order out of the picture by comparing priorities only.
+    /// <summary>
+    /// A search's tables (goals, cell costs, visits, the open heap), kept between searches so their storage is reused:
+    /// taken at a search's start, cleared and given back at its end (a search that is dropped part way keeps its own,
+    /// for the collector). Up to Kept of them per thread (the game's main thread; each test thread its own).
+    /// </summary>
+    private sealed class SearchTables
+    {
+        private const int Kept = 2;
+
+        [ThreadStatic]
+        private static Stack<SearchTables>? _kept;
+
+        internal Dictionary<GridCell, RouteEnd> GoalAt { get; } = new Dictionary<GridCell, RouteEnd>();
+
+        internal Dictionary<GridCell, CellCost> Costs { get; } = new Dictionary<GridCell, CellCost>();
+
+        internal Dictionary<SearchState, Visit> Visits { get; } = new Dictionary<SearchState, Visit>();
+
+        internal StateHeap Open { get; } = new StateHeap();
+
+        internal static SearchTables Take() => _kept is { Count: > 0 } kept ? kept.Pop() : new SearchTables();
+
+        internal static void Give(SearchTables tables)
+        {
+            tables.GoalAt.Clear();
+            tables.Costs.Clear();
+            tables.Visits.Clear();
+            tables.Open.Clear();
+            Stack<SearchTables> kept = _kept ??= new Stack<SearchTables>(Kept);
+            if (kept.Count < Kept)
+            {
+                kept.Push(tables);
+            }
+        }
+    }
+
     private sealed class StateHeap
     {
+        internal void Clear() => _items.Clear();
+
         private readonly List<KeyValuePair<double, SearchState>> _items = new List<KeyValuePair<double, SearchState>>();
 
         internal int Count => _items.Count;

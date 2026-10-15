@@ -62,7 +62,7 @@ internal sealed class GridFacts
         GridCell point = new GridCell(large.X + face.Dx * SmallCellCode.Large / 2,
             large.Y + face.Dy * SmallCellCode.Large / 2, large.Z + face.Dz * SmallCellCode.Large / 2);
         List<Structure> structures = new List<Structure>();
-        foreach (Structure structure in new List<Structure>(_grid.GetFaceStructures(Grid(point))))
+        foreach (Structure structure in _grid.GetFaceStructures(Grid(point)))
         {
             if (structure != null && !structure.IsBeingDestroyed && !structures.Contains(structure))
             {
@@ -71,6 +71,22 @@ internal sealed class GridFacts
         }
 
         return structures;
+    }
+
+    // Whether a live face structure other than a door stands on one face of a large cell (read in place, nothing kept).
+    private bool HoldsWall(GridCell large, GridStep face)
+    {
+        GridCell point = new GridCell(large.X + face.Dx * SmallCellCode.Large / 2,
+            large.Y + face.Dy * SmallCellCode.Large / 2, large.Z + face.Dz * SmallCellCode.Large / 2);
+        foreach (Structure structure in _grid.GetFaceStructures(Grid(point)))
+        {
+            if (structure != null && !structure.IsBeingDestroyed && !Openings.IsDoor(structure))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>The face structures registered at a face point, each once; cached for the request.</summary>
@@ -83,7 +99,7 @@ internal sealed class GridFacts
 
         List<Structure> structures = new List<Structure>();
         _faceStructures[point] = structures;
-        foreach (Structure structure in new List<Structure>(_grid.GetFaceStructures(Grid(point))))
+        foreach (Structure structure in _grid.GetFaceStructures(Grid(point)))
         {
             if (structure != null && !structure.IsBeingDestroyed && !structures.Contains(structure))
             {
@@ -105,7 +121,7 @@ internal sealed class GridFacts
         int walls = 0;
         foreach (GridStep face in GridStep.All)
         {
-            if (FaceStructures(large, face).Exists(structure => !Openings.IsDoor(structure)))
+            if (HoldsWall(large, face))
             {
                 walls |= 1 << face.Index;
             }
@@ -184,7 +200,7 @@ internal sealed class GridFacts
         }
 
         List<FaceOpening> list = new List<FaceOpening>(1);
-        foreach (Structure structure in new List<Structure>(_grid.GetFaceStructures(Grid(point))))
+        foreach (Structure structure in _grid.GetFaceStructures(Grid(point)))
         {
             if (structure != null && !structure.IsBeingDestroyed)
             {
