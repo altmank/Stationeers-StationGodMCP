@@ -80,7 +80,8 @@ Every fact a reply carries has a rule, declared next to its reader (`[ReplyFact]
   room or terrain changed: `GridController.UpdateAirState`, the room change points,
   `VoxelTerrain.SetDensityWorldSpace`), the damaged things (`DamagedThings`: every damage, heal and repair goes through
   `IndestructableDamageState.Damage`, plus its `Copy`/`Read`, a pipe bursting and a structure's build state) and each
-  gateway's device map (`GatewayMaps`: rebuilt when a cable network's device lists are dirtied). Network members are the
+  gateway's device map (`GatewayMaps`: rebuilt when a cable network's device lists are dirtied; every read in a gateway's
+scope, `read logic` and subscription and `read sample` samples included, finds its devices there). Network members are the
   game's own lists, read in place. Hooks run on the game's threads (rooms on the tick thread, fire damage on the
   atmospherics workers); each only records, and the main thread files.
 - **Refreshed**: no change point exists, so a sweep re-reads a little each frame and the reply carries `as_of`. None is needed today.

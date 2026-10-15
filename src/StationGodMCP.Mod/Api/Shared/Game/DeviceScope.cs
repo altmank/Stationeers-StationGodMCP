@@ -95,6 +95,15 @@ internal sealed class DeviceScope
     }
 
     /// <summary>
+    /// Whether the scope holds the device, for a read: a gateway scope's followed map (GatewayMaps, rebuilt only when a
+    /// data network changed), so a sample of many devices costs a lookup each; the world scope holds every one.
+    /// </summary>
+    internal bool Holds(Device device) =>
+        _isWorld || (((ILogicable)device).GetAsThing is Thing thing && thing != null &&
+                     GatewayMaps.Of(Gateway!).TryGetValue(thing.ReferenceId, out Device kept) &&
+                     ReferenceEquals(kept, device));
+
+    /// <summary>
     /// DeviceMap spread over frames (a Work or ScanBuild body): the world scope's Device class candidates checked one per
     /// step, or the gateway's devices (its followed map, GatewayMaps) one per step; then the worn and held items, each
     /// joining where no device holds its id. Reads only: a write takes DeviceMap.

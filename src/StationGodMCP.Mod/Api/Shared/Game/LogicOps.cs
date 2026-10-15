@@ -19,10 +19,10 @@ namespace StationGodMCP.Api.Shared.Game;
 /// </summary>
 internal static class LogicOps
 {
-    /// <summary>One logic type of the device in the scope, as read logic reads it.</summary>
+    /// <summary>One logic type of the device in the scope, as read logic reads it (a gateway's devices from its followed map).</summary>
     internal static LogicRead Read(DeviceScope scope, ThingId id, JToken logic)
     {
-        ScopedTarget device = Devices.Require(scope, id);
+        ScopedTarget device = Devices.RequireToRead(scope, id);
         LogicType type = LogicTypes.Parse(logic);
         return new LogicRead(new ThingId(device.ReferenceId), LogicTypes.ViewOf(type), ReadValue(device, type));
     }

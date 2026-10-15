@@ -89,11 +89,21 @@ internal static class Devices
         : Referencable.Find<ChuteNetwork>(id) != null ? "chute"
         : null;
 
+    /// <summary>
+    /// Require for a read (read logic, a subscription's or read sample's sample): a gateway scope's devices are its
+    /// followed map (DeviceScope.Holds), not its networks walked per device. Writes take Require.
+    /// </summary>
+    internal static ScopedTarget RequireToRead(DeviceScope scope, ThingId id) =>
+        Find(scope, id.Value, true) ?? throw NotFound(scope, id);
+
     /// <summary>The scoped target Require would return, or null when the scope does not reach that id.</summary>
-    internal static ScopedTarget? Find(DeviceScope scope, long referenceId)
+    internal static ScopedTarget? Find(DeviceScope scope, long referenceId) => Find(scope, referenceId, false);
+
+    private static ScopedTarget? Find(DeviceScope scope, long referenceId, bool toRead)
     {
         ScopedTarget? device = null;
-        if (Thing.Find(referenceId) is Device found && found != null && IsInAllDevices(found) && scope.Reaches(found))
+        if (Thing.Find(referenceId) is Device found && found != null && IsInAllDevices(found) &&
+            (toRead ? scope.Holds(found) : scope.Reaches(found)))
         {
             device = ScopedTarget.From(found);
         }

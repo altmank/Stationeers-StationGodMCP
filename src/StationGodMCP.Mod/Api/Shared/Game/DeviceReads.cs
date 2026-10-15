@@ -75,7 +75,7 @@ internal static class DeviceReads
         {
             try
             {
-                device = Devices.Require(scope, subject.Id);
+                device = Devices.RequireToRead(scope, subject.Id);
             }
             catch (ApiException refused)
             {
