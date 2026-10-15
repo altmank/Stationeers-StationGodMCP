@@ -41,7 +41,7 @@ internal static class PasteReplies
                 new JValue(piece.Prefab), mark));
         }
 
-        return Report.Of(targets, JObject.FromObject(body, ApiJson.Serializer), new List<ReportProblem>());
+        return Report.Of(targets, body, new List<ReportProblem>());
     }
 
     // A piece's cell, in metres and hundredths, as a waypoint is given: [x, y, z].

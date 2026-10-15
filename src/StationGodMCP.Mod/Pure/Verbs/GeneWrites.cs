@@ -48,12 +48,11 @@ internal static class GeneReplies
 {
     private const string ResultsKey = "results";
 
-    internal static JObject Acted(GeneSetHeader header, BatchResultView results) =>
-        JObject.FromObject(new GenesWrittenView(header, results), ApiJson.Serializer);
+    internal static GenesWrittenView Acted(GeneSetHeader header, BatchResultView results) =>
+        new GenesWrittenView(header, results);
 
     internal static ReportReply Reported(GeneSetHeader header, BatchResultView results, string undoMark)
     {
-        JsonSerializer serializer = ApiJson.Serializer;
         string plant = header.Thing.ReferenceId.ToString();
         List<ReportTarget> targets = new List<ReportTarget>(results.Results.Count);
         List<ReportProblem> problems = new List<ReportProblem>();
@@ -63,7 +62,7 @@ internal static class GeneReplies
             {
                 case GeneWrittenView written:
                     targets.Add(new ReportTarget(plant, null, $"{header.Thing.DisplayName} ({written.Gene})",
-                        ReplyFields.Value(written.PreviousValue, serializer), ReplyFields.Value(written.Value, serializer),
+                        written.PreviousValue, written.Value,
                         undoMark));
                     break;
                 case GeneNotWrittenView refused:
@@ -73,8 +72,6 @@ internal static class GeneReplies
             }
         }
 
-        JObject body = Acted(header, results);
-        body.Remove(ResultsKey);
-        return Report.Of(targets, body, problems);
+        return Report.Of(targets, new ReplyObject().Spread(Acted(header, results), ResultsKey), problems);
     }
 }

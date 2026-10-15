@@ -348,6 +348,8 @@ internal sealed class ReportTarget
         JToken { Type: JTokenType.Float } token => ((double)token).ToString("R", CultureInfo.InvariantCulture),
         string given => given,
         double number => number.ToString("R", CultureInfo.InvariantCulture),
+        float number => ((double)number).ToString("R", CultureInfo.InvariantCulture),
+        decimal number => ((double)number).ToString("R", CultureInfo.InvariantCulture),
         _ => Compact(value, serializer)
     };
 

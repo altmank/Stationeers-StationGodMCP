@@ -306,9 +306,9 @@ internal static class LogicWriteReplies
                 case LogicWriteResult.Planned planned:
                     LogicWriteChecked write = planned.Write;
                     targets.Add(new ReportTarget(write.ReferenceId.ToString(), null, NameOf(planned.Name, write.LogicType),
-                        ReplyFields.Value(write.PreviousValue, serializer), write.RequestedValue, Mark(write.LogicType),
+                        write.PreviousValue, write.RequestedValue, Mark(write.LogicType),
                         write.LintPassed ? new[] { WriteLint.Guard } : null,
-                        write.DrivenBy != null ? JToken.FromObject(write.DrivenBy, serializer) : null));
+                        write.DrivenBy != null ? write.DrivenBy : null));
                     break;
                 case LogicWriteResult.Failed failed:
                     problems.Add(new ReportProblem(failed.Index, failed.Id, failed.Error));

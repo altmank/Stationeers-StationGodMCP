@@ -96,7 +96,7 @@ internal static class RemoveStructureRun
         object reply = order.SplitDetail
             ? started
             : JobStartReplies.Brief(started, JobPreflightSummaryView.Of(preflight));
-        return new VerbOutcome.Answered(JObject.FromObject(reply, ApiJson.Serializer));
+        return new VerbOutcome.Answered(reply);
     }
 
     private static ReportReply Described(RemovePlan plan, RemoveStructureOrder order)

@@ -91,7 +91,7 @@ internal static class BlueprintPastes
         BlueprintPasteStartedView started = new BlueprintPasteStartedView(plan.File,
             new[] { order.At.X, order.At.Y, order.At.Z }, order.Turn.Degrees, plan.CopyYAngle,
             BlueprintFiles.ExpectedDurationSeconds(plan.File.Entries));
-        return new VerbOutcome.Answered(JObject.FromObject(started, ApiJson.Serializer));
+        return new VerbOutcome.Answered(started);
     }
 
     /// <summary>

@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// A reply object made of plain values (cost design A5): its keys in order, each value a view, a string, a number, a
 /// list of views or another reply object, and spreads, a view whose keys are written in its place. Nothing is turned
 /// into text or a token tree until the reply is written, once, by the writer that sends it. A key added twice keeps its
-/// first place and its last value; a spread's keys are not checked against the others.
+/// first place and its last value; a spread leaves out the keys its object adds itself (they are written where added).
 /// </summary>
 [JsonConverter(typeof(ReplyObjectConverter))]
 internal sealed class ReplyObject
@@ -91,11 +91,13 @@ internal sealed class ReplyObject
     /// <summary>The keys of this object, without the braces, but those named in except.</summary>
     internal void WriteKeys(JsonWriter writer, JsonSerializer serializer, string[]? except)
     {
+        string[]? own = null;
         foreach (Part part in _parts)
         {
             if (part.Key == null)
             {
-                ViewKeys.Write(writer, serializer, part.Value, Merge(except, part.Except));
+                own ??= OwnKeys();
+                ViewKeys.Write(writer, serializer, part.Value, Merge(Merge(except, part.Except), own));
                 continue;
             }
 
@@ -120,7 +122,7 @@ internal sealed class ReplyObject
             }
             else
             {
-                ViewKeys.Collect(resolver, part.Value, part.Except, keys);
+                ViewKeys.Collect(resolver, part.Value, Merge(part.Except, OwnKeys()), keys);
             }
         }
     }
@@ -128,12 +130,14 @@ internal sealed class ReplyObject
     /// <summary>Its keys and values in written order, spreads' keys included, but those named in except.</summary>
     internal IEnumerable<KeyValuePair<string, object?>> Pairs(JsonSerializer serializer, string[]? except)
     {
+        string[]? own = null;
         foreach (Part part in _parts)
         {
             if (part.Key == null)
             {
+                own ??= OwnKeys();
                 foreach (KeyValuePair<string, object?> key in ViewKeys.Pairs(serializer, part.Value,
-                             Merge(except, part.Except)))
+                             Merge(Merge(except, part.Except), own)))
                 {
                     yield return key;
                 }
@@ -143,6 +147,36 @@ internal sealed class ReplyObject
                 yield return new KeyValuePair<string, object?>(part.Key, part.Value);
             }
         }
+    }
+
+    // The keys added by name; null when there are none.
+    private string[]? OwnKeys()
+    {
+        int count = 0;
+        foreach (Part part in _parts)
+        {
+            if (part.Key != null)
+            {
+                count++;
+            }
+        }
+
+        if (count == 0)
+        {
+            return null;
+        }
+
+        string[] keys = new string[count];
+        int at = 0;
+        foreach (Part part in _parts)
+        {
+            if (part.Key != null)
+            {
+                keys[at++] = part.Key;
+            }
+        }
+
+        return keys;
     }
 
     private static string[]? Merge(string[]? outer, string[]? inner)

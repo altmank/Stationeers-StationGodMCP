@@ -247,7 +247,7 @@ internal static class PaintReplies
 {
     private const string Undo = "[undo]";
 
-    internal static JObject Colors(PaintColorsView colors) => JObject.FromObject(colors, ApiJson.Serializer);
+    internal static PaintColorsView Colors(PaintColorsView colors) => colors;
 
     internal static ReplyObject Acted(IReadOnlyList<PaintResult> results)
     {
@@ -258,11 +258,7 @@ internal static class PaintReplies
             switch (result)
             {
                 case PaintResult.Painted painted:
-                    rows.Succeeded(painted.ReferenceId.ToString(), new JObject
-                    {
-                        ["previous_color"] = JToken.FromObject(painted.Previous, serializer),
-                        ["color"] = JToken.FromObject(painted.Color, serializer)
-                    });
+                    rows.Succeeded(painted.ReferenceId.ToString(), new ReplyObject().Add("previous_color", painted.Previous).Add("color", painted.Color));
                     break;
                 case PaintResult.Failed failed:
                     rows.Failed(failed.Id, failed.Error);

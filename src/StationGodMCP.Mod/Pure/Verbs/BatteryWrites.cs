@@ -66,7 +66,7 @@ internal static class BatteryReplies
 {
     private const string ResultsKey = "results";
 
-    internal static JObject Acted(ChargeGoal goal, ThingView? foundIn, IReadOnlyList<BatteryResult> results)
+    internal static SetBatteryChargeView Acted(ChargeGoal goal, ThingView? foundIn, IReadOnlyList<BatteryResult> results)
     {
         BatchBuilder batch = new BatchBuilder(results.Count);
         double added = 0.0;
@@ -84,7 +84,7 @@ internal static class BatteryReplies
             }
         }
 
-        return JObject.FromObject(new SetBatteryChargeView(goal, foundIn, batch.Build(), added), ApiJson.Serializer);
+        return new SetBatteryChargeView(goal, foundIn, batch.Build(), added);
     }
 
     internal static ReportReply Reported(ChargeGoal goal, ThingView? foundIn, IReadOnlyList<BatteryResult> results,
@@ -100,7 +100,7 @@ internal static class BatteryReplies
                 case BatteryResult.Charged charged:
                     BatteryChargedView view = View(charged);
                     targets.Add(new ReportTarget(view.ReferenceId.ToString(), null, view.DisplayName,
-                        ReplyFields.Value(view.BeforeJ, serializer), ReplyFields.Value(view.AfterJ, serializer),
+                        view.BeforeJ, view.AfterJ,
                         undoMark));
                     break;
                 case BatteryResult.Refused refused:
@@ -109,9 +109,7 @@ internal static class BatteryReplies
             }
         }
 
-        JObject body = Acted(goal, foundIn, results);
-        body.Remove(ResultsKey);
-        return Report.Of(targets, body, problems);
+        return Report.Of(targets, new ReplyObject().Spread(Acted(goal, foundIn, results), ResultsKey), problems);
     }
 
     private static BatteryChargedView View(BatteryResult.Charged charged) =>

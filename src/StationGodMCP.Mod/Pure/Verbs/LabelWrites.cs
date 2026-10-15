@@ -234,7 +234,6 @@ internal static class LabelReplies
 
     internal static VerbOutcome Acted(IReadOnlyList<LabelResult> results, bool answersRows)
     {
-        JsonSerializer serializer = ApiJson.Serializer;
         if (!answersRows && results.Count == 1)
         {
             switch (results[0])
@@ -242,13 +241,8 @@ internal static class LabelReplies
                 case LabelResult.Failed failed:
                     return new VerbOutcome.Refused(failed.Error);
                 case LabelResult.Renamed renamed:
-                    JObject one = new JObject { ["reference_id"] = renamed.Rename.ReferenceId.ToString() };
-                    foreach (JProperty key in Payload(renamed.Rename, serializer).Properties())
-                    {
-                        one[key.Name] = key.Value;
-                    }
-
-                    return new VerbOutcome.Answered(one);
+                    return new VerbOutcome.Answered(new ReplyObject()
+                        .Add("reference_id", renamed.Rename.ReferenceId.ToString()).Spread(Payload(renamed.Rename)));
             }
         }
 
@@ -258,7 +252,7 @@ internal static class LabelReplies
             switch (result)
             {
                 case LabelResult.Renamed renamed:
-                    rows.Succeeded(renamed.Rename.ReferenceId.ToString(), Payload(renamed.Rename, serializer));
+                    rows.Succeeded(renamed.Rename.ReferenceId.ToString(), Payload(renamed.Rename));
                     break;
                 case LabelResult.Failed failed:
                     rows.Failed(failed.Id, failed.Error);
@@ -290,13 +284,10 @@ internal static class LabelReplies
         return Report.Of(targets, null, problems);
     }
 
-    private static JObject Payload(Relabel rename, JsonSerializer serializer) =>
-        new JObject
-        {
-            ["prefab_name"] = rename.PrefabName,
-            ["written"] = rename.Written,
-            ["sent_to_host"] = rename.SentToHost,
-            ["previous"] = JToken.FromObject(rename.Previous, serializer),
-            ["current"] = JToken.FromObject(rename.Current, serializer)
-        };
+    private static ReplyObject Payload(Relabel rename) => new ReplyObject(5)
+        .Add("prefab_name", rename.PrefabName)
+        .Add("written", rename.Written)
+        .Add("sent_to_host", rename.SentToHost)
+        .Add("previous", rename.Previous)
+        .Add("current", rename.Current);
 }

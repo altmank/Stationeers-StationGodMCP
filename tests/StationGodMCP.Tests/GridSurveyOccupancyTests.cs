@@ -172,8 +172,8 @@ public sealed class GridSurveyOccupancyTests(ITestOutputHelper output)
     private static string Survey(List<SurveyCell> cells, string legend)
     {
         Page<SurveyCell> page = new Page<SurveyCell>(cells, cells.Count, 0, PageCells, false);
-        return SurveyAreaReply.Of(page, Contents(), SurveySections.Of(new[] { "cells" }), legend)
-            .ToString(Newtonsoft.Json.Formatting.None);
+        return StationGodMCP.Api.Shared.ApiJson.WriteShared(
+            SurveyAreaReply.Of(page, Contents(), SurveySections.Of(new[] { "cells" }), legend));
     }
 
     private static SurveyContents Contents() =>

@@ -32,7 +32,7 @@ internal static class FindPlant
             Rows rows = new Rows();
             foreach (string id in ids.Ids)
             {
-                rows.Add(id, () => JObject.FromObject(PlantReader.Read(Plants.One(id)), serializer));
+                rows.Add(id, () => PlantReader.Read(Plants.One(id)));
             }
 
             return new VerbOutcome.Answered(rows.Reply(ReplyFields.Of(("game_time_s", clock.GameTimeS),
@@ -51,7 +51,7 @@ internal static class FindPlant
         }
 
         return new VerbOutcome.Answered(ListReply.Of("plants", views, Paging.All,
-            plant => JToken.FromObject(plant, serializer),
+            plant => plant,
             ReplyFields.Of(("game_time_s", clock.GameTimeS), ("day_length_s", clock.DayLengthS),
                 ("debug_fast_growth", clock.DebugFastGrowth))));
     }

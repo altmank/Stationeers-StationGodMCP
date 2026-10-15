@@ -78,7 +78,7 @@ internal static class ConsoleCommands
         ConsoleRunView run = new ConsoleRunView(plan.Info, ConsoleBridge.RunSimulation, capture, output,
             Note(capture, plan.Info.CommandKey));
         run.NoteTruncations(string.Empty);
-        return new VerbOutcome.Answered(JObject.FromObject(run, ApiJson.Serializer));
+        return new VerbOutcome.Answered(run);
     }
 
     /// <summary>
@@ -90,15 +90,12 @@ internal static class ConsoleCommands
 
     // The plan as the run's reply says it, without what a run printed: the command, its scope, its help and arguments,
     // and whether this game would run it (run_simulation) and could capture its output.
-    private static JObject Body(ConsolePlan plan)
-    {
-        JObject body = JObject.FromObject(plan.Info, ApiJson.Serializer);
-        body["run_simulation"] = ConsoleBridge.RunSimulation;
-        body["console_available"] = ConsoleBridge.CanCapture();
-        body["completes_asynchronously"] = ConsoleBridge.CompletesAsynchronously(plan.Definition);
-        body["note"] = NothingRun;
-        return body;
-    }
+    private static ReplyObject Body(ConsolePlan plan) => new ReplyObject()
+        .Spread(plan.Info)
+        .Add("run_simulation", ConsoleBridge.RunSimulation)
+        .Add("console_available", ConsoleBridge.CanCapture())
+        .Add("completes_asynchronously", ConsoleBridge.CompletesAsynchronously(plan.Definition))
+        .Add("note", NothingRun);
 
     private static CommandBase Require(string? key)
     {

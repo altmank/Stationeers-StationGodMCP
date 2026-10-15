@@ -17,50 +17,47 @@ namespace StationGodMCP.Api.Views;
 /// </summary>
 internal static class SurveyAreaReply
 {
-    internal static JObject Of(Page<SurveyCell> page, SurveyContents contents, SurveySections sections, string? legend,
+    internal static ReplyObject Of(Page<SurveyCell> page, SurveyContents contents, SurveySections sections, string? legend,
         string? cursorId = null)
     {
-        JsonSerializer serializer = ApiJson.Serializer;
-        JObject reply = new JObject();
+        ReplyObject reply = new ReplyObject();
         if (legend != null)
         {
-            reply["legend"] = legend;
+            reply.Add("legend", legend);
         }
 
         if (sections.Includes(SurveySection.Cells))
         {
-            reply["cells"] = JToken.FromObject(page.Entries, serializer);
+            reply.Add("cells", page.Entries);
         }
 
-        reply["count"] = page.Entries.Count;
-        reply["offset"] = page.Offset;
+        reply.Add("count", page.Entries.Count);
+        reply.Add("offset", page.Offset);
         if (page.Limit is { } limit)
         {
-            reply["limit"] = limit;
+            reply.Add("limit", limit);
         }
 
-        reply["total"] = page.Total;
-        reply["has_more"] = page.HasMore;
+        reply.Add("total", page.Total);
+        reply.Add("has_more", page.HasMore);
         if (cursorId != null)
         {
-            reply["cursor_id"] = cursorId;
+            reply.Add("cursor_id", cursorId);
         }
 
-        Part(reply, "pieces", sections, SurveySection.Pieces, contents.Pieces, serializer);
-        Part(reply, "devices", sections, SurveySection.Devices, contents.Devices, serializer);
-        Part(reply, "networks", sections, SurveySection.Networks, contents.Networks, serializer);
-        Part(reply, "network_visibility", sections, SurveySection.NetworkVisibility, contents.NetworkVisibility,
-            serializer);
-        Part(reply, "doors", sections, SurveySection.Doors, contents.Doors, serializer);
+        Part(reply, "pieces", sections, SurveySection.Pieces, contents.Pieces);
+        Part(reply, "devices", sections, SurveySection.Devices, contents.Devices);
+        Part(reply, "networks", sections, SurveySection.Networks, contents.Networks);
+        Part(reply, "network_visibility", sections, SurveySection.NetworkVisibility, contents.NetworkVisibility);
+        Part(reply, "doors", sections, SurveySection.Doors, contents.Doors);
         return reply;
     }
 
-    private static void Part<T>(JObject reply, string key, SurveySections sections, SurveySection part, List<T> list,
-        JsonSerializer serializer)
+    private static void Part<T>(ReplyObject reply, string key, SurveySections sections, SurveySection part, List<T> list)
     {
         if (sections.Includes(part))
         {
-            reply[key] = JToken.FromObject(list, serializer);
+            reply.Add(key, list);
         }
     }
 }

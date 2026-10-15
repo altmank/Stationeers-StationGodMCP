@@ -192,7 +192,7 @@ internal static class RemoveRuns
         object reply = call.Fields.Verbose
             ? started
             : JobStartReplies.Brief(started, JobPreflightSummaryView.Of(preflight));
-        return new VerbOutcome.Answered(JObject.FromObject(reply, ApiJson.Serializer));
+        return new VerbOutcome.Answered(reply);
     }
 
     private static ReportReply Described(RunPlan plan, List<ThingId?> named, List<ReportProblem> unread, string mark,

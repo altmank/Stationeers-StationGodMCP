@@ -153,14 +153,12 @@ internal abstract class MoveDestination
 /// </summary>
 internal static class PlayerMoveReplies
 {
-    internal static JObject Acted(MovePlayerView moved) => JObject.FromObject(moved, ApiJson.Serializer);
+    internal static MovePlayerView Acted(MovePlayerView moved) => moved;
 
     internal static ReportReply Reported(MovePlayerView planned, string undoMark)
     {
-        JsonSerializer serializer = ApiJson.Serializer;
         ReportTarget target = new ReportTarget(planned.Player.ReferenceId.ToString(), null, planned.Player.DisplayName,
-            ReplyFields.Value(planned.Before.Position, serializer), ReplyFields.Value(planned.After.Position, serializer),
-            undoMark);
+            planned.Before.Position, planned.After.Position, undoMark);
         return Report.Of(new[] { target }, Acted(planned), new List<ReportProblem>());
     }
 }

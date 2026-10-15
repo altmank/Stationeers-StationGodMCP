@@ -44,7 +44,7 @@ internal static class TradeInventory
             List<TraderContact> contacts = Contacts.All();
             return WorkResult<List<TraderStockView>>.Of(answer => Stocks(contacts, everyPad, holder, answer),
                 stocks => new VerbOutcome.Answered(
-                    JObject.FromObject(new TraderInventoryView(stocks), ApiJson.Serializer)));
+                    new TraderInventoryView(stocks)));
         }
 
         return IdWork.Of<TraderInventoryView>(order.Ids, id =>

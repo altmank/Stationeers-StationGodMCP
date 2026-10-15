@@ -63,7 +63,7 @@ internal static class FindRoom
             Rows rows = new Rows();
             foreach (string id in ids.Ids)
             {
-                rows.Add(id, () => JObject.FromObject(RoomOf(id, measure), serializer));
+                rows.Add(id, () => RoomOf(id, measure));
             }
 
             return new VerbOutcome.Answered(rows.Reply(ReplyFields.Of((PlayerRoom, measure.PlayerRoomId))));
@@ -91,7 +91,7 @@ internal static class FindRoom
     private static ReplyObject RoomsReply(List<RoomView> rooms, RoomMeasure measure)
     {
         JsonSerializer serializer = ApiJson.Serializer;
-        return ListReply.Of("rooms", rooms, Paging.All, room => JToken.FromObject(room, serializer),
+        return ListReply.Of("rooms", rooms, Paging.All, room => room,
             ReplyFields.Of((PlayerRoom, measure.PlayerRoomId)));
     }
 

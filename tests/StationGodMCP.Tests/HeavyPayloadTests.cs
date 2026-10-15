@@ -55,7 +55,7 @@ public sealed class HeavyPayloadTests
     public void ASurveyWithoutCellsLeavesCellsAndLegendOutButKeepsThePage()
     {
         SurveySections sections = SurveySections.Of(new[] { "pieces" });
-        JObject json = SurveyAreaReply.Of(Page(), Contents(), sections, null);
+        JObject json = Replies.Tree(SurveyAreaReply.Of(Page(), Contents(), sections, null));
 
         Assert.Null(json["cells"]);
         Assert.Null(json["legend"]);
@@ -71,7 +71,7 @@ public sealed class HeavyPayloadTests
     [Fact]
     public void TheDefaultSurveyKeepsEveryPartEvenWhenEmpty()
     {
-        JObject json = SurveyAreaReply.Of(Page(), Contents(), SurveySections.All, "legend");
+        JObject json = Replies.Tree(SurveyAreaReply.Of(Page(), Contents(), SurveySections.All, "legend"));
 
         foreach (string part in new[] { "cells", "pieces", "devices", "networks", "network_visibility", "doors" })
         {

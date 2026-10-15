@@ -81,7 +81,7 @@ internal static class StructureBuild
         object reply = order.Fields.Verbose
             ? started
             : JobStartReplies.Brief(started, JobPreflightSummaryView.Of(preflight));
-        return new VerbOutcome.Answered(JObject.FromObject(reply, ApiJson.Serializer));
+        return new VerbOutcome.Answered(reply);
     }
 
     private static ReportReply Described(PlacePlan plan, StructureBuildOrder order)

@@ -67,14 +67,13 @@ internal static class TradeReplies
     /// <summary>The call trades: the rows, or one id's own trade as the what's single shape.</summary>
     internal static VerbOutcome Acted(PerIdList ids, IReadOnlyList<TradeResult> results)
     {
-        JsonSerializer serializer = ApiJson.Serializer;
         Rows rows = new Rows();
         foreach (TradeResult result in results)
         {
             switch (result)
             {
                 case TradeResult.Traded traded:
-                    rows.Succeeded(traded.Id, JObject.FromObject(traded.View, serializer));
+                    rows.Succeeded(traded.Id, traded.View);
                     break;
                 case TradeResult.Failed failed:
                     rows.Failed(failed.Id, failed.Error);
@@ -91,29 +90,26 @@ internal static class TradeReplies
     /// </summary>
     internal static ReportReply Reported(IReadOnlyList<TradeResult> results, bool asList, string mark)
     {
-        JsonSerializer serializer = ApiJson.Serializer;
         List<ReportTarget> targets = new List<ReportTarget>();
         List<ReportProblem> problems = new List<ReportProblem>();
-        JArray trades = new JArray();
-        JObject? single = null;
+        List<TradeView> trades = new List<TradeView>();
+        TradeView? single = null;
         foreach (TradeResult result in results)
         {
             switch (result)
             {
                 case TradeResult.Traded traded:
                     TradeView view = traded.View;
-                    targets.Add(new ReportTarget(traded.Id, null, view.Name, JValue.CreateNull(), JValue.CreateNull(),
-                        mark));
+                    targets.Add(new ReportTarget(traded.Id, null, view.Name, null, null, mark));
                     targets.Add(new ReportTarget(view.CreditCardId.ToString(), null, traded.CardName,
-                        new JValue(view.CreditsBefore), new JValue(view.CreditsAfter), mark));
-                    JObject trade = JObject.FromObject(view, serializer);
+                        view.CreditsBefore, view.CreditsAfter, mark));
                     if (asList)
                     {
-                        trades.Add(trade);
+                        trades.Add(view);
                     }
                     else
                     {
-                        single = trade;
+                        single = view;
                     }
 
                     break;
@@ -123,7 +119,7 @@ internal static class TradeReplies
             }
         }
 
-        JObject? body = asList ? new JObject { ["trades"] = trades } : single;
+        object? body = asList ? new ReplyObject(1).Add("trades", trades) : single;
         return Report.Of(targets, body, problems);
     }
 }

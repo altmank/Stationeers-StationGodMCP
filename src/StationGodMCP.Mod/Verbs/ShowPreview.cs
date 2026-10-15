@@ -27,6 +27,6 @@ internal static class ShowPreview
         }
 
         ShowPreviewView view = order.Clear ? PreviewScreen.Clear() : PreviewScreen.Show(order);
-        return new VerbOutcome.Answered(JObject.FromObject(view, ApiJson.Serializer));
+        return new VerbOutcome.Answered(view);
     }
 }

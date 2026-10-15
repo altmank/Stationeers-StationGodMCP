@@ -22,7 +22,7 @@ internal static class FindFood
         ConsumablesView found = Consumables.Take().ToView();
         JsonSerializer serializer = ApiJson.Serializer;
         return new VerbOutcome.Answered(ListReply.Of("food", found.Food, Paging.All,
-            food => JToken.FromObject(food, serializer),
+            food => food,
             ReplyFields.Of(("drinks", found.Drinks), ("packages", found.Packages), ("not_counted", found.NotCounted),
                 ("totals", found.Totals), ("local_player", found.LocalPlayer))));
     }

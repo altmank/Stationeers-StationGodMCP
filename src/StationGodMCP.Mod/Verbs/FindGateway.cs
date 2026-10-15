@@ -23,7 +23,7 @@ internal static class FindGateway
         {
             JsonSerializer serializer = ApiJson.Serializer;
             return new VerbOutcome.Answered(ListReply.Of("gateways", gateways, Paging.All,
-                gateway => JToken.FromObject(gateway, serializer)));
+                gateway => gateway));
         });
     }
 }

@@ -80,29 +80,10 @@ internal sealed class FinishStep
     internal void Stepped(BuildStateView state) => BuildState = state;
 
     /// <summary>The confirmed row's payload: thing, from_state, to_state, last_state, cost, tools, build_state.</summary>
-    internal JObject Payload(JsonSerializer serializer) => new JObject
-    {
-        ["thing"] = JToken.FromObject(Thing, serializer),
-        ["from_state"] = FromState,
-        ["to_state"] = ToState,
-        ["last_state"] = LastState,
-        ["cost"] = JToken.FromObject(Cost, serializer),
-        ["tools"] = JToken.FromObject(Tools, serializer),
-        ["build_state"] = BuildState != null ? JToken.FromObject(BuildState, serializer) : JValue.CreateNull()
-    };
+    internal ReplyObject Payload() => new ReplyObject().Add("thing", Thing).Add("from_state", FromState).Add("to_state", ToState).Add("last_state", LastState).Add("cost", Cost).Add("tools", Tools).Add("build_state", BuildState);
 
     /// <summary>The report's step: index, reference_id, name, from_state, to_state, last_state, cost, tools.</summary>
-    internal JObject Summary(JsonSerializer serializer) => new JObject
-    {
-        ["index"] = Index,
-        ["reference_id"] = ReferenceId,
-        ["name"] = Name,
-        ["from_state"] = FromState,
-        ["to_state"] = ToState,
-        ["last_state"] = LastState,
-        ["cost"] = JToken.FromObject(Cost, serializer),
-        ["tools"] = JToken.FromObject(Tools, serializer)
-    };
+    internal ReplyObject Summary() => new ReplyObject().Add("index", Index).Add("reference_id", ReferenceId).Add("name", Name).Add("from_state", FromState).Add("to_state", ToState).Add("last_state", LastState).Add("cost", Cost).Add("tools", Tools);
 }
 
 /// <summary>One id's build finish outcome: the step it would act, or the refusal that stops that id alone.</summary>
@@ -153,14 +134,13 @@ internal static class FinishReplies
     /// <summary>The call acted: the rows, or one id's own step as the what's single shape.</summary>
     internal static VerbOutcome Acted(PerIdList ids, IReadOnlyList<FinishResult> results)
     {
-        JsonSerializer serializer = ApiJson.Serializer;
         Rows rows = new Rows();
         foreach (FinishResult result in results)
         {
             switch (result)
             {
                 case FinishResult.Stepped stepped when stepped.Step.Ready:
-                    rows.Succeeded(stepped.Step.ReferenceId, stepped.Step.Payload(serializer));
+                    rows.Succeeded(stepped.Step.ReferenceId, stepped.Step.Payload());
                     break;
                 case FinishResult.Stepped stepped:
                     rows.Failed(stepped.Step.ReferenceId, stepped.Step.Problem!);
@@ -177,10 +157,9 @@ internal static class FinishReplies
     /// <summary>The report: the body (ready, free, from, materials, steps, warnings), every problem, and the targets.</summary>
     internal static ReportReply Reported(IReadOnlyList<FinishResult> results, bool free, string mark)
     {
-        JsonSerializer serializer = ApiJson.Serializer;
         List<ReportTarget> targets = new List<ReportTarget>();
         List<ReportProblem> problems = new List<ReportProblem>();
-        List<JObject> steps = new List<JObject>();
+        List<ReplyObject> steps = new List<ReplyObject>();
         List<BuildIssueView> warnings = new List<BuildIssueView>();
         List<BuildCostView> materials = new List<BuildCostView>();
         ThingView? from = null;
@@ -192,9 +171,8 @@ internal static class FinishReplies
                 case FinishResult.Stepped stepped:
                     FinishStep step = stepped.Step;
                     ready &= step.Ready;
-                    targets.Add(new ReportTarget(step.ReferenceId, null, step.Name, new JValue(step.FromState),
-                        new JValue(step.ToState), mark));
-                    steps.Add(step.Summary(serializer));
+                    targets.Add(new ReportTarget(step.ReferenceId, null, step.Name, step.FromState, step.ToState, mark));
+                    steps.Add(step.Summary());
                     from ??= step.From;
                     Added(materials, step.Cost);
                     Said(warnings, step.Warnings);
@@ -211,21 +189,7 @@ internal static class FinishReplies
             }
         }
 
-        JArray listed = new JArray();
-        foreach (JObject step in steps)
-        {
-            listed.Add(step);
-        }
-
-        JObject body = new JObject
-        {
-            ["ready"] = ready,
-            ["free"] = free,
-            ["from"] = from != null ? JToken.FromObject(from, serializer) : JValue.CreateNull(),
-            ["materials"] = JToken.FromObject(materials, serializer),
-            ["steps"] = listed,
-            ["warnings"] = JToken.FromObject(warnings, serializer)
-        };
+        ReplyObject body = new ReplyObject().Add("ready", ready).Add("free", free).Add("from", from).Add("materials", materials).Add("steps", steps).Add("warnings", warnings);
         return Report.Of(targets, body, problems);
     }
 

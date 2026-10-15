@@ -66,7 +66,7 @@ internal static class MemoryWrites
     {
         JsonSerializer serializer = ApiJson.Serializer;
         ReportTarget target = new ReportTarget(place.ReferenceId.ToString(), null, name,
-            ReplyFields.Value(previous, serializer), ReplyFields.Value(requested, serializer), Undo);
+            previous, requested, Undo);
         return Report.Of(new[] { target }, Body(place, requested, previous), new List<ReportProblem>());
     }
 

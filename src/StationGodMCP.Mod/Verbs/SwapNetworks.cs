@@ -186,7 +186,7 @@ internal static class SwapNetworks
         object started = UpgradeJobs.Start(request, plan, call.Queue, call.AcknowledgeGasLost);
         object reply = JobBrief.Started(started,
             JobPreflightSummaryView.Of(UpgradeReports.Of(plan, UpgradeReports.DryRun, null)), call.Fields.Verbose);
-        return new VerbOutcome.Answered(JObject.FromObject(reply, ApiJson.Serializer));
+        return new VerbOutcome.Answered(reply);
     }
 
     [Profiled]

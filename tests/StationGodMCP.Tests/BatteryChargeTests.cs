@@ -160,10 +160,10 @@ public sealed class BatteryChargeTests
     public void TheActedReplyHasNoReportKeys()
     {
         ThingView cell = new ThingView(new ThingId(101), "ItemBatteryCell", "Battery Cell (Small)");
-        JObject reply = BatteryReplies.Acted(ChargeGoal.Full, null, new List<BatteryResult>
+        JObject reply = Replies.Tree(BatteryReplies.Acted(ChargeGoal.Full, null, new List<BatteryResult>
         {
             new BatteryResult.Charged(0, cell, PowerStoreKind.BatteryCell, null, ChargeGoal.Full.Apply(0.0, CellCapacity))
-        });
+        }));
 
         Assert.Equal(new List<string> { "goal", "results", "count", "success_count", "error_count", "added_j" },
             Names(reply));

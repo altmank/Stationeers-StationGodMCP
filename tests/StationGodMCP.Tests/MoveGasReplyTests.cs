@@ -81,7 +81,7 @@ public sealed class MoveGasReplyTests
             new List<MovedGasView> { new MovedGasView("Oxygen", 6.25, 1200.5) }, null);
         WireCheck.Same(old, view);
         Assert.Equal(new[] { "transfer_id", "status", "predicted", "joined", "from", "to", "deleted", "moved", "error" },
-            GasReplies.Acted(view).Properties().Select(key => key.Name));
+            Replies.Tree(GasReplies.Acted(view)).Properties().Select(key => key.Name));
     }
 
     [Fact]

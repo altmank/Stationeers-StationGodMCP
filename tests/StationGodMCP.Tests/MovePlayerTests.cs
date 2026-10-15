@@ -245,7 +245,7 @@ public sealed class MovePlayerTests
             new MoveDestinationView("to", new ThingView(new ThingId(5), "StructureLocker", "Locker"), true), 39.04,
             "Sent.");
 
-        JObject reply = PlayerMoveReplies.Acted(view);
+        JObject reply = Replies.Tree(PlayerMoveReplies.Acted(view));
 
         Assert.Equal(new[] { "player", "moved_by", "before", "after", "destination", "distance_m", "note" },
             reply.Properties().Select(key => key.Name));

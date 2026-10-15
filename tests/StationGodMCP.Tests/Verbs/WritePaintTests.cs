@@ -72,11 +72,11 @@ public sealed class WritePaintTests
     [Fact]
     public void TheColourListIsEachColourAndTheCount()
     {
-        JObject reply = PaintReplies.Colors(new PaintColorsView(new List<PaintColorView>
+        JObject reply = Replies.Tree(PaintReplies.Colors(new PaintColorsView(new List<PaintColorView>
         {
             new PaintColorView(0, "Blue", false),
             new PaintColorView(1, null, true)
-        }));
+        })));
 
         Assert.Equal("""{"colors":[{"index":0,"name":"Blue","paint_only":false},{"index":1,"name":null,"paint_only":true}],"count":2}""",
             reply.ToString(Newtonsoft.Json.Formatting.None));

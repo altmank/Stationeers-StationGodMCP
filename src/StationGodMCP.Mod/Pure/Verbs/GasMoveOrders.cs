@@ -112,7 +112,7 @@ internal static class GasReplies
     private const string TransferIdKey = "transfer_id";
     private const string StatusKey = "status";
 
-    internal static JObject Acted(object view) => JObject.FromObject(view, ApiJson.Serializer);
+    internal static object Acted(object view) => view;
 
     internal static ReportReply Reported(MoveGasView predicted, string undoMark)
     {
@@ -122,33 +122,27 @@ internal static class GasReplies
         {
             if (side != null)
             {
-                targets.Add(Target(side, undoMark, serializer));
+                targets.Add(Target(side, undoMark));
             }
         }
 
-        JObject body = Acted(predicted);
-        body.Remove(TransferIdKey);
-        body.Remove(StatusKey);
-        return Report.Of(targets, body, new List<ReportProblem>());
+        return Report.Of(targets, new ReplyObject().Spread(predicted, TransferIdKey, StatusKey), new List<ReportProblem>());
     }
 
     /// <summary>A planet removal's report: its keys without status, and the planet's air as the one target.</summary>
-    internal static ReportReply ReportedPlanet(JObject removal, double beforeMol, double afterMol, string undoMark)
+    internal static ReportReply ReportedPlanet(object removal, double beforeMol, double afterMol, string undoMark)
     {
-        JsonSerializer serializer = ApiJson.Serializer;
-        JObject body = (JObject)removal.DeepClone();
-        body.Remove(StatusKey);
         ReportTarget target = new ReportTarget("planet", null, "the planet's air",
-            ReplyFields.Value(beforeMol, serializer), ReplyFields.Value(afterMol, serializer), undoMark);
-        return Report.Of(new[] { target }, body, new List<ReportProblem>());
+            beforeMol, afterMol, undoMark);
+        return Report.Of(new[] { target }, new ReplyObject().Spread(removal, StatusKey), new List<ReportProblem>());
     }
 
-    private static ReportTarget Target(GasSideView side, string undoMark, JsonSerializer serializer)
+    private static ReportTarget Target(GasSideView side, string undoMark)
     {
         GasOwnerView? owner = side.Members.Count > 0 ? side.Members[0].Owner : null;
         string? id = side.Room != null ? side.Room.RoomId : owner?.ReferenceId.ToString();
         string? name = side.Room != null ? $"room {side.Room.RoomId} ({side.Room.RoomType})" : owner?.DisplayName;
-        return new ReportTarget(id, null, name, ReplyFields.Value(side.Total.Before.TotalMol, serializer),
-            ReplyFields.Value(side.Total.After.TotalMol, serializer), undoMark);
+        return new ReportTarget(id, null, name, side.Total.Before.TotalMol,
+            side.Total.After.TotalMol, undoMark);
     }
 }

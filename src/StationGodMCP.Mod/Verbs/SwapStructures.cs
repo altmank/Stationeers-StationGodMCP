@@ -113,7 +113,7 @@ internal static class SwapStructures
         object started = StructureJobs.Start(request, plan, call.Queue);
         object reply = JobBrief.Started(started,
             JobPreflightSummaryView.Of(StructureReports.Of(plan, StructureReports.DryRun, null)), call.Fields.Verbose);
-        return new VerbOutcome.Answered(JObject.FromObject(reply, ApiJson.Serializer));
+        return new VerbOutcome.Answered(reply);
     }
 
     private static ReportReply Described(StructureSwapPlan plan, List<ReportProblem> unread, List<ThingId?> named,

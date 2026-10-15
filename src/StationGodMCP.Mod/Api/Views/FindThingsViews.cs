@@ -32,18 +32,13 @@ internal static class FoundThings
 
     internal static ReplyObject Reply(Page<FoundThingView> page, int scanned, LocalPlayerView? localPlayer, string? cursorId)
     {
-        JsonSerializer serializer = ApiJson.Serializer;
-        JObject rest = new JObject
-        {
-            ["scanned"] = scanned,
-            ["local_player"] = localPlayer != null ? JToken.FromObject(localPlayer, serializer) : JValue.CreateNull()
-        };
+        ReplyObject rest = new ReplyObject().Add("scanned", scanned).Add("local_player", localPlayer);
         if (cursorId != null)
         {
-            rest["cursor_id"] = cursorId;
+            rest.Add("cursor_id", cursorId);
         }
 
-        return ListReply.OfPage(List, page, thing => JToken.FromObject(thing, serializer), rest);
+        return ListReply.OfPage(List, page, rest);
     }
 }
 

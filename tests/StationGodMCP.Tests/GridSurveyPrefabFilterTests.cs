@@ -104,8 +104,8 @@ public sealed class GridSurveyPrefabFilterTests(ITestOutputHelper output)
         Page<SurveyCell> page = new Page<SurveyCell>(new List<SurveyCell>(), 125, 0, 8, true);
         SurveyContents contents = new SurveyContents(pieces, new List<SurveyDeviceView>(), new List<object>(),
             new List<SurveyNetworkVisibilityView>(), new List<SurveyDoorView>());
-        return SurveyAreaReply.Of(page, contents, SurveySections.Of(new[] { "pieces" }), null)
-            .ToString(Newtonsoft.Json.Formatting.None);
+        return StationGodMCP.Api.Shared.ApiJson.WriteShared(
+            SurveyAreaReply.Of(page, contents, SurveySections.Of(new[] { "pieces" }), null));
     }
 
     private static SurveyFilter Filter(string json) =>
