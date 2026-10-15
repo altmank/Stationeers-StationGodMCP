@@ -13,8 +13,8 @@ namespace StationGodMCP.Verbs;
 /// <summary>
 /// inspect contents (catalogue inspect.json): a thing's slots and what is in each, down to depth levels, empty slots
 /// left out unless include empty, kept by prefab and name at any depth (ThingContents); id "player" is the player. On a
-/// silo also its stored entries, one page of them (limit, offset): they are save data, not things, so they page by
-/// offset only. One id, or a list of ids (one row each). Read only.
+/// silo also its stored entries, one page of them (limit, offset; one id: with the wire cursor a walk of the entries,
+/// KeyedPage). One id, or a list of ids (one row each). Read only.
 /// </summary>
 internal static class InspectContents
 {
@@ -23,10 +23,13 @@ internal static class InspectContents
 
     internal static VerbOutcome Run(InspectContentsOptions options)
     {
-        if (options.Paging.OffsetOnly() is { } problem)
+        int ids = options.Selector.Ids!.Ids.Count;
+        if (KeyedPage.OneThing(options.Paging, ids) is { } problem)
         {
             return new VerbOutcome.Refused(OptionProblem.Refusal(InspectContentsOptions.Spec.Label, new[] { problem }));
         }
+
+        WalkRequest walk = KeyedPage.WalkOf(options.Paging, ids);
 
         Selector selector = options.Selector;
         PrefabFilter? prefab = selector.Prefab;
@@ -42,7 +45,7 @@ internal static class InspectContents
                 ? PlayerOrigin.RequireHuman()
                 : TargetIds.Thing(id, InspectContentsOptions.Spec.Label);
             return (new ThingId(thing.ReferenceId).ToString(), ThingContents.Read(thing, depth, includeEmpty, filter,
-                paging.Offset, paging.Limit ?? int.MaxValue));
+                walk, paging.Offset, paging.Limit ?? int.MaxValue));
         });
     }
 }

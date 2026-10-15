@@ -188,7 +188,7 @@
               "distance_m": "float | None",
               "slots": "list[{index: int, display_name: str | None, slot_class: str, occupant: {reference_id: str, prefab_name: str | None, display_name: str | None, quantity: float, max_quantity: float | None, slots: list[SlotView] | None, slots_not_shown: int | None} | None}]",
               "empty_slots_omitted": "int | None",
-              "silo": "{count: int, entries_known: bool, importing: bool | None, exporting: bool | None, dispense_slot: int | None, total: int, offset: int, entries: list[{index: int, prefab_name: str | None, display_name: str | None, quantity: float, max_quantity: float | None, children: int, contents: list[{prefab_name: str | None, quantity: float}], rots_when_taken: bool}]} | None"
+              "silo": "{count: int, entries_known: bool, importing: bool | None, exporting: bool | None, dispense_slot: int | None, total: int, offset: int, entries: list[{index: int, prefab_name: str | None, display_name: str | None, quantity: float, max_quantity: float | None, children: int, contents: list[{prefab_name: str | None, quantity: float}], rots_when_taken: bool}], cursor_id: str | None} | None"
             }
           }
         ],
@@ -605,7 +605,8 @@
             }
           }
         ],
-        "types": ["Thing"]
+        "types": ["Thing"],
+        "x-wire": {"cursor_id": "str | None"}
       },
       "brief": "a screen's surfaces and elements"
     },

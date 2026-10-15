@@ -2,22 +2,25 @@
 
 using System;
 using System.Collections.Generic;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Paging;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Verbs;
 
 /// <summary>
 /// find item (catalogue find.json): every item a filter keeps, wherever it is, with machine stock and silo stores
-/// (FoundItems), nearest first or by id, paged by offset (stock and silo entries are no things a walk could keep); with
-/// group_by holder or prefab, the groups are the list. group_by place answers the totals per prefab instead (ItemTotals),
-/// the first limit of them, each with its holders top holders; it takes no offset or exclude_in_use. near names a
-/// centre for radius (a point, "looking_at" or a thing: at most 1000 m; "player": any); box is the other area. Read only.
+/// (FoundItems), nearest first or by id, paged; with group_by holder or prefab, the groups are the list. The first page
+/// keeps the sorted entries (the scan's records, not their views) under its cursor and describes only its own page; a
+/// later page (wire cursor) describes its entries from them: an item as it is then (gone ones passed over), a machine's
+/// stock or a silo's store as the scan read it while its holder stands, a group as the scan summed it. group_by place
+/// answers the totals per prefab instead (ItemTotals), the first limit of them, each with its holders top holders; it
+/// takes no offset or exclude_in_use. near names a centre for radius (a point, "looking_at" or a thing: at most 1000
+/// m; "player": any); box is the other area. Read only.
 /// </summary>
 internal static class FindItem
 {
@@ -25,17 +28,23 @@ internal static class FindItem
     private const string GroupByPlace = "place";
     private const double MaximumRadiusM = 1000.0;
 
+    private static readonly EntryCost Cost = new EntryCost();
+
     internal static VerbOutcome Run(FindItemOptions options)
     {
         Selector selector = options.Selector;
         Paging paging = options.Paging;
-        bool place = string.Equals(options.GroupBy, GroupByPlace, StringComparison.Ordinal);
-        List<OptionProblem> problems = selector.AreaProblems(MaximumRadiusM);
-        if (paging.OffsetOnly() is { } cursor)
+        WalkRequest walk = WalkRequest.Of(paging);
+        if (walk.Continues)
         {
-            problems.Add(cursor);
+            FoundList? kept = walk.Kept() as FoundList;
+            PlayerOrigin now = PlayerOrigin.Current();
+            return ThingListPage<IFoundItemView, FoundList>.Later(walk, paging,
+                index => kept?.Entry(index, now), Cost, (page, cursorId, list) => Reply(page, cursorId, now, list));
         }
 
+        bool place = string.Equals(options.GroupBy, GroupByPlace, StringComparison.Ordinal);
+        List<OptionProblem> problems = selector.AreaProblems(MaximumRadiusM);
         if (place && paging.Offset > 0)
         {
             problems.Add(new OptionProblem("offset", "goes without group_by place: the totals are not paged"));
@@ -55,29 +64,36 @@ internal static class FindItem
         PlayerOrigin origin = PlayerOrigin.Current().RequireIf(where.AroundPlayerM.HasValue);
         ItemFilter filter = ItemFilter.Of(selector.Prefab, selector.Name, options.Location, selector.Within,
             where.AroundPlayerM, where.Area);
-        return new VerbOutcome.Answered(place
-            ? Totals(filter, origin, paging.Limit ?? int.MaxValue, (int)(options.Holders ?? 0))
-            : Listed(filter, origin, paging, options.GroupBy, options.ExcludeInUse == true));
+        return place
+            ? new VerbOutcome.Answered(Totals(filter, origin, paging.Limit ?? int.MaxValue, (int)(options.Holders ?? 0)))
+            : Listed(walk, filter, origin, paging, options.GroupBy, options.ExcludeInUse == true);
     }
 
     // The items, or their groups, as one page; in_use_left_out when parts in use were left out.
-    private static JObject Listed(ItemFilter filter, PlayerOrigin origin, Paging paging, string? groupBy,
-        bool excludeInUse)
+    private static VerbOutcome Listed(WalkRequest walk, ItemFilter filter, PlayerOrigin origin, Paging paging,
+        string? groupBy, bool excludeInUse)
     {
         List<FoundRow> rows = FoundItems.Rows(filter, origin, excludeInUse, out int inUse);
         rows.Sort((a, b) => ListKey.Compare(paging.Order, a.Key, b.Key));
-        JsonSerializer serializer = ApiJson.Fresh();
-        JObject rest = ReplyFields.Of(("local_player", origin.View));
-        if (excludeInUse)
+        ItemGroupings.TryParse(groupBy, out ItemGrouping grouping);
+        FoundList list = grouping == ItemGrouping.None
+            ? new FoundList(rows, null, grouping, excludeInUse ? inUse : null)
+            : new FoundList(rows, FoundItems.Groups(rows, grouping), grouping, excludeInUse ? inUse : null);
+        long[] keys = new long[list.Count];
+        for (int index = 0; index < keys.Length; index++)
         {
-            rest["in_use_left_out"] = inUse;
+            keys[index] = index;
         }
 
-        ItemGroupings.TryParse(groupBy, out ItemGrouping grouping);
-        return grouping == ItemGrouping.None
-            ? ListReply.Of(List, rows, paging, row => JToken.FromObject(row.ToView(), serializer), rest)
-            : ListReply.Of(List, FoundItems.Groups(rows, grouping), paging,
-                group => JToken.FromObject(FoundItems.GroupView(group, grouping), serializer), rest);
+        return ThingListPage<IFoundItemView, FoundList>.First(walk, paging, keys, rows.Count, list,
+            index => list.Entry(index, origin), Cost, (page, cursorId, kept) => Reply(page, cursorId, origin, kept));
+    }
+
+    private static JObject Reply(Page<IFoundItemView> page, string? cursorId, PlayerOrigin origin, FoundList? list)
+    {
+        return list?.InUseLeftOut is { } inUse
+            ? ThingListReply.Of(List, page, cursorId, ("local_player", origin.View), ("in_use_left_out", inUse))
+            : ThingListReply.Of(List, page, cursorId, ("local_player", origin.View));
     }
 
     // group_by place: the first limit prefabs' totals, most first, each with its holders top holders (0: none listed).
@@ -93,5 +109,41 @@ internal static class FindItem
         return ReplyFields.Of(("totals", totals), ("prefab_count", totalled.Rows.Count),
             ("item_count", totalled.Items), ("machine_stock_entries", totalled.StockEntries),
             ("silo_entries", totalled.SiloEntries));
+    }
+
+    /// <summary>
+    /// A find item walk's entries in order, kept under its cursor: the scan's rows, or their groups, and the parts in use
+    /// the scan left out. A walk's key is an entry's index.
+    /// </summary>
+    private sealed class FoundList
+    {
+        private readonly List<FoundRow> _rows;
+        private readonly List<ItemGroup<FoundRow>>? _groups;
+        private readonly ItemGrouping _grouping;
+
+        internal FoundList(List<FoundRow> rows, List<ItemGroup<FoundRow>>? groups, ItemGrouping grouping, int? inUse)
+        {
+            _rows = rows;
+            _groups = groups;
+            _grouping = grouping;
+            InUseLeftOut = inUse;
+        }
+
+        internal int Count => _groups?.Count ?? _rows.Count;
+
+        internal int? InUseLeftOut { get; }
+
+        /// <summary>The entry at index as a page lists it now; null when its thing or holder is gone.</summary>
+        internal IFoundItemView? Entry(long index, PlayerOrigin origin)
+        {
+            if (index < 0 || index >= Count)
+            {
+                return null;
+            }
+
+            return _groups != null
+                ? FoundItems.GroupView(_groups[(int)index], _grouping)
+                : _rows[(int)index].Now(origin);
+        }
     }
 }

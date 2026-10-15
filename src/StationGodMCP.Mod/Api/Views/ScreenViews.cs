@@ -25,6 +25,7 @@ internal sealed class ScreenReadView
         Offset = page.Offset;
         Limit = page.Limit;
         HasMore = page.HasMore;
+        CursorId = page.CursorId;
         Image = image;
     }
 
@@ -53,6 +54,10 @@ internal sealed class ScreenReadView
     public int Limit { get; }
 
     public bool HasMore { get; }
+
+    /// <summary>The walk's cursor while more elements follow (a wire key the hub and sg read).</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public string? CursorId { get; }
 
     /// <summary>With image true: the PNG ScriptedScreens drew of the surface.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]

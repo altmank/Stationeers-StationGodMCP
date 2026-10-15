@@ -50,7 +50,7 @@ internal static class FlightLogWrites
 
     private static FlightLogView Shown(RocketFlightLogEntry entry)
     {
-        FlightLogView view = FlightLogs.View(entry, 0, ShownRows, 1);
+        FlightLogView view = FlightLogs.View(entry, WalkRequest.None, 0, ShownRows, 1);
         if (view.Rows.Count < entry.Buffer.Count)
         {
             Truncations.Note("rows", view.Rows.Count, entry.Buffer.Count,
@@ -82,24 +82,27 @@ internal static class FlightLogs
         List<FlightLogView> logs = new List<FlightLogView>(2);
         foreach (RocketFlightLogEntry entry in RocketFlightRecorder.Entries)
         {
-            logs.Add(View(entry, 0, 0, 1));
+            logs.Add(View(entry, WalkRequest.None, 0, 0, 1));
         }
 
         return new FlightLogListView(logs);
     }
 
-    /// <summary>One recording with every n-th of its samples from offset, at most limit.</summary>
-    internal static FlightLogView View(RocketFlightLogEntry entry, int offset, int limit, int every)
+    /// <summary>
+    /// One recording with every n-th of its samples from offset, at most limit (KeyedPage: a row's key is its sample's
+    /// sequence number); a walk's later page takes the rows at its kept sequence numbers that are still held.
+    /// </summary>
+    internal static FlightLogView View(RocketFlightLogEntry entry, WalkRequest walk, int offset, int limit, int every)
     {
-        List<FlightSample> samples = limit > 0 ? entry.Buffer.Page(offset, limit, every) : new List<FlightSample>();
-        List<FlightSampleView> rows = new List<FlightSampleView>(samples.Count);
-        for (int index = 0; index < samples.Count; index++)
-        {
-            rows.Add(new FlightSampleView(samples[index]));
-        }
-
+        FlightLogBuffer buffer = entry.Buffer;
+        Func<long, FlightSampleView?> describe = sequence =>
+            buffer.At(sequence) is { } sample ? new FlightSampleView(sample) : null;
+        Slice<FlightSampleView> rows = walk.Continues
+            ? KeyedPage.Later(walk, limit, describe)
+            : KeyedPage.First(walk, buffer.Sequences(offset, every), 0, limit, describe);
         return new FlightLogView(new ThingId(entry.RocketId), entry.RocketName, entry.Recording, entry.IntervalS,
-            entry.CsvPath, entry.Buffer, rows, offset, every);
+            entry.CsvPath, buffer, walk.Continues ? rows : Slice<FlightSampleView>.Walked(rows.Items, offset,
+                rows.Limit, rows.Total, rows.HasMore, rows.CursorId), every);
     }
 }
 

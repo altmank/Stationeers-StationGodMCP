@@ -187,6 +187,19 @@ internal sealed class WalkCursors : ICursorStore
         return index;
     }
 
+    /// <summary>
+    /// What the walk's first page kept with its cursor, for a later page that describes its entries from it; null when
+    /// the cursor is not the caller's to use (TryNext then answers cursor_expired) or kept nothing. Changes nothing.
+    /// </summary>
+    internal object? KeptOf(CallContext caller, string cursorId)
+    {
+        long number = NumberOf(cursorId);
+        return number > 0 && _open.TryGetValue(number, out Cursor? cursor) && cursor != null &&
+               cursor.Owner.Equals(caller)
+            ? cursor.Kept
+            : null;
+    }
+
     /// <summary>cursor_close: frees the cursor when the owner holds it; anything else does nothing.</summary>
     public void Close(string owner, string cursorId)
     {

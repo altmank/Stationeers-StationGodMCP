@@ -77,6 +77,7 @@ internal sealed class SiloContentsView
         Total = entries.Total;
         Offset = entries.Offset;
         Entries = entries.Items;
+        CursorId = entries.CursorId;
     }
 
     /// <summary>Entries stored (one per imported thing).</summary>
@@ -102,6 +103,10 @@ internal sealed class SiloContentsView
     public int Offset { get; }
 
     public List<SiloEntryView> Entries { get; }
+
+    /// <summary>The walk's cursor while more entries follow: a later call with it as cursor takes the next page.</summary>
+    [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+    public string? CursorId { get; }
 }
 
 /// <summary>What a silo is busy with, as the host reads it.</summary>

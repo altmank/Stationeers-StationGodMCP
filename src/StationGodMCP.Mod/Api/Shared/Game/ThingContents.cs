@@ -17,9 +17,12 @@ namespace StationGodMCP.Api.Shared.Game;
 /// </summary>
 internal static class ThingContents
 {
-    /// <summary>The thing's slots, kept by filter, and a silo's entries from offset, at most limit.</summary>
-    internal static ContainerContentsView Read(Thing thing, int depth, bool includeEmpty, SlotFilter filter, int offset,
-        int limit)
+    /// <summary>
+    /// The thing's slots, kept by filter, and a silo's entries from offset, at most limit (KeyedPage: an entry's key is
+    /// its place in the store; a walk's later page takes the entries at its kept places as they are now).
+    /// </summary>
+    internal static ContainerContentsView Read(Thing thing, int depth, bool includeEmpty, SlotFilter filter,
+        WalkRequest walk, int offset, int limit)
     {
         PlayerOrigin origin = PlayerOrigin.Current();
         Vector3 position = HolderChain.PlaceOf(thing).Position;
@@ -27,12 +30,14 @@ internal static class ThingContents
         ShownSlots shown = includeEmpty ? ShownSlots.All(slots) : ShownSlots.Occupied(slots);
         return new ContainerContentsView(GameLookup.ViewOf(thing), GameLookup.ViewOf(position),
             origin.DistanceTo(position), shown.Filtered(filter),
-            thing is Silo silo ? SiloContents(silo, filter, PageRequest.Of(offset, limit, Pure.SiloRules.Capacity)) : null);
+            thing is Silo silo
+                ? SiloContents(silo, filter, walk, PageRequest.Of(offset, limit, Pure.SiloRules.Capacity))
+                : null);
     }
 
     // A silo's store, after its own slots: entries front first (filtered as the slots are), one page of them. On a
     // client the store is unknown (the host keeps it) and only the synced count is shown.
-    private static SiloContentsView SiloContents(Silo silo, SlotFilter filter, PageRequest page)
+    private static SiloContentsView SiloContents(Silo silo, SlotFilter filter, WalkRequest walk, PageRequest page)
     {
         if (!Silos.StoresKnown)
         {
@@ -41,17 +46,27 @@ internal static class ThingContents
         }
 
         SiloStore store = SiloStore.Of(silo);
-        List<SiloEntryView> entries = new List<SiloEntryView>();
-        foreach (SiloEntry entry in store.Describe())
+        List<SiloEntry> described = store.Describe();
+        System.Func<long, SiloEntryView?> describe = place =>
+            place >= 0 && place < described.Count ? described[(int)place].View() : null;
+        Slice<SiloEntryView> slice;
+        if (walk.Continues)
         {
-            SiloEntryView view = entry.View();
-            if (filter.Keeps(view))
-            {
-                entries.Add(view);
-            }
+            slice = KeyedPage.Later(walk, page.Limit, describe);
         }
+        else
+        {
+            List<long> kept = new List<long>(described.Count);
+            for (int place = 0; place < described.Count; place++)
+            {
+                if (filter.Keeps(described[place].View()))
+                {
+                    kept.Add(place);
+                }
+            }
 
-        Slice<SiloEntryView> slice = Slice<SiloEntryView>.Of(entries, page);
+            slice = KeyedPage.First(walk, kept.ToArray(), page.Offset, page.Limit, describe);
+        }
         return new SiloContentsView(store.Entries.Count, true, store.Busy(), slice);
     }
 

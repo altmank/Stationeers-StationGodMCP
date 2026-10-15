@@ -30,6 +30,9 @@ internal sealed class WalkRequest
         _cursors = cursors;
     }
 
+    /// <summary>No walk: a first page that keeps nothing (a reply that shows a list's head only).</summary>
+    internal static WalkRequest None { get; } = new WalkRequest(false, null, WalkCursors.Main);
+
     /// <summary>A first page that keeps a cursor when more follows.</summary>
     internal bool Opens { get; }
 
@@ -91,6 +94,13 @@ internal sealed class WalkRequest
 
         return step;
     }
+
+    /// <summary>
+    /// A later page: what the walk's first page kept with its cursor (null when it kept nothing or the cursor is not the
+    /// caller's; Next then answers cursor_expired).
+    /// </summary>
+    internal object? Kept() =>
+        CursorId is { } cursorId ? _cursors.KeptOf(CallContext.Current, cursorId) : null;
 
     /// <summary>cursor_expired: the cursor id and the things its walk had returned (null when not known).</summary>
     internal static ApiException Expired(string cursorId, int? position) =>

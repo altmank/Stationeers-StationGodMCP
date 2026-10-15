@@ -10,5 +10,5 @@ Options:
 id may be a list or a ref: the reply is {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload one reply; fields name its keys.
 Iteration and refs go over slots; a silo's stored entries are paged with limit and offset, not iterated.
 Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the one-id reply; a bad id is a row with error.
-Reply: reference_id, prefab_name, display_name, position {x, y, z}, distance_m, slots [{index, display_name, slot_class, occupant}], empty_slots_omitted, silo {count, entries_known, importing, exporting, dispense_slot, total, offset, entries}
+Reply: reference_id, prefab_name, display_name, position {x, y, z}, distance_m, slots [{index, display_name, slot_class, occupant}], empty_slots_omitted, silo {count, entries_known, importing, exporting, dispense_slot, total, offset, entries, cursor_id}
 Example: inspect {what: "contents", id: "player"}

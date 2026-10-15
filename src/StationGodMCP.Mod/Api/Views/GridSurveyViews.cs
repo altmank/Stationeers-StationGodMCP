@@ -17,7 +17,8 @@ namespace StationGodMCP.Api.Views;
 /// </summary>
 internal static class SurveyAreaReply
 {
-    internal static JObject Of(Page<SurveyCell> page, SurveyContents contents, SurveySections sections, string? legend)
+    internal static JObject Of(Page<SurveyCell> page, SurveyContents contents, SurveySections sections, string? legend,
+        string? cursorId = null)
     {
         JsonSerializer serializer = ApiJson.Fresh();
         JObject reply = new JObject();
@@ -40,6 +41,11 @@ internal static class SurveyAreaReply
 
         reply["total"] = page.Total;
         reply["has_more"] = page.HasMore;
+        if (cursorId != null)
+        {
+            reply["cursor_id"] = cursorId;
+        }
+
         Part(reply, "pieces", sections, SurveySection.Pieces, contents.Pieces, serializer);
         Part(reply, "devices", sections, SurveySection.Devices, contents.Devices, serializer);
         Part(reply, "networks", sections, SurveySection.Networks, contents.Networks, serializer);

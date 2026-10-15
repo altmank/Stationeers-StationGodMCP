@@ -39,9 +39,9 @@ public sealed class SurveyVerbTests
         Assert.Equal("occupancy", box.CellDetail);
         Assert.True(box.Networks);
         Assert.False(box.OccupiedOnly);
-        Assert.Null(box.Paging.OffsetOnly());
-        Assert.Equal("cursor", SurveyAreaOptions.Bind(Reader(SurveyAreaOptions.Spec, """{"cursor": "k2"}""")).Paging
-            .OffsetOnly()?.Path);
+        Assert.Null(box.Paging.CursorId);
+        Assert.Equal("k2", SurveyAreaOptions.Bind(Reader(SurveyAreaOptions.Spec, """{"cursor": "k2"}""")).Paging
+            .CursorId);
         Assert.NotNull(Check("""{"what": "area", "room": "28", "limit": 126}"""));
     }
 

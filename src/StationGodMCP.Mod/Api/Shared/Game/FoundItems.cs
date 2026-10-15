@@ -8,8 +8,8 @@ using StationGodMCP.Pure;
 namespace StationGodMCP.Api.Shared.Game;
 
 /// <summary>
-/// Found items: every item in the world a filter keeps, wherever it is (WorldItems: OcclusionManager.AllDynamicThings,
-/// organs left out), material machines hold as reagent stock (MachineStock, location machine_stock) and what SDB
+/// Found items: every item in the world a filter keeps, wherever it is (WorldItems: the world model's items, organs
+/// left out), material machines hold as reagent stock (MachineStock, location machine_stock) and what SDB
 /// Silos store (SiloStock, location silo), sortable together; grouped per outermost holder and prefab, or per prefab
 /// (Pure/ItemGroups). Leaving out parts in use leaves out parts a device is using (PartsInUse) and what is inside them.
 /// </summary>
@@ -67,6 +67,12 @@ internal abstract class FoundRow
 
     internal abstract IFoundItemView ToView();
 
+    /// <summary>
+    /// The entry as a later page lists it: an item as it is now, a machine's stock or a silo's store as the scan read
+    /// it while its holder stands; null when the item or its holder is gone.
+    /// </summary>
+    internal abstract IFoundItemView? Now(PlayerOrigin origin);
+
     /// <summary>The outermost holder's id (a machine's, a silo's); null for a loose item.</summary>
     internal abstract long? HolderId { get; }
 
@@ -93,6 +99,11 @@ internal abstract class FoundRow
         internal override ListKey Key => new ListKey(_record.Distance, _record.Item.PrefabName, 0, _record.Item.ReferenceId);
 
         internal override IFoundItemView ToView() => _record.ToView();
+
+        internal override IFoundItemView? Now(PlayerOrigin origin) =>
+            _record.Item != null && !_record.Item.IsBeingDestroyed
+                ? WorldItems.Describe(_record.Item, origin).ToView()
+                : null;
 
         internal override long? HolderId => _record.Path.Count > 0 ? _record.Root.ReferenceId : null;
 
@@ -121,6 +132,9 @@ internal abstract class FoundRow
 
         internal override IFoundItemView ToView() => _record.ToView();
 
+        internal override IFoundItemView? Now(PlayerOrigin origin) =>
+            _record.Machine != null && !_record.Machine.IsBeingDestroyed ? _record.ToView() : null;
+
         internal override long? HolderId => _record.Machine.ReferenceId;
 
         internal override string GroupName => _record.IngotPrefab ?? ReagentKeyPrefix + _record.Reagent;
@@ -147,6 +161,9 @@ internal abstract class FoundRow
         internal override ListKey Key => new ListKey(_record.Distance, _record.PrefabName, 2, _record.Silo.ReferenceId);
 
         internal override IFoundItemView ToView() => _record.ToView();
+
+        internal override IFoundItemView? Now(PlayerOrigin origin) =>
+            _record.Silo != null && !_record.Silo.IsBeingDestroyed ? _record.ToView() : null;
 
         internal override long? HolderId => _record.Silo.ReferenceId;
 

@@ -122,7 +122,7 @@ public sealed class InspectContentsTests
     }
 
     [Fact]
-    public void ASilosEntriesPageTenAtATimeUpTo600AndByOffsetOnly()
+    public void ASilosEntriesPageTenAtATimeUpTo600AndWalkOneSilosStore()
     {
         Pure.Verbs.Paging paging = InspectContentsOptions.Bind(new OptionReader(InspectContentsOptions.Spec,
             JObject.Parse("""{"id": "5"}"""))).Paging;
@@ -133,8 +133,9 @@ public sealed class InspectContentsTests
         Assert.Equal(0, paging.Offset);
         Assert.Null(Check("""{"what": "contents", "id": "5", "limit": 600, "offset": 20}"""));
         Assert.NotNull(Check("""{"what": "contents", "id": "5", "limit": 601}"""));
-        Assert.Null(paging.OffsetOnly());
-        Assert.Equal("cursor", later.OffsetOnly()!.Path);
+        Assert.Null(KeyedPage.OneThing(paging, 2));
+        Assert.Null(KeyedPage.OneThing(later, 1));
+        Assert.Equal("cursor", KeyedPage.OneThing(later, 2)!.Path);
     }
 
     private static VerbError? Check(string options) =>

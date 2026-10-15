@@ -191,7 +191,11 @@ public sealed class RocketForecastTests
                 -10 * second, 0, 1800, 5000, 437, 900, 100, 16000, 16390, 0.4, 1000, 3, 120, "Normal"));
         }
 
-        List<FlightSample> page = buffer.Page(0, 10, 1);
+        List<FlightSample> page = new List<FlightSample>();
+        foreach (long sequence in buffer.Sequences(0, 1))
+        {
+            page.Add(buffer.At(sequence)!);
+        }
 
         Assert.Equal(3, buffer.Count);
         Assert.Equal(5, buffer.Recorded);
@@ -240,7 +244,7 @@ public sealed class RocketForecastTests
     }
 
     [Fact]
-    public void FlightLogPagesEveryNthRow()
+    public void FlightLogKeysEveryNthRow()
     {
         FlightLogBuffer buffer = new FlightLogBuffer(100);
         for (int second = 0; second < 10; second++)
@@ -249,8 +253,27 @@ public sealed class RocketForecastTests
                 16000, 16390, 0.4, 1000, 3, 120, "Normal"));
         }
 
-        List<FlightSample> page = buffer.Page(1, 3, 3);
+        long[] sequences = buffer.Sequences(1, 3);
 
-        Assert.Equal(new[] { 1.0, 4.0, 7.0 }, new[] { page[0].GameSeconds, page[1].GameSeconds, page[2].GameSeconds });
+        Assert.Equal(new long[] { 1, 4, 7 }, sequences);
+        Assert.Equal(new[] { 1.0, 4.0, 7.0 },
+            new[] { buffer.At(1)!.GameSeconds, buffer.At(4)!.GameSeconds, buffer.At(7)!.GameSeconds });
+    }
+
+    [Fact]
+    public void AFlightSampleIsFoundByItsSequenceWhileItIsHeld()
+    {
+        FlightLogBuffer buffer = new FlightLogBuffer(3);
+        for (int second = 0; second < 5; second++)
+        {
+            buffer.Add(new FlightSample(second, "InSpace", "Orbit", "Pad", 0, -1, 0, 0, 1800, 5000, 437, 900, 100,
+                16000, 16390, 0.4, 1000, 3, 120, "Normal"));
+        }
+
+        Assert.Equal(2, buffer.OldestHeld);
+        Assert.Null(buffer.At(1));
+        Assert.Equal(2.0, buffer.At(2)!.GameSeconds);
+        Assert.Equal(4.0, buffer.At(4)!.GameSeconds);
+        Assert.Null(buffer.At(5));
     }
 }

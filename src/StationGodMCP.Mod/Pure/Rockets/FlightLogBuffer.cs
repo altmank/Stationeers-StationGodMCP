@@ -208,22 +208,33 @@ internal sealed class FlightLogBuffer
         LowestBatteryJ = Math.Min(LowestBatteryJ, sample.BatteryJ);
     }
 
-    /// <summary>The held samples oldest first, from offset, every 'every'th, at most limit of them.</summary>
-    internal List<FlightSample> Page(int offset, int limit, int every)
+    /// <summary>The sequence number (0 for the first sample ever recorded) of the oldest sample held.</summary>
+    internal long OldestHeld => Recorded - Count;
+
+    /// <summary>The sequence numbers of the held samples oldest first, from offset, every 'every'th: a walk's keys.</summary>
+    internal long[] Sequences(int offset, int every)
     {
         int step = Math.Max(1, every);
-        List<FlightSample> page = new List<FlightSample>(Math.Min(limit, Count));
-        int oldest = Count < _ring.Length ? 0 : _next;
-        for (int index = offset; index < Count && page.Count < limit; index += step)
+        int from = Math.Max(0, offset);
+        long[] sequences = new long[from < Count ? (Count - from + step - 1) / step : 0];
+        for (int index = 0; index < sequences.Length; index++)
         {
-            FlightSample? sample = _ring[(oldest + index) % _ring.Length];
-            if (sample != null)
-            {
-                page.Add(sample);
-            }
+            sequences[index] = OldestHeld + from + (long)index * step;
         }
 
-        return page;
+        return sequences;
+    }
+
+    /// <summary>The sample with this sequence number while it is held; null once written over, or not made yet.</summary>
+    internal FlightSample? At(long sequence)
+    {
+        if (sequence < OldestHeld || sequence >= Recorded)
+        {
+            return null;
+        }
+
+        int oldest = Count < _ring.Length ? 0 : _next;
+        return _ring[(int)((oldest + (sequence - OldestHeld)) % _ring.Length)];
     }
 
     private void Note(double seconds, string what)

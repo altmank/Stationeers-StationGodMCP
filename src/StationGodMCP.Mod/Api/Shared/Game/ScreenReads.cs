@@ -23,9 +23,10 @@ internal static class ScreenReads
 {
     /// <summary>
     /// The screen of the circuit holder, one surface (null: the main screen's), its elements kept by type, text and
-    /// shownOnly, one page of them (offset, at most limit).
+    /// shownOnly, one page of them (offset, at most limit) built for the page alone (KeyedPage: an element's key is its
+    /// place in the surface's list); a walk's later page describes the elements at its kept places as they are now.
     /// </summary>
-    internal static ScreenReadView Read(IcTarget holder, ScreenQuery query, int offset, int limit)
+    internal static ScreenReadView Read(IcTarget holder, ScreenQuery query, WalkRequest walk, int offset, int limit)
     {
         ScreenHost host = ScreenHost.Require(holder);
         string surface = Screens.SurfaceOf(host, query.Surface);
@@ -36,17 +37,28 @@ internal static class ScreenReads
         string? text = query.Text;
         bool shownOnly = query.ShownOnly;
         bool style = query.Style;
-        List<ScreenElementView> kept = new List<ScreenElementView>();
-        foreach (ScreenElementData element in elements)
+        Func<long, ScreenElementView?> describe = key =>
+            key >= 0 && key < elements.Count ? Screens.ViewOf(elements[(int)key], layout, style) : null;
+        Slice<ScreenElementView> slice;
+        if (walk.Continues)
         {
-            if ((type == null || string.Equals(element.Element.Type, type, StringComparison.OrdinalIgnoreCase)) &&
-                (!shownOnly || layout.IsShown(element.Element.Id)) && Screens.HoldsText(element.Props, text))
-            {
-                kept.Add(Screens.ViewOf(element, layout, style));
-            }
+            slice = KeyedPage.Later(walk, limit, describe);
         }
+        else
+        {
+            List<long> kept = new List<long>();
+            for (int index = 0; index < elements.Count; index++)
+            {
+                ScreenElementData element = elements[index];
+                if ((type == null || string.Equals(element.Element.Type, type, StringComparison.OrdinalIgnoreCase)) &&
+                    (!shownOnly || layout.IsShown(element.Element.Id)) && Screens.HoldsText(element.Props, text))
+                {
+                    kept.Add(index);
+                }
+            }
 
-        Slice<ScreenElementView> slice = Slice<ScreenElementView>.Of(kept, PageRequest.Of(offset, limit, int.MaxValue));
+            slice = KeyedPage.First(walk, kept.ToArray(), offset, limit, describe);
+        }
         return new ScreenReadView(host.Ic.HolderView, new ThingId(host.Chip.ReferenceId), Surfaces(host), surface,
             size?.x, size?.y, slice, query.Image ? Image(host, surface) : null);
     }

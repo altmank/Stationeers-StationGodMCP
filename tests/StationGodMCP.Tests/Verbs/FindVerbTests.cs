@@ -88,16 +88,14 @@ public sealed class FindVerbTests
         Assert.False(place.ExcludeInUse);
     }
 
-    // ---- the lists that page by offset only ----
+    // ---- every paged list walks under a cursor (cost design A4) ----
 
     [Fact]
-    public void AnOffsetOnlyListRefusesACursorIdAndKeepsNoneOnOpen()
+    public void FindItemAndFindDeviceTakeACursorToOpenAndToGoOn()
     {
-        OptionProblem? later = FindItemOptions.Bind(Reader(FindItemOptions.Spec, """{"cursor": "k3"}""")).Paging.OffsetOnly();
-
-        Assert.Equal("cursor", later?.Path);
-        Assert.Null(FindItemOptions.Bind(Reader(FindItemOptions.Spec, """{"cursor": "open"}""")).Paging.OffsetOnly());
-        Assert.Null(FindDeviceOptions.Bind(Reader(FindDeviceOptions.Spec, "{}")).Paging.OffsetOnly());
+        Assert.Equal("k3", FindItemOptions.Bind(Reader(FindItemOptions.Spec, """{"cursor": "k3"}""")).Paging.CursorId);
+        Assert.True(FindItemOptions.Bind(Reader(FindItemOptions.Spec, """{"cursor": "open"}""")).Paging.OpensCursor);
+        Assert.Equal("k4", FindDeviceOptions.Bind(Reader(FindDeviceOptions.Spec, """{"cursor": "k4"}""")).Paging.CursorId);
     }
 
     [Fact]

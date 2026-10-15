@@ -31,11 +31,54 @@ internal static class NetworkReader
 {
     internal const long MaximumBoxCells = 262144;
 
-    /// <summary>The members the filter keeps, as one page, with the network's summary and counts.</summary>
-    internal static MembersPage Read(string kind, ThingId id, Paging paging, NetworkMemberFilter filter)
+    private static readonly UpgradeFamily[] OpenEndFamilies = { new CableFamily(), new PipeFamily(), new ChuteFamily() };
+
+    /// <summary>
+    /// The members the filter keeps, by reference id in the network's order (pieces, then devices), with the network's
+    /// summary and counts (the head a walk's every page answers) and the open ends found for each kept member.
+    /// </summary>
+    internal static MembersScan Scan(string kind, ThingId id, NetworkMemberFilter filter)
     {
         Found network = Find(kind, id);
-        return Page(kind, id, network.Members, network.Summary, paging, filter);
+        NetworkMembers members = network.Members;
+        List<long> ids = new List<long>(members.All.Count);
+        Dictionary<long, List<int>?> openEnds = new Dictionary<long, List<int>?>();
+        foreach (Thing member in members.All)
+        {
+            if (!Keeps(filter, member))
+            {
+                continue;
+            }
+
+            List<int>? open = filter.OpenEndsOnly ? OpenEnds(member, kind) : null;
+            if (open == null || open.Count > 0)
+            {
+                ids.Add(member.ReferenceId);
+                openEnds[member.ReferenceId] = open;
+            }
+        }
+
+        MembersHead head = new MembersHead(new NetworkRefView(kind, id), network.Summary, members.StructureCount,
+            members.All.Count - members.StructureCount,
+            BrokenNeighbours.WarningFor(kind, members.All, "members", "broken_neighbours with summarize true"));
+        return new MembersScan(head, ids.ToArray(), members.All.Count, openEnds);
+    }
+
+    /// <summary>
+    /// A member of a network of kind as a page lists it, as it is now; null when it is gone. open: its open ends as the
+    /// scan found them (null: found again now when the walk lists open ends only).
+    /// </summary>
+    internal static NetworkMemberView? MemberOf(long id, string kind, bool openEndsOnly, List<int>? open,
+        List<ColorSwatch> swatches)
+    {
+        Thing member = Thing.Find(id);
+        if (member == null || member.IsBeingDestroyed)
+        {
+            return null;
+        }
+
+        List<int>? ends = open ?? (openEndsOnly ? OpenEnds(member, kind) : null);
+        return MemberView(member, member is Device ? "device" : kind, ends, ThingColors.ShownColorOf(member, swatches));
     }
 
     /// <summary>The network's pieces, then its devices when devices asks, each once.</summary>
@@ -46,15 +89,14 @@ internal static class NetworkReader
     }
 
     /// <summary>
-    /// Every piece of the kinds named (all three when kind is null) standing in the box with an end of its kind that
-    /// nothing is attached at, across every network: cells by y, then z, then x, kinds cable, pipe, chute.
+    /// The ids of every piece of the kinds named (all three when kind is null) standing in the box with an end of its
+    /// kind that nothing is attached at, across every network: cells by y, then z, then x, kinds cable, pipe, chute.
     /// </summary>
-    internal static List<NetworkMemberView> OpenEndsIn(BoxCorners corners, string? kind, NetworkMemberFilter filter)
+    internal static long[] OpenEndsIn(BoxCorners corners, string? kind, NetworkMemberFilter filter)
     {
         PieceSelection.Box box = BoxOf(corners);
-        List<NetworkMemberView> found = new List<NetworkMemberView>();
-        List<ColorSwatch> swatches = ThingColors.Swatches();
-        foreach (UpgradeFamily family in new UpgradeFamily[] { new CableFamily(), new PipeFamily(), new ChuteFamily() })
+        List<long> found = new List<long>();
+        foreach (UpgradeFamily family in OpenEndFamilies)
         {
             if (kind != null && family.NetworkKind != kind)
             {
@@ -63,24 +105,38 @@ internal static class NetworkReader
 
             foreach (SmallGrid piece in UpgradePlanner.InBox(family, box))
             {
-                if (!filter.KeepsPrefab(piece.PrefabName, piece.PrefabHash))
+                if (filter.KeepsPrefab(piece.PrefabName, piece.PrefabHash) &&
+                    OpenEnds(piece, family.NetworkKind).Count > 0)
                 {
-                    continue;
-                }
-
-                List<int> open = OpenEnds(piece, family.NetworkKind);
-                if (open.Count > 0)
-                {
-                    IReferencable? owner = family.NetworkOf(piece);
-                    found.Add(new NetworkMemberView(GameLookup.ViewOf(piece), family.NetworkKind,
-                        GameLookup.ViewOf(piece.Position), open,
-                        owner != null ? new ThingId(owner.ReferenceId) : (ThingId?)null,
-                        ThingColors.ShownColorOf(piece, swatches)));
+                    found.Add(piece.ReferenceId);
                 }
             }
         }
 
-        return found;
+        return found.ToArray();
+    }
+
+    /// <summary>A piece OpenEndsIn found, as it is now (its network and open ends); null when it is gone.</summary>
+    internal static NetworkMemberView? OpenEndOf(long id, List<ColorSwatch> swatches)
+    {
+        if (!(Thing.Find(id) is SmallGrid piece) || piece == null || piece.IsBeingDestroyed)
+        {
+            return null;
+        }
+
+        foreach (UpgradeFamily family in OpenEndFamilies)
+        {
+            if (family.IsPiece(piece))
+            {
+                IReferencable? owner = family.NetworkOf(piece);
+                return new NetworkMemberView(GameLookup.ViewOf(piece), family.NetworkKind,
+                    GameLookup.ViewOf(piece.Position), OpenEnds(piece, family.NetworkKind),
+                    owner != null ? new ThingId(owner.ReferenceId) : (ThingId?)null,
+                    ThingColors.ShownColorOf(piece, swatches));
+            }
+        }
+
+        return null;
     }
 
     // Two corners in metres as the half-metre cells between them; refused over MaximumBoxCells (a 32 m cube).
@@ -283,39 +339,6 @@ internal static class NetworkReader
         return members;
     }
 
-    private static MembersPage Page(string kind, ThingId id, NetworkMembers members, object? summary,
-        Paging paging, NetworkMemberFilter filter)
-    {
-        List<KeptMember> kept = new List<KeptMember>(members.All.Count);
-        foreach (Thing member in members.All)
-        {
-            if (!Keeps(filter, member))
-            {
-                continue;
-            }
-
-            List<int>? open = filter.OpenEndsOnly ? OpenEnds(member, kind) : null;
-            if (open == null || open.Count > 0)
-            {
-                kept.Add(new KeptMember(member, open));
-            }
-        }
-
-        Page<KeptMember> page = paging.Of(kept);
-        List<NetworkMemberView> views = new List<NetworkMemberView>(page.Entries.Count);
-        List<ColorSwatch> swatches = ThingColors.Swatches();
-        foreach (KeptMember member in page.Entries)
-        {
-            views.Add(MemberView(member.Thing, member.Thing is Device ? "device" : kind, member.OpenEnds,
-                ThingColors.ShownColorOf(member.Thing, swatches)));
-        }
-
-        return new MembersPage(new NetworkRefView(kind, id), summary,
-            new Page<NetworkMemberView>(views, page.Total, page.Offset, page.Limit, page.HasMore),
-            members.StructureCount, members.All.Count - members.StructureCount,
-            BrokenNeighbours.WarningFor(kind, members.All, "members", "broken_neighbours with summarize true"));
-    }
-
     // The indexes of a member's ends of the network's kind that nothing is attached at (EndsReader.AttachedAt).
     internal static List<int> OpenEnds(Thing member, string kind)
     {
@@ -360,20 +383,6 @@ internal static class NetworkReader
 
         internal object? Summary { get; }
     }
-
-    private readonly struct KeptMember
-    {
-        internal KeptMember(Thing thing, List<int>? openEnds)
-        {
-            Thing = thing;
-            OpenEnds = openEnds;
-        }
-
-        internal Thing Thing { get; }
-
-        internal List<int>? OpenEnds { get; }
-    }
-
     /// <summary>A network's things, each once (a HashSet of ids), in the order found.</summary>
     private sealed class NetworkMembers
     {
@@ -394,14 +403,12 @@ internal static class NetworkReader
 }
 
 /// <summary>One page of a network's members, its network, its summary, its structure and device counts and its warning.</summary>
-internal sealed class MembersPage
+internal sealed class MembersHead
 {
-    internal MembersPage(NetworkRefView network, object? summary, Page<NetworkMemberView> page, int structures,
-        int devices, string? warning)
+    internal MembersHead(NetworkRefView network, object? summary, int structures, int devices, string? warning)
     {
         Network = network;
         Summary = summary;
-        Page = page;
         Structures = structures;
         Devices = devices;
         Warning = warning;
@@ -411,11 +418,29 @@ internal sealed class MembersPage
 
     public object? Summary { get; }
 
-    public Page<NetworkMemberView> Page { get; }
-
     public int Structures { get; }
 
     public int Devices { get; }
 
     public string? Warning { get; }
+}
+
+/// <summary>A network's kept members: the head, their ids in order, the members read, and each one's open ends.</summary>
+internal sealed class MembersScan
+{
+    internal MembersScan(MembersHead head, long[] ids, int scanned, Dictionary<long, List<int>?> openEnds)
+    {
+        Head = head;
+        Ids = ids;
+        Scanned = scanned;
+        OpenEnds = openEnds;
+    }
+
+    internal MembersHead Head { get; }
+
+    internal long[] Ids { get; }
+
+    internal int Scanned { get; }
+
+    internal Dictionary<long, List<int>?> OpenEnds { get; }
 }

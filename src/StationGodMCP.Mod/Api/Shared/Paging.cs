@@ -36,8 +36,9 @@ internal sealed class PageRequest
 /// <summary>One page of an already sorted list, with the list's total and whether more follows.</summary>
 internal sealed class Slice<T>
 {
-    private Slice(List<T> items, int offset, int limit, int total, bool? hasMore = null)
+    private Slice(List<T> items, int offset, int limit, int total, bool? hasMore = null, string? cursorId = null)
     {
+        CursorId = cursorId;
         Items = items;
         Offset = offset;
         Limit = limit;
@@ -55,6 +56,9 @@ internal sealed class Slice<T>
 
     internal bool HasMore { get; }
 
+    /// <summary>The walk's cursor while it has more (a wire key the hub and sg read); null otherwise.</summary>
+    internal string? CursorId { get; }
+
     /// <summary>A page already cut from a list of the given total, e.g. after its rows were read in full.</summary>
     internal static Slice<T> Page(List<T> items, PageRequest page, int total) =>
         new Slice<T>(items, page.Offset, page.Limit, total);
@@ -63,8 +67,9 @@ internal sealed class Slice<T>
     /// A later page of a walk (WalkRequest): offset is the walk's entries passed before it, total the walk's length at
     /// its first call; skipped entries make offset plus count fall short of the next offset, so has_more is the walk's.
     /// </summary>
-    internal static Slice<T> Walked(List<T> items, int offset, int limit, int total, bool hasMore) =>
-        new Slice<T>(items, offset, limit, total, hasMore);
+    internal static Slice<T> Walked(List<T> items, int offset, int limit, int total, bool hasMore,
+        string? cursorId = null) =>
+        new Slice<T>(items, offset, limit, total, hasMore, cursorId);
 
     internal static Slice<T> Of(List<T> sorted, PageRequest page)
     {

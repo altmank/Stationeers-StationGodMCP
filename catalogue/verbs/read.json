@@ -278,7 +278,8 @@
               "count": "int"
             }
           }
-        ]
+        ],
+        "x-wire": {"cursor_id": "str | None"}
       },
       "brief": "flight recorder rows"
     }

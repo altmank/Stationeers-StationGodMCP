@@ -173,7 +173,8 @@
             }
           }
         ],
-        "types": ["Thing", "Vec3"]
+        "types": ["Thing", "Vec3"],
+        "x-wire": {"cursor_id": "str | None"}
       },
       "brief": "stackable items and kits anywhere; group_by sums"
     },
@@ -206,7 +207,8 @@
               "gateway_id": "str"
             }
           }
-        ]
+        ],
+        "x-wire": {"cursor_id": "str | None"}
       },
       "brief": "devices with logic"
     },

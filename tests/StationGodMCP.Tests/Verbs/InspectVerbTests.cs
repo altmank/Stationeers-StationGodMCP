@@ -1,5 +1,6 @@
 #nullable enable
 
+using StationGodMCP.Api.Shared;
 using System.Collections.Generic;
 using System.Linq;
 using Newtonsoft.Json.Linq;
@@ -95,13 +96,14 @@ public sealed class InspectVerbTests
     }
 
     [Fact]
-    public void ScreenElementsPageByOffsetOnly()
+    public void ScreenElementsWalkOneScreenUnderACursor()
     {
         Pure.Verbs.Paging later = InspectScreenOptions.Bind(Reader(InspectScreenOptions.Spec, """{"id": "5", "cursor": "k3"}""")).Paging;
         Pure.Verbs.Paging opened = InspectScreenOptions.Bind(Reader(InspectScreenOptions.Spec, """{"id": "5", "cursor": "open"}""")).Paging;
 
-        Assert.Equal("cursor", later.OffsetOnly()!.Path);
-        Assert.Null(opened.OffsetOnly());
+        Assert.Null(KeyedPage.OneThing(later, 1));
+        Assert.Equal("cursor", KeyedPage.OneThing(later, 3)!.Path);
+        Assert.Null(KeyedPage.OneThing(opened, 3));
     }
 
     // ---- inspect chip's parts ----

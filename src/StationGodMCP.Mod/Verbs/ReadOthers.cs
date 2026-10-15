@@ -82,27 +82,29 @@ internal static class ReadFlightLog
             return Answer.Of(FlightLogs.List());
         }
 
-        if (options.Paging.OffsetOnly() is { } problem)
+        Paging paging = options.Paging;
+        int named = options.Selector.Ids?.Ids.Count ?? 1;
+        if (KeyedPage.OneThing(paging, named) is { } problem)
         {
             return new VerbOutcome.Refused(OptionProblem.Refusal(ReadFlightLogOptions.Spec.Label, new[] { problem }));
         }
 
-        Paging paging = options.Paging;
+        WalkRequest walk = KeyedPage.WalkOf(paging, named);
         int every = (int)options.Every!.Value;
         if (options.Selector.Ids is not { } ids)
         {
-            return Answer.Of(Read(RocketLocator.One((string?)null), paging, every));
+            return Answer.Of(Read(RocketLocator.One((string?)null), walk, paging, every));
         }
 
         return IdAnswers.Of(ids, id =>
         {
             Objects.Rockets.Rocket rocket = RocketLocator.Find(id);
             return (rocket.ReferenceId.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                Read(rocket, paging, every));
+                Read(rocket, walk, paging, every));
         });
     }
 
-    private static FlightLogView Read(Objects.Rockets.Rocket rocket, Paging paging, int every) =>
-        FlightLogs.View(RocketFlightRecorder.Require(rocket.ReferenceId), paging.Offset, paging.Limit ?? int.MaxValue,
-            every);
+    private static FlightLogView Read(Objects.Rockets.Rocket rocket, WalkRequest walk, Paging paging, int every) =>
+        FlightLogs.View(RocketFlightRecorder.Require(rocket.ReferenceId), walk, paging.Offset,
+            paging.Limit ?? int.MaxValue, every);
 }

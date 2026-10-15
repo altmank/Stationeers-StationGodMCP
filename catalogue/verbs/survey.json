@@ -103,7 +103,8 @@
             }
           }
         ],
-        "types": ["Thing", "Vec3"]
+        "types": ["Thing", "Vec3"],
+        "x-wire": {"cursor_id": "str | None"}
       }
     },
     "wall": {
@@ -249,7 +250,8 @@
             }
           }
         ],
-        "types": ["Color", "Thing", "Vec3"]
+        "types": ["Color", "Thing", "Vec3"],
+        "x-wire": {"cursor_id": "str | None"}
       }
     },
     "feeds": {

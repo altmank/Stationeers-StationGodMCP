@@ -422,7 +422,7 @@ internal sealed class FlightSampleView
 internal sealed class FlightLogView
 {
     internal FlightLogView(ThingId rocketId, string rocketName, bool recording, double intervalS, string? csvPath,
-        FlightLogBuffer buffer, List<FlightSampleView> rows, int offset, int every)
+        FlightLogBuffer buffer, Slice<FlightSampleView> rows, int every)
     {
         RocketId = rocketId;
         RocketName = rocketName;
@@ -450,10 +450,11 @@ internal sealed class FlightLogView
         }
 
         EventsDropped = buffer.EventsDropped;
-        Rows = rows;
-        Offset = offset;
+        Rows = rows.Items;
+        Offset = rows.Offset;
         Every = every;
-        HasMore = offset + rows.Count * Math.Max(1, every) < buffer.Count;
+        HasMore = rows.HasMore;
+        CursorId = rows.CursorId;
     }
 
     public ThingId RocketId { get; }
@@ -502,6 +503,10 @@ internal sealed class FlightLogView
     public int Every { get; }
 
     public bool HasMore { get; }
+
+    /// <summary>The walk's cursor while more rows follow (a wire key the hub and sg read).</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public string? CursorId { get; }
 }
 
 internal sealed class FlightEventView
