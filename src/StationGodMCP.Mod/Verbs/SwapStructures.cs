@@ -99,7 +99,8 @@ internal static class SwapStructures
         string mark = spec.Write!.UndoMark;
         return WriteCheck<StructureSwapPlan>.Planned(answer => StructureSwapPlanner.Planning(request, answer),
             call.Report, plan => Act(plan, request, unread, named, mark, call),
-            plan => Described(plan, unread, named, mark));
+            plan => WorkResult<ReportReply>.Of(answer => Describing(plan, unread, named, mark, answer),
+                static report => report));
     }
 
     private static VerbOutcome Act(StructureSwapPlan plan, StructureSwapRequest request, List<ReportProblem> unread,
@@ -119,17 +120,40 @@ internal static class SwapStructures
     private static ReportReply Described(StructureSwapPlan plan, List<ReportProblem> unread, List<ThingId?> named,
         string mark)
     {
+        Pure.Scheduling.Answer<ReportReply> report = new Pure.Scheduling.Answer<ReportReply>();
+        foreach (object? _ in Describing(plan, unread, named, mark, report))
+        {
+        }
+
+        return report.Value;
+    }
+
+    // The report as work over frames (A3): its targets a batch a step, then the plan's report view (StructureReports).
+    [StationGodMCP.Pure.Profiling.Profiled]
+    private static IEnumerable<object?> Describing(StructureSwapPlan plan, List<ReportProblem> unread,
+        List<ThingId?> named, string mark, Pure.Scheduling.Answer<ReportReply> answer)
+    {
         List<ReportProblem> problems = new List<ReportProblem>(unread);
         problems.AddRange(JobReports.Problems(plan.Problems, named));
         List<ReportTarget> targets = new List<ReportTarget>(plan.Swaps.Count);
-        foreach (PlannedStructureSwap swap in plan.Swaps)
+        for (int at = 0; at < plan.Swaps.Count; at++)
         {
+            PlannedStructureSwap swap = plan.Swaps[at];
             targets.Add(new ReportTarget(new ThingId(swap.Old.ReferenceId).ToString(), null, Names.Of(swap.Old),
-                new JValue(swap.Old.PrefabName), new JValue(swap.Target.PrefabName), mark));
+                swap.Old.PrefabName, swap.Target.PrefabName, mark));
+            if (at % StructureReports.PiecesAStep == StructureReports.PiecesAStep - 1)
+            {
+                yield return null;
+            }
         }
 
-        StructureSwapReportView view = StructureReports.Of(plan, StructureReports.DryRun, null,
-            StructureSwapArguments.MaximumPieces);
-        return Report.Of(targets, JobReports.Body(view, problems.Count == 0), problems);
+        Pure.Scheduling.Answer<StructureSwapReportView> view = new Pure.Scheduling.Answer<StructureSwapReportView>();
+        foreach (object? step in StructureReports.Building(plan, StructureReports.DryRun, null,
+                     StructureSwapArguments.MaximumPieces, view))
+        {
+            yield return step;
+        }
+
+        answer.Value = Report.Of(targets, JobReports.Body(view.Value, problems.Count == 0), problems);
     }
 }

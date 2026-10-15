@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace StationGodMCP.Pure.Scheduling;
 
@@ -100,6 +101,7 @@ internal sealed class Work<T>
 
         do
         {
+            long began = WorkSteps.Long != null ? Stopwatch.GetTimestamp() : 0;
             if (!steps.MoveNext())
             {
                 steps.Dispose();
@@ -108,9 +110,35 @@ internal sealed class Work<T>
             }
 
             Steps++;
+            if (began != 0)
+            {
+                WorkSteps.Measured(steps, began);
+            }
         }
         while (clock.NowMs < untilMs && !WorkStop.Requested);
 
         return false;
+    }
+}
+
+/// <summary>
+/// A step of Work that took longer than LongStepMs breaks the A3 rule (a step is bounded; a frame overruns its budget by
+/// one step at most): the mod is told the body (its iterator's declaring type and method) and the step's milliseconds,
+/// and logs it rate-limited. Null keeps nothing and times nothing.
+/// </summary>
+internal static class WorkSteps
+{
+    internal const double LongStepMs = 1.0;
+
+    internal static Action<string, double>? Long { get; set; }
+
+    internal static void Measured(object steps, long began)
+    {
+        double ms = (Stopwatch.GetTimestamp() - began) * 1000.0 / Stopwatch.Frequency;
+        if (ms > LongStepMs)
+        {
+            Type body = steps.GetType();
+            Long?.Invoke((body.DeclaringType?.Name ?? "?") + "." + body.Name, ms);
+        }
     }
 }

@@ -117,6 +117,7 @@ public sealed class StationGodMod : ModBehaviour
             _server = ServerSettings.Load(configuration);
             ProtocolLog.InfoSink = Log;
             ProtocolLog.WarningSink = LogWarning;
+            Pure.Scheduling.WorkSteps.Long = LongWorkStep;
             ProtocolLog.ReplyWritten = MethodStats.RecordReply;
             Api.Shared.Game.Runs.LayoutSettings.Load(configuration);
             PerformanceSettings.Load(configuration);
@@ -406,6 +407,18 @@ public sealed class StationGodMod : ModBehaviour
     internal static void Log(string message)
     {
         Debug.unityLogger.Log(LogType.Log, $"[StationGodMCP] {message}");
+    }
+
+    private static readonly Pure.Profiling.SlowFrameGate LongStepGate = new Pure.Profiling.SlowFrameGate(1.0);
+
+    // A step of work over frames longer than WorkSteps.LongStepMs, logged at most once per gate interval.
+    private static void LongWorkStep(string body, double ms)
+    {
+        if (LongStepGate.Allow(UnityEngine.Time.realtimeSinceStartup, out int passed))
+        {
+            LogWarning($"A work step took {ms:F2} ms ({body}), over {Pure.Scheduling.WorkSteps.LongStepMs} ms" +
+                       (passed > 0 ? $"; {passed} more since the last" : string.Empty) + ".");
+        }
     }
 
     internal static void LogWarning(string message)

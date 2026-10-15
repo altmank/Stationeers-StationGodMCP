@@ -6,6 +6,8 @@ using Assets.Scripts.Objects.Items;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Profiling;
+using StationGodMCP.Pure.Scheduling;
 
 namespace StationGodMCP.Api.Shared.Game.Structures;
 
@@ -38,27 +40,51 @@ internal static class StructureReports
         return items;
     }
 
+    /// <summary>How many pieces' views one step of Building describes.</summary>
+    internal const int PiecesAStep = 8;
+
     /// <summary>The plan's report; limit, when given, is how many pieces each list shows instead of the request's.</summary>
+    [Profiled]
     internal static StructureSwapReportView Of(StructureSwapPlan plan, string status, string? jobId, int? limit = null)
+    {
+        Answer<StructureSwapReportView> report = new Answer<StructureSwapReportView>();
+        foreach (object? _ in Building(plan, status, jobId, limit, report))
+        {
+        }
+
+        return report.Value;
+    }
+
+    /// <summary>The plan's report as work over frames (A3): the pieces' views a batch a step, the rest a step.</summary>
+    internal static IEnumerable<object?> Building(StructureSwapPlan plan, string status, string? jobId, int? limit,
+        Answer<StructureSwapReportView> answer)
     {
         StructureSwapRequest request = plan.Request;
         int shown = limit ?? request.Arguments.Limit;
         UpgradeHeader header = new UpgradeHeader(request.Family.Tool, request.TargetLabel, status, jobId,
             request.Arguments.IncludeNotes ? new List<string>(Notes) : null);
         UpgradeCounts counts = new UpgradeCounts(plan.Total, plan.Swaps.Count, plan.Kept.Count, plan.Unmatched.Count);
-        StructureSwapLists lists = new StructureSwapLists(plan.Problems, Pieces(plan, shown), ByPrefab(plan),
+        List<StructurePieceView> pieces = new List<StructurePieceView>(System.Math.Min(plan.Swaps.Count, shown));
+        for (int from = 0; from < pieces.Capacity; from += PiecesAStep)
+        {
+            Pieces(plan, from, System.Math.Min(from + PiecesAStep, pieces.Capacity), pieces);
+            yield return null;
+        }
+
+        StructureSwapLists lists = new StructureSwapLists(plan.Problems, pieces, ByPrefab(plan),
             Skipped(plan.Kept, shown), Skipped(plan.Unmatched, shown), plan.Warnings);
+        yield return null;
         StructureSwapResources resources = new StructureSwapResources(
             plan.From != null ? GameLookup.ViewOf(plan.From) : null, Materials(plan), request.Arguments.Refund,
             plan.Air?.RoomViews() ?? new List<StructureRoomView>(), Refunds.Forecast(plan.Refunds, GivenBack(plan)));
-        return new StructureSwapReportView(header, counts, lists, resources);
+        answer.Value = new StructureSwapReportView(header, counts, lists, resources);
     }
 
-    private static List<StructurePieceView> Pieces(StructureSwapPlan plan, int limit)
+    // The views of the plan's swaps from up to (not including) until, added to pieces.
+    [Profiled]
+    private static void Pieces(StructureSwapPlan plan, int from, int until, List<StructurePieceView> pieces)
     {
-        int count = System.Math.Min(plan.Swaps.Count, limit);
-        List<StructurePieceView> pieces = new List<StructurePieceView>(count);
-        for (int index = 0; index < count; index++)
+        for (int index = from; index < until; index++)
         {
             PlannedStructureSwap swap = plan.Swaps[index];
             Structure old = swap.Old;
@@ -70,8 +96,6 @@ internal static class StructureReports
                 UpgradeReports.RotationOf(old.ThingTransformRotation), target, blocking, Faces(swap),
                 RoomIds(plan, swap), Lines(plan, swap)));
         }
-
-        return pieces;
     }
 
     private static List<StructureFaceView>? Faces(PlannedStructureSwap swap)
