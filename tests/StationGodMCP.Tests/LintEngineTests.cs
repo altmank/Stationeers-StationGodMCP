@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Lint;
+using StationGodMCP.Pure.Scheduling;
 using Xunit;
 
 namespace StationGodMCP.Tests;
@@ -176,6 +177,34 @@ public sealed class LintEngineTests
         Assert.Equal("D1 (1) and D2 (2) run 0.50 m into each other.", finding.Message);
         Assert.Equal(new List<(int, int)> { (0, 1), (1, 2) }, LintPairs.Within(world.Subjects("devices"), 0));
         Assert.Equal(3, LintPairs.Within(world.Subjects("devices"), 0.5).Count);
+    }
+
+    [Fact]
+    public void ARulesPairsAreFoundOverManyStepsNotInOne()
+    {
+        // review D, R-D-13: a large subject set's boxes, buckets and pairs are each a batch a step
+        LintGraph graph = new LintGraph();
+        TestLintWorld world = new TestLintWorld();
+        for (int id = 1; id <= 400; id++)
+        {
+            double x = id * 0.9;
+            world.Add("devices", graph.Make(LintModel.Thing, $"thing:{id}", ("reference_id", id),
+                ("display_name", $"D{id}"), ("prefab", "StructureX"), ("position", new Vec3(x, 0, 0)),
+                ("mesh_box", graph.Make(LintModel.Box, $"box:{id}", ("min", new Vec3(x, 0, 0)),
+                    ("max", new Vec3(x + 1, 1, 1)))),
+                ("cells", new List<ILintObject>())));
+        }
+
+        Answer<List<(int A, int B)>> pairs = new Answer<List<(int A, int B)>>();
+        int steps = 0;
+        foreach (object? _ in LintPairs.WithinSteps(world.Subjects("devices"), 0, pairs))
+        {
+            steps++;
+        }
+
+        Assert.True(steps >= 6, $"{steps} steps");
+        Assert.Equal(399, pairs.Value.Count);
+        Assert.Equal(LintPairs.Within(world.Subjects("devices"), 0), pairs.Value);
     }
 
     [Fact]

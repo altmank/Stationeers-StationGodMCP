@@ -89,8 +89,9 @@ internal static class LintEngine
     }
 
     /// <summary>
-    /// Run spread over frames (a Work body): one subject judged per step. The run's milliseconds count only its steps,
-    /// not the frames between them.
+    /// Run spread over frames (a Work body): each rule's subjects selected a batch a step (SelectSteps: its where and
+    /// its pairs too, never one step for a whole set; review D, R-D-13), then one subject judged per step. The run's
+    /// milliseconds count only its steps, not the frames between them.
     /// </summary>
     internal static IEnumerable<object?> Steps(LintRuleSet set, ILintWorld world, string phase, Answer<LintRun> answer)
     {
@@ -107,10 +108,17 @@ internal static class LintEngine
                 continue;
             }
 
-            int errors = 0, count = 0;
-            IEnumerable<LintSubjectRef> subjects =
-                SubjectsOf(rule, world, context, phase == "report", ref errors, findings, order);
-            foreach (LintSubjectRef subject in subjects)
+            int count = 0;
+            Selection selection = new Selection();
+            foreach (object? step in SelectSteps(rule, world, context, phase == "report", findings, order, selection))
+            {
+                clock.Stop();
+                yield return step;
+                clock.Start();
+            }
+
+            int errors = selection.Errors;
+            foreach (LintSubjectRef subject in selection.Subjects)
             {
                 count++;
                 LintVerdict verdict = Judge(rule, subject, context, false, true);
@@ -209,27 +217,49 @@ internal static class LintEngine
             subject.First.Position ?? Vec3.Zero, subject.Second?.ReferenceId, subject.Key, subject.Describe, rule.Id);
 
     /// <summary>The subjects a rule asks about: its set (planned ones only for a dry run), or its pairs.</summary>
-    internal static IEnumerable<LintSubjectRef> SubjectsOf(LintRule rule, ILintWorld world, LintContext context,
-        bool plannedOnly, ref int errors, List<LintFinding> findings, int order)
+    // Subjects listed per step of SelectSteps, and pair candidates whose where is asked per step.
+    private const int SubjectsAStep = 512;
+    private const int WheresAStep = 16;
+
+    /// <summary>A rule's selected subjects, and the rule errors met selecting them.</summary>
+    internal sealed class Selection
+    {
+        internal List<LintSubjectRef> Subjects { get; } = new List<LintSubjectRef>();
+
+        internal int Errors { get; set; }
+    }
+
+    /// <summary>
+    /// A rule's subjects as a Work body, a batch a step: its set's members (report: only planned ones); for pairs, the
+    /// members its where keeps (WheresAStep a step), then the pairs within its distance (LintPairs.WithinSteps).
+    /// </summary>
+    internal static IEnumerable<object?> SelectSteps(LintRule rule, ILintWorld world, LintContext context,
+        bool plannedOnly, List<LintFinding> findings, int order, Selection selection)
     {
         IReadOnlyList<ILintObject> set = world.Subjects(rule.Select.Set);
-        List<LintSubjectRef> subjects = new List<LintSubjectRef>(set.Count);
+        List<LintSubjectRef> subjects = selection.Subjects;
         if (!rule.Select.IsPairs)
         {
-            foreach (ILintObject subject in set)
+            for (int index = 0; index < set.Count; index++)
             {
-                if (!plannedOnly || world.IsPlanned(subject))
+                if (!plannedOnly || world.IsPlanned(set[index]))
                 {
-                    subjects.Add(new LintSubjectRef(subject));
+                    subjects.Add(new LintSubjectRef(set[index]));
+                }
+
+                if ((index + 1) % SubjectsAStep == 0)
+                {
+                    yield return null;
                 }
             }
 
-            return subjects;
+            yield break;
         }
 
         List<ILintObject> kept = new List<ILintObject>(set.Count);
-        foreach (ILintObject subject in set)
+        for (int index = 0; index < set.Count; index++)
         {
+            ILintObject subject = set[index];
             if (rule.Where == null)
             {
                 kept.Add(subject);
@@ -245,23 +275,32 @@ internal static class LintEngine
             }
             catch (Exception error)
             {
-                if (errors++ < RuleErrorsPerRule)
+                if (selection.Errors++ < RuleErrorsPerRule)
                 {
                     findings.Add(ErrorFinding(rule, order, new LintSubjectRef(subject),
                         error is LintEvaluationException ? error.Message : $"{error.GetType().Name}: {error.Message}"));
                 }
             }
+
+            if ((index + 1) % WheresAStep == 0)
+            {
+                yield return null;
+            }
         }
 
-        foreach ((int a, int b) in LintPairs.Within(kept, rule.Select.Within!.Value))
+        Answer<List<(int A, int B)>> pairs = new Answer<List<(int A, int B)>>();
+        foreach (object? step in LintPairs.WithinSteps(kept, rule.Select.Within!.Value, pairs))
+        {
+            yield return step;
+        }
+
+        foreach ((int a, int b) in pairs.Value)
         {
             if (!plannedOnly || world.IsPlanned(kept[a]) || world.IsPlanned(kept[b]))
             {
                 subjects.Add(new LintSubjectRef(kept[a], kept[b]));
             }
         }
-
-        return subjects;
     }
 }
 
@@ -274,12 +313,33 @@ internal static class LintPairs
     // A box spanning more 2 m buckets than this is compared with every other box instead.
     private const long MaximumBuckets = 512;
 
+    // Boxes read, boxes bucketed, and buckets paired per step of WithinSteps.
+    private const int BoxesAStep = 64;
+    private const int BucketedAStep = 256;
+    private const int BucketsAStep = 64;
+
     internal static List<(int A, int B)> Within(IReadOnlyList<ILintObject> objects, double within)
     {
-        List<Box3?> boxes = new List<Box3?>(objects.Count);
-        foreach (ILintObject item in objects)
+        Answer<List<(int A, int B)>> pairs = new Answer<List<(int A, int B)>>();
+        foreach (object? _ in WithinSteps(objects, within, pairs))
         {
-            boxes.Add(BoxOf(item));
+        }
+
+        return pairs.Value;
+    }
+
+    /// <summary>Within spread over frames (a Work body): the boxes, the buckets and the pairs each a batch a step.</summary>
+    internal static IEnumerable<object?> WithinSteps(IReadOnlyList<ILintObject> objects, double within,
+        Answer<List<(int A, int B)>> answer)
+    {
+        List<Box3?> boxes = new List<Box3?>(objects.Count);
+        for (int index = 0; index < objects.Count; index++)
+        {
+            boxes.Add(BoxOf(objects[index]));
+            if ((index + 1) % BoxesAStep == 0)
+            {
+                yield return null;
+            }
         }
 
         double size = Math.Max(2.0, within * 2);
@@ -295,6 +355,11 @@ internal static class LintPairs
             long x0 = Cell(box.Min.X - within, size), x1 = Cell(box.Max.X + within, size);
             long y0 = Cell(box.Min.Y - within, size), y1 = Cell(box.Max.Y + within, size);
             long z0 = Cell(box.Min.Z - within, size), z1 = Cell(box.Max.Z + within, size);
+            if ((index + 1) % BucketedAStep == 0)
+            {
+                yield return null;
+            }
+
             if ((x1 - x0 + 1) * (y1 - y0 + 1) * (z1 - z0 + 1) > MaximumBuckets)
             {
                 large.Add(index);
@@ -320,9 +385,15 @@ internal static class LintPairs
         }
 
         HashSet<long> seen = new HashSet<long>();
-        List<(int, int)> pairs = new List<(int, int)>();
+        List<(int A, int B)> pairs = new List<(int A, int B)>();
+        int paired = 0;
         foreach (List<int> bucket in buckets.Values)
         {
+            if (++paired % BucketsAStep == 0)
+            {
+                yield return null;
+            }
+
             for (int i = 0; i < bucket.Count; i++)
             {
                 for (int j = i + 1; j < bucket.Count; j++)
@@ -336,9 +407,10 @@ internal static class LintPairs
             }
         }
 
-        // A box too big to bucket is measured against every other.
+        // A box too big to bucket is measured against every other, one a step.
         foreach (int big in large)
         {
+            yield return null;
             for (int other = 0; other < boxes.Count; other++)
             {
                 int a = Math.Min(big, other), b = Math.Max(big, other);
@@ -350,8 +422,8 @@ internal static class LintPairs
             }
         }
 
-        pairs.Sort(static (p, q) => p.Item1 != q.Item1 ? p.Item1.CompareTo(q.Item1) : p.Item2.CompareTo(q.Item2));
-        return pairs;
+        pairs.Sort(static (p, q) => p.A != q.A ? p.A.CompareTo(q.A) : p.B.CompareTo(q.B));
+        answer.Value = pairs;
     }
 
     private static long Cell(double value, double size) => (long)Math.Floor(value / size);

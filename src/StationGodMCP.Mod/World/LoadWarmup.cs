@@ -22,9 +22,11 @@ namespace StationGodMCP.WorldModel;
 /// method's function pointer, which compiles it), CompileMsAFrame of each
 /// frame, type by type, so the first call of a kind after a load does not pay for compiling its handler, its reports
 /// and the planners and job states it reaches; with them the methods they call (the game's, the runtime's, closed
-/// generic ones), read from their IL (CalledMethods), and theirs, CalleeDepth calls deep; and every method of a closed
-/// form of the mod's own generic types they name (a list page of frames, an iterator's state machine), which exists
-/// only for those type arguments. Open generic methods are left to their first call. Main thread.
+/// generic ones), read from their IL (CalledMethods), and theirs, CalleeDepth calls deep (DeepCalleeDepth below the
+/// handlers whose first call measured a compile cost past the budget, and the planners they reach: check layout, plan
+/// removal, swap, build structure, inspect rocket; review D, R-D-13); and every method of a closed form of the mod's
+/// own generic types they name (a list page of frames, an iterator's state machine), which exists only for those type
+/// arguments. Open generic methods are left to their first call. Main thread.
 /// </summary>
 internal static class LoadWarmup
 {
@@ -56,9 +58,28 @@ internal static class LoadWarmup
     // How far below the mod's own methods callees are compiled: a callee's callees, and theirs.
     private const int CalleeDepth = 3;
 
+    // How far below the deep roots' methods (DeepRoot) callees are compiled: the game's methods and generic forms the
+    // five costliest first calls reach lie deeper than CalleeDepth.
+    private const int DeepCalleeDepth = 6;
+
+    // The planners' namespaces whose methods are deep roots, and the handlers that are.
+    private static readonly string[] DeepNamespaces =
+    {
+        "StationGodMCP.Api.Shared.Game.Lint", "StationGodMCP.Api.Shared.Game.Upgrades",
+        "StationGodMCP.Api.Shared.Game.Runs", "StationGodMCP.Api.Shared.Game.Flight",
+        "StationGodMCP.Api.Shared.Game.Build", "StationGodMCP.Api.Shared.Game.Structures"
+    };
+
+    private static readonly string[] DeepHandlers =
+    {
+        "CheckLayout", "PlanRemoval", "SwapNetworks", "SwapStructures", "BuildStructure", "InspectRocket"
+    };
+
     private static readonly List<MethodBase> Callees = new List<MethodBase>();
     private static readonly List<int> CalleeDepths = new List<int>();
-    private static readonly HashSet<MethodBase> Seen = new HashSet<MethodBase>();
+    private static readonly List<int> CalleeLimits = new List<int>();
+    // Each method queued, with the depth still left below it when it was (a deeper root's walk queues it again).
+    private static readonly Dictionary<MethodBase, int> Seen = new Dictionary<MethodBase, int>();
     private static readonly HashSet<Type> SeenTypes = new HashSet<Type>();
     private static int _queued;
     private static int _callees;
@@ -121,11 +142,12 @@ internal static class LoadWarmup
             if (_queued < Callees.Count)
             {
                 MethodBase callee = Callees[_queued];
-                int depth = CalleeDepths[_queued++];
+                int depth = CalleeDepths[_queued];
+                int limit = CalleeLimits[_queued++];
                 Prepare(callee);
-                if (depth < CalleeDepth)
+                if (depth < limit)
                 {
-                    Queue(callee, depth + 1);
+                    Queue(callee, depth + 1, limit);
                 }
 
                 _callees++;
@@ -133,7 +155,7 @@ internal static class LoadWarmup
             else if (NextOwn() is { } own)
             {
                 Prepare(own);
-                Queue(own, 1);
+                Queue(own, 1, DeepRoot(own) ? DeepCalleeDepth : CalleeDepth);
             }
             else
             {
@@ -150,6 +172,7 @@ internal static class LoadWarmup
         _compileMs += Elapsed(started);
         Callees.Clear();
         CalleeDepths.Clear();
+        CalleeLimits.Clear();
         Seen.Clear();
         SeenTypes.Clear();
         StationGodMod.Log($"Compiled StationGod's code at load: {_compiled - _callees} of its methods and {_callees} " +
@@ -176,8 +199,28 @@ internal static class LoadWarmup
         return null;
     }
 
-    // The method's direct callees not seen yet, queued to be compiled at depth (1: called by one of the mod's own).
-    private static void Queue(MethodBase method, int depth)
+    // Whether one of the mod's own methods is a deep root: in a deep handler (or a type nested in one: its iterators)
+    // or a planner's namespace.
+    private static bool DeepRoot(MethodBase method)
+    {
+        Type? type = method.DeclaringType;
+        while (type?.DeclaringType != null)
+        {
+            type = type.DeclaringType;
+        }
+
+        if (type == null)
+        {
+            return false;
+        }
+
+        return Array.IndexOf(DeepHandlers, type.Name) >= 0 && type.Namespace == "StationGodMCP.Verbs" ||
+               type.Namespace != null && Array.IndexOf(DeepNamespaces, type.Namespace) >= 0;
+    }
+
+    // The method's direct callees not seen yet, queued to be compiled at depth (1: called by one of the mod's own),
+    // and theirs down to limit.
+    private static void Queue(MethodBase method, int depth, int limit)
     {
         try
         {
@@ -190,7 +233,7 @@ internal static class LoadWarmup
 
         foreach (MethodBase callee in Called)
         {
-            Add(callee, depth);
+            Add(callee, depth, limit);
             // A closed form of one of the mod's own generic types (a list page of frames, an iterator's state
             // machine): its methods are made for these type arguments only, so they are compiled with it.
             Type? owner = callee.DeclaringType;
@@ -199,7 +242,7 @@ internal static class LoadWarmup
             {
                 foreach (MethodBase member in MembersOf(owner))
                 {
-                    Add(member, depth);
+                    Add(member, depth, limit);
                 }
 
                 foreach (Type nested in owner.GetGenericTypeDefinition().GetNestedTypes(BindingFlags.NonPublic))
@@ -209,7 +252,7 @@ internal static class LoadWarmup
                     {
                         foreach (MethodBase member in MembersOf(nested.MakeGenericType(owner.GetGenericArguments())))
                         {
-                            Add(member, depth);
+                            Add(member, depth, limit);
                         }
                     }
                 }
@@ -219,12 +262,17 @@ internal static class LoadWarmup
         Called.Clear();
     }
 
-    private static void Add(MethodBase method, int depth)
+    // A method is queued once, or again when a deeper root's walk reaches it with more depth left below it than before
+    // (compiling it again costs nothing: it is compiled already).
+    private static void Add(MethodBase method, int depth, int limit)
     {
-        if (Seen.Add(method))
+        int left = limit - depth;
+        if (!Seen.TryGetValue(method, out int before) || left > before)
         {
+            Seen[method] = left;
             Callees.Add(method);
             CalleeDepths.Add(depth);
+            CalleeLimits.Add(limit);
         }
     }
 
