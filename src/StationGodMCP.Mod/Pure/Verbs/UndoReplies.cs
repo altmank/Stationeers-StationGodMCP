@@ -46,19 +46,7 @@ internal abstract class UndoResult
         internal List<object> Jobs { get; }
 
         /// <summary>The id's plan plus its jobs: an ok row's payload.</summary>
-        internal JObject Payload()
-        {
-            JObject payload = (JObject)Body.DeepClone();
-            JsonSerializer serializer = ApiJson.Serializer;
-            JArray jobs = new JArray();
-            foreach (object job in Jobs)
-            {
-                jobs.Add(ReplyFields.Value(job, serializer));
-            }
-
-            payload["jobs"] = jobs;
-            return payload;
-        }
+        internal ReplyObject Payload() => new ReplyObject(1).Spread(Body).Add("jobs", Jobs);
     }
 
     /// <summary>Refused: the id as the call gave it, its place in that list, and the error the acting call answered.</summary>
@@ -125,7 +113,7 @@ internal static class UndoReplies
     {
         List<ReportTarget> targets = new List<ReportTarget>();
         List<ReportProblem> problems = new List<ReportProblem>();
-        JArray plans = new JArray();
+        List<JObject> plans = new List<JObject>();
         JObject? single = null;
         foreach (UndoResult result in results)
         {
@@ -135,7 +123,7 @@ internal static class UndoReplies
                     targets.AddRange(undone.Targets);
                     if (asList)
                     {
-                        plans.Add(undone.Body.DeepClone());
+                        plans.Add(undone.Body);
                     }
                     else
                     {
@@ -149,7 +137,7 @@ internal static class UndoReplies
             }
         }
 
-        JObject? body = asList ? new JObject { ["plans"] = plans } : single;
+        object? body = asList ? new ReplyObject(1).Add("plans", plans) : single;
         return Report.Of(targets, body, problems);
     }
 
@@ -330,12 +318,7 @@ internal static class UndoReplies
     /// The paste's plan plus BlueprintMod's own answer ({message}): what a confirmed paste answers. The paste has no
     /// jobs of its own: BlueprintMod undoes it at once.
     /// </summary>
-    internal static JObject Pasted(JObject body, object reply)
-    {
-        JObject payload = (JObject)body.DeepClone();
-        payload["reply"] = ReplyFields.Value(reply, ApiJson.Serializer);
-        return payload;
-    }
+    internal static ReplyObject Pasted(JObject body, object reply) => new ReplyObject(1).Spread(body).Add("reply", reply);
 
     /// <summary>
     /// The removal's own notes: which run takes down the pieces of the job's own kinds (so a network the job changed

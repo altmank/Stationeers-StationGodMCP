@@ -258,7 +258,9 @@ internal static class PaintReplies
             switch (result)
             {
                 case PaintResult.Painted painted:
-                    rows.Succeeded(painted.ReferenceId.ToString(), new ReplyObject().Add("previous_color", painted.Previous).Add("color", painted.Color));
+                    rows.Succeeded(painted.ReferenceId.ToString(), new ReplyObject()
+                        .Add("previous_color", painted.Previous)
+                        .Add("color", painted.Color));
                     break;
                 case PaintResult.Failed failed:
                     rows.Failed(failed.Id, failed.Error);

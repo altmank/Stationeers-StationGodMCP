@@ -96,35 +96,31 @@ internal static class SampleReply
 {
     internal const string World = "world";
 
-    internal static JObject Of(SampleResult<BatchItemView> result)
+    internal static ReplyObject Of(SampleResult<BatchItemView> result)
     {
-        JArray changes = new JArray();
+        List<ReplyObject> changes = new List<ReplyObject>();
         foreach (SampleChange<BatchItemView> change in result.Changes)
         {
             foreach (BatchItemView reading in change.Readings)
             {
                 if (reading is LogicReadItemView read)
                 {
-                    changes.Add(new JObject
-                    {
-                        ["reference_id"] = read.ReferenceId.ToString(),
-                        ["logic_type"] = read.LogicType?.Name,
-                        ["value"] = read.Value,
-                        ["at_s"] = change.ElapsedSeconds
-                    });
+                    changes.Add(new ReplyObject(4)
+                        .Add("reference_id", read.ReferenceId.ToString())
+                        .Add("logic_type", read.LogicType?.Name)
+                        .Add("value", read.Value)
+                        .Add("at_s", change.ElapsedSeconds));
                 }
             }
         }
 
-        return new JObject
-        {
-            ["gateway_id"] = result.GatewayId ?? World,
-            ["started_at_utc"] = JToken.FromObject(result.StartedAtUtc, ApiJson.Serializer),
-            ["duration_seconds"] = result.DurationSeconds,
-            ["interval_seconds"] = result.IntervalSeconds,
-            ["sample_count"] = result.SampleCount,
-            ["change_count"] = changes.Count,
-            ["changes"] = changes
-        };
+        return new ReplyObject(7)
+            .Add("gateway_id", result.GatewayId ?? World)
+            .Add("started_at_utc", result.StartedAtUtc)
+            .Add("duration_seconds", result.DurationSeconds)
+            .Add("interval_seconds", result.IntervalSeconds)
+            .Add("sample_count", result.SampleCount)
+            .Add("change_count", changes.Count)
+            .Add("changes", changes);
     }
 }

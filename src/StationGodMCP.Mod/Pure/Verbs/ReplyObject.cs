@@ -357,6 +357,35 @@ internal static class ViewKeys
         }
     }
 
+    /// <summary>
+    /// The value a write of view holds under key (a view's property through its contract, a reply object's key, a
+    /// token's), for a reader looking into a reply before it is written; null when it has none.
+    /// </summary>
+    internal static object? Get(JsonSerializer serializer, object? view, string key)
+    {
+        switch (view)
+        {
+            case null:
+                return null;
+            case JObject tree:
+                return tree[key];
+            case JToken:
+                return null;
+            case IDictionary map:
+                return map.Contains(key) ? map[key] : null;
+        }
+
+        foreach (KeyValuePair<string, object?> pair in Pairs(serializer, view, null))
+        {
+            if (pair.Key == key)
+            {
+                return pair.Value;
+            }
+        }
+
+        return null;
+    }
+
     /// <summary>Whether a value is written as a JSON list (a token list, or a collection that is no dictionary).</summary>
     internal static bool IsList(object? value) => value switch
     {

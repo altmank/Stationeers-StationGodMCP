@@ -324,7 +324,7 @@ public sealed class MoveItemTests
             "{\"route\":\"slot\",\"index\":0,\"ok\":true,\"reference_id\":\"110045\",\"display_name\":\"Iron Ore\"," +
             "\"from\":{\"id\":\"57267\",\"slot\":2},\"to\":{\"id\":\"273\",\"slot\":3},\"quantity_moved\":100," +
             "\"merged_into\":null,\"destination_reference_id\":\"110045\",\"warning\":null}",
-            ItemMoveReplies.Routed("slot", moved).ToString(Formatting.None));
+            ApiJson.WriteShared(ItemMoveReplies.Routed("slot", moved)));
     }
 
     [Fact]
@@ -335,7 +335,7 @@ public sealed class MoveItemTests
             new SlotRefView(new ThingId(273), 0), 1, new ThingId(5), new ThingId(5)));
         batch.Failed(new ItemNotMovedView(1, new ThingId(2), ApiErrors.Refused("stack_full", "full")));
 
-        JObject reply = ItemMoveReplies.Routed("slot", batch.Build());
+        JObject reply = Replies.Tree(ItemMoveReplies.Routed("slot", batch.Build()));
 
         Assert.Equal("route", ((JProperty)reply.First!).Name);
         Assert.Equal("5", (string?)reply["results"]![0]!["merged_into"]);

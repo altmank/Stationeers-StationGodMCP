@@ -349,7 +349,7 @@ public sealed class LogicSamplerTests
         SampleResult<BatchItemView> result = Completed(Run(new ScriptedReader((_, sample) => sample),
             Arguments(duration: 0.1, interval: 0.05, gateway: "gw1"), frameS: 0.05));
 
-        JObject json = StationGodMCP.Protocol.SampleReply.Of(result);
+        JObject json = Replies.Tree(StationGodMCP.Protocol.SampleReply.Of(result));
 
         List<string> keys = new List<string>();
         foreach (JProperty property in json.Properties())

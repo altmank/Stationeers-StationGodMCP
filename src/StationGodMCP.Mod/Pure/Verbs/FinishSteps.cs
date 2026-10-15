@@ -80,10 +80,25 @@ internal sealed class FinishStep
     internal void Stepped(BuildStateView state) => BuildState = state;
 
     /// <summary>The confirmed row's payload: thing, from_state, to_state, last_state, cost, tools, build_state.</summary>
-    internal ReplyObject Payload() => new ReplyObject().Add("thing", Thing).Add("from_state", FromState).Add("to_state", ToState).Add("last_state", LastState).Add("cost", Cost).Add("tools", Tools).Add("build_state", BuildState);
+    internal ReplyObject Payload() => new ReplyObject()
+        .Add("thing", Thing)
+        .Add("from_state", FromState)
+        .Add("to_state", ToState)
+        .Add("last_state", LastState)
+        .Add("cost", Cost)
+        .Add("tools", Tools)
+        .Add("build_state", BuildState);
 
     /// <summary>The report's step: index, reference_id, name, from_state, to_state, last_state, cost, tools.</summary>
-    internal ReplyObject Summary() => new ReplyObject().Add("index", Index).Add("reference_id", ReferenceId).Add("name", Name).Add("from_state", FromState).Add("to_state", ToState).Add("last_state", LastState).Add("cost", Cost).Add("tools", Tools);
+    internal ReplyObject Summary() => new ReplyObject()
+        .Add("index", Index)
+        .Add("reference_id", ReferenceId)
+        .Add("name", Name)
+        .Add("from_state", FromState)
+        .Add("to_state", ToState)
+        .Add("last_state", LastState)
+        .Add("cost", Cost)
+        .Add("tools", Tools);
 }
 
 /// <summary>One id's build finish outcome: the step it would act, or the refusal that stops that id alone.</summary>
@@ -189,7 +204,13 @@ internal static class FinishReplies
             }
         }
 
-        ReplyObject body = new ReplyObject().Add("ready", ready).Add("free", free).Add("from", from).Add("materials", materials).Add("steps", steps).Add("warnings", warnings);
+        ReplyObject body = new ReplyObject()
+            .Add("ready", ready)
+            .Add("free", free)
+            .Add("from", from)
+            .Add("materials", materials)
+            .Add("steps", steps)
+            .Add("warnings", warnings);
         return Report.Of(targets, body, problems);
     }
 

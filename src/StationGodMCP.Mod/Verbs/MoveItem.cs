@@ -278,7 +278,7 @@ internal static class MoveItem
 
     // A store move: checked and described without acting for a report; done when it acts.
     private static VerbOutcome Store(string route, ReportConfirm report, System.Func<bool, object> move,
-        System.Func<JObject, object> describe)
+        System.Func<ReplyObject, object> describe)
     {
         if (report.Acts)
         {
@@ -292,7 +292,7 @@ internal static class MoveItem
             }
         }
 
-        return WriteCheck<JObject>.Run(() => ItemMoveReplies.Routed(route, move(false)))
+        return WriteCheck<ReplyObject>.Run(() => ItemMoveReplies.Routed(route, move(false)))
             .Outcome(report, reply => new VerbOutcome.Answered(reply), describe);
     }
 
