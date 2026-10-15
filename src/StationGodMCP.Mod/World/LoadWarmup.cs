@@ -18,7 +18,8 @@ namespace StationGodMCP.WorldModel;
 /// it: once the world runs and the game's placement cursors exist, each server frame builds one piece of it (the build
 /// catalogue, the swap targets, each run family's kits, prefabs by name, ingots by reagent, the lint rule set), so no
 /// call's frame pays for a whole catalogue. A rebuild of the prefab data (Prefabs.Generation) starts the list again.
-/// Then the mod's own code is compiled (RuntimeHelpers.PrepareMethod: compiled, never run), CompileMsAFrame of each
+/// Then the mod's own code is compiled (compiled, never run: RuntimeHelpers.PrepareMethod, and on the game's Mono the
+/// method's function pointer, which compiles it), CompileMsAFrame of each
 /// frame, type by type, so the first call of a kind after a load does not pay for compiling its handler, its reports
 /// and the planners and job states it reaches. Generic methods and types are left to their first call. Main thread.
 /// </summary>
@@ -131,7 +132,11 @@ internal static class LoadWarmup
     {
         try
         {
-            RuntimeHelpers.PrepareMethod(method.MethodHandle);
+            // PrepareMethod is the documented way; the game's Mono does nothing for it, and compiles a method when its
+            // function pointer is asked for (mono_compile_method). Neither runs it.
+            RuntimeMethodHandle handle = method.MethodHandle;
+            RuntimeHelpers.PrepareMethod(handle);
+            _ = handle.GetFunctionPointer();
             _compiled++;
         }
         catch (Exception)
