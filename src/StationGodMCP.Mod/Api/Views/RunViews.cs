@@ -15,7 +15,7 @@ namespace StationGodMCP.Api.Views;
 /// <summary>
 /// build cable, remove cable, build pipe and remove pipe before anything is changed: every cell's piece, what
 /// the run joins, the materials, the networks before and as the edit would leave them, and every refusal. status is
-/// dry_run, scheduled (a job was started; poll it with job_id) or refused (nothing was changed; problems says why).
+/// dry_run, scheduled (a job was started; inspect job {id} follows it) or refused (nothing was changed; problems says why).
 /// </summary>
 internal sealed class RunReportView : ITruncatingView
 {
@@ -907,7 +907,7 @@ internal sealed class RunLinksView
 }
 
 /// <summary>
-/// A confirmed run, polled by job_id. status: waiting (for the game tick), applied (built and every check passed),
+/// A confirmed run, followed with inspect job {id}. status: waiting (for the game tick), applied (built and every check passed),
 /// applied_with_differences (built, but a check found a difference: see verification), stopped (a step failed part
 /// way: log says what was done), applied_unchecked (built, the check could not run), refused (nothing changed).
 /// </summary>

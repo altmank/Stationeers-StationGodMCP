@@ -164,11 +164,8 @@ internal static class UndoReplies
     /// The first problem a typed call's report lists: what the acting call would be refused with. Null when the report
     /// lists none, which is the call's readiness (T-A5-2, no ready key).
     /// </summary>
-    internal static VerbError? Problem(JObject report) =>
-        report["problems"] is JArray { Count: > 0 } problems && problems[0] is JObject first
-            ? new VerbError((string?)first["code"] ?? VerbError.InvalidArgument,
-                (string?)first["message"] ?? "the call cannot be made as the world stands", first["data"])
-            : null;
+    internal static VerbError? Problem(object reply) =>
+        reply is ReportReply { Problems: { Count: > 0 } problems } ? problems[0].Error : null;
 
     /// <summary>
     /// One id's plan body: the id, the job's tool in verb words, the typed removal call (null when the undo removes

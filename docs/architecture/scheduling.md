@@ -56,8 +56,10 @@ throughout, so no tick sees a half-done change; only frames pass between steps. 
 because Unity destroys a thing at the end of the frame it was destroyed in: a run's or remove structure's removals
 (every `OnServer.Destroy` lands at the same frame's end, so no removal reads a network another one's destroy already
 rebuilt), and the swaps and changed pieces of a chute network (`Chute.OnDestroy` rebuilds its neighbours' networks
-whatever was done first). A caller that runs a call itself and needs its answer at once (undo's replay) takes it to
-its end in one frame (`VerbOutcome.Settled`).
+whatever was done first). A caller that runs a call itself (undo's replay of remove structure, build structure and
+the piece runs) does so as a body of its own work (`VerbOutcome.Replied`): the call starts under a frame cap of
+NegativeInfinity (`CurrentFrame.Capped`), so its handler takes one step, and each later step of its pending work is a
+step of the caller's body; nothing is settled in one frame.
 
 A pending result may answer another pending outcome: the work goes on with it (`PendingVerbCall` steps into it in the
 same slice while time is left), so a write's report is described over frames after its plan (swap's

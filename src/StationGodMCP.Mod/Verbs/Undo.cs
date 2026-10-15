@@ -12,6 +12,7 @@ using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Jobs;
+using StationGodMCP.Pure.Scheduling;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Verbs;
@@ -77,17 +78,59 @@ internal static class Undo
         }
 
         long? holder = Holder(order);
+        return WorkResult<List<UndoResult>>.Of(answer => Each(order, ids, holder, answer),
+            results => order.Acts
+                ? UndoReplies.Acted(ids, results)
+                : new VerbOutcome.Answered(UndoReplies.Reported(results, ids.AnswersRows)));
+    }
+
+    // Every id newest first, one after the other, as one body of work (A3): the typed calls each id makes are planned a
+    // step at a time over frames, never settled in the call's frame.
+    private static IEnumerable<object?> Each(UndoOrders call, PerIdList ids, long? holder,
+        Answer<List<UndoResult>> answer)
+    {
         List<UndoResult> results = new List<UndoResult>(ids.Ids.Count);
         foreach ((string id, int given) in UndoOrders.NewestFirst(ids.Ids))
         {
-            UndoResult result = One(order, id, given, holder);
-            Note(result);
-            results.Add(result);
+            Answer<UndoResult> result = new Answer<UndoResult>();
+            foreach (object? step in Guarded(One(call, id, given, holder, result), id, given, result))
+            {
+                yield return step;
+            }
+
+            Note(result.Value);
+            results.Add(result.Value);
         }
 
-        return order.Acts
-            ? UndoReplies.Acted(ids, results)
-            : new VerbOutcome.Answered(UndoReplies.Reported(results, ids.AnswersRows));
+        answer.Value = results;
+    }
+
+    // One id's body with its refusal kept to that id: a refusal any of its steps throws is the id's error, and the
+    // other ids still run.
+    private static IEnumerable<object?> Guarded(IEnumerable<object?> body, string id, int given,
+        Answer<UndoResult> result)
+    {
+        using IEnumerator<object?> steps = body.GetEnumerator();
+        while (true)
+        {
+            bool more;
+            try
+            {
+                more = steps.MoveNext();
+            }
+            catch (ApiException refused)
+            {
+                result.Value = new UndoResult.Failed(given, id, VerbError.Of(refused));
+                more = false;
+            }
+
+            if (!more)
+            {
+                yield break;
+            }
+
+            yield return null;
+        }
     }
 
     // One line on the mod's log per id: what the undo planned and did, or why it did not.
@@ -106,109 +149,161 @@ internal static class Undo
     }
 
     // One id's undo: its facts, its plan and the typed calls it makes, checked as a report before anything starts; and,
-    // in a confirmed call, the jobs it starts. Returns the refusal that stops that id alone for a job the world
-    // diverged from, a check the acting call would be refused on, or a job the mod no longer keeps.
-    private static UndoResult One(UndoOrders call, string id, int given, long? holder)
+    // in a confirmed call, the jobs it starts. The refusal that stops that id alone: a job the world diverged from, a
+    // check the acting call would be refused on, or a job the mod no longer keeps (thrown, and kept to the id).
+    private static IEnumerable<object?> One(UndoOrders call, string id, int given, long? holder,
+        Answer<UndoResult> result)
     {
-        try
+        RecordedJob? recorded = JobSnapshots.Of(id);
+        JobFacts facts = Facts(id, recorded);
+        UndoPlan plan = UndoPlanner.Plan(facts, Standing);
+        UndoSource source = UndoSource.Of(recorded?.Source ?? JobSource.Unknown, holder, call.HolderGiven,
+            call.RefundTo);
+        plan.Notes.AddRange(source.Notes);
+        Work work = new Work(id, facts.Tool, plan, source);
+        JObject body = UndoReplies.Plan(id, facts.Tool,
+            work.Removals.Structures.Count > 0
+                ? UndoReplies.RemoveCall(work.Removals.Structures, source.RefundTo, source.FromId,
+                    call.AcknowledgeGasLost)
+                : null,
+            work.Restore.Count > 0
+                ? UndoReplies.BuildCall(work.Placements, source.FromId, call.AcknowledgeGasLost)
+                : null,
+            work.Runs, plan.Notes);
+        if (plan.Diverged.Count > 0)
         {
-            RecordedJob? recorded = JobSnapshots.Of(id);
-            JobFacts facts = Facts(id, recorded);
-            UndoPlan plan = UndoPlanner.Plan(facts, Standing);
-            UndoSource source = UndoSource.Of(recorded?.Source ?? JobSource.Unknown, holder, call.HolderGiven,
-                call.RefundTo);
-            plan.Notes.AddRange(source.Notes);
-            Work work = new Work(id, facts.Tool, plan, source);
-            JObject body = UndoReplies.Plan(id, facts.Tool,
-                work.Removals.Structures.Count > 0
-                    ? UndoReplies.RemoveCall(work.Removals.Structures, source.RefundTo, source.FromId,
-                        call.AcknowledgeGasLost)
-                    : null,
-                work.Restore.Count > 0
-                    ? UndoReplies.BuildCall(work.Placements, source.FromId, call.AcknowledgeGasLost)
-                    : null,
-                work.Runs, plan.Notes);
-            if (plan.Diverged.Count > 0)
-            {
-                return new UndoResult.Failed(given, id, UndoReplies.Refused(plan));
-            }
-
-            if (Check(call, work) is { } refused)
-            {
-                return new UndoResult.Failed(given, id, refused);
-            }
-
-            return new UndoResult.Undone(id, body, Targets(plan, call.Mark),
-                call.Acts ? Start(call, work) : new List<object>());
+            result.Value = new UndoResult.Failed(given, id, UndoReplies.Refused(plan));
+            yield break;
         }
-        catch (ApiException refused)
+
+        Answer<VerbError?> check = new Answer<VerbError?>();
+        foreach (object? step in Check(call, work, check))
         {
-            return new UndoResult.Failed(given, id, VerbError.Of(refused));
+            yield return step;
         }
+
+        if (check.Value is { } refused)
+        {
+            result.Value = new UndoResult.Failed(given, id, refused);
+            yield break;
+        }
+
+        List<ReportTarget> targets = Targets(plan, call.Mark);
+        List<object> jobs = new List<object>();
+        if (call.Acts)
+        {
+            foreach (object? step in Start(call, work, jobs))
+            {
+                yield return step;
+            }
+        }
+
+        result.Value = new UndoResult.Undone(id, body, targets, jobs);
     }
 
     // The pre-check the old undo made before it started any of its jobs: every typed call as a report, in the order
     // the undo runs them, and the first problem one lists is the id's refusal. A report carries its problems, not a
     // ready key, so no problem is readiness. The placement call is checked only when nothing is removed first: behind
     // the removal it is judged when its job starts, on the world the removal leaves.
-    private static VerbError? Check(UndoOrders call, Work work)
+    private static IEnumerable<object?> Check(UndoOrders call, Work work, Answer<VerbError?> problem)
     {
-        if (work.Removals.Structures.Count > 0 && UndoReplies.Problem(Removal(call, work, acts: false)) is { } removal)
+        Answer<object> reply = new Answer<object>();
+        problem.Value = null;
+        if (work.Removals.Structures.Count > 0)
         {
-            return removal;
-        }
+            foreach (object? step in Removal(call, work, false, reply))
+            {
+                yield return step;
+            }
 
-        if (work.Removals.Structures.Count == 0 && work.Restore.Count > 0 &&
-            UndoReplies.Problem(Build(call, work, acts: false)) is { } build)
+            if (UndoReplies.Problem(reply.Value) is { } removal)
+            {
+                problem.Value = removal;
+                yield break;
+            }
+        }
+        else if (work.Restore.Count > 0)
         {
-            return build;
+            foreach (object? step in Build(call, work, false, reply))
+            {
+                yield return step;
+            }
+
+            if (UndoReplies.Problem(reply.Value) is { } build)
+            {
+                problem.Value = build;
+                yield break;
+            }
         }
 
         for (int index = 0; index < work.Runs.Count; index++)
         {
-            if (UndoReplies.Problem(Piece(call, work, index, acts: false)) is { } run)
+            foreach (object? step in Piece(call, work, index, false, reply))
             {
-                return run;
+                yield return step;
+            }
+
+            if (UndoReplies.Problem(reply.Value) is { } run)
+            {
+                problem.Value = run;
+                yield break;
             }
         }
-
-        return null;
     }
 
     // The act: the removal first, then the placements and the piece runs queued behind it (wait), each job's reply
     // collected in started order and the undo recorded (JobSnapshots.RecordUndo), so undoing the same job again is
     // refused as already undone.
-    private static List<object> Start(UndoOrders call, Work work)
+    private static IEnumerable<object?> Start(UndoOrders call, Work work, List<object> jobs)
     {
-        List<object> jobs = new List<object>();
         List<string> started = new List<string>();
+        Answer<object> reply = new Answer<object>();
         if (work.Removals.Structures.Count > 0)
         {
-            Started(jobs, started, work.Id, Removal(call, work, acts: true));
+            foreach (object? step in Removal(call, work, true, reply))
+            {
+                yield return step;
+            }
+
+            Started(jobs, started, work.Id, reply.Value);
         }
 
         if (work.Restore.Count > 0)
         {
-            Started(jobs, started, work.Id, Build(call, work, acts: true));
+            foreach (object? step in Build(call, work, true, reply))
+            {
+                yield return step;
+            }
+
+            Started(jobs, started, work.Id, reply.Value);
         }
 
         for (int index = 0; index < work.Runs.Count; index++)
         {
-            Started(jobs, started, work.Id, Piece(call, work, index, acts: true));
+            foreach (object? step in Piece(call, work, index, true, reply))
+            {
+                yield return step;
+            }
+
+            Started(jobs, started, work.Id, reply.Value);
         }
 
         JobSnapshots.RecordUndo(work.Id, started);
-        return jobs;
     }
 
-    // One started call's reply: the queued or started job, or queue_full when the queue takes no more waiting jobs
-    // (T-A5-9). Nothing of that id is started after a refusal; what it started before stays running, as the old undo
-    // left it.
-    private static void Started(List<object> jobs, List<string> started, string id, JObject reply)
+    // One started call's reply: the queued or started job; the problem a report lists when the world changed between
+    // the check and the act; or queue_full when the queue takes no more waiting jobs (T-A5-9). Nothing of that id is
+    // started after a refusal; what it started before stays running, as the old undo left it.
+    private static void Started(List<object> jobs, List<string> started, string id, object reply)
     {
+        if (UndoReplies.Problem(reply) is { } problem)
+        {
+            throw ApiErrors.Refused(problem.Code, problem.Message);
+        }
+
         if (JobSnapshots.JobIdOf(reply) is not { } jobId)
         {
-            VerbError full = UndoReplies.QueueFull(reply, id, started.Count);
+            VerbError full = UndoReplies.QueueFull(JobSnapshots.Wire(reply), id, started.Count);
             throw ApiErrors.Refused(full.Code, full.Message);
         }
 
@@ -218,37 +313,40 @@ internal static class Undo
 
     // The typed removal call, for RemoveStructureRun: the same call remove structure itself makes. A report neither
     // acts nor queues; a real run queues behind the removal before it.
-    private static JObject Removal(UndoOrders call, Work work, bool acts) =>
-        (JObject)RemoveStructureRun.Reply(RemoveStructureOrder.Replay(work.Removals.Structures, work.Source.FromId,
-            work.Source.RefundTo, call.AcknowledgeGasLost, acts, acts));
+    private static IEnumerable<object?> Removal(UndoOrders call, Work work, bool acts, Answer<object> reply) =>
+        VerbOutcome.Replied(() => RemoveStructureRun.Run(RemoveStructureOrder.Replay(work.Removals.Structures,
+            work.Source.FromId, work.Source.RefundTo, call.AcknowledgeGasLost, acts, acts)), reply);
 
     // The typed placement call, for StructureBuild: the same call build structure itself makes.
-    private static JObject Build(UndoOrders call, Work work, bool acts)
-    {
-        List<OptionProblem> problems = new List<OptionProblem>();
-        StructureBuildOrder? order = StructureBuildOrder.Replay(work.Placements,
-            work.Source.FromId.HasValue ? UndoReplies.Text(work.Source.FromId.Value) : null, acts, acts,
-            call.AcknowledgeGasLost, problems);
-        return order != null
-            ? (JObject)StructureBuild.Reply(order)
-            : throw ApiErrors.InvalidArgument(
-                OptionProblem.Refusal(BuildStructureOptions.Spec.Label, problems).Message);
-    }
+    private static IEnumerable<object?> Build(UndoOrders call, Work work, bool acts, Answer<object> reply) =>
+        VerbOutcome.Replied(() =>
+        {
+            List<OptionProblem> problems = new List<OptionProblem>();
+            StructureBuildOrder? order = StructureBuildOrder.Replay(work.Placements,
+                work.Source.FromId.HasValue ? UndoReplies.Text(work.Source.FromId.Value) : null, acts, acts,
+                call.AcknowledgeGasLost, problems);
+            return order != null
+                ? StructureBuild.Run(order)
+                : throw ApiErrors.InvalidArgument(
+                    OptionProblem.Refusal(BuildStructureOptions.Spec.Label, problems).Message);
+        }, reply);
 
     // The typed call one piece run makes, for BuildRuns: the pieces and grade it lays again, the pieces it takes down
     // itself (remove_ids), the rest of the removal checked as gone (assume_removed), the caller's allow_bridge and the
     // undo's source. A call that cannot be read refuses the id (the same refusal the old arguments gave).
-    private static JObject Piece(UndoOrders call, Work work, int index, bool acts)
-    {
-        PieceRun run = work.Runs[index];
-        List<OptionProblem> problems = new List<OptionProblem>();
-        RunBuildOrder? order = RunBuildOrder.Replay(run.What, run.Grade, run.Pieces, UndoReplies.Texts(run.Own),
-            run.Assumed, call.AllowBridge, UndoReplies.Materials(work.Source, run), UndoReplies.Job(work.Source, run),
-            acts, acts, call.AcknowledgeGasLost, problems);
-        return order != null
-            ? (JObject)BuildRuns.Reply(RunKind.Named(run.What), order)
-            : throw ApiErrors.InvalidArgument(OptionProblem.Refusal(RunBuildOrder.SpecOf(run.What).Label, problems).Message);
-    }
+    private static IEnumerable<object?> Piece(UndoOrders call, Work work, int index, bool acts, Answer<object> reply) =>
+        VerbOutcome.Replied(() =>
+        {
+            PieceRun run = work.Runs[index];
+            List<OptionProblem> problems = new List<OptionProblem>();
+            RunBuildOrder? order = RunBuildOrder.Replay(run.What, run.Grade, run.Pieces, UndoReplies.Texts(run.Own),
+                run.Assumed, call.AllowBridge, UndoReplies.Materials(work.Source, run), UndoReplies.Job(work.Source, run),
+                acts, acts, call.AcknowledgeGasLost, problems);
+            return order != null
+                ? BuildRuns.Run(RunKind.Named(run.What), order)
+                : throw ApiErrors.InvalidArgument(
+                    OptionProblem.Refusal(RunBuildOrder.SpecOf(run.What).Label, problems).Message);
+        }, reply);
 
     // undo "paste" (T-A5-8): BlueprintMod's own undo of the newest paste. Unconfirmed, the one report over an empty
     // target list, its body the paste's plan; confirmed, the plan plus BlueprintPastes.Undo()'s reply ({message}),

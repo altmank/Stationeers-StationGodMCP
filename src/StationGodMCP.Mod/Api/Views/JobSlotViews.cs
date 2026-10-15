@@ -7,7 +7,7 @@ using StationGodMCP.Api.Shared;
 namespace StationGodMCP.Api.Views;
 
 /// <summary>
-/// A real run that found the job slot taken: status busy, the running job (poll it with job_id), how many wait behind
+/// A real run that found the job slot taken: status busy, the running job (inspect job {id} follows it), how many wait behind
 /// it, and nothing changed. With wait: true the run is queued instead (JobQueuedView).
 /// </summary>
 internal sealed class JobBusyView
@@ -34,7 +34,7 @@ internal sealed class JobBusyView
 
 /// <summary>
 /// A real run queued behind the running job (wait: true): its own job id, where it stands in the line (1: next), and
-/// the job running now. Polling its job_id answers this until it starts; then the job's own states follow. When it
+/// the job running now. inspect job {id} answers this until it starts; then the job's own states follow. When it
 /// starts, its whole preflight runs again on the world as the earlier jobs left it, so a plan made stale by them is
 /// refused (final_check_failed) and nothing is changed.
 /// </summary>

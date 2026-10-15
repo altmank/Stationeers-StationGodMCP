@@ -128,17 +128,6 @@ internal static class BuildRuns
             plan => Described(plan, request, order, removed, unread));
     }
 
-    /// <summary>
-    /// One piece run's reply, for a caller that runs the call itself (undo's replay): the report until it acts, or
-    /// the started job. A refusal the call cannot be read with is thrown, as any call's is.
-    /// </summary>
-    internal static object Reply(RunKind kind, RunBuildOrder order) => VerbOutcome.Settled(Run(kind, order)) switch
-    {
-        VerbOutcome.Answered answered => answered.Reply,
-        VerbOutcome.Refused refused => throw ApiErrors.Refused(refused.Error.Code, refused.Error.Message),
-        _ => throw new InvalidOperationException("A settled call is answered or refused.")
-    };
-
     // The grade word as the family's grade; a what that must name one is refused before this (RunBuildOrder).
     private static Grade GradeOf(RunKind kind, RunBuildOrder order, string label)
     {

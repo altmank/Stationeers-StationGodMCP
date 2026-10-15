@@ -12,7 +12,7 @@ namespace StationGodMCP.Api.Views;
 /// <summary>
 /// swap wall and swap frame before anything is changed: each piece and what replaces it, what it blocks
 /// before and after, the materials, the rooms around the pieces, and every problem found. status is dry_run,
-/// scheduled (a job was started; poll it with job_id) or refused (nothing was changed; problems says why).
+/// scheduled (a job was started; inspect job {id} follows it) or refused (nothing was changed; problems says why).
 /// </summary>
 internal sealed class StructureSwapReportView : ITruncatingView
 {
@@ -451,7 +451,7 @@ internal sealed class StructureRoomView
 }
 
 /// <summary>
-/// A confirmed swap wall or swap frame run, polled by job_id. status: waiting (for the game tick to stop),
+/// A confirmed swap wall or swap frame run, followed with inspect job {id}. status: waiting (for the game tick to stop),
 /// verifying (swapped and checked with the tick held; the tick runs again and the rooms are being re-evaluated),
 /// applied (every check passed), applied_with_differences (a check found something: see held_check and room_check),
 /// stopped (a swap failed part way: swapped lists what was done, stopped_at why and whether the piece was restored),

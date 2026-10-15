@@ -58,17 +58,6 @@ internal static class StructureBuild
             plan => Act(plan, arguments, order, source), plan => Described(plan, order));
     }
 
-    /// <summary>
-    /// One placement call's reply, for a caller that runs the call itself (undo's replay): the report until it
-    /// acts, or the started job. A refusal the call cannot be read with is thrown, as any call's is.
-    /// </summary>
-    internal static object Reply(StructureBuildOrder order) => VerbOutcome.Settled(Run(order)) switch
-    {
-        VerbOutcome.Answered answered => answered.Reply,
-        VerbOutcome.Refused refused => throw ApiErrors.Refused(refused.Error.Code, refused.Error.Message),
-        _ => throw new InvalidOperationException("A settled call is answered or refused.")
-    };
-
     private static VerbOutcome Act(PlacePlan plan, PlaceRequest arguments, StructureBuildOrder order,
         JobSource source)
     {

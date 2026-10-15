@@ -49,5 +49,50 @@ internal static class CurrentFrame
     /// budget's end less the step reserve the scheduler began the frame with (FrameBudget.StepReserveMs);
     /// PositiveInfinity outside a frame and when the budget is unlimited.
     /// </summary>
-    internal static double EndMs => _running ? _workEndMs : double.PositiveInfinity;
+    internal static double EndMs
+    {
+        get
+        {
+            double end = _running ? _workEndMs : double.PositiveInfinity;
+            return _capped ? Math.Min(end, _capMs) : end;
+        }
+    }
+
+    [ThreadStatic]
+    private static double _capMs;
+
+    [ThreadStatic]
+    private static bool _capped;
+
+    /// <summary>
+    /// Ends work sized to the frame no later than endMs until the scope is disposed (scopes nest; the earliest end
+    /// holds): a lane with its own share (a find subscription's evaluation) or a body that steps a call's work itself
+    /// (undo's replay: NegativeInfinity, so a handler takes one step in the call and hands the rest to the body).
+    /// </summary>
+    internal static Cap Capped(double endMs)
+    {
+        Cap before = new Cap(_capped, _capMs);
+        _capMs = _capped ? Math.Min(_capMs, endMs) : endMs;
+        _capped = true;
+        return before;
+    }
+
+    /// <summary>The cap before a Capped scope, put back when it is disposed.</summary>
+    internal readonly struct Cap : IDisposable
+    {
+        private readonly bool _wasCapped;
+        private readonly double _before;
+
+        internal Cap(bool wasCapped, double before)
+        {
+            _wasCapped = wasCapped;
+            _before = before;
+        }
+
+        public void Dispose()
+        {
+            _capped = _wasCapped;
+            _capMs = _before;
+        }
+    }
 }

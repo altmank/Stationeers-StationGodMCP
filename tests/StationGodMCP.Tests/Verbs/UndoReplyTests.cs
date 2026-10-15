@@ -146,15 +146,14 @@ public sealed class UndoReplyTests
     [Fact]
     public void AReportsFirstProblemIsWhatTheActingCallWouldBeRefusedWith()
     {
-        Assert.Null(UndoReplies.Problem(new JObject { ["problems"] = new JArray() }));
+        Assert.Null(UndoReplies.Problem(Report.Of(System.Array.Empty<ReportTarget>(), null,
+            System.Array.Empty<ReportProblem>())));
 
-        JObject refused = new JObject
+        ReportReply refused = Report.Of(System.Array.Empty<ReportTarget>(), null, new[]
         {
-            ["problems"] = new JArray(new JObject
-            {
-                ["index"] = 0, ["code"] = "gas_hold", ["message"] = "The pipe job would lose gas; acknowledge it."
-            })
-        };
+            new ReportProblem(0, null, new VerbError("gas_hold", "The pipe job would lose gas; acknowledge it.")),
+            new ReportProblem(1, null, new VerbError("would_burst", "a tank bursts"))
+        });
 
         VerbError problem = UndoReplies.Problem(refused)!;
         Assert.Equal("gas_hold", problem.Code);

@@ -44,8 +44,8 @@ internal static class RemoveStructure
 /// cable: its undo record keeps it as burnt, so undo leaves it gone and undoes the rest), the planned view the body,
 /// every problem with the index of its id, a gas hold the confirmed call would be refused on among them; verbose lists
 /// every port a split cuts. Confirmed with a problem, the report answers and nothing starts; confirmed and ready, one
-/// job starts and its undo is recorded (JobSnapshots). Reply is the same call for a caller that runs it itself (the
-/// undo's replay).
+/// job starts and its undo is recorded (JobSnapshots). undo's replay runs
+/// Run itself, a step at a time.
 /// </summary>
 internal static class RemoveStructureRun
 {
@@ -63,17 +63,6 @@ internal static class RemoveStructureRun
         return WriteCheck<RemovePlan>.Planned(answer => RemovePlanner.Planning(arguments, answer), order.Report,
             plan => Act(plan, arguments, order, source), plan => Described(plan, order));
     }
-
-    /// <summary>
-    /// One removal call's reply, for a caller that runs the call itself (undo's replay): the report until it acts, or
-    /// the started job. A refusal the call cannot be read with is thrown, as any call's is.
-    /// </summary>
-    internal static object Reply(RemoveStructureOrder order) => VerbOutcome.Settled(Run(order)) switch
-    {
-        VerbOutcome.Answered answered => answered.Reply,
-        VerbOutcome.Refused refused => throw ApiErrors.Refused(refused.Error.Code, refused.Error.Message),
-        _ => throw new System.InvalidOperationException("A settled call is answered or refused.")
-    };
 
     private static VerbOutcome Act(RemovePlan plan, RemoveRequest arguments, RemoveStructureOrder order,
         JobSource source)

@@ -9,6 +9,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Pure.Profiling;
+using StationGodMCP.Pure.Scheduling;
 
 namespace StationGodMCP.Pure.Verbs;
 
@@ -58,21 +59,34 @@ internal abstract class VerbOutcome
     }
 
     /// <summary>
-    /// An outcome taken to its end within this call: a pending one's work stepped until it ends (and any work its
-    /// result goes on with), for a caller that runs a call itself and needs its answer now (undo's replay).
+    /// A call a caller runs itself, as a body of the caller's own work (undo's replay; A3): run starts the call under a
+    /// frame cap that lets its handler take one step, and each later step of its pending work is one step of this body,
+    /// so the caller's Work spreads it over frames. reply gets the answer; a refusal is thrown, as any call's is.
     /// </summary>
-    internal static VerbOutcome Settled(VerbOutcome outcome)
+    internal static IEnumerable<object?> Replied(Func<VerbOutcome> run, Answer<object> reply)
     {
+        VerbOutcome outcome;
+        using (CurrentFrame.Capped(double.NegativeInfinity))
+        {
+            outcome = run();
+        }
+
         while (outcome is Pending pending)
         {
-            while (!pending.Work.Step(double.PositiveInfinity))
+            while (!pending.Work.Step(double.NegativeInfinity))
             {
+                yield return null;
             }
 
             outcome = Of(pending.Work.Result());
         }
 
-        return outcome;
+        reply.Value = outcome switch
+        {
+            Answered answered => answered.Reply,
+            Refused refused => throw ApiErrors.Refused(refused.Error.Code, refused.Error.Message),
+            _ => throw new InvalidOperationException("A call's outcome is answered or refused.")
+        };
     }
 
     /// <summary>

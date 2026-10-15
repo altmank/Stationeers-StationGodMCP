@@ -241,7 +241,7 @@ internal sealed class PaidByView
 
 /// <summary>
 /// build structure before anything is built: each placement, the materials, and every problem and warning. status
-/// is dry_run, scheduled (a job was started; poll it with job_id) or refused (nothing was changed).
+/// is dry_run, scheduled (a job was started; inspect job {id} follows it) or refused (nothing was changed).
 /// </summary>
 internal sealed class PlaceReportView
 {

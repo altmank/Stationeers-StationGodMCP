@@ -12,7 +12,7 @@ namespace StationGodMCP.Api.Views;
 /// <summary>
 /// swap cable and swap pipe before anything is changed: what would be swapped for
 /// what, every problem found, the coils or kits it takes, the predicted connectivity and the networks' state. status is
-/// dry_run, scheduled (a job was started; poll it with job_id) or refused (nothing was changed; problems says why).
+/// dry_run, scheduled (a job was started; inspect job {id} follows it) or refused (nothing was changed; problems says why).
 /// </summary>
 internal sealed class UpgradeReportView : ITruncatingView
 {
@@ -1171,7 +1171,7 @@ internal sealed class PipeNetworkAir
 }
 
 /// <summary>
-/// A confirmed run, polled by job_id. status: waiting (for the game tick to stop), applied (swapped and every check
+/// A confirmed run, followed with inspect job {id}. status: waiting (for the game tick to stop), applied (swapped and every check
 /// after it passed), applied_with_differences (swapped, but a check after it failed: see verification), stopped (a
 /// swap failed part way: swapped lists what was done, stopped_at why), applied_unchecked (swapped, but the check
 /// after it could not run: see error), gas_lost (pipe contents went missing: see gas_check), refused (nothing was
