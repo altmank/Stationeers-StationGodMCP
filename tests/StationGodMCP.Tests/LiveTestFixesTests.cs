@@ -186,24 +186,6 @@ public sealed class JoinTargetTests
 {
     // Live 1.3.0: a plan listed both "to" and "to.network_id" for one handle.
     [Fact]
-    public void OneHandleIsListedOnce()
-    {
-        ResolvedNetworks.Begin();
-        NetworkHandle handle = new NetworkHandle.ById(new ThingId(5001));
-        ResolvedNetworks.Record("to.network_id", handle, new ThingId(140001));
-        ResolvedNetworks.Record("join_to", handle, new ThingId(140001));
-        ResolvedNetworks.Record("to.network_id", handle, new ThingId(140001));
-        ResolvedNetworks.Record("allow_bridge[0]", new NetworkHandle.ById(new ThingId(5002)), new ThingId(140002));
-
-        JObject json = JObject.Parse(WireCheck.New(ResolvedNetworks.Attach(new GameClockView(1f, false, 0.5f, 3),
-            ResolvedNetworks.Take())));
-        JArray entries = Assert.IsType<JArray>(json["resolved_networks"]);
-        Assert.Equal(2, entries.Count);
-        Assert.Equal("to.network_id", (string?)entries[0]["argument"]);
-        Assert.Equal("allow_bridge[0]", (string?)entries[1]["argument"]);
-    }
-
-    [Fact]
     public void AnotherThreadsRequestNeitherClearsNorAddsToThisThreadsList()
     {
         ResolvedNetworks.Begin();

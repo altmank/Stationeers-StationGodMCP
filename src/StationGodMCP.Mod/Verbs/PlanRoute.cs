@@ -32,7 +32,7 @@ internal static class PlanRoute
 
     private static VerbOutcome Answered(RouteOrder order, PlannedRoute planned)
     {
-        JObject? report = null;
+        ReplyObject? report = null;
         if (planned.Report is { } view)
         {
             if (order.Summarize)

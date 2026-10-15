@@ -38,8 +38,8 @@ public sealed class FindFiltersAndSlimRepliesTests
     public void ASummarizedRouteCarriesTheReportInShortWithoutCellsOrJobKeys()
     {
         RunReportView report = Report();
-        JObject json = new PlanRouteView(null, null, new JObject(), new List<string>())
-            .Reply(PlanRouteView.SummaryKey, JobReports.Body(RunSummaryView.Of(report), report.Ready));
+        JObject json = Replies.Tree(new PlanRouteView(null, null, new JObject(), new List<string>())
+            .Reply(PlanRouteView.SummaryKey, JobReports.Body(RunSummaryView.Of(report), report.Ready)));
 
         Assert.Null(json["build_report"]);
         JObject summary = Assert.IsType<JObject>(json["build_report_summary"]);
@@ -53,8 +53,8 @@ public sealed class FindFiltersAndSlimRepliesTests
     public void AWholeRouteReportHasNoJobKeys()
     {
         RunReportView report = Report();
-        JObject json = new PlanRouteView(null, null, new JObject(), new List<string>())
-            .Reply(PlanRouteView.ReportKey, JobReports.Body(report, report.Ready));
+        JObject json = Replies.Tree(new PlanRouteView(null, null, new JObject(), new List<string>())
+            .Reply(PlanRouteView.ReportKey, JobReports.Body(report, report.Ready)));
 
         Assert.Null(json["build_report_summary"]);
         JObject whole = Assert.IsType<JObject>(json["build_report"]);

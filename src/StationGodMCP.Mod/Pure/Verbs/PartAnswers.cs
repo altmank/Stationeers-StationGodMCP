@@ -18,15 +18,17 @@ internal static class PartAnswers
 {
     internal static VerbOutcome Of(string label, IReadOnlyList<string> parts, Func<string, object> answer)
     {
-        JsonSerializer serializer = ApiJson.Serializer;
         List<OptionProblem> problems = new List<OptionProblem>();
-        JObject replies = new JObject();
+        ReplyObject replies = new ReplyObject(parts.Count);
+        object? first = null;
         for (int index = 0; index < parts.Count; index++)
         {
             string part = parts[index];
             try
             {
-                replies[part] = ReplyFields.Value(answer(part), serializer);
+                object reply = answer(part);
+                first ??= reply;
+                replies.Add(part, reply);
             }
             catch (ApiException refused)
             {
@@ -40,6 +42,11 @@ internal static class PartAnswers
             return new VerbOutcome.Refused(OptionProblem.Refusal(label, problems));
         }
 
-        return new VerbOutcome.Answered(parts.Count == 1 && replies[parts[0]] is JObject one ? one : replies);
+        return new VerbOutcome.Answered(parts.Count == 1 && IsObject(first) ? first! : replies);
     }
+
+    // A reply written as a JSON object: no list, text or number.
+    internal static bool IsObject(object? reply) =>
+        reply != null && !(reply is string) && !reply.GetType().IsPrimitive && !ViewKeys.IsList(reply) &&
+        !(reply is JValue);
 }

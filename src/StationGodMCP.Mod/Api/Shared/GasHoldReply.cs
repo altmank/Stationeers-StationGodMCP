@@ -55,24 +55,6 @@ internal static class GasHoldReply
         return view;
     }
 
-    /// <summary>The result with gas_hold added when anything was recorded (object results only).</summary>
-    internal static object Attach(object result, GasHoldView? hold)
-    {
-        if (hold == null)
-        {
-            return result;
-        }
-
-        JsonSerializer serializer = JsonSerializer.Create(ApiJson.Settings);
-        if (!(JToken.FromObject(result, serializer) is JObject item))
-        {
-            return result;
-        }
-
-        item["gas_hold"] = JToken.FromObject(hold, serializer);
-        return item;
-    }
-
     private static int Rank(GasHoldVerdict verdict, GasHoldStage stage) =>
         verdict is GasHoldVerdict.Lifting && stage == GasHoldStage.Started ? 2
         : verdict is GasHoldVerdict.Refusing ? 1

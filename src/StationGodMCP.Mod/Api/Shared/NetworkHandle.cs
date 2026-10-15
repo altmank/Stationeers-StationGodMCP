@@ -127,22 +127,4 @@ internal static class ResolvedNetworks
         _current = null;
         return taken;
     }
-
-    /// <summary>The result with resolved_networks added when anything was resolved (object results only).</summary>
-    internal static object Attach(object result, List<ResolvedNetworkView>? resolved)
-    {
-        if (resolved == null || resolved.Count == 0)
-        {
-            return result;
-        }
-
-        JToken token = JToken.FromObject(result, JsonSerializer.Create(ApiJson.Settings));
-        if (!(token is JObject item))
-        {
-            return result;
-        }
-
-        item["resolved_networks"] = JToken.FromObject(resolved, JsonSerializer.Create(ApiJson.Settings));
-        return item;
-    }
 }

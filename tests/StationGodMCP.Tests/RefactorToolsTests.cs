@@ -417,38 +417,6 @@ public sealed class FaceSealTests
     }
 }
 
-public sealed class NetworkHandleTests
-{
-    // Id churn: the network's id changed after an edit; the handle named a device port, and the reply says which id
-    // it stood for this time.
-    [Fact]
-    public void TheReplyListsWhatEachHandleResolvedTo()
-    {
-        ResolvedNetworks.Begin();
-        NetworkHandle handle = new NetworkHandle.ByPort(new ThingId(1378), 1);
-        ResolvedNetworks.Record("join_to", handle, new ThingId(140001));
-        ResolvedNetworks.Record("join_to", handle, new ThingId(140001));
-        object result = ResolvedNetworks.Attach(new GameClockView(1f, false, 0.5f, 3), ResolvedNetworks.Take());
-
-        JObject json = JObject.Parse(WireCheck.New(result));
-        JToken entry = Assert.Single(json["resolved_networks"]!);
-        Assert.Equal("join_to", (string?)entry["argument"]);
-        Assert.Equal("140001", (string?)entry["network_id"]);
-        Assert.Equal("1378", (string?)entry["given"]!["reference_id"]);
-        Assert.Equal(1, (int)entry["given"]!["port"]!);
-        Assert.Equal(1f, (float)json["game_time_s"]!);
-        Assert.Null(ResolvedNetworks.Take());
-    }
-
-    [Fact]
-    public void NothingResolvedLeavesTheResultAlone()
-    {
-        GameClockView clock = new GameClockView(1f, false, 0.5f, 3);
-        ResolvedNetworks.Begin();
-        Assert.Same(clock, ResolvedNetworks.Attach(clock, ResolvedNetworks.Take()));
-    }
-}
-
 public sealed class JobSlotTests
 {
     [Fact]

@@ -74,7 +74,7 @@ public sealed class SwapStructureTests
     {
         StructureSwapReportView view = StructureSwapWireTests.Report(new List<UpgradeProblemView>());
 
-        JObject body = JobReports.Body(view, ready: false);
+        JObject body = Replies.Tree(JobReports.Body(view, ready: false));
 
         Assert.Null(body["tool"]);
         Assert.Null(body["status"]);

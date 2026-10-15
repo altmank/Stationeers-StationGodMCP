@@ -50,6 +50,12 @@ internal sealed class ReplyObject
         return this;
     }
 
+    /// <summary>
+    /// As Spread, with key's value (when the view has key) written in the view's own place as value instead.
+    /// </summary>
+    internal ReplyObject SpreadReplacing(object view, string key, object? value, params string[] except) =>
+        Spread(new ReplacedKey(view, key, value), except);
+
     /// <summary>The value added under key; null when there is none (spreads are not looked into).</summary>
     internal object? this[string key]
     {
@@ -244,6 +250,14 @@ internal static class ViewKeys
             case IReplyForm form:
                 Write(writer, serializer, form.Form(serializer), except);
                 return;
+            case ReplacedKey replaced:
+                foreach (KeyValuePair<string, object?> key in Pairs(serializer, replaced, except))
+                {
+                    writer.WritePropertyName(key.Key);
+                    serializer.Serialize(writer, key.Value);
+                }
+
+                return;
             case ReplyObject reply:
                 reply.WriteKeys(writer, serializer, except);
                 return;
@@ -297,6 +311,15 @@ internal static class ViewKeys
                 foreach (KeyValuePair<string, object?> key in Pairs(serializer, form.Form(serializer), except))
                 {
                     yield return key;
+                }
+
+                yield break;
+            case ReplacedKey replaced:
+                foreach (KeyValuePair<string, object?> key in Pairs(serializer, replaced.View, except))
+                {
+                    yield return key.Key == replaced.Key
+                        ? new KeyValuePair<string, object?>(key.Key, replaced.Value)
+                        : key;
                 }
 
                 yield break;
@@ -354,6 +377,9 @@ internal static class ViewKeys
             case null:
             case IReplyForm:
                 return;
+            case ReplacedKey replaced:
+                Collect(resolver, replaced.View, except, keys);
+                return;
             case ReplyObject reply:
                 reply.CollectKeys(resolver, keys);
                 return;
@@ -407,4 +433,21 @@ internal static class ViewKeys
 
         return true;
     }
+}
+
+/// <summary>A view spread with one of its keys written with another value, in the view's own place.</summary>
+internal sealed class ReplacedKey
+{
+    internal ReplacedKey(object view, string key, object? value)
+    {
+        View = view;
+        Key = key;
+        Value = value;
+    }
+
+    internal object View { get; }
+
+    internal string Key { get; }
+
+    internal object? Value { get; }
 }

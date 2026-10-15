@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
+using StationGodMCP.Pure.Verbs;
 using StationGodMCP.Pure;
 
 using StationGodMCP.Pure.Protocol;
@@ -1143,15 +1144,15 @@ internal sealed class PlanRouteView
     /// The reply: the view's keys, with build's report under key (ReportKey, or SummaryKey for the short form) before
     /// notes; the report is taken as it is, not copied.
     /// </summary>
-    internal JObject Reply(string key, JObject? report)
+    internal ReplyObject Reply(string key, ReplyObject? report)
     {
-        JObject reply = JObject.FromObject(this, ApiJson.Serializer);
+        ReplyObject reply = new ReplyObject(3).Spread(this, "notes");
         if (report != null)
         {
-            reply.Property("notes")!.AddBeforeSelf(new JProperty(key, report));
+            reply.Add(key, report);
         }
 
-        return reply;
+        return reply.Add("notes", Notes);
     }
 }
 

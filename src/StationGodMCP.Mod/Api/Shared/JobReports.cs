@@ -1,7 +1,6 @@
 #nullable enable
 
 using System.Collections.Generic;
-using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure.Verbs;
 using StationGodMCP.Pure.Profiling;
@@ -19,21 +18,8 @@ internal static class JobReports
 
     /// <summary>The view's keys but tool, status and job_id; ready true only when no problem is listed.</summary>
     [Profiled]
-    internal static JObject Body(object view, bool ready)
-    {
-        JObject body = JObject.FromObject(view, ApiJson.Serializer);
-        foreach (string key in JobKeys)
-        {
-            body.Remove(key);
-        }
-
-        if (body.ContainsKey("ready"))
-        {
-            body["ready"] = ready;
-        }
-
-        return body;
-    }
+    internal static ReplyObject Body(object view, bool ready) =>
+        new ReplyObject(1).SpreadReplacing(view, "ready", ready, JobKeys);
 
     /// <summary>
     /// Each planned problem as a report problem, indexed by the place of its id in the ids named (in the order given,

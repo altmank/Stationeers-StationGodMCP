@@ -926,7 +926,7 @@ internal sealed class PrintView
 /// <summary>show preview: how many boxes it drew, how many earlier ones it cleared, for how long, and the plan.</summary>
 internal sealed class ShowPreviewView
 {
-    internal ShowPreviewView(int shown, int cleared, double seconds, JObject? plan, List<string> notes,
+    internal ShowPreviewView(int shown, int cleared, double seconds, object? plan, List<string> notes,
         string? drawnOn = null, ViewSourceView? view = null)
     {
         DrawnOn = drawnOn;
@@ -949,7 +949,7 @@ internal sealed class ShowPreviewView
     /// placements.
     /// </summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-    public JObject? Plan { get; }
+    public object? Plan { get; }
 
     public List<string> Notes { get; }
 

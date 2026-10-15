@@ -37,7 +37,7 @@ internal static class PreviewScreen
         PlayerScreen screen = player.RequireScreen("show preview");
         float seconds = (float)order.Seconds;
         List<PreviewBox> boxes = new List<PreviewBox>();
-        JObject? plan = null;
+        ReplyObject? plan = null;
         if (order.HasPlacements)
         {
             PlacePlan planned = PlacePlanner.Plan(order.Arguments, lint: false);

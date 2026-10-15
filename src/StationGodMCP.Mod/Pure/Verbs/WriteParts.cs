@@ -41,19 +41,21 @@ internal static class WriteParts
 
     private static VerbOutcome Act(IReadOnlyList<string> parts, IReadOnlyList<Func<object>> acts)
     {
-        JsonSerializer serializer = ApiJson.Serializer;
-        JObject reply = new JObject();
+        ReplyObject reply = new ReplyObject(parts.Count);
+        object? first = null;
         for (int index = 0; index < parts.Count; index++)
         {
             string part = parts[index];
             try
             {
-                reply[part] = ReplyFields.Value(acts[index](), serializer);
+                object acted = acts[index]();
+                first ??= acted;
+                reply.Add(part, acted);
             }
             catch (ApiException refused)
             {
                 VerbError error = VerbError.Of(refused);
-                JArray notRun = new JArray();
+                List<string> notRun = new List<string>();
                 for (int rest = index + 1; rest < parts.Count; rest++)
                 {
                     notRun.Add(parts[rest]);
@@ -66,12 +68,12 @@ internal static class WriteParts
                         : error.WithMessage($"{error.Message} Not run: {string.Join(", ", notRun)}."));
                 }
 
-                reply[part] = error.ToJson();
-                reply["not_run"] = notRun;
+                reply.Add(part, error.ToJson());
+                reply.Add("not_run", notRun);
                 return new VerbOutcome.Answered(reply);
             }
         }
 
-        return new VerbOutcome.Answered(parts.Count == 1 && reply[parts[0]] is JObject one ? one : reply);
+        return new VerbOutcome.Answered(parts.Count == 1 && PartAnswers.IsObject(first) ? first! : reply);
     }
 }

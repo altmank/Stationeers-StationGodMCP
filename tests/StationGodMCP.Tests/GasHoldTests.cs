@@ -195,20 +195,5 @@ public sealed class GasHoldTests
         Assert.Null(GasHoldReply.Refusal);
     }
 
-    [Fact]
-    public void TheReplyCarriesGasHoldInSnakeCase()
-    {
-        GasHoldView view = GasHoldView.Of(GasHoldRule.Judge(Loss(), true, "run-7"), GasHoldStage.Started);
-
-        JObject reply = Assert.IsType<JObject>(GasHoldReply.Attach(new { status = "waiting" }, view));
-
-        Assert.Equal("waiting", reply.Value<string>("status"));
-        JToken hold = reply["gas_hold"]!;
-        Assert.True(hold.Value<bool>("lifted"));
-        Assert.Equal("run-7", hold.Value<string>("held_by_job_id"));
-        Assert.Equal(1433.0, hold["loss"]!.Value<double>("missing_mol"));
-        Assert.Equal("171240", hold["loss"]!["networks"]![0]!.ToString());
-    }
-
     private static GasMix Methane(double mol) => new GasMix(new[] { mol }, new[] { mol * 10 });
 }
