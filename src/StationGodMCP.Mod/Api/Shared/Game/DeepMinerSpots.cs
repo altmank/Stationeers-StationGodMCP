@@ -15,6 +15,7 @@ using TerrainSystem;
 using Trading;
 using UnityEngine;
 using StationGodMCP.Pure.Scheduling;
+using StationGodMCP.Pure.Profiling;
 
 namespace StationGodMCP.Api.Shared.Game;
 
@@ -105,6 +106,7 @@ internal static class DeepMinerSpots
             spots.Add(view);
             beacons.Add(new MinerBeaconView(new[] { view.At.X, view.At.Y, view.At.Z },
                 $"{named} {Math.Round(spot.Distance)} m {view.Compass}"));
+            yield return null;
         }
 
         List<string> profileIds = new List<string>();
@@ -167,6 +169,7 @@ internal static class DeepMinerSpots
         return null;
     }
 
+    [Profiled]
     private static List<MinerRegionView> RegionsAt(Vector3 position)
     {
         List<(RegionSet set, Region region)> pairs = new List<(RegionSet set, Region region)>();
@@ -176,6 +179,7 @@ internal static class DeepMinerSpots
     }
 
     // One pixel of the finest region map, in metres (RegionManager.TryGetRegionAtWorldPosition).
+    [Profiled]
     private static double RegionMapStep()
     {
         double step = double.MaxValue;
@@ -190,6 +194,7 @@ internal static class DeepMinerSpots
         return step == double.MaxValue ? FallbackStepM : step;
     }
 
+    [Profiled]
     private static MinerSpotView SpotView(List<DeepMinablesGenerationData> profiles, MinerSample spot, Vector3 centre)
     {
         float x = CellCentre(spot.X);
@@ -241,6 +246,7 @@ internal static class DeepMinerSpots
         return new Ground(null, new MinerTerrainView(null, null, null, "no ground found in the terrain here"));
     }
 
+    [Profiled]
     private static Dictionary<DeepMinablesGenerationData, ProfileFacts> Facts(
         List<DeepMinablesGenerationData> profiles)
     {

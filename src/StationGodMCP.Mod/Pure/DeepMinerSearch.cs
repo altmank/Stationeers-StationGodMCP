@@ -80,7 +80,7 @@ internal sealed class MinerSearchResult
 internal sealed class MinerSpotSearch
 {
     /// <summary>The samples Searching takes per step.</summary>
-    internal const int SamplesPerStep = 256;
+    internal const int SamplesPerStep = 64;
 
     private readonly double _step;
     private readonly double _radius;

@@ -184,7 +184,7 @@ internal sealed class RouteResult
 internal static class RoutePlanner
 {
     /// <summary>The expansions Searching takes per step.</summary>
-    internal const int ExpansionsPerStep = 256;
+    internal const int ExpansionsPerStep = 32;
 
     internal static RouteResult Find(RouteEnd start, RouteEnd goal, Func<GridCell, CellCost> costOf, RouteRules rules,
         AirBound? air = null) =>
@@ -232,20 +232,20 @@ internal static class RoutePlanner
             };
 
         Dictionary<GridCell, CellCost> costs = new Dictionary<GridCell, CellCost>();
-        Dictionary<SearchState, double> best = new Dictionary<SearchState, double>();
-        Dictionary<SearchState, SearchState> cameFrom = new Dictionary<SearchState, SearchState>();
-        Dictionary<SearchState, int> lengths = new Dictionary<SearchState, int>();
+        // One entry per state reached (its cost, length and the state it came from): one table grows, and rehashes,
+        // where three did in step.
+        Dictionary<SearchState, Visit> visits = new Dictionary<SearchState, Visit>();
         StateHeap open = new StateHeap();
         SearchState first = new SearchState(start.Cell, -1, false);
-        best[first] = 0.0;
-        lengths[first] = 1;
+        visits[first] = new Visit(0.0, 1, first, false);
         open.Push(first, heuristic(start.Cell));
         int expanded = 0;
         bool tooLong = false;
         while (open.Count > 0)
         {
             SearchState state = open.Pop(out double priority);
-            double spent = best[state];
+            Visit at = visits[state];
+            double spent = at.Cost;
             if (priority > spent + heuristic(state.Cell) + 1e-9)
             {
                 continue;
@@ -253,7 +253,7 @@ internal static class RoutePlanner
 
             if (goalAt.ContainsKey(state.Cell))
             {
-                answer.Value = RouteResult.Found(Trace(cameFrom, state), spent, expanded);
+                answer.Value = RouteResult.Found(Trace(visits, state), spent, expanded);
                 yield break;
             }
 
@@ -271,7 +271,7 @@ internal static class RoutePlanner
             foreach (GridStep step in GridStep.All)
             {
                 GridCell next = step.From(state.Cell);
-                int length = lengths[state] + 1;
+                int length = at.Length + 1;
                 bool isGoal = goalAt.TryGetValue(next, out RouteEnd? goal);
                 if (!rules.Inside(next) && !isGoal)
                 {
@@ -309,14 +309,12 @@ internal static class RoutePlanner
                 }
 
                 SearchState to = new SearchState(next, step.Index, state.Phase || Leaves(step, rules));
-                if (best.TryGetValue(to, out double known) && known <= cost)
+                if (visits.TryGetValue(to, out Visit known) && known.Cost <= cost)
                 {
                     continue;
                 }
 
-                best[to] = cost;
-                cameFrom[to] = state;
-                lengths[to] = length;
+                visits[to] = new Visit(cost, length, state, true);
                 open.Push(to, cost + heuristic(next));
             }
         }
@@ -414,18 +412,38 @@ internal static class RoutePlanner
 
     private static int Outside(int value, int min, int max) => value < min ? min - value : value > max ? value - max : 0;
 
-    private static List<GridCell> Trace(Dictionary<SearchState, SearchState> cameFrom, SearchState end)
+    private static List<GridCell> Trace(Dictionary<SearchState, Visit> visits, SearchState end)
     {
         List<GridCell> cells = new List<GridCell> { end.Cell };
         SearchState state = end;
-        while (cameFrom.TryGetValue(state, out SearchState previous))
+        while (visits.TryGetValue(state, out Visit visit) && visit.HasFrom)
         {
-            cells.Add(previous.Cell);
-            state = previous;
+            cells.Add(visit.From.Cell);
+            state = visit.From;
         }
 
         cells.Reverse();
         return cells;
+    }
+
+    // A reached state: the cheapest cost and length found so far and the state it was reached from (none at the start).
+    private readonly struct Visit
+    {
+        internal Visit(double cost, int length, SearchState from, bool hasFrom)
+        {
+            Cost = cost;
+            Length = length;
+            From = from;
+            HasFrom = hasFrom;
+        }
+
+        internal double Cost { get; }
+
+        internal int Length { get; }
+
+        internal SearchState From { get; }
+
+        internal bool HasFrom { get; }
     }
 
     private readonly struct SearchState : IEquatable<SearchState>

@@ -10,6 +10,7 @@ using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Verbs;
+using StationGodMCP.Pure.Profiling;
 
 namespace StationGodMCP.Api.Shared.Game.Runs;
 
@@ -29,6 +30,7 @@ internal static class RouteEnds
     internal const int MaximumStarts = RouteTrees.MaximumStarts;
 
     /// <summary>One or more starts: an end, an array of ends, or a device with ports: [...].</summary>
+    [Profiled]
     internal static List<RouteEndpoint> Starts(JToken? token, string name, RunKind kind, int type,
         HashSet<long> ignore)
     {
@@ -75,6 +77,7 @@ internal static class RouteEnds
     }
 
     /// <summary>A target: any end form, {network}, or a long straight (every cell of it).</summary>
+    [Profiled]
     internal static RouteEndpoint Target(JToken? token, string name, RunKind kind, int type, HashSet<long> ignore)
     {
         if (token is JObject item && item["network"] is { } given)

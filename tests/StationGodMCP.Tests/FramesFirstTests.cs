@@ -6,6 +6,7 @@ using System.Diagnostics;
 using StationGodMCP.Pure;
 using Xunit;
 using Xunit.Abstractions;
+using StationGodMCP.Pure.Scheduling;
 
 namespace StationGodMCP.Tests;
 
@@ -323,6 +324,37 @@ public sealed class FramesFirstTests
         Assert.Equal(1.0, off.Cost(air).Cost);
         Assert.Equal(1.0, on.WithoutFramesFirst().Cost(air).Cost);
         Assert.False(on.WithoutFramesFirst().FramesFirst);
+    }
+
+    [Theory]
+    [InlineData(AirBound.MaximumSmallCells, "field")]
+    [InlineData(0, "gaps")]
+    public void TheAirBoundOverFramesIsTheBoundInOneGo(int fieldLimit, string kind)
+    {
+        World world = new World().Frames(0, 4, 0, 2, 0, 2).Frames(8, 10, 0, 2, 0, 6);
+        GridCell goal = M(9, 2, 5);
+        GridCell min = M(-2, 0, -2);
+        GridCell max = M(12, 4, 8);
+        AirBound whole = AirBound.Build(min, max, new[] { goal }, world.Support,
+            cell => CellSupports.Anchors(world.LargeAt(cell)), RouteRuleSet.AirPenalty, fieldLimit);
+        int steps = 0;
+        Answer<AirBound> stepped = new Answer<AirBound>();
+        foreach (object? _ in AirBound.Building(min, max, new[] { goal }, world.Support,
+                     cell => CellSupports.Anchors(world.LargeAt(cell)), RouteRuleSet.AirPenalty, stepped, fieldLimit))
+        {
+            steps++;
+        }
+
+        Assert.Equal(kind, stepped.Value.Kind);
+        Assert.True(kind == "gaps" || steps > 1);
+        for (int x = min.X; x <= max.X; x += 15)
+        {
+            for (int z = min.Z; z <= max.Z; z += 15)
+            {
+                GridCell cell = new GridCell(x, min.Y, z);
+                Assert.Equal(whole.Extra(cell, 20.0), stepped.Value.Extra(cell, 20.0));
+            }
+        }
     }
 
     [Theory]

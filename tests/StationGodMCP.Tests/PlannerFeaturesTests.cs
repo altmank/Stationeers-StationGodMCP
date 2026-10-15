@@ -9,6 +9,7 @@ using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using Xunit;
 using Xunit.Abstractions;
+using StationGodMCP.Pure.Scheduling;
 
 namespace StationGodMCP.Tests;
 
@@ -109,14 +110,21 @@ public sealed class PlannerFeaturesTests
             (from, to) => new RouteRules(2.0, AxisOrder.Any, 400,
                 new GridCell(Math.Min(from.X, to.X) - pad, Math.Min(from.Y, to.Y) - pad, Math.Min(from.Z, to.Z) - pad),
                 new GridCell(Math.Max(from.X, to.X) + pad, Math.Max(from.Y, to.Y) + pad, Math.Max(from.Z, to.Z) + pad)),
-            (box, goals) => framesFirst
-                ? AirBound.Build(box.Min, box.Max, new List<RouteEnd>(goals).ConvertAll(goal => goal.Cell),
-                    cell => CellSupports.Of(cell, world.LargeAt),
-                    cell => CellSupports.Anchors(world.LargeAt(cell)), RouteRuleSet.AirPenalty)
-                : null);
+            (box, goals, answer) => Air(framesFirst, world, box, goals, answer));
         List<RouteEndpoint> endpoints = new List<GridCell>(starts)
             .ConvertAll(cell => new RouteEndpoint(RouteEnd.Open(cell), new List<long>()));
         return RouteTrees.Grow(endpoints, main, search, 3.0);
+    }
+
+    private static IEnumerable<object?> Air(bool framesFirst, World world, RouteRules box,
+        IReadOnlyList<RouteEnd> goals, Answer<AirBound?> answer)
+    {
+        answer.Value = framesFirst
+            ? AirBound.Build(box.Min, box.Max, new List<RouteEnd>(goals).ConvertAll(goal => goal.Cell),
+                cell => CellSupports.Of(cell, world.LargeAt),
+                cell => CellSupports.Anchors(world.LargeAt(cell)), RouteRuleSet.AirPenalty)
+            : null;
+        yield break;
     }
 
     private static RouteMain To(GridCell cell) =>

@@ -94,7 +94,7 @@ internal abstract class RouteMain
 internal sealed class RouteSearch
 {
     internal RouteSearch(Func<GridCell, CellCost> cost, Func<GridCell, GridCell, RouteRules> box,
-        Func<RouteRules, IReadOnlyList<RouteEnd>, AirBound?> air)
+        Func<RouteRules, IReadOnlyList<RouteEnd>, Answer<AirBound?>, IEnumerable<object?>> air)
     {
         Cost = cost;
         Box = box;
@@ -105,7 +105,8 @@ internal sealed class RouteSearch
 
     internal Func<GridCell, GridCell, RouteRules> Box { get; }
 
-    internal Func<RouteRules, IReadOnlyList<RouteEnd>, AirBound?> Air { get; }
+    /// <summary>The air bound for a search box and its goals, as a Work body (none: null).</summary>
+    internal Func<RouteRules, IReadOnlyList<RouteEnd>, Answer<AirBound?>, IEnumerable<object?>> Air { get; }
 }
 
 /// <summary>
@@ -148,9 +149,15 @@ internal static class RouteTrees
             case RouteMain.ToTarget target:
                 RouteEndpoint origin = starts[0];
                 RouteRules box = search.Box(origin.End.Cell, target.Target.NearestTo(origin.End.Cell).Cell);
+                Answer<AirBound?> air = new Answer<AirBound?>();
+                foreach (object? step in search.Air(box, target.Target.Ends, air))
+                {
+                    yield return step;
+                }
+
                 Answer<RouteResult> searched = new Answer<RouteResult>();
                 foreach (object? step in RoutePlanner.Searching(origin.End, target.Target.Ends, search.Cost, box,
-                             search.Air(box, target.Target.Ends), searched))
+                             air.Value, searched))
                 {
                     yield return step;
                 }
@@ -207,10 +214,15 @@ internal static class RouteTrees
             .ConvertAll(cell => new RouteEnd(cell, EndSet.None, junctionCost));
         RouteEndpoint treeEnds = new RouteEndpoint(goals, new List<long>());
         RouteRules box = search.Box(start.End.Cell, treeEnds.NearestTo(start.End.Cell).Cell);
+        Answer<AirBound?> air = new Answer<AirBound?>();
+        foreach (object? step in search.Air(box, goals, air))
+        {
+            yield return step;
+        }
+
         Answer<RouteResult> searched = new Answer<RouteResult>();
         foreach (object? step in RoutePlanner.Searching(start.End, goals,
-                     cell => tree.Contains(cell) ? CellCost.Blocked : search.Cost(cell), box, search.Air(box, goals),
-                     searched))
+                     cell => tree.Contains(cell) ? CellCost.Blocked : search.Cost(cell), box, air.Value, searched))
         {
             yield return step;
         }

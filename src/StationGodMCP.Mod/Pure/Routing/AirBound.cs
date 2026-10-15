@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using StationGodMCP.Pure.Scheduling;
 
 namespace StationGodMCP.Pure;
 
@@ -30,6 +31,9 @@ internal sealed class AirBound
     internal const int MaximumLargeCells = 262144;
 
     private const int Unreached = int.MaxValue;
+
+    // Cells classified, or taken off a breadth-first queue, per step of Building.
+    private const int CellsPerStep = 1024;
 
     private readonly double _penalty;
     private readonly BoxValues? _field;
@@ -64,20 +68,52 @@ internal sealed class AirBound
         Func<GridCell, CellSupport> support, Func<GridCell, bool> anchored, double penalty,
         int fieldLimit = MaximumSmallCells)
     {
+        Answer<AirBound> answer = new Answer<AirBound>();
+        foreach (object? _ in Building(min, max, goals, support, anchored, penalty, answer, fieldLimit))
+        {
+        }
+
+        return answer.Value;
+    }
+
+    /// <summary>
+    /// Build as a Work body: CellsPerStep cells classified, and CellsPerStep cells of each breadth-first pass, per step.
+    /// </summary>
+    internal static IEnumerable<object?> Building(GridCell min, GridCell max, IReadOnlyList<GridCell> goals,
+        Func<GridCell, CellSupport> support, Func<GridCell, bool> anchored, double penalty, Answer<AirBound> answer,
+        int fieldLimit = MaximumSmallCells)
+    {
         BoxShape small = BoxShape.Between(min, max, GridStep.CellSize);
         if (small.Count <= Math.Min(fieldLimit, MaximumSmallCells))
         {
-            return new AirBound(penalty, Field(small, goals, support), null, goals);
+            Answer<BoxValues> field = new Answer<BoxValues>();
+            foreach (object? step in Field(small, goals, support, field))
+            {
+                yield return step;
+            }
+
+            answer.Value = new AirBound(penalty, field.Value, null, goals);
+            yield break;
         }
 
-        int step = SmallCellCode.Large;
+        int size = SmallCellCode.Large;
         GridCell low = SmallCellCode.LargeOf(min);
         GridCell high = SmallCellCode.LargeOf(max);
-        BoxShape large = BoxShape.Between(new GridCell(low.X - step, low.Y - step, low.Z - step),
-            new GridCell(high.X + step, high.Y + step, high.Z + step), step);
-        return large.Count <= MaximumLargeCells
-            ? new AirBound(penalty, null, Gaps(large, anchored), goals)
-            : new AirBound(penalty, null, null, goals);
+        BoxShape large = BoxShape.Between(new GridCell(low.X - size, low.Y - size, low.Z - size),
+            new GridCell(high.X + size, high.Y + size, high.Z + size), size);
+        if (large.Count > MaximumLargeCells)
+        {
+            answer.Value = new AirBound(penalty, null, null, goals);
+            yield break;
+        }
+
+        Answer<BoxValues> gaps = new Answer<BoxValues>();
+        foreach (object? step in Gaps(large, anchored, gaps))
+        {
+            yield return step;
+        }
+
+        answer.Value = new AirBound(penalty, null, gaps.Value, goals);
     }
 
     /// <summary>The penalty times the fewest air cells any route from the cell to a goal still enters.</summary>
@@ -101,7 +137,8 @@ internal sealed class AirBound
 
     // The fewest air cells entered from each small cell of the box to a goal: a 0-1 breadth-first search from the
     // goals, one queue per level.
-    private static BoxValues Field(BoxShape shape, IReadOnlyList<GridCell> goals, Func<GridCell, CellSupport> support)
+    private static IEnumerable<object?> Field(BoxShape shape, IReadOnlyList<GridCell> goals,
+        Func<GridCell, CellSupport> support, Answer<BoxValues> answer)
     {
         BoxValues field = new BoxValues(shape, Unreached);
         int[] values = field.Values;
@@ -109,6 +146,10 @@ internal sealed class AirBound
         for (int index = 0; index < shape.Count; index++)
         {
             air[index] = support(shape.CellAt(index)) == CellSupport.Air;
+            if (index % CellsPerStep == CellsPerStep - 1)
+            {
+                yield return null;
+            }
         }
 
         Queue<int> level = new Queue<int>();
@@ -120,7 +161,7 @@ internal sealed class AirBound
             {
                 // Entering a goal is free.
                 air[index] = false;
-                Seed(index);
+                Seed(values, level, index);
                 continue;
             }
 
@@ -130,15 +171,21 @@ internal sealed class AirBound
                 int beside = shape.IndexOf(step.From(goal));
                 if (beside >= 0)
                 {
-                    Seed(beside);
+                    Seed(values, level, beside);
                 }
             }
         }
 
         int[] around = new int[6];
         int depth = 0;
+        int taken = 0;
         while (level.Count > 0 || nextLevel.Count > 0)
         {
+            if (++taken % CellsPerStep == 0)
+            {
+                yield return null;
+            }
+
             if (level.Count == 0)
             {
                 (level, nextLevel) = (nextLevel, level);
@@ -168,15 +215,15 @@ internal sealed class AirBound
             }
         }
 
-        return field;
+        answer.Value = field;
+    }
 
-        void Seed(int index)
+    private static void Seed(int[] values, Queue<int> level, int index)
+    {
+        if (values[index] != 0)
         {
-            if (values[index] != 0)
-            {
-                values[index] = 0;
-                level.Enqueue(index);
-            }
+            values[index] = 0;
+            level.Enqueue(index);
         }
     }
 
@@ -195,7 +242,7 @@ internal sealed class AirBound
     }
 
     // L1 distance, on the 2 m grid, to the nearest cell within one (along every axis) of an anchor.
-    private static BoxValues Gaps(BoxShape shape, Func<GridCell, bool> anchored)
+    private static IEnumerable<object?> Gaps(BoxShape shape, Func<GridCell, bool> anchored, Answer<BoxValues> answer)
     {
         BoxValues gaps = new BoxValues(shape, Unreached);
         int[] values = gaps.Values;
@@ -203,6 +250,11 @@ internal sealed class AirBound
         List<int> near = new List<int>(27);
         for (int index = 0; index < shape.Count; index++)
         {
+            if (index % CellsPerStep == CellsPerStep - 1)
+            {
+                yield return null;
+            }
+
             if (!anchored(shape.CellAt(index)))
             {
                 continue;
@@ -220,8 +272,14 @@ internal sealed class AirBound
         }
 
         int[] around = new int[6];
+        int taken = 0;
         while (queue.Count > 0)
         {
+            if (++taken % CellsPerStep == 0)
+            {
+                yield return null;
+            }
+
             int cell = queue.Dequeue();
             int next = values[cell] + 1;
             int count = shape.Neighbours(cell, around);
@@ -235,7 +293,7 @@ internal sealed class AirBound
             }
         }
 
-        return gaps;
+        answer.Value = gaps;
     }
 
     /// <summary>A box of cells spaced step apart, both corners included, indexed x fastest.</summary>

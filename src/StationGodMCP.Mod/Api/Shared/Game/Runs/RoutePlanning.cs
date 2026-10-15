@@ -243,7 +243,7 @@ internal static class RoutePlanning
         Answer<RouteTree> answer) =>
         RouteTrees.Growing(starts, main,
             new RouteSearch(openings.Guard(reserved.Guard(cell => rules.Cost(facts.Small(cell), cell))),
-                (from, to) => SearchRules(order, from, to), (search, goals) => AirBoundOf(rules, facts, search, goals)),
+                (from, to) => SearchRules(order, from, to), (search, goals, answer) => AirBoundOf(rules, facts, search, goals, answer)),
             RouteEnds.JunctionCost, answer);
 
     private static Grade GradeOf(string? name, RunKind kind)
@@ -324,6 +324,7 @@ internal static class RoutePlanning
     /// the search treats as blocked, so this run leaves them for another; any that is one of this route's own ends is
     /// released, with a note.
     /// </summary>
+    [Profiled]
     private static RouteReservation Reservation(RouteOrder order, List<RouteEndpoint> starts, RouteEndpoint? end,
         List<GridCell>? trunk, List<string> notes)
     {
@@ -391,6 +392,7 @@ internal static class RoutePlanning
     /// Every door's keep-out ([Layout] DoorKeepOutBand either side of its face, inside its rectangle) blocked unless
     /// allow door_keepout, and window cells made dearer (OpeningGuard); the route's own end cells are released.
     /// </summary>
+    [Profiled]
     private static OpeningGuard Openings(RouteOrder order, GridFacts facts, List<RouteEndpoint> starts,
         RouteEndpoint? end, List<string> notes)
     {
@@ -446,6 +448,7 @@ internal static class RoutePlanning
     }
 
     // The tree's cells not already holding a piece of the kind: what the route adds.
+    [Profiled]
     private static List<GridCell> NewCells(RouteTree tree, GridFacts facts) =>
         tree.Cells.FindAll(cell => !facts.Small(cell).FamilyPiece);
 
@@ -501,12 +504,25 @@ internal static class RoutePlanning
         return pieces;
     }
 
-    private static AirBound? AirBoundOf(RouteRuleSet rules, GridFacts facts, RouteRules search,
-        IReadOnlyList<RouteEnd> goals) =>
-        rules.FramesFirst
-            ? AirBound.Build(search.Min, search.Max, CellsOf(goals), facts.Support, facts.Anchors,
-                RouteRuleSet.AirPenalty)
-            : null;
+    // The air bound under frames_first, as a Work body (AirBound.Building); null otherwise.
+    private static IEnumerable<object?> AirBoundOf(RouteRuleSet rules, GridFacts facts, RouteRules search,
+        IReadOnlyList<RouteEnd> goals, Answer<AirBound?> answer)
+    {
+        answer.Value = null;
+        if (!rules.FramesFirst)
+        {
+            yield break;
+        }
+
+        Answer<AirBound> built = new Answer<AirBound>();
+        foreach (object? step in AirBound.Building(search.Min, search.Max, CellsOf(goals), facts.Support,
+                     facts.Anchors, RouteRuleSet.AirPenalty, built))
+        {
+            yield return step;
+        }
+
+        answer.Value = built.Value;
+    }
 
     private static List<GridCell> CellsOf(IReadOnlyList<RouteEnd> ends)
     {
@@ -542,6 +558,7 @@ internal static class RoutePlanning
     private static bool Shared(List<RouteEndpoint> starts, RouteEndpoint end) =>
         starts.Exists(start => start.Networks.Exists(end.Networks.Contains));
 
+    [Profiled]
     private static RerouteSegment? Segment(RouteOrder order, RunKind kind)
     {
         if (order.ReroutePieces != null)
@@ -571,6 +588,7 @@ internal static class RoutePlanning
 
     // An {at} end in a cell no piece of the kit may take (a device or a locker stands there) could never be built: it is
     // refused here rather than found as a route build then refuses (cell_blocked).
+    [Profiled]
     private static void RefuseBlockedPoints(JToken? token, string name, RunKind kind, SmallGridBlock mask,
         HashSet<long> ignore)
     {
@@ -600,6 +618,7 @@ internal static class RoutePlanning
     }
 
     // The lint rule in effect a route of the kind honours: route inside_frames, for chutes.
+    [Profiled]
     private static RouteLintRule? LintRuleOf(RunKind kind, List<RouteEndpoint> starts, RouteEndpoint? end)
     {
         if (!(kind is ChuteRunKind))
@@ -619,6 +638,7 @@ internal static class RoutePlanning
         return RouteLintRule.From(Lint.LintRuleFiles.Current(), Pure.Lint.LintRoute.InsideFrames, ends);
     }
 
+    [Profiled]
     private static RouteRuleSet Rules(RouteOrder order, RunKind kind, List<RouteEndpoint> starts, List<long> target,
         bool avoidOwn)
     {
@@ -656,6 +676,7 @@ internal static class RoutePlanning
         return ids;
     }
 
+    [Profiled]
     private static RouteRules SearchRules(RouteOrder order, GridCell from, GridCell to)
     {
         int pad = (int)Math.Ceiling(order.MarginM * 10.0 / GridStep.CellSize) * GridStep.CellSize;
@@ -667,6 +688,7 @@ internal static class RoutePlanning
             max);
     }
 
+    [Profiled]
     private static RouteView ViewOf(RouteTree tree, List<ThingId> removes, VisibilityTally visibility,
         RouteAssumedView? assumed, List<UpgradeAmountView> refund)
     {
@@ -696,6 +718,7 @@ internal static class RoutePlanning
     // A route is found only when every new piece may stand where it goes. The search keeps its way clear, but an end
     // cell is taken as given: a port whose joining cell another device fills (a battery pushed against it) would yield
     // a route build then refuses.
+    [Profiled]
     private static string? BlockedCell(List<GridCell> cells, RunKind kind, SmallGridBlock mask, HashSet<long> ignore)
     {
         foreach (GridCell cell in cells)
