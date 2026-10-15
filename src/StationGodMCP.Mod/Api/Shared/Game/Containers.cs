@@ -8,6 +8,7 @@ using Assets.Scripts.Objects.Items;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Paging;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Api.Shared.Game;
@@ -18,23 +19,47 @@ namespace StationGodMCP.Api.Shared.Game;
 /// </summary>
 internal static class Containers
 {
-    /// <summary>Every container whose prefab and shown name the filters keep, within metres of the player when given.</summary>
-    internal static List<ContainerTally> Collect(PrefabFilter? prefab, string? name, double? aroundPlayerM,
-        PlayerOrigin origin)
+    /// <summary>
+    /// Every container whose prefab and shown name the filters keep, within metres of the player when given, found by
+    /// a scan of the stored items spread over frames (a ScanBuild body, one item per step): each item joins its outermost
+    /// holder's tally, and a new holder the filters keep adds its key. found gives a container by its holder's id.
+    /// </summary>
+    internal static IEnumerable<object?> Scan(ScanKeys keys, PrefabFilter? prefab, string? name, double? aroundPlayerM,
+        PlayerOrigin origin, Dictionary<long, ContainerTally> found)
     {
-        List<ContainerTally> containers = new List<ContainerTally>();
-        foreach (ContainerTally container in ContainerTally.Group(WorldItems.Collect(ItemFilter.StoredOnly(), origin)))
+        HashSet<long> passed = new HashSet<long>();
+        foreach (object? step in WorldItems.Scan(ItemFilter.StoredOnly(), origin, record =>
+                 {
+                     long root = record.Root.ReferenceId;
+                     if (found.TryGetValue(root, out ContainerTally? tally))
+                     {
+                         tally.Add(record);
+                     }
+                     else if (!passed.Contains(root))
+                     {
+                         ContainerTally container = ContainerTally.Of(record);
+                         if (Keeps(container, prefab, name, aroundPlayerM))
+                         {
+                             found.Add(root, container);
+                             keys.Add(container.Key);
+                         }
+                         else
+                         {
+                             passed.Add(root);
+                         }
+                     }
+                 }))
         {
-            Thing root = container.Root;
-            if ((prefab == null || prefab.Keeps(root.PrefabName, root.PrefabHash)) &&
-                ItemFilter.Contains(root.DisplayName, name) &&
-                (!aroundPlayerM.HasValue || (container.Distance.HasValue && container.Distance.Value <= aroundPlayerM.Value)))
-            {
-                containers.Add(container);
-            }
+            yield return step;
         }
+    }
 
-        return containers;
+    private static bool Keeps(ContainerTally container, PrefabFilter? prefab, string? name, double? aroundPlayerM)
+    {
+        Thing root = container.Root;
+        return (prefab == null || prefab.Keeps(root.PrefabName, root.PrefabHash)) &&
+               ItemFilter.Contains(root.DisplayName, name) &&
+               (!aroundPlayerM.HasValue || (container.Distance.HasValue && container.Distance.Value <= aroundPlayerM.Value));
     }
 
     /// <summary>
@@ -88,6 +113,16 @@ internal sealed class ContainerTally
 
     /// <summary>From the player, unrounded; null without a player.</summary>
     internal double? Distance { get; }
+
+    /// <summary>A holder's tally from its first stored item.</summary>
+    internal static ContainerTally Of(ItemRecord first)
+    {
+        ContainerTally container = new ContainerTally(first);
+        container._records.Add(first);
+        return container;
+    }
+
+    internal void Add(ItemRecord record) => _records.Add(record);
 
     internal static List<ContainerTally> Group(List<ItemRecord> records)
     {

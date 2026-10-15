@@ -43,19 +43,12 @@ internal static class FindContainer
         }
 
         PlayerOrigin origin = PlayerOrigin.Current().RequireIf(selector.AroundPlayerM.HasValue);
-        List<ContainerTally> containers = Containers.Collect(selector.Prefab, selector.Name, selector.AroundPlayerM,
-            origin);
-        containers.Sort((a, b) => ListKey.Compare(paging.Order, a.Key, b.Key));
-        Dictionary<long, ContainerTally> byId = new Dictionary<long, ContainerTally>(containers.Count);
-        long[] ids = new long[containers.Count];
-        for (int index = 0; index < containers.Count; index++)
-        {
-            ids[index] = containers[index].Root.ReferenceId;
-            byId[ids[index]] = containers[index];
-        }
-
-        return ThingListPage<ContainerView, object>.First(walk, paging, ids, ids.Length, NoCounts,
-            id => byId.TryGetValue(id, out ContainerTally? container) ? container.ToView() : null, Cost,
+        Dictionary<long, ContainerTally> found = new Dictionary<long, ContainerTally>();
+        ScanBuild build = new ScanBuild(
+            keys => Containers.Scan(keys, selector.Prefab, selector.Name, selector.AroundPlayerM, origin, found),
+            paging.Order);
+        return ThingListPage<ContainerView, object>.Scan(walk, paging, build, static () => NoCounts,
+            id => found.TryGetValue(id, out ContainerTally? container) ? container.ToView() : null, Cost,
             (page, cursorId, _) => Reply(page, origin, cursorId));
     }
 

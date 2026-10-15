@@ -43,6 +43,15 @@ internal static class World
     /// <summary>The registered things (AllThings) whose prefab name the match may keep; callers apply the match.</summary>
     internal static List<Thing> Things(PrefabMatch match) => ThingIndex.ByPrefab(match, false);
 
+    /// <summary>
+    /// A class's candidates for a scan spread over frames: the index's bucket as it is now, membership unchecked (a
+    /// scan checks each one with Holds as its turn comes). Proportional to the class, never the world.
+    /// </summary>
+    internal static List<Thing> Candidates(WorldClass worldClass) => ThingIndex.CandidatesOf(worldClass);
+
+    /// <summary>Whether a scan's candidate is still a member of its class (in the class's game list).</summary>
+    internal static bool Holds(WorldClass worldClass, Thing? thing) => ThingIndex.IsMember(worldClass, thing);
+
     /// <summary>Every registered thing (AllThings): cursors are never registered.</summary>
     internal static List<Thing> Things() => ThingIndex.OfClass(WorldClass.Thing);
 

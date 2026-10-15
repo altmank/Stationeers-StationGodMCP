@@ -8,6 +8,7 @@ using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Paging;
+using StationGodMCP.Pure.Scheduling;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Verbs;
@@ -73,20 +74,11 @@ internal static class FindItem
     private static VerbOutcome Listed(WalkRequest walk, ItemFilter filter, PlayerOrigin origin, Paging paging,
         string? groupBy, bool excludeInUse)
     {
-        List<FoundRow> rows = FoundItems.Rows(filter, origin, excludeInUse, out int inUse);
-        rows.Sort((a, b) => ListKey.Compare(paging.Order, a.Key, b.Key));
         ItemGroupings.TryParse(groupBy, out ItemGrouping grouping);
-        FoundList list = grouping == ItemGrouping.None
-            ? new FoundList(rows, null, grouping, excludeInUse ? inUse : null)
-            : new FoundList(rows, FoundItems.Groups(rows, grouping), grouping, excludeInUse ? inUse : null);
-        long[] keys = new long[list.Count];
-        for (int index = 0; index < keys.Length; index++)
-        {
-            keys[index] = index;
-        }
-
-        return ThingListPage<IFoundItemView, FoundList>.First(walk, paging, keys, rows.Count, list,
-            index => list.Entry(index, origin), Cost, (page, cursorId, kept) => Reply(page, cursorId, origin, kept));
+        FoundBuild build = new FoundBuild(new FoundScan(filter, origin, excludeInUse), paging.Order, grouping,
+            excludeInUse);
+        return ThingListPage<IFoundItemView, FoundList>.Scan(walk, paging, build, () => build.List!,
+            index => build.List!.Entry(index, origin), Cost, (page, cursorId, kept) => Reply(page, cursorId, origin, kept));
     }
 
     private static JObject Reply(Page<IFoundItemView> page, string? cursorId, PlayerOrigin origin, FoundList? list)
@@ -109,6 +101,62 @@ internal static class FindItem
         return ReplyFields.Of(("totals", totals), ("prefab_count", totalled.Rows.Count),
             ("item_count", totalled.Items), ("machine_stock_entries", totalled.StockEntries),
             ("silo_entries", totalled.SiloEntries));
+    }
+
+    /// <summary>
+    /// A find item walk's build: the scan and its sort (ScanBuild over FoundScan), then the list in order, grouped when
+    /// asked, in one pass over the kept rows; a walk's key is an entry's index in the list.
+    /// </summary>
+    private sealed class FoundBuild : IWalkBuild
+    {
+        private readonly FoundScan _scan;
+        private readonly ScanBuild _build;
+        private readonly ItemGrouping _grouping;
+        private readonly bool _excludeInUse;
+
+        internal FoundBuild(FoundScan scan, ListOrder order, ItemGrouping grouping, bool excludeInUse)
+        {
+            _scan = scan;
+            _build = new ScanBuild(scan.Scan, scan.Order(order));
+            _grouping = grouping;
+            _excludeInUse = excludeInUse;
+        }
+
+        /// <summary>The list in order, once Done.</summary>
+        internal FoundList? List { get; private set; }
+
+        public bool Done => List != null;
+
+        public int Candidates => _build.Candidates;
+
+        public bool Run(IMonotonicClock clock, double untilMs)
+        {
+            if (List == null && _build.Run(clock, untilMs))
+            {
+                long[] order = _build.Ids();
+                List<FoundRow> rows = new List<FoundRow>(order.Length);
+                foreach (long index in order)
+                {
+                    rows.Add(_scan.Rows[(int)index]);
+                }
+
+                List = new FoundList(rows, _grouping == ItemGrouping.None ? null : FoundItems.Groups(rows, _grouping),
+                    _grouping, _excludeInUse ? _scan.InUse : null);
+            }
+
+            return Done;
+        }
+
+        public long[] Ids()
+        {
+            long[] keys = new long[List!.Count];
+            for (int index = 0; index < keys.Length; index++)
+            {
+                keys[index] = index;
+            }
+
+            return keys;
+        }
     }
 
     /// <summary>

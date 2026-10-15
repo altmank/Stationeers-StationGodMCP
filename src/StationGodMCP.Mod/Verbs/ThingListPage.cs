@@ -10,9 +10,10 @@ using StationGodMCP.Pure.Verbs;
 namespace StationGodMCP.Verbs;
 
 /// <summary>
-/// A list of things answered one page at a time (find container, frame, damaged): a first page from a list sorted in
-/// one go as the call starts (ReadyWalk), a later page from the walk its cursor keeps. Either is taken over as many
-/// frames as describing its things needs (FramedPage), deferred meanwhile (VerbOutcome.Pending), and answered once.
+/// A list of things answered one page at a time (find container, frame, damaged): a first page from a scan spread over
+/// frames (ScanBuild: the candidates one per step, then a bounded sort) or from ids known at once (ReadyWalk), a later
+/// page from the walk its cursor keeps. Either is taken over as many frames as its scan and describing its things need
+/// (FramedPage), deferred meanwhile (VerbOutcome.Pending), and answered once.
 /// With the wire cursor "open" the rest of the list stays under a cursor (cursor_id) when more follows; a later page
 /// with that cursor id takes the walk's next things as they are then, passing over things gone meanwhile, and answers
 /// the counts the first page answered (TCounts, kept under the cursor), since the walk is the first page's list.
@@ -21,10 +22,10 @@ internal sealed class ThingListPage<TView, TCounts> : IPendingResult where TView
 {
     private readonly FramedPage<TView> _page;
     private readonly EntryCost _cost;
-    private readonly TCounts? _counts;
+    private readonly Func<TCounts?> _counts;
     private readonly Func<Page<TView>, string?, TCounts?, JObject> _reply;
 
-    private ThingListPage(FramedPage<TView> page, EntryCost cost, TCounts? counts,
+    private ThingListPage(FramedPage<TView> page, EntryCost cost, Func<TCounts?> counts,
         Func<Page<TView>, string?, TCounts?, JObject> reply)
     {
         _page = page;
@@ -41,7 +42,16 @@ internal sealed class ThingListPage<TView, TCounts> : IPendingResult where TView
         Func<long, TView?> live, EntryCost cost, Func<Page<TView>, string?, TCounts?, JObject> reply) =>
         Run(new ThingListPage<TView, TCounts>(
             FramedPage<TView>.Scan(walk, paging.Offset, LimitOf(paging), new ReadyWalk(sorted, scanned), live), cost,
-            counts, reply));
+            () => counts, reply));
+
+    /// <summary>
+    /// A first page from a scan spread over frames (build): its counts are read once the scan has ended (counts), and
+    /// kept under the cursor as First keeps them; live gives an id's entry, reply the what's reply.
+    /// </summary>
+    internal static VerbOutcome Scan(WalkRequest walk, Paging paging, IWalkBuild build, Func<TCounts> counts,
+        Func<long, TView?> live, EntryCost cost, Func<Page<TView>, string?, TCounts?, JObject> reply) =>
+        Run(new ThingListPage<TView, TCounts>(
+            FramedPage<TView>.Scan(walk, paging.Offset, LimitOf(paging), build, live), cost, counts, reply));
 
     /// <summary>
     /// A walk's later page: its next things, each described as it is now by live, with the counts its first page
@@ -49,14 +59,14 @@ internal sealed class ThingListPage<TView, TCounts> : IPendingResult where TView
     /// </summary>
     internal static VerbOutcome Later(WalkRequest walk, Paging paging, Func<long, TView?> live, EntryCost cost,
         Func<Page<TView>, string?, TCounts?, JObject> reply) =>
-        Run(new ThingListPage<TView, TCounts>(FramedPage<TView>.Later(walk, LimitOf(paging), live), cost, null,
-            reply));
+        Run(new ThingListPage<TView, TCounts>(FramedPage<TView>.Later(walk, LimitOf(paging), live), cost,
+            static () => null, reply));
 
     public bool Step(double untilMs) => _page.Step(StopwatchClock.Instance, untilMs, _cost.MsPerEntry);
 
     public object Result()
     {
-        FramedResult<TView> found = _page.Result(_counts);
+        FramedResult<TView> found = _page.Result(_page.IsScan ? _counts() : null);
         _cost.Expect(found.Page.Entries.Count);
         return _reply(found.Page, found.CursorId, found.Kept as TCounts);
     }

@@ -6,6 +6,7 @@ using Assets.Scripts.Networks;
 using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Motherboards;
 using Assets.Scripts.Objects.Pipes;
+using StationGodMCP.WorldModel;
 
 namespace StationGodMCP.Api.Shared.Game;
 
@@ -80,6 +81,64 @@ internal sealed class DeviceScope
         }
 
         return devices;
+    }
+
+    /// <summary>
+    /// DeviceMap spread over frames (a Work or ScanBuild body): the world scope's Device class candidates checked one per
+    /// step, or the gateway's data networks' devices one per step; then the worn and held items, each joining where
+    /// no device holds its id. devices ends as DeviceMap answers.
+    /// </summary>
+    internal IEnumerable<object?> Scan(Dictionary<long, ScopedTarget> devices)
+    {
+        if (_isWorld)
+        {
+            List<Thing> candidates = StationGodMCP.WorldModel.World.Candidates(WorldClass.Device);
+            yield return null;
+            for (int index = 0; index < candidates.Count; index++)
+            {
+                if (StationGodMCP.WorldModel.World.Holds(WorldClass.Device, candidates[index]) &&
+                    candidates[index] is Device device)
+                {
+                    Add(devices, ScopedTarget.From(device));
+                }
+
+                yield return null;
+            }
+        }
+        else
+        {
+            Dictionary<long, Device> gateway = new Dictionary<long, Device>();
+            foreach (CableNetwork network in Gateway!.GetDataNetworks())
+            {
+                List<Device>? visible = network?.DataDeviceList;
+                for (int index = 0; visible != null && index < visible.Count; index++)
+                {
+                    Device device = visible[index];
+                    Thing? thing = device != null ? ((ILogicable)device).GetAsThing : null;
+                    if (thing != null)
+                    {
+                        gateway[thing.ReferenceId] = device!;
+                    }
+
+                    yield return null;
+                }
+            }
+
+            _gatewayDevices = gateway;
+            foreach (Device device in gateway.Values)
+            {
+                Add(devices, ScopedTarget.From(device));
+                yield return null;
+            }
+        }
+
+        foreach (ScopedTarget worn in ScopedTarget.Worn())
+        {
+            if (!devices.ContainsKey(worn.ReferenceId))
+            {
+                devices[worn.ReferenceId] = worn;
+            }
+        }
     }
 
     /// <summary>Every target in the scope, by reference id.</summary>

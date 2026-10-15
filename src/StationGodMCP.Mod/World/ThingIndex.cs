@@ -272,6 +272,26 @@ internal static class ThingIndex
         return found;
     }
 
+    /// <summary>
+    /// A class's candidates for a scan over frames (WorldIndex.Candidates), membership unchecked: a scan checks each
+    /// with IsMember as its turn comes. In verify mode the class's members are also compared with the game's list
+    /// (OfClass), as a query of the class would be.
+    /// </summary>
+    internal static List<Thing> CandidatesOf(WorldClass worldClass)
+    {
+        RequireReady();
+        if (Verify)
+        {
+            OfClass(worldClass);
+        }
+
+        using ProfScope scope = Prof.Scope(ProfId.WorldIndex);
+        return Index.Candidates((int)worldClass, Seed, InAnyList);
+    }
+
+    /// <summary>Whether a candidate is still in its class's game list (its pool slot), as OfClass checks.</summary>
+    internal static bool IsMember(WorldClass worldClass, Thing? thing) => thing != null && MemberOf(worldClass)(thing);
+
     /// <summary>Refuses game_changed when the index is off.</summary>
     internal static void RequireReady()
     {

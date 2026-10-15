@@ -5,6 +5,7 @@ using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure;
 using StationGodMCP.Pure.Paging;
 using StationGodMCP.Pure.Verbs;
 
@@ -38,27 +39,33 @@ internal static class FindDevice
         }
 
         Selector selector = options.Selector;
-        List<ScopedTarget> kept = new List<ScopedTarget>();
-        foreach (ScopedTarget device in scope.SortedDevices())
+        Dictionary<long, ScopedTarget> devices = new Dictionary<long, ScopedTarget>();
+        return ThingListPage<DeviceView, object>.Scan(walk, paging,
+            new ScanBuild(keys => Kept(scope, selector, devices, keys), ListOrder.ReferenceId), static () => NoCounts,
+            id => ViewOf(scope, devices.TryGetValue(id, out ScopedTarget? device) ? device : null), Cost,
+            (page, cursorId, _) => Reply(page, scope, cursorId));
+    }
+
+    // The scope's devices (DeviceScope.Scan), then each one the prefab and name filters keep keyed by id, one per step.
+    private static IEnumerable<object?> Kept(DeviceScope scope, Selector selector,
+        Dictionary<long, ScopedTarget> devices, ScanKeys keys)
+    {
+        foreach (object? step in scope.Scan(devices))
         {
+            yield return step;
+        }
+
+        foreach (ScopedTarget device in devices.Values)
+        {
+            keys.Candidates++;
             if ((selector.Prefab == null || selector.Prefab.Keeps(device.PrefabName, device.PrefabHash)) &&
                 ItemFilter.Contains(device.DisplayName, selector.Name))
             {
-                kept.Add(device);
+                keys.Add(new ListKey(null, null, 0, device.ReferenceId));
             }
-        }
 
-        long[] ids = new long[kept.Count];
-        Dictionary<long, ScopedTarget> byId = new Dictionary<long, ScopedTarget>(kept.Count);
-        for (int index = 0; index < kept.Count; index++)
-        {
-            ids[index] = kept[index].ReferenceId;
-            byId[ids[index]] = kept[index];
+            yield return null;
         }
-
-        return ThingListPage<DeviceView, object>.First(walk, paging, ids, ids.Length, NoCounts,
-            id => ViewOf(scope, byId.TryGetValue(id, out ScopedTarget? device) ? device : null), Cost,
-            (page, cursorId, _) => Reply(page, scope, cursorId));
     }
 
     private static DeviceView? ViewOf(DeviceScope scope, ScopedTarget? device) =>

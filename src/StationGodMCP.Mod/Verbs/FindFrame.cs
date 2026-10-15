@@ -47,19 +47,10 @@ internal static class FindFrame
 
         CellAir air = OuterFrames.Air();
         PlayerOrigin origin = PlayerOrigin.Current().RequireIf(selector.AroundPlayerM.HasValue);
-        FrameCensus census = FrameCensus.Take(air, origin, selector.AroundPlayerM, includeInner);
-        census.Rows.Sort((a, b) => ListKey.Compare(paging.Order, a.Key, b.Key));
-        Dictionary<long, FrameRow> byId = new Dictionary<long, FrameRow>(census.Rows.Count);
-        long[] ids = new long[census.Rows.Count];
-        for (int index = 0; index < ids.Length; index++)
-        {
-            ids[index] = census.Rows[index].Frame.ReferenceId;
-            byId[ids[index]] = census.Rows[index];
-        }
-
-        return ThingListPage<FrameView, FrameCounts>.First(walk, paging, ids, census.TotalFrames,
-            new FrameCounts(census.TotalFrames, census.TotalOuter),
-            id => byId.TryGetValue(id, out FrameRow? row) ? row.ToView() : null, Cost,
+        FrameCensus census = new FrameCensus(air, origin, selector.AroundPlayerM, includeInner);
+        return ThingListPage<FrameView, FrameCounts>.Scan(walk, paging, new ScanBuild(census.Scan, paging.Order),
+            () => new FrameCounts(census.TotalFrames, census.TotalOuter),
+            id => census.Rows.TryGetValue(id, out FrameRow? row) ? row.ToView() : null, Cost,
             (page, cursorId, counts) => Reply(page, cursorId, counts!, includeInner, origin));
     }
 

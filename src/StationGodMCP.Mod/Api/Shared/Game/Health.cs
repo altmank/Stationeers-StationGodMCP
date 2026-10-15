@@ -12,6 +12,8 @@ using Assets.Scripts.Objects.Pipes;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Paging;
+using StationGodMCP.WorldModel;
 using UnityEngine;
 using World = StationGodMCP.WorldModel.World;
 
@@ -136,55 +138,61 @@ internal sealed class HealthScanFilter
     public double? NearPlayerM { get; }
 }
 
-/// <summary>A scan's things, broken first then worst first, the structures and broken things among them, and the things scanned.</summary>
-internal sealed class HealthScanned
+/// <summary>
+/// A scan of every damaged thing registered (the world index's Thing class), broken first, then worst first; broken
+/// things are listed whatever their (healed) numbers say. It leaves out things being destroyed, indestructible damage
+/// states, entities and organs. Spread over frames: Scan is a ScanBuild body, one candidate per step, and WorstFirst
+/// its order.
+/// </summary>
+internal sealed class HealthScanner
 {
-    internal HealthScanned(List<Thing> things, int structures, int broken, int scanned)
+    private readonly HealthScanFilter _filter;
+    private readonly PlayerOrigin _origin;
+    private readonly Dictionary<long, HealthRow> _rows = new Dictionary<long, HealthRow>();
+
+    internal HealthScanner(HealthScanFilter filter, PlayerOrigin origin)
     {
-        Things = things;
-        Structures = structures;
-        Broken = broken;
-        Scanned = scanned;
+        _filter = filter;
+        _origin = origin;
     }
 
-    public List<Thing> Things { get; }
+    internal int Structures { get; private set; }
 
-    public int Structures { get; }
+    internal int Broken { get; private set; }
 
-    public int Broken { get; }
+    internal int Scanned { get; private set; }
 
-    public int Scanned { get; }
-}
+    /// <summary>A listed thing by reference id, once the scan has met it.</summary>
+    internal Thing? Listed(long id) => _rows.TryGetValue(id, out HealthRow? row) ? row.Thing : null;
 
-/// <summary>
-/// A scan of every damaged thing registered (World.Things), broken first, then worst first; broken
-/// things are listed whatever their (healed) numbers say. It leaves out things being destroyed, indestructible damage
-/// states, entities and organs.
-/// </summary>
-internal static class HealthScanner
-{
-    internal static HealthScanned Scan(HealthScanFilter scan, PlayerOrigin origin)
+    /// <summary>The scan: the Thing class's candidates, each checked and kept as its turn comes, one per step.</summary>
+    internal IEnumerable<object?> Scan(ScanKeys keys)
     {
-        List<Thing> things = World.Things();
-        List<HealthRow> rows = new List<HealthRow>();
-        int structures = 0;
-        int broken = 0;
+        List<Thing> things = World.Candidates(WorldClass.Thing);
+        yield return null;
         for (int index = 0; index < things.Count; index++)
         {
-            HealthRow? row = RowOf(things[index], scan, origin);
-            if (row == null)
+            keys.Candidates++;
+            Thing thing = things[index];
+            if (World.Holds(WorldClass.Thing, thing))
             {
-                continue;
+                Scanned++;
+                HealthRow? row = RowOf(thing, _filter, _origin);
+                if (row != null)
+                {
+                    _rows[thing.ReferenceId] = row;
+                    keys.Add(new ListKey(null, null, 0, thing.ReferenceId));
+                    Structures += thing is Structure ? 1 : 0;
+                    Broken += Wrecks.IsBroken(thing) ? 1 : 0;
+                }
             }
 
-            rows.Add(row);
-            structures += row.Thing is Structure ? 1 : 0;
-            broken += Wrecks.IsBroken(row.Thing) ? 1 : 0;
+            yield return null;
         }
-
-        rows.Sort(static (a, b) => HealthRow.WorstFirst(a, b));
-        return new HealthScanned(rows.ConvertAll(static row => row.Thing), structures, broken, things.Count);
     }
+
+    /// <summary>The scan's order on its keys: broken, then highest ratio, then highest total, then lowest id.</summary>
+    internal int WorstFirst(ListKey a, ListKey b) => HealthRow.WorstFirst(_rows[a.Id], _rows[b.Id]);
 
     /// <summary>
     /// The things worst first (broken, then highest ratio, then highest total, then lowest id), as the scan orders

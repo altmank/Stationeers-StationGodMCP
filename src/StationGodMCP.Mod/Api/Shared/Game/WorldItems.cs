@@ -1,5 +1,6 @@
 #nullable enable
 
+using System;
 using System.Collections.Generic;
 using Assets.Scripts;
 using Assets.Scripts.Objects;
@@ -9,6 +10,7 @@ using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Verbs;
+using StationGodMCP.WorldModel;
 using World = StationGodMCP.WorldModel.World;
 
 namespace StationGodMCP.Api.Shared.Game;
@@ -42,17 +44,52 @@ internal static class WorldItems
         List<ItemRecord> records = new List<ItemRecord>();
         foreach (Item item in items)
         {
-            if (filter.Names(item))
+            ItemRecord? record = Kept(item, filter, origin);
+            if (record != null)
             {
-                ItemRecord record = Describe(item, origin);
-                if (filter.Keeps(record))
-                {
-                    records.Add(record);
-                }
+                records.Add(record);
             }
         }
 
         return records;
+    }
+
+    /// <summary>
+    /// Collect spread over frames (a Work or ScanBuild body): the candidates (the items the index files under the
+    /// filter's names, or the Item class's candidates checked one per step), each item the filter keeps handed to found
+    /// as its turn comes, one candidate per step.
+    /// </summary>
+    internal static IEnumerable<object?> Scan(ItemFilter filter, PlayerOrigin origin, Action<ItemRecord> found)
+    {
+        bool named = filter.IndexMatch.IsActive;
+        IReadOnlyList<Thing> candidates = named ? World.Items(filter.IndexMatch) : World.Candidates(WorldClass.Item);
+        yield return null;
+        for (int index = 0; index < candidates.Count; index++)
+        {
+            Thing candidate = candidates[index];
+            if ((named || World.Holds(WorldClass.Item, candidate)) && candidate is Item item &&
+                !(item == null || item is Organ || item.IsCursor || item.IsBeingDestroyed))
+            {
+                ItemRecord? record = Kept(item, filter, origin);
+                if (record != null)
+                {
+                    found(record);
+                }
+            }
+
+            yield return null;
+        }
+    }
+
+    private static ItemRecord? Kept(Item item, ItemFilter filter, PlayerOrigin origin)
+    {
+        if (!filter.Names(item))
+        {
+            return null;
+        }
+
+        ItemRecord record = Describe(item, origin);
+        return filter.Keeps(record) ? record : null;
     }
 
     /// <summary>

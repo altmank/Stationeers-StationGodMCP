@@ -10,7 +10,9 @@ using Objects.Structures;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Paging;
 using UnityEngine;
+using StationGodMCP.WorldModel;
 using World = StationGodMCP.WorldModel.World;
 
 namespace StationGodMCP.Api.Shared.Game;
@@ -63,54 +65,78 @@ internal static class OuterFrames
             : null;
 }
 
-/// <summary>Every frame in the world with its exposed faces, and the counts.</summary>
+/// <summary>
+/// Every frame in the world with its exposed faces, and the counts: a scan spread over frames (Scan, a ScanBuild body),
+/// one frame of the world index's Frame class per step.
+/// </summary>
 internal sealed class FrameCensus
 {
     private static readonly string[] FaceNames = { "+x", "-x", "+y", "-y", "+z", "-z" };
 
-    private FrameCensus()
+    private readonly CellAir _air;
+    private readonly PlayerOrigin _origin;
+    private readonly double? _near;
+    private readonly bool _includeInner;
+
+    internal FrameCensus(CellAir air, PlayerOrigin origin, double? near, bool includeInner)
     {
+        _air = air;
+        _origin = origin;
+        _near = near;
+        _includeInner = includeInner;
     }
 
-    internal List<FrameRow> Rows { get; } = new List<FrameRow>();
+    /// <summary>The listed frames by reference id, as the scan has found them so far.</summary>
+    internal Dictionary<long, FrameRow> Rows { get; } = new Dictionary<long, FrameRow>();
 
     internal int TotalFrames { get; private set; }
 
     internal int TotalOuter { get; private set; }
 
-    // Every registered frame (World.Frames: the Frame structures of the structures' pool), by reference id.
-    internal static FrameCensus Take(CellAir air, PlayerOrigin origin, double? near, bool includeInner)
+    /// <summary>
+    /// The scan: the Frame class's candidates (World.Candidates), each checked, measured and keyed as its turn comes,
+    /// one per step. A frame gone meanwhile (no longer in the structures' list) is passed over.
+    /// </summary>
+    internal IEnumerable<object?> Scan(ScanKeys keys)
     {
-        FrameCensus census = new FrameCensus();
-        List<Frame> frames = World.Frames();
-        frames.Sort(static (a, b) => a.ReferenceId.CompareTo(b.ReferenceId));
-        for (int index = 0; index < frames.Count; index++)
+        List<Thing> candidates = World.Candidates(WorldClass.Frame);
+        yield return null;
+        for (int index = 0; index < candidates.Count; index++)
         {
-            Frame frame = frames[index];
-            if (frame != null && !frame.IsCursor && !frame.IsBeingDestroyed)
+            keys.Candidates++;
+            if (World.Holds(WorldClass.Frame, candidates[index]) && candidates[index] is Frame frame &&
+                !frame.IsCursor && !frame.IsBeingDestroyed)
             {
-                census.Add(frame, air, origin, near, includeInner);
+                FrameRow? row = Add(frame);
+                if (row != null)
+                {
+                    keys.Add(row.Key);
+                }
             }
-        }
 
-        return census;
+            yield return null;
+        }
     }
 
-    private void Add(Frame frame, CellAir air, PlayerOrigin origin, double? near, bool includeInner)
+    private FrameRow? Add(Frame frame)
     {
-        double? distance = origin.ExactDistanceTo(frame.Position);
-        if (near.HasValue && !(distance <= near.Value))
+        double? distance = _origin.ExactDistanceTo(frame.Position);
+        if (_near.HasValue && !(distance <= _near.Value))
         {
-            return;
+            return null;
         }
 
         TotalFrames++;
-        List<string> exposed = ExposedFaces(frame, air);
+        List<string> exposed = ExposedFaces(frame, _air);
         TotalOuter += exposed.Count > 0 ? 1 : 0;
-        if (exposed.Count > 0 || includeInner)
+        if (exposed.Count == 0 && !_includeInner)
         {
-            Rows.Add(new FrameRow(frame, exposed, distance));
+            return null;
         }
+
+        FrameRow row = new FrameRow(frame, exposed, distance);
+        Rows[frame.ReferenceId] = row;
+        return row;
     }
 
     internal static List<string> ExposedFaces(Frame frame, CellAir air)

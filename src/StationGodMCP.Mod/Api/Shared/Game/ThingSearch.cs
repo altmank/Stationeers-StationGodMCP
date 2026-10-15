@@ -13,6 +13,7 @@ using StationGodMCP.Pure;
 using StationGodMCP.Pure.Paging;
 using StationGodMCP.Pure.Verbs;
 using UnityEngine;
+using StationGodMCP.WorldModel;
 using World = StationGodMCP.WorldModel.World;
 
 namespace StationGodMCP.Api.Shared.Game;
@@ -28,12 +29,19 @@ namespace StationGodMCP.Api.Shared.Game;
 /// </summary>
 internal static class ThingSearch
 {
-    /// <summary>The things a search looks at: those the world index files under the filter's prefabs, else every one.</summary>
+    /// <summary>
+    /// The things a search looks at: those the world index files under the filter's prefabs (checked), else the Thing
+    /// class's candidates unchecked (World.Candidates), which the walk's filter checks one per step (WalkFilter).
+    /// </summary>
     internal static List<Thing> Candidates(ThingFilter filter) =>
-        filter.IndexMatch.IsActive ? World.Things(filter.IndexMatch) : World.Things();
+        filter.IndexMatch.IsActive ? World.Things(filter.IndexMatch) : World.Candidates(WorldClass.Thing);
 
-    /// <summary>The filter as a walk's build asks it, distances from where the player stood when the walk started.</summary>
-    internal static IWalkFilter<Thing> WalkFilter(ThingFilter filter, Vector3? from) => new Walk(filter, from);
+    /// <summary>
+    /// The filter as a walk's build asks it over Candidates, distances from where the player stood when the walk
+    /// started; unchecked candidates are checked for membership as their turn comes.
+    /// </summary>
+    internal static IWalkFilter<Thing> WalkFilter(ThingFilter filter, Vector3? from) =>
+        new Walk(filter, from, !filter.IndexMatch.IsActive);
 
     /// <summary>The thing an id still names, or null when it is gone or being destroyed.</summary>
     internal static Thing? Live(long id)
@@ -105,16 +113,19 @@ internal static class ThingSearch
     {
         private readonly ThingFilter _filter;
         private readonly Vector3? _from;
+        private readonly bool _checkMembership;
 
-        internal Walk(ThingFilter filter, Vector3? from)
+        internal Walk(ThingFilter filter, Vector3? from, bool checkMembership)
         {
             _filter = filter;
             _from = from;
+            _checkMembership = checkMembership;
         }
 
         public bool TryKey(Thing thing, out ListKey key)
         {
-            if (Matches(thing, _filter, _from, out double? distance))
+            if ((!_checkMembership || World.Holds(WorldClass.Thing, thing)) &&
+                Matches(thing, _filter, _from, out double? distance))
             {
                 key = new ThingHit(thing, distance).Key;
                 return true;

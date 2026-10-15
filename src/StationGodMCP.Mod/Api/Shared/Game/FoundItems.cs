@@ -1,9 +1,11 @@
 #nullable enable
 
+using System;
 using System.Collections.Generic;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Paging;
 
 namespace StationGodMCP.Api.Shared.Game;
 
@@ -15,32 +17,6 @@ namespace StationGodMCP.Api.Shared.Game;
 /// </summary>
 internal static class FoundItems
 {
-    /// <summary>The rows the filter keeps, unsorted; inUse the items left out as parts in use (0 when kept).</summary>
-    internal static List<FoundRow> Rows(ItemFilter filter, PlayerOrigin origin, bool excludeInUse, out int inUse)
-    {
-        List<ItemRecord> records = WorldItems.Collect(filter, origin);
-        inUse = excludeInUse ? WorldItems.LeaveOutPartsInUse(records) : 0;
-        List<StockRecord> stock = MachineStock.Collect(filter, origin);
-        List<SiloRecord> silos = SiloStock.Collect(filter, origin);
-        List<FoundRow> rows = new List<FoundRow>(records.Count + stock.Count + silos.Count);
-        foreach (ItemRecord record in records)
-        {
-            rows.Add(new FoundRow.ItemRow(record));
-        }
-
-        foreach (StockRecord record in stock)
-        {
-            rows.Add(new FoundRow.StockRow(record));
-        }
-
-        foreach (SiloRecord record in silos)
-        {
-            rows.Add(new FoundRow.SiloRow(record));
-        }
-
-        return rows;
-    }
-
     /// <summary>The rows grouped per holder and prefab, or per prefab, in the rows' order.</summary>
     internal static List<ItemGroup<FoundRow>> Groups(List<FoundRow> rows, ItemGrouping grouping) =>
         ItemGroups.Of(rows, grouping, static row => row.HolderId, static row => row.GroupName, static row => row.Quantity);
@@ -50,6 +26,72 @@ internal static class FoundItems
         grouping == ItemGrouping.Holder
             ? new HolderGroupView(group.First.Facts(), group.Entries, group.Quantity)
             : new PrefabGroupView(group.First.Facts(), group.Entries, group.Quantity, group.Holders);
+}
+
+/// <summary>
+/// FoundItems.Rows spread over frames (a ScanBuild body): the items one candidate per step (WorldItems.Scan), the parts
+/// in use left out, the machines' stock and the silos' stores, then each row keyed by its index in Rows, one per step.
+/// Order sorts the keys by their rows' keys, so the rows come out as a one-shot sort of Rows gives them.
+/// </summary>
+internal sealed class FoundScan
+{
+    private readonly ItemFilter _filter;
+    private readonly PlayerOrigin _origin;
+    private readonly bool _excludeInUse;
+
+    internal FoundScan(ItemFilter filter, PlayerOrigin origin, bool excludeInUse)
+    {
+        _filter = filter;
+        _origin = origin;
+        _excludeInUse = excludeInUse;
+    }
+
+    /// <summary>The rows the filter keeps, in the scan's order; a key's id is its row's index.</summary>
+    internal List<FoundRow> Rows { get; } = new List<FoundRow>();
+
+    /// <summary>The items left out as parts in use (0 when kept).</summary>
+    internal int InUse { get; private set; }
+
+    internal IEnumerable<object?> Scan(ScanKeys keys)
+    {
+        List<ItemRecord> records = new List<ItemRecord>();
+        foreach (object? step in WorldItems.Scan(_filter, _origin, records.Add))
+        {
+            yield return step;
+        }
+
+        InUse = _excludeInUse ? WorldItems.LeaveOutPartsInUse(records) : 0;
+        yield return null;
+        List<StockRecord> stock = MachineStock.Collect(_filter, _origin);
+        yield return null;
+        List<SiloRecord> silos = SiloStock.Collect(_filter, _origin);
+        yield return null;
+        foreach (ItemRecord record in records)
+        {
+            Rows.Add(new FoundRow.ItemRow(record));
+        }
+
+        foreach (StockRecord record in stock)
+        {
+            Rows.Add(new FoundRow.StockRow(record));
+        }
+
+        foreach (SiloRecord record in silos)
+        {
+            Rows.Add(new FoundRow.SiloRow(record));
+        }
+
+        for (int index = 0; index < Rows.Count; index++)
+        {
+            keys.Candidates++;
+            keys.Add(new ListKey(null, null, 0, index));
+            yield return null;
+        }
+    }
+
+    /// <summary>The list's order on the scan's keys: their rows' keys in order.</summary>
+    internal Comparison<ListKey> Order(ListOrder order) =>
+        (a, b) => ListKey.Compare(order, Rows[(int)a.Id].Key, Rows[(int)b.Id].Key);
 }
 
 /// <summary>An item, a machine's stock or a silo's stored thing, sortable together.</summary>

@@ -236,6 +236,27 @@ internal sealed class WorldIndex<T> where T : class
     }
 
     /// <summary>
+    /// A class's bucket as it is now, its membership unchecked: the candidates of a scan spread over frames, which checks
+    /// each one as its turn comes (a thing gone meanwhile is refused then). Proportional to the class, never the world.
+    /// </summary>
+    internal List<T> Candidates(int classNumber, Func<IEnumerable<T>> seed, Func<T, bool> inAnyList)
+    {
+        HashSet<T> bucket = _byClass[ClassIndex(classNumber)];
+        Seed(seed);
+        lock (_gate)
+        {
+            Drain(inAnyList);
+            List<T> candidates = new List<T>(bucket.Count);
+            foreach (T thing in bucket)
+            {
+                candidates.Add(thing);
+            }
+
+            return candidates;
+        }
+    }
+
+    /// <summary>
     /// Once a frame: files up to budget things, the seed's first, then the arrivals told before the previous Warm; with
     /// every arrival filed, drops the leaves no list holds. Main thread.
     /// </summary>

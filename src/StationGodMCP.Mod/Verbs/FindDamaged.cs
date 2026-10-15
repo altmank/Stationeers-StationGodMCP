@@ -52,19 +52,11 @@ internal static class FindDamaged
         }
 
         PlayerOrigin origin = PlayerOrigin.Current().RequireIf(selector.AroundPlayerM.HasValue);
-        HealthScanned scanned = HealthScanner.Scan(new HealthScanFilter(minimum, options.StructuresOnly == true,
+        HealthScanner scanner = new HealthScanner(new HealthScanFilter(minimum, options.StructuresOnly == true,
             options.BrokenOnly == true, selector.AroundPlayerM), origin);
-        Dictionary<long, Thing> byId = new Dictionary<long, Thing>(scanned.Things.Count);
-        long[] ids = new long[scanned.Things.Count];
-        for (int index = 0; index < ids.Length; index++)
-        {
-            ids[index] = scanned.Things[index].ReferenceId;
-            byId[ids[index]] = scanned.Things[index];
-        }
-
-        return ThingListPage<HealthView, DamageCounts>.First(walk, paging, ids, scanned.Scanned,
-            new DamageCounts(scanned.Structures, scanned.Broken, scanned.Scanned),
-            id => byId.TryGetValue(id, out Thing? thing) && !thing.IsBeingDestroyed
+        return ThingListPage<HealthView, DamageCounts>.Scan(walk, paging, new ScanBuild(scanner.Scan, scanner.WorstFirst),
+            () => new DamageCounts(scanner.Structures, scanner.Broken, scanner.Scanned),
+            id => scanner.Listed(id) is { IsBeingDestroyed: false } thing
                 ? HealthReader.Read(thing, origin, withNetworks)
                 : null,
             Cost, (page, cursorId, counts) => Reply(page, cursorId, counts!, minimum, origin));
