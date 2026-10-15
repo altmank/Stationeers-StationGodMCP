@@ -7,6 +7,7 @@ using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using UnityEngine;
 using StationGodMCP.Pure.Profiling;
+using StationGodMCP.Pure.Scheduling;
 
 namespace StationGodMCP.Api.Shared.Game.Upgrades;
 
@@ -17,9 +18,26 @@ internal static class UpgradeReports
     internal const string Scheduled = "scheduled";
     internal const string Refused = "refused";
 
+    /// <summary>How many pieces' views one step of Building describes.</summary>
+    internal const int PiecesAStep = 32;
+
     /// <summary>The plan's report; limit, when given, is how many entries each list shows instead of the request's.</summary>
     [Profiled]
     internal static UpgradeReportView Of(UpgradePlan plan, string status, string? jobId, int? limit = null)
+    {
+        Answer<UpgradeReportView> report = new Answer<UpgradeReportView>();
+        foreach (object? _ in Building(plan, status, jobId, limit, report))
+        {
+        }
+
+        return report.Value;
+    }
+
+    /// <summary>
+    /// The plan's report as work over frames (A3): the pieces' views a batch a step, each other part a step of its own.
+    /// </summary>
+    internal static IEnumerable<object?> Building(UpgradePlan plan, string status, string? jobId, int? limit,
+        Answer<UpgradeReportView> answer)
     {
         UpgradeRequest request = plan.Request;
         int shown = limit ?? request.ListLimit;
@@ -27,13 +45,22 @@ internal static class UpgradeReports
         UpgradeHeader header = new UpgradeHeader(goal.Tool, goal.Target, status, jobId,
             request.IncludeNotes ? goal.Notes(request.Family) : null);
         UpgradeCounts counts = new UpgradeCounts(plan.Total, plan.Swaps.Count, plan.Kept.Count, plan.Unmatched.Count);
-        UpgradeLists lists = new UpgradeLists(plan.Problems, Pieces(plan, shown), ByPrefab(plan),
-            Skipped(plan.Kept, shown), Skipped(plan.Unmatched, shown), plan.Warnings);
+        List<UpgradePieceView> pieces = new List<UpgradePieceView>(System.Math.Min(plan.Swaps.Count, shown));
+        for (int from = 0; from < pieces.Capacity; from += PiecesAStep)
+        {
+            Pieces(plan, from, System.Math.Min(from + PiecesAStep, pieces.Capacity), pieces);
+            yield return null;
+        }
+
+        UpgradeLists lists = new UpgradeLists(plan.Problems, pieces, ByPrefab(plan), Skipped(plan.Kept, shown),
+            Skipped(plan.Unmatched, shown), plan.Warnings);
+        yield return null;
         UpgradeResources resources = new UpgradeResources(
             plan.From != null ? GameLookup.ViewOf(plan.From) : null, Coils(plan), request.Refund, RefundTotals(plan),
             Networks(plan), Refunds.Forecast(plan.Refunds, RefundItems(plan)));
-        return new UpgradeReportView(header, counts, lists, resources, plan.Links?.View(), DeadEnds(plan, shown),
-            Loops(plan), Redundant(plan, shown), Riding(plan, shown));
+        yield return null;
+        answer.Value = new UpgradeReportView(header, counts, lists, resources, plan.Links?.View(),
+            DeadEnds(plan, shown), Loops(plan), Redundant(plan, shown), Riding(plan, shown));
     }
 
     private static UpgradeRidingList? Riding(UpgradePlan plan, int limit)
@@ -114,13 +141,12 @@ internal static class UpgradeReports
         return new RotationView(euler.x, euler.y, euler.z);
     }
 
+    // The views of the plan's swaps from up to (not including) until, added to pieces.
     [Profiled]
-    private static List<UpgradePieceView> Pieces(UpgradePlan plan, int limit)
+    private static void Pieces(UpgradePlan plan, int from, int until, List<UpgradePieceView> pieces)
     {
-        int count = System.Math.Min(plan.Swaps.Count, limit);
-        List<UpgradePieceView> pieces = new List<UpgradePieceView>(count);
         UpgradeFamily family = plan.Request.Family;
-        for (int index = 0; index < count; index++)
+        for (int index = from; index < until; index++)
         {
             PlannedSwap swap = plan.Swaps[index];
             IReferencable? network = family.NetworkOf(swap.Old);
@@ -130,8 +156,6 @@ internal static class UpgradeReports
             pieces.Add(new UpgradePieceView(GameLookup.ViewOf(swap.Old), GameLookup.ViewOf(swap.Old.Position),
                 RotationOf(swap.OldRotation), target, network != null ? new ThingId(network.ReferenceId) : null, ends));
         }
-
-        return pieces;
     }
 
     private static UpgradeCleanView CleanViewOf(UpgradePlan plan, PlannedSwap swap, CleanDetail detail)

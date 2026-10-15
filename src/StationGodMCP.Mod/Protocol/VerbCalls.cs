@@ -163,6 +163,7 @@ internal sealed class PendingVerbCall : IDeferredWork
     private readonly double _queueWaitMs;
     private readonly VerbNotes _notes;
     private IPendingResult _pending;
+    private VerbOutcome? _outcome;
     private double _spentMs;
 
     internal PendingVerbCall(VerbRunner runner, CallRequest request, string what, IPendingResult pending,
@@ -177,13 +178,34 @@ internal sealed class PendingVerbCall : IDeferredWork
         _queueWaitMs = queueWaitMs;
     }
 
+    // A result that goes on with more work (VerbOutcome.Pending: a report described over frames) is stepped on in
+    // the same slice while the slice has time, and in later slices after.
     public bool Step(double untilMs)
     {
         long started = Stopwatch.GetTimestamp();
         VerbNotes.Begin();
         try
         {
-            return _pending.Step(untilMs);
+            while (true)
+            {
+                if (!_pending.Step(untilMs))
+                {
+                    return false;
+                }
+
+                VerbOutcome outcome = VerbCalls.Handled(() => VerbOutcome.Of(_pending.Result()));
+                if (!(outcome is VerbOutcome.Pending next))
+                {
+                    _outcome = outcome;
+                    return true;
+                }
+
+                _pending = next.Work;
+                if (StopwatchClock.Instance.NowMs >= untilMs)
+                {
+                    return false;
+                }
+            }
         }
         catch (Exception exception)
         {
@@ -202,7 +224,7 @@ internal sealed class PendingVerbCall : IDeferredWork
     {
         long started = Stopwatch.GetTimestamp();
         VerbNotes.Begin();
-        VerbOutcome outcome = VerbCalls.Handled(() => VerbOutcome.Of(_pending.Result()));
+        VerbOutcome outcome = _outcome ?? VerbCalls.Handled(() => VerbOutcome.Of(_pending.Result()));
         _notes.Take();
         _spentMs += (Stopwatch.GetTimestamp() - started) * 1000.0 / Stopwatch.Frequency;
         return VerbCalls.Write(_runner, _request, _what, outcome, _spentMs, _queueWaitMs, _notes);

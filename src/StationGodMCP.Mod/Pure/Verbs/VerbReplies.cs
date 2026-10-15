@@ -58,29 +58,30 @@ internal abstract class VerbOutcome
     }
 
     /// <summary>
-    /// An outcome taken to its end within this call: a pending one's work stepped until it ends, for a caller that runs
-    /// a call itself and needs its answer now (undo's replay).
+    /// An outcome taken to its end within this call: a pending one's work stepped until it ends (and any work its
+    /// result goes on with), for a caller that runs a call itself and needs its answer now (undo's replay).
     /// </summary>
     internal static VerbOutcome Settled(VerbOutcome outcome)
     {
-        if (!(outcome is Pending pending))
+        while (outcome is Pending pending)
         {
-            return outcome;
+            while (!pending.Work.Step(double.PositiveInfinity))
+            {
+            }
+
+            outcome = Of(pending.Work.Result());
         }
 
-        while (!pending.Work.Step(double.PositiveInfinity))
-        {
-        }
-
-        return Of(pending.Work.Result());
+        return outcome;
     }
 
-    /// <summary>A pending result's outcome: Answered or Refused as given, any other reply as Answered.</summary>
+    /// <summary>
+    /// A result's outcome: Answered, Refused or Pending as given (a pending result may go on with more work: a report
+    /// described over frames), any other reply as Answered.
+    /// </summary>
     internal static VerbOutcome Of(object? result) => result switch
     {
-        Answered answered => answered,
-        Refused refused => refused,
-        Pending => throw new System.InvalidOperationException("A pending verb result is an answer, a refusal or a reply."),
+        VerbOutcome outcome => outcome,
         null => throw new System.InvalidOperationException("A pending verb result is an answer, a refusal or a reply."),
         _ => new Answered(result)
     };

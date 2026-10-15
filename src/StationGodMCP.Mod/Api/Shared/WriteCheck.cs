@@ -107,6 +107,6 @@ internal sealed class WriteCheck<TPlan> where TPlan : class
                     new[] { new ReportProblem(null, null, refused) }));
         }
 
-        return report.Acts ? act(Plan) : new VerbOutcome.Answered(describe(Plan));
+        return report.Acts ? act(Plan) : VerbOutcome.Of(describe(Plan));
     }
 }

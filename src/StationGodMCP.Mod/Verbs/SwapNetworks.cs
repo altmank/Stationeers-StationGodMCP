@@ -171,7 +171,9 @@ internal static class SwapNetworks
         bool pipes = request.Family is PipeFamily;
         return WriteCheck<UpgradePlan>.Planned(answer => UpgradePlanner.Planning(request, answer), call.Report,
             plan => Act(plan, request, call, named, unread, mark, pipes),
-            plan => Described(plan, named, unread, mark, pipes, call.AcknowledgeGasLost));
+            plan => WorkResult<ReportReply>.Of(
+                answer => Describing(plan, named, unread, mark, pipes, call.AcknowledgeGasLost, answer),
+                static report => report));
     }
 
     private static VerbOutcome Act(UpgradePlan plan, UpgradeRequest request, NetworkSwapCall call,
@@ -189,9 +191,21 @@ internal static class SwapNetworks
         return new VerbOutcome.Answered(reply);
     }
 
-    [Profiled]
     private static ReportReply Described(UpgradePlan plan, List<ThingId?> named, List<ReportProblem> unread,
         string mark, bool pipes, string? acknowledge)
+    {
+        Pure.Scheduling.Answer<ReportReply> report = new Pure.Scheduling.Answer<ReportReply>();
+        foreach (object? _ in Describing(plan, named, unread, mark, pipes, acknowledge, report))
+        {
+        }
+
+        return report.Value;
+    }
+
+    // The report as work over frames (A3): its targets a batch a step, then the plan's report view (UpgradeReports).
+    [Profiled]
+    private static IEnumerable<object?> Describing(UpgradePlan plan, List<ThingId?> named, List<ReportProblem> unread,
+        string mark, bool pipes, string? acknowledge, Pure.Scheduling.Answer<ReportReply> answer)
     {
         List<ReportProblem> problems = new List<ReportProblem>(unread);
         problems.AddRange(JobReports.Problems(plan.Problems, named));
@@ -202,19 +216,31 @@ internal static class SwapNetworks
         }
 
         List<ReportTarget> targets = new List<ReportTarget>(plan.Swaps.Count);
-        foreach (PlannedSwap swap in plan.Swaps)
+        for (int at = 0; at < plan.Swaps.Count; at++)
         {
+            PlannedSwap swap = plan.Swaps[at];
             for (int index = 0; index < swap.Olds.Count; index++)
             {
                 SmallGrid old = swap.Olds[index].Piece;
                 string becomes = index == 0 && swap.First is { } first ? first.Prefab.PrefabName : Removed;
                 targets.Add(new ReportTarget(new ThingId(old.ReferenceId).ToString(), null, Names.Of(old),
-                    new JValue(old.PrefabName), new JValue(becomes), mark));
+                    old.PrefabName, becomes, mark));
+            }
+
+            if (at % UpgradeReports.PiecesAStep == UpgradeReports.PiecesAStep - 1)
+            {
+                yield return null;
             }
         }
 
-        UpgradeReportView view = UpgradeReports.Of(plan, UpgradeReports.DryRun, null, UpgradePlanner.MaximumPieces);
-        return Report.Of(targets, JobReports.Body(view, problems.Count == 0), problems);
+        Pure.Scheduling.Answer<UpgradeReportView> view = new Pure.Scheduling.Answer<UpgradeReportView>();
+        foreach (object? step in UpgradeReports.Building(plan, UpgradeReports.DryRun, null, UpgradePlanner.MaximumPieces,
+                     view))
+        {
+            yield return step;
+        }
+
+        answer.Value = Report.Of(targets, JobReports.Body(view.Value, problems.Count == 0), problems);
     }
 }
 
