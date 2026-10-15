@@ -9,6 +9,7 @@ using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Verbs;
@@ -19,6 +20,7 @@ namespace StationGodMCP.Verbs;
 /// planned view, rows cells listed, without the keys a job has (JobReports.Body). Read only, with no player needed:
 /// the refund is an estimate (SourceRule.PlanRemoval).
 /// </summary>
+[ReplyFact(FactRule.Live, "structures, networks and their contents")]
 internal static class PlanRemoval
 {
     internal static VerbOutcome Run(PlanRemovalOptions options)

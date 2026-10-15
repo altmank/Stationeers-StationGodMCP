@@ -11,6 +11,7 @@ using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Shared.Game.Trading;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Profiling;
 using StationGodMCP.Pure.Scheduling;
 using StationGodMCP.Pure.Verbs;
@@ -33,6 +34,7 @@ namespace StationGodMCP.Verbs;
 /// is landed, sellable is the trade window's own count (TradeDataHelper.GetSellItemQuantity: the pad network's vending
 /// machines and the player, or the pad network's gas in units).
 /// </summary>
+[ReplyFact(FactRule.Live, "a trader's stock and prices")]
 internal static class TradeInventory
 {
     [Profiled]

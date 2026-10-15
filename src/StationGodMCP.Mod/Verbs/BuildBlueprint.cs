@@ -3,6 +3,7 @@
 using System.Collections.Generic;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Verbs;
@@ -16,6 +17,8 @@ namespace StationGodMCP.Verbs;
 /// notes. A check that refuses the paste (no host, no BlueprintMod, no such file, a paste still placing) is the
 /// report's one problem.
 /// </summary>
+[ReplyFact(FactRule.Followed, "the prefab catalogues", Keeper = typeof(StationGodMCP.WorldModel.Prefabs))]
+[ReplyFact(FactRule.Live, "what it changes, read and checked when it acts")]
 internal static class BuildBlueprint
 {
     internal static VerbOutcome Run(BuildBlueprintOptions options)

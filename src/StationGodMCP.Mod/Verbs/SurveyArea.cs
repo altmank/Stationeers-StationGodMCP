@@ -6,6 +6,7 @@ using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Paging;
 using StationGodMCP.Pure.Scheduling;
 using StationGodMCP.Pure.Verbs;
@@ -21,6 +22,7 @@ namespace StationGodMCP.Verbs;
 /// they are then. What stands in a page's cells is gathered over frames too (AreaSurvey.Contents). Answered in its
 /// declared shape (SurveyAreaReply). Read only.
 /// </summary>
+[ReplyFact(FactRule.Live, "the box's cells and the structures in them")]
 internal static class SurveyArea
 {
     private const string Refund = "refund";

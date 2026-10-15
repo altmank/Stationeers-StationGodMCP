@@ -5,6 +5,7 @@ using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Electrical;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Verbs;
@@ -15,6 +16,7 @@ namespace StationGodMCP.Verbs;
 /// (DishAiming: its own model posed on a coarse grid, then a shrinking step, and put back). contact is for a dish only,
 /// and a dish needs it; a thing that is neither is not_aimable. A list answers one row each. Read only.
 /// </summary>
+[ReplyFact(FactRule.Live, "dishes, panels and their targets")]
 internal static class PlanAim
 {
     internal static VerbOutcome Run(PlanAimOptions options)

@@ -7,6 +7,7 @@ using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Verbs;
@@ -18,6 +19,8 @@ namespace StationGodMCP.Verbs;
 /// list, the plants whole, so offset 0, no limit and has_more false). A list of ids answers one row per id (Rows), each
 /// the plant in full or why it is none, under the game's clock. Read only.
 /// </summary>
+[ReplyFact(FactRule.Followed, "which things exist, by class and prefab", Keeper = typeof(StationGodMCP.WorldModel.ThingIndex))]
+[ReplyFact(FactRule.Live, "each plant's growth and health")]
 internal static class FindPlant
 {
     private const string Unplanted = "unplanted";

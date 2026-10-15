@@ -3,6 +3,7 @@
 using System.Collections.Generic;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Verbs;
@@ -15,6 +16,7 @@ namespace StationGodMCP.Verbs;
 /// only queue for later, is refused as command_not_found or command_not_ready. Cheat: confirm: true runs it, and
 /// without confirm the call reports the command it would run and runs nothing.
 /// </summary>
+[ReplyFact(FactRule.Live, "the game's console and the mod's profiler")]
 internal static class ServerCommand
 {
     internal static VerbOutcome Run(ServerCommandOptions options)

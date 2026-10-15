@@ -1,6 +1,7 @@
 #nullable enable
 
 using Assets.Scripts.Objects;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Paging;
 using System.Collections.Generic;
 using Newtonsoft.Json;
@@ -23,6 +24,9 @@ namespace StationGodMCP.Verbs;
 /// wire cursor the rest stays under a cursor (ThingListPage), whose later pages describe each member as it is then and
 /// answer the first page's summary and counts. Read only.
 /// </summary>
+[ReplyFact(FactRule.Followed, "cable networks' members", Keeper = typeof(Assets.Scripts.Networks.CableNetwork))]
+[ReplyFact(FactRule.Followed, "pipe and chute networks' members", Keeper = typeof(Networks.StructureNetwork))]
+[ReplyFact(FactRule.Live, "each member's state, ends and loads")]
 internal static class SurveyNetwork
 {
     private const string List = "members";

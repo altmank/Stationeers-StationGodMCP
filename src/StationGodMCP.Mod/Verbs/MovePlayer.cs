@@ -3,6 +3,7 @@
 using System.Collections.Generic;
 using StationGodMCP.Api;
 using StationGodMCP.Api.Shared;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Verbs;
@@ -12,6 +13,7 @@ namespace StationGodMCP.Verbs;
 /// thing or beside another player, dropped onto safe ground when asked (PlayerMovePlan). A cheat: without confirm the
 /// call reports where the player would go and moves no one.
 /// </summary>
+[ReplyFact(FactRule.Live, "what it changes, read and checked when it acts")]
 internal static class MovePlayer
 {
     internal static VerbOutcome Run(MovePlayerOptions options)

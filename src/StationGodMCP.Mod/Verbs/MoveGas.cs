@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using StationGodMCP.Api;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Verbs;
@@ -14,6 +15,7 @@ namespace StationGodMCP.Verbs;
 /// without confirm the call reports the prediction from the same checks and queues nothing. A confirmed move answers
 /// status queued and its transfer_id, which inspect job follows.
 /// </summary>
+[ReplyFact(FactRule.Live, "what it changes, read and checked when it acts")]
 internal static class MoveGas
 {
     internal static VerbOutcome Run(MoveGasOptions options)

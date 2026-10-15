@@ -2,6 +2,7 @@
 
 using System.Collections.Generic;
 using StationGodMCP.Api.Shared.Game.Trading;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Verbs;
@@ -15,6 +16,7 @@ namespace StationGodMCP.Verbs;
 /// be held by a player or a vending machine (SellCard), and lines of one entry are sold together (SellRun). The
 /// per-id flow and the replies are TradeRuns'; one id answers the trade itself, a list one row per id.
 /// </summary>
+[ReplyFact(FactRule.Live, "what it changes, read and checked when it acts")]
 internal static class TradeSell
 {
     internal static VerbOutcome Run(TradeSellOptions options)

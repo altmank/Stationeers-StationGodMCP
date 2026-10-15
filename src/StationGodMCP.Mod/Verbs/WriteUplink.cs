@@ -2,6 +2,7 @@
 
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Verbs;
@@ -11,6 +12,7 @@ namespace StationGodMCP.Verbs;
 /// (DataLinks.Point), the uplink in the gateway's scope. One id. Answers {uplink, previous_downlink, link}. Host only;
 /// cannot be undone.
 /// </summary>
+[ReplyFact(FactRule.Live, "what it changes, read and checked when it acts")]
 internal static class WriteUplink
 {
     internal static VerbOutcome Run(WriteUplinkOptions options)

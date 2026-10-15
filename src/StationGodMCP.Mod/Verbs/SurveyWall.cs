@@ -7,6 +7,7 @@ using StationGodMCP.Api.Shared.Game.Build;
 using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Verbs;
@@ -16,6 +17,7 @@ namespace StationGodMCP.Verbs;
 /// half_width metres around at (or around the point the look ray hits, with looking), with its sections, its things by
 /// key and, with free_rects, where a rectangle fits (WallMaps). Answered in its declared shape. Read only.
 /// </summary>
+[ReplyFact(FactRule.Live, "the wall's cells, faces and openings")]
 internal static class SurveyWall
 {
     internal static VerbOutcome Run(SurveyWallOptions options)

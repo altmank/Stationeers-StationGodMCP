@@ -12,6 +12,7 @@ using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Shared.Game.Trading;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Verbs;
 using UnityEngine;
 using World = StationGodMCP.WorldModel.World;
@@ -25,6 +26,7 @@ namespace StationGodMCP.Verbs;
 /// SatelliteDish.DishForward: angle error = acos(dot(DishForward, contact.Angle)) (SatelliteDish.ScanForDishContacts).
 /// No options. Read only.
 /// </summary>
+[ReplyFact(FactRule.Live, "the trader contacts the game lists")]
 internal static class TradeContacts
 {
     internal static VerbOutcome Run(TradeContactsOptions options)

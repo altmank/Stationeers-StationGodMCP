@@ -1,6 +1,7 @@
 #nullable enable
 
 using StationGodMCP.Api.Shared.Game;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Profiling;
 using StationGodMCP.Pure.Verbs;
 
@@ -11,6 +12,7 @@ namespace StationGodMCP.Verbs;
 /// stats (GeneReader); with one id, unit picks the set, default the top; include notes adds each gene's fixed text. A
 /// list of ids answers one row each, every one its top set. Read only.
 /// </summary>
+[ReplyFact(FactRule.Live, "the thing's values as the game holds them now")]
 internal static class InspectGenes
 {
     private const string Notes = "notes";

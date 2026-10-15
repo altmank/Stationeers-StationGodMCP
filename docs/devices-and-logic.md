@@ -306,6 +306,13 @@ wait for the next frame, in order (see [configuration](configuration.md)).
 `runtime.job_settles` counts pipe jobs' settles after each piece: `run`, `skipped` (the game had no gas change queued,
 so applying the queues would have done nothing) and `unchecked` (settled because the game's queues could not be read).
 
+`runtime.facts` reports the facts the mod keeps from the game's change points instead of reading them again per call:
+`frame_faces` (frames' exposed faces: masks `kept`, `measured`, `reused`, `dropped` by a change near them, and
+`cells_told`), `damaged` (the damaged and wrecked `things`, `waiting` to be filed, `filed`) and `gateway_maps`
+(gateways' device maps `kept`, `built`, `reused`, and the data-network changes told, `network_changes`); each says
+whether it is on (`ready`: its change points are hooked) and, with `[Performance] VerifyFacts`, the checks against the
+game (`verified`) and the `differences`.
+
 `include: ["counters"]` adds the counters of the mod's game-side work. `runtime.world_index` then counts the things
 the game reported spawning (`arrived`) and despawning (`left`) since load, and `runtime.job_holds` counts jobs' holds
 of the game tick by length, profiling on or off: `under_100ms`, `under_1s`, `under_10s`, `under_60s` and `over_60s`

@@ -10,6 +10,7 @@ using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Verbs;
 using UnityEngine;
 using StationGodMCP.Pure.Profiling;
@@ -248,6 +249,7 @@ internal static class SwapNetworks
 /// swap chute (catalogue swap.json): chute pieces no item can pass to a consumer removed, junctions left with one way
 /// made plain (RemoveDeadChutes); spare is never removed or replaced, riding says what a piece holding an item does.
 /// </summary>
+[ReplyFact(FactRule.Live, "what it changes, read and checked when it acts")]
 internal static class SwapChute
 {
     // The job's name in its status and in inspect job.
@@ -303,6 +305,7 @@ internal sealed class TidyOptions
 /// swap cable (catalogue swap.json): cable upgraded in place to heavy or super_heavy (heavy when tidy is left out), or
 /// a network tidied.
 /// </summary>
+[ReplyFact(FactRule.Live, "what it changes, read and checked when it acts")]
 internal static class SwapCable
 {
     // The jobs' names in their status and in inspect job.
@@ -322,6 +325,7 @@ internal static class SwapCable
 /// swap pipe (catalogue swap.json): pipe made insulated in place (insulated when tidy is left out) or its burst pieces
 /// made new (repair), or a network tidied, keeping each network's contents.
 /// </summary>
+[ReplyFact(FactRule.Live, "what it changes, read and checked when it acts")]
 internal static class SwapPipe
 {
     // The jobs' names in their status and in inspect job.

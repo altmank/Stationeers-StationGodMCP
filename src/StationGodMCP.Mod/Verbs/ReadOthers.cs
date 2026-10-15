@@ -9,6 +9,7 @@ using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Shared.Game.Flight;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Verbs;
@@ -19,6 +20,7 @@ namespace StationGodMCP.Verbs;
 /// (DeviceMemory). The device in the gateway's scope, by id or "looking_at"; a list of ids answers one row each. Read
 /// only.
 /// </summary>
+[ReplyFact(FactRule.Live, "memory values")]
 internal static class ReadMemory
 {
     internal static VerbOutcome Run(ReadMemoryOptions options)
@@ -48,6 +50,8 @@ internal static class ReadMemory
 /// reading 0 (include zero_ratios keeps them) (DeviceSnapshots); {gateway_id, devices, count, matched_count,
 /// truncated}. Read only.
 /// </summary>
+[ReplyFact(FactRule.Followed, "which things exist, by class and prefab", Keeper = typeof(StationGodMCP.WorldModel.ThingIndex))]
+[ReplyFact(FactRule.Live, "logic values")]
 internal static class ReadSnapshot
 {
     internal static VerbOutcome Run(ReadSnapshotOptions options)
@@ -78,6 +82,7 @@ internal static class ReadSnapshot
 /// every recording without its rows. id names the rocket by its id, name, network or any part; left out, the only
 /// rocket. Read only.
 /// </summary>
+[ReplyFact(FactRule.Live, "the mod's flight log records")]
 internal static class ReadFlightLog
 {
     internal static VerbOutcome Run(ReadFlightLogOptions options)

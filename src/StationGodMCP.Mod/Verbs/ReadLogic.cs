@@ -5,6 +5,7 @@ using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure.DeviceReads;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Verbs;
@@ -17,6 +18,7 @@ namespace StationGodMCP.Verbs;
 /// atmosphere or reagents, or include clock, one row per entry (DeviceReads), each part asked for or its error. Each
 /// row fails alone. Read only.
 /// </summary>
+[ReplyFact(FactRule.Live, "logic values")]
 internal static class ReadLogic
 {
     internal static VerbOutcome Run(ReadLogicOptions options)

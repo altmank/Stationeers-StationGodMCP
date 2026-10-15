@@ -39,4 +39,11 @@ internal sealed class ReplyFactAttribute : Attribute
 
     /// <summary>Who keeps a followed or refreshed fact; null for a live one and on a keeper itself.</summary>
     public Type? Keeper { get; set; }
+
+    /// <summary>
+    /// On a keeper: writes may read it, because every answer it gives is the game's own (the world index checks each
+    /// thing against the game's list) or cannot change within a world (the prefab catalogues). A keeper without it is
+    /// never read by a write: plans read the game again when they act.
+    /// </summary>
+    public bool WritesMayRead { get; set; }
 }

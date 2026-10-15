@@ -5,6 +5,7 @@ using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Paging;
 using StationGodMCP.Pure.Profiling;
 using StationGodMCP.Pure.Shaping;
@@ -20,6 +21,7 @@ namespace StationGodMCP.Verbs;
 /// read each piece again and answer the network's facts as the first page found them. id or network, one of them.
 /// Read only.
 /// </summary>
+[ReplyFact(FactRule.Live, "the thing's values as the game holds them now")]
 internal static class InspectHealth
 {
     private const string Option = "network";

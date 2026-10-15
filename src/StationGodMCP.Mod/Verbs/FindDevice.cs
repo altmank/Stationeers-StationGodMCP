@@ -6,6 +6,7 @@ using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Paging;
 using StationGodMCP.Pure.Verbs;
 
@@ -18,6 +19,9 @@ namespace StationGodMCP.Verbs;
 /// only its own devices; with the wire cursor the rest stays under a cursor (ThingListPage), whose later pages describe
 /// each device as it is then, passing over devices gone meanwhile. Read only.
 /// </summary>
+[ReplyFact(FactRule.Followed, "which things exist, by class and prefab", Keeper = typeof(StationGodMCP.WorldModel.ThingIndex))]
+[ReplyFact(FactRule.Followed, "a gateway's devices", Keeper = typeof(StationGodMCP.Api.Shared.Game.GatewayMaps))]
+[ReplyFact(FactRule.Live, "names, prefabs, slots, worn and held items")]
 internal static class FindDevice
 {
     private const string List = "devices";

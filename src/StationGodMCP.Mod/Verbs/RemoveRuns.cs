@@ -9,11 +9,13 @@ using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Verbs;
 
 /// <summary>remove cable (catalogue remove.json): cable pieces as wire cutters remove them.</summary>
+[ReplyFact(FactRule.Live, "what it changes, read and checked when it acts")]
 internal static class RemoveCable
 {
     internal static VerbOutcome Run(RemoveCableOptions options) =>
@@ -23,6 +25,7 @@ internal static class RemoveCable
 }
 
 /// <summary>remove pipe (catalogue remove.json): pipe pieces as a player removes them.</summary>
+[ReplyFact(FactRule.Live, "what it changes, read and checked when it acts")]
 internal static class RemovePipe
 {
     internal static VerbOutcome Run(RemovePipeOptions options) =>
@@ -32,6 +35,7 @@ internal static class RemovePipe
 }
 
 /// <summary>remove chute (catalogue remove.json): chute pieces as a player removes them.</summary>
+[ReplyFact(FactRule.Live, "what it changes, read and checked when it acts")]
 internal static class RemoveChute
 {
     internal static VerbOutcome Run(RemoveChuteOptions options) =>

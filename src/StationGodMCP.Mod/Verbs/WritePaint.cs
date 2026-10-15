@@ -3,6 +3,7 @@
 using System.Collections.Generic;
 using Assets.Scripts.Objects;
 using StationGodMCP.Api.Shared.Game;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Verbs;
@@ -13,6 +14,7 @@ namespace StationGodMCP.Verbs;
 /// thing, {previous_color, color} or its error, each failing alone. Without confirm the call reports every paint and
 /// changes nothing. With no target it lists the game's colours.
 /// </summary>
+[ReplyFact(FactRule.Live, "what it changes, read and checked when it acts")]
 internal static class WritePaint
 {
     internal static VerbOutcome Run(WritePaintOptions options)

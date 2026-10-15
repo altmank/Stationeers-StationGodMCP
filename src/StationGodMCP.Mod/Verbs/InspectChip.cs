@@ -3,6 +3,7 @@
 using System.Collections.Generic;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Profiling;
 using StationGodMCP.Pure.Verbs;
 
@@ -15,6 +16,7 @@ namespace StationGodMCP.Verbs;
 /// answers its reply as it is, several {status, source, selectors}; any that cannot be answered refuses the call with
 /// all of them listed. Read only.
 /// </summary>
+[ReplyFact(FactRule.Live, "the thing's values as the game holds them now")]
 internal static class InspectChip
 {
     [Profiled]

@@ -5,6 +5,7 @@ using Assets.Scripts.Objects;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Verbs;
 using UnityEngine;
 
@@ -16,6 +17,7 @@ namespace StationGodMCP.Verbs;
 /// silo also its stored entries, one page of them (limit, offset; one id: with the wire cursor a walk of the entries,
 /// KeyedPage). One id, or a list of ids (one row each). Read only.
 /// </summary>
+[ReplyFact(FactRule.Live, "the thing's values as the game holds them now")]
 internal static class InspectContents
 {
     private const string Player = "player";

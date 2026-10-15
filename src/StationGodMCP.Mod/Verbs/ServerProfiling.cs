@@ -2,6 +2,7 @@
 
 using System.Collections.Generic;
 using StationGodMCP.Api.Shared;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Verbs;
@@ -11,6 +12,7 @@ namespace StationGodMCP.Verbs;
 /// reset or report (ProfilingControl) — and answer the switch's state and the session's report (ProfilingView). Changes
 /// nothing in the world; host only, where requests run. The route is acts: a call acts without confirm.
 /// </summary>
+[ReplyFact(FactRule.Live, "the game's console and the mod's profiler")]
 internal static class ServerProfiling
 {
     /// <summary>

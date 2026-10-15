@@ -23,11 +23,17 @@ namespace StationGodMCP.Tests.CostRules;
 ///   3. a loop over one of them, or over a World member, yields (a resumable step, A3), anywhere;
 ///   4. a reply view (a class or struct named *View, or any type under Api/Views/) holds no game type in a field or
 ///      property (GameTypes.txt: the decompile's types and the engine's), so the connection's writer thread can write
-///      it off the game's thread (A5). Names the mod declares itself are its own types, not the game's.
+///      it off the game's thread (A5). Names the mod declares itself are its own types, not the game's;
+///   5. every verb handler (Verbs/VerbHandlers.cs) declares the facts its reply carries ([ReplyFact], A2): a followed or
+///      refreshed one names its keeper, a mod type declaring the same rule or a game type whose own lists keep it; a
+///      refreshed fact's reply says as_of;
+///   6. writes never trust a followed or refreshed fact: no write path (the write verbs' handlers, the planners and job
+///      states, the *Writes helpers) names a keeper that does not declare WritesMayRead; plans read the game again when
+///      they act.
 /// Rule 3 sees only loops written over the collection itself; a loop over a copy, or in a helper over a list passed
 /// in, is not seen. The measured gate (scoreboard drivers/gate.py) covers the rest: any call whose worst StationGod
 /// frame passes the request budget on the large world fails it, whoever loops.
-/// Today's code breaks these rules; each rule's baseline (CostRules/*.baseline.txt, path and count) holds today's
+/// Rules 5 and 6 hold with no baseline. Today's code breaks rules 1 to 3; each rule's baseline (CostRules/*.baseline.txt, path and count) holds today's
 /// violations, the to-do list of the cost build's steps 2 to 6. A rule fails on a file over its baseline (a new
 /// violation) and on a file under it (the baseline must shrink with the code).
 /// STATIONGOD_WRITE_COST_BASELINE=1 rewrites the baselines.
@@ -69,6 +75,103 @@ public sealed class CostSourceRulesTests
     [Fact]
     public void ReplyViewsHoldNoGameType() =>
         Check("view-game-types", file => ViewMembers(file).Count(HoldsGameType));
+
+    [Fact]
+    public void EveryHandlerDeclaresTheFactsItsReplyCarries()
+    {
+        Dictionary<string, List<DeclaredFact>> facts = Declared();
+        List<string> handlers = Handlers();
+        Assert.True(handlers.Count > 80, $"only {handlers.Count} handlers read from {HandlerTable}");
+        List<string> undeclared = handlers.Where(handler => !facts.ContainsKey(handler)).ToList();
+        Assert.True(undeclared.Count == 0, "handlers declaring no [ReplyFact]: " + string.Join(", ", undeclared));
+    }
+
+    [Fact]
+    public void AFollowedOrRefreshedFactNamesAKeeperOfTheSameRule()
+    {
+        Dictionary<string, List<DeclaredFact>> facts = Declared();
+        List<string> problems = new List<string>();
+        foreach (string handler in Handlers())
+        {
+            foreach (DeclaredFact fact in facts.GetValueOrDefault(handler) ?? new List<DeclaredFact>())
+            {
+                if (fact.Rule == "Live")
+                {
+                    if (fact.Keeper != null)
+                    {
+                        problems.Add($"{handler}: a live fact names a keeper ({fact.Keeper})");
+                    }
+
+                    continue;
+                }
+
+                if (fact.Keeper == null)
+                {
+                    problems.Add($"{handler}: {fact.Rule} '{fact.What}' names no keeper");
+                }
+                else if (!GameTypes.Value.Contains(fact.Keeper) &&
+                         !(facts.GetValueOrDefault(fact.Keeper) ?? new List<DeclaredFact>()).Any(kept =>
+                             kept.Rule == fact.Rule && kept.Keeper == null))
+                {
+                    problems.Add($"{handler}: {fact.Keeper} keeps '{fact.What}' but declares no {fact.Rule} fact");
+                }
+                else if (fact.Rule == "Refreshed" &&
+                         !HandlerFile(handler).Contains("\"as_of\"", StringComparison.Ordinal))
+                {
+                    problems.Add($"{handler}: a refreshed fact, and its reply says no as_of");
+                }
+            }
+        }
+
+        Assert.True(problems.Count == 0, string.Join("\n", problems));
+    }
+
+    [Fact]
+    public void WritesNameNoKeptFactTheyCannotTrust()
+    {
+        HashSet<string> untrusted = Untrusted(Declared());
+        Assert.Contains("FrameFaces", untrusted);
+        List<string> problems = new List<string>();
+        foreach (SourceFile file in ModSource.Instance.Files.Where(IsWritePath))
+        {
+            foreach (string name in Named(file.Root).Where(untrusted.Contains).Distinct())
+            {
+                problems.Add($"{file.Path} reads {name}");
+            }
+        }
+
+        Assert.True(problems.Count == 0,
+            "writes reading a followed fact they cannot trust:\n" + string.Join("\n", problems));
+    }
+
+    [Fact]
+    public void TheFactRulesSeeWhatTheyAreMeantTo()
+    {
+        SyntaxNode root = CSharpSyntaxTree.ParseText("""
+            [ReplyFact(FactRule.Followed, "faces")]
+            internal static class Faces { }
+
+            [ReplyFact(FactRule.Followed, "index", WritesMayRead = true)]
+            internal static class Index { }
+
+            [ReplyFact(FactRule.Followed, "faces", Keeper = typeof(StationGodMCP.WorldModel.Faces))]
+            [ReplyFact(FactRule.Live, "paint")]
+            internal static class FindFaces
+            {
+                static void Run() => Faces.Read(Index.All);
+            }
+            """).GetRoot();
+        Dictionary<string, List<DeclaredFact>> facts = new Dictionary<string, List<DeclaredFact>>();
+        Collect(root, facts);
+
+        Assert.Equal("Faces", facts["FindFaces"][0].Keeper);
+        Assert.Equal("Live", facts["FindFaces"][1].Rule);
+        Assert.Equal(new HashSet<string> { "Faces" }, Untrusted(facts));
+        Assert.Equal(new[] { "Faces" }, Named(root).Where(Untrusted(facts).Contains).Distinct());
+        Assert.True(IsWritePath(new SourceFile("Api/Shared/Game/Upgrades/X.cs", root)));
+        Assert.True(IsWritePath(new SourceFile("Verbs/SwapStructures.cs", root)));
+        Assert.False(IsWritePath(new SourceFile("Verbs/FindFrame.cs", root)));
+    }
 
     [Fact]
     public void TheViewRuleSeesAGameTypeInAViewOnly()
@@ -133,6 +236,121 @@ public sealed class CostSourceRulesTests
         Assert.Equal(2, root.DescendantNodes().Count(IsCopy));
         Assert.Equal(3, root.DescendantNodes().Count(IsUnyieldedLoop));
     }
+
+    // ---- rules 5 and 6: declared facts ----
+
+    private const string HandlerTable = "Verbs/VerbHandlers.cs";
+
+    // The write paths: the write verbs' handlers, the planners and job states, the write helpers.
+    private static readonly string[] WriteFolders =
+    {
+        "Api/Shared/Game/Build/", "Api/Shared/Game/Runs/", "Api/Shared/Game/Structures/", "Api/Shared/Game/Trading/",
+        "Api/Shared/Game/Upgrades/"
+    };
+
+    private static readonly string[] WriteVerbs =
+        { "Build", "Remove", "Swap", "Write", "Move", "Undo", "TradeBuy", "TradeSell" };
+
+    private sealed class DeclaredFact
+    {
+        internal DeclaredFact(string rule, string what, string? keeper, bool writesMayRead)
+        {
+            Rule = rule;
+            What = what;
+            Keeper = keeper;
+            WritesMayRead = writesMayRead;
+        }
+
+        internal string Rule { get; }
+
+        internal string What { get; }
+
+        internal string? Keeper { get; }
+
+        internal bool WritesMayRead { get; }
+    }
+
+    // The handler classes the dispatcher table binds: VerbHandler.For(..., X.Run) and X.Handler(...).
+    private static List<string> Handlers() =>
+        ModSource.Instance.File(HandlerTable).Root.DescendantNodes().OfType<MemberAccessExpressionSyntax>()
+            .Where(access => access.Name.Identifier.Text is "Run" or "Handler" &&
+                             access.Expression is IdentifierNameSyntax)
+            .Select(access => ((IdentifierNameSyntax)access.Expression).Identifier.Text)
+            .Distinct()
+            .ToList();
+
+    private static string HandlerFile(string handler) =>
+        ModSource.Instance.Files.First(file => file.Root.DescendantNodes().OfType<ClassDeclarationSyntax>()
+            .Any(type => type.Identifier.Text == handler)).Root.ToFullString();
+
+    private static Dictionary<string, List<DeclaredFact>> Declared()
+    {
+        Dictionary<string, List<DeclaredFact>> facts =
+            new Dictionary<string, List<DeclaredFact>>(StringComparer.Ordinal);
+        foreach (SourceFile file in ModSource.Instance.Files)
+        {
+            Collect(file.Root, facts);
+        }
+
+        return facts;
+    }
+
+    private static void Collect(SyntaxNode root, Dictionary<string, List<DeclaredFact>> facts)
+    {
+        foreach (ClassDeclarationSyntax type in root.DescendantNodes().OfType<ClassDeclarationSyntax>())
+        {
+            foreach (AttributeSyntax attribute in type.AttributeLists.SelectMany(list => list.Attributes))
+            {
+                if (attribute.Name.ToString() != "ReplyFact" || attribute.ArgumentList == null)
+                {
+                    continue;
+                }
+
+                SeparatedSyntaxList<AttributeArgumentSyntax> arguments = attribute.ArgumentList.Arguments;
+                string rule = ((MemberAccessExpressionSyntax)arguments[0].Expression).Name.Identifier.Text;
+                string what = ((LiteralExpressionSyntax)arguments[1].Expression).Token.ValueText;
+                string? keeper = null;
+                bool writesMayRead = false;
+                foreach (AttributeArgumentSyntax named in arguments.Skip(2))
+                {
+                    switch (named.NameEquals?.Name.Identifier.Text)
+                    {
+                        case "Keeper":
+                            keeper = ((TypeOfExpressionSyntax)named.Expression).Type.ToString().Split('.').Last();
+                            break;
+                        case "WritesMayRead":
+                            writesMayRead = named.Expression.IsKind(SyntaxKind.TrueLiteralExpression);
+                            break;
+                    }
+                }
+
+                string name = type.Identifier.Text;
+                if (!facts.TryGetValue(name, out List<DeclaredFact>? list))
+                {
+                    list = new List<DeclaredFact>();
+                    facts.Add(name, list);
+                }
+
+                list.Add(new DeclaredFact(rule, what, keeper, writesMayRead));
+            }
+        }
+    }
+
+    // The keepers (a followed or refreshed fact naming no keeper of its own) that writes may not read.
+    private static HashSet<string> Untrusted(Dictionary<string, List<DeclaredFact>> facts) =>
+        facts.Where(entry =>
+                entry.Value.Any(fact => fact.Rule != "Live" && fact.Keeper == null && !fact.WritesMayRead))
+            .Select(entry => entry.Key)
+            .ToHashSet(StringComparer.Ordinal);
+
+    private static IEnumerable<string> Named(SyntaxNode root) =>
+        root.DescendantNodes().OfType<IdentifierNameSyntax>().Select(name => name.Identifier.Text);
+
+    private static bool IsWritePath(SourceFile file) =>
+        WriteFolders.Any(folder => file.Path.StartsWith(folder, StringComparison.Ordinal)) ||
+        file.Path.EndsWith("Writes.cs", StringComparison.Ordinal) || file.Path == "Api/Shared/WriteCheck.cs" ||
+        (file.Path.StartsWith("Verbs/", StringComparison.Ordinal) &&
+         WriteVerbs.Any(verb => Path.GetFileName(file.Path).StartsWith(verb, StringComparison.Ordinal)));
 
     private void Check(string rule, Func<SourceFile, int> count)
     {

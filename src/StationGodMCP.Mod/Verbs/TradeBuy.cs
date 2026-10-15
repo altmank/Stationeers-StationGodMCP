@@ -2,6 +2,7 @@
 
 using System.Collections.Generic;
 using StationGodMCP.Api.Shared.Game.Trading;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Verbs;
@@ -22,6 +23,7 @@ namespace StationGodMCP.Verbs;
 /// by DifficultySetting.RespawnStressTradePenalty while the player has respawn stress (TradeItem.SetTradeAmount).
 /// The game keeps no trader currency. The unused RequestTradeMessage path is not involved.
 /// </summary>
+[ReplyFact(FactRule.Live, "what it changes, read and checked when it acts")]
 internal static class TradeBuy
 {
     internal static VerbOutcome Run(TradeBuyOptions options)

@@ -8,6 +8,7 @@ using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Verbs;
@@ -21,6 +22,7 @@ namespace StationGodMCP.Verbs;
 /// (ItemMoveGiven.Acts). An explicit confirm: false asks for the report whatever the call names, typed ids and item
 /// lines included, and nothing acts (ReportConfirm.Asked, ItemMoveGiven.Acts).
 /// </summary>
+[ReplyFact(FactRule.Live, "what it changes, read and checked when it acts")]
 internal static class MoveItem
 {
     private const string PlayerWord = "player";

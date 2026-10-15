@@ -2,6 +2,7 @@
 
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Shared;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Verbs;
@@ -12,6 +13,7 @@ namespace StationGodMCP.Verbs;
 /// wire cursor a walk of the elements, KeyedPage); include style adds colours and fonts, image a PNG. The circuit
 /// holder in the gateway's scope, by id or "looking_at". Read only.
 /// </summary>
+[ReplyFact(FactRule.Live, "the thing's values as the game holds them now")]
 internal static class InspectScreen
 {
     internal static VerbOutcome Run(InspectScreenOptions options)

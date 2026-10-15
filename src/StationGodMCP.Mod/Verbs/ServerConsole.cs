@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Shaping;
 using StationGodMCP.Pure.Verbs;
 
@@ -14,6 +15,7 @@ namespace StationGodMCP.Verbs;
 /// their stack traces (ConsoleWindow.ConsoleBuffer; on a dedicated server the last lines the game wrote to the
 /// server's own console after the mod loaded). Read only.
 /// </summary>
+[ReplyFact(FactRule.Live, "the game's console and the mod's profiler")]
 internal static class ServerConsole
 {
     internal static VerbOutcome Run(ServerConsoleOptions options)

@@ -1,6 +1,7 @@
 #nullable enable
 
 using StationGodMCP.Api.Shared.Game;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Verbs;
@@ -11,6 +12,7 @@ namespace StationGodMCP.Verbs;
 /// (max_wait is the hub's) and reads status and job_id. No id, script-N and write-N are the hub's (HubJobs). A list of
 /// ids answers one row each. Read only.
 /// </summary>
+[ReplyFact(FactRule.Live, "the mod's job records")]
 internal static class InspectJob
 {
     internal static VerbOutcome Run(InspectJobOptions options)

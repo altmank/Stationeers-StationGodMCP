@@ -5,6 +5,7 @@ using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game.Show;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Verbs;
@@ -14,6 +15,7 @@ namespace StationGodMCP.Verbs;
 /// or far points (at) are, through walls, frames and terrain, tinted and labelled, for the call's seconds. A new call
 /// replaces what the last drew unless keep; clear only removes what is drawn. Read only: nothing in the world changes.
 /// </summary>
+[ReplyFact(FactRule.Live, "the things and places shown")]
 internal static class ShowHighlight
 {
     /// <summary>

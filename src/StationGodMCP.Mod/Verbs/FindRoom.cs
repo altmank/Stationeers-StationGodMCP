@@ -6,6 +6,7 @@ using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Verbs;
 using StationGodMCP.Pure.Scheduling;
 
@@ -18,6 +19,8 @@ namespace StationGodMCP.Verbs;
 /// and has_more false). A list of ids answers one row per id (Rows), each that thing's room or why it is in none. Read
 /// only.
 /// </summary>
+[ReplyFact(FactRule.Followed, "the rooms", Keeper = typeof(Assets.Scripts.GridSystem.Room))]
+[ReplyFact(FactRule.Live, "each room's air and devices")]
 internal static class FindRoom
 {
     private const string PlayerRoom = "local_player_room_id";

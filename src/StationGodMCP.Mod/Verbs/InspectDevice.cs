@@ -6,6 +6,7 @@ using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Shared.Game.Build;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Profiling;
 using StationGodMCP.Pure.Verbs;
 
@@ -17,6 +18,7 @@ namespace StationGodMCP.Verbs;
 /// logic_types every one with its access; its rocket, an umbilical's pairing, a Logic Rocket Uplink's downlink
 /// (DataLinks) and its build state. One id, or a list of ids (one row each). Read only.
 /// </summary>
+[ReplyFact(FactRule.Live, "the thing's values as the game holds them now")]
 internal static class InspectDevice
 {
     private const string LogicTypesPart = "logic_types";

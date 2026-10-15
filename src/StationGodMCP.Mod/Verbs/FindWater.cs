@@ -4,6 +4,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Verbs;
@@ -13,6 +14,7 @@ namespace StationGodMCP.Verbs;
 /// polluted water and steam together, largest first (WaterSources); {sources, count, total, offset, has_more, totals,
 /// min_mol, local_player} (ListReply: the list whole, so offset 0, no limit and has_more false). Read only.
 /// </summary>
+[ReplyFact(FactRule.Live, "atmospheres and pipe networks holding water")]
 internal static class FindWater
 {
     internal static VerbOutcome Run(FindWaterOptions options)

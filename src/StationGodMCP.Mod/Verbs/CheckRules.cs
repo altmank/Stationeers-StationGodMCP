@@ -11,6 +11,7 @@ using StationGodMCP.Api.Shared.Game.Structures;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Lint;
 using StationGodMCP.Pure.Profiling;
 using StationGodMCP.Pure.Shaping;
@@ -26,6 +27,7 @@ namespace StationGodMCP.Verbs;
 /// rule's examples, run without the world), explain (one rule on one subject in the world, with every value it read).
 /// Read only.
 /// </summary>
+[ReplyFact(FactRule.Live, "the lint rules and the things they check")]
 internal static class CheckRules
 {
     private const int MaximumExplained = 10;

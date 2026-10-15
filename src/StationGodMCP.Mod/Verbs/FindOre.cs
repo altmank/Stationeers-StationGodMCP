@@ -3,6 +3,7 @@
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Verbs;
 using UnityEngine;
 
@@ -13,6 +14,7 @@ namespace StationGodMCP.Verbs;
 /// world's profiles; with ores, the limit nearest spots within radius whose profile holds every ore, at least
 /// separation apart, sampled every step metres (DeepMinerSpots); {at, profiles, search, spots, beacons}. Read only.
 /// </summary>
+[ReplyFact(FactRule.Live, "terrain samples around the point")]
 internal static class FindOre
 {
     internal static VerbOutcome Run(FindOreOptions options)

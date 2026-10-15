@@ -3,6 +3,7 @@
 using Objects.Rockets;
 using StationGodMCP.Api;
 using StationGodMCP.Api.Shared.Game.Flight;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Verbs;
@@ -12,6 +13,7 @@ namespace StationGodMCP.Verbs;
 /// capacity samples kept, csv beside the save), stopped or cleared (FlightLogWrites). id names the rocket by its id,
 /// name, network or any part; left out, the only rocket. Server state, never the world; cannot be undone.
 /// </summary>
+[ReplyFact(FactRule.Live, "what it changes, read and checked when it acts")]
 internal static class WriteFlightLog
 {
     internal static VerbOutcome Run(WriteFlightLogOptions options)

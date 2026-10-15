@@ -7,6 +7,7 @@ using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Shared.Game.Build;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Verbs;
@@ -19,6 +20,7 @@ namespace StationGodMCP.Verbs;
 /// row per id ({index, ok, reference_id, prefab_name, replaceable, rule, reason}), an id no thing has a row with
 /// error; the build catalogue is read once for the call. Read only.
 /// </summary>
+[ReplyFact(FactRule.Live, "structures and what could replace them")]
 internal static class CheckReplaceable
 {
     internal const int MaximumIds = 1024;

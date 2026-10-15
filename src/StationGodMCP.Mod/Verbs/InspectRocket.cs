@@ -3,6 +3,7 @@
 using System.Collections.Generic;
 using Objects.Rockets;
 using StationGodMCP.Api.Shared.Game.Flight;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Verbs;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
@@ -15,6 +16,7 @@ namespace StationGodMCP.Verbs;
 /// checks against the game's numbers, include parts every part's pose and explain what the numbers mean. id names a
 /// rocket by its id, name, network or any part; left out, every rocket; a list answers one row each. Read only.
 /// </summary>
+[ReplyFact(FactRule.Live, "the thing's values as the game holds them now")]
 internal static class InspectRocket
 {
     internal static VerbOutcome Run(InspectRocketOptions options)

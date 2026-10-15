@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Sampling;
 using StationGodMCP.Pure.Verbs;
@@ -19,6 +20,7 @@ namespace StationGodMCP.Protocol;
 /// is read once before the run starts: values that cannot be read refuse the call, all of them at once in the one
 /// problems list an option check answers, and nothing is sampled. A value that can no longer be read mid-run (its thing gone) ends its own series; the rest go on.
 /// </summary>
+[ReplyFact(FactRule.Live, "logic values, sampled over time")]
 internal static class ReadSample
 {
     internal static VerbHandler Handler(Func<SubscriptionHub?> hub) =>

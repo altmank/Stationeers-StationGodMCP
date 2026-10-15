@@ -9,6 +9,7 @@ using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Shared.Game.Build;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Verbs;
@@ -19,6 +20,7 @@ namespace StationGodMCP.Verbs;
 /// the world here (a reference id, or what "looking_at" found); the rest of the call is RemoveStructureOrder's, and
 /// the run is RemoveStructureRun's.
 /// </summary>
+[ReplyFact(FactRule.Live, "what it changes, read and checked when it acts")]
 internal static class RemoveStructure
 {
     internal static VerbOutcome Run(RemoveStructureOptions options)

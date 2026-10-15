@@ -2,6 +2,7 @@
 
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Verbs;
@@ -11,6 +12,7 @@ namespace StationGodMCP.Verbs;
 /// (CarriedIgnition), with include prefabs every prefab's ignition temperatures; with an id, the contents of a tank,
 /// canister or pipe network and their autoignition margin (ContentsIgnition), a list one row each. Read only.
 /// </summary>
+[ReplyFact(FactRule.Live, "atmospheres and what could light them")]
 internal static class CheckIgnition
 {
     private const string Prefabs = "prefabs";

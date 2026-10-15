@@ -2,6 +2,7 @@
 
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Profiling;
 using StationGodMCP.Pure.Verbs;
 
@@ -12,6 +13,8 @@ namespace StationGodMCP.Verbs;
 /// how the cursor places and turns it, its cells, boxes, ports, top and controls; include small_cells adds each cell's
 /// offset. prefab is a whole prefab name or a hash. Read only.
 /// </summary>
+[ReplyFact(FactRule.Followed, "the prefab catalogues", Keeper = typeof(StationGodMCP.WorldModel.Prefabs))]
+[ReplyFact(FactRule.Live, "the prefab's own values")]
 internal static class InspectPrefab
 {
     private const string SmallCells = "small_cells";

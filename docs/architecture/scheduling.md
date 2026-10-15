@@ -69,6 +69,27 @@ connection's writer thread (`Protocol/CallReplyLine.cs`), which writes the text 
 compiles the mod's methods and the ones they call directly (`CalledMethods`), 1 ms of each frame, so a first call
 does not pay for compiling them.
 
+## Facts: live, followed, refreshed
+
+Every fact a reply carries has a rule, declared next to its reader (`[ReplyFact]` on each verb handler and on each keeper; cost design A2):
+
+- **Live**: read from the game when asked, cheap per item (logic values, one thing's damage, slots, positions).
+- **Followed**: kept current by the game's own change points and recomputed only where something changed. The world
+  index (which things exist, by class and prefab), the prefab catalogues, the gateways, and three keepers fed by
+  `World/WorldEvents.cs`: a frame's exposed faces (`FrameFaces`: dropped around a cell whose structures' air or gravity,
+  room or terrain changed: `GridController.UpdateAirState`, the room change points,
+  `VoxelTerrain.SetDensityWorldSpace`), the damaged things (`DamagedThings`: every damage, heal and repair goes through
+  `IndestructableDamageState.Damage`, plus its `Copy`/`Read`, a pipe bursting and a structure's build state) and each
+  gateway's device map (`GatewayMaps`: rebuilt when a cable network's device lists are dirtied). Network members are the
+  game's own lists, read in place. Hooks run on the game's threads (rooms on the tick thread, fire damage on the
+  atmospherics workers); each only records, and the main thread files.
+- **Refreshed**: no change point exists, so a sweep re-reads a little each frame and the reply carries `as_of`. None is needed today.
+
+Writes never trust a followed fact: a plan reads the game again when it acts, and the source rules forbid a write path
+from naming a keeper that does not declare `WritesMayRead` (the world index, whose every answer is checked against the
+game's list, and the prefab catalogues do). A keeper whose hooks are missing (a game update) is off and its readers
+refuse `game_changed`; `[Performance] VerifyFacts` checks every read against the game.
+
 ## Order on a stream
 
 A call carries a stream number; calls on different streams never wait for each other, and calls on one stream keep

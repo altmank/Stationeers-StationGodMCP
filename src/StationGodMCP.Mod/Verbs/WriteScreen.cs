@@ -3,6 +3,7 @@
 using System.Collections.Generic;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Screens;
 using StationGodMCP.Pure.Verbs;
 
@@ -13,6 +14,7 @@ namespace StationGodMCP.Verbs;
 /// player's touch does (Screens.Press), the circuit holder in the gateway's scope, by id or "looking_at". Answers
 /// {holder, surface, element, event, value, player, accepted}. Host only; cannot be undone.
 /// </summary>
+[ReplyFact(FactRule.Live, "what it changes, read and checked when it acts")]
 internal static class WriteScreen
 {
     internal static VerbOutcome Run(WriteScreenOptions options)

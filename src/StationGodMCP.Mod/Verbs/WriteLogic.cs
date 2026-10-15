@@ -3,6 +3,7 @@
 using System.Collections.Generic;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Verbs;
@@ -16,6 +17,7 @@ namespace StationGodMCP.Verbs;
 /// call reports every write from the same checks and writes nothing (Report.Of). A write is held for the calling
 /// stream's restores (HeldRestores) through LogicOps.Apply.
 /// </summary>
+[ReplyFact(FactRule.Live, "what it changes, read and checked when it acts")]
 internal static class WriteLogic
 {
     internal static VerbOutcome Run(WriteLogicOptions options)

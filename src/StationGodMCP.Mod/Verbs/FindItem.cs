@@ -7,6 +7,7 @@ using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Paging;
 using StationGodMCP.Pure.Scheduling;
 using StationGodMCP.Pure.Verbs;
@@ -23,6 +24,8 @@ namespace StationGodMCP.Verbs;
 /// takes no offset or exclude_in_use. near names a centre for radius (a point, "looking_at" or a thing: at most 1000
 /// m; "player": any); box is the other area. Read only.
 /// </summary>
+[ReplyFact(FactRule.Followed, "which things exist, by class and prefab", Keeper = typeof(StationGodMCP.WorldModel.ThingIndex))]
+[ReplyFact(FactRule.Live, "each item's quantity, place and holder")]
 internal static class FindItem
 {
     private const string List = "items";

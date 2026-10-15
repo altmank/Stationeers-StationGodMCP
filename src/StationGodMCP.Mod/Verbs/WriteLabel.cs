@@ -2,6 +2,7 @@
 
 using System.Collections.Generic;
 using StationGodMCP.Api.Shared.Game;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Verbs;
@@ -11,6 +12,7 @@ namespace StationGodMCP.Verbs;
 /// game's name. One id answers its rename; a list (each named '&lt;label&gt; 1', '&lt;label&gt; 2' in order) or labels
 /// answer one row per rename, each failing alone. Without confirm the call reports every rename and changes nothing.
 /// </summary>
+[ReplyFact(FactRule.Live, "what it changes, read and checked when it acts")]
 internal static class WriteLabel
 {
     internal static VerbOutcome Run(WriteLabelOptions options)

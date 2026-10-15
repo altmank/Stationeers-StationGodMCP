@@ -6,6 +6,7 @@ using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Paging;
 using StationGodMCP.Pure.Verbs;
 
@@ -17,6 +18,9 @@ namespace StationGodMCP.Verbs;
 /// (total_frames, total_outer); with the wire cursor a walk (ThingListPage), whose later pages measure each frame's
 /// faces again and answer the first page's census counts. Read only.
 /// </summary>
+[ReplyFact(FactRule.Followed, "which things exist, by class and prefab", Keeper = typeof(StationGodMCP.WorldModel.ThingIndex))]
+[ReplyFact(FactRule.Followed, "each frame's exposed faces (rules 1-3)", Keeper = typeof(StationGodMCP.WorldModel.FrameFaces))]
+[ReplyFact(FactRule.Live, "rule 4's air, build state, paint, place")]
 internal static class FindFrame
 {
     private const string List = "frames";

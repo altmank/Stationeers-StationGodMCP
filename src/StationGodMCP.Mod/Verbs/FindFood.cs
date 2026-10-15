@@ -5,6 +5,7 @@ using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Verbs;
@@ -15,6 +16,8 @@ namespace StationGodMCP.Verbs;
 /// not_counted, totals, local_player} (ListReply: count the food list, the list whole, so offset 0, no limit and
 /// has_more false). Read only.
 /// </summary>
+[ReplyFact(FactRule.Followed, "which things exist, by class and prefab", Keeper = typeof(StationGodMCP.WorldModel.ThingIndex))]
+[ReplyFact(FactRule.Live, "quantities, decay and places")]
 internal static class FindFood
 {
     internal static VerbOutcome Run(FindFoodOptions options)

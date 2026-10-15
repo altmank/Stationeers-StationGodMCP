@@ -1,6 +1,7 @@
 #nullable enable
 
 using StationGodMCP.Api.Shared.Game;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Verbs;
@@ -10,6 +11,7 @@ namespace StationGodMCP.Verbs;
 /// (Controllers): chips by pin, id and batch, logic writers, batch writers and mirrors, one entry per controller with
 /// the logic types it writes, a chip's line and whether it is on. One id, or a list of ids (one row each). Read only.
 /// </summary>
+[ReplyFact(FactRule.Live, "the thing's values as the game holds them now")]
 internal static class InspectControllers
 {
     internal static VerbOutcome Run(InspectControllersOptions options) =>

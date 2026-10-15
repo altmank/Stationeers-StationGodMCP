@@ -9,11 +9,14 @@ using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Shared.Game.Build;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Verbs;
 
 /// <summary>build structure (catalogue build.json): any structure a kit builds, at a point with a turn.</summary>
+[ReplyFact(FactRule.Followed, "the prefab catalogues", Keeper = typeof(StationGodMCP.WorldModel.Prefabs))]
+[ReplyFact(FactRule.Live, "what it changes, read and checked when it acts")]
 internal static class BuildStructure
 {
     internal static VerbOutcome Run(BuildStructureOptions options)

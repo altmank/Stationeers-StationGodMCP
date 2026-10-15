@@ -5,6 +5,7 @@ using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Verbs;
@@ -14,6 +15,7 @@ namespace StationGodMCP.Verbs;
 /// with build_arguments, build's options for it, and build_report, build's planned view of it without the keys a job
 /// has (JobReports.Body), rows cells listed; with summarize, build_report_summary in its place. Read only.
 /// </summary>
+[ReplyFact(FactRule.Live, "grid cells and the pieces in them")]
 internal static class PlanRoute
 {
     internal static VerbOutcome Run(PlanRouteOptions options)

@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Verbs;
@@ -14,6 +15,7 @@ namespace StationGodMCP.Verbs;
 /// failing alone), a rocket's, or every cell within a holder's slots ("player" for the player); one form a call. A
 /// cheat: without confirm the call reports every battery from the same checks and charges nothing.
 /// </summary>
+[ReplyFact(FactRule.Live, "what it changes, read and checked when it acts")]
 internal static class WriteBattery
 {
     internal static VerbOutcome Run(WriteBatteryOptions options)

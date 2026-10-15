@@ -9,6 +9,7 @@ using StationGodMCP.Api.Shared.Game.Structures;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Lint;
 using StationGodMCP.Pure.Shaping;
 using StationGodMCP.Pure.Scheduling;
@@ -22,6 +23,7 @@ namespace StationGodMCP.Verbs;
 /// (LintCodeFilter) and id and since (LintThingFilter) pick the findings listed, counts still counts them all; limit
 /// pages them with has_more, no offset (narrowing does the paging). Read only.
 /// </summary>
+[ReplyFact(FactRule.Live, "cells, structures and their ports")]
 internal static class CheckLayout
 {
     private const int MaximumLimit = 500;

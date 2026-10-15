@@ -3,6 +3,7 @@
 using System.Collections.Generic;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Verbs;
@@ -12,6 +13,7 @@ namespace StationGodMCP.Verbs;
 /// writes them (DeviceMemory), in the gateway's scope, with the memory read before and after when it also reads. One
 /// id, or "looking_at". A cheat: without confirm the call reports the write from the same checks and writes nothing.
 /// </summary>
+[ReplyFact(FactRule.Live, "what it changes, read and checked when it acts")]
 internal static class WriteMemory
 {
     internal static VerbOutcome Run(WriteMemoryOptions options)

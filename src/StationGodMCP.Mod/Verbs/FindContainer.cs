@@ -5,6 +5,7 @@ using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Paging;
 using StationGodMCP.Pure.Verbs;
 
@@ -15,6 +16,8 @@ namespace StationGodMCP.Verbs;
 /// prefab, part of the shown name and near "player" with radius, nearest first or by id, paged; with the wire cursor a
 /// walk (ThingListPage), whose later pages find each container's items again from its slots. Read only.
 /// </summary>
+[ReplyFact(FactRule.Followed, "which things exist, by class and prefab", Keeper = typeof(StationGodMCP.WorldModel.ThingIndex))]
+[ReplyFact(FactRule.Live, "each container's slots and contents")]
 internal static class FindContainer
 {
     private const string List = "containers";

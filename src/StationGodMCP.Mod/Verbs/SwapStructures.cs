@@ -6,11 +6,13 @@ using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Shared.Game.Structures;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Verbs;
 
 /// <summary>swap wall (catalogue swap.json): walls and windows replaced in place, without opening a face.</summary>
+[ReplyFact(FactRule.Live, "what it changes, read and checked when it acts")]
 internal static class SwapWall
 {
     internal static VerbOutcome Run(SwapWallOptions options) =>
@@ -20,6 +22,7 @@ internal static class SwapWall
 }
 
 /// <summary>swap frame (catalogue swap.json): frames replaced in place, or finished, without opening a cell.</summary>
+[ReplyFact(FactRule.Live, "what it changes, read and checked when it acts")]
 internal static class SwapFrame
 {
     internal static VerbOutcome Run(SwapFrameOptions options) =>

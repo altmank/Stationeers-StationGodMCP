@@ -9,6 +9,7 @@ using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Shared.Game.Build;
 using StationGodMCP.Api.Shared.Game.Structures;
 using StationGodMCP.Api.Shared.Game.Upgrades;
+using StationGodMCP.Pure.Facts;
 
 namespace StationGodMCP.WorldModel;
 
@@ -20,6 +21,7 @@ namespace StationGodMCP.WorldModel;
 /// runs); a call never walks the prefab list. Generation counts the rebuilds, so derived data kept elsewhere
 /// (CarriedIgnition's ignition list) can follow. Main thread.
 /// </summary>
+[ReplyFact(FactRule.Followed, "the prefab catalogues, built again when the loaded prefabs change", WritesMayRead = true)]
 internal static class Prefabs
 {
     private static readonly Dictionary<Type, KitCatalogue> Kits = new Dictionary<Type, KitCatalogue>();

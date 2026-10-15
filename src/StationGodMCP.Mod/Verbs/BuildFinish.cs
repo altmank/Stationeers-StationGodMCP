@@ -1,6 +1,7 @@
 #nullable enable
 
 using System.Collections.Generic;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Verbs;
@@ -14,6 +15,8 @@ namespace StationGodMCP.Verbs;
 /// the call's whole cost in materials, materials_from_player among the warnings, and every refusal a problem about its
 /// id's index.
 /// </summary>
+[ReplyFact(FactRule.Followed, "the prefab catalogues", Keeper = typeof(StationGodMCP.WorldModel.Prefabs))]
+[ReplyFact(FactRule.Live, "what it changes, read and checked when it acts")]
 internal static class BuildFinish
 {
     internal static VerbOutcome Run(BuildFinishOptions options)

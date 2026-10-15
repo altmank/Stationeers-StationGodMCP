@@ -4,6 +4,7 @@ using Objects.Rockets;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game.Flight;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Verbs;
@@ -13,6 +14,7 @@ namespace StationGodMCP.Verbs;
 /// the rocket by id or name, or the only one; a list of rockets one row each; node narrows to one node and its
 /// discovered sites. Read only. Each rocket's plan is work over frames (RocketMining.Planning).
 /// </summary>
+[ReplyFact(FactRule.Live, "rockets, sites and the game's mining formulas")]
 internal static class PlanMining
 {
     private const string Explain = "explain";

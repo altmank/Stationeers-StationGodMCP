@@ -11,11 +11,14 @@ using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Verbs;
 
 /// <summary>build cable (catalogue build.json): a run of cable pieces, laid as a player lays them.</summary>
+[ReplyFact(FactRule.Followed, "the prefab catalogues", Keeper = typeof(StationGodMCP.WorldModel.Prefabs))]
+[ReplyFact(FactRule.Live, "what it changes, read and checked when it acts")]
 internal static class BuildCable
 {
     internal static VerbOutcome Run(BuildCableOptions options)
@@ -29,6 +32,8 @@ internal static class BuildCable
 }
 
 /// <summary>build pipe (catalogue build.json): a run of pipes, whose contents a gas hold is judged for.</summary>
+[ReplyFact(FactRule.Followed, "the prefab catalogues", Keeper = typeof(StationGodMCP.WorldModel.Prefabs))]
+[ReplyFact(FactRule.Live, "what it changes, read and checked when it acts")]
 internal static class BuildPipe
 {
     internal static VerbOutcome Run(BuildPipeOptions options)
@@ -42,6 +47,8 @@ internal static class BuildPipe
 }
 
 /// <summary>build chute (catalogue build.json): a run of chute pieces, checked for the flow of items along it.</summary>
+[ReplyFact(FactRule.Followed, "the prefab catalogues", Keeper = typeof(StationGodMCP.WorldModel.Prefabs))]
+[ReplyFact(FactRule.Live, "what it changes, read and checked when it acts")]
 internal static class BuildChute
 {
     internal static VerbOutcome Run(BuildChuteOptions options)

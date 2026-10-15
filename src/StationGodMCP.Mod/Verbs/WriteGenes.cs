@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Verbs;
@@ -14,6 +15,7 @@ namespace StationGodMCP.Verbs;
 /// writes values outside -1..1. One id, or "looking_at". A cheat: without confirm the call reports every gene from the
 /// same checks and writes nothing.
 /// </summary>
+[ReplyFact(FactRule.Live, "what it changes, read and checked when it acts")]
 internal static class WriteGenes
 {
     internal static VerbOutcome Run(WriteGenesOptions options)

@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Verbs;
@@ -17,6 +18,7 @@ namespace StationGodMCP.Verbs;
 /// {code, pins, run}, a refusal while acting stopping the rest, named in not_run. include code echoes the stored source;
 /// allow off_network pins a device off the housing's data network.
 /// </summary>
+[ReplyFact(FactRule.Live, "what it changes, read and checked when it acts")]
 internal static class WriteChip
 {
     private const string CodePart = "code";

@@ -6,6 +6,7 @@ using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Paging;
 using StationGodMCP.Pure.Shaping;
 using StationGodMCP.Pure.Verbs;
@@ -19,6 +20,8 @@ namespace StationGodMCP.Verbs;
 /// read each thing's damage again and answer the first page's scan counts. A thing's
 /// networks are read only when the call's fields keep things' networks. Read only.
 /// </summary>
+[ReplyFact(FactRule.Followed, "which things are damaged or wrecked", Keeper = typeof(StationGodMCP.WorldModel.DamagedThings))]
+[ReplyFact(FactRule.Live, "each thing's damage, wreck state and place")]
 internal static class FindDamaged
 {
     private const string List = "things";

@@ -1,6 +1,7 @@
 #nullable enable
 
 using System.Collections.Generic;
+using StationGodMCP.Pure.Facts;
 
 namespace StationGodMCP.Api.Shared.Game;
 
@@ -9,6 +10,7 @@ namespace StationGodMCP.Api.Shared.Game;
 /// is destroyed (StationGodGateway). Locked: those callbacks and the API both use it on the main thread, but a
 /// destroyed gateway is dropped here too.
 /// </summary>
+[ReplyFact(FactRule.Followed, "the gateways on the grid, each checked alive when read", WritesMayRead = true)]
 internal static class GatewayRegistry
 {
     private static readonly object Sync = new object();

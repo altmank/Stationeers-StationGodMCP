@@ -10,6 +10,7 @@ using StationGodMCP.Api.Shared.Game.Build;
 using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Jobs;
 using StationGodMCP.Pure.Verbs;
 
@@ -37,6 +38,7 @@ namespace StationGodMCP.Verbs;
 /// words, undone by the hub, and are refused naming that undo (T-A5-2(b)); a write-N or script-14 id refuses the whole
 /// call through HubJobs, every such id at once.
 /// </summary>
+[ReplyFact(FactRule.Live, "what it changes, read and checked when it acts")]
 internal static class Undo
 {
     /// <summary>The newest blueprint paste, which BlueprintMod itself undoes (T-A5-8).</summary>

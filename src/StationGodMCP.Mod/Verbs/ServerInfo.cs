@@ -9,6 +9,7 @@ using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Protocol;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Jobs;
 using StationGodMCP.Pure.Lint;
 using StationGodMCP.Pure.Profiling;
@@ -27,6 +28,7 @@ namespace StationGodMCP.Verbs;
 /// the counters of the mod's game-side work). The methods list is the whats with a handler
 /// (VerbHandlers.Dispatcher.Keys): a retired per-tool method is not listed. Read only.
 /// </summary>
+[ReplyFact(FactRule.Live, "the mod's counters and the game's state")]
 internal static class ServerInfo
 {
     internal static VerbOutcome Run(ServerInfoOptions options)

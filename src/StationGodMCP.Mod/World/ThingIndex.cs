@@ -18,6 +18,7 @@ using Objects.Structures;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Profiling;
 
 namespace StationGodMCP.WorldModel;
@@ -66,6 +67,7 @@ internal enum WorldClass
 /// [Performance] VerifyWorldIndex every query also walks its game list and logs any difference.
 /// </para>
 /// </summary>
+[ReplyFact(FactRule.Followed, "which things exist, by class and prefab; each answer checked against the game's own list", WritesMayRead = true)]
 internal static class ThingIndex
 {
     private static readonly int ClassCount = Enum.GetValues(typeof(WorldClass)).Length;

@@ -3,6 +3,7 @@
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Verbs;
@@ -13,6 +14,9 @@ namespace StationGodMCP.Verbs;
 /// (FeedPathsSurvey); {root, network_id, kind, root_room_id, daisy_chains, multiple_feeds, devices, rooms, unreached}.
 /// A list of ids answers one row per root (Rows). Read only.
 /// </summary>
+[ReplyFact(FactRule.Followed, "cable networks' members", Keeper = typeof(Assets.Scripts.Networks.CableNetwork))]
+[ReplyFact(FactRule.Followed, "pipe and chute networks' members", Keeper = typeof(Networks.StructureNetwork))]
+[ReplyFact(FactRule.Live, "each member's shape and room")]
 internal static class SurveyFeeds
 {
     internal static VerbOutcome Run(SurveyFeedsOptions options)

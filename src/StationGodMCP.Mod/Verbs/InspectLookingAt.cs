@@ -1,6 +1,7 @@
 #nullable enable
 
 using StationGodMCP.Api.Shared.Game;
+using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Verbs;
@@ -10,6 +11,7 @@ namespace StationGodMCP.Verbs;
 /// in brief (LookingAt), the ray cast distance metres; include adds the player, the interactable, the camera view, the
 /// full hit and a structure's body, or all of them. Read only.
 /// </summary>
+[ReplyFact(FactRule.Live, "the thing's values as the game holds them now")]
 internal static class InspectLookingAt
 {
     internal static VerbOutcome Run(InspectLookingAtOptions options)

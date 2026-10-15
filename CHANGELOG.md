@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Frames' faces, damaged things and gateways' devices are followed, not rebuilt per call.** The mod keeps them from
+  the game's change points (structures placed, removed or rebuilt, doors, rooms, terrain edits, every damage write,
+  cable networks' device lists). `find frame` measures a frame's faces again only after something near it changed; `find
+  damaged` reads the damaged things instead of every thing, so its `scanned` is now the number of damaged and wrecked
+  things it looked at; a gateway-scoped call reads the gateway's kept device map. `server info` gains `runtime.facts`;
+  `[Performance] VerifyFacts` checks every read against the game.
 - **Replies are written off the game's thread, once.** The game's thread copies the facts into plain views and hands
   them to the connection's writer, which writes the reply text once, applies `fields`/`omit`/`limit` as it writes and
   stops keeping text at the size cap (`reply_too_large` still reports the whole size and every list's length). A
