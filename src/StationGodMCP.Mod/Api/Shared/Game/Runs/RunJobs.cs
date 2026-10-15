@@ -85,25 +85,27 @@ internal sealed class RunWaiting : ActiveRun
                 : JobStep.Next(this);
         }
 
-        return new RunPreflighting(this, JobGas.Open(Request.Kind.Family is PipeFamily)).Step(untilMs);
+        return new RunPreflighting(this, Request.Kind.Family is PipeFamily).Step(untilMs);
     }
 }
 
 /// <summary>
-/// The tick has stopped: the whole preflight again (RunPlanner.Planning, without the report lint rules) over as many
-/// frames as it needs, the tick held; a save or the world stopping meanwhile refuses the run, nothing changed. Only a
-/// plan with no problem goes on: its removals are made in the step it is ready in.
+/// The tick has stopped: the pipe networks read (JobGas.Opening), then the whole preflight again (RunPlanner.Planning,
+/// without the report lint rules), over as many frames as they need, the tick held; a save or the world stopping
+/// meanwhile refuses the run, nothing changed. Only a plan with no problem goes on: its removals are made in the step
+/// it is ready in.
 /// </summary>
 internal sealed class RunPreflighting : ActiveRun
 {
-    private readonly JobGas _gas;
+    private readonly bool _pipes;
     private readonly Work<RunPlan> _plan;
+    private JobGas _gas = JobGas.Untracked;
 
-    internal RunPreflighting(ActiveRun waiting, JobGas gas)
+    internal RunPreflighting(ActiveRun waiting, bool pipes)
         : base(waiting.Id, waiting.Request, waiting.Preflight)
     {
-        _gas = gas;
-        _plan = new Work<RunPlan>(answer => RunPlanner.Planning(Request, false, answer));
+        _pipes = pipes;
+        _plan = new Work<RunPlan>(answer => Checked(answer));
     }
 
     internal override JobStep Step(double untilMs)
@@ -150,6 +152,21 @@ internal sealed class RunPreflighting : ActiveRun
         }
 
         return JobStep.Next(new RunAwaitingRemovals(this, plan, outcome, finalCheck, _gas));
+    }
+
+    private IEnumerable<object?> Checked(Answer<RunPlan> answer)
+    {
+        Answer<JobGas> gas = new Answer<JobGas>();
+        foreach (object? step in JobGas.Opening(_pipes, gas))
+        {
+            yield return step;
+        }
+
+        _gas = gas.Value;
+        foreach (object? step in RunPlanner.Planning(Request, false, answer))
+        {
+            yield return step;
+        }
     }
 }
 
@@ -288,8 +305,7 @@ internal sealed class RunAwaitingCheck : ActiveRun
                 return JobStep.Next(this);
             }
 
-            _gasCheck = _gas.Close(Id);
-            _check = new Work<RunVerificationView>(answer => RunCheck.Verifying(_plan, _outcome, answer));
+            _check = new Work<RunVerificationView>(answer => Checked(answer));
         }
 
         if (!_check.Step(StopwatchClock.Instance, untilMs))
@@ -304,6 +320,22 @@ internal sealed class RunAwaitingCheck : ActiveRun
             : "applied_with_differences";
         return JobStep.Finish(new RunJobView(Id, Request.Tool, GasCheckView.JobStatus(status, gasCheck), Preflight,
             new RunJobResultView(_finalCheck, _outcome.Log, verification, null, gasCheck)), true);
+    }
+
+    // The gas check (JobGas.Closing), then the run's check, each in steps of its own.
+    private IEnumerable<object?> Checked(Answer<RunVerificationView> answer)
+    {
+        Answer<GasCheckView?> gas = new Answer<GasCheckView?>();
+        foreach (object? step in _gas.Closing(Id, gas))
+        {
+            yield return step;
+        }
+
+        _gasCheck = gas.Value;
+        foreach (object? step in RunCheck.Verifying(_plan, _outcome, answer))
+        {
+            yield return step;
+        }
     }
 }
 

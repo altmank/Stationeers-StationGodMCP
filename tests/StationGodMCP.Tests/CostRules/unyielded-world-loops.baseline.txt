@@ -1,11 +1,10 @@
-# unyielded-world-loops: today's violations per file (CostSourceRulesTests); 35 in all
+# unyielded-world-loops: today's violations per file (CostSourceRulesTests); 30 in all
 Api/MovePlayer.cs	1
 Api/RocketFlightLog.cs	1
 Api/Shared/Game/ClosedRooms.cs	1
 Api/Shared/Game/DeviceScope.cs	2
 Api/Shared/Game/Flight/MiningReads.cs	2
 Api/Shared/Game/Flight/SpaceRoutes.cs	3
-Api/Shared/Game/JobGas.cs	5
 Api/Shared/Game/LandingPads.cs	1
 Api/Shared/Game/Plants.cs	1
 Api/Shared/Game/PlayerOrigin.cs	1

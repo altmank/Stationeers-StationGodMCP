@@ -133,7 +133,7 @@ internal sealed class BuildWaiting : HeldTickJob
                 : JobStep.Next(this);
         }
 
-        return new BuildChecking(Id, _work, JobGas.Open(_work.TouchesPipes)).Step(untilMs);
+        return new BuildChecking(Id, _work).Step(untilMs);
     }
 
     private BuildJobView Refused(object? finalCheck, ErrorView error) =>
@@ -142,20 +142,20 @@ internal sealed class BuildWaiting : HeldTickJob
 }
 
 /// <summary>
-/// The tick has stopped: the final check (BuildWork.Checking) over as many frames as it needs, the tick held; a save
-/// or the world stopping meanwhile refuses the run, nothing changed. Only a check that finds nothing goes on.
+/// The tick has stopped: the pipe networks read (JobGas.Opening), then the final check (BuildWork.Checking), over as
+/// many frames as they need, the tick held; a save or the world stopping meanwhile refuses the run, nothing changed.
+/// Only a check that finds nothing goes on.
 /// </summary>
 internal sealed class BuildChecking : HeldTickJob
 {
     private readonly BuildWork _work;
-    private readonly JobGas _gas;
     private readonly Work<bool> _check;
+    private JobGas _gas = JobGas.Untracked;
 
-    internal BuildChecking(string id, BuildWork work, JobGas gas)
+    internal BuildChecking(string id, BuildWork work)
         : base(id)
     {
         _work = work;
-        _gas = gas;
         _check = new Work<bool>(answer => Checked(answer));
     }
 
@@ -200,6 +200,13 @@ internal sealed class BuildChecking : HeldTickJob
 
     private IEnumerable<object?> Checked(Answer<bool> answer)
     {
+        Answer<JobGas> gas = new Answer<JobGas>();
+        foreach (object? step in JobGas.Opening(_work.TouchesPipes, gas))
+        {
+            yield return step;
+        }
+
+        _gas = gas.Value;
         foreach (object? step in _work.Checking())
         {
             yield return step;
@@ -260,7 +267,10 @@ internal sealed class BuildApplying : HeldTickJob
     }
 }
 
-/// <summary>Done with the tick held; waiting for Unity to finish it (at most 30 frames), then checked, tick let go.</summary>
+/// <summary>
+/// Done with the tick held; waiting for Unity to finish it (at most 30 frames), then checked (the gas check over
+/// frames), tick let go.
+/// </summary>
 internal sealed class BuildSettling : HeldTickJob
 {
     private const int MaximumFrames = 30;
@@ -270,6 +280,7 @@ internal sealed class BuildSettling : HeldTickJob
     private readonly BuildLog _log;
     private readonly JobGas _gas;
     private int _frames;
+    private Work<GasCheckView?>? _gasCheck;
 
     internal BuildSettling(string id, BuildWork work, object? finalCheck, BuildLog log, JobGas gas)
         : base(id)
@@ -288,13 +299,23 @@ internal sealed class BuildSettling : HeldTickJob
 
     internal override JobStep Step(double untilMs)
     {
-        _frames++;
-        if (!_work.Settled() && _frames < MaximumFrames)
+        if (_gasCheck == null)
+        {
+            _frames++;
+            if (!_work.Settled() && _frames < MaximumFrames)
+            {
+                return JobStep.Next(this);
+            }
+
+            _gasCheck = new Work<GasCheckView?>(answer => _gas.Closing(Id, answer));
+        }
+
+        if (!_gasCheck.Step(StopwatchClock.Instance, untilMs))
         {
             return JobStep.Next(this);
         }
 
-        GasCheckView? gasCheck = _gas.Close(Id);
+        GasCheckView? gasCheck = _gasCheck.Value;
         List<BuildCheckView> checks = _work.Verify(_log);
         string status = _log.StoppedAt != null ? "stopped"
             : checks.TrueForAll(check => check.Ok) ? "applied"

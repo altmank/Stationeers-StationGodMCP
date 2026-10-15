@@ -14,6 +14,8 @@ using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Profiling;
 using StationGodMCP.Pure.Protocol;
+using StationGodMCP.Pure.Scheduling;
+using StationGodMCP.WorldModel;
 using World = StationGodMCP.WorldModel.World;
 
 namespace StationGodMCP.Api.Shared.Game;
@@ -44,7 +46,8 @@ namespace StationGodMCP.Api.Shared.Game;
 /// (SettleGate; unreadable queues always settle).
 /// </para>
 /// <para>
-/// Open reads every pipe network before the job; Close reads them again once everything is applied and compares each
+/// Opening reads every pipe network before the job, Closing reads them again once everything is applied (both Work
+/// bodies, a network per step, the tick held between steps) and compares each
 /// family of networks the job changed (GasAudit). Gas the job's plan deletes on purpose (Expect: remove structure with
 /// allow_contents) is expected gone. A family short of gas gets what it lacks put back, unless that would take one of
 /// its networks over the rating of its weakest pipe (GasRefills: a burst vents everything), and the pipeless networks
@@ -56,11 +59,28 @@ internal abstract class JobGas
 {
     internal static JobGas Untracked { get; } = new UntrackedGas();
 
-    /// <summary>Starts tracking for a job that touches pipe networks, once the tick is held; Untracked otherwise.</summary>
-    internal static JobGas Open(bool pipeNetworks)
+    /// <summary>
+    /// Starts tracking for a job that touches pipe networks, once the tick is held, as a Work body (the reading a
+    /// network per step); Untracked otherwise, or when a save took the tick meanwhile.
+    /// </summary>
+    internal static IEnumerable<object?> Opening(bool pipeNetworks, Answer<JobGas> answer)
     {
-        using ProfScope opening = Prof.Scope(ProfId.JobGasOpen);
-        return pipeNetworks && PipeGasQueue.CanRun() ? new TrackedGas(PipeGasReading.Take()) : Untracked;
+        answer.Value = Untracked;
+        if (!pipeNetworks || !PipeGasQueue.CanRun())
+        {
+            yield break;
+        }
+
+        Answer<PipeGasReading?> before = new Answer<PipeGasReading?>();
+        foreach (object? step in PipeGasReading.Taking(ProfId.JobGasOpen, before))
+        {
+            yield return step;
+        }
+
+        if (before.Value != null)
+        {
+            answer.Value = new TrackedGas(before.Value);
+        }
     }
 
     /// <summary>Applies every queued gas change now, as the next tick would.</summary>
@@ -72,8 +92,8 @@ internal abstract class JobGas
     /// <summary>Gas the job put into a network on purpose: the check expects the network to hold it too.</summary>
     internal abstract void Gained(PlannedGasGain gain);
 
-    /// <summary>The job's gas check; null for a job that is not tracked.</summary>
-    internal abstract GasCheckView? Close(string jobId);
+    /// <summary>The job's gas check as a Work body (its readings a network per step); null for a job not tracked.</summary>
+    internal abstract IEnumerable<object?> Closing(string jobId, Answer<GasCheckView?> answer);
 
     private sealed class UntrackedGas : JobGas
     {
@@ -89,7 +109,11 @@ internal abstract class JobGas
         {
         }
 
-        internal override GasCheckView? Close(string jobId) => null;
+        internal override IEnumerable<object?> Closing(string jobId, Answer<GasCheckView?> answer)
+        {
+            answer.Value = null;
+            yield break;
+        }
     }
 
     private sealed class TrackedGas : JobGas
@@ -106,9 +130,15 @@ internal abstract class JobGas
         internal override void Settle()
         {
             using ProfScope settling = Prof.Scope(ProfId.JobGasSettle);
-            if (PipeGasQueue.CanRun() && !SettleGate.Skip(PipeGasQueue.Queued()))
+            if (!PipeGasQueue.CanRun())
             {
-                AtmosphericsThread.Run(PipeGasQueue.ApplyQueued);
+                return;
+            }
+
+            List<PipeNetwork> awaiting = PipeGasQueue.Awaiting();
+            if (!SettleGate.Skip(PipeGasQueue.Queued(awaiting.Count > 0)))
+            {
+                AtmosphericsThread.Run(() => PipeGasQueue.ApplyQueued(awaiting));
             }
         }
 
@@ -116,17 +146,27 @@ internal abstract class JobGas
 
         internal override void Gained(PlannedGasGain gain) => _gains.Add(gain);
 
-        internal override GasCheckView Close(string jobId)
+        internal override IEnumerable<object?> Closing(string jobId, Answer<GasCheckView?> answer)
         {
-            using ProfScope closing = Prof.Scope(ProfId.JobGasClose);
+            answer.Value = Unchecked();
             if (!PipeGasQueue.CanRun())
             {
-                return GasCheckView.Unchecked(
-                    "The contents were not checked: a save took the game tick before the check could run.");
+                yield break;
             }
 
             GasTolerance tolerance = GasTolerance.Default;
-            PipeGasReading after = PipeGasReading.Take();
+            Answer<PipeGasReading?> reading = new Answer<PipeGasReading?>();
+            foreach (object? step in PipeGasReading.Taking(ProfId.JobGasClose, reading))
+            {
+                yield return step;
+            }
+
+            PipeGasReading? after = reading.Value;
+            if (after == null)
+            {
+                yield break;
+            }
+
             GasAudit audit = GasAudit.Of(_before.Networks, after.Networks, tolerance, _planned, _gains);
             List<GasRefill> refills = new List<GasRefill>();
             List<GasRefillWithheld> withheld = new List<GasRefillWithheld>();
@@ -137,12 +177,32 @@ internal abstract class JobGas
                 refills = plan.Refills;
                 withheld = plan.Withheld;
                 after.Refill(refills);
-                after = PipeGasReading.Take();
+                foreach (object? step in PipeGasReading.Taking(ProfId.JobGasClose, reading))
+                {
+                    yield return step;
+                }
+
+                after = reading.Value;
+                if (after == null)
+                {
+                    yield break;
+                }
+
                 audit = GasAudit.Of(_before.Networks, after.Networks, tolerance, _planned, _gains);
                 if (audit.Families.TrueForAll(static family => family.Emptied || family.Conserved))
                 {
                     cleared = after.ClearGhosts(audit.Ghosts);
-                    after = PipeGasReading.Take();
+                    foreach (object? step in PipeGasReading.Taking(ProfId.JobGasClose, reading))
+                    {
+                        yield return step;
+                    }
+
+                    after = reading.Value;
+                    if (after == null)
+                    {
+                        yield break;
+                    }
+
                     audit = GasAudit.Of(_before.Networks, after.Networks, tolerance, _planned, _gains);
                 }
             }
@@ -155,8 +215,11 @@ internal abstract class JobGas
                 StationGodMod.LogWarning($"job {jobId} gas check failed: {check.Summary}");
             }
 
-            return check;
+            answer.Value = check;
         }
+
+        private static GasCheckView Unchecked() =>
+            GasCheckView.Unchecked("The contents were not checked: a save took the game tick before the check could run.");
 
         // The pressure a network would hold with these contents in its volume (GasSnapshot: the game's own formula).
         private static double PressureKpa(NetworkGas network, GasMix contents) =>
@@ -229,54 +292,47 @@ internal static class PipeGasQueue
 
     /// <summary>
     /// AtmosphericsController.HandleMainThreadEvents without the mod's own move gas postfix: split events, then merge
-    /// and other atmosphere events, then the awaiting grids cleared. Then every pipe network's cached values are set
-    /// to its live ones (Atmosphere.UpdateCache, as AtmosphericsManager.RunCacheAtmosphereDataJobs does each tick):
-    /// the tick caches before it mixes and runs the devices, so a split made on the main thread would otherwise divide
-    /// contents a tick old. On a pool thread only.
+    /// and other atmosphere events, then the awaiting grids cleared. Then the caches of the pipe atmospheres an event was
+    /// queued for (awaiting: every event on an atmosphere marks it IsAwaitingEvent, read just before) are set to their
+    /// live values (Atmosphere.UpdateCache, as AtmosphericsManager.RunCacheAtmosphereDataJobs does each tick): the tick
+    /// caches before it mixes and runs the devices, so a split made on the main thread would otherwise divide contents
+    /// a tick old. On a pool thread only.
     /// </summary>
-    internal static bool ApplyAll()
+    internal static bool ApplyQueued(List<PipeNetwork> awaiting)
     {
         HandleQueues();
-        foreach (PipeNetwork network in World.PipeNetworks())
+        foreach (PipeNetwork network in awaiting)
         {
-            network?.Atmosphere?.UpdateCache();
+            network.Atmosphere?.UpdateCache();
         }
 
         return true;
     }
 
-    /// <summary>
-    /// As ApplyAll, refreshing only the caches of the pipe atmospheres an event was queued for (every event on an
-    /// atmosphere marks it IsAwaitingEvent): once ApplyAll has run, the others are still live. On a pool thread only.
-    /// </summary>
-    internal static bool ApplyQueued()
+    /// <summary>The queued changes alone (the first half of ApplyQueued). On a pool thread only.</summary>
+    internal static bool HandleQueued()
     {
-        List<Atmosphere> touched = new List<Atmosphere>();
-        foreach (PipeNetwork network in World.PipeNetworks())
-        {
-            if (network?.Atmosphere is { IsAwaitingEvent: true } atmosphere)
-            {
-                touched.Add(atmosphere);
-            }
-        }
-
         HandleQueues();
-        foreach (Atmosphere atmosphere in touched)
-        {
-            atmosphere.UpdateCache();
-        }
-
         return true;
+    }
+
+    /// <summary>The pipe networks whose atmosphere awaits a queued event, read under the pool's lock. Main thread.</summary>
+    internal static List<PipeNetwork> Awaiting()
+    {
+        using ProfScope walking = Prof.Scope(ProfId.JobGasWalk);
+        return World.PipeNetworks(static network => network?.Atmosphere is { IsAwaitingEvent: true }, out double _);
     }
 
     private static bool _unreadableLogged;
 
     /// <summary>
     /// What the game has queued for its next tick, read on the main thread under the game's own locks (the queues'
-    /// TryDequeue and AddEvent lock the queue; AwaitingGrids is locked by its own users). Unreadable when a member is
+    /// TryDequeue and AddEvent lock the queue; AwaitingGrids is locked by its own users); anyAwaiting: a pipe atmosphere
+    /// awaits an event (Awaiting; a newly split network may not be listed yet, so the queue counts are what make the
+    /// check complete). Unreadable when a member is
     /// missing or anything fails (logged once): SettleGate then settles as it always did.
     /// </summary>
-    internal static QueuedGas Queued()
+    internal static QueuedGas Queued(bool anyAwaiting)
     {
         try
         {
@@ -303,7 +359,7 @@ internal static class PipeGasQueue
                 gridCount = awaitingGrids.Count;
             }
 
-            return QueuedGas.Of(networkCount, atmosphereCount, gridCount, AnyAtmosphereAwaiting());
+            return QueuedGas.Of(networkCount, atmosphereCount, gridCount, anyAwaiting);
         }
         catch (Exception exception)
         {
@@ -316,21 +372,6 @@ internal static class PipeGasQueue
 
             return QueuedGas.Unreadable;
         }
-    }
-
-    // A newly split network may not be listed yet: the queue counts above are what make the check complete.
-    private static bool AnyAtmosphereAwaiting()
-    {
-        using ProfScope walking = Prof.Scope(ProfId.JobGasWalk);
-        foreach (PipeNetwork network in World.PipeNetworks())
-        {
-            if (network?.Atmosphere is { IsAwaitingEvent: true })
-            {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     private static void HandleQueues()
@@ -373,10 +414,14 @@ internal static class AtmosphericsThread
 /// Every pipe network as it stands: members, their cells and devices read on the main thread, contents (with every queued change
 /// applied first) on a pool thread, where the Mole getters give the live values. Besides the networks the game lists,
 /// every network a pipe still names that the game no longer lists (an orphan, GasOrphans) is read too, so its gas
-/// counts where it sits.
+/// counts where it sits. Read over frames with the tick held (Taking), so no tick runs between its steps.
 /// </summary>
 internal sealed class PipeGasReading
 {
+    // Networks whose contents one pool-thread hop reads; structure candidates the orphan search checks per step.
+    private const int ContentsPerHop = 32;
+    private const int CandidatesPerStep = 512;
+
     private readonly Dictionary<long, PipeNetwork> _byId;
 
     private PipeGasReading(List<NetworkGas> networks, List<NetworkGas> orphans, Dictionary<long, PipeNetwork> byId)
@@ -392,21 +437,64 @@ internal sealed class PipeGasReading
     /// <summary>The networks pipes name that the game no longer lists.</summary>
     internal List<NetworkGas> Orphans { get; }
 
-    internal static PipeGasReading Take()
+    /// <summary>
+    /// The reading as a Work body: the listed networks (read under the pool's lock), the orphans (the world index's
+    /// structure candidates, a batch per step), a network's members, devices, rating and cells per step, then the queued
+    /// changes applied and the contents read on a pool thread, a batch of networks per hop. Null when a save took the
+    /// tick meanwhile (the pool thread may then not touch the atmospheres). phase: the profiling scope each step's
+    /// main-thread work is timed under (job_gas_open, job_gas_close); no scope spans a yield.
+    /// </summary>
+    internal static IEnumerable<object?> Taking(ProfId phase, Answer<PipeGasReading?> answer)
     {
-        List<PipeNetwork> networks = Listed();
+        answer.Value = null;
+        List<PipeNetwork> networks;
+        using (Prof.Scope(ProfId.JobGasWalk))
+        {
+            networks = World.PipeNetworks(static network => network != null, out double _);
+        }
 
         int listed = networks.Count;
-        networks.AddRange(OrphansBeside(networks));
-        List<long[]> members = networks.ConvertAll(MembersOf);
-        List<long[]> devices = networks.ConvertAll(DevicesOf);
-        List<double?> ratings = networks.ConvertAll(RatingOf);
-        List<List<GridCell>> cells = networks.ConvertAll(CellsOf);
-        List<(GasMix gas, double volumeL)> contents = AtmosphericsThread.Run(() =>
+        yield return null;
+        foreach (object? step in OrphansBeside(networks))
         {
-            PipeGasQueue.ApplyAll();
-            return networks.ConvertAll(ContentsOf);
-        });
+            yield return step;
+        }
+
+        List<long[]> members = new List<long[]>(networks.Count);
+        List<long[]> devices = new List<long[]>(networks.Count);
+        List<double?> ratings = new List<double?>(networks.Count);
+        List<List<GridCell>> cells = new List<List<GridCell>>(networks.Count);
+        foreach (PipeNetwork network in networks)
+        {
+            using (Prof.Scope(phase))
+            {
+                members.Add(MembersOf(network));
+                devices.Add(DevicesOf(network));
+                ratings.Add(RatingOf(network));
+                cells.Add(CellsOf(network));
+            }
+
+            yield return null;
+        }
+
+        if (!PipeGasQueue.CanRun())
+        {
+            yield break;
+        }
+
+        AtmosphericsThread.Run(PipeGasQueue.HandleQueued);
+        List<(GasMix gas, double volumeL)> contents = new List<(GasMix gas, double volumeL)>(networks.Count);
+        for (int start = 0; start < networks.Count; start += ContentsPerHop)
+        {
+            yield return null;
+            if (!PipeGasQueue.CanRun())
+            {
+                yield break;
+            }
+
+            int from = start;
+            AtmosphericsThread.Run(() => ReadContents(networks, listed, from, contents));
+        }
 
         List<NetworkGas> read = new List<NetworkGas>(networks.Count);
         Dictionary<long, PipeNetwork> byId = new Dictionary<long, PipeNetwork>(listed);
@@ -421,40 +509,47 @@ internal sealed class PipeGasReading
             }
         }
 
-        return new PipeGasReading(read, read.GetRange(listed, read.Count - listed), byId);
+        answer.Value = new PipeGasReading(read, read.GetRange(listed, read.Count - listed), byId);
     }
 
-    private static List<PipeNetwork> Listed()
+    // On a pool thread: a listed network's cache set to its live values (as ApplyAll did for every listed network),
+    // then each network's contents from the Mole getters' live values, ContentsPerHop networks from start.
+    private static bool ReadContents(List<PipeNetwork> networks, int listed, int start,
+        List<(GasMix gas, double volumeL)> contents)
     {
-        using ProfScope walking = Prof.Scope(ProfId.JobGasWalk);
-        List<PipeNetwork> networks = new List<PipeNetwork>();
-        foreach (PipeNetwork network in World.PipeNetworks())
+        int end = Math.Min(networks.Count, start + ContentsPerHop);
+        for (int index = start; index < end; index++)
         {
-            if (network != null)
+            if (index < listed)
             {
-                networks.Add(network);
+                networks[index].Atmosphere?.UpdateCache();
             }
+
+            contents.Add(ContentsOf(networks[index]));
         }
 
-        return networks;
+        return true;
     }
 
-    // Every network a live pipe names that is not among the listed ones (AtmosphericsManager.AtmosphericThings holds
-    // every registered pipe: Pipe.OnRegistered adds it, OnDeregistered takes it off). Main thread.
-    private static List<PipeNetwork> OrphansBeside(List<PipeNetwork> listed)
+    // Every network a live pipe names that is not among the listed ones, added to networks: the world index's structure
+    // candidates (a stable list; each still checked a member), CandidatesPerStep per step. Main thread.
+    private static IEnumerable<object?> OrphansBeside(List<PipeNetwork> networks)
     {
-        HashSet<PipeNetwork> known = new HashSet<PipeNetwork>(listed);
-        List<PipeNetwork> orphans = new List<PipeNetwork>();
-        foreach (Thing thing in World.AtmosphericThings())
+        HashSet<PipeNetwork> known = new HashSet<PipeNetwork>(networks);
+        List<Thing> structures = World.Candidates(WorldClass.Structure);
+        for (int index = 0; index < structures.Count; index++)
         {
-            if (thing is Pipe pipe && pipe != null && !pipe.IsBeingDestroyed && pipe.PipeNetwork != null &&
-                known.Add(pipe.PipeNetwork))
+            if (structures[index] is Pipe pipe && pipe != null && !pipe.IsBeingDestroyed && pipe.PipeNetwork != null &&
+                World.Holds(WorldClass.Structure, pipe) && known.Add(pipe.PipeNetwork))
             {
-                orphans.Add(pipe.PipeNetwork);
+                networks.Add(pipe.PipeNetwork);
+            }
+
+            if (index % CandidatesPerStep == CandidatesPerStep - 1)
+            {
+                yield return null;
             }
         }
-
-        return orphans;
     }
 
     /// <summary>Puts each refill into its network's atmosphere, on a pool thread.</summary>

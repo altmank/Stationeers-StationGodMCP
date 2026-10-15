@@ -88,24 +88,26 @@ internal sealed class WaitingForTick : ActiveUpgrade
                 : JobStep.Next(this);
         }
 
-        return new Preflighting(this, JobGas.Open(Request.Family is PipeFamily)).Step(untilMs);
+        return new Preflighting(this, Request.Family is PipeFamily).Step(untilMs);
     }
 }
 
 /// <summary>
-/// The tick has stopped: the whole preflight again (UpgradePlanner.Planning) over as many frames as it needs, the tick
-/// held; a save or the world stopping meanwhile refuses the run, nothing changed. A plan with problems is refused.
+/// The tick has stopped: the pipe networks read (JobGas.Opening), then the whole preflight again
+/// (UpgradePlanner.Planning), over as many frames as they need, the tick held; a save or the world stopping meanwhile
+/// refuses the run, nothing changed. A plan with problems is refused.
 /// </summary>
 internal sealed class Preflighting : ActiveUpgrade
 {
-    private readonly JobGas _gas;
+    private readonly bool _pipes;
     private readonly Work<UpgradePlan> _plan;
+    private JobGas _gas = JobGas.Untracked;
 
-    internal Preflighting(ActiveUpgrade waiting, JobGas gas)
+    internal Preflighting(ActiveUpgrade waiting, bool pipes)
         : base(waiting.Id, waiting.Request, waiting.Preflight)
     {
-        _gas = gas;
-        _plan = new Work<UpgradePlan>(answer => UpgradePlanner.Planning(Request, answer));
+        _pipes = pipes;
+        _plan = new Work<UpgradePlan>(answer => Checked(answer));
     }
 
     internal override JobStep Step(double untilMs)
@@ -144,6 +146,21 @@ internal sealed class Preflighting : ActiveUpgrade
         }
 
         return JobStep.Next(new Swapping(this, plan, UpgradeReports.Of(plan, UpgradeReports.Scheduled, Id), _gas));
+    }
+
+    private IEnumerable<object?> Checked(Answer<UpgradePlan> answer)
+    {
+        Answer<JobGas> gas = new Answer<JobGas>();
+        foreach (object? step in JobGas.Opening(_pipes, gas))
+        {
+            yield return step;
+        }
+
+        _gas = gas.Value;
+        foreach (object? step in UpgradePlanner.Planning(Request, answer))
+        {
+            yield return step;
+        }
     }
 }
 
@@ -251,8 +268,7 @@ internal sealed class AwaitingCheck : ActiveUpgrade
                 return JobStep.Next(this);
             }
 
-            _gasCheck = _gas.Close(Id);
-            _check = new Work<UpgradeVerificationView>(answer => UpgradeCheck.Verifying(_plan, _outcome, answer));
+            _check = new Work<UpgradeVerificationView>(answer => Checked(answer));
         }
 
         if (!_check.Step(StopwatchClock.Instance, untilMs))
@@ -268,6 +284,22 @@ internal sealed class AwaitingCheck : ActiveUpgrade
         UpgradeJobView view = new UpgradeJobView(Id, Request.Goal.Tool, GasCheckView.JobStatus(status, gasCheck),
             Preflight, new UpgradeJobResult(_outcome.FinalCheck, _outcome.Log, verification, null, gasCheck));
         return JobStep.Finish(view, true);
+    }
+
+    // The gas check (JobGas.Closing), then the swap's check, each in steps of its own.
+    private IEnumerable<object?> Checked(Answer<UpgradeVerificationView> answer)
+    {
+        Answer<GasCheckView?> gas = new Answer<GasCheckView?>();
+        foreach (object? step in _gas.Closing(Id, gas))
+        {
+            yield return step;
+        }
+
+        _gasCheck = gas.Value;
+        foreach (object? step in UpgradeCheck.Verifying(_plan, _outcome, answer))
+        {
+            yield return step;
+        }
     }
 
     private bool OldPiecesRemain()

@@ -1,7 +1,9 @@
 #nullable enable
 
+using System.Collections.Generic;
 using System.Reflection;
 using Assets.Scripts.Objects;
+using Assets.Scripts.Networks;
 using StationGodMCP.Pure;
 
 namespace StationGodMCP.Api.Shared.Game.Build;
@@ -33,7 +35,8 @@ internal static class FreedCells
         worldChangeChecks.Invoke(piece, null);
         if (PipeGasQueue.CanRun())
         {
-            AtmosphericsThread.Run(PipeGasQueue.ApplyQueued);
+            List<PipeNetwork> awaiting = PipeGasQueue.Awaiting();
+            AtmosphericsThread.Run(() => PipeGasQueue.ApplyQueued(awaiting));
         }
     }
 }
