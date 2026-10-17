@@ -9,7 +9,7 @@
   run. A ref of another call, a plan that found nothing and a `what` other than the plan's are refused at from_plan.
 - **Every plan reply carries a ref**, as the refs topic says; a plan route with no long list had none.
 - **sg 0.4.2: `sg.build(from_plan=p)`** takes the plan reply or one spot (`p['spots'][2]`) with `what` left out; the
-  hub resolves it as it resolves a ref.
+  hub resolves it as it resolves a ref, and the IDE stubs carry that form.
 
 ## 2.0.0
 

@@ -2522,6 +2522,13 @@ def build(what: Literal['finish'], *,
     """
 
 @overload
+def build(what: None = None, *,
+    from_plan: str | dict,  # A plan route or plan spot reply (p = sg.plan('route', ...)), or one spot (p['spots'][2]): build its build_arguments; what comes from the plan.
+    **options,  # The plan's what's options; given here they replace the plan's.
+) -> dict:
+    """The plan's build_arguments built, as sg.build(the plan's what, ...) builds them."""
+
+@overload
 def swap(what: Literal['wall'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
     id: str | list[str] = None,  # The walls (up to 4096); or room.
