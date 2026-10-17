@@ -243,7 +243,7 @@ public sealed partial class VerbPipeline
     /// holding the call and its whole reply. Over 12 KB a reply is cut to about 4 KB unless it is a report or the call
     /// asked for its size (whole, output_file, list_limits).
     /// </summary>
-    private VerbReply Capped(VerbCall call, WhatEntry what, JsonObject options, VerbReply reply)
+    private VerbReply Capped(VerbCall call, WhatEntry what, JsonObject options, VerbReply reply, JsonNode? planned = null)
     {
         if (reply is not VerbReply.Done { Reply: JsonObject whole })
         {
@@ -297,7 +297,7 @@ public sealed partial class VerbPipeline
         }
 
         _refs.Keep(new StoredRef(id, call.Verb, what.Name == VerbCatalogue.WhatlessKey ? null : what.Name,
-            WithoutAsks(call.Args), whole, shown, main, report) { Replay = replay, ReplayNote = replayNote });
+            WithoutAsks(call.Args), whole, shown, main, report) { Replay = replay, ReplayNote = replayNote, Planned = planned });
         return new VerbReply.Done(shown);
     }
 

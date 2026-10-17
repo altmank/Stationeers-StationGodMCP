@@ -6,7 +6,8 @@ namespace StationGodMCP.Server;
 /// build's from_plan (refs topic): a plan route or plan spot ref ("r9", one spot "r9.spots.2", default the first), or
 /// on the script and program faces the plan reply or one spot itself, stands for that plan's build_arguments. The call
 /// is resolved before it is checked: what comes from the plan when it is left out, the options given replace the
-/// plan's, and a run given (waypoints, cells, piece, pieces) replaces the plan's run.
+/// plan's, and a run given (waypoints, cells, piece, pieces) replaces the plan's run. A plan's ref holds its
+/// build_arguments whatever the call's shaping showed: fields and omit change only what the caller sees.
 /// </summary>
 public sealed partial class VerbPipeline
 {
@@ -87,7 +88,7 @@ public sealed partial class VerbPipeline
                 $"{stored.Id} is a {stored.Verb} {stored.What} call; from_plan takes a plan route or plan spot ref");
         }
 
-        return At(stored.Whole, parsed.Path) is JsonObject entry
+        return At(stored.Planned ?? stored.Whole, parsed.Path) is JsonObject entry
             ? Arguments(entry, text)
             : new PlanArguments.Refused($"{text} names nothing in {stored.Id}'s reply");
     }
@@ -108,4 +109,170 @@ public sealed partial class VerbPipeline
                 JsonObject inner => inner[step],
                 _ => null
             });
+
+    /// <summary>
+    /// A direct plan route or plan spot call's shaping as sent: the caller's fields with build_arguments added when they
+    /// leave it out (Hidden), and the caller's omit without the selectors that would drop it (Omitted). Shown takes those
+    /// back out of the reply, so the caller sees what was asked and the ref keeps the whole plan.
+    /// </summary>
+    private sealed record PlanShaping(JsonObject Sent, bool Hidden, IReadOnlyList<string> Omitted)
+    {
+        internal JsonNode? Shown(JsonNode planned)
+        {
+            if (planned.DeepClone() is not JsonObject shown)
+            {
+                return planned;
+            }
+
+            if (Hidden)
+            {
+                HideArguments(shown);
+            }
+
+            foreach (string omitted in Omitted)
+            {
+                Omit(shown, omitted);
+            }
+
+            return shown;
+        }
+    }
+
+    private const string UnmatchedKey = "fields_unmatched";
+    private const string ClosestKey = "fields_closest";
+    private const string ValidKey = "fields_valid";
+
+    private static PlanShaping? KeepingArguments(WhatEntry what, Face face, JsonObject options)
+    {
+        if (face != Face.Direct || what.Verb != "plan" || !PlannedWhats.Contains(what.Name))
+        {
+            return null;
+        }
+
+        JsonArray? fields = options[SidecarArguments.FieldsArgument] as JsonArray;
+        JsonArray? omit = options[SidecarArguments.OmitArgument] as JsonArray;
+        bool hidden = fields != null && !fields.Any(field => JsonNodes.Text(field)?.Contains(PlanArgumentsKey) == true);
+        List<string> omitted = omit?.Select(JsonNodes.Text).OfType<string>().Where(DropsArguments).ToList() ?? [];
+        if (!hidden && omitted.Count == 0)
+        {
+            return null;
+        }
+
+        JsonObject sent = (JsonObject)options.DeepClone();
+        if (hidden)
+        {
+            ((JsonArray)sent[SidecarArguments.FieldsArgument]!).Add(PlanArgumentsKey);
+        }
+
+        if (omitted.Count > 0)
+        {
+            JsonArray kept = [.. omit!.Where(selector => !omitted.Contains(JsonNodes.Text(selector) ?? ""))
+                .Select(selector => selector?.DeepClone())];
+            sent[SidecarArguments.OmitArgument] = kept.Count > 0 ? kept : null;
+        }
+
+        return new PlanShaping(sent, hidden, omitted);
+    }
+
+    // An omit selector that leaves build_arguments out: it names it, or the spots that hold it.
+    private static bool DropsArguments(string selector) =>
+        selector.Contains(PlanArgumentsKey) || selector.Trim() == "spots";
+
+    // build_arguments out of the reply's top and its top-level lists' entries; a list left holding only empty entries
+    // goes (fields kept it for build_arguments alone), and so does the added name's fields_unmatched mention.
+    private static void HideArguments(JsonObject shown)
+    {
+        shown.Remove(PlanArgumentsKey);
+        foreach (string name in shown.Where(pair => pair.Value is JsonArray).Select(pair => pair.Key).ToList())
+        {
+            JsonArray entries = (JsonArray)shown[name]!;
+            foreach (JsonObject entry in entries.OfType<JsonObject>())
+            {
+                entry.Remove(PlanArgumentsKey);
+            }
+
+            if (entries.Count > 0 && entries.All(entry => entry is JsonObject { Count: 0 }))
+            {
+                shown.Remove(name);
+            }
+        }
+
+        if (shown[UnmatchedKey] is not JsonArray unmatched)
+        {
+            return;
+        }
+
+        foreach (JsonNode? named in unmatched.Where(name => JsonNodes.Text(name) == PlanArgumentsKey).ToList())
+        {
+            unmatched.Remove(named);
+        }
+
+        (shown[ClosestKey] as JsonObject)?.Remove(PlanArgumentsKey);
+        if (unmatched.Count == 0)
+        {
+            shown.Remove(UnmatchedKey);
+            shown.Remove(ClosestKey);
+            shown.Remove(ValidKey);
+        }
+    }
+
+    // An omit selector applied here as the mod applies it: a name leaves that key out anywhere, a path leaves out what
+    // it reaches from the reply's top or from each entry of a top-level list.
+    private static void Omit(JsonObject shown, string selector)
+    {
+        string[] steps = selector.Trim().Split('.');
+        if (steps.Length == 1)
+        {
+            OmitEverywhere(shown, steps[0]);
+            return;
+        }
+
+        OmitPath(shown, steps);
+        foreach (JsonObject entry in shown.Select(pair => pair.Value).OfType<JsonArray>().SelectMany(list => list.OfType<JsonObject>()))
+        {
+            OmitPath(entry, steps);
+        }
+    }
+
+    private static void OmitEverywhere(JsonNode? node, string key)
+    {
+        switch (node)
+        {
+            case JsonObject inner:
+                inner.Remove(key);
+                foreach (JsonNode? child in inner.Select(pair => pair.Value).ToList())
+                {
+                    OmitEverywhere(child, key);
+                }
+
+                break;
+            case JsonArray list:
+                foreach (JsonNode? entry in list)
+                {
+                    OmitEverywhere(entry, key);
+                }
+
+                break;
+        }
+    }
+
+    private static void OmitPath(JsonNode? node, ReadOnlySpan<string> steps)
+    {
+        switch (node)
+        {
+            case JsonObject inner when steps.Length == 1:
+                inner.Remove(steps[0]);
+                break;
+            case JsonObject inner:
+                OmitPath(inner[steps[0]], steps[1..]);
+                break;
+            case JsonArray list:
+                foreach (JsonNode? entry in list)
+                {
+                    OmitPath(entry, steps);
+                }
+
+                break;
+        }
+    }
 }

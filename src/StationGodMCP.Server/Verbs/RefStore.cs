@@ -40,6 +40,9 @@ internal sealed class StoredRef
     /// <summary>Said when a repeat with confirm acts on the call again (a spread: the selection may differ).</summary>
     internal string? ReplayNote { get; init; }
 
+    /// <summary>For a plan route or plan spot: the reply with its build_arguments, whatever the call's shaping showed.</summary>
+    internal JsonNode? Planned { get; init; }
+
     internal string? MainList { get; }
 
     internal bool Report { get; }

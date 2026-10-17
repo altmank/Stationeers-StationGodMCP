@@ -181,12 +181,12 @@ public sealed partial class VerbPipeline
             }
         }
 
-        if (FromPlan(call, out VerbCall planned) is { } unplanned)
+        if (FromPlan(call, out VerbCall fromPlan) is { } unplanned)
         {
             return unplanned;
         }
 
-        call = planned;
+        call = fromPlan;
         if (OptionCheck.Check(_catalogue, call, out VerbEntry? verb, out WhatEntry? what) is { } refused)
         {
             return refused;
@@ -204,6 +204,12 @@ public sealed partial class VerbPipeline
         }
 
         JsonObject options = Normalised(what!, call.Face, resolved);
+        PlanShaping? planShaping = KeepingArguments(what!, call.Face, options);
+        if (planShaping != null)
+        {
+            options = planShaping.Sent;
+        }
+
         VerbReply reply = IsScriptWhat(what!)
             ? await ScriptAsync(call, what!, options).ConfigureAwait(false)
             : what!.Write != null
@@ -214,7 +220,14 @@ public sealed partial class VerbPipeline
             noted["note"] = call.Note;
         }
 
-        return call.Face == Face.Direct ? Capped(call, what!, options, reply) : Unmarked(reply);
+        JsonNode? planned = null;
+        if (planShaping != null && reply is VerbReply.Done { Reply: { } full })
+        {
+            planned = full;
+            reply = new VerbReply.Done(planShaping.Shown(full));
+        }
+
+        return call.Face == Face.Direct ? Capped(call, what!, options, reply, planned) : Unmarked(reply);
     }
 
     // The replay a report keeps for its ref is the direct face's; other faces never see it.

@@ -1,4 +1,4 @@
 Replies that are reports, plans, cut, or lists with has_more or 3 or more ids carry ref: "rN". The MCP server keeps the call and its whole reply until a world is loaded. A script run's id (script-14) is a ref to its returned value (sg.ref('script-14') in a script).
 - As a target: id: "r3" is the ids that reply showed (see targets). A write whose target came from a ref reports first, with targets: {from, ids, more_in_source}.
 - repeat: "r7" runs call r7 again, with the options you give replacing its own (what may be left out). repeat: "r7", confirm: true runs the report r7 for real on exactly the targets it listed. A plain repeat always calls the game; only a repeat that changes fields, omit or whole of a reply that is not a live value is answered from the store, marked from_store.
-- from_plan: "r9" on build builds a plan route's or spot's build_arguments ("r9.spots.2": that spot).
+- from_plan: "r9" on build builds a plan route's or spot's build_arguments ("r9.spots.2": that spot), even when the plan's fields or omit left them out of the reply.

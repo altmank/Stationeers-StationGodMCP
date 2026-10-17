@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.0.2
+
+- **A plan's ref keeps its build_arguments whatever the plan call showed.** fields and omit are applied by the game,
+  so a `plan route` with `fields: ["found", "route.waypoints"]` came back without build_arguments, its ref held that
+  reply, and `build {from_plan}` refused it as a plan that found nothing. The MCP server now asks the game for
+  build_arguments as well on a plan route or plan spot call whose fields or omit would leave them out, keeps them in
+  the ref, and takes them out of the reply, so the caller still sees only what it asked for. list_limits, the 12 KB
+  cut and output_file never touched the ref's copy. `repeat` and refs as targets work on what the reply showed, as
+  before.
+
 ## 2.0.1
 
 - **build's from_plan works on its own.** `build {from_plan: "r1"}` builds the plan route's or plan spot's
