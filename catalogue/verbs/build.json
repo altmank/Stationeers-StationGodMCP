@@ -5,7 +5,7 @@
   "read_only": false,
   "tool": {
     "options": {
-      "from_plan": "A plan route or spot reply's ref ('r9'): build its build_arguments.",
+      "from_plan": "A plan route or spot reply's ref ('r9'): build its build_arguments; what may be left out, options given replace the plan's.",
       "grade": "cable: default heavy; pipe: required; chute: chute."
     }
   },

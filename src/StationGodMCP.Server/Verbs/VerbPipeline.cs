@@ -6,7 +6,7 @@ using StationGodMCP.Client;
 namespace StationGodMCP.Server;
 
 /// <summary>
-/// The verb pipeline every caller goes through (docs/architecture/hub.md): record the call, resolve a repeat and ref
+/// The verb pipeline every caller goes through (docs/architecture/hub.md): record the call, resolve a repeat, from_plan and ref
 /// targets, check it (OptionCheck), let the write gate decide on a write with its resolved targets (act, report, refuse,
 /// stop), and send it to the mod as the verb itself: {method: verb, params: {what, ...options}}, without the options
 /// the hub answers (shaping, refs, repeat, job waits, file paths). Direct replies get refs and the cap; script and
@@ -181,6 +181,12 @@ public sealed partial class VerbPipeline
             }
         }
 
+        if (FromPlan(call, out VerbCall planned) is { } unplanned)
+        {
+            return unplanned;
+        }
+
+        call = planned;
         if (OptionCheck.Check(_catalogue, call, out VerbEntry? verb, out WhatEntry? what) is { } refused)
         {
             return refused;

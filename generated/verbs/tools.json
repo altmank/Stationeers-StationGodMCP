@@ -502,7 +502,10 @@
           "include": {"type": "array", "items": {"enum": ["notes", "footprint_cells", "links", "network_devices"]}},
           "verbose": {"type": "boolean"},
           "acknowledge_gas_lost": {"type": "string"},
-          "from_plan": {"type": "string", "description": "A plan route or spot reply's ref ('r9'): build its build_arguments."},
+          "from_plan": {
+            "type": "string",
+            "description": "A plan route or spot reply's ref ('r9'): build its build_arguments; what may be left out, options given replace the plan's."
+          },
           "confirm": {"type": "boolean"},
           "queue": {"type": "boolean"},
           "max_wait": {"type": "number"},

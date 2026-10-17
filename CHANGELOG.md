@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.0.1
+
+- **build's from_plan works on its own.** `build {from_plan: "r1"}` builds the plan route's or plan spot's
+  build_arguments (`"r1.spots.2"`: that spot, default the first): `what` comes from the plan when it is left out, the
+  options given beside it replace the plan's, and a run given beside it (waypoints, cells, piece or pieces) replaces
+  the plan's run. Before, the MCP server sent from_plan to the game unread, so build asked for `what` and then for the
+  run. A ref of another call, a plan that found nothing and a `what` other than the plan's are refused at from_plan.
+- **Every plan reply carries a ref**, as the refs topic says; a plan route with no long list had none.
+- **sg 0.4.2: `sg.build(from_plan=p)`** takes the plan reply or one spot (`p['spots'][2]`) with `what` left out; the
+  hub resolves it as it resolves a ref.
+
 ## 2.0.0
 
 StationGod 2.0 replaces the 1.x tools with 17 verbs (find, inspect, survey, read, write, plan, check, build, swap,

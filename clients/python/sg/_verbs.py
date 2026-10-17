@@ -113,7 +113,7 @@ def check(what, *, fields=None, room=None, box=None, codes=None, exclude_codes=N
                      include}, options)
 
 
-def build(what, *, fields=None, placements=None, prefab=None, at=None, rotation=None, spread=None, facing=None,
+def build(what=None, *, fields=None, placements=None, prefab=None, at=None, rotation=None, spread=None, facing=None,
         up=None, face=None, orient=None, above_floor=None, build_state=None, label=None, color=None, materials=None,
         free=None, allow=None, include=None, verbose=None, acknowledge_gas_lost=None, from_plan=None, grade=None,
         waypoints=None, cells=None, piece=None, pieces=None, branches=None, extra_ends=None, join=None,

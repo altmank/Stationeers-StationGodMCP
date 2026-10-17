@@ -162,7 +162,7 @@
     },
     "from_plan": {
       "schema": {"type": "string"},
-      "description": "A ref of a plan route or plan spot reply (\"r9\"; one spot: \"r9.spots.2\", default the first): build its build_arguments; options given here are added.",
+      "description": "A ref of a plan route or plan spot reply (\"r9\"; one spot: \"r9.spots.2\", default the first): build its build_arguments; options given here replace the plan's, and a run given (waypoints, cells, piece, pieces) replaces its run.",
       "x-script": "same"
     }
   },

@@ -76,6 +76,10 @@ def has_whats(verb):
     return list(verb["whats"]) != ["-"]
 
 
+def takes_plans(verb):
+    return any("from_plan" in (what.get("options") or {}) for what in verb["whats"].values())
+
+
 def not_generated(verb):
     """Whether sg gets no generated function for the verb: help is sg.help, and a hub-only verb's whats are all
     answered by the hub itself (run_script runs sg; it is not something sg calls)."""
@@ -141,7 +145,8 @@ def render_verbs(shared, verbs):
         passing = ", ".join(f"{option!r}: {option}" for option in options)
         summary = first_sentence(verb["description"]).rstrip(".")
         if has_whats(verb):
-            signature = f"what, *, {keywords}, **options"
+            # A from_plan names the what itself (build from a plan takes the plan's), so the what may be left out.
+            signature = f"what{'=None' if takes_plans(verb) else ''}, *, {keywords}, **options"
             doc = f"{summary}. sg.help('{name}', what) gives a what in full."
             what = "what"
         else:

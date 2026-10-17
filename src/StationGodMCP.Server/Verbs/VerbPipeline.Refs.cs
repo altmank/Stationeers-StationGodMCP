@@ -239,7 +239,7 @@ public sealed partial class VerbPipeline
     }
 
     /// <summary>
-    /// A direct reply with refs and the cap: a report, a cut reply, or a list with has_more or 3 or more ids mints rN
+    /// A direct reply with refs and the cap: a report, a plan, a cut reply, or a list with has_more or 3 or more ids mints rN
     /// holding the call and its whole reply. Over 12 KB a reply is cut to about 4 KB unless it is a report or the call
     /// asked for its size (whole, output_file, list_limits).
     /// </summary>
@@ -270,7 +270,8 @@ public sealed partial class VerbPipeline
         bool lists = main != null && whole[main] is JsonArray entries &&
                      (entries.Count >= 3 || JsonNodes.IsTrue(whole["has_more"]));
         bool large = !report && !asked && ReplyCap.Bytes(whole) > ReplyCap.Threshold;
-        if (!report && !lists && !large)
+        bool plan = call.Verb == "plan";
+        if (!report && !lists && !large && !plan)
         {
             return reply;
         }
