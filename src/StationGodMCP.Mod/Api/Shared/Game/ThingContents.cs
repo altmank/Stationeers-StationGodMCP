@@ -11,9 +11,9 @@ namespace StationGodMCP.Api.Shared.Game;
 
 /// <summary>
 /// A thing's slots as inspect contents reads them (Thing.Slots, organ slots left out) and what is in each (Slot.Get),
-/// following occupants' own slots down to depth levels. Empty slots are left out at every depth and counted unless
-/// includeEmpty. On an SDB Silo also its store (Silos), whose entries are save data rather than things, one page of
-/// them. Read only.
+/// following occupants' own slots down to depth levels, in the form asked. Empty slots are left out at every depth
+/// unless includeEmpty, the holder's own counted. On an SDB Silo also its store (Silos), whose entries are save data
+/// rather than things, one page of them. Read only.
 /// </summary>
 internal static class ThingContents
 {
@@ -21,8 +21,8 @@ internal static class ThingContents
     /// The thing's slots, kept by filter, and a silo's entries from offset, at most limit (KeyedPage: an entry's key is
     /// its place in the store; a walk's later page takes the entries at its kept places as they are now).
     /// </summary>
-    internal static ContainerContentsView Read(Thing thing, int depth, bool includeEmpty, SlotFilter filter,
-        WalkRequest walk, int offset, int limit)
+    internal static ContainerContentsView Read(Thing thing, int depth, bool includeEmpty, SlotForm form,
+        SlotFilter filter, WalkRequest walk, int offset, int limit)
     {
         PlayerOrigin origin = PlayerOrigin.Current();
         Vector3 position = HolderChain.PlaceOf(thing).Position;
@@ -32,7 +32,8 @@ internal static class ThingContents
             origin.DistanceTo(position), shown.Filtered(filter),
             thing is Silo silo
                 ? SiloContents(silo, filter, walk, PageRequest.Of(offset, limit, Pure.SiloRules.Capacity))
-                : null);
+                : null,
+            form);
     }
 
     // A silo's store, after its own slots: entries front first (filtered as the slots are), one page of them. On a

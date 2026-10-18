@@ -11,9 +11,9 @@ these tools need a gateway.
 | --- | --- | --- |
 | `find item` | Items anywhere: on the ground, in lockers and machines, carried by players at any depth. Each with its quantity, location, chain of holders and distance. Also material loaded into machines as stock, and what SDB Silos store. | `prefab` (a whole name, a hash, a list, or parts with `*`), `name`, `location` (`ground`, `player`, `stored`, `machine_stock`, `silo`), `within`, `near` + `radius`, `box`, `limit`, `offset`, `order`, `group_by` (`holder`, `prefab`, `place`), `exclude_in_use` |
 | `find item` (`group_by: "place"`) | Total quantity of each item type, split into on the ground, carried, stored, machine stock and silo, with the holder that holds the most (`holders` holders; one by default). | as `find item`, and `holders` (0 leaves the holders out) |
-| `find thing` | Anything by name, not only items: tanks, canisters, crates, structures, devices, players, animals. Matches the Labeller name and the game's own name. | `name`, `prefab` (a whole name, a hash, a list, or parts with `*`), `category`, `runtime_type`, `labelled`, `broken`, `has_atmosphere`, `near` + `radius`, `box`, `made_by`, `made_since`, `location`, `order` |
+| `find thing` | Anything by name, not only items: tanks, canisters, crates, structures, devices, players, animals. Matches the Labeller name and the game's own name. A stack carries its `quantity`. | `name`, `prefab` (a whole name, a hash, a list, or parts with `*`), `category`, `runtime_type`, `labelled`, `broken`, `has_atmosphere`, `near` + `radius`, `box`, `made_by`, `made_since`, `location`, `order` |
 | `find container` | Every outermost holder with at least one item in it, not carried, nearest first. A crate in a lander counts towards the lander. | `prefab`, `name`, `near` + `radius`, `order` |
-| `inspect contents` | The slots of one thing and what is in them, nested. `player` is your whole inventory. Empty slots are left out at every depth and counted in `empty_slots_omitted`; `include: ["empty"]` keeps them (to find a free slot). Shape it with paths through the slots: `fields: ["slots.index", "slots.occupant.prefab_name"]`, or `occupant.slots.occupant.prefab_name` for what a backpack holds. | `id`, `depth` (default 3), `include: ["empty"]`, `prefab`, `name` (slots holding a match at any depth) |
+| `inspect contents` | The slots of one thing and what is in them, nested. `player` is your whole inventory. Each occupied slot is `{slot, reference_id, prefab_name, quantity}`, with what it holds itself under `slots` (a backpack's items). Empty slots are left out at every depth; `empty_slots_omitted` counts the thing's own. `include: ["detail"]` gives each slot's name and class and its occupant whole (`slots[].occupant`), `include: ["empty"]` the same with the empty slots too (to find a free slot). Shape it with paths through the slots: `fields: ["slots.slot", "slots.prefab_name"]`, or `slots.slots.prefab_name` for what a backpack holds. | `id`, `depth` (default 3), `include: ["detail"]` or `["empty"]`, `prefab`, `name` (slots holding a match at any depth) |
 | `find food` | Every food and drink in the world, with nutrition, hydration, food quality and time until it decays; packages counted by content. | none |
 | `move item` | Move an item, or part of a stack, into a slot. | `id`, `quantity`, `to`, `slot`, `merge`, `allow: ["in_use"]`, `force` (cheat); or `moves: [...]` |
 | `write label` | Rename things as the hand Labeller does. | `id`, `label`; or `labels: [...]` |
@@ -78,8 +78,11 @@ these tools need a gateway.
 other perishables are never loose in the air.
 
 - `to` is the thing holding the slot (a locker, a belt, a suit, a player); `slot` is its index, as
-  `inspect contents` gives it for any thing (`inspect slots` only takes devices), or `"auto"`: a matching stack
-  first, else the first empty slot that takes the item.
+  `inspect contents` gives it for any thing (`inspect slots` only takes devices), or `"auto"`: matching stacks
+  topped up to their most first, then the rest into the first empty slot that takes the item. A move spread over
+  several slots answers each in `filled` (`to`, the stack's `reference_id`, how many were `added`, and its
+  `quantity_now` read back after the move). With no empty slot, the matching stacks must take all of it.
+  Into a slot given by index, the whole moved stack must fit in the stack there.
 - Only slots you could click in the game are used. A hidden slot (a cable coil's internal slot, a vending machine's
   store) is refused with `slot_refuses`: the game keeps it for itself, and a coil destroys whatever is in it when it is
   used up. An item already in a hidden slot can still be moved out, to rescue one put there by mistake. The same

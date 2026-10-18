@@ -194,4 +194,45 @@ public sealed class FieldMappingTests
         "containers", "count", "reference_id", "prefab_name", "display_name", "slot_count", "used_slot_count",
         "distance_m"
     };
+
+    private const string Things =
+        """{"things":[{"reference_id":"7","prefab_name":"ItemIronIngot","display_name":"Iron Ingot","custom_name":null,"kind":"item"}],"count":1,"total":1}""";
+
+    [Theory]
+    [InlineData("id", "reference_id")]
+    [InlineData("ID", "reference_id")]
+    [InlineData("prefab", "prefab_name")]
+    [InlineData("label", "display_name")]
+    public void AnAliasIsReadAsTheKeyItStandsFor(string requested, string key)
+    {
+        Assert.Equal(key, FieldMatch.Safe(requested, Keys()));
+        Assert.Equal(new[] { key }, FieldMatch.Closest(requested, Keys()));
+    }
+
+    [Fact]
+    public void ALabelIsTheLabellersNameWhenTheReplyHasOne()
+    {
+        Assert.Equal("custom_name", FieldMatch.Safe("label", new[] { "display_name", "custom_name" }));
+    }
+
+    [Fact]
+    public void FindThingsIdLabelAndPrefabAreMappedNotUnmatched()
+    {
+        JObject reply = JObject.Parse(ShapingChecks.ModFields(Things, new[] { "id", "label", "things.prefab" }));
+
+        Assert.Equal("""[{"reference_id":"7","prefab_name":"ItemIronIngot","custom_name":null}]""",
+            reply["things"]!.ToString(Newtonsoft.Json.Formatting.None));
+        Assert.Equal("reference_id", (string?)reply["fields_mapped"]!["id"]);
+        Assert.Equal("custom_name", (string?)reply["fields_mapped"]!["label"]);
+        Assert.Equal("prefab_name", (string?)reply["fields_mapped"]!["things.prefab"]);
+        Assert.Null(reply["fields_unmatched"]);
+    }
+
+    [Fact]
+    public void AReplyWithItsOwnIdKeepsIt()
+    {
+        string reply = """{"jobs":[{"id":"place-4","reference_id":"9","status":"applied"}]}""";
+
+        Assert.Equal("""{"jobs":[{"id":"place-4"}]}""", ShapingChecks.ModFields(reply, new[] { "id" }));
+    }
 }

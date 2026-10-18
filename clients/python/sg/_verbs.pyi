@@ -27,12 +27,12 @@ def find(what: Literal['thing'], *,
     """Any object: structures, devices, tanks, loose items, players, animals.
     Reply:
       things: list[{made: {maker_id: str | None, maker_prefab: str | None, maker_name: str | None, game_time_s: float, quantity: int, split_from: str
-          | None} | None, reference_id: str, prefab_name: str | None, display_name: str | None, custom_name: str | None, game_name: str, kind: str,
-          runtime_type: str, labelable: bool, location: str, carried_by: str | None, held_in: list[{reference_id: str, prefab_name: str | None,
-          display_name: str | None, slot_index: int, slot_name: str | None}], position: Vec3, distance_m: float | None, is_device: bool,
-          has_atmosphere: bool, is_broken: bool, condition: str, rotation: {facing: str | None, up: str | None, euler: Vec3} | None, rocket_state: str
-          | None, color: Color | None, build_state: {current: int, last: int, complete: bool, next: list[{prefab_name: str, display_name: str,
-          quantity: int | None, tool: bool}] | None} | None}]
+          | None} | None, reference_id: str, prefab_name: str | None, display_name: str | None, custom_name: str | None, quantity: float | None,
+          game_name: str, kind: str, runtime_type: str, labelable: bool, location: str, carried_by: str | None, held_in: list[{reference_id: str,
+          prefab_name: str | None, display_name: str | None, slot_index: int, slot_name: str | None}], position: Vec3, distance_m: float | None,
+          is_device: bool, has_atmosphere: bool, is_broken: bool, condition: str, rotation: {facing: str | None, up: str | None, euler: Vec3} | None,
+          rocket_state: str | None, color: Color | None, build_state: {current: int, last: int, complete: bool, next: list[{prefab_name: str,
+          display_name: str, quantity: int | None, tool: bool}] | None} | None}]
       count: int
       total: int
       offset: int
@@ -483,15 +483,29 @@ def inspect(what: Literal['contents'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
     id: str | list[str],  # A holder's id or "player".
     depth: int = 3,  # Levels of nested slots.
-    include: list[Literal['empty']] = None,  # empty: keep empty slots.
+    include: list[Literal['detail', 'empty']] = None,  # detail: each slot's name and class and its occupant whole; empty: the same, empty slots too.
     prefab: str | int | list = None,  # Only slots holding this prefab (part with *) at any depth.
     name: str = None,  # Part of the shown name or label, any case.
     limit: int = 10,  # The first n in order (a silo's stored entries listed); left out, every one.
 ) -> dict:  # main list: r['slots']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Any holder's slots and what is in them, nested (a locker, machine, suit; 'player' for the player).
+    Each occupied slot is {slot, reference_id, prefab_name, quantity}, with its occupant's own occupied slots under slots; empty_slots_omitted counts the holder's own empty slots.
     A list of ids answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply below; fields name its keys.
     Iteration goes over slots; a silo's stored entries are not iterated.
-    Reply:
+    Reply, one of:
+    (compact)
+      reference_id: str
+      prefab_name: str | None
+      display_name: str | None
+      position: Vec3
+      distance_m: float | None
+      slots: list[{slot: int, reference_id: str, prefab_name: str | None, quantity: float, slots: list[ContentSlot] | None, slots_not_shown: int |
+          None}]
+      empty_slots_omitted: int | None
+      silo: {count: int, entries_known: bool, importing: bool | None, exporting: bool | None, dispense_slot: int | None, total: int, offset: int,
+          entries: list[{index: int, prefab_name: str | None, display_name: str | None, quantity: float, max_quantity: float | None, children: int,
+          contents: list[{prefab_name: str | None, quantity: float}], rots_when_taken: bool}], cursor_id: str | None} | None
+    (include detail or empty)
       reference_id: str
       prefab_name: str | None
       display_name: str | None
@@ -2658,7 +2672,7 @@ def swap(what: Literal['cable'], *,
     materials: str | list[str] = None,  # Holder(s) that pay materials and take source refunds, tried in order; ids or "player". Default the player.
     skip_unmatched: bool = False,  # Leave pieces that cannot change as they are instead of refusing.
     refund_to: str | int | list = None,  # Where removed materials go: a word (inventory, source, storage, ground, none), a container id, or a list tried in turn. (default [inventory, source, storage, ground]) (default [inventory, source, storage, ground])
-    include: list[Literal['notes']] = None,  # Parts to add to the reply.
+    include: list[Literal['notes', 'network_devices']] = None,  # notes: fixed text; network_devices: each network's devices in the job's verification.
     rows: int = 5,  # Pieces listed per list.
     verbose: bool = False,  # The long form of the reply.
 ) -> dict:  # main list: r['pieces']: the page answered; .walk() goes through every entry, .all() pages in the rest
@@ -2734,7 +2748,7 @@ def swap(what: Literal['pipe'], *,
     materials: str | list[str] = None,  # Holder(s) that pay materials and take source refunds, tried in order; ids or "player". Default the player.
     skip_unmatched: bool = False,  # Leave pieces that cannot change as they are instead of refusing.
     refund_to: str | int | list = None,  # Where removed materials go: a word (inventory, source, storage, ground, none), a container id, or a list tried in turn. (default [inventory, source, storage, ground]) (default [inventory, source, storage, ground])
-    include: list[Literal['notes']] = None,  # Parts to add to the reply.
+    include: list[Literal['notes', 'network_devices']] = None,  # notes: fixed text; network_devices: each network's devices in the job's verification.
     rows: int = 5,  # Pieces listed per list.
     verbose: bool = False,  # The long form of the reply.
 ) -> dict:  # main list: r['pieces']: the page answered; .walk() goes through every entry, .all() pages in the rest
@@ -2806,7 +2820,7 @@ def swap(what: Literal['chute'], *,
     materials: str | list[str] = None,  # Holder(s) that pay materials and take source refunds, tried in order; ids or "player". Default the player.
     skip_unmatched: bool = False,  # Leave pieces that cannot change as they are instead of refusing.
     refund_to: str | int | list = None,  # Where removed materials go: a word (inventory, source, storage, ground, none), a container id, or a list tried in turn. (default [inventory, source, storage, ground]) (default [inventory, source, storage, ground])
-    include: list[Literal['notes']] = None,  # Parts to add to the reply.
+    include: list[Literal['notes', 'network_devices']] = None,  # notes: fixed text; network_devices: each network's devices in the job's verification.
     rows: int = 5,  # Pieces listed per list.
     verbose: bool = False,  # The long form of the reply.
 ) -> dict:  # main list: r['pieces']: the page answered; .walk() goes through every entry, .all() pages in the rest
@@ -3133,7 +3147,7 @@ def move(what: Literal['item'], *,
     id: str | list[str] = None,  # The item(s); for a vault or silo deposit, whole things by id.
     quantity: float = None,  # Slot move: how many off the stack, default the whole item. Out of a vault: grams of ingot or a count of ore or ice; out of a silo: an item count; required for both.
     to: str = None,  # The holder that gets them: a container, belt, suit, "player", a vault or a silo.
-    slot: int | str = 'auto',  # A slot index of to, or "auto" (the default). Given, the move is a slot move even into a vault's or silo's own slots; force needs an index.
+    slot: int | str = 'auto',  # A slot index of to, or "auto" (the default: matching stacks topped up to their most, the rest into an empty slot). Given, the move is a slot move even into a vault's or silo's own slots; force needs an index.
     merge: bool = True,  # Join a matching stack in the slot.
     force: bool = False,  # Into an empty slot by index even when hidden. Cheat.
     allow: list[Literal['in_use', 'ground']] = None,  # in_use: take a part its device is using; ground: what does not fit goes on the ground.
@@ -3169,6 +3183,7 @@ def move(what: Literal['item'], *,
       merged_into: str | None
       destination_reference_id: str
       warning: str | None
+      filled: list[{to: {id: str, slot: int}, reference_id: str, added: int, merged: bool, quantity_now: int | None}] | None
     (BatchResult)
       route: str
       results: list[{index: int, ok: bool, error: Error}]

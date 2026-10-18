@@ -111,4 +111,19 @@ public sealed class FindThingReplyTests
         };
         WireCheck.Same(expected, FoundThings.Reply(new Page<FoundThingView>(things, 1, 0, 100, false), 10, null, null));
     }
+
+    [Fact]
+    public void AStackCarriesItsQuantityAndAnythingElseLeavesItOut()
+    {
+        FoundThingView Found(long id, double? quantity) => new FoundThingView(
+            new ThingView(new ThingId(id), "ItemIronIngot", "Ingot (Iron)"), null, "Ingot (Iron)", "item", "Ingot",
+            false, "stored", null, new List<HeldInView>(), new PositionView(0, 0, 0), null, false, false,
+            quantity: quantity);
+
+        JObject stack = JObject.Parse(WireCheck.New(Found(7, 37)));
+        JObject whole = JObject.Parse(WireCheck.New(Found(8, null)));
+
+        Assert.Equal(37.0, (double)stack["quantity"]!);
+        Assert.Null(whole["quantity"]);
+    }
 }

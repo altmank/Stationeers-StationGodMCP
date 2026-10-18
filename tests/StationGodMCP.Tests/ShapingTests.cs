@@ -322,8 +322,8 @@ public sealed class ShapingTests
     public void SingleNamesShapeEachTopLevelObjectAsAnEntry()
     {
         Assert.Equal(
-            """{"player":{"reference_id":"1"},"target":{"reference_id":"5","prefab_name":"StructureTank","display_name":"Tank"},"interactable":null,"fields_unmatched":["label"],"fields_valid":["custom_name","display_name","eye","hit","interactable","name","player","point","prefab_name","reference_id","target","thing","view","yaw_deg"]}""",
-            ShapingChecks.ModFields(LookingAt, new[] { "reference_id", "prefab_name", "display_name", "label" }));
+            """{"player":{"reference_id":"1"},"target":{"reference_id":"5","prefab_name":"StructureTank","display_name":"Tank"},"interactable":null,"fields_unmatched":["tag"],"fields_valid":["custom_name","display_name","eye","hit","interactable","name","player","point","prefab_name","reference_id","target","thing","view","yaw_deg"]}""",
+            ShapingChecks.ModFields(LookingAt, new[] { "reference_id", "prefab_name", "display_name", "tag" }));
     }
 
     [Fact]

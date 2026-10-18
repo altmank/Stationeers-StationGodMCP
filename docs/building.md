@@ -16,7 +16,8 @@ This applies to every tool that changes the world: the `build`, `swap` and `remo
    give `links` as counts (`added_count`, `lost_count`) and leave their fixed `notes` out; `include: ["links"]` lists
    every link, `include: ["notes"]` adds the notes. `rows` caps the cells listed (default 5; 0 lists none, the counts
    stay). `networks_before` and `networks_after` give each network's `device_count` (and a chute network's
-   `items_riding`); `include: ["network_devices"]` lists the devices and riding items too. `swap cable`, `swap pipe`
+   `items_riding`); `include: ["network_devices"]` lists the devices and riding items too. The same holds for the
+   networks in a `swap cable`, `swap pipe` or `swap chute` job's `verification`. `swap cable`, `swap pipe`
    and `swap chute` list up to 5 pieces per list by default, `swap wall` and `swap frame` 5, and their fixed notes, as
    `build structure`'s and `remove structure`'s, only with `include: ["notes"]`. A `build structure` report that is
    not ready answers its verdict without each placement's layout preview; `verbose: true` keeps the previews.

@@ -25,7 +25,7 @@ internal sealed class SwapCableOptions
         new OptionSpec("materials", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"},\"maxItems\":8}"),
         new OptionSpec("skip_unmatched", "{\"type\":\"boolean\"}", false, "false"),
         new OptionSpec("refund_to", "{\"type\":[\"string\",\"integer\",\"array\"]}", false, "[inventory, source, storage, ground]"),
-        new OptionSpec("include", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"notes\"]}}"),
+        new OptionSpec("include", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"notes\",\"network_devices\"]}}"),
         new OptionSpec("rows", "{\"type\":\"integer\",\"minimum\":0,\"maximum\":4096}", false, "5"),
         new OptionSpec("verbose", "{\"type\":\"boolean\"}", false, "false"),
         new OptionSpec("confirm", "{\"type\":\"boolean\"}", false, "false"),

@@ -8,7 +8,8 @@ namespace StationGodMCP.Tests;
 
 /// <summary>
 /// move item never replaces, drops or destroys what a slot holds: it fills an empty slot, or joins a stack of the
-/// same prefab that has room for the whole moved stack. "auto" passes over every other occupied slot.
+/// same prefab. Into a slot by index the whole moved stack must fit; "auto" tops up matching stacks to their maximum
+/// and puts the rest into an empty slot, and passes over every other occupied slot.
 /// </summary>
 public sealed class SlotOccupancyTests
 {
@@ -35,7 +36,8 @@ public sealed class SlotOccupancyTests
             Empty(14),
         };
 
-        AutoSlotPick pick = SlotOccupancy.PickAuto(slots, quantity: 12, wholeStack: true, mergeAllowed: true);
+        AutoFillPart pick = Assert.Single(SlotOccupancy.FillAuto(slots, quantity: 12, wholeStack: true,
+            mergeAllowed: true).Parts);
 
         Assert.Equal(14, pick.Index);
         Assert.False(pick.Merges);
@@ -51,7 +53,8 @@ public sealed class SlotOccupancyTests
             Empty(13),
         };
 
-        AutoSlotPick pick = SlotOccupancy.PickAuto(slots, quantity: 10, wholeStack: true, mergeAllowed: true);
+        AutoFillPart pick = Assert.Single(SlotOccupancy.FillAuto(slots, quantity: 10, wholeStack: true,
+            mergeAllowed: true).Parts);
 
         Assert.Equal(13, pick.Index);
         Assert.False(pick.Merges);
@@ -66,10 +69,67 @@ public sealed class SlotOccupancyTests
             Held(12, Stack(SpaceOre, 9, joinable: true)),
         };
 
-        AutoSlotPick pick = SlotOccupancy.PickAuto(slots, quantity: 10, wholeStack: true, mergeAllowed: true);
+        AutoFill fill = SlotOccupancy.FillAuto(slots, quantity: 10, wholeStack: true, mergeAllowed: true);
 
-        Assert.Equal(12, pick.Index);
-        Assert.True(pick.Merges);
+        AutoFillPart pick = Assert.Single(fill.Parts);
+        Assert.Equal((12, 10, true), (pick.Index, pick.Quantity, pick.Merges));
+        Assert.Null(fill.Staging);
+    }
+
+    [Fact]
+    public void AutoFillsAStackToItsMaximumAndPutsTheRestInAnEmptySlot()
+    {
+        // 3 into a locker holding 3 of at most 5: 2 join the stack, 1 takes the empty slot.
+        List<AutoSlotCandidate> slots = new List<AutoSlotCandidate>
+        {
+            Held(0, Stack(SpaceOre, 3, joinable: true, max: 5)),
+            Empty(1),
+        };
+
+        AutoFill fill = SlotOccupancy.FillAuto(slots, quantity: 3, wholeStack: true, mergeAllowed: true);
+
+        Assert.Equal(new[] { (0, 2, true), (1, 1, false) }, Shares(fill));
+        Assert.Null(fill.Staging);
+    }
+
+    [Fact]
+    public void AutoTopsUpEveryStackWithRoomInSlotOrder()
+    {
+        List<AutoSlotCandidate> slots = new List<AutoSlotCandidate>
+        {
+            Empty(0),
+            Held(1, Stack(SpaceOre, 4, joinable: true, max: 5)),
+            Held(2, Stack(SpaceOre, 5, joinable: true, max: 5)),
+            Held(3, Stack(SpaceOre, 2, joinable: true, max: 5)),
+        };
+
+        Assert.Equal(new[] { (1, 1, true), (3, 3, true) },
+            Shares(SlotOccupancy.FillAuto(slots, quantity: 4, wholeStack: true, mergeAllowed: true)));
+    }
+
+    [Fact]
+    public void WithNoEmptySlotTheStacksMustTakeItAll()
+    {
+        List<AutoSlotCandidate> slots = new List<AutoSlotCandidate>
+        {
+            Held(0, Stack(SpaceOre, 3, joinable: true, max: 5)),
+        };
+
+        Assert.False(SlotOccupancy.FillAuto(slots, quantity: 3, wholeStack: true, mergeAllowed: true).Found);
+        Assert.Equal(new[] { (0, 2, true) },
+            Shares(SlotOccupancy.FillAuto(slots, quantity: 2, wholeStack: true, mergeAllowed: true)));
+    }
+
+    private static (int, int, bool)[] Shares(AutoFill fill)
+    {
+        (int, int, bool)[] shares = new (int, int, bool)[fill.Parts.Count];
+        for (int index = 0; index < shares.Length; index++)
+        {
+            AutoFillPart part = fill.Parts[index];
+            shares[index] = (part.Index, part.Quantity, part.Merges);
+        }
+
+        return shares;
     }
 
     [Fact]
@@ -78,18 +138,53 @@ public sealed class SlotOccupancyTests
             mergeAllowed: true));
 
     [Fact]
-    public void PartOfAStackNeverJoinsOne()
+    public void PartOfAStackIsStagedInTheEmptySlotAndJoinsFromThere()
     {
+        // The game's merge takes all of a stack that fits: 4 of a larger stack are split into slot 13 first, and
+        // the stack in 12 is topped up from those 4.
         List<AutoSlotCandidate> slots = new List<AutoSlotCandidate>
         {
             Held(12, Stack(SpaceOre, 9, joinable: true)),
             Empty(13),
         };
 
-        AutoSlotPick pick = SlotOccupancy.PickAuto(slots, quantity: 4, wholeStack: false, mergeAllowed: true);
+        AutoFill fill = SlotOccupancy.FillAuto(slots, quantity: 4, wholeStack: false, mergeAllowed: true);
 
-        Assert.Equal(13, pick.Index);
-        Assert.False(pick.Merges);
+        Assert.Equal(new[] { (12, 4, true) }, Shares(fill));
+        Assert.Equal(13, fill.Staging);
+    }
+
+    [Fact]
+    public void PartOfAStackWithNoEmptySlotFillsOnlyStacksItFills()
+    {
+        // No slot to stage in: a merge from the whole stack would take all that fits, so only a stack whose room is
+        // at most what is left is topped up.
+        List<AutoSlotCandidate> slots = new List<AutoSlotCandidate>
+        {
+            Held(0, Stack(SpaceOre, 90, joinable: true)),
+            Held(1, Stack(SpaceOre, 97, joinable: true)),
+        };
+
+        AutoFill fill = SlotOccupancy.FillAuto(slots, quantity: 4, wholeStack: false, mergeAllowed: true);
+
+        Assert.False(fill.Found);
+        Assert.Equal(new[] { (1, 3, true) },
+            Shares(SlotOccupancy.FillAuto(slots, quantity: 3, wholeStack: false, mergeAllowed: true)));
+    }
+
+    [Fact]
+    public void PartOfAStackThatNoStackJoinsIsSplitIntoTheEmptySlot()
+    {
+        List<AutoSlotCandidate> slots = new List<AutoSlotCandidate>
+        {
+            Held(12, Stack(SpaceOre, 100, joinable: true)),
+            Empty(13),
+        };
+
+        AutoFill fill = SlotOccupancy.FillAuto(slots, quantity: 4, wholeStack: false, mergeAllowed: true);
+
+        Assert.Equal(new[] { (13, 4, false) }, Shares(fill));
+        Assert.Null(fill.Staging);
     }
 
     [Fact]
@@ -101,7 +196,8 @@ public sealed class SlotOccupancyTests
             Empty(13),
         };
 
-        Assert.Equal(13, SlotOccupancy.PickAuto(slots, 10, wholeStack: true, mergeAllowed: false).Index);
+        Assert.Equal(new[] { (13, 10, false) },
+            Shares(SlotOccupancy.FillAuto(slots, 10, wholeStack: true, mergeAllowed: false)));
     }
 
     [Fact]
@@ -114,7 +210,7 @@ public sealed class SlotOccupancyTests
             Held(2, new SlotOccupant(307658, 1, 1, false)),
         };
 
-        Assert.False(SlotOccupancy.PickAuto(slots, 10, wholeStack: true, mergeAllowed: true).Found);
+        Assert.False(SlotOccupancy.FillAuto(slots, 10, wholeStack: true, mergeAllowed: true).Found);
     }
 
     [Fact]
@@ -127,10 +223,8 @@ public sealed class SlotOccupancyTests
             Empty(1),
         };
 
-        AutoSlotPick pick = SlotOccupancy.PickAuto(slots, 10, wholeStack: true, mergeAllowed: true);
-
-        Assert.Equal(1, pick.Index);
-        Assert.False(pick.Merges);
+        Assert.Equal(new[] { (1, 10, false) },
+            Shares(SlotOccupancy.FillAuto(slots, 10, wholeStack: true, mergeAllowed: true)));
     }
 
     [Fact]

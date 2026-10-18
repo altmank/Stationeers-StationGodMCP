@@ -169,7 +169,7 @@ public sealed class ReplyWriterTests
         }
 
         StationGodMCP.Api.Shared.ApiException refused =
-            Assert.Throws<StationGodMCP.Api.Shared.ApiException>(() => Report.Of(targets).Form(StationGodMCP.Api.Shared.ApiJson.Serializer));
+            Assert.Throws<StationGodMCP.Api.Shared.ApiException>(() => Report.Of(targets).Form(StationGodMCP.Api.Shared.ApiJson.Serializer, null));
 
         Assert.Equal("report_too_large", refused.Code);
         Assert.Equal("""{"targets":5000,"limit_tokens":25000,"fix":"narrow the target: a filter on the find, a smaller ref, fewer spread lines"}""",

@@ -2,13 +2,14 @@ Any holder's slots and what is in them, nested (a locker, machine, suit; 'player
 Options:
 - id (string or array, required): A holder's id or "player".
 - depth (integer, default 3): Levels of nested slots.
-- include (list of empty): empty: keep empty slots.
+- include (list of detail | empty): detail: each slot's name and class and its occupant whole; empty: the same, empty slots too.
 - prefab (string or integer or array): Only slots holding this prefab (part with *) at any depth.
 - name (string): Part of the shown name or label, any case.
 - limit (integer, default 10): A silo's stored entries listed.
 - offset (integer, default 0): Entries to skip.
+Each occupied slot is {slot, reference_id, prefab_name, quantity}, with its occupant's own occupied slots under slots; empty_slots_omitted counts the holder's own empty slots.
 id may be a list or a ref: the reply is {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload one reply; fields name its keys.
 Iteration and refs go over slots; a silo's stored entries are paged with limit and offset, not iterated.
 Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the one-id reply; a bad id is a row with error.
-Reply: reference_id, prefab_name, display_name, position {x, y, z}, distance_m, slots [{index, display_name, slot_class, occupant}], empty_slots_omitted, silo {count, entries_known, importing, exporting, dispense_slot, total, offset, entries, cursor_id}
+Reply: (compact) reference_id, prefab_name, display_name, position {x, y, z}, distance_m, slots [{slot, reference_id, prefab_name, quantity, slots, slots_not_shown}], empty_slots_omitted, silo {count, entries_known, importing, exporting, dispense_slot, total, offset, entries, cursor_id} | (include detail or empty) reference_id, prefab_name, display_name, position {x, y, z}, distance_m, slots [{index, display_name, slot_class, occupant}], empty_slots_omitted, silo {count, entries_known, importing, exporting, dispense_slot, total, offset, entries, cursor_id}
 Example: inspect {what: "contents", id: "player"}

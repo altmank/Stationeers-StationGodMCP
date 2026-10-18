@@ -270,7 +270,7 @@ internal static class ViewKeys
             case null:
                 return;
             case IReplyForm form:
-                Write(writer, serializer, form.Form(serializer), except);
+                Write(writer, serializer, form.Form(serializer, null), except);
                 return;
             case ReplacedKey replaced:
                 foreach (KeyValuePair<string, object?> key in Pairs(serializer, replaced, except))
@@ -330,7 +330,7 @@ internal static class ViewKeys
             case null:
                 yield break;
             case IReplyForm form:
-                foreach (KeyValuePair<string, object?> key in Pairs(serializer, form.Form(serializer), except))
+                foreach (KeyValuePair<string, object?> key in Pairs(serializer, form.Form(serializer, null), except))
                 {
                     yield return key;
                 }

@@ -526,7 +526,7 @@ public sealed partial class VerbPipeline
         if (what.Options.ContainsKey("max_wait"))
         {
             (result, VerbReply.Failed? pollFailed) =
-                await SettledAsync(what, options, result, call.Stream, cancellation).ConfigureAwait(false);
+                await SettledAsync(what, options, result, call.Stream, shape, cancellation).ConfigureAwait(false);
             if (pollFailed != null)
             {
                 return pollFailed;
@@ -572,10 +572,11 @@ public sealed partial class VerbPipeline
     /// <summary>
     /// A job the reply names (or inspect job's own id) is waited for until it is final or max_wait (default 30 s)
     /// passes: on the jobs topic (IGameLink.WaitJobAsync), then one inspect job for its view; a link without job waits
-    /// is polled instead. A job still running answers its job id with running: true.
+    /// is polled instead. A job still running answers its job id with running: true. Every poll carries the call's
+    /// shape, so the job's view keeps only what the call's fields and omit keep.
     /// </summary>
     private async Task<(JsonNode? Result, VerbReply.Failed? Failed)> SettledAsync(WhatEntry what, JsonObject options,
-        JsonNode? result, long stream, CancellationToken cancellation)
+        JsonNode? result, long stream, JsonElement? shape, CancellationToken cancellation)
     {
         double seconds = JsonNodes.Number(options["max_wait"]) ?? DefaultMaxWaitSeconds;
         string? jobId = JsonNodes.Text(result?["job_id"]) ??
@@ -599,11 +600,11 @@ public sealed partial class VerbPipeline
             {
                 // Null when the timeout passes, and early after a reconnect: either way one poll gives the job's view.
                 await _link.WaitJobAsync(jobId, TimeSpan.FromSeconds(seconds), cancellation).ConfigureAwait(false);
-                polled = await SendAsync(job, poll, stream, null, cancellation).ConfigureAwait(false);
+                polled = await SendAsync(job, poll, stream, shape, cancellation).ConfigureAwait(false);
             }
             catch (NotSupportedException)
             {
-                polled = await PolledAsync(job, poll, result, stream, seconds, cancellation).ConfigureAwait(false);
+                polled = await PolledAsync(job, poll, result, stream, seconds, shape, cancellation).ConfigureAwait(false);
             }
 
             switch (polled)
@@ -628,14 +629,14 @@ public sealed partial class VerbPipeline
 
     // A link without job waits: poll until the job is final or the time is up; the last poll's reply (null: none).
     private async Task<GameReply?> PolledAsync(WhatEntry job, JsonObject poll, JsonNode? result, long stream, double seconds,
-        CancellationToken cancellation)
+        JsonElement? shape, CancellationToken cancellation)
     {
         Stopwatch waited = Stopwatch.StartNew();
         GameReply? last = null;
         while (!Settled(result) && waited.Elapsed.TotalSeconds + PollInterval.TotalSeconds <= seconds)
         {
             await Task.Delay(PollInterval, cancellation).ConfigureAwait(false);
-            last = await SendAsync(job, poll, stream, null, cancellation).ConfigureAwait(false);
+            last = await SendAsync(job, poll, stream, shape, cancellation).ConfigureAwait(false);
             if (last is not GameReply.Ok polled)
             {
                 break;

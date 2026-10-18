@@ -120,10 +120,12 @@ call. After a game update a missing game member turns off only the whats that ne
 
 **Large replies.** Every verb takes the shaping options `fields`, `omit` and `list_limits`. `fields: ["reference_id",
 "position"]` keeps only those keys in each entry of the reply's lists, and a dotted name is a path read from each
-entry, through nested objects and lists at any depth (`occupant.prefab_name`, `held_in.reference_id`). `omit:
-["source", "runtime.registers"]` leaves keys out wherever a path reaches them. A name that matches nothing comes
+entry, through nested objects and lists at any depth (`slots.prefab_name`, `held_in.reference_id`). `omit:
+["source", "runtime.registers"]` leaves keys out wherever a path reaches them. `id`, `prefab` and `label` read as
+`reference_id`, `prefab_name` and the label (`custom_name`, else `display_name`). A name that matches nothing comes
 back in `fields_unmatched` with the nearest names in `fields_closest`, and `omit` names that matched nothing in
-`omit_unmatched`. The mod applies `fields` and `omit` while it writes the reply, so keys left out are never formatted
+`omit_unmatched`. A confirmed job's reply keeps only what its `fields` and `omit` keep, and a report over 12 KB
+keeps every list `fields` names. The mod applies `fields` and `omit` while it writes the reply, so keys left out are never formatted
 or sent; where a key costs the game real work, the mod does not even work it out when `fields` leaves it out.
 `output_file: true`, or a file name such as `"ores"`, writes the whole reply as indented JSON to a file and answers
 a small pointer instead: `{output_file (the full path), bytes, tool, counts, summary, in_file_only}`. Files go to

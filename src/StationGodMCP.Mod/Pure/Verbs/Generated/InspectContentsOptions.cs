@@ -16,7 +16,7 @@ internal sealed class InspectContentsOptions
     internal static WhatSpec Spec { get; } = new WhatSpec("inspect", "contents", "slots", null, null, new WhatCost(CostClass.Instant), null, null,
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}", true),
         new OptionSpec("depth", "{\"type\":\"integer\",\"minimum\":1,\"maximum\":6}", false, "3"),
-        new OptionSpec("include", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"empty\"]}}"),
+        new OptionSpec("include", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"detail\",\"empty\"]}}"),
         new OptionSpec("prefab", "{\"type\":[\"string\",\"integer\",\"array\"],\"items\":{\"type\":[\"string\",\"integer\"]}}"),
         new OptionSpec("name", "{\"type\":\"string\"}"),
         new OptionSpec("limit", "{\"type\":\"integer\",\"minimum\":1,\"maximum\":600}", false, "10"),

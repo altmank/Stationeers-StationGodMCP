@@ -106,7 +106,7 @@ internal static class MoveItem
                 plan => ItemMoveReplies.SlotReport(new[]
                 {
                     ItemMoveReplies.SlotTarget(new ThingId(plan.Item.ReferenceId), plan.Item.DisplayName,
-                        plan.FromSlot, plan.ToSlot, plan.MergedInto, force)
+                        plan.FromSlot, plan.Shares, plan.MergedInto, force)
                 }, new List<ReportProblem>()));
     }
 
@@ -169,7 +169,7 @@ internal static class MoveItem
                 if (MovePlanner.TryPlan(move, out MovePlan? plan, out ApiException? refusal))
                 {
                     targets.Add(ItemMoveReplies.SlotTarget(new ThingId(plan!.Item.ReferenceId), plan.Item.DisplayName,
-                        plan.FromSlot, plan.ToSlot, plan.MergedInto, force: false));
+                        plan.FromSlot, plan.Shares, plan.MergedInto, force: false));
                 }
                 else
                 {

@@ -79,7 +79,7 @@ internal sealed class CallReplyLine : IOutboundLine
         {
             try
             {
-                reply = form.Form(serializer);
+                reply = form.Form(serializer, _request.Shape);
             }
             catch (ApiException tooLarge)
             {

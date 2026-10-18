@@ -55,8 +55,9 @@ internal sealed class FoundThingView
         bool labelable, string location, string? carriedBy, List<HeldInView> heldIn, PositionView position,
         double? distanceM, bool isDevice, bool hasAtmosphere, OrientationView? rotation = null, bool isBroken = false,
         string condition = "intact", PrintView? made = null, string? rocketState = null,
-        ThingColorView? color = null, BuildStateView? buildState = null)
+        ThingColorView? color = null, BuildStateView? buildState = null, double? quantity = null)
     {
+        Quantity = quantity;
         BuildState = buildState;
         Color = color;
         Made = made;
@@ -94,6 +95,10 @@ internal sealed class FoundThingView
 
     /// <summary>The Labeller's name, null when it has none.</summary>
     public string? CustomName { get; }
+
+    /// <summary>A stack's quantity (as find item counts it); left out for anything that is not counted.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public double? Quantity { get; }
 
     /// <summary>The game's name for the prefab, whatever the label.</summary>
     public string GameName { get; }

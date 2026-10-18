@@ -74,6 +74,7 @@ internal sealed class UpgradeRequest
         RefundTo = options.RefundTo;
         ListLimit = options.ListLimit;
         IncludeNotes = options.IncludeNotes;
+        IncludeNetworkDevices = options.IncludeNetworkDevices;
     }
 
     internal UpgradeFamily Family { get; }
@@ -101,16 +102,21 @@ internal sealed class UpgradeRequest
 
     /// <summary>include_notes: the report carries the tool's fixed explanations.</summary>
     internal bool IncludeNotes { get; }
+
+    /// <summary>include network_devices: the job's verification lists each network's devices.</summary>
+    internal bool IncludeNetworkDevices { get; }
 }
 
 internal sealed class UpgradeOptions
 {
-    internal UpgradeOptions(bool skipUnmatched, RefundRoute refundTo, int listLimit, bool includeNotes = false)
+    internal UpgradeOptions(bool skipUnmatched, RefundRoute refundTo, int listLimit, bool includeNotes = false,
+        bool includeNetworkDevices = false)
     {
         SkipUnmatched = skipUnmatched;
         RefundTo = refundTo;
         ListLimit = listLimit;
         IncludeNotes = includeNotes;
+        IncludeNetworkDevices = includeNetworkDevices;
     }
 
     internal bool SkipUnmatched { get; }
@@ -121,6 +127,9 @@ internal sealed class UpgradeOptions
 
     /// <summary>include_notes: the report carries the tool's fixed explanations.</summary>
     internal bool IncludeNotes { get; }
+
+    /// <summary>include network_devices: the job's verification lists each network's devices.</summary>
+    internal bool IncludeNetworkDevices { get; }
 }
 
 /// <summary>A piece a swap takes away, with its model as it stands now.</summary>

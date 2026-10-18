@@ -26,13 +26,14 @@ internal static class ItemMoveReplies
     internal static ReplyObject Routed(string route, object view) => new ReplyObject(1).Add("route", route).Spread(view);
 
     /// <summary>
-    /// A slot move's report target: [item, name, where it is -> where it goes]. A merge cannot be undone; force is a
-    /// cheat that cannot be either.
+    /// A slot move's report target: [item, name, where it is -> where it goes]; a move over several slots names each
+    /// with how many go there. A merge cannot be undone; force is a cheat that cannot be either.
     /// </summary>
-    internal static ReportTarget SlotTarget(ThingId item, string name, SlotRefView? from, SlotRefView to,
-        ThingId? mergedInto, bool force) =>
+    internal static ReportTarget SlotTarget(ThingId item, string name, SlotRefView? from,
+        IReadOnlyList<SlotShareView> to, IReadOnlyList<ThingId> mergedInto, bool force) =>
         new ReportTarget(item.ToString(), null, name, Where(from), Where(to),
-            force ? ForceMark : mergedInto is { } into ? $"[cannot undo: merged into {into}]" : UndoMark);
+            force ? ForceMark : mergedInto.Count > 0 ? $"[cannot undo: merged into {string.Join(", ", mergedInto)}]"
+                : UndoMark);
 
     /// <summary>A slot move's report: {route}, then its targets, and a refused move as a problem with its index.</summary>
     internal static ReportReply SlotReport(IReadOnlyList<ReportTarget> targets, IReadOnlyList<ReportProblem> problems) =>
@@ -112,6 +113,22 @@ internal static class ItemMoveReplies
 
     // "<holder id> slot <n>", or "world" for an item lying loose.
     private static string Where(SlotRefView? slot) => slot == null ? "world" : $"{slot.Id} slot {slot.Slot}";
+
+    private static string Where(IReadOnlyList<SlotShareView> shares)
+    {
+        if (shares.Count == 1)
+        {
+            return Where(shares[0].Slot);
+        }
+
+        List<string> each = new List<string>(shares.Count);
+        foreach (SlotShareView share in shares)
+        {
+            each.Add($"{Where(share.Slot)} +{share.Quantity}");
+        }
+
+        return string.Join(", ", each);
+    }
 
     // The rows of the reply's items (its results), as the views they are.
     private static List<object> Rows(ReplyObject reply)

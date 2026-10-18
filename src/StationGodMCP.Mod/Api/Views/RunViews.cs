@@ -416,6 +416,13 @@ internal interface IListsDevices
     object WithoutDevices();
 }
 
+/// <summary>A network report as a reply shows it: whole when its devices are asked for, else without their lists.</summary>
+internal static class NetworkDeviceLists
+{
+    internal static object Shown(object report, bool listDevices) =>
+        !listDevices && report is IListsDevices listing ? listing.WithoutDevices() : report;
+}
+
 /// <summary>A cable network the edit touches, as it is now.</summary>
 internal sealed class RunCableNetworkView : IListsDevices
 {

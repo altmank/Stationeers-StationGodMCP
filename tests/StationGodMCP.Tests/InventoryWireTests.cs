@@ -140,7 +140,7 @@ public sealed class InventoryWireTests
         var old = new
         {
             reference_id = "40", prefab_name = "StructureStorageLocker", display_name = "Locker",
-            position = new { x = 4.0, y = 5.0, z = 6.0 }, distance_m = (double?)null,
+            position = new { x = 4.0, y = 5.0, z = 6.0 },
             slots = new List<object>
             {
                 new

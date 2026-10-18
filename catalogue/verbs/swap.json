@@ -251,7 +251,11 @@
           "use": "refund_to",
           "x-script": "Where removed materials go: a word (inventory, source, storage, ground, none), a container id, or a list tried in turn. (default [inventory, source, storage, ground])"
         },
-        "include": {"use": "include", "schema": {"type": "array", "items": {"type": "string", "enum": ["notes"]}}},
+        "include": {
+          "use": "include",
+          "schema": {"type": "array", "items": {"type": "string", "enum": ["notes", "network_devices"]}},
+          "description": "notes: fixed text; network_devices: each network's devices in the job's verification."
+        },
         "rows": {
           "use": "rows",
           "schema": {"type": "integer", "minimum": 0, "maximum": 4096},
@@ -396,7 +400,11 @@
           "use": "refund_to",
           "x-script": "Where removed materials go: a word (inventory, source, storage, ground, none), a container id, or a list tried in turn. (default [inventory, source, storage, ground])"
         },
-        "include": {"use": "include", "schema": {"type": "array", "items": {"type": "string", "enum": ["notes"]}}},
+        "include": {
+          "use": "include",
+          "schema": {"type": "array", "items": {"type": "string", "enum": ["notes", "network_devices"]}},
+          "description": "notes: fixed text; network_devices: each network's devices in the job's verification."
+        },
         "rows": {
           "use": "rows",
           "schema": {"type": "integer", "minimum": 0, "maximum": 4096},
@@ -507,7 +515,11 @@
           "use": "refund_to",
           "x-script": "Where removed materials go: a word (inventory, source, storage, ground, none), a container id, or a list tried in turn. (default [inventory, source, storage, ground])"
         },
-        "include": {"use": "include", "schema": {"type": "array", "items": {"type": "string", "enum": ["notes"]}}},
+        "include": {
+          "use": "include",
+          "schema": {"type": "array", "items": {"type": "string", "enum": ["notes", "network_devices"]}},
+          "description": "notes: fixed text; network_devices: each network's devices in the job's verification."
+        },
         "rows": {
           "use": "rows",
           "schema": {"type": "integer", "minimum": 0, "maximum": 4096},

@@ -347,19 +347,56 @@ public sealed class MoveItemTests
     [Fact]
     public void ASlotMovesReportTargetMarksAMergeAndForceAsCannotUndo()
     {
-        SlotRefView to = new SlotRefView(new ThingId(273), 3);
+        SlotShareView[] to = { new SlotShareView(new SlotRefView(new ThingId(273), 3), 5) };
+        List<ThingId> none = new List<ThingId>();
 
         Assert.Equal("[1, Iron Ore, 57 slot 2 -> 273 slot 3] [undo]",
-            ItemMoveReplies.SlotTarget(new ThingId(1), "Iron Ore", new SlotRefView(new ThingId(57), 2), to, null, false)
+            ItemMoveReplies.SlotTarget(new ThingId(1), "Iron Ore", new SlotRefView(new ThingId(57), 2), to, none, false)
                 .Text(ApiJson.Serializer));
         Assert.Equal("[1, Iron Ore, world -> 273 slot 3] [cannot undo: merged into 9]",
-            ItemMoveReplies.SlotTarget(new ThingId(1), "Iron Ore", null, to, new ThingId(9), false).Text(ApiJson.Serializer));
+            ItemMoveReplies.SlotTarget(new ThingId(1), "Iron Ore", null, to, new List<ThingId> { new ThingId(9) }, false)
+                .Text(ApiJson.Serializer));
         JObject report = Replies.Tree(ItemMoveReplies.SlotReport(new[]
         {
-            ItemMoveReplies.SlotTarget(new ThingId(1), "Payload", null, to, null, true)
+            ItemMoveReplies.SlotTarget(new ThingId(1), "Payload", null, to, none, true)
         }, new List<ReportProblem>()));
         Assert.Equal(new[] { "route", "problems", "report_only", "targets" }, Keys(report));
         Assert.Equal("[cannot undo: force]", (string?)report["targets"]![0]!["undo"]);
+    }
+
+    [Fact]
+    public void AMoveSpreadOverSlotsNamesEachSlotAndWhatGoesThere()
+    {
+        SlotShareView[] to =
+        {
+            new SlotShareView(new SlotRefView(new ThingId(273), 3), 2),
+            new SlotShareView(new SlotRefView(new ThingId(273), 7), 1)
+        };
+
+        Assert.Equal("[1, Iron Ore, 57 slot 2 -> 273 slot 3 +2, 273 slot 7 +1] [cannot undo: merged into 9]",
+            ItemMoveReplies.SlotTarget(new ThingId(1), "Iron Ore", new SlotRefView(new ThingId(57), 2), to,
+                new List<ThingId> { new ThingId(9) }, false).Text(ApiJson.Serializer));
+    }
+
+    [Fact]
+    public void AMoveSpreadOverSlotsListsEachFilledSlotReadBack()
+    {
+        SlotRefView first = new SlotRefView(new ThingId(273), 3);
+        List<SlotFilledView> filled = new List<SlotFilledView>
+        {
+            new SlotFilledView(first, new ThingId(9), 2, true, 5),
+            new SlotFilledView(new SlotRefView(new ThingId(273), 7), new ThingId(10), 1, false, 1)
+        };
+
+        JObject moved = JObject.Parse(WireCheck.New(new ItemMovedView(0, new ThingId(1), "Iron Ore",
+            new SlotRefView(new ThingId(57), 2), first, 3, new ThingId(9), new ThingId(9), filled: filled)));
+        JObject single = JObject.Parse(WireCheck.New(new ItemMovedView(0, new ThingId(1), "Iron Ore", null, first, 3,
+            null, new ThingId(1))));
+
+        Assert.Equal(3, (int)moved["quantity_moved"]!);
+        Assert.Equal("""[{"to":{"id":"273","slot":3},"reference_id":"9","added":2,"merged":true,"quantity_now":5},{"to":{"id":"273","slot":7},"reference_id":"10","added":1,"merged":false,"quantity_now":1}]""",
+            moved["filled"]!.ToString(Newtonsoft.Json.Formatting.None));
+        Assert.Null(single["filled"]);
     }
 
     [Fact]

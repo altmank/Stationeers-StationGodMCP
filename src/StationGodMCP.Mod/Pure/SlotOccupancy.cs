@@ -26,6 +26,9 @@ internal readonly struct SlotOccupant
 
     /// <summary>Whether this many more fit under its MaxQuantity.</summary>
     internal bool Fits(int quantity) => Quantity + quantity <= MaxQuantity;
+
+    /// <summary>How many more fit under its MaxQuantity.</summary>
+    internal int Room => System.Math.Max(MaxQuantity - Quantity, 0);
 }
 
 /// <summary>One slot of the destination, as "auto" weighs it.</summary>
@@ -50,30 +53,52 @@ internal readonly struct AutoSlotCandidate
     internal bool TakesNewHere { get; }
 }
 
-/// <summary>The slot auto chose: its index, and whether the move joins the stack there.</summary>
-internal readonly struct AutoSlotPick
+/// <summary>One slot an auto move fills: its index, how many go there, and whether they join the stack it holds.</summary>
+internal readonly struct AutoFillPart
 {
-    internal AutoSlotPick(int index, bool merges)
+    internal AutoFillPart(int index, int quantity, bool merges)
     {
         Index = index;
+        Quantity = quantity;
         Merges = merges;
     }
 
-    internal static AutoSlotPick None { get; } = new AutoSlotPick(-1, false);
-
     internal int Index { get; }
 
-    internal bool Merges { get; }
+    internal int Quantity { get; }
 
-    internal bool Found => Index >= 0;
+    internal bool Merges { get; }
+}
+
+/// <summary>
+/// Where auto puts a move's items, in order: the stacks it tops up, then the empty slot that takes the rest. Staging is
+/// the empty slot part of a stack is split into first, so the stacks are topped up from the part and not from the
+/// whole stack (the game's merge takes all that fits); null when the moved items join the stacks from their own stack.
+/// </summary>
+internal sealed class AutoFill
+{
+    internal AutoFill(List<AutoFillPart> parts, int? staging)
+    {
+        Parts = parts;
+        Staging = staging;
+    }
+
+    internal static AutoFill None { get; } = new AutoFill(new List<AutoFillPart>(), null);
+
+    internal IReadOnlyList<AutoFillPart> Parts { get; }
+
+    internal int? Staging { get; }
+
+    internal bool Found => Parts.Count > 0;
 }
 
 /// <summary>
 /// The one rule every move obeys: what a slot already holds is never replaced, dropped or destroyed. A move goes into
-/// an empty slot, or joins the stack there only when the game would merge the two (Slot.CanMerge: the same prefab),
-/// the whole stack moves (the game has no partial merge) and all of it fits under the stack's MaxQuantity. "auto"
-/// picks a joinable stack with room first, when merging is allowed, then the first empty slot that takes the item;
-/// any other occupied slot is passed over.
+/// an empty slot, or joins the stack there only when the game would merge the two (Slot.CanMerge: the same prefab).
+/// Into a slot given by index, the whole stack moves (the game's merge takes the whole stack) and all of it fits under
+/// the stack's MaxQuantity. "auto", when merging is allowed, tops up each joinable stack with room in slot order until
+/// the items run out, then puts the rest into the first empty slot that takes the item; any other occupied slot is
+/// passed over.
 /// </summary>
 internal static class SlotOccupancy
 {
@@ -98,29 +123,62 @@ internal static class SlotOccupancy
         return occupant.Fits(quantity) ? (OccupantRefusal?)null : OccupantRefusal.StackFull;
     }
 
-    internal static AutoSlotPick PickAuto(IReadOnlyList<AutoSlotCandidate> slots, int quantity, bool wholeStack,
+    /// <summary>
+    /// Where auto puts quantity items: joinable stacks topped up to their MaxQuantity in slot order, the rest into the
+    /// first empty slot that takes the item; None when the empty slot the rest needs is missing. Part of a stack is
+    /// staged in that empty slot first; with no empty slot it tops up only stacks it fills (the game's merge of the
+    /// whole stack takes all that fits, so a stack with more room than is left would take more than asked).
+    /// </summary>
+    internal static AutoFill FillAuto(IReadOnlyList<AutoSlotCandidate> slots, int quantity, bool wholeStack,
         bool mergeAllowed)
     {
-        for (int index = 0; index < slots.Count && mergeAllowed; index++)
+        int? empty = FirstEmpty(slots);
+        bool staged = !wholeStack && empty.HasValue;
+        List<AutoFillPart> parts = new List<AutoFillPart>();
+        int left = quantity;
+        for (int index = 0; index < slots.Count && mergeAllowed && left > 0; index++)
         {
             AutoSlotCandidate slot = slots[index];
-            if (slot.Occupant.HasValue && slot.MergesHere &&
-                JoinRefusal(slot.Occupant.Value, quantity, wholeStack, mergeAllowed) == null)
+            if (!slot.Occupant.HasValue || !slot.MergesHere || !slot.Occupant.Value.Joinable)
             {
-                return new AutoSlotPick(slot.Index, true);
+                continue;
             }
+
+            int room = slot.Occupant.Value.Room;
+            if (room == 0 || (!wholeStack && !staged && room > left))
+            {
+                continue;
+            }
+
+            int added = System.Math.Min(room, left);
+            parts.Add(new AutoFillPart(slot.Index, added, true));
+            left -= added;
         }
 
-        for (int index = 0; index < slots.Count; index++)
+        if (left > 0)
         {
-            AutoSlotCandidate slot = slots[index];
+            if (!empty.HasValue)
+            {
+                return AutoFill.None;
+            }
+
+            parts.Add(new AutoFillPart(empty.Value, left, false));
+        }
+
+        return new AutoFill(parts, staged && parts[0].Merges ? empty : null);
+    }
+
+    private static int? FirstEmpty(IReadOnlyList<AutoSlotCandidate> slots)
+    {
+        foreach (AutoSlotCandidate slot in slots)
+        {
             if (!slot.Occupant.HasValue && slot.TakesNewHere)
             {
-                return new AutoSlotPick(slot.Index, false);
+                return slot.Index;
             }
         }
 
-        return AutoSlotPick.None;
+        return null;
     }
 
     /// <summary>

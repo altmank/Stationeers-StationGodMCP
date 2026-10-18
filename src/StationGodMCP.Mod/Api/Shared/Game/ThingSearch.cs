@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using Assets.Scripts;
 using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Entities;
+using Assets.Scripts.Objects.Items;
 using Assets.Scripts.Objects.Pipes;
 using StationGodMCP.Api.Shared.Game.Build;
 using StationGodMCP.Api.Shared.Game.Runs;
@@ -74,7 +75,8 @@ internal static class ThingSearch
             Prints.Log.Of(thing.ReferenceId) is PrintRecord record ? new PrintView(record) : null,
             RocketOf(thing),
             ThingColors.ShownColorOf(thing, swatches),
-            BuildStates.Unfinished(thing));
+            BuildStates.Unfinished(thing),
+            thing is Item item and IQuantity ? WorldItems.QuantityOf(item) : null);
     }
 
     /// <summary>Where a thing is, as a found thing's location: its holder chain's for a dynamic thing, else built or world.</summary>

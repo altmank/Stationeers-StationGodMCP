@@ -161,7 +161,8 @@ internal static class SwapNetworks
         ThingId? from = JobTargets.Payers(call.Materials, label, more);
         return new UpgradeRequest(family, goal, selection, from,
             new UpgradeOptions(call.SkipUnmatched, call.Materials.RefundTo,
-                call.Report.Rows ?? ReplyDefaults.UpgradeListed, call.Fields.Includes("notes")), more);
+                call.Report.Rows ?? ReplyDefaults.UpgradeListed, call.Fields.Includes("notes"),
+                call.Fields.Includes("network_devices")), more);
     }
 
     /// <summary>The report or the job's start, as report and confirm say.</summary>

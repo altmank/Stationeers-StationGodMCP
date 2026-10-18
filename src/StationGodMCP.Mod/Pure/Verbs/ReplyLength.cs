@@ -3,30 +3,45 @@
 using System.IO;
 using System.Text;
 using Newtonsoft.Json;
+using StationGodMCP.Pure.Shaping;
 
 namespace StationGodMCP.Pure.Verbs;
 
-/// <summary>How long a value's JSON text is, counted as it is written: no text is kept.</summary>
+/// <summary>
+/// How long a value's JSON text is, counted as it is written: no text is kept. With a shape, the text that shape
+/// writes as the reply (fields, omit and list limits applied; the notes shaping adds are not counted).
+/// </summary>
 internal static class ReplyLength
 {
-    internal static long Utf8Bytes(object? value, JsonSerializer serializer)
+    internal static long Utf8Bytes(object? value, JsonSerializer serializer, ShapeRequest? shape = null)
     {
         Utf8Count count = new Utf8Count();
-        Write(value, serializer, count);
+        Write(value, serializer, count, shape);
         return count.Bytes;
     }
 
-    internal static long Characters(object? value, JsonSerializer serializer)
+    internal static long Characters(object? value, JsonSerializer serializer, ShapeRequest? shape = null)
     {
         Utf8Count count = new Utf8Count();
-        Write(value, serializer, count);
+        Write(value, serializer, count, shape);
         return count.Characters;
     }
 
-    private static void Write(object? value, JsonSerializer serializer, TextWriter text)
+    private static void Write(object? value, JsonSerializer serializer, TextWriter text, ShapeRequest? shape)
     {
         using JsonTextWriter writer = new JsonTextWriter(text) { Formatting = serializer.Formatting, CloseOutput = false };
-        serializer.Serialize(writer, value);
+        if (shape == null)
+        {
+            serializer.Serialize(writer, value);
+            return;
+        }
+
+        ShapingJsonWriter shaping = new ShapingJsonWriter(writer, shape, ShapingRoot.Result, nameClosest: false)
+        {
+            Formatting = serializer.Formatting
+        };
+        serializer.Serialize(shaping, value);
+        shaping.Flush();
     }
 }
 

@@ -1,5 +1,34 @@
 # Changelog
 
+## 2.2.0
+
+Smaller and more exact replies, from what agents ran into.
+
+- **inspect contents is compact by default.** Each occupied slot is `{slot, reference_id, prefab_name, quantity}`,
+  with what the occupant holds itself under `slots` (only when it holds something) and `slots_not_shown` past the
+  depth limit; no null keys, no empty slots. `include: ["detail"]` gives the full form (each slot's `index`,
+  `display_name`, `slot_class` and its `occupant` whole), `include: ["empty"]` the full form with the empty slots
+  too, as before. A list of 30-slot lockers answered 77 KB, mostly nested nulls and empty slots.
+- **empty_slots_omitted counts the holder's own slots.** A 30-slot locker reported 74, counting the empty slots of
+  the suits and backpacks in it; an occupant's empty slots are still left out, and no longer counted.
+- **move item auto fills stacks first.** With `slot` auto and `merge` on, matching stacks are topped up to their
+  most in slot order, and the rest goes into the first empty slot: 3 into a locker holding 3 of at most 5 makes it
+  5 and puts 1 in a free slot (before, the whole 3 took a new slot). Part of a stack is split into the free slot
+  first and the stacks are topped up from it. A move spread over several slots answers `filled`: each slot, the
+  stack there, how many were `added` and its `quantity_now` read back after the move. With no empty slot the
+  matching stacks must take all of it; into a slot given by index the whole moved stack must still fit.
+- **find thing gives a stack's quantity**, as find item does; things that are not counted leave it out.
+- **fields reads id, prefab and label** as `reference_id`, `prefab_name` and the label (`custom_name`, else
+  `display_name`), on every verb, and says so in `fields_mapped`. A reply with its own `id` key keeps it.
+- **A confirmed job's reply keeps only what fields and omit keep.** The MCP server polled the job without the call's
+  shape, so `fields: ["status", "verification.ok"]` on a confirmed swap still answered the whole job view.
+- **swap cable, pipe and chute verification leaves the network device lists out** (each network's `device_count`
+  stays); `include: ["network_devices"]` lists them. An 87-device network sent about 7 KB on every swap.
+- **A report keeps the lists fields names.** A report over 12 KB answers its summary form, which drops every list:
+  `fields: ["cells"]` on a long `build pipe` dry run came back without its cells. The size is now judged as the
+  call's fields and omit write the report, and the summary keeps every list fields names.
+- Python `sg` 0.4.4: the stubs carry the new reply shapes.
+
 ## 2.1.0
 
 StationGod handles multiplayer: on a dedicated server with several players, every tool that acts for "the player"

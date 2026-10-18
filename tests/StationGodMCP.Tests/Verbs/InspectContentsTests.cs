@@ -1,6 +1,7 @@
 #nullable enable
 
 using System.Collections.Generic;
+using System.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure.Verbs;
@@ -11,8 +12,9 @@ namespace StationGodMCP.Tests.Verbs;
 
 /// <summary>
 /// inspect contents as its handler reads it (the slots themselves need the game): prefab and name keep slots holding a
-/// match at any depth, empty slots are left out and counted, fields paths reach nested slots, and a silo's entries page
-/// by the catalogue's limit (10, at most 600) and by offset only.
+/// match at any depth, empty slots are left out and the holder's own counted, occupied slots are compact unless asked in
+/// detail, fields paths reach nested slots, and a silo's entries page by the catalogue's limit (10, at most 600) and by
+/// offset only.
 /// </summary>
 public sealed class InspectContentsTests
 {
@@ -62,11 +64,11 @@ public sealed class InspectContentsTests
     };
 
     [Fact]
-    public void EmptySlotsAreLeftOutAtEveryDepthAndCounted()
+    public void EmptySlotsAreLeftOutAtEveryDepthAndOnlyTheHoldersOwnCounted()
     {
         ShownSlots shown = ShownSlots.Occupied(PlayerWithEmptyOreBag());
 
-        Assert.Equal(5, shown.EmptyOmitted);
+        Assert.Equal(1, shown.EmptyOmitted);
         Assert.Equal(new[] { 0, 2 }, Indexes(shown.Slots));
         List<SlotView> backpack = shown.Slots[1].Occupant!.Slots!;
         Assert.Equal(new[] { 0, 2 }, Indexes(backpack));
@@ -92,9 +94,93 @@ public sealed class InspectContentsTests
         string pruned = WireCheck.New(new ContainerContentsView(player, here, null, ShownSlots.Occupied(PlayerWithEmptyOreBag())));
         string whole = WireCheck.New(new ContainerContentsView(player, here, null, ShownSlots.All(PlayerWithEmptyOreBag())));
 
-        Assert.Contains("\"empty_slots_omitted\":5", pruned);
+        Assert.Contains("\"empty_slots_omitted\":1", pruned);
         Assert.DoesNotContain("\"empty\":true", pruned);
         Assert.DoesNotContain("empty_slots_omitted", whole);
+    }
+
+    // A 30-slot locker holding two suits, each with ten empty slots of its own, and one stack.
+    private static List<SlotView> LockerOfSuits()
+    {
+        List<SlotView> slots = new List<SlotView>();
+        for (int index = 0; index < 30; index++)
+        {
+            OccupantView? occupant = index switch
+            {
+                0 or 1 => Item(10 + index, "ItemHardSuit", "Hardsuit", SuitSlots()),
+                2 => new OccupantView(new ThingView(new ThingId(20), "ItemSteelSheets", "Steel Sheets"), 37, 50, null,
+                    null),
+                _ => null
+            };
+            slots.Add(new SlotView(index, "Slot", "None", occupant));
+        }
+
+        return slots;
+    }
+
+    private static List<SlotView> SuitSlots()
+    {
+        List<SlotView> slots = new List<SlotView>();
+        for (int index = 0; index < 10; index++)
+        {
+            slots.Add(new SlotView(index, "Slot", "None", null));
+        }
+
+        return slots;
+    }
+
+    [Fact]
+    public void ALockerCountsItsOwnEmptySlotsNotItsSuits()
+    {
+        ShownSlots shown = ShownSlots.Occupied(LockerOfSuits());
+
+        Assert.Equal(27, shown.EmptyOmitted);
+        Assert.Equal(3, shown.Slots.Count);
+    }
+
+    [Fact]
+    public void TheCompactFormIsEachOccupiedSlotsIdPrefabAndQuantity()
+    {
+        ThingView locker = new ThingView(new ThingId(40), "StructureStorageLocker", "Locker");
+        PositionView here = new PositionView(1, 2, 3);
+
+        string compact = WireCheck.New(new ContainerContentsView(locker, here, null, ShownSlots.Occupied(LockerOfSuits()),
+            form: SlotForm.Compact));
+
+        Assert.Equal("""{"reference_id":"40","prefab_name":"StructureStorageLocker","display_name":"Locker","position":{"x":1.0,"y":2.0,"z":3.0},"slots":[{"slot":0,"reference_id":"10","prefab_name":"ItemHardSuit","quantity":1.0},{"slot":1,"reference_id":"11","prefab_name":"ItemHardSuit","quantity":1.0},{"slot":2,"reference_id":"20","prefab_name":"ItemSteelSheets","quantity":37.0}],"empty_slots_omitted":27}""",
+            compact);
+        Assert.DoesNotContain("null", compact);
+    }
+
+    [Fact]
+    public void TheCompactFormNestsAnOccupantsOwnOccupiedSlots()
+    {
+        ThingView player = new ThingView(new ThingId(9), "Character", "LU");
+        JObject reply = JObject.Parse(WireCheck.New(new ContainerContentsView(player, new PositionView(0, 0, 0), 2.5,
+            ShownSlots.Occupied(PlayerWithEmptyOreBag()), form: SlotForm.Compact)));
+
+        JToken backpack = reply["slots"]![1]!;
+        Assert.Equal(2, (int)backpack["slot"]!);
+        Assert.Equal(new[] { 0, 2 }, ((JArray)backpack["slots"]!).Select(slot => (int)slot["slot"]!).ToArray());
+        Assert.Null(backpack["slots"]![0]!["slots"]);
+        Assert.Null(reply["slots"]![0]!["slots"]);
+        Assert.Equal(2.5, (double)reply["distance_m"]!);
+    }
+
+    [Fact]
+    public void ThePastDepthCountStaysInTheCompactForm()
+    {
+        ThingView locker = new ThingView(new ThingId(40), "StructureStorageLocker", "Locker");
+        List<SlotView> slots = new List<SlotView>
+        {
+            new SlotView(0, "Slot", "None",
+                new OccupantView(new ThingView(new ThingId(41), "ItemBackpack", "Backpack"), 1.0, null, null, 6))
+        };
+
+        JObject reply = JObject.Parse(WireCheck.New(new ContainerContentsView(locker, new PositionView(0, 0, 0), null,
+            ShownSlots.Occupied(slots), form: SlotForm.Compact)));
+
+        Assert.Equal(6, (int)reply["slots"]![0]!["slots_not_shown"]!);
     }
 
     private static int[] Indexes(List<SlotView> slots)

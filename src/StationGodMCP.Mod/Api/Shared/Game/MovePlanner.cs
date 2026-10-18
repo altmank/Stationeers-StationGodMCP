@@ -85,23 +85,27 @@ internal static class MovePlanner
             return false;
         }
 
-        refusal = ChooseSlot(move, item!, target!, quantity, out Slot? slot, out Stackable? mergeInto);
+        refusal = ChooseSlot(move, item!, target!, quantity, out List<MovePart> parts, out Slot? staging);
         if (refusal != null)
         {
             return false;
         }
 
-        GrowerSlotKind kind = GrowerSlots.KindOf(target!, slot!);
-        bool plants = item is Plant && kind == GrowerSlotKind.Plant;
-        refusal = plants
-            ? PlantingRefusal((Plant)item!, target!, slot!, quantity)
-            : GrowerSlotRefusal(item!, target!, kind, slot!, quantity);
-        if (refusal != null)
+        bool plants = false;
+        foreach (MovePart part in parts)
         {
-            return false;
+            GrowerSlotKind kind = GrowerSlots.KindOf(target!, part.Slot);
+            plants = item is Plant && kind == GrowerSlotKind.Plant;
+            refusal = plants
+                ? PlantingRefusal((Plant)item!, target!, part.Slot, part.Quantity)
+                : GrowerSlotRefusal(item!, target!, kind, part.Slot, part.Quantity);
+            if (refusal != null)
+            {
+                return false;
+            }
         }
 
-        plan = new MovePlan(item!, target!, slot!, quantity, mergeInto, plants);
+        plan = new MovePlan(item!, target!, parts, quantity, staging, plants && parts.Count == 1);
         return true;
     }
 
@@ -263,17 +267,25 @@ internal static class MovePlanner
                 $"{Names.Of(item)} is not a stack: it moves whole, so quantity can only be 1 (or left out).");
     }
 
+    // The slots the move fills (one for a slot given by index), and the empty slot part of a stack is staged in.
     private static ApiException? ChooseSlot(ItemMove move, DynamicThing item, Thing target, int quantity,
-        out Slot? slot, out Stackable? mergeInto)
+        out List<MovePart> parts, out Slot? staging)
     {
-        slot = null;
-        mergeInto = null;
+        parts = new List<MovePart>(1);
+        staging = null;
         switch (move.Slot)
         {
             case SlotChoice.Exact exact:
-                return ExactSlot(move, item, target, quantity, exact.Index, out slot, out mergeInto);
+                ApiException? refused = ExactSlot(move, item, target, quantity, exact.Index, out Slot? slot,
+                    out Stackable? mergeInto);
+                if (refused == null)
+                {
+                    parts.Add(new MovePart(slot!, quantity, mergeInto));
+                }
+
+                return refused;
             case SlotChoice.Auto _:
-                return AutoSlot(move, item, target, quantity, out slot, out mergeInto);
+                return AutoSlot(move, item, target, quantity, parts, out staging);
             default:
                 return ApiErrors.InvalidArgument("Unknown slot.");
         }
@@ -390,10 +402,10 @@ internal static class MovePlanner
         }
     }
 
-    // A matching stack first (when merging is allowed and the whole stack moves), then the first empty slot that
-    // takes the item (SlotOccupancy.PickAuto); any other occupied slot is passed over.
+    // Matching stacks topped up first (when merging is allowed), then the first empty slot that takes the item for the
+    // rest (SlotOccupancy.FillAuto); any other occupied slot is passed over.
     private static ApiException? AutoSlot(ItemMove move, DynamicThing item, Thing target, int quantity,
-        out Slot? slot, out Stackable? mergeInto)
+        List<MovePart> parts, out Slot? staging)
     {
         int usable = IsVaultDisplaySlot(target, VaultDisplaySlotsStart)
             ? System.Math.Min(VaultDisplaySlotsStart, target.Slots.Count)
@@ -417,12 +429,18 @@ internal static class MovePlanner
         }
 
         int whole = item is Stackable stack ? stack.Quantity : 1;
-        AutoSlotPick pick = SlotOccupancy.PickAuto(candidates, quantity, quantity >= whole, move.Merge);
-        slot = pick.Found ? target.Slots[pick.Index] : null;
-        mergeInto = pick.Merges ? (Stackable)slot!.Get() : null;
-        return pick.Found
+        AutoFill fill = SlotOccupancy.FillAuto(candidates, quantity, quantity >= whole, move.Merge);
+        foreach (AutoFillPart part in fill.Parts)
+        {
+            Slot slot = target.Slots[part.Index];
+            parts.Add(new MovePart(slot, part.Quantity, part.Merges ? (Stackable)slot.Get() : null));
+        }
+
+        staging = fill.Staging is int staged ? target.Slots[staged] : null;
+        return fill.Found
             ? null
-            : ApiErrors.Refused("no_free_slot", $"{Names.Of(target)} has no slot that takes {Names.Of(item)}.");
+            : ApiErrors.Refused("no_free_slot", $"{Names.Of(target)} has no slot that takes {Names.Of(item)}" +
+                (move.Merge ? "; its matching stacks have no room for all of it." : "."));
     }
 
     // A grower's plant or fertiliser slot is taken by the grower rules, hidden or not (a plant into a plant slot,
@@ -436,16 +454,38 @@ internal static class MovePlanner
     }
 }
 
-/// <summary>A checked move, applied with the game's calls and read back.</summary>
+/// <summary>One slot a move fills: how many go there, and the stack they join (null: the slot is empty).</summary>
+internal sealed class MovePart
+{
+    internal MovePart(Slot slot, int quantity, Stackable? into)
+    {
+        Slot = slot;
+        Quantity = quantity;
+        Into = into;
+    }
+
+    internal Slot Slot { get; }
+
+    internal int Quantity { get; }
+
+    internal Stackable? Into { get; }
+}
+
+/// <summary>
+/// A checked move, applied with the game's calls and read back: into one slot, or (auto) topping up stacks and putting
+/// the rest into an empty slot, part of a stack first split into its staging slot.
+/// </summary>
 internal sealed class MovePlan
 {
-    internal MovePlan(DynamicThing item, Thing target, Slot slot, int quantity, Stackable? mergeInto, bool plants)
+    internal MovePlan(DynamicThing item, Thing target, List<MovePart> parts, int quantity, Slot? staging, bool plants)
     {
         Item = item;
         Target = target;
-        Slot = slot;
+        Parts = parts;
+        Slot = parts[0].Slot;
         Quantity = quantity;
-        MergeInto = mergeInto;
+        MergeInto = parts[0].Into;
+        Staging = staging;
         Plants = plants;
     }
 
@@ -453,11 +493,18 @@ internal sealed class MovePlan
 
     internal Thing Target { get; }
 
+    internal IReadOnlyList<MovePart> Parts { get; }
+
+    /// <summary>The first slot the move fills.</summary>
     internal Slot Slot { get; }
 
     internal int Quantity { get; }
 
+    /// <summary>The first stack the move joins; null when its first slot is empty.</summary>
     internal Stackable? MergeInto { get; }
+
+    /// <summary>The empty slot part of a stack is split into before it tops up stacks; null when none is.</summary>
+    internal Slot? Staging { get; }
 
     /// <summary>Whether the slot is a grower's plant slot, so one unit is planted instead of moved.</summary>
     internal bool Plants { get; }
@@ -465,12 +512,128 @@ internal sealed class MovePlan
     /// <summary>The slot the item is in now; null when it lies loose in the world.</summary>
     internal SlotRefView? FromSlot => From();
 
-    internal SlotRefView ToSlot => To();
+    /// <summary>The stacks the items join; empty when they go into an empty slot only.</summary>
+    internal List<ThingId> MergedInto
+    {
+        get
+        {
+            List<ThingId> merged = new List<ThingId>(Parts.Count);
+            foreach (MovePart part in Parts)
+            {
+                if (part.Into != null)
+                {
+                    merged.Add(new ThingId(part.Into.ReferenceId));
+                }
+            }
 
-    /// <summary>The stack the items join; null for an empty slot.</summary>
-    internal ThingId? MergedInto => Merged();
+            return merged;
+        }
+    }
 
-    internal ItemMovedView Apply(int index)
+    /// <summary>Each slot the move fills and how many go there.</summary>
+    internal List<SlotShareView> Shares
+    {
+        get
+        {
+            List<SlotShareView> shares = new List<SlotShareView>(Parts.Count);
+            foreach (MovePart part in Parts)
+            {
+                shares.Add(new SlotShareView(new SlotRefView(new ThingId(Target.ReferenceId), part.Slot.SlotIndex),
+                    part.Quantity));
+            }
+
+            return shares;
+        }
+    }
+
+    internal ItemMovedView Apply(int index) => Parts.Count == 1 && Staging == null ? ApplyOne(index) : Fill(index);
+
+    // Several slots: every one checked as it is now, then part of a stack split into its staging slot, each stack
+    // topped up from it (or from the moved stack itself), the rest moved or split into its empty slot, and every slot
+    // read back.
+    private ItemMovedView Fill(int index)
+    {
+        SlotRefView? from = From();
+        ThingId itemId = new ThingId(Item.ReferenceId);
+        string name = Item.DisplayName;
+        foreach (MovePart part in Parts)
+        {
+            RequireStillSafe(part.Slot, part.Into, part.Quantity);
+        }
+
+        if (Staging != null)
+        {
+            RequireStillSafe(Staging, null, Quantity);
+        }
+
+        Stackable source = (Stackable)Item;
+        Stackable feeder = Staging != null ? SplitInto(source, Quantity, Staging) : source;
+        List<Stackable> landed = new List<Stackable>(Parts.Count);
+        foreach (MovePart part in Parts)
+        {
+            landed.Add(part.Into != null
+                ? TopUp(part.Into, feeder, part.Quantity)
+                : Staging != null ? feeder : PutRest(source, part));
+        }
+
+        // Read back once every call is made: the stack in each filled slot and what it holds now.
+        List<SlotFilledView> filled = new List<SlotFilledView>(Parts.Count);
+        int moved = 0;
+        for (int at = 0; at < Parts.Count; at++)
+        {
+            MovePart part = Parts[at];
+            DynamicThing? now = part.Slot.Get();
+            moved += part.Quantity;
+            filled.Add(new SlotFilledView(new SlotRefView(new ThingId(Target.ReferenceId), part.Slot.SlotIndex),
+                new ThingId(landed[at].ReferenceId), part.Quantity, part.Into != null,
+                now is Stackable stack && stack == landed[at] ? stack.Quantity : (int?)null));
+        }
+
+        return new ItemMovedView(index, itemId, name, from, filled[0].To, moved,
+            filled[0].Merged ? filled[0].ReferenceId : (ThingId?)null, filled[0].ReferenceId, filled: filled);
+    }
+
+    private void RequireStillSafe(Slot slot, Stackable? into, int quantity)
+    {
+        if (!SlotOccupancy.StillSafe(SlotOccupants.Of(slot, Item),
+                into != null ? into.ReferenceId : (long?)null, into != null ? quantity : 0))
+        {
+            DynamicThing? now = slot.Get();
+            throw ApiErrors.Refused(now != null ? "slot_occupied" : "move_failed",
+                $"{SlotAccess.Label(slot)} now holds {(now != null ? Names.Of(now) : "nothing")}, not what the move "
+                + "was checked against; nothing was moved (a move never replaces what a slot holds).");
+        }
+    }
+
+    // Stackable.Merge moves all of feeder that fits; the plan asked exactly that many of it.
+    private Stackable TopUp(Stackable into, Stackable feeder, int quantity)
+    {
+        int before = into.Quantity;
+        OnServer.Merge(into, feeder);
+        return into.Quantity == before + quantity ? into : throw Failed(slot: into.ParentSlot);
+    }
+
+    // The rest of a whole stack into its empty slot: the stack itself.
+    private Stackable PutRest(Stackable source, MovePart part)
+    {
+        OnServer.MoveToSlot(source, part.Slot);
+        return part.Slot.Get() == source && source.Quantity == part.Quantity ? source : throw Failed(slot: part.Slot);
+    }
+
+    private Stackable SplitInto(Stackable stack, int quantity, Slot slot)
+    {
+        int before = stack.Quantity;
+        Stackable made = stack.SplitStack(quantity, slot);
+        if (made != null && slot.Get() == made && stack.Quantity == before - quantity)
+        {
+            return made;
+        }
+
+        PutBack(stack, made, before);
+        throw Failed(slot: slot);
+    }
+
+    private ItemMovedView ApplyOne(int index)
     {
         SlotRefView? from = From();
         SlotRefView to = To();
@@ -532,19 +695,7 @@ internal sealed class MovePlan
         return Slot.Get() == Item ? Item : throw Failed();
     }
 
-    private DynamicThing Split()
-    {
-        Stackable stack = (Stackable)Item;
-        int before = stack.Quantity;
-        Stackable made = stack.SplitStack(Quantity, Slot);
-        if (made != null && Slot.Get() == made && stack.Quantity == before - Quantity)
-        {
-            return made;
-        }
-
-        PutBack(stack, made, before);
-        throw Failed();
-    }
+    private DynamicThing Split() => SplitInto((Stackable)Item, Quantity, Slot);
 
     // Stackable.SplitStack takes the part off the source before it makes the new stack; a stack the slot then refuses
     // is left in the world at the origin (OnServer.Create: MoveToSlotOrWorld), and one the game did not make is gone.
@@ -595,10 +746,10 @@ internal sealed class MovePlan
         return into.Quantity == before + Quantity ? into : throw Failed();
     }
 
-    private ApiException Failed(Exception? thrown = null) =>
+    private ApiException Failed(Exception? thrown = null, Slot? slot = null) =>
         ApiErrors.Refused(
             "move_failed",
-            $"The game did not put {Names.Of(Item)} into slot {Slot.SlotIndex} of {Names.Of(Target)}"
+            $"The game did not put {Names.Of(Item)} into slot {(slot ?? Slot).SlotIndex} of {Names.Of(Target)}"
             + (thrown == null ? "" : $" (it threw {thrown.GetType().Name}: {thrown.Message})")
             + "; read the slots before retrying.");
 }

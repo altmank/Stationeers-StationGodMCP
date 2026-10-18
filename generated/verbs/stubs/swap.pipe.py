@@ -12,7 +12,7 @@ def swap(what: Literal['pipe'], *,
     materials: str | list[str] = None,  # Holder(s) that pay materials and take source refunds, tried in order; ids or "player". Default the player.
     skip_unmatched: bool = False,  # Leave pieces that cannot change as they are instead of refusing.
     refund_to: str | int | list = None,  # Where removed materials go: a word (inventory, source, storage, ground, none), a container id, or a list tried in turn. (default [inventory, source, storage, ground]) (default [inventory, source, storage, ground])
-    include: list[Literal['notes']] = None,  # Parts to add to the reply.
+    include: list[Literal['notes', 'network_devices']] = None,  # notes: fixed text; network_devices: each network's devices in the job's verification.
     rows: int = 5,  # Pieces listed per list.
     verbose: bool = False,  # The long form of the reply.
 ) -> dict:  # main list: r['pieces']: the page answered; .walk() goes through every entry, .all() pages in the rest

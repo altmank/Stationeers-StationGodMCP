@@ -384,7 +384,7 @@ internal static class UpgradeCheck
             object? report = record.ReportNow();
             if (report != null)
             {
-                networks.Add(report);
+                networks.Add(NetworkDeviceLists.Shown(report, plan.Request.IncludeNetworkDevices));
             }
 
             yield return null;

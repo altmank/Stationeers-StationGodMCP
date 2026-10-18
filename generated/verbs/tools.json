@@ -115,6 +115,7 @@
               "enum": [
                 "logic_types",
                 "small_cells",
+                "detail",
                 "empty",
                 "notes",
                 "style",
@@ -584,7 +585,7 @@
           },
           "skip_unmatched": {"type": "boolean"},
           "refund_to": {"type": ["string", "integer", "array"]},
-          "include": {"type": "array", "items": {"enum": ["notes"]}},
+          "include": {"type": "array", "items": {"enum": ["notes", "network_devices"]}},
           "rows": {"type": "integer"},
           "verbose": {"type": "boolean"},
           "confirm": {"type": "boolean", "description": "true acts; left out, it reports."},

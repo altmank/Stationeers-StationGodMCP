@@ -1010,7 +1010,10 @@ internal sealed class CableNetworkReportView : IListsDevices
 
     public int DeviceCount { get; }
 
-    /// <summary>Left out of a dry run's report (device_count counts them); a job's verification lists them.</summary>
+    /// <summary>
+    /// Left out of a dry run's report and, unless include network_devices, of a job's verification (device_count
+    /// counts them).
+    /// </summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public List<ThingView>? Devices { get; private set; }
 
@@ -1123,7 +1126,10 @@ internal sealed class PipeNetworkReportView : IListsDevices
 
     public int DeviceCount { get; }
 
-    /// <summary>Left out of a dry run's report (device_count counts them); a job's verification lists them.</summary>
+    /// <summary>
+    /// Left out of a dry run's report and, unless include network_devices, of a job's verification (device_count
+    /// counts them).
+    /// </summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public List<ThingView>? Devices { get; private set; }
 
@@ -1450,7 +1456,10 @@ internal sealed class UpgradeVerificationView
 
     public List<UpgradeLinkView> Lost { get; }
 
-    /// <summary>Each network as it is after the swap (the same report shapes as before it).</summary>
+    /// <summary>
+    /// Each network as it is after the swap (the same report shapes as before it), its devices counted and listed only
+    /// with include network_devices.
+    /// </summary>
     public List<object> Networks { get; }
 }
 

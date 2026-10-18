@@ -26,7 +26,7 @@
         },
         "slot": {
           "schema": {"type": ["integer", "string"]},
-          "description": "A slot index of to, or \"auto\" (the default). Given, the move is a slot move even into a vault's or silo's own slots; force needs an index.",
+          "description": "A slot index of to, or \"auto\" (the default: matching stacks topped up to their most, the rest into an empty slot). Given, the move is a slot move even into a vault's or silo's own slots; force needs an index.",
           "default": "auto",
           "x-script": "same"
         },
@@ -123,7 +123,8 @@
               "quantity_moved": "int",
               "merged_into": "str | None",
               "destination_reference_id": "str",
-              "warning": "str | None"
+              "warning": "str | None",
+              "filled": "list[{to: {id: str, slot: int}, reference_id: str, added: int, merged: bool, quantity_now: int | None}] | None"
             }
           },
           {

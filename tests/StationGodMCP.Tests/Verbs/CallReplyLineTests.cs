@@ -110,6 +110,51 @@ public class CallReplyLineTests
         Assert.False(_timed[0].Ok);
     }
 
+    // A build report over 12 KB as a whole: 400 cells and as many targets.
+    private static ReportReply LargeBuildReport()
+    {
+        List<ReportTarget> targets = new List<ReportTarget>();
+        List<ReplyObject> cells = new List<ReplyObject>();
+        for (int index = 0; index < 400; index++)
+        {
+            targets.Add(new ReportTarget(index.ToString(), null, "Pipe", 1, 2, "[undo]"));
+            cells.Add(new ReplyObject().Add("at", new[] { index * 0.5, 1.0, 2.0 }).Add("action", "place")
+                .Add("prefab_name", "StructurePipeStraight"));
+        }
+
+        return Report.Of(targets, new ReplyObject().Add("ready", true).Add("cells_total", 400).Add("cells", cells));
+    }
+
+    [Fact]
+    public void AReportOverTheCapAnswersItsSummaryWithoutItsLists()
+    {
+        JObject result = (JObject)JObject.Parse(Written(1 << 24, new VerbOutcome.Answered(LargeBuildReport())))["result"]!;
+
+        Assert.Null(result["cells"]);
+        Assert.Equal(400, (int)result["cells_total"]!);
+    }
+
+    [Fact]
+    public void AListFieldsNamesIsKeptWhateverTheReportsSize()
+    {
+        JObject result = (JObject)JObject.Parse(Written(1 << 24, new VerbOutcome.Answered(LargeBuildReport()),
+            """{"fields":["cells"]}"""))["result"]!;
+
+        Assert.Equal(400, ((JArray)result["cells"]!).Count);
+        Assert.Equal("place", (string?)result["cells"]![0]!["action"]);
+    }
+
+    [Fact]
+    public void AReportFieldsCutUnderTheCapIsAnsweredWhole()
+    {
+        JObject result = (JObject)JObject.Parse(Written(1 << 24, new VerbOutcome.Answered(LargeBuildReport()),
+            """{"fields":["cells.action","targets"],"limit":{"targets":3}}"""))["result"]!;
+
+        Assert.Equal(400, ((JArray)result["cells"]!).Count);
+        Assert.Null(result["cells"]![0]!["prefab_name"]);
+        Assert.Equal(JTokenType.Object, result["targets"]![0]!.Type);
+    }
+
     [Fact]
     public void FieldsShapeTheReplyAsItIsWritten()
     {

@@ -11,10 +11,20 @@ namespace StationGodMCP.Pure.Shaping;
 /// words written another way (REFERENCE_ID, displayName), the same words in another order (slots_used for used_slots),
 /// one naming qualifier more or fewer (name for display_name, distance for distance_m, used_slots for used_slot_count),
 /// a unit spelt out (total_moles for total_mol), or one typing slip in a long name (prefab_nme). Any other near key is only named (fields_closest): one other word
-/// more or fewer (refund for refund_enabled), singular for plural (network for networks), two slips.
+/// more or fewer (refund for refund_enabled), singular for plural (network for networks), two slips. A short name
+/// agents use for a thing's identity is read as the reply's key for it (Aliases: id, prefab, label), in any case.
 /// </summary>
 internal static class FieldMatch
 {
+    // The reply's keys for what a short name means, the first the reply has: a thing's reference id, its prefab, its
+    // label (the Labeller's name, else the name the game shows, which is the label when there is one).
+    private static readonly Dictionary<string, string[]> Aliases = new Dictionary<string, string[]>(StringComparer.Ordinal)
+    {
+        ["id"] = new[] { "reference_id" },
+        ["prefab"] = new[] { "prefab_name" },
+        ["label"] = new[] { "custom_name", "display_name" }
+    };
+
     // Units spelt out, read as the short unit word the reply keys use (total_moles for total_mol).
     private static readonly Dictionary<string, string> UnitWords = new Dictionary<string, string>(StringComparer.Ordinal)
     {
@@ -40,16 +50,32 @@ internal static class FieldMatch
         "display", "count", "m", "k", "kpa", "l", "mol", "j", "w", "s", "ms", "kg", "deg", "pct", "n"
     };
 
-    /// <summary>The one key a safe match reads instead; null when there is none or more than one.</summary>
+    /// <summary>
+    /// The one key a safe match reads instead: the alias's key when the reply has it, else the one closest; null when
+    /// there is none or more than one.
+    /// </summary>
     internal static string? Safe(string requested, IEnumerable<string> keys)
     {
+        if (AliasIn(requested, keys) is string aliased)
+        {
+            return aliased;
+        }
+
         List<string> best = Best(requested, keys, SafeRank);
         return best.Count == 1 ? best[0] : null;
     }
 
-    /// <summary>The keys of the closest kind of near match, safe or not, sorted, at most five; empty when none.</summary>
+    /// <summary>
+    /// The keys of the closest kind of near match, safe or not, sorted, at most five (the alias's key alone when the
+    /// reply has it); empty when none.
+    /// </summary>
     internal static List<string> Closest(string requested, IEnumerable<string> keys)
     {
+        if (AliasIn(requested, keys) is string aliased)
+        {
+            return new List<string> { aliased };
+        }
+
         List<string> best = Best(requested, keys, AnyRank);
         if (best.Count > MaximumCandidates)
         {
@@ -57,6 +83,26 @@ internal static class FieldMatch
         }
 
         return best;
+    }
+
+    // The first key the requested name is an alias of that keys holds; null when it is no alias or keys holds none.
+    private static string? AliasIn(string requested, IEnumerable<string> keys)
+    {
+        if (!Aliases.TryGetValue(Words.Of(requested).Joined, out string[] meant))
+        {
+            return null;
+        }
+
+        HashSet<string> held = new HashSet<string>(keys, StringComparer.Ordinal);
+        foreach (string key in meant)
+        {
+            if (held.Contains(key))
+            {
+                return key;
+            }
+        }
+
+        return null;
     }
 
     private const int NoMatch = int.MaxValue;

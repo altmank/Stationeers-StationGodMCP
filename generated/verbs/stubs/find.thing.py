@@ -21,12 +21,12 @@ def find(what: Literal['thing'], *,
     """Any object: structures, devices, tanks, loose items, players, animals.
     Reply:
       things: list[{made: {maker_id: str | None, maker_prefab: str | None, maker_name: str | None, game_time_s: float, quantity: int, split_from: str
-          | None} | None, reference_id: str, prefab_name: str | None, display_name: str | None, custom_name: str | None, game_name: str, kind: str,
-          runtime_type: str, labelable: bool, location: str, carried_by: str | None, held_in: list[{reference_id: str, prefab_name: str | None,
-          display_name: str | None, slot_index: int, slot_name: str | None}], position: Vec3, distance_m: float | None, is_device: bool,
-          has_atmosphere: bool, is_broken: bool, condition: str, rotation: {facing: str | None, up: str | None, euler: Vec3} | None, rocket_state: str
-          | None, color: Color | None, build_state: {current: int, last: int, complete: bool, next: list[{prefab_name: str, display_name: str,
-          quantity: int | None, tool: bool}] | None} | None}]
+          | None} | None, reference_id: str, prefab_name: str | None, display_name: str | None, custom_name: str | None, quantity: float | None,
+          game_name: str, kind: str, runtime_type: str, labelable: bool, location: str, carried_by: str | None, held_in: list[{reference_id: str,
+          prefab_name: str | None, display_name: str | None, slot_index: int, slot_name: str | None}], position: Vec3, distance_m: float | None,
+          is_device: bool, has_atmosphere: bool, is_broken: bool, condition: str, rotation: {facing: str | None, up: str | None, euler: Vec3} | None,
+          rocket_state: str | None, color: Color | None, build_state: {current: int, last: int, complete: bool, next: list[{prefab_name: str,
+          display_name: str, quantity: int | None, tool: bool}] | None} | None}]
       count: int
       total: int
       offset: int

@@ -437,17 +437,21 @@ internal sealed class ReportProblem
 /// </summary>
 internal interface IReplyForm
 {
-    /// <summary>The reply to write; throws ApiException when it is to be refused.</summary>
-    object Form(JsonSerializer serializer);
+    /// <summary>
+    /// The reply to write, judged as the call's shape (null: none) writes it; throws ApiException when it is to be
+    /// refused.
+    /// </summary>
+    object Form(JsonSerializer serializer, Shaping.ShapeRequest? shape);
 }
 
 /// <summary>
 /// The one report shape (PLAN 2.0, direct write rule; SPEC-NOTES 18): what a write would do, nothing changed. The
 /// what's own report keys, then report_only: true and targets, every target listed whole. A report over SummaryBytes
-/// answers its summary form (DESIGN 3.3): the what's own keys that are no list, every protected key in full, and each
-/// target as an [id, name] pair but those with a lifted guard or a driver, which stay whole. A summary form still over
-/// MostCharacters is too large for the client: report_too_large, with the target count and how to narrow it. The form
-/// is chosen where the reply is written (ReportReply), off the game's thread.
+/// as the call's fields and omit write it answers its summary form (DESIGN 3.3): the what's own keys that are no list,
+/// every protected key and every list fields names in full, and each target as an [id, name] pair but those with a
+/// lifted guard or a driver, which stay whole. A summary form still over MostCharacters is too large for the client:
+/// report_too_large, with the target count and how to narrow it. The form is chosen where the reply is written
+/// (ReportReply), off the game's thread.
 /// </summary>
 internal static class Report
 {
@@ -501,16 +505,16 @@ internal sealed class ReportReply : IReplyForm
         return report.Add("report_only", true).Add("targets", Targets);
     }
 
-    public object Form(JsonSerializer serializer)
+    public object Form(JsonSerializer serializer, Shaping.ShapeRequest? shape)
     {
         ReplyObject whole = Whole();
-        if (ReplyLength.Utf8Bytes(whole, serializer) <= Report.SummaryBytes)
+        if (ReplyLength.Utf8Bytes(whole, serializer, shape) <= Report.SummaryBytes)
         {
             return whole;
         }
 
-        ReplyObject summary = Summary(serializer);
-        return ReplyLength.Characters(summary, serializer) <= Report.MostCharacters
+        ReplyObject summary = Summary(serializer, shape);
+        return ReplyLength.Characters(summary, serializer, shape) <= Report.MostCharacters
             ? summary
             : throw new ApiException(Report.TooLarge,
                 $"The report lists {Targets.Count} targets, more than the client takes even in its summary form; " +
@@ -523,14 +527,15 @@ internal sealed class ReportReply : IReplyForm
                 });
     }
 
-    // The summary form: the whole report's keys that hold no list, the protected keys whole, report_only, and the
-    // targets as [id, name] pairs, a target with a lifted guard or a driver kept whole.
-    private ReplyObject Summary(JsonSerializer serializer)
+    // The summary form: the whole report's keys that hold no list, the protected keys and the lists fields names
+    // whole, report_only, and the targets as [id, name] pairs, a target with a lifted guard or a driver kept whole.
+    private ReplyObject Summary(JsonSerializer serializer, Shaping.ShapeRequest? shape)
     {
         ReplyObject summary = new ReplyObject();
         foreach (KeyValuePair<string, object?> key in ViewKeys.Pairs(serializer, Whole(), null))
         {
-            if (key.Key == "targets" || (ViewKeys.IsList(key.Value) && Array.IndexOf(Protected, key.Key) < 0))
+            if (key.Key == "targets" || (ViewKeys.IsList(key.Value) && Array.IndexOf(Protected, key.Key) < 0 &&
+                                         shape?.Fields?.Top.Child(key.Key) == null))
             {
                 continue;
             }
@@ -586,7 +591,7 @@ internal sealed class ReplyFormConverter : JsonConverter
     public override bool CanConvert(Type objectType) => typeof(IReplyForm).IsAssignableFrom(objectType);
 
     public override void WriteJson(JsonWriter writer, object? value, JsonSerializer serializer) =>
-        serializer.Serialize(writer, ((IReplyForm)value!).Form(serializer));
+        serializer.Serialize(writer, ((IReplyForm)value!).Form(serializer, null));
 
     public override object ReadJson(JsonReader reader, Type objectType, object? existingValue, JsonSerializer serializer) =>
         throw new NotSupportedException("A reply is only written.");

@@ -222,6 +222,23 @@ public sealed class CursorAndJobTests
     }
 
     [Fact]
+    public void AJobPollCarriesTheCallsShapeSoItsFieldsPruneTheJobsView()
+    {
+        FakeGameLink game = new();
+        game.WaitJob = _ => null;
+        game.Answer = call => call.Method == "swap"
+            ? FakeGameLink.Ok("""{"job_id":"upgrade-4","status":"queued"}""")
+            : FakeGameLink.Ok("""{"job_id":"upgrade-4","status":"applied"}""");
+
+        game.Pipeline().Call("swap", "cable",
+            """{"id":"5","into":"heavy","confirm":true,"fields":["status","verification.ok"],"omit":["swapped"]}""").Done();
+
+        string sent = game.Single("swap").Shape!.Value.GetRawText();
+        Assert.Contains("verification.ok", sent);
+        Assert.Equal(sent, game.Single("inspect").Shape!.Value.GetRawText());
+    }
+
+    [Fact]
     public void ANullAfterAReconnectPollsOnceAndAJobStillGoingAnswersRunning()
     {
         FakeGameLink game = new();
