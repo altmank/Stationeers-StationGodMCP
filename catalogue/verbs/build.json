@@ -15,7 +15,7 @@
       "options": {
         "placements": {
           "schema": {"type": "array", "items": {"type": "object"}, "maxItems": 64},
-          "description": "Up to 64 {prefab, at, rotation, facing, up, face, orient, above_floor, build_state, label, color}, built in order in one job; or one at the top level.",
+          "description": "Up to 64 {prefab, at, rotation, facing, up, face, orient, above_floor, build_state, label, color, logic}, built in order in one job; or one at the top level.",
           "x-script": "same"
         },
         "prefab": {"use": "prefab", "schema": {"type": ["string", "integer"]}, "description": "Prefab name or hash."},
@@ -70,6 +70,11 @@
         },
         "label": {"schema": {"type": "string"}, "description": "A name, as the Labeller writes it.", "x-script": "same"},
         "color": {"schema": {"type": ["string", "integer"]}, "description": "A colour name or index.", "x-script": "same"},
+        "logic": {
+          "schema": {"type": "object"},
+          "description": "Logic values set once it is built, {On: 1, Setting: 50}, as write logic sets them; needs the finished build state.",
+          "x-script": "same"
+        },
         "materials": {"use": "materials"},
         "free": {
           "schema": {"type": "boolean"},
@@ -135,7 +140,7 @@
         "x-undo-mark": "[undo]",
         "x-target": [{"path": "materials", "role": "pays-from"}]
       },
-      "brief": "any structure a kit builds, by prefab, at a point"
+      "brief": "any structure a kit builds, at a point"
     },
     "cable": {
       "summary": "a cable run or pieces, as a coil builds it, of a grade; guards for bridging, splitting and overload",

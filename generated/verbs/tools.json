@@ -492,7 +492,7 @@
           "what": {
             "type": "string",
             "enum": ["structure", "cable", "pipe", "chute", "blueprint", "terrain", "item", "finish"],
-            "description": "structure: any structure a kit builds, by prefab, at a point; cable: a cable run or pieces; pipe: a pipe run or pieces; chute: a chute run or pieces; blueprint: paste a blueprint; terrain: fill or level a box of terrain; item: make items by prefab (a cheat); finish: a placed structure on to a later build state"
+            "description": "structure: any structure a kit builds, at a point; cable: a cable run or pieces; pipe: a pipe run or pieces; chute: a chute run or pieces; blueprint: paste a blueprint; terrain: fill or level a box of terrain; item: make items by prefab (a cheat); finish: a placed structure on to a later build state"
           },
           "placements": {"type": "array"},
           "prefab": {"type": ["string", "integer"]},
@@ -509,6 +509,7 @@
           "build_state": {"type": ["string", "integer"]},
           "label": {"type": "string"},
           "color": {"type": ["string", "integer"]},
+          "logic": {"type": "object"},
           "materials": {"type": ["string", "array"], "items": {"type": "string"}},
           "free": {"type": "boolean"},
           "allow": {"type": "array", "items": {"enum": ["door_keepout", "lint", "pad", "split"]}},

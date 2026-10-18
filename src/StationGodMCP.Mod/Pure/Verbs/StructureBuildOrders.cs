@@ -32,7 +32,8 @@ internal sealed class StructureBuildOrder
     /// knows it as above_floor).</summary>
     private static readonly string[] PlacementFields =
     {
-        "prefab", "at", "rotation", "facing", "up", "face", "orient", "above_floor", "build_state", "label", "color"
+        "prefab", "at", "rotation", "facing", "up", "face", "orient", "above_floor", "build_state", "label", "color",
+        "logic"
     };
 
     private StructureBuildOrder(WhatSpec spec)
@@ -177,6 +178,7 @@ internal sealed class StructureBuildOrder
         "build_state" => options.BuildState != null,
         "label" => options.Label != null,
         "color" => options.Color != null,
+        "logic" => options.Logic != null,
         _ => false
     };
 
@@ -268,6 +270,11 @@ internal sealed class StructureBuildOrder
         if (options.Color != null)
         {
             item["color"] = options.Color.DeepClone();
+        }
+
+        if (options.Logic != null)
+        {
+            item["logic"] = options.Logic.DeepClone();
         }
 
         if (item.Count == 0)

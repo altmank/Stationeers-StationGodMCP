@@ -2,7 +2,7 @@ Any structure a kit builds (light, device, frame, wall, tank, rocket part) by pr
 Reports first; confirm: true does it.
 Cheat when free: true.
 Options:
-- placements (list): Up to 64 {prefab, at, rotation, facing, up, face, orient, above_floor, build_state, label, color}, built in order in one job; or one at the top level.
+- placements (list): Up to 64 {prefab, at, rotation, facing, up, face, orient, above_floor, build_state, label, color, logic}, built in order in one job; or one at the top level.
 - prefab (string or integer): Prefab name or hash.
 - at (array or object or string): A point, "looking_at", or a relative or look-face form (help positions).
 - rotation (list): [x, y, z] degrees, multiples of 90.
@@ -15,6 +15,7 @@ Options:
 - build_state (string or integer): finished (default), first, or a state index.
 - label (string): A name, as the Labeller writes it.
 - color (string or integer): A colour name or index.
+- logic (object): Logic values set once it is built, {On: 1, Setting: 50}, as write logic sets them; needs the finished build state.
 - materials (string or array): Holder(s) that pay materials and take source refunds, tried in order; ids or "player". Default the player.
 - free (boolean, default false): Creative worlds: no materials. Cheat.
 - allow (list of door_keepout | lint | pad): door_keepout: a keep-out cell is a warning; lint: lint problems are warnings the report marks PASSED; pad: a placement in a landing pad's approach is a problem; allowed, a PASSED warning.

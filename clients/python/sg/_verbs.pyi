@@ -2188,7 +2188,7 @@ def check(what: Literal['ignition'], *,
 @overload
 def build(what: Literal['structure'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
-    placements: list = None,  # Up to 64 {prefab, at, rotation, facing, up, face, orient, above_floor, build_state, label, color}, built in order in one job; or one at the top level.
+    placements: list = None,  # Up to 64 {prefab, at, rotation, facing, up, face, orient, above_floor, build_state, label, color, logic}, built in order in one job; or one at the top level.
     prefab: str | int = None,  # Prefab name or hash.
     at: list | dict | str = None,  # A point, "looking_at", or a relative or look-face form (help positions).
     rotation: list = None,  # [x, y, z] degrees, multiples of 90.
@@ -2201,6 +2201,7 @@ def build(what: Literal['structure'], *,
     build_state: str | int = None,  # finished (default), first, or a state index.
     label: str = None,  # A name, as the Labeller writes it.
     color: str | int = None,  # A colour name or index.
+    logic: dict = None,  # Logic values set once it is built, {On: 1, Setting: 50}, as write logic sets them; needs the finished build state.
     materials: str | list[str] = None,  # Holder(s) that pay materials and take source refunds, tried in order; ids or "player". Default the player.
     free: bool = False,  # Creative worlds: no materials. Cheat.
     allow: list[Literal['door_keepout', 'lint', 'pad']] = None,  # door_keepout: a keep-out cell is a warning; lint: lint problems are warnings the report marks PASSED; pad: a placement in a landing pad's approach is a problem; allowed, a PASSED warning.

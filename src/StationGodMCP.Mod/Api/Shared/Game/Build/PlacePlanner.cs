@@ -346,6 +346,37 @@ internal static class PlacePlanner
     }
 
     [Profiled]
+    // logic: each type a logic type's name or number, set once the piece stands finished (a device mid-build takes no
+    // writes); whether the device takes it is the write's own check when the job sets it (PlaceWork).
+    private static void Logic(PlacePlan plan, Structure prefab, PlannedPlacement placement)
+    {
+        IReadOnlyList<LogicSet> sets = placement.Args.Logic;
+        if (sets.Count == 0)
+        {
+            return;
+        }
+
+        int finished = prefab.BuildStates.Count - 1;
+        if (placement.State is { } state && state != finished)
+        {
+            plan.Problem("logic_not_built",
+                $"{prefab.PrefabName}: logic is set only on the finished build state ({finished}), not {state}.",
+                placement.Index);
+        }
+
+        foreach (LogicSet set in sets)
+        {
+            try
+            {
+                LogicTypes.Parse(new Newtonsoft.Json.Linq.JValue(set.Name));
+            }
+            catch (ApiException refused)
+            {
+                plan.Problem(refused.Code, $"{prefab.PrefabName}: logic {set.Name}: {refused.Message}", placement.Index);
+            }
+        }
+    }
+
     private static void Resolve(PlacePlan plan, BuildCatalogue catalogue, List<ColorSwatch> swatches,
         PlannedPlacement placement)
     {
@@ -365,6 +396,7 @@ internal static class PlacePlanner
         }
 
         NetworkPieceNote(plan, prefab, index);
+        Logic(plan, prefab, placement);
         if (!ReadAt(plan, placement))
         {
             return;

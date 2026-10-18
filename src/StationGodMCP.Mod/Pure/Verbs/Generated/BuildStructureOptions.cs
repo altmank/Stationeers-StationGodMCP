@@ -27,6 +27,7 @@ internal sealed class BuildStructureOptions
         new OptionSpec("build_state", "{\"type\":[\"string\",\"integer\"]}"),
         new OptionSpec("label", "{\"type\":\"string\"}"),
         new OptionSpec("color", "{\"type\":[\"string\",\"integer\"]}"),
+        new OptionSpec("logic", "{\"type\":\"object\"}"),
         new OptionSpec("materials", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"},\"maxItems\":8}"),
         new OptionSpec("free", "{\"type\":\"boolean\"}", false, "false"),
         new OptionSpec("allow", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"door_keepout\",\"lint\",\"pad\"]}}"),
@@ -70,6 +71,8 @@ internal sealed class BuildStructureOptions
 
     internal JToken? Color { get; private set; }
 
+    internal JToken? Logic { get; private set; }
+
     internal bool? Free { get; private set; }
 
     internal IReadOnlyList<string>? Allow { get; private set; }
@@ -98,6 +101,7 @@ internal sealed class BuildStructureOptions
         BuildState = options.Raw("build_state"),
         Label = options.Text("label"),
         Color = options.Raw("color"),
+        Logic = options.Raw("logic"),
         Free = options.Flag("free") ?? options.DefaultFlag("free"),
         Allow = options.Words("allow"),
         AcknowledgeGasLost = options.Text("acknowledge_gas_lost"),

@@ -171,6 +171,7 @@
   "lint_refused": {
     "description": "The write would open a vent, valve or pump onto a network where a lint rule finds a problem, such as oxidiser vented outdoors. Nothing is written; data.rules lists each rule, its message and the thing. Fix the network first, or pass allow: [\"lint\"]."
   },
+  "logic_not_built": {"description": "Logic values are set only on a finished structure; leave build_state out, or set them later with write logic."},
   "logic_not_readable": {"description": "The device does not expose that logic type as readable. inspect device lists what it reads."},
   "logic_not_writable": {"description": "The device does not expose that logic type as writable. inspect device lists what it writes."},
   "long_piece": {

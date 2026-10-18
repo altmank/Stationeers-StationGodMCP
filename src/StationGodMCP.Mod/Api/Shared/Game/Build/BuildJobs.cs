@@ -2,6 +2,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
+using Newtonsoft.Json.Linq;
 using Assets.Scripts;
 using Assets.Scripts.GridSystem;
 using Assets.Scripts.Networking;
@@ -15,6 +17,7 @@ using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Profiling;
 using StationGodMCP.Pure.Scheduling;
+using StationGodMCP.Pure.Verbs;
 using UnityEngine;
 
 namespace StationGodMCP.Api.Shared.Game.Build;
@@ -337,6 +340,7 @@ internal sealed class PlaceWork : BuildWork
     private readonly PlaceRequest _arguments;
     private readonly PlaceReportView _preflight;
     private readonly Dictionary<int, Structure> _built = new Dictionary<int, Structure>();
+    private readonly Dictionary<int, List<string>> _logicIssues = new Dictionary<int, List<string>>();
     private PlacePlan? _plan;
 
     internal PlaceWork(PlaceRequest arguments, PlaceReportView preflight, bool touchesPipes)
@@ -411,7 +415,13 @@ internal sealed class PlaceWork : BuildWork
         {
             if (_built.TryGetValue(placement.Index, out Structure built))
             {
-                checks.Add(new BuildCheckView(placement.Index, new ThingId(built.ReferenceId), Check(placement, built)));
+                List<string> issues = Check(placement, built);
+                if (_logicIssues.TryGetValue(placement.Index, out List<string> logic))
+                {
+                    issues.AddRange(logic);
+                }
+
+                checks.Add(new BuildCheckView(placement.Index, new ThingId(built.ReferenceId), issues));
             }
         }
 
@@ -478,6 +488,7 @@ internal sealed class PlaceWork : BuildWork
                 Thing.RenameThing(built.ReferenceId, Labels.AsTheLabellerWrites(built, placement.Args.Label));
             }
 
+            SetLogic(placement, built);
             log.Placed.Add(new BuiltPieceView(placement.Index, GameLookup.ViewOf(built)));
             return true;
         }
@@ -486,6 +497,40 @@ internal sealed class PlaceWork : BuildWork
             // Thing.Create, the build state, the rename or a stack's OnUseItem failing part way: stop at this one.
             StationGodMod.LogWarning($"build structure placement {placement.Index} failed: {exception}");
             return Stop(log, placement, "build_failed", exception.Message);
+        }
+    }
+
+    // logic: each value set as write logic sets it, on the piece just built; one the device refuses is a difference
+    // its verification names (the job goes on: the piece stands).
+    private void SetLogic(PlannedPlacement placement, Structure built)
+    {
+        if (placement.Args.Logic.Count == 0)
+        {
+            return;
+        }
+
+        List<LogicOrder> orders = new List<LogicOrder>(placement.Args.Logic.Count);
+        foreach (LogicSet set in placement.Args.Logic)
+        {
+            orders.Add(new LogicOrder(orders.Count, built.ReferenceId.ToString(CultureInfo.InvariantCulture),
+                new JValue(set.Name), set.Value));
+        }
+
+        foreach (LogicWriteResult result in LogicOps.WriteMany(DeviceScope.World, orders, allowLint: true,
+                     report: false, indexed: false, Tool))
+        {
+            if (result is LogicWriteResult.Failed failed)
+            {
+                LogicSet set = placement.Args.Logic[failed.Index];
+                if (!_logicIssues.TryGetValue(placement.Index, out List<string> issues))
+                {
+                    issues = new List<string>();
+                    _logicIssues[placement.Index] = issues;
+                }
+
+                issues.Add($"its logic {set.Name} was not set to {set.Value.ToString(CultureInfo.InvariantCulture)}: " +
+                           failed.Error.Message);
+            }
         }
     }
 

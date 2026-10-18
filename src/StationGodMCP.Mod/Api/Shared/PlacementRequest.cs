@@ -95,8 +95,9 @@ internal sealed class PlacementRequest
 {
     internal PlacementRequest(int index, PrefabRef prefab, AtForm at, RotationSpec rotation, BuildStatePick state,
         string? label, string? color, JObject? orient = null, NamedFacing? namedFacing = null,
-        double? aboveFloorM = null)
+        double? aboveFloorM = null, IReadOnlyList<LogicSet>? logic = null)
     {
+        Logic = logic ?? System.Array.Empty<LogicSet>();
         NamedFacing = namedFacing;
         AboveFloorM = aboveFloorM;
         Orient = orient;
@@ -131,6 +132,60 @@ internal sealed class PlacementRequest
 
     /// <summary>orient: the intent the turn is searched for (Orienter); null when the turn is given.</summary>
     internal JObject? Orient { get; }
+
+    /// <summary>logic: the values set once the structure is built, in the order given; empty when not given.</summary>
+    internal IReadOnlyList<LogicSet> Logic { get; }
+}
+
+/// <summary>One logic value a placement sets once it is built: the type as given (a name or number) and the value.</summary>
+internal sealed class LogicSet
+{
+    /// <summary>The most values one placement sets.</summary>
+    internal const int Most = 16;
+
+    internal LogicSet(string name, double value)
+    {
+        Name = name;
+        Value = value;
+    }
+
+    internal string Name { get; }
+
+    internal double Value { get; }
+
+    /// <summary>A placement's logic object, {Type: value}; refused when a value is not a number or there are too many.</summary>
+    internal static List<LogicSet> Of(JObject? given, string path)
+    {
+        List<LogicSet> sets = new List<LogicSet>();
+        if (given == null)
+        {
+            return sets;
+        }
+
+        if (given.Count > Most)
+        {
+            throw ApiErrors.InvalidArgument($"{path} sets at most {Most} logic values.");
+        }
+
+        foreach (JProperty property in given.Properties())
+        {
+            double value = property.Value.Type switch
+            {
+                JTokenType.Integer or JTokenType.Float => (double)property.Value,
+                JTokenType.Boolean => (bool)property.Value ? 1.0 : 0.0,
+                _ => throw ApiErrors.InvalidArgument(
+                    $"{path}.{property.Name} is a number (or true or false), the value to set.")
+            };
+            if (double.IsNaN(value) || double.IsInfinity(value))
+            {
+                throw ApiErrors.InvalidArgument($"{path}.{property.Name} is a number.");
+            }
+
+            sets.Add(new LogicSet(property.Name, value));
+        }
+
+        return sets;
+    }
 }
 
 /// <summary>
@@ -280,7 +335,8 @@ internal static class PlacementReader
     /// <summary>A placement's keys, as build structure's placements list and show preview's take them.</summary>
     internal static readonly string[] PlacementKeys =
     {
-        "prefab", "at", "rotation", "facing", "up", "face", "orient", "above_floor", "build_state", "label", "color"
+        "prefab", "at", "rotation", "facing", "up", "face", "orient", "above_floor", "build_state", "label", "color",
+        "logic"
     };
 
     private static readonly string[] OrientKeys = { "mount", "upright", "controls_toward", "ports", "flow" };
@@ -323,7 +379,8 @@ internal static class PlacementReader
         return new PlacementRequest(index, prefab, AtOf(at, prefix + "at"),
             named != null ? RotationSpec.Default : RotationOf(item, prefix),
             StateOf(item.Optional("build_state"), prefix + "build_state"), Text(item, "label", prefix),
-            ColorOf(item.Optional("color"), prefix + "color"), orient, named, above);
+            ColorOf(item.Optional("color"), prefix + "color"), orient, named, above,
+            LogicSet.Of(item.OptionalObject("logic"), prefix + "logic"));
     }
 
     // orient's keys, its ports' and its flow's: the catalogue's names, every other key refused.
