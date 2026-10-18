@@ -1,5 +1,50 @@
 # Changelog
 
+## 2.5.0
+
+- **New `build item`** (a cheat, creative worlds only; `not_creative` elsewhere): makes items out of nothing by
+  `prefab` and `quantity` (in full stacks, at most 64 stacks), into a holder's slots (`to`: a container, device,
+  suit or `"player"`, with an optional `slot`; what the slots cannot take is refused `no_room` and nothing is made)
+  or loose at a point (`at`). It works with no player in the world and inside `run_script`; `placed` names the new
+  items, so a run's later writes act on them. It reports until `confirm: true`.
+- **`move gas` source `"create"`** (a cheat, creative worlds only): `amount_mol` of each named gas at
+  `temperature_k` arrives in `to`, as the console's `addgas` makes it, applied at the next atmospherics tick with
+  every check on `to`. A confirmed run accepts it (`"create"` is a literal of the code).
+- **A confirmed run's own reads make ids seen.** Ids any reply to a non-write call of the run answers (find,
+  inspect, survey, read, plan, check) are seen for that run's later writes, as targets and inside a selector
+  (`network`), so a saved script that finds and then removes or swaps acts in one run. An id the run neither read,
+  wrote nor was shown still stops it with `unseen_target`.
+- **A write the game refuses on its own checks fails loudly in a run.** A confirmed build whose check fails (a
+  blocked cell) used to come back as a quiet `REPORTED` row; it now raises `sg.Error` with the first problem's code
+  and message, the report as `data`, and is listed refused.
+- **One reply shape on both faces.** A script call with one id answers the what's one-id shape, as a direct call
+  does (`inspect atmosphere`, `inspect connections`, `read logic`); an id list answers `{results: [...]}` on both.
+  Scripts that read `['results'][0]` after a one-id call read the reply itself now.
+- **`survey area` with `sections` that leave `cells` out reads every cell**, so its `pieces` and `devices` come
+  from the whole area, not from a first page of 8 cells nobody sees.
+- **Removals with no player give nothing back.** `refund_to` left out, with no player and no `materials` holder,
+  is `none` (warning `refund_nothing`), so a headless removal drops no kits or coils on the ground; a `refund_to`
+  the call names, or a `materials` holder, still receives it.
+- **`remove structure` takes `box`** (every structure whose position lies in it, at most 32 m a side and 256 found,
+  `prefab` to filter it), alone or with `id`, in one job. Its plan reads each neighbour of the pieces once.
+- **Ending a run on an existing piece needs no hand swap**, and the help says so: a run cell on a piece of the
+  kind, a run end meeting one, or a `piece`'s end pointing into one makes that piece the junction it needs in the
+  same job; `join_to` with `join_trunk: true` ends on a network.
+- **`write script` takes `code_file`**, and a saved script edited on disk gets its header rebuilt (its parameters
+  read from the source again, saved as the next version) at its next find, inspect or run.
+- **`survey network` `summarize`'s help names the pipe facts** its `summary` carries: `volume_l`, `pressure_kpa`,
+  `temperature_k`, `total_mol` and `gases`.
+- **`build structure` takes `logic`**, `{On: 1, Setting: 50}` at the top level or per placement: set once the piece
+  stands built, as `write logic` sets them; a value the device refuses is a verification difference.
+  `logic_not_built` refuses logic on a build state short of finished.
+- **`inspect connections` gives each end's `at`** (the centre of the cell a piece joining it stands in, as build
+  reports a port's `at`) **and `piece_end`** (the end that piece needs, pointing back into the thing).
+- **`build structure` with `above_floor` counts the job's earlier placements**: a frame or floor plate placed
+  earlier in the same column is the floor a later placement is aimed at, as the job will find it.
+- **`find room` takes `near` and `radius`**: the rooms whose bounds hold a point or come within radius of it,
+  nearest first.
+- **sg 0.4.8.** The verb layer is regenerated (`build item`, `temperature_k`, `box`, `logic`, `near`, `code_file`).
+
 ## 2.4.3
 
 - **A cut cell list names the option that lifts it.** `plan route`'s `build_report.cells` (and the `cells` of

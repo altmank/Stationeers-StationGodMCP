@@ -20,7 +20,7 @@ import threading
 
 from ._errors import Error
 
-VERSION = "0.4.7"
+VERSION = "0.4.8"
 PROTOCOL = [2]
 FEATURES = ["pipeline"]
 HUB_ENVIRONMENT_VARIABLE = "STATIONGODMCP_HUB"

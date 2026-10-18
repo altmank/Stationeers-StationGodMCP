@@ -3,7 +3,7 @@
   <Name>StationGod MCP</Name>
   <ModID>net.xceled.stationeers.stationgodmcp</ModID>
   <Author>XCeled</Author>
-  <Version>2.4.3</Version>
+  <Version>2.5.0</Version>
   <Description>[h1]Let an AI agent read and run your Stationeers base[/h1]
 StationGod MCP connects an AI agent such as Claude Code or Codex to your running game through the Model Context Protocol (MCP), the standard way these agents call outside tools. The agent can then read every device, chip, room, network and planet value you could look up yourself, and act on them: write logic, program chips, move gas and items, and build or rebuild cables, pipes, chutes, walls and frames with the checks the game itself applies.
 
@@ -69,6 +69,9 @@ Developed with the use of generative AI, and tokens aren't free. Buy me a coffee
 [url=https://ko-fi.com/xceled]ko-fi.com/xceled[/url]
   </Description>
   <ChangeLog>
+v2.5.0
+- New creative cheats: build item makes items, move gas source create makes gas. Scripts act on ids their own reads found; refused builds fail loudly. remove structure box, build structure logic, find room near, write script code_file.
+
 v2.4.3
 - build pipe, cable and chute take free (a cheat); plan route rotation_deg rebuilds the planned piece; confirmed gas moves wait for their tick; undo restores labels and paint; crashed rockets' flight logs read.
 
@@ -196,10 +199,10 @@ v1.14.1
 - Fixes: chute removal links; move_item rechecks a slot before each move; builders take exactly what a build state needs.
 
 v1.14.0
-- Small default replies (under 8 KB on a big base); truncated says what was held back. fields reaches nested keys; new omit. get_ic_status leaves the source out unless asked. set_ic_source source_fil...
+- Small default replies (under 8 KB on a big base); truncated says what was held back; new omit.
 
 v1.13.0
-- Rocket tools fly every rocket the game builds: all six engines, gas and liquid lines, payloads, transfers, crewed rockets and the Orbital Launch Mount. New rocket_mining_options: what the miners, h...
+- Rocket tools fly every rocket the game builds; new rocket_mining_options.
 
 v1.12.1
 - Fix: a player who rejoined a dedicated server lost the camera tools (no_view).
