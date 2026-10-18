@@ -4,7 +4,7 @@
 
 Rooms and their air, gas in tanks and pipes, the planet's atmosphere and weather, plants and their genes, and the
 player's own needs and where they stand. Everything here is read from the game's own state and formulas; only
-`move gas`, `write genes` and `move player` change anything. No gateway is needed.
+`move gas`, `write genes`, `move player` and `write health` change anything. No gateway is needed.
 
 Units: pressure in kPa, temperature in kelvin, gas in moles, liquids also in litres, time in game seconds.
 
@@ -25,6 +25,7 @@ Units: pressure in kPa, temperature in kelvin, gas in moles, liquids also in lit
 | `inspect reagents` | What a furnace, centrifuge, mixer or microwave holds, reagent by reagent (logic only gives the total). | `id` |
 | `inspect player` | Your hunger and thirst: stores, capacities, drain rates and time until empty, awake and asleep. | none |
 | `move player` | A cheat: move a player anywhere at once, to a point, beside a thing or beside another player (see *Moving a player*). | `at`, or `to`, or `to_player`; `player`, `safe_ground`, `confirm` |
+| `write health` | A cheat: heal a player of every kind of damage, body and organs, brain included (see *Healing a player*). | `player`, `confirm` |
 | `check ignition` | Whether anything you carry would catch fire in the air around you, by the game's fire rule. | `include: ["prefabs"]` |
 | `inspect health` | The damage of any thing, or of every piece of one network, worst first. | `id`, `network` (with `kind`, `damaged_only`) |
 | `find damaged` | Every damaged or broken thing in the world, broken first, then worst first. | `structures_only`, `broken_only`, `min_damage` |
@@ -44,6 +45,20 @@ finished steel frame is 3); `blocks_air` says whether that state holds air.
 the last atmospherics tick (a canister spawned while paused) shows from the next tick on. A call that holds the game's
 main thread 250 ms or more logs, at most once a minute, where the time went: the wait for the game's atmosphere and
 pipe network lists (the game tick holds them during its passes), the scan, the rows and any garbage collection.
+
+## Healing a player
+
+`write health` is a cheat: it heals a player of all their damage at once, which no item or machine does. Ask before
+each use. It reports first: `confirm: true` heals; left out, the call reports each part's damage now.
+
+- **Who:** `player`, a name or reference id as `move player` takes it, in the game or not (an offline player's body
+  stays in the world); without it, the player. A dead player is refused (`player_dead`): a heal does not revive, a
+  powered cryo tube does.
+- **What:** the body and each organ (the brain and the lungs), every kind of damage set to none: brute, burn,
+  oxygen, toxic, radiation, hydration, starvation, decay and stun. Brain damage is the brain organ's own, so it goes
+  too. Each part in `parts` gives its damage before and after (`damage_percent_*` as the game rounds it, stun not
+  counted) and `healed` says whether every part reads none. Hunger and thirst are not damage and stay as they are.
+- **Host only;** other players' games get it as any damage change. It cannot be undone.
 
 ## Moving a player
 

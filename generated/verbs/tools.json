@@ -275,7 +275,7 @@
     },
     {
       "name": "write",
-      "description": "Set values and states. Typed ids act at once; a ref or network reports until confirm: true. memory, battery and genes are cheats: ask the user.",
+      "description": "Set values and states. Typed ids act at once; a ref or network reports until confirm: true. memory, battery, genes and health are cheats: ask the user.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -292,9 +292,10 @@
               "uplink",
               "battery",
               "genes",
+              "health",
               "script"
             ],
-            "description": "logic: logic values on devices; memory: device memory; chip: chip source, pins, run state; screen: press a screen control; label: rename things; paint: paint things or a network; flight_log: start, stop, clear a recorder; uplink: point an uplink; battery: set charge; genes: edit plant genes; script: save a script"
+            "description": "logic: logic values on devices; memory: device memory; chip: chip source, pins, run state; screen: press a screen control; label: rename things; paint: paint things or a network; flight_log: start, stop, clear a recorder; uplink: point an uplink; battery: set charge; genes: edit plant genes; health: heal a player; script: save a script"
           },
           "id": {"type": ["string", "array"]},
           "logic": {"type": ["string", "integer"]},
@@ -340,6 +341,7 @@
           "joules": {"type": "number"},
           "unit": {"type": "integer"},
           "genes": {"type": "object"},
+          "player": {"type": "string"},
           "name": {"type": "string", "description": "write script: the script's name (letters, digits, underscores)."},
           "description": {"type": "string", "description": "write script: one line saying what the script does."},
           "scope": {
@@ -628,14 +630,14 @@
     },
     {
       "name": "remove",
-      "description": "Take things away as a player would, with refunds and guards. Reports first; confirm: true removes and answers when the job is done.",
+      "description": "Take things away as a player would, with refunds and guards. Reports first; confirm: true removes and answers when the job is done. terrain is a cheat: ask the user.",
       "inputSchema": {
         "type": "object",
         "properties": {
           "what": {
             "type": "string",
-            "enum": ["structure", "cable", "pipe", "chute", "script"],
-            "description": "structure: built structures by id (up to 256, one job), taken apart; every build state is refunded down to the kit; cable: cable pieces as wire cutters remove them: by id, or the piece in each cell of waypoints or cells; pipe: pipe pieces as a player remove them: by id, or the piece in each cell of waypoints or cells, never emptying or splitting a network that holds gas; chute: chute pieces as a player remove them: by id, or the piece in each cell of waypoints or cells; script: delete a saved script"
+            "enum": ["structure", "cable", "pipe", "chute", "terrain", "script"],
+            "description": "structure: built structures by id (up to 256, one job), taken apart; every build state is refunded down to the kit; cable: cable pieces as wire cutters remove them: by id, or the piece in each cell of waypoints or cells; pipe: pipe pieces as a player remove them: by id, or the piece in each cell of waypoints or cells, never emptying or splitting a network that holds gas; chute: chute pieces as a player remove them: by id, or the piece in each cell of waypoints or cells; terrain: dig out a box of terrain; script: delete a saved script"
           },
           "id": {
             "type": ["string", "array"],
@@ -659,6 +661,8 @@
           "cells": {"type": "array"},
           "root": {"type": "string"},
           "rows": {"type": "integer"},
+          "box": {"type": "array"},
+          "ores": {"enum": ["drop", "discard"]},
           "name": {"type": "string", "description": "remove script: the saved script's name."},
           "fields": {"type": "array", "items": {"type": "string"}, "description": "Keys to keep."},
           "omit": {"type": "array", "items": {"type": "string"}, "description": "Key paths to leave out."},

@@ -340,7 +340,8 @@ public sealed class VerbCatalogueTests
     /// What a report call of each what counts as (x-cost-report): every confirm-route what states one and no other
     /// what does, it has x-cost's shape and one of its classes, and it is the class the what's old method reported by
     /// (dry_run absent or true; finish, the blueprints' paste, move gas and player, trade, write memory and battery
-    /// and server command reported instant, write genes bounded). The acting call keeps x-cost.
+    /// and server command reported instant, write genes bounded; the 2.3 cheats remove terrain world, write health
+    /// instant). The acting call keeps x-cost.
     /// </summary>
     [Fact]
     public void EveryConfirmRouteWhatStatesItsReportCost()
@@ -356,7 +357,8 @@ public sealed class VerbCatalogueTests
               "swap.chute": "plan",
               "trade.buy": "instant", "trade.sell": "instant",
               "undo": "plan",
-              "write.memory": "instant", "write.battery": "instant", "write.genes": "bounded"
+              "write.memory": "instant", "write.battery": "instant", "write.genes": "bounded",
+              "remove.terrain": "world", "write.health": "instant"
             }
             """)!.AsObject();
         string[] classes = { "instant", "bounded", "world", "plan", "job", "stream" };
@@ -403,7 +405,7 @@ public sealed class VerbCatalogueTests
 
         Assert.True(problems.Count == 0, string.Join("\n", problems));
         Assert.True(expected.Count == 0, "no x-cost-report for: " + string.Join(", ", expected.Select(pair => pair.Key)));
-        Assert.Equal(24, confirmRoute);
+        Assert.Equal(26, confirmRoute);
     }
 
     /// <summary>
@@ -434,7 +436,7 @@ public sealed class VerbCatalogueTests
             Assert.Equal(acting, spec.CostFor(JObject.Parse("""{"confirm": true}""")).Class);
         }
 
-        Assert.Equal(24, confirmRoute);
+        Assert.Equal(26, confirmRoute);
     }
 
     // The cost class a catalogue word names.
@@ -544,7 +546,9 @@ public sealed class VerbCatalogueTests
         // per what: build's prefab is what it places; build runs' cells and waypoints are new cells; server stop's id is
         // the hub's own run or job
         "build structure.prefab", "build cable.cells", "build cable.waypoints", "build pipe.cells", "build pipe.waypoints",
-        "build chute.cells", "build chute.waypoints", "server stop.id"
+        "build chute.cells", "build chute.waypoints", "server stop.id",
+        // remove terrain's ores says what becomes of the ore it digs, not which ore
+        "remove terrain.ores"
     };
 
     [Fact]

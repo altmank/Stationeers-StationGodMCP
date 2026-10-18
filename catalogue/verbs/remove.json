@@ -1,6 +1,6 @@
 {
   "verb": "remove",
-  "description": "Take things away as a player would, with refunds and guards. Reports first; confirm: true removes and answers when the job is done.",
+  "description": "Take things away as a player would, with refunds and guards. Reports first; confirm: true removes and answers when the job is done. terrain is a cheat: ask the user.",
   "read_only": false,
   "tool": {
     "options": {
@@ -383,6 +383,55 @@
           {"path": "root", "role": "acts-on"}
         ]
       }
+    },
+    "terrain": {
+      "summary": "dig out every terrain voxel in a box at once, the ore in it dropped where it lay or discarded",
+      "options": {
+        "box": {
+          "use": "box",
+          "description": "Two corners [[x, y, z], [x, y, z]] in metres: every 1 m voxel whose centre lies inside (at most 32768, a 32 m cube).",
+          "required": true
+        },
+        "ores": {
+          "schema": {"type": "string", "enum": ["drop", "discard"]},
+          "description": "drop: each ore in the box falls as an ore item where it lay, as a mining charge leaves it; discard: none is made.",
+          "default": "drop",
+          "x-script": "same"
+        },
+        "confirm": {"use": "confirm"}
+      },
+      "text": [
+        "A cheat: no player digs a box out at once. The report counts the voxels the dig takes, the ore it would release (each ore's minables), the voxels already empty, those it keeps at bedrock (below y 2, which the game never digs), and the players standing in the box, who fall once it is dug. Its box is the voxel-aligned box the dig takes, {min, max}, ready for show preview's boxes: show it to the player, then dig on their go.",
+        "Each voxel is dug as the game's own diggers dig one (a quarry or deep miner: density 0, as terrain is removed), so the cells it opens join the air next to them and the change reaches every client. It digs from the top down over frames; on a server with clients each slice waits for the state packet that carries it. A call cut short by its deadline keeps what it dug: report again to see what is left."
+      ],
+      "example": {"box": [[100, 40, 200], [110, 45, 210]], "confirm": true},
+      "x-cost": {"class": "world", "growth": "area"},
+      "x-cost-report": {"class": "world"},
+      "reply": {
+        "variants": [
+          {
+            "keys": {
+              "box": "{min: Vec3, max: Vec3}",
+              "cells": "int",
+              "dug": "int",
+              "already_empty": "int",
+              "bedrock_kept": "int",
+              "ores_handling": "str",
+              "ores": "list[{prefab_name: str, minables: int, quantity: int | None}]",
+              "players_in_box": "list[Thing] | None"
+            }
+          }
+        ],
+        "types": ["Thing", "Vec3"]
+      },
+      "write": {
+        "route": "confirm",
+        "cheat": "always",
+        "x-undo": "cannot",
+        "x-undo-mark": "[cannot undo: terrain dig]",
+        "x-target": [{"path": "box", "role": "spread"}]
+      },
+      "brief": "dig out a box of terrain"
     },
     "script": {
       "hub": true,

@@ -1,6 +1,6 @@
 {
   "verb": "write",
-  "description": "Set values and states. Typed ids act at once; a ref or network reports until confirm: true. memory, battery and genes are cheats: ask the user.",
+  "description": "Set values and states. Typed ids act at once; a ref or network reports until confirm: true. memory, battery, genes and health are cheats: ask the user.",
   "text": [
     "A write on a device that a chip or another writer drives warns driven_by (inspect {what: \"controllers\", id} lists them). Opening a vent, valve or pump runs the network lint: a problem refuses unless allow: [\"lint\"]."
   ],
@@ -691,6 +691,46 @@
         "x-target": [{"path": "id", "role": "acts-on"}]
       },
       "brief": "edit plant genes"
+    },
+    "health": {
+      "summary": "heal a player: every kind of damage to the body and its organs (brain and lungs) set to none",
+      "options": {
+        "player": {
+          "schema": {"type": "string"},
+          "description": "The player to heal, by name or id, in the game or not; default the player.",
+          "x-script": "same"
+        },
+        "confirm": {"use": "confirm"}
+      },
+      "text": [
+        "A cheat: no item or machine heals all of it at once. Heals as the game's own healers do (a cryo tube, a medical effect): the body's and each organ's damage set to none, so the brain's damage goes too. The report gives each part's damage now. A dead player is refused: a heal does not revive. Hunger and thirst are not damage and stay as they are (inspect player)."
+      ],
+      "example": {"player": "xceled", "confirm": true},
+      "x-cost": {"class": "instant", "growth": "by-id"},
+      "x-cost-report": {"class": "instant"},
+      "reply": {
+        "list": "parts",
+        "variants": [
+          {
+            "keys": {
+              "player": "Thing",
+              "online": "bool",
+              "state": "str",
+              "parts": "list[{part: str, thing: Thing, damage_percent_before: int, damage_percent_after: int, before: {brute: float, burn: float, oxygen: float, hydration: float, starvation: float, toxic: float, radiation: float, decay: float, stun: float}, after: {brute: float, burn: float, oxygen: float, hydration: float, starvation: float, toxic: float, radiation: float, decay: float, stun: float}}]",
+              "healed": "bool"
+            }
+          }
+        ],
+        "types": ["Thing"]
+      },
+      "write": {
+        "route": "confirm",
+        "cheat": "always",
+        "x-undo": "cannot",
+        "x-undo-mark": "[cannot undo: heal]",
+        "x-target": [{"path": "player", "role": "acts-on"}]
+      },
+      "brief": "heal a player"
     },
     "script": {
       "hub": true,

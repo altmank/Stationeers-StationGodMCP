@@ -1,4 +1,4 @@
-Set values and states. Typed ids act at once; a ref or network reports until confirm: true. memory, battery and genes are cheats: ask the user.
+Set values and states. Typed ids act at once; a ref or network reports until confirm: true. memory, battery, genes and health are cheats: ask the user.
 A write on a device that a chip or another writer drives warns driven_by (inspect {what: "controllers", id} lists them). Opening a vent, valve or pump runs the network lint: a problem refuses unless allow: ["lint"].
 A report carries report_only: true and lists every target with its current and new value.
 
@@ -13,6 +13,7 @@ whats:
 - uplink: point a Logic Rocket Uplink at a Logic Rocket Downlink
 - battery: set the charge of batteries and cells: full by default, or a ratio or joules (cheat)
 - genes: edit plant genes as the Gene Splicer does (cheat)
+- health: heal a player: every kind of damage to the body and its organs (brain and lungs) set to none (cheat)
 - script: save a Python script under a name: the next version, every older one kept
 
 On every call: fields, omit, list_limits, output_file, whole, repeat, as_player (help {topic: "shaping"}).

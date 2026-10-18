@@ -139,7 +139,8 @@ internal sealed class BuildCatalogue
 /// <summary>
 /// Where the cursor would stand and whether the game's cursor lets the piece be built there, checked on the game's
 /// own cursor for the prefab (InventoryManager.UpdatePlacement): the position snapped as the cursor snaps it
-/// (Structure.GetWorldGrid; a face-placed piece then moves half a cell against its forward, onto the face), then
+/// (Structure.GetWorldGrid; a face-placed piece's cell taken 0.1 m along its forward, as Structure.GetGrid files a
+/// standing one (FacePlacement), and the piece then moved half a cell against its forward, onto the face), then
 /// CanConstruct (every structure's own rules: blocked cells and faces, small-grid collisions, rocket cells and hulls,
 /// the overrides of each class), CanMountOnWall for a face-mounted piece, and for a piece that fills its cells no loose
 /// thing, creature or player inside it (BoundsIntersectWith, as the cursor checks DynamicThing.DynamicObjects). The
@@ -149,10 +150,15 @@ internal static class CursorCheck
 {
     internal static Vector3 Snap(Structure cursor, Vector3 at, Quaternion rotation)
     {
-        Vector3 grid = cursor.GetWorldGrid(at);
-        return cursor.PlacementType == PlacementSnap.Face
-            ? grid - rotation * Vector3.forward * cursor.GridSize / 2f
-            : grid;
+        if (cursor.PlacementType != PlacementSnap.Face)
+        {
+            return cursor.GetWorldGrid(at);
+        }
+
+        // The cell in front of a point on a face, as the game files a standing piece (FacePlacement).
+        Vector3 forward = rotation * Vector3.forward;
+        Vector3 grid = cursor.GetWorldGrid(Bodies.U(FacePlacement.CellPoint(Bodies.V(at), Bodies.V(forward))));
+        return grid - forward * cursor.GridSize / 2f;
     }
 
     /// <summary>Why the game would not build the prefab there; null when it would.</summary>

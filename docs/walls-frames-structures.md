@@ -26,6 +26,7 @@ connections and guard against merging networks, which `build structure` does not
 | `build structure` | Place any kit-built structure at a position and turn, at a build state, with a label and colour. Up to 64 in one job. | `prefab`, `at`, `facing` / `rotation` / `face` / `orient`, `build_state`, `label`, `color`; or `placements: [...]`, each with its own `label`, `color` and the rest |
 | `build finish` | Build a placed structure on to a later build state, paying each state's materials as a player's construction does. | `id`, `state` (default the next), `materials`, `free` (creative) |
 | `remove structure` | Remove structures as deconstructing them by hand would. Up to 256 in one job. | `id`, `allow: ["contents", "breach", "broken", "burst"]`, `refund_to` |
+| `remove terrain` | A cheat: dig out every terrain voxel in a box at once (see *Digging out terrain*). | `box`, `ores` (`drop` or `discard`), `confirm` |
 
 ## Replacing walls and frames
 
@@ -99,7 +100,9 @@ Tool wear, welder fuel and battery charge are not charged.
    each piece stands as planned: prefab, position, turn, build state, label and colour.
 
 - **Position:** `at` is any point in the cell, snapped as the placement cursor snaps it. A 2 m device snaps to its
-  cell's centre. A 0.5 m-grid device (a battery, a valve, a transformer) that cannot be built at the point as given is
+  cell's centre. A face-placed piece (an elevator shaft or level) stands on the face of the cell its front faces into,
+  and a point on that face names that cell, as the game files a standing piece: a piece's own `position` given back as
+  `at` builds it in the same place, whatever the coordinate. A 0.5 m-grid device (a battery, a valve, a transformer) that cannot be built at the point as given is
   set down on the surface behind it, as the cursor's ray lands on a surface: the floor plane below a standing device,
   the face at the back of a mounted one. So a cell's centre works; a point as given that can be built is kept. Only a
   surface that is there counts (a plate on that face, or a frame behind it): a spot that is taken is not moved into
@@ -342,6 +345,29 @@ Every placement's report carries `layout`, read from the game's own data for tha
 - `port_checks`: each port with what stands in its joining cell now (`occupant`), whether that piece `joins` it on
   build and `would_join_network`, why it is `blocked`, its `flow` (`in` or `out`) and whether its cell is in a door's
   keep-out.
+
+## Digging out terrain
+
+`remove terrain` is a cheat: it digs a whole box of ground out at once, which no player can (a mining charge also
+breaks frames and hurts players, a drill takes one voxel at a time). Ask before each use. It reports first:
+
+1. `remove {what: "terrain", box: [[100, 40, 200], [110, 45, 210]]}` reports the voxels it would dig (`dug`), the ore
+   it would release (`ores`, each ore's prefab and how many minables), the voxels already empty, those kept at
+   bedrock (below y 2, which the game never digs) and any player standing in the box (`players_in_box`: they fall
+   once it is dug). Its `box` is the voxel-aligned box it digs.
+2. Show that box to the player: `show {what: "preview", boxes: [the report's box]}`.
+3. On their go, the same call with `confirm: true` digs it and answers the same keys, the ore with the `quantity`
+   dropped.
+
+- **Which voxels:** every 1 m voxel whose centre lies in the box, corners in either order; at most 32,768 voxels (a
+  32 m cube) a call: split a bigger box, by height for one.
+- **Ore:** `ores: "drop"` (default) leaves each ore as an ore item where it lay, as a mining charge does;
+  `"discard"` makes none, as a deep miner's drill. Either way that ore is gone from the ground.
+- **How:** each voxel is dug as the game's quarry and deep miner dig one, so the space it opens joins the air next to
+  it (an opening into a room makes the room bigger) and every connected player's game gets the change. It digs from
+  the top down over several frames; on a server with players it sends a slice at a time. A call cut short keeps what
+  it dug: report again to see what is left. Structures and frames in the box are not touched. It cannot be undone.
+- **Host only.**
 
 ## Finishing a half-built structure
 

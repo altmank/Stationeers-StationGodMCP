@@ -32,7 +32,13 @@ internal static class JobReplication
     internal static void Changed() => Gate.Changed(Time.frameCount);
 
     /// <summary>Whether a job may take its next step this frame.</summary>
-    internal static bool MayStep()
+    internal static bool MayStep() => MayStep(Gate);
+
+    /// <summary>
+    /// Whether work that keeps its own gate (a terrain dig's slices) may go on this frame: the same rule, the same
+    /// state packet count, apart from the jobs' gate.
+    /// </summary>
+    internal static bool MayStep(ClientReplication gate)
     {
         bool watching = NetworkManager.IsServer && NetworkServer.HasClients();
         if (watching && !Counting())
@@ -43,7 +49,7 @@ internal static class JobReplication
             watching = false;
         }
 
-        switch (Gate.Pass(new HostSending(Time.frameCount, StateWrites, watching, Time.realtimeSinceStartup)))
+        switch (gate.Pass(new HostSending(Time.frameCount, StateWrites, watching, Time.realtimeSinceStartup)))
         {
             case ReplicationPass.Open:
                 return true;

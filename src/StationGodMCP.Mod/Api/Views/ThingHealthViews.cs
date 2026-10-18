@@ -207,4 +207,11 @@ internal sealed class DamagePartsView
     public float Decay { get; }
 
     public float Stun { get; }
+
+    /// <summary>No damage of any kind: what a heal leaves.</summary>
+    internal static DamagePartsView None { get; } = new DamagePartsView(0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f);
+
+    internal bool IsNone =>
+        Brute <= 0f && Burn <= 0f && Oxygen <= 0f && Hydration <= 0f && Starvation <= 0f && Toxic <= 0f &&
+        Radiation <= 0f && Decay <= 0f && Stun <= 0f;
 }

@@ -64,8 +64,8 @@ def write(what, *, fields=None, as_player=None, id=None, logic=None, value=None,
         allow=None, start=None, values=None, code=None, code_file=None, pins=None, run=None, include=None,
         surface=None, element=None, pixel=None, event=None, text=None, label=None, labels=None, network=None,
         kind=None, color=None, items=None, action=None, interval_s=None, capacity=None, csv=None, downlink=None,
-        rocket=None, within=None, ratio=None, joules=None, unit=None, genes=None, name=None, description=None,
-        scope=None, **options):
+        rocket=None, within=None, ratio=None, joules=None, unit=None, genes=None, player=None, name=None,
+        description=None, scope=None, **options):
     """Set values and states. sg.help('write', what) gives a what in full."""
     return verb_call('write', what, {'fields': fields, 'as_player': as_player, 'id': id, 'logic': logic, 'value':
                      value, 'writes': writes, 'gateway': gateway, 'allow': allow, 'start': start, 'values': values,
@@ -74,7 +74,7 @@ def write(what, *, fields=None, as_player=None, id=None, logic=None, value=None,
                      'labels': labels, 'network': network, 'kind': kind, 'color': color, 'items': items, 'action':
                      action, 'interval_s': interval_s, 'capacity': capacity, 'csv': csv, 'downlink': downlink,
                      'rocket': rocket, 'within': within, 'ratio': ratio, 'joules': joules, 'unit': unit, 'genes':
-                     genes, 'name': name, 'description': description, 'scope': scope}, options)
+                     genes, 'player': player, 'name': name, 'description': description, 'scope': scope}, options)
 
 
 def plan(what, *, fields=None, as_player=None, kind=None, start=None, end=None, reroute=None, trunk=None,
@@ -151,12 +151,12 @@ def swap(what, *, fields=None, as_player=None, id=None, room=None, into=None, pr
 
 def remove(what, *, fields=None, as_player=None, id=None, allow=None, refund_to=None, materials=None, gas_to=None,
         include=None, verbose=None, acknowledge_gas_lost=None, waypoints=None, cells=None, root=None, rows=None,
-        name=None, **options):
+        box=None, ores=None, name=None, **options):
     """Take things away as a player would, with refunds and guards. sg.help('remove', what) gives a what in full."""
     return verb_call('remove', what, {'fields': fields, 'as_player': as_player, 'id': id, 'allow': allow,
                      'refund_to': refund_to, 'materials': materials, 'gas_to': gas_to, 'include': include,
                      'verbose': verbose, 'acknowledge_gas_lost': acknowledge_gas_lost, 'waypoints': waypoints,
-                     'cells': cells, 'root': root, 'rows': rows, 'name': name}, options)
+                     'cells': cells, 'root': root, 'rows': rows, 'box': box, 'ores': ores, 'name': name}, options)
 
 
 def move(what, *, fields=None, as_player=None, id=None, quantity=None, to=None, slot=None, merge=None, force=None,

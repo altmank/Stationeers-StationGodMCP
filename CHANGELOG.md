@@ -1,5 +1,28 @@
 # Changelog
 
+## 2.3.0
+
+Two cheats, for clearing ground and for a hurt player, and a placement fix.
+
+- **New `remove terrain` (a cheat): dig out a box of ground at once.** Every 1 m terrain voxel whose centre lies in
+  `box` (at most 32,768, a 32 m cube) is dug as the game's quarry and deep miner dig one (density 0, removed terrain),
+  top layer first, over frames. The report counts the voxels it would dig, those already empty and those kept at
+  bedrock (below y 2), the ore it would release by prefab, and the players standing in the box; its `box` is the
+  voxel-aligned box, ready for `show preview`'s `boxes`, so the player sees it before saying go. `ores: "drop"`
+  (default) leaves each ore as an item where it lay, as a mining charge does; `"discard"` makes none. The opened space
+  joins the air beside it, and connected players get every voxel through the game's own terrain sync, one slice per
+  state packet. Structures in the box are not touched.
+- **New `write health` (a cheat): heal a player.** The body and each organ (brain and lungs) healed of every kind of
+  damage, as the game's healers heal them (HealAll on each), so brain damage goes too. `player` by name or id, in the
+  game or not; a dead player is refused (`player_dead`). The reply gives each part's damage before and after and
+  whether every part reads none; hunger and thirst are left as they are.
+- **build structure: a face-placed piece's own position builds it in the same place.** An elevator shaft or level
+  stands on the face of its cell, and a point on that face was snapped to either cell depending on the coordinate
+  (the game rounds a half to the even number): with its front toward -x, `at` x -848 built at -846 beside a level
+  standing at -848, so the shaft did not join. The cell is now taken 0.1 m along the piece's front, as the game files
+  a standing piece, so the face names the cell in front of it; a point inside a cell is read as before.
+- Python `sg` 0.4.5: the stubs carry the two new whats.
+
 ## 2.2.0
 
 Smaller and more exact replies, from what agents ran into.
