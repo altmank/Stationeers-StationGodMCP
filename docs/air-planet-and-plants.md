@@ -12,7 +12,7 @@ Units: pressure in kPa, temperature in kelvin, gas in moles, liquids also in lit
 
 | Call | What it does | Main options |
 | --- | --- | --- |
-| `find room` | Every closed room, measured cell by cell: volume, pressure, temperature, every gas; its devices with `include: ["devices"]`. | `id` (only the room that thing is in), `include: ["cells", "devices"]` |
+| `find room` | Every closed room, measured cell by cell: volume, pressure, temperature, every gas; its devices with `include: ["devices"]`. | `id` (only the room that thing is in), `near` + `radius` (the rooms whose bounds hold a point or come within radius of it, nearest first), `include: ["cells", "devices"]` |
 | `inspect atmosphere` | What gas or liquid one thing holds: a canister, tank, suit, a pipe's whole network, a landing pad's shared atmosphere, or every network a device is on. | `id` |
 | `find water` | Every canister, tank, device and pipe network that holds water, polluted water or steam, largest first. | `min_mol` |
 | `move gas` | Move gas and liquid between atmospheres, or delete it. A cheat: it bypasses the game's physics. | `source`, `to` or `delete`, `gases`, `amount_mol`, `joined`, `allow: ["burst"]`, `confirm`; the reply's `transfer_id` to poll with `inspect job` |

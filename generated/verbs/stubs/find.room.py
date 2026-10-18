@@ -1,6 +1,8 @@
 def find(what: Literal['room'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
     id: str | list[str] = None,  # A thing: only the room it is in.
+    near: str | list = None,  # Only rooms near this: [x, y, z], "player", "looking_at" or a thing's id; nearest first.
+    radius: float = None,  # Metres from near to a room's bounds; left out, 0: the rooms whose bounds hold the point.
     include: list[Literal['cells', 'devices']] = None,  # cells: every cell centre; devices: the devices in each room.
 ) -> dict:  # main list: r['rooms']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Closed rooms measured cell by cell: volume, pressure, temperature, gases; or the room one thing is in.

@@ -1,6 +1,8 @@
 Closed rooms measured cell by cell: volume, pressure, temperature, gases; or the room one thing is in.
 Options:
 - id (string or array): A thing: only the room it is in.
+- near (string or array): Only rooms near this: [x, y, z], "player", "looking_at" or a thing's id; nearest first.
+- radius (number): Metres from near to a room's bounds; left out, 0: the rooms whose bounds hold the point.
 - include (list of cells | devices): cells: every cell centre; devices: the devices in each room.
 One id answers the wrapper below; a list of ids answers one row per id, {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count, local_player_room_id}, each row's payload the room itself (the rooms item's keys) - not the wrapper - or the error for a thing in no room.
 Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the one-id reply; a bad id is a row with error.

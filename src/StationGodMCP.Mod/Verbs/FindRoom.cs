@@ -6,7 +6,9 @@ using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure;
 using StationGodMCP.Pure.Facts;
+using StationGodMCP.Pure.Layout;
 using StationGodMCP.Pure.Verbs;
 using StationGodMCP.Pure.Scheduling;
 
@@ -30,7 +32,41 @@ internal static class FindRoom
         bool cells = options.Fields.Includes("cells");
         bool devices = options.Fields.Includes("devices");
         PerIdList? ids = options.Selector.Ids;
-        return WorkResult<Found>.Of(answer => Finding(cells, devices, ids, answer), found => Answered(found, ids));
+        if (options.Selector.Radius != null && options.Selector.Near == null)
+        {
+            return new VerbOutcome.Refused(OptionProblem.Refusal(FindRoomOptions.Spec.Label,
+                new[] { new OptionProblem("radius", "goes with near") }));
+        }
+
+        Vec3? near = options.Selector.Near is { } point
+            ? NearCentres.Of(point, FindRoomOptions.Spec.Label)
+            : (Vec3?)null;
+        double radius = options.Selector.Radius ?? 0.0;
+        return WorkResult<Found>.Of(answer => Finding(cells, devices, ids, answer),
+            found => Answered(near is { } at ? Near(found, at, radius) : found, ids));
+    }
+
+    // near: only the rooms whose bounds come within radius of the point, nearest first.
+    private static Found Near(Found found, Vec3 point, double radius)
+    {
+        if (found.Rooms == null)
+        {
+            return found;
+        }
+
+        List<(double Distance, RoomView Room)> kept = new List<(double, RoomView)>();
+        foreach (RoomView room in found.Rooms)
+        {
+            Vec3 min = new Vec3(room.Bounds.Min.X, room.Bounds.Min.Y, room.Bounds.Min.Z);
+            Vec3 max = new Vec3(room.Bounds.Max.X, room.Bounds.Max.Y, room.Bounds.Max.Z);
+            if (RoomNear.Keeps(min, max, point, radius))
+            {
+                kept.Add((RoomNear.Distance(min, max, point), room));
+            }
+        }
+
+        kept.Sort(static (a, b) => a.Distance.CompareTo(b.Distance));
+        return new Found(found.Measure, kept.ConvertAll(static entry => entry.Room));
     }
 
     // The measuring (its devices over steps), then, without ids, every room (a room a step).

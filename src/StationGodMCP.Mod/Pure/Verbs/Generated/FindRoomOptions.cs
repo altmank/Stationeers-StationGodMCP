@@ -15,6 +15,8 @@ internal sealed class FindRoomOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("find", "room", "rooms", null, null, new WhatCost(CostClass.World, when: new[] { new CostWhen("id", CostClass.Bounded) }), null, new Dictionary<string, int> { ["rooms"] = 10 },
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}"),
+        new OptionSpec("near", "{\"type\":[\"string\",\"array\"]}"),
+        new OptionSpec("radius", "{\"type\":\"number\"}"),
         new OptionSpec("include", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"cells\",\"devices\"]}}"));
 
     internal Selector Selector { get; private set; } = Selector.None;

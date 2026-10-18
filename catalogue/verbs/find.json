@@ -477,6 +477,8 @@
       "summary": "closed rooms measured cell by cell: volume, pressure, temperature, gases; or the room one thing is in",
       "options": {
         "id": {"use": "id", "description": "A thing: only the room it is in."},
+        "near": {"use": "near", "description": "Only rooms near this: [x, y, z], \"player\", \"looking_at\" or a thing's id; nearest first."},
+        "radius": {"use": "radius", "description": "Metres from near to a room's bounds; left out, 0: the rooms whose bounds hold the point."},
         "include": {
           "use": "include",
           "schema": {"type": "array", "items": {"type": "string", "enum": ["cells", "devices"]}},
