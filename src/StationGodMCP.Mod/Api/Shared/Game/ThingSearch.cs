@@ -139,8 +139,8 @@ internal static class ThingSearch
 
 /// <summary>
 /// What a thing search keeps: part of a name, prefabs, a category (ThingKinds), a game class, labelled or not, broken or
-/// not, its maker in the print log, where it is (ThingLocations), holding an atmosphere, how near the player, and an
-/// area its outermost holder stands in. Left out, each keeps every thing.
+/// not, its maker in the print log, the colour it shows or painted off its own, where it is (ThingLocations), holding
+/// an atmosphere, how near the player, and an area its outermost holder stands in. Left out, each keeps every thing.
 /// </summary>
 internal sealed class ThingFilter
 {
@@ -148,8 +148,11 @@ internal sealed class ThingFilter
     private readonly Dictionary<Type, bool> _typeMatches = new Dictionary<Type, bool>();
 
     internal ThingFilter(string? name, PrefabFilter? prefab, string category, string? runtimeType, bool labelled,
-        bool? hasAtmosphere, double? nearPlayerM, bool? broken, PrintFilter made, string location, PointArea area)
+        bool? hasAtmosphere, double? nearPlayerM, bool? broken, PrintFilter made, string location, PointArea area,
+        int? colorIndex = null, bool? painted = null)
     {
+        ColorIndex = colorIndex;
+        Painted = painted;
         Name = name;
         Prefab = prefab;
         Category = category;
@@ -186,6 +189,12 @@ internal sealed class ThingFilter
     /// <summary>Only items the print log has, from that maker, since that game time.</summary>
     internal PrintFilter Made { get; }
 
+    /// <summary>Only things showing this colour (its index in the game's list; ThingColors.ShownIndexOf).</summary>
+    internal int? ColorIndex { get; }
+
+    /// <summary>true: only paintable things painted off their prefab's colour; false: only those still in it.</summary>
+    internal bool? Painted { get; }
+
     /// <summary>any, or the one location kept (ThingLocations).</summary>
     internal string Location { get; }
 
@@ -202,6 +211,8 @@ internal sealed class ThingFilter
         (Prefab == null || Prefab.Keeps(thing.PrefabName, thing.PrefabHash)) &&
         (Category == ThingLocations.Any || ThingKinds.Of(thing) == Category) &&
         (!Broken.HasValue || Wrecks.IsBroken(thing) == Broken.Value) &&
+        (!ColorIndex.HasValue || ThingColors.ShownIndexOf(thing) == ColorIndex.Value) &&
+        (!Painted.HasValue || ThingColors.IsRepainted(thing) == Painted.Value) &&
         (!Made.IsActive || Made.Keeps(Prints.Log.Of(thing.ReferenceId))) &&
         (RuntimeType == null || IsOfType(thing.GetType())) &&
         (string.IsNullOrEmpty(Name) || Labels.NameContains(thing, Name!)) &&

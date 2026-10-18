@@ -4,7 +4,7 @@
     "see": {"verb": "build", "what": "finish"}
   },
   "ambiguous_axis": {
-    "description": "A relative point or named facing lies within 10 degrees of a diagonal from the as_player, so the axis is unclear. Use frame world or target, or turn toward an axis.",
+    "description": "A relative point or named facing lies within 10 degrees of a diagonal from the player, so the axis is unclear. Use frame world or target, or turn toward an axis.",
     "see": {"topic": "positions"}
   },
   "ambiguous_circuit_holder": {
@@ -46,12 +46,12 @@
     "description": "ScriptedScreens could not picture the surface; the message gives its reason.",
     "see": {"verb": "inspect", "what": "screen"}
   },
-  "card_not_found": {"description": "That reference id is not a credit card. Use a card the as_player carries, or leave card out."},
+  "card_not_found": {"description": "That reference id is not a credit card. Use a card the player carries, or leave card out."},
   "card_not_usable": {
-    "description": "The credit card is not where the game's sell can use it. Use a card a as_player carries or a vending machine holds."
+    "description": "The credit card is not where the game's sell can use it. Use a card a player carries or a vending machine holds."
   },
   "client_cannot_move": {
-    "description": "The as_player plays on another machine whose game this server cannot reach, so nothing moved; the message says why. They need the same StationGod version.",
+    "description": "The player plays on another machine whose game this server cannot reach, so nothing moved; the message says why. They need the same StationGod version.",
     "see": {"verb": "move", "what": "player"}
   },
   "coils_short": {
@@ -223,7 +223,7 @@
     "description": "No shown control stands at that point. inspect screen gives each element its box; touch by element instead.",
     "see": {"verb": "write", "what": "screen"}
   },
-  "no_credit_card": {"description": "The as_player carries no credit card. Carry one, or give card."},
+  "no_credit_card": {"description": "The player carries no credit card. Carry one, or give card."},
   "no_crosshair_hit": {
     "description": "The look ray hits nothing within reach. Look at a surface, or give the point another way.",
     "see": {"topic": "positions"}
@@ -248,7 +248,7 @@
     "see": {"verb": "show", "what": "highlight"}
   },
   "no_local_player": {
-    "description": "There is no single as_player: no local as_player, and none or several connected living players. The message names them; act with a as_player in the world, or give materials."
+    "description": "There is no single player: no local player, and none or several connected living players, or as_player names nobody. The message names them; give as_player (a name or id), or give materials."
   },
   "no_network": {"description": "The thing is on no network of that category. Name a piece or device that is on one."},
   "no_programmable_chip": {"description": "The device keeps its memory on a programmable chip and has none installed. Install a chip first."},
@@ -267,7 +267,7 @@
   "no_slots": {"description": "The thing has no slots. Pick a container or device with slots."},
   "no_target": {"description": "The rocket stands on its pad with no target. Give 'to': a node's name or code."},
   "no_view": {
-    "description": "There is no as_player view to read or screen to draw on; the message says why. Use frame world or target, or have the as_player run StationGod."
+    "description": "There is no player view to read or screen to draw on; the message says why. With several players, give as_player; else use frame world or target, or have the player run StationGod."
   },
   "no_world": {"description": "No world is loaded. Load one, then try again.", "see": {"topic": "errors"}},
   "no_xray_material": {
@@ -353,7 +353,7 @@
     "see": {"verb": "inspect", "what": "genes"}
   },
   "outside_world": {
-    "description": "The point is beyond the world's terrain, where nothing holds a as_player up. Pick a point inside the map.",
+    "description": "The point is beyond the world's terrain, where nothing holds a player up. Pick a point inside the map.",
     "see": {"verb": "move", "what": "player"}
   },
   "pad_approach": {
@@ -377,14 +377,14 @@
     "see": {"verb": "inspect", "what": "genes"}
   },
   "planted": {
-    "description": "The plant is growing: a as_player never takes a plant out whole, only harvests it once mature or clears it. Harvest it instead."
+    "description": "The plant is growing: a player never takes a plant out whole, only harvests it once mature or clears it. Harvest it instead."
   },
   "player_not_found": {
-    "description": "No as_player has that name or reference id; the message lists the players. Give one of them.",
+    "description": "No player has that name or reference id; the message lists the players. Give one of them.",
     "see": {"verb": "move", "what": "player"}
   },
   "player_not_movable": {
-    "description": "The as_player is dead, or another as_player is dragging them, so they are not moved. The message says which.",
+    "description": "The player is dead, or another player is dragging them, so they are not moved. The message says which.",
     "see": {"verb": "move", "what": "player"}
   },
   "port_not_joined": {"description": "That port joins no network of the category. Name a port that is joined, or the network itself."},
@@ -569,7 +569,7 @@
   "vault_not_ready": {"description": "The vault has no store yet. Wait until it is built and powered."},
   "vault_unpowered": {"description": "The vault is off or unpowered, so it neither imports nor vends. Nothing ran; power it on."},
   "view_stale": {
-    "description": "The as_player's game stopped sending its view: the last one is too old or taken too far from where they stand. Use frame world or target, or have them look again."
+    "description": "The player's game stopped sending its view: the last one is too old or taken too far from where they stand. Use frame world or target, or have them look again."
   },
   "world_changed": {
     "description": "Another world has loaded since the call's world (data.world is the current one). Nothing ran. Find the things again in the new world before acting."

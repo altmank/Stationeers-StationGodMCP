@@ -3,6 +3,7 @@
 using System.Collections.Generic;
 using Assets.Scripts.Objects.Entities;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Protocol;
 using UnityEngine;
 using World = StationGodMCP.WorldModel.World;
 
@@ -11,7 +12,8 @@ namespace StationGodMCP.Api.Shared.Game;
 /// <summary>
 /// The one place that decides who "the player" is (Pure/PlayerRule): the local player (Human.LocalHuman, which is
 /// InventoryManager.ParentHuman) when there is one, else on a dedicated server the one connected, living player in the
-/// world. Distances are measured from that player; the absent origin answers every question with "no distance" and
+/// world; a call that names its player (as_player, CallContext.Player) gets that one. Distances are measured from that
+/// player; the absent origin answers every question with "no distance" and
 /// carries why there is no player, so no tool checks for one itself.
 /// </summary>
 internal abstract class PlayerOrigin
@@ -40,6 +42,12 @@ internal abstract class PlayerOrigin
 
     internal static PlayerOrigin Current()
     {
+        string? named = CallContext.Current.Player;
+        if (named != null)
+        {
+            return Named(named);
+        }
+
         Human? local = Local();
         return PlayerRule.Choose(local, local != null ? NoCandidates : Candidates()) switch
         {
@@ -47,6 +55,42 @@ internal abstract class PlayerOrigin
             PlayerChoice<Human>.Missing missing => new Absent(missing.Reason),
             _ => throw new System.InvalidOperationException("Unknown player choice.")
         };
+    }
+
+    /// <summary>Every human in the world by name and reference id, for a player named by either (PlayerMatch).</summary>
+    internal static List<NamedPlayer<Human>> NamedPlayers()
+    {
+        List<NamedPlayer<Human>> players = new List<NamedPlayer<Human>>();
+        foreach (Human human in World.Humans)
+        {
+            if (human != null && !human.IsBeingDestroyed)
+            {
+                players.Add(new NamedPlayer<Human>(human, human.ReferenceId, human.DisplayName));
+            }
+        }
+
+        return players;
+    }
+
+    // The human the call's as_player names, in play or not, found as move player finds one.
+    private static PlayerOrigin Named(string wanted) => PlayerMatch.Find(NamedPlayers(), wanted) switch
+    {
+        PlayerFound<Human>.One one => new Present(one.Player.Body),
+        PlayerFound<Human>.None none => new Absent("as_player: " + none.Reason),
+        PlayerFound<Human>.Several several => new Absent("as_player: " + several.Reason),
+        _ => throw new System.InvalidOperationException("Unknown player match.")
+    };
+
+    /// <summary>
+    /// Every player whose screen show draws on: the one the call names or the rule picks, else, when the call names
+    /// none and several are in play (a dedicated server), each of them; empty, with why (absence), when there is none.
+    /// </summary>
+    internal static List<Human> Audience(out string? absence)
+    {
+        PlayerOrigin one = Current();
+        bool named = CallContext.Current.Player != null;
+        IReadOnlyList<PlayerCandidate<Human>> humans = one.Player != null || named ? NoCandidates : Candidates();
+        return PlayerRule.Audience(one.Player, one.Absence, named, humans, out absence);
     }
 
     /// <summary>
@@ -81,7 +125,7 @@ internal abstract class PlayerOrigin
 
     private static ApiException NoPlayer(string reason) => ApiErrors.Refused("no_local_player", reason);
 
-    // Every human the server has, as the rule sees it; only read when there is no local player.
+    // Every human the world has, as the rule sees it; only read when there is no local player.
     private static List<PlayerCandidate<Human>> Candidates()
     {
         List<PlayerCandidate<Human>> candidates = new List<PlayerCandidate<Human>>();

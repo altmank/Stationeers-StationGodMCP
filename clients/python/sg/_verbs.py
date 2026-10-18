@@ -6,189 +6,197 @@ from ._calls import verb_call
 # option the hub knows may be passed through **options.
 
 
-def find(what, *, fields=None, name=None, prefab=None, category=None, labelled=None, runtime_type=None, broken=None,
-        has_atmosphere=None, made_by=None, made_since=None, location=None, near=None, radius=None, box=None,
-        limit=None, order=None, within=None, group_by=None, holders=None, exclude_in_use=None, gateway=None,
-        include=None, min_mol=None, ores=None, separation=None, step=None, id=None, verbose=None, min_damage=None,
-        broken_only=None, structures_only=None, text=None, **options):
+def find(what, *, fields=None, as_player=None, name=None, prefab=None, category=None, labelled=None,
+        runtime_type=None, broken=None, color=None, painted=None, has_atmosphere=None, made_by=None,
+        made_since=None, location=None, near=None, radius=None, box=None, limit=None, order=None, within=None,
+        group_by=None, holders=None, exclude_in_use=None, gateway=None, include=None, min_mol=None, ores=None,
+        separation=None, step=None, id=None, verbose=None, min_damage=None, broken_only=None, structures_only=None,
+        text=None, **options):
     """List things in the world or an area, filtered, nearest first. sg.help('find', what) gives a what in full."""
-    return verb_call('find', what, {'fields': fields, 'name': name, 'prefab': prefab, 'category': category,
-                     'labelled': labelled, 'runtime_type': runtime_type, 'broken': broken, 'has_atmosphere':
-                     has_atmosphere, 'made_by': made_by, 'made_since': made_since, 'location': location, 'near':
-                     near, 'radius': radius, 'box': box, 'limit': limit, 'order': order, 'within': within,
-                     'group_by': group_by, 'holders': holders, 'exclude_in_use': exclude_in_use, 'gateway': gateway,
-                     'include': include, 'min_mol': min_mol, 'ores': ores, 'separation': separation, 'step': step,
-                     'id': id, 'verbose': verbose, 'min_damage': min_damage, 'broken_only': broken_only,
-                     'structures_only': structures_only, 'text': text}, options)
+    return verb_call('find', what, {'fields': fields, 'as_player': as_player, 'name': name, 'prefab': prefab,
+                     'category': category, 'labelled': labelled, 'runtime_type': runtime_type, 'broken': broken,
+                     'color': color, 'painted': painted, 'has_atmosphere': has_atmosphere, 'made_by': made_by,
+                     'made_since': made_since, 'location': location, 'near': near, 'radius': radius, 'box': box,
+                     'limit': limit, 'order': order, 'within': within, 'group_by': group_by, 'holders': holders,
+                     'exclude_in_use': exclude_in_use, 'gateway': gateway, 'include': include, 'min_mol': min_mol,
+                     'ores': ores, 'separation': separation, 'step': step, 'id': id, 'verbose': verbose,
+                     'min_damage': min_damage, 'broken_only': broken_only, 'structures_only': structures_only,
+                     'text': text}, options)
 
 
-def inspect(what, *, fields=None, id=None, gateway=None, include=None, prefab=None, slot=None, depth=None,
-        name=None, limit=None, network=None, kind=None, damaged_only=None, unit=None, parts=None, start=None,
-        count=None, log=None, targets=None, surface=None, type=None, text=None, shown_only=None, compact=None,
-        self_test=None, distance=None, verbose=None, **options):
+def inspect(what, *, fields=None, as_player=None, id=None, gateway=None, include=None, prefab=None, slot=None,
+        depth=None, name=None, limit=None, network=None, kind=None, damaged_only=None, unit=None, parts=None,
+        start=None, count=None, log=None, targets=None, surface=None, type=None, text=None, shown_only=None,
+        compact=None, self_test=None, distance=None, verbose=None, **options):
     """Describe one thing, or a few by id, in detail. sg.help('inspect', what) gives a what in full."""
-    return verb_call('inspect', what, {'fields': fields, 'id': id, 'gateway': gateway, 'include': include, 'prefab':
-                     prefab, 'slot': slot, 'depth': depth, 'name': name, 'limit': limit, 'network': network, 'kind':
-                     kind, 'damaged_only': damaged_only, 'unit': unit, 'parts': parts, 'start': start, 'count':
-                     count, 'log': log, 'targets': targets, 'surface': surface, 'type': type, 'text': text,
-                     'shown_only': shown_only, 'compact': compact, 'self_test': self_test, 'distance': distance,
-                     'verbose': verbose}, options)
+    return verb_call('inspect', what, {'fields': fields, 'as_player': as_player, 'id': id, 'gateway': gateway,
+                     'include': include, 'prefab': prefab, 'slot': slot, 'depth': depth, 'name': name, 'limit':
+                     limit, 'network': network, 'kind': kind, 'damaged_only': damaged_only, 'unit': unit, 'parts':
+                     parts, 'start': start, 'count': count, 'log': log, 'targets': targets, 'surface': surface,
+                     'type': type, 'text': text, 'shown_only': shown_only, 'compact': compact, 'self_test':
+                     self_test, 'distance': distance, 'verbose': verbose}, options)
 
 
-def survey(what, *, fields=None, box=None, room=None, sections=None, networks=None, include=None, network=None,
-        kind=None, prefab=None, cell_detail=None, occupied_only=None, limit=None, plane=None, side=None,
-        looking=None, at=None, half_width=None, free_rects=None, summarize=None, open_ends=None, near=None,
-        radius=None, id=None, port=None, **options):
+def survey(what, *, fields=None, as_player=None, box=None, room=None, sections=None, networks=None, include=None,
+        network=None, kind=None, prefab=None, cell_detail=None, occupied_only=None, limit=None, plane=None,
+        side=None, looking=None, at=None, half_width=None, free_rects=None, summarize=None, open_ends=None,
+        near=None, radius=None, id=None, port=None, **options):
     """Map an area or a network as a whole: the grid's cells, a wall face, a network's members, feed paths. sg.help('survey', what) gives a what in full."""
-    return verb_call('survey', what, {'fields': fields, 'box': box, 'room': room, 'sections': sections, 'networks':
-                     networks, 'include': include, 'network': network, 'kind': kind, 'prefab': prefab,
-                     'cell_detail': cell_detail, 'occupied_only': occupied_only, 'limit': limit, 'plane': plane,
-                     'side': side, 'looking': looking, 'at': at, 'half_width': half_width, 'free_rects': free_rects,
-                     'summarize': summarize, 'open_ends': open_ends, 'near': near, 'radius': radius, 'id': id,
-                     'port': port}, options)
+    return verb_call('survey', what, {'fields': fields, 'as_player': as_player, 'box': box, 'room': room,
+                     'sections': sections, 'networks': networks, 'include': include, 'network': network, 'kind':
+                     kind, 'prefab': prefab, 'cell_detail': cell_detail, 'occupied_only': occupied_only, 'limit':
+                     limit, 'plane': plane, 'side': side, 'looking': looking, 'at': at, 'half_width': half_width,
+                     'free_rects': free_rects, 'summarize': summarize, 'open_ends': open_ends, 'near': near,
+                     'radius': radius, 'id': id, 'port': port}, options)
 
 
-def read(what, *, fields=None, id=None, logic=None, reads=None, gateway=None, include=None, prefab=None, name=None,
-        limit=None, start=None, count=None, seconds=None, interval=None, action=None, every=None, **options):
+def read(what, *, fields=None, as_player=None, id=None, logic=None, reads=None, gateway=None, include=None,
+        prefab=None, name=None, limit=None, start=None, count=None, seconds=None, interval=None, action=None,
+        every=None, **options):
     """Read live values: logic, memory, a snapshot, samples over time, the clock, flight logs. sg.help('read', what) gives a what in full."""
-    return verb_call('read', what, {'fields': fields, 'id': id, 'logic': logic, 'reads': reads, 'gateway': gateway,
-                     'include': include, 'prefab': prefab, 'name': name, 'limit': limit, 'start': start, 'count':
-                     count, 'seconds': seconds, 'interval': interval, 'action': action, 'every': every}, options)
+    return verb_call('read', what, {'fields': fields, 'as_player': as_player, 'id': id, 'logic': logic, 'reads':
+                     reads, 'gateway': gateway, 'include': include, 'prefab': prefab, 'name': name, 'limit': limit,
+                     'start': start, 'count': count, 'seconds': seconds, 'interval': interval, 'action': action,
+                     'every': every}, options)
 
 
-def write(what, *, fields=None, id=None, logic=None, value=None, writes=None, gateway=None, allow=None, start=None,
-        values=None, code=None, code_file=None, pins=None, run=None, include=None, surface=None, element=None,
-        pixel=None, event=None, text=None, as_player=None, label=None, labels=None, network=None, kind=None,
-        color=None, items=None, action=None, interval_s=None, capacity=None, csv=None, downlink=None, rocket=None,
-        within=None, ratio=None, joules=None, unit=None, genes=None, name=None, description=None, scope=None,
-        **options):
+def write(what, *, fields=None, as_player=None, id=None, logic=None, value=None, writes=None, gateway=None,
+        allow=None, start=None, values=None, code=None, code_file=None, pins=None, run=None, include=None,
+        surface=None, element=None, pixel=None, event=None, text=None, label=None, labels=None, network=None,
+        kind=None, color=None, items=None, action=None, interval_s=None, capacity=None, csv=None, downlink=None,
+        rocket=None, within=None, ratio=None, joules=None, unit=None, genes=None, name=None, description=None,
+        scope=None, **options):
     """Set values and states. sg.help('write', what) gives a what in full."""
-    return verb_call('write', what, {'fields': fields, 'id': id, 'logic': logic, 'value': value, 'writes': writes,
-                     'gateway': gateway, 'allow': allow, 'start': start, 'values': values, 'code': code,
-                     'code_file': code_file, 'pins': pins, 'run': run, 'include': include, 'surface': surface,
-                     'element': element, 'pixel': pixel, 'event': event, 'text': text, 'as_player': as_player,
-                     'label': label, 'labels': labels, 'network': network, 'kind': kind, 'color': color, 'items':
-                     items, 'action': action, 'interval_s': interval_s, 'capacity': capacity, 'csv': csv,
-                     'downlink': downlink, 'rocket': rocket, 'within': within, 'ratio': ratio, 'joules': joules,
-                     'unit': unit, 'genes': genes, 'name': name, 'description': description, 'scope': scope},
-                     options)
+    return verb_call('write', what, {'fields': fields, 'as_player': as_player, 'id': id, 'logic': logic, 'value':
+                     value, 'writes': writes, 'gateway': gateway, 'allow': allow, 'start': start, 'values': values,
+                     'code': code, 'code_file': code_file, 'pins': pins, 'run': run, 'include': include, 'surface':
+                     surface, 'element': element, 'pixel': pixel, 'event': event, 'text': text, 'label': label,
+                     'labels': labels, 'network': network, 'kind': kind, 'color': color, 'items': items, 'action':
+                     action, 'interval_s': interval_s, 'capacity': capacity, 'csv': csv, 'downlink': downlink,
+                     'rocket': rocket, 'within': within, 'ratio': ratio, 'joules': joules, 'unit': unit, 'genes':
+                     genes, 'name': name, 'description': description, 'scope': scope}, options)
 
 
-def plan(what, *, fields=None, kind=None, start=None, end=None, reroute=None, trunk=None, grade=None, style=None,
-        allow=None, split_long=None, avoid=None, avoid_networks=None, min_bends=None, axis_order=None,
-        max_length=None, margin=None, join=None, allow_bridge=None, root=None, join_to=None, join_trunk=None,
-        reserve_cells=None, reserve_ports=None, assume_removed=None, materials=None, include=None, summarize=None,
-        rows=None, id=None, waypoints=None, cells=None, network=None, refund_to=None, prefab=None, near=None,
-        plane=None, side=None, looking=None, around=None, room=None, facing=None, radius=None, require=None,
-        limit=None, max_checks=None, node=None, profile=None, park_s=None, mine=None, fill_holds=None,
+def plan(what, *, fields=None, as_player=None, kind=None, start=None, end=None, reroute=None, trunk=None,
+        grade=None, style=None, allow=None, split_long=None, avoid=None, avoid_networks=None, min_bends=None,
+        axis_order=None, max_length=None, margin=None, join=None, allow_bridge=None, root=None, join_to=None,
+        join_trunk=None, reserve_cells=None, reserve_ports=None, assume_removed=None, materials=None, include=None,
+        summarize=None, rows=None, id=None, waypoints=None, cells=None, network=None, refund_to=None, prefab=None,
+        near=None, plane=None, side=None, looking=None, around=None, room=None, facing=None, radius=None,
+        require=None, limit=None, max_checks=None, node=None, profile=None, park_s=None, mine=None, fill_holds=None,
         add_cargo_slots=None, park_load_w=None, then_return=None, return_to=None, deploy_payload=None,
         transfer_mol=None, transfer_with=None, transfer_battery_j=None, what_if=None, min_confidence=None,
         limits=None, column_check=None, collectable_only=None, contact=None, **options):
     """Work out how, changing nothing: routes, removal prices, free spots, rocket flights, mining yields, aim angles. sg.help('plan', what) gives a what in full."""
-    return verb_call('plan', what, {'fields': fields, 'kind': kind, 'start': start, 'end': end, 'reroute': reroute,
-                     'trunk': trunk, 'grade': grade, 'style': style, 'allow': allow, 'split_long': split_long,
-                     'avoid': avoid, 'avoid_networks': avoid_networks, 'min_bends': min_bends, 'axis_order':
-                     axis_order, 'max_length': max_length, 'margin': margin, 'join': join, 'allow_bridge':
-                     allow_bridge, 'root': root, 'join_to': join_to, 'join_trunk': join_trunk, 'reserve_cells':
-                     reserve_cells, 'reserve_ports': reserve_ports, 'assume_removed': assume_removed, 'materials':
-                     materials, 'include': include, 'summarize': summarize, 'rows': rows, 'id': id, 'waypoints':
-                     waypoints, 'cells': cells, 'network': network, 'refund_to': refund_to, 'prefab': prefab,
-                     'near': near, 'plane': plane, 'side': side, 'looking': looking, 'around': around, 'room': room,
-                     'facing': facing, 'radius': radius, 'require': require, 'limit': limit, 'max_checks':
-                     max_checks, 'node': node, 'profile': profile, 'park_s': park_s, 'mine': mine, 'fill_holds':
-                     fill_holds, 'add_cargo_slots': add_cargo_slots, 'park_load_w': park_load_w, 'then_return':
-                     then_return, 'return_to': return_to, 'deploy_payload': deploy_payload, 'transfer_mol':
-                     transfer_mol, 'transfer_with': transfer_with, 'transfer_battery_j': transfer_battery_j,
-                     'what_if': what_if, 'min_confidence': min_confidence, 'limits': limits, 'column_check':
-                     column_check, 'collectable_only': collectable_only, 'contact': contact}, options)
+    return verb_call('plan', what, {'fields': fields, 'as_player': as_player, 'kind': kind, 'start': start, 'end':
+                     end, 'reroute': reroute, 'trunk': trunk, 'grade': grade, 'style': style, 'allow': allow,
+                     'split_long': split_long, 'avoid': avoid, 'avoid_networks': avoid_networks, 'min_bends':
+                     min_bends, 'axis_order': axis_order, 'max_length': max_length, 'margin': margin, 'join': join,
+                     'allow_bridge': allow_bridge, 'root': root, 'join_to': join_to, 'join_trunk': join_trunk,
+                     'reserve_cells': reserve_cells, 'reserve_ports': reserve_ports, 'assume_removed':
+                     assume_removed, 'materials': materials, 'include': include, 'summarize': summarize, 'rows':
+                     rows, 'id': id, 'waypoints': waypoints, 'cells': cells, 'network': network, 'refund_to':
+                     refund_to, 'prefab': prefab, 'near': near, 'plane': plane, 'side': side, 'looking': looking,
+                     'around': around, 'room': room, 'facing': facing, 'radius': radius, 'require': require,
+                     'limit': limit, 'max_checks': max_checks, 'node': node, 'profile': profile, 'park_s': park_s,
+                     'mine': mine, 'fill_holds': fill_holds, 'add_cargo_slots': add_cargo_slots, 'park_load_w':
+                     park_load_w, 'then_return': then_return, 'return_to': return_to, 'deploy_payload':
+                     deploy_payload, 'transfer_mol': transfer_mol, 'transfer_with': transfer_with,
+                     'transfer_battery_j': transfer_battery_j, 'what_if': what_if, 'min_confidence': min_confidence,
+                     'limits': limits, 'column_check': column_check, 'collectable_only': collectable_only,
+                     'contact': contact}, options)
 
 
-def check(what, *, fields=None, room=None, box=None, codes=None, exclude_codes=None, id=None, since=None,
-        limit=None, action=None, rule=None, full=None, rules_text=None, port=None, other=None, at=None,
+def check(what, *, fields=None, as_player=None, room=None, box=None, codes=None, exclude_codes=None, id=None,
+        since=None, limit=None, action=None, rule=None, full=None, rules_text=None, port=None, other=None, at=None,
         include=None, **options):
     """Check against rules and risks: the layout lint of a room or box, the lint rule set, whether things are replaceable, the player's ignition risk. sg.help('check', what) gives a what in full."""
-    return verb_call('check', what, {'fields': fields, 'room': room, 'box': box, 'codes': codes, 'exclude_codes':
-                     exclude_codes, 'id': id, 'since': since, 'limit': limit, 'action': action, 'rule': rule,
-                     'full': full, 'rules_text': rules_text, 'port': port, 'other': other, 'at': at, 'include':
-                     include}, options)
+    return verb_call('check', what, {'fields': fields, 'as_player': as_player, 'room': room, 'box': box, 'codes':
+                     codes, 'exclude_codes': exclude_codes, 'id': id, 'since': since, 'limit': limit, 'action':
+                     action, 'rule': rule, 'full': full, 'rules_text': rules_text, 'port': port, 'other': other,
+                     'at': at, 'include': include}, options)
 
 
-def build(what=None, *, fields=None, placements=None, prefab=None, at=None, rotation=None, spread=None, facing=None,
-        up=None, face=None, orient=None, above_floor=None, build_state=None, label=None, color=None, materials=None,
-        free=None, allow=None, include=None, verbose=None, acknowledge_gas_lost=None, from_plan=None, grade=None,
-        waypoints=None, cells=None, piece=None, pieces=None, branches=None, extra_ends=None, join=None,
-        split_long=None, remove_ids=None, assume_removed=None, allow_bridge=None, root=None, join_to=None,
-        join_trunk=None, refund_to=None, rows=None, blueprint=None, turn=None, id=None, state=None, **options):
+def build(what=None, *, fields=None, as_player=None, placements=None, prefab=None, at=None, rotation=None,
+        spread=None, facing=None, up=None, face=None, orient=None, above_floor=None, build_state=None, label=None,
+        color=None, materials=None, free=None, allow=None, include=None, verbose=None, acknowledge_gas_lost=None,
+        from_plan=None, grade=None, waypoints=None, cells=None, piece=None, pieces=None, branches=None,
+        extra_ends=None, join=None, split_long=None, remove_ids=None, assume_removed=None, allow_bridge=None,
+        root=None, join_to=None, join_trunk=None, refund_to=None, rows=None, blueprint=None, turn=None, id=None,
+        state=None, **options):
     """Build new things as a player would, paying materials. sg.help('build', what) gives a what in full."""
-    return verb_call('build', what, {'fields': fields, 'placements': placements, 'prefab': prefab, 'at': at,
-                     'rotation': rotation, 'spread': spread, 'facing': facing, 'up': up, 'face': face, 'orient':
-                     orient, 'above_floor': above_floor, 'build_state': build_state, 'label': label, 'color': color,
-                     'materials': materials, 'free': free, 'allow': allow, 'include': include, 'verbose': verbose,
-                     'acknowledge_gas_lost': acknowledge_gas_lost, 'from_plan': from_plan, 'grade': grade,
-                     'waypoints': waypoints, 'cells': cells, 'piece': piece, 'pieces': pieces, 'branches': branches,
-                     'extra_ends': extra_ends, 'join': join, 'split_long': split_long, 'remove_ids': remove_ids,
-                     'assume_removed': assume_removed, 'allow_bridge': allow_bridge, 'root': root, 'join_to':
-                     join_to, 'join_trunk': join_trunk, 'refund_to': refund_to, 'rows': rows, 'blueprint':
-                     blueprint, 'turn': turn, 'id': id, 'state': state}, options)
+    return verb_call('build', what, {'fields': fields, 'as_player': as_player, 'placements': placements, 'prefab':
+                     prefab, 'at': at, 'rotation': rotation, 'spread': spread, 'facing': facing, 'up': up, 'face':
+                     face, 'orient': orient, 'above_floor': above_floor, 'build_state': build_state, 'label': label,
+                     'color': color, 'materials': materials, 'free': free, 'allow': allow, 'include': include,
+                     'verbose': verbose, 'acknowledge_gas_lost': acknowledge_gas_lost, 'from_plan': from_plan,
+                     'grade': grade, 'waypoints': waypoints, 'cells': cells, 'piece': piece, 'pieces': pieces,
+                     'branches': branches, 'extra_ends': extra_ends, 'join': join, 'split_long': split_long,
+                     'remove_ids': remove_ids, 'assume_removed': assume_removed, 'allow_bridge': allow_bridge,
+                     'root': root, 'join_to': join_to, 'join_trunk': join_trunk, 'refund_to': refund_to, 'rows':
+                     rows, 'blueprint': blueprint, 'turn': turn, 'id': id, 'state': state}, options)
 
 
-def swap(what, *, fields=None, id=None, room=None, into=None, prefab=None, materials=None, skip_unmatched=None,
-        refund_to=None, include=None, rows=None, verbose=None, network=None, tidy=None, spare=None, only=None,
-        older_than=None, root=None, acknowledge_gas_lost=None, box=None, riding=None, **options):
-    """Swap things already built, in place: walls or frames, upgrade or tidy cable, pipe and chute networks. sg.help('swap', what) gives a what in full."""
-    return verb_call('swap', what, {'fields': fields, 'id': id, 'room': room, 'into': into, 'prefab': prefab,
-                     'materials': materials, 'skip_unmatched': skip_unmatched, 'refund_to': refund_to, 'include':
-                     include, 'rows': rows, 'verbose': verbose, 'network': network, 'tidy': tidy, 'spare': spare,
-                     'only': only, 'older_than': older_than, 'root': root, 'acknowledge_gas_lost':
-                     acknowledge_gas_lost, 'box': box, 'riding': riding}, options)
-
-
-def remove(what, *, fields=None, id=None, allow=None, refund_to=None, materials=None, gas_to=None, include=None,
-        verbose=None, acknowledge_gas_lost=None, waypoints=None, cells=None, root=None, rows=None, name=None,
+def swap(what, *, fields=None, as_player=None, id=None, room=None, into=None, prefab=None, materials=None,
+        skip_unmatched=None, refund_to=None, include=None, rows=None, verbose=None, network=None, tidy=None,
+        spare=None, only=None, older_than=None, root=None, acknowledge_gas_lost=None, box=None, riding=None,
         **options):
+    """Swap things already built, in place: walls or frames, upgrade or tidy cable, pipe and chute networks. sg.help('swap', what) gives a what in full."""
+    return verb_call('swap', what, {'fields': fields, 'as_player': as_player, 'id': id, 'room': room, 'into': into,
+                     'prefab': prefab, 'materials': materials, 'skip_unmatched': skip_unmatched, 'refund_to':
+                     refund_to, 'include': include, 'rows': rows, 'verbose': verbose, 'network': network, 'tidy':
+                     tidy, 'spare': spare, 'only': only, 'older_than': older_than, 'root': root,
+                     'acknowledge_gas_lost': acknowledge_gas_lost, 'box': box, 'riding': riding}, options)
+
+
+def remove(what, *, fields=None, as_player=None, id=None, allow=None, refund_to=None, materials=None, gas_to=None,
+        include=None, verbose=None, acknowledge_gas_lost=None, waypoints=None, cells=None, root=None, rows=None,
+        name=None, **options):
     """Take things away as a player would, with refunds and guards. sg.help('remove', what) gives a what in full."""
-    return verb_call('remove', what, {'fields': fields, 'id': id, 'allow': allow, 'refund_to': refund_to,
-                     'materials': materials, 'gas_to': gas_to, 'include': include, 'verbose': verbose,
-                     'acknowledge_gas_lost': acknowledge_gas_lost, 'waypoints': waypoints, 'cells': cells, 'root':
-                     root, 'rows': rows, 'name': name}, options)
+    return verb_call('remove', what, {'fields': fields, 'as_player': as_player, 'id': id, 'allow': allow,
+                     'refund_to': refund_to, 'materials': materials, 'gas_to': gas_to, 'include': include,
+                     'verbose': verbose, 'acknowledge_gas_lost': acknowledge_gas_lost, 'waypoints': waypoints,
+                     'cells': cells, 'root': root, 'rows': rows, 'name': name}, options)
 
 
-def move(what, *, fields=None, id=None, quantity=None, to=None, slot=None, merge=None, force=None, allow=None,
-        moves=None, source=None, prefab=None, reagent=None, items=None, name=None, location=None, within=None,
-        near=None, radius=None, category=None, at_most=None, delete=None, gases=None, amount_mol=None, joined=None,
-        player=None, at=None, to_player=None, safe_ground=None, **options):
+def move(what, *, fields=None, as_player=None, id=None, quantity=None, to=None, slot=None, merge=None, force=None,
+        allow=None, moves=None, source=None, prefab=None, reagent=None, items=None, name=None, location=None,
+        within=None, near=None, radius=None, category=None, at_most=None, delete=None, gases=None, amount_mol=None,
+        joined=None, player=None, at=None, to_player=None, safe_ground=None, **options):
     """Move items, gas and players. sg.help('move', what) gives a what in full."""
-    return verb_call('move', what, {'fields': fields, 'id': id, 'quantity': quantity, 'to': to, 'slot': slot,
-                     'merge': merge, 'force': force, 'allow': allow, 'moves': moves, 'source': source, 'prefab':
-                     prefab, 'reagent': reagent, 'items': items, 'name': name, 'location': location, 'within':
-                     within, 'near': near, 'radius': radius, 'category': category, 'at_most': at_most, 'delete':
-                     delete, 'gases': gases, 'amount_mol': amount_mol, 'joined': joined, 'player': player, 'at': at,
-                     'to_player': to_player, 'safe_ground': safe_ground}, options)
+    return verb_call('move', what, {'fields': fields, 'as_player': as_player, 'id': id, 'quantity': quantity, 'to':
+                     to, 'slot': slot, 'merge': merge, 'force': force, 'allow': allow, 'moves': moves, 'source':
+                     source, 'prefab': prefab, 'reagent': reagent, 'items': items, 'name': name, 'location':
+                     location, 'within': within, 'near': near, 'radius': radius, 'category': category, 'at_most':
+                     at_most, 'delete': delete, 'gases': gases, 'amount_mol': amount_mol, 'joined': joined,
+                     'player': player, 'at': at, 'to_player': to_player, 'safe_ground': safe_ground}, options)
 
 
-def trade(what, *, fields=None, id=None, card=None, items=None, **options):
+def trade(what, *, fields=None, as_player=None, id=None, card=None, items=None, **options):
     """Trade with traders: contacts in the sky, what each buys and sells, and buying or selling with the landed trader. sg.help('trade', what) gives a what in full."""
-    return verb_call('trade', what, {'fields': fields, 'id': id, 'card': card, 'items': items}, options)
+    return verb_call('trade', what, {'fields': fields, 'as_player': as_player, 'id': id, 'card': card, 'items':
+                     items}, options)
 
 
-def show(what, *, fields=None, placements=None, prefab=None, at=None, rotation=None, facing=None, up=None,
-        face=None, orient=None, above_floor=None, build_state=None, allow=None, cells=None, boxes=None,
+def show(what, *, fields=None, as_player=None, placements=None, prefab=None, at=None, rotation=None, facing=None,
+        up=None, face=None, orient=None, above_floor=None, build_state=None, allow=None, cells=None, boxes=None,
         seconds=None, keep=None, clear=None, xray=None, targets=None, **options):
     """Draw on the player's screen only, for a while: a build preview, or highlights through walls. sg.help('show', what) gives a what in full."""
-    return verb_call('show', what, {'fields': fields, 'placements': placements, 'prefab': prefab, 'at': at,
-                     'rotation': rotation, 'facing': facing, 'up': up, 'face': face, 'orient': orient,
-                     'above_floor': above_floor, 'build_state': build_state, 'allow': allow, 'cells': cells,
+    return verb_call('show', what, {'fields': fields, 'as_player': as_player, 'placements': placements, 'prefab':
+                     prefab, 'at': at, 'rotation': rotation, 'facing': facing, 'up': up, 'face': face, 'orient':
+                     orient, 'above_floor': above_floor, 'build_state': build_state, 'allow': allow, 'cells': cells,
                      'boxes': boxes, 'seconds': seconds, 'keep': keep, 'clear': clear, 'xray': xray, 'targets':
                      targets}, options)
 
 
-def undo(*, fields=None, id=None, **options):
+def undo(*, fields=None, as_player=None, id=None, **options):
     """Undo a finished build or removal job, a bulk write (write-N), a script run (script-14: the whole run, newest first), or the newest blueprint paste. sg.help('undo') gives it in full."""
-    return verb_call('undo', None, {'fields': fields, 'id': id}, options)
+    return verb_call('undo', None, {'fields': fields, 'as_player': as_player, 'id': id}, options)
 
 
-def server(what, *, fields=None, include=None, action=None, slow_frame_ms=None, csv=None, lines=None, command=None,
-        id=None, **options):
+def server(what, *, fields=None, as_player=None, include=None, action=None, slow_frame_ms=None, csv=None,
+        lines=None, command=None, id=None, **options):
     """StationGod and the game server: mod version, health and costs, profiling, the in-game console. sg.help('server', what) gives a what in full."""
-    return verb_call('server', what, {'fields': fields, 'include': include, 'action': action, 'slow_frame_ms':
-                     slow_frame_ms, 'csv': csv, 'lines': lines, 'command': command, 'id': id}, options)
+    return verb_call('server', what, {'fields': fields, 'as_player': as_player, 'include': include, 'action':
+                     action, 'slow_frame_ms': slow_frame_ms, 'csv': csv, 'lines': lines, 'command': command, 'id':
+                     id}, options)

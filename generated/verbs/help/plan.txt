@@ -8,5 +8,5 @@ whats:
 - mining: what a rocket can collect per site, by the game's formulas: yield per cycle and hour, what stops it
 - aim: horizontal and Vertical that point a solar panel at the sun, or a satellite dish at a trader contact
 
-Shaping on every call: fields, omit, list_limits, output_file, whole, repeat (help {topic: "shaping"}).
+On every call: fields, omit, list_limits, output_file, whole, repeat, as_player (help {topic: "shaping"}).
 help {verb: "plan", what} gives a what's options, reply keys and an example.

@@ -927,7 +927,7 @@ internal sealed class PrintView
 internal sealed class ShowPreviewView
 {
     internal ShowPreviewView(int shown, int cleared, double seconds, object? plan, List<string> notes,
-        string? drawnOn = null, ViewSourceView? view = null)
+        List<string>? drawnOn = null, ViewSourceView? view = null)
     {
         DrawnOn = drawnOn;
         View = view;
@@ -953,9 +953,9 @@ internal sealed class ShowPreviewView
 
     public List<string> Notes { get; }
 
-    /// <summary>The player whose game drew them, when that is not this game (a client of a dedicated server).</summary>
+    /// <summary>The players whose games drew them, when not this game (clients of a dedicated server).</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-    public string? DrawnOn { get; }
+    public List<string>? DrawnOn { get; }
 
     /// <summary>The player's view the screen was found through: local or remote and its age.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]

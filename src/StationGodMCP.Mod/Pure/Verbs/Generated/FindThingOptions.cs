@@ -20,6 +20,8 @@ internal sealed class FindThingOptions
         new OptionSpec("labelled", "{\"type\":\"boolean\"}", false, "false"),
         new OptionSpec("runtime_type", "{\"type\":\"string\"}"),
         new OptionSpec("broken", "{\"type\":\"boolean\"}"),
+        new OptionSpec("color", "{\"type\":\"string\"}"),
+        new OptionSpec("painted", "{\"type\":\"boolean\"}"),
         new OptionSpec("has_atmosphere", "{\"type\":\"boolean\"}"),
         new OptionSpec("made_by", "{\"type\":\"string\"}"),
         new OptionSpec("made_since", "{\"type\":\"number\"}"),
@@ -46,6 +48,10 @@ internal sealed class FindThingOptions
 
     internal bool? Broken { get; private set; }
 
+    internal string? Color { get; private set; }
+
+    internal bool? Painted { get; private set; }
+
     internal bool? HasAtmosphere { get; private set; }
 
     internal string? MadeBy { get; private set; }
@@ -63,6 +69,8 @@ internal sealed class FindThingOptions
         Labelled = options.Flag("labelled") ?? options.DefaultFlag("labelled"),
         RuntimeType = options.Text("runtime_type"),
         Broken = options.Flag("broken"),
+        Color = options.Text("color"),
+        Painted = options.Flag("painted"),
         HasAtmosphere = options.Flag("has_atmosphere"),
         MadeBy = options.Text("made_by"),
         MadeSince = options.Number("made_since"),

@@ -22,7 +22,7 @@ namespace StationGodMCP.Tests.Hub;
 internal sealed class FakeHubLink : IHubLink
 {
     public const string ModWelcome =
-        """{"type":"welcome","protocol":2,"client_id":"c7","client":"anonymous","server":{"mod_version":"2.0.0","world":{"id":"world-1","save":"fake","epoch":0},"game_state":"Running"},"limits":{"max_in_flight":16},"features":["shape","subscriptions","cancel","streams","cursors"],"resume":{"token":"hub-0123456789abcdef","resumed":false,"window_s":60}}""";
+        """{"type":"welcome","protocol":2,"client_id":"c7","client":"anonymous","server":{"mod_version":"2.1.0","world":{"id":"world-1","save":"fake","epoch":0},"game_state":"Running"},"limits":{"max_in_flight":16},"features":["shape","subscriptions","cancel","streams","cursors"],"resume":{"token":"hub-0123456789abcdef","resumed":false,"window_s":60}}""";
 
     private long _lastStream;
 

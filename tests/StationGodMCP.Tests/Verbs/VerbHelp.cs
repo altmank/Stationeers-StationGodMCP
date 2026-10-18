@@ -112,7 +112,7 @@ internal static class VerbHelp
 
         if (name != "help" && !VerbCatalogue.IsHubOnly(verb))
         {
-            text.Append("Shaping on every call: ").Append(string.Join(", ", VerbCatalogue.Shaping))
+            text.Append("On every call: ").Append(string.Join(", ", VerbCatalogue.Shaping))
                 .Append(" (help {topic: \"shaping\"}).\n");
         }
 

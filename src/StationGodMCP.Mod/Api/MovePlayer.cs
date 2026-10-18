@@ -161,16 +161,7 @@ internal static class MovablePlayers
     /// <summary>The human a name or reference id means (PlayerMatch).</summary>
     internal static Human Find(string wanted)
     {
-        List<NamedPlayer<Human>> players = new List<NamedPlayer<Human>>();
-        foreach (Human human in World.Humans)
-        {
-            if (human != null && !human.IsBeingDestroyed)
-            {
-                players.Add(new NamedPlayer<Human>(human, human.ReferenceId, human.DisplayName));
-            }
-        }
-
-        return PlayerMatch.Find(players, wanted) switch
+        return PlayerMatch.Find(PlayerOrigin.NamedPlayers(), wanted) switch
         {
             PlayerFound<Human>.One one => one.Player.Body,
             PlayerFound<Human>.None none => throw ApiErrors.Refused("player_not_found", none.Reason),

@@ -29,6 +29,8 @@ public sealed partial class VerbPipeline
 
     private const double DefaultMaxWaitSeconds = 30;
 
+    private const string AsPlayerOption = "as_player";
+
     // Options the hub answers itself: they never reach the mod.
     private static readonly string[] HubOptions =
     [
@@ -79,6 +81,12 @@ public sealed partial class VerbPipeline
     internal RefStore Refs => _refs;
 
     internal HubCursors Cursors => _cursors;
+
+    /// <summary>
+    /// The player a call that names none speaks for (--as-player): added as as_player to every verb call that takes it,
+    /// on every face, so an agent on a multiplayer server need not name its player on each call.
+    /// </summary>
+    internal string? AsPlayer { get; init; }
 
     /// <summary>How long a job poll waits between polls when the link has no job waits.</summary>
     internal TimeSpan PollInterval { get; init; } = TimeSpan.FromMilliseconds(500);
@@ -147,6 +155,25 @@ public sealed partial class VerbPipeline
         }
     }
 
+    // The call with the sidecar's player as its as_player, when it names none and its verb takes one.
+    private VerbCall WithPlayer(VerbCall call)
+    {
+        if (AsPlayer == null || call.Args[AsPlayerOption] != null || _catalogue.Verb(call.Verb) is not { TakesShaping: true })
+        {
+            return call;
+        }
+
+        JsonObject args = (JsonObject)call.Args.DeepClone();
+        args[AsPlayerOption] = AsPlayer;
+        return new VerbCall(call.Verb, call.What, args, call.Face, call.Stream, call.Line)
+        {
+            Gate = call.Gate,
+            LateReply = call.LateReply,
+            Note = call.Note,
+            Recorded = call.Recorded
+        };
+    }
+
     // Ids in refs and cursors name things of the world they came from.
     private void OnWorldChanged(string? world)
     {
@@ -186,7 +213,7 @@ public sealed partial class VerbPipeline
             return unplanned;
         }
 
-        call = fromPlan;
+        call = WithPlayer(fromPlan);
         if (OptionCheck.Check(_catalogue, call, out VerbEntry? verb, out WhatEntry? what) is { } refused)
         {
             return refused;

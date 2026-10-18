@@ -8,5 +8,5 @@ whats:
 - player: move a player anywhere at once: to a point, beside a thing or another player (cheat)
 
 Every what here takes: confirm, to.
-Shaping on every call: fields, omit, list_limits, output_file, whole, repeat (help {topic: "shaping"}).
+On every call: fields, omit, list_limits, output_file, whole, repeat, as_player (help {topic: "shaping"}).
 help {verb: "move", what} gives a what's options, reply keys and an example.

@@ -17,24 +17,24 @@ namespace StationGodMCP.Api.Shared.Game.Show;
 /// (white) and its ports' joining cells (cyan, red when blocked), then the call's own cells and boxes. The plan's
 /// report is the reply's plan: build structure's own report of the placements, without the keys a job reply has and a
 /// report does not (tool, status, job_id). Drawn on the player's screen (PlayerSight): this game's, or a remote
-/// player's through their StationGod. Nothing in the world changes.
+/// player's through their StationGod; with several players in play and none named (as_player), each of theirs
+/// (ShowAudience). Nothing in the world changes.
 /// </summary>
 internal static class PreviewScreen
 {
     /// <summary>clear: every box drawn for the player so far goes; nothing is planned and nothing drawn.</summary>
     internal static ShowPreviewView Clear()
     {
-        PlayerSight player = PlayerSight.Current();
-        PlayerScreen shown = player.ScreenOrLocal();
-        return new ShowPreviewView(0, shown.ClearPreviews(), 0.0, null, new List<string> { "Cleared." },
-            shown.DrawnOn, player.Source);
+        ShowAudience audience = ShowAudience.ToClear();
+        int cleared = audience.Each(static screen => screen.ClearPreviews());
+        audience.Notes.Insert(0, "Cleared.");
+        return new ShowPreviewView(0, cleared, 0.0, null, audience.Notes, audience.DrawnOn, audience.Source);
     }
 
     /// <summary>The call's boxes: the plan's, then the cells and boxes it gave.</summary>
     internal static ShowPreviewView Show(PreviewOrder order)
     {
-        PlayerSight player = PlayerSight.Current();
-        PlayerScreen screen = player.RequireScreen("show preview");
+        ShowAudience audience = ShowAudience.ToDraw("show preview", measures: false);
         float seconds = (float)order.Seconds;
         List<PreviewBox> boxes = new List<PreviewBox>();
         ReplyObject? plan = null;
@@ -50,14 +50,14 @@ internal static class PreviewScreen
 
         boxes.AddRange(order.Cells);
         boxes.AddRange(order.Boxes);
-        int cleared = screen.Preview(!order.Keep, boxes);
-        List<string> notes = new List<string>();
+        int cleared = audience.Each(screen => screen.Preview(!order.Keep, boxes));
+        List<string> notes = audience.Notes;
         if (boxes.Count == 0)
         {
             notes.Add("Nothing to draw: pass placements (or prefab and at), cells or boxes.");
         }
 
-        return new ShowPreviewView(boxes.Count, cleared, order.Seconds, plan, notes, screen.DrawnOn, player.Source);
+        return new ShowPreviewView(boxes.Count, cleared, order.Seconds, plan, notes, audience.DrawnOn, audience.Source);
     }
 
     // One placement: its footprint, its render box and each port's joining cell, as the old surface drew them.

@@ -5,5 +5,5 @@ whats:
 - highlight: show the player where things, a network or far points are, tinted and labelled
 
 Every what here takes: clear, keep, seconds.
-Shaping on every call: fields, omit, list_limits, output_file, whole, repeat (help {topic: "shaping"}).
+On every call: fields, omit, list_limits, output_file, whole, repeat, as_player (help {topic: "shaping"}).
 help {verb: "show", what} gives a what's options, reply keys and an example.

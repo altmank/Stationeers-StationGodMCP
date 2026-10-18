@@ -20,7 +20,7 @@ internal static class VerbCatalogue
 {
     internal const string WhatlessKey = "-";
 
-    internal static readonly string[] Shaping = { "fields", "omit", "list_limits", "output_file", "whole", "repeat" };
+    internal static readonly string[] Shaping = { "fields", "omit", "list_limits", "output_file", "whole", "repeat", "as_player" };
 
     internal static readonly string[] Routes = { "acts", "confirm" };
 

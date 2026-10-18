@@ -6,6 +6,8 @@ Options:
 - labelled (boolean, default false): Only things with a Labeller name.
 - runtime_type (string): Only things of this game class or one built on it ('Device', 'Pipe').
 - broken (boolean): true: only broken things; false: only whole ones.
+- color (string): Only things showing this colour: a name or an index, as write paint takes it.
+- painted (boolean): true: only paintable things painted off their own colour; false: only those still in it.
 - has_atmosphere (boolean): true: only things holding gas or liquid; false: only without.
 - made_by (string): Only items the print log has from this maker (id, or part of its name).
 - made_since (number): Only items made at or after this game time (s); negative: that many seconds back.

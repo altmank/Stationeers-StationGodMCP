@@ -113,6 +113,14 @@ internal sealed class WorkerPool : IDisposable
 
     private ScriptWorker Start()
     {
+        // A sidecar copied without its python folder (only the top-level files) has no sg to run.
+        if (!File.Exists(Path.Combine(_sgRoot, "sg", "__init__.py")))
+        {
+            throw new InvalidOperationException(
+                $"the sidecar has no sg package at {Path.Combine(_sgRoot, "sg")}: install the whole sidecar, its " +
+                "python folder included (extract the zip over it, or build.ps1 -Deploy)");
+        }
+
         IReadOnlyList<string> python = Resolved();
         ProcessStartInfo start = new(python[0])
         {

@@ -32,6 +32,16 @@
           "description": "true: only broken things; false: only whole ones.",
           "x-script": "True: only broken things; False: only whole ones."
         },
+        "color": {
+          "schema": {"type": "string"},
+          "description": "Only things showing this colour: a name or an index, as write paint takes it.",
+          "x-script": "same"
+        },
+        "painted": {
+          "schema": {"type": "boolean"},
+          "description": "true: only paintable things painted off their own colour; false: only those still in it.",
+          "x-script": "True: only paintable things painted off their own colour; False: only those still in it."
+        },
         "has_atmosphere": {
           "schema": {"type": "boolean"},
           "description": "true: only things holding gas or liquid; false: only without.",

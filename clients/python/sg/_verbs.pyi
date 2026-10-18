@@ -12,6 +12,8 @@ def find(what: Literal['thing'], *,
     labelled: bool = False,  # Only things with a Labeller name.
     runtime_type: str = None,  # Only things of this game class or one built on it ('Device', 'Pipe').
     broken: bool = None,  # True: only broken things; False: only whole ones.
+    color: str = None,  # Only things showing this colour: a name or an index, as write paint takes it.
+    painted: bool = None,  # True: only paintable things painted off their own colour; False: only those still in it.
     has_atmosphere: bool = None,  # True: only things holding gas or liquid; False: only without.
     made_by: str = None,  # Only items the print log has from this maker (id, or part of its name).
     made_since: float = None,  # Only items made at or after this game time (s); negative: that many seconds back.
@@ -3525,7 +3527,7 @@ def show(what: Literal['preview'], *,
           None, needed: int, available: int, paid_by: list[{reference_id: str, name: str | None, quantity: int, available: int}] | None}], from: Thing
           | None, free: bool, notes: list[str] | None} | None
       notes: list[str]
-      drawn_on: str | None
+      drawn_on: list[str] | None
       view: {source: str, age_s: float} | None
     Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}; Vec3 = {x: float, y: float, z: float}
     Example: sg.show('preview', prefab='StructureWallLight', at=[716, 203, 668], facing='-x')
@@ -3548,7 +3550,7 @@ def show(what: Literal['highlight'], *,
       seconds: float
       renderer: str
       notes: list[str]
-      drawn_on: str | None
+      drawn_on: list[str] | None
       view: {source: str, age_s: float} | None
     Types: Vec3 = {x: float, y: float, z: float}
     Example: sg.show('highlight', targets=[{'id': '1199811', 'label': 'this one'}])

@@ -70,7 +70,7 @@ internal sealed class McpAdapter : IAsyncDisposable
         };
         ScriptStore scripts = ScriptStore.For(options, hubSettings.SgRoot, hubSettings.Journal);
         _pipeline = new VerbPipeline(link, recorder: _recorder, shown: shown == null ? _seen : new ShownToBoth(_seen, shown),
-            scripts: scripts);
+            scripts: scripts) { AsPlayer = options.AsPlayer };
         if (link is IHubLink hub)
         {
             _runs = new RunHost(hub, _pipeline, _seen, hubSettings);

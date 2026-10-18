@@ -7,5 +7,5 @@ whats:
 - buy: buy from the landed trader as the trade window's Buy does
 - sell: sell to the landed trader as the trade window's Sell does
 
-Shaping on every call: fields, omit, list_limits, output_file, whole, repeat (help {topic: "shaping"}).
+On every call: fields, omit, list_limits, output_file, whole, repeat, as_player (help {topic: "shaping"}).
 help {verb: "trade", what} gives a what's options, reply keys and an example.

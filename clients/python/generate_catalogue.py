@@ -63,9 +63,10 @@ def resolve(option, shared):
 
 
 def script_options(verb, shared):
-    """The keyword options of a verb's function: fields first, then each what's options that a script takes, in
-    first-seen order (EXTRA_OPTIONS before them)."""
-    names = ["fields"]
+    """The keyword options of a verb's function: the every-verb options a script takes first (fields, and as_player:
+    the player the call is for), then each what's options that a script takes, in first-seen order (EXTRA_OPTIONS
+    before them)."""
+    names = ["fields", "as_player"]
     for what in verb["whats"].values():
         for name, option in (what.get("options") or {}).items():
             resolved = resolve(option, shared)

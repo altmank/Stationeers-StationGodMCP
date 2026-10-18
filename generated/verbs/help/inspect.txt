@@ -22,5 +22,5 @@ whats:
 - controllers: controllers: what can write or override a device: IC chips (through their pins, and batch writers reaching it over its data network), logic writer and memory structures, Lua screen scripts, and writers the hub knows (the dashboard's hub, other runs). A write or report on a driven device carries driven_by naming the controller
 - script: one saved script in full: its source, parameters, version and where it was last run
 
-Shaping on every call: fields, omit, list_limits, output_file, whole, repeat (help {topic: "shaping"}).
+On every call: fields, omit, list_limits, output_file, whole, repeat, as_player (help {topic: "shaping"}).
 help {verb: "inspect", what} gives a what's options, reply keys and an example.

@@ -75,7 +75,8 @@ internal static class FindThing
             : selector.AreaAround(null);
         return new ThingFilter(selector.Name, selector.Prefab, options.Category ?? ThingLocations.Any,
             options.RuntimeType, options.Labelled ?? false, options.HasAtmosphere, nearPlayer, options.Broken,
-            MadeOf(options.MadeBy, options.MadeSince), options.Location ?? ThingLocations.Any, area);
+            MadeOf(options.MadeBy, options.MadeSince), options.Location ?? ThingLocations.Any, area,
+            options.Color != null ? PaintColor.Named(options.Color, ThingColors.Swatches()) : null, options.Painted);
     }
 
     // made_by: a maker's reference id, or text in its prefab or shown name; made_since: a game time, or a negative

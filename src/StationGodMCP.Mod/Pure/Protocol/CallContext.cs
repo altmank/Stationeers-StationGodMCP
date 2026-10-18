@@ -14,6 +14,10 @@ namespace StationGodMCP.Pure.Protocol;
 /// frames (a building job, a read sample run) keeps the context it was started in and enters it around each later
 /// step. Outside those it is None.
 /// <para>
+/// It also carries the player the call speaks for (Player: the call's as_player), so "the player" of a job's later step
+/// is the one its call named. Player rides along: a store key is the owner and the stream, so equality leaves it out.
+/// </para>
+/// <para>
 /// A readonly struct, so making one per call allocates nothing and it compares and hashes by value, which is what a
 /// store key needs. Current is thread-static: every setter and reader is on the main thread, where a thread-static
 /// costs one thread-local lookup per access (three per call), and a reader or writer thread, or a test running beside
@@ -25,7 +29,7 @@ internal readonly struct CallContext : IEquatable<CallContext>
     [ThreadStatic]
     private static CallContext _current;
 
-    internal CallContext(string owner, long stream)
+    internal CallContext(string owner, long stream, string? player = null)
     {
         Owner = string.IsNullOrEmpty(owner)
             ? throw new ArgumentException("A call context names its owner.", nameof(owner))
@@ -33,6 +37,7 @@ internal readonly struct CallContext : IEquatable<CallContext>
         Stream = stream >= 0
             ? stream
             : throw new ArgumentOutOfRangeException(nameof(stream), stream, "Streams are numbered from 0.");
+        Player = string.IsNullOrEmpty(player) ? null : player;
     }
 
     /// <summary>No call: the main thread's own work.</summary>
@@ -45,6 +50,9 @@ internal readonly struct CallContext : IEquatable<CallContext>
     internal string? Owner { get; }
 
     internal long Stream { get; }
+
+    /// <summary>The player the call named (as_player: a name or an id); null when it named none.</summary>
+    internal string? Player { get; }
 
     internal bool IsNone => Owner == null;
 

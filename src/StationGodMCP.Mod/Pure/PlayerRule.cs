@@ -8,10 +8,52 @@ namespace StationGodMCP.Pure;
 /// Who "the player" is. The local player whenever the game has one (single player, or the host of a listen server).
 /// Without one (a dedicated server), the one human in the world who is in play: its brain belongs to a connected
 /// client (Brain.IsOnline, the game's own test in CleanupPlayersCommand "disconnected") and it is not dead or
-/// decaying. With none in play, or several, there is no player, and the reason says which.
+/// decaying. With none in play, or several, there is no player, and the reason says which. A call that names its player
+/// (every verb's as_player) gets that human, found as move player finds one (PlayerMatch), in play or not.
 /// </summary>
 internal static class PlayerRule
 {
+    /// <summary>The option every verb takes to name the player it speaks for.</summary>
+    internal const string AsPlayerKey = "as_player";
+
+    /// <summary>
+    /// Whom show draws for: the player (chosen: the one the call names or the rule picks), else, when the call names
+    /// none (named false) and there is no single player, every human in play; empty, with why (absence: the choice's
+    /// reason, chosenAbsence), when there is none.
+    /// </summary>
+    internal static List<T> Audience<T>(T? chosen, string? chosenAbsence, bool named,
+        IReadOnlyList<PlayerCandidate<T>> humans, out string? absence) where T : class
+    {
+        absence = null;
+        if (chosen != null)
+        {
+            return new List<T> { chosen };
+        }
+
+        List<T> everyone = named ? new List<T>() : InPlay(humans);
+        if (everyone.Count == 0)
+        {
+            absence = chosenAbsence;
+        }
+
+        return everyone;
+    }
+
+    /// <summary>Every human in play (connected and living), for what is done for each of them (show's drawings).</summary>
+    internal static List<T> InPlay<T>(IReadOnlyList<PlayerCandidate<T>> humans) where T : class
+    {
+        List<T> inPlay = new List<T>(humans.Count);
+        foreach (PlayerCandidate<T> human in humans)
+        {
+            if (human.InPlay)
+            {
+                inPlay.Add(human.Body);
+            }
+        }
+
+        return inPlay;
+    }
+
     internal static PlayerChoice<T> Choose<T>(T? local, IReadOnlyList<PlayerCandidate<T>> humans) where T : class
     {
         if (local != null)
@@ -40,11 +82,25 @@ internal static class PlayerRule
 
     private static PlayerChoice<T> Several<T>(List<PlayerCandidate<T>> inPlay) where T : class
     {
-        List<string> names = new List<string>(inPlay.Count);
-        inPlay.ForEach(human => names.Add(human.Name));
+        List<string> names = NamesInPlay(inPlay);
         return new PlayerChoice<T>.Missing(
             $"There is no local player (a dedicated server) and {names.Count} connected, living players " +
-            $"({string.Join(", ", names)}), so which one is the player is ambiguous.", names);
+            $"({string.Join(", ", names)}), so which one is the player is ambiguous: name one with as_player " +
+            $"(as_player: \"{names[0]}\").", names);
+    }
+
+    private static List<string> NamesInPlay<T>(IReadOnlyList<PlayerCandidate<T>> humans) where T : class
+    {
+        List<string> names = new List<string>(humans.Count);
+        foreach (PlayerCandidate<T> human in humans)
+        {
+            if (human.InPlay)
+            {
+                names.Add(human.Name);
+            }
+        }
+
+        return names;
     }
 }
 

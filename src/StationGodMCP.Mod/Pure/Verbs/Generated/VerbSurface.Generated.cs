@@ -16,6 +16,7 @@ internal static partial class VerbSurface
         new OptionSpec("fields", "{\"type\":\"array\",\"items\":{\"type\":\"string\"}}"),
         new OptionSpec("omit", "{\"type\":\"array\",\"items\":{\"type\":\"string\"}}"),
         new OptionSpec("list_limits", "{\"type\":\"object\"}"),
+        new OptionSpec("as_player", "{\"type\":\"string\"}"),
     };
 
     /// <summary>A shaping option by name; null for any other name.</summary>
@@ -24,6 +25,7 @@ internal static partial class VerbSurface
         "fields" => Shaping[0],
         "omit" => Shaping[1],
         "list_limits" => Shaping[2],
+        "as_player" => Shaping[3],
         _ => null
     };
 

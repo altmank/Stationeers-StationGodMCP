@@ -391,10 +391,14 @@ internal sealed class CallSession : Session
             call.DeadlineMs + (what?.CostFor(call.Params).DurationMs(call.Params) ?? 0));
     }
 
+    // The player the call speaks for (every verb's as_player): carried in its context for PlayerOrigin.
+    private static string? AsPlayer(JObject? parameters) =>
+        parameters?[Pure.PlayerRule.AsPlayerKey] is { Type: JTokenType.String } named ? (string?)named : null;
+
     private void Queue(ClientMessage.Call call, CallRequest request, CallProfile profile, int deadlineMs)
     {
         ProtocolCall queued = new ProtocolCall(request, profile, _host.Deadlines.Clock.NowMs + deadlineMs, _connection,
-            new CallContext(_connection.Owner, call.Stream), _hello?.ClientName, Answered);
+            new CallContext(_connection.Owner, call.Stream, AsPlayer(call.Params)), _hello?.ClientName, Answered);
         lock (_sync)
         {
             _inFlightByStream.TryGetValue(call.Stream, out int onStream);

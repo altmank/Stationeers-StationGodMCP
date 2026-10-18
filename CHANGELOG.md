@@ -1,5 +1,31 @@
 # Changelog
 
+## 2.1.0
+
+StationGod handles multiplayer: on a dedicated server with several players, every tool that acts for "the player"
+can be told which one, and show draws for all of them.
+
+- **`as_player` on every verb.** A player's name as the game shows it (any case, or part of it) or their id says who
+  "the player" is for that call: `near: "player"`, `looking_at` / `id: "looking_at"`, placing at the crosshair, the
+  `player` frame, `materials` or `refund_to` `"player"`, `move item` to `"player"`, `move player`'s default,
+  `inspect player`, carried goods for trade, distances in replies, and `show`'s screen. A job keeps its call's player
+  for every later step. Without it, a server with several players refuses those calls as before, and the message now
+  says to give `as_player` and names the players. `write screen`'s own `as_player` means the same.
+- **The sidecar's player.** `--as-player <name>` (or `STATIONGODMCP_PLAYER`) names the player an agent acts for: the
+  sidecar adds it to every verb call that names none, script calls included.
+- **show draws for everyone.** `show preview` and `show highlight` with no `as_player` and several players connected
+  draw on every connected player's screen instead of refusing `no_view`. `drawn_on` is now a list of the players whose
+  games drew it. A player whose game cannot be reached (no StationGod, left) is a note; the call fails only when no
+  screen could be drawn on. Highlight distances are from the first current player's camera, said in a note. Clearing
+  clears every player's screen.
+- **`find thing` filters by colour.** `color` (a name or index, as `write paint` takes it) keeps things showing that
+  colour; `painted: true` keeps paintable things painted off their own colour (`false`: still in it).
+- **run_script on an installed sidecar.** `build.ps1 -Deploy` copied only the sidecar's top-level files, so
+  `%LOCALAPPDATA%\StationGodMCP\server` had no `python\sg` and scripts failed "No module named 'sg'". It copies the
+  whole sidecar now, and a sidecar without sg says how to fix it instead.
+- Error descriptions that read "a as_player" and "no local as_player" say "player" again.
+- Python `sg` 0.4.3: every verb function takes `as_player`.
+
 ## 2.0.2
 
 - **A plan's ref keeps its build_arguments whatever the plan call showed.** fields and omit are applied by the game,

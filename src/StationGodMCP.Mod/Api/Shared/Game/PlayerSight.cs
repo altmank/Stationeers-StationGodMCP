@@ -64,11 +64,43 @@ internal abstract class PlayerSight
     {
         PlayerOrigin origin = PlayerOrigin.Current();
         Human? player = origin.Player;
-        if (player == null)
+        return player == null ? new Unseen(origin.Absence!) : Of(player);
+    }
+
+    /// <summary>
+    /// The sight of each player show draws for (PlayerOrigin.Audience): one, or every player in play when the call
+    /// names none and several are; empty, with why (absence), when there is none.
+    /// </summary>
+    internal static List<PlayerSight> Audience(out string? absence)
+    {
+        List<Human> players = PlayerOrigin.Audience(out absence);
+        List<PlayerSight> sights = new List<PlayerSight>(players.Count);
+        foreach (Human player in players)
         {
-            return new Unseen(origin.Absence!);
+            sights.Add(Of(player));
         }
 
+        return sights;
+    }
+
+    /// <summary>The player whose sight this is; null when unseen.</summary>
+    internal string? PlayerName => this switch
+    {
+        Seen seen => seen.Camera.PlayerName,
+        Stale stale => stale.Camera.PlayerName,
+        _ => null
+    };
+
+    /// <summary>The camera, current or stale; null when unseen.</summary>
+    internal CameraSight? AnyCamera => this switch
+    {
+        Seen seen => seen.Camera,
+        Stale stale => stale.Camera,
+        _ => null
+    };
+
+    private static PlayerSight Of(Human player)
+    {
         if (player == PlayerOrigin.Local())
         {
             CameraSight? local = CameraSight.Local.Find(player);
@@ -99,14 +131,6 @@ internal abstract class PlayerSight
         Stale stale => stale.Camera.Screen,
         Unseen unseen => throw ApiErrors.Refused("no_view", $"{name}: {unseen.Reason}"),
         _ => throw new System.InvalidOperationException("Unknown player view.")
-    };
-
-    /// <summary>The player's screen when there is one, else this game's own (for clearing what it drew).</summary>
-    internal PlayerScreen ScreenOrLocal() => this switch
-    {
-        Seen seen => seen.Camera.Screen,
-        Stale stale => stale.Camera.Screen,
-        _ => PlayerScreen.Local.Instance
     };
 
     /// <summary>The view used, for a reply's view; null when unseen.</summary>

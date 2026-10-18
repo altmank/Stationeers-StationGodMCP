@@ -6,5 +6,5 @@ whats:
 - network: a cable, pipe or chute network's members (or the pieces in a box), with filters or a summary
 - feeds: how a network feeds its devices from a root device: pieces and rooms each feed passes, daisy chains, unreached devices
 
-Shaping on every call: fields, omit, list_limits, output_file, whole, repeat (help {topic: "shaping"}).
+On every call: fields, omit, list_limits, output_file, whole, repeat, as_player (help {topic: "shaping"}).
 help {verb: "survey", what} gives a what's options, reply keys and an example.

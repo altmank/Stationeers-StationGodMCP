@@ -9,5 +9,5 @@ whats:
 - clock: game time, paused, time of day, days past
 - flight_log: a rocket flight recorder's samples: a page of rows, or the list of recordings (start and stop: write flight_log)
 
-Shaping on every call: fields, omit, list_limits, output_file, whole, repeat (help {topic: "shaping"}).
+On every call: fields, omit, list_limits, output_file, whole, repeat, as_player (help {topic: "shaping"}).
 help {verb: "read", what} gives a what's options, reply keys and an example.

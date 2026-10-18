@@ -6,6 +6,8 @@ def find(what: Literal['thing'], *,
     labelled: bool = False,  # Only things with a Labeller name.
     runtime_type: str = None,  # Only things of this game class or one built on it ('Device', 'Pipe').
     broken: bool = None,  # True: only broken things; False: only whole ones.
+    color: str = None,  # Only things showing this colour: a name or an index, as write paint takes it.
+    painted: bool = None,  # True: only paintable things painted off their own colour; False: only those still in it.
     has_atmosphere: bool = None,  # True: only things holding gas or liquid; False: only without.
     made_by: str = None,  # Only items the print log has from this maker (id, or part of its name).
     made_since: float = None,  # Only items made at or after this game time (s); negative: that many seconds back.

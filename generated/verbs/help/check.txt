@@ -7,5 +7,5 @@ whats:
 - ignition: whether carried items, or a tank or network by id, would catch fire in the air around them
 
 Every what here takes: id.
-Shaping on every call: fields, omit, list_limits, output_file, whole, repeat (help {topic: "shaping"}).
+On every call: fields, omit, list_limits, output_file, whole, repeat, as_player (help {topic: "shaping"}).
 help {verb: "check", what} gives a what's options, reply keys and an example.

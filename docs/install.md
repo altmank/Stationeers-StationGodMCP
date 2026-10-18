@@ -145,7 +145,11 @@ folder; the pipe name matches (see *Two games on one machine*).
   (`looking_at`), `on_face`, the `player` frame, `plan spot` near the crosshair, `survey wall` and `plan spot` with
   `looking: true`, and `show highlight` and `show preview`, which their game then draws on their screen (the reply's
   `drawn_on` names them). Without it those calls refuse `no_view`, and the message says why (no StationGod on their
-  game, or a version that speaks another view protocol). A view the player has since walked away from (more than
+  game, or a version that speaks another view protocol). With several players connected, name the one a call is
+  for with `as_player` (their name as the game shows it, or their id), or start the sidecar with `--as-player <name>`
+  so every call is for them; `show preview` and `show highlight` without one draw on every connected player's screen
+  (`drawn_on` lists them; a player whose game cannot be reached is a note, not a failure). A view the player has
+  since walked away from (more than
   0.3 m, or older than 5 s once they moved) is refused `view_stale` rather than read; standing still keeps it current,
   alt-tabbed or not. Both games need the same view protocol, which this version calls 1; the log of each says when
   they differ.

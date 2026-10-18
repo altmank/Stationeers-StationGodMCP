@@ -14,7 +14,7 @@ def show(what: Literal['highlight'], *,
       seconds: float
       renderer: str
       notes: list[str]
-      drawn_on: str | None
+      drawn_on: list[str] | None
       view: {source: str, age_s: float} | None
     Types: Vec3 = {x: float, y: float, z: float}
     Example: sg.show('highlight', targets=[{'id': '1199811', 'label': 'this one'}])

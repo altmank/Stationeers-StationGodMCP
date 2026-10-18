@@ -123,8 +123,11 @@ try {
 
         # The tool list lives in the sidecar, so a new tool has to reach both halves.
         New-Item -ItemType Directory -Path $SidecarPath -Force | Out-Null
-        foreach ($file in Get-ChildItem -LiteralPath $portable -File) {
-            $destination = Join-Path $SidecarPath $file.Name
+        # Recursively: the script workers' sg package ships in the sidecar's python\sg folder (run_script needs it).
+        $portableRoot = (Get-Item -LiteralPath $portable).FullName
+        foreach ($file in Get-ChildItem -LiteralPath $portableRoot -File -Recurse) {
+            $destination = Join-Path $SidecarPath $file.FullName.Substring($portableRoot.Length).TrimStart('\', '/')
+            New-Item -ItemType Directory -Path (Split-Path $destination -Parent) -Force | Out-Null
             try {
                 Copy-Item -LiteralPath $file.FullName -Destination $destination -Force
             }

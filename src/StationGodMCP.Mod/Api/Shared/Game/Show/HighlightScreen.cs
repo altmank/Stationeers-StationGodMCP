@@ -18,29 +18,31 @@ namespace StationGodMCP.Api.Shared.Game.Show;
 /// through walls, frames and terrain with (Highlights, the T-Ray SPU's material). Things by id and a network's pieces
 /// are drawn with their own meshes, tinted; a world point gets a beam and, out of view, an arrow at the screen's edge
 /// with its distance and bearing. Each target's reply row says what it drew and where it is from the camera. Drawn on
-/// the player's screen (PlayerSight): this game's, or a remote player's through their StationGod. Nothing in the world
-/// changes.
+/// the player's screen (PlayerSight): this game's, or a remote player's through their StationGod; with several players
+/// in play and none named (as_player), each of theirs (ShowAudience). Nothing in the world changes.
 /// </summary>
 internal static class HighlightScreen
 {
     /// <summary>A network's pieces are drawn up to this many; the reply's row says when more were found.</summary>
     private const int MaximumPieces = 4096;
 
-    /// <summary>clear: every mark drawn for the player so far goes; nothing is found and nothing drawn.</summary>
+    /// <summary>clear: every mark drawn for the player so far goes (each player's in play, ShowAudience); nothing is
+    /// found and nothing drawn.</summary>
     internal static HighlightView Clear()
     {
-        PlayerSight player = PlayerSight.Current();
-        PlayerScreen shown = player.ScreenOrLocal();
-        return new HighlightView(new List<HighlightTargetView>(), shown.ClearHighlights(), 0.0, shown.Renderer,
-            new List<string> { "Cleared." }, shown.DrawnOn, player.Source);
+        ShowAudience audience = ShowAudience.ToClear();
+        int cleared = audience.Each(static screen => screen.ClearHighlights());
+        audience.Notes.Insert(0, "Cleared.");
+        return new HighlightView(new List<HighlightTargetView>(), cleared, 0.0, audience.Renderer, audience.Notes,
+            audience.DrawnOn, audience.Source);
     }
 
     /// <summary>Each target found and drawn: the player's screen shows them for the call's seconds, or keeps what it
-    /// already showed with keep.</summary>
+    /// already showed with keep. With several players in play and none named, each one's screen (ShowAudience).</summary>
     internal static HighlightView Show(HighlightRequest request)
     {
-        CameraSight camera = PlayerSight.Current().Require("show highlight");
-        Vec3 eye = camera.Eye;
+        ShowAudience audience = ShowAudience.ToDraw("show highlight", measures: true);
+        Vec3? eye = audience.Camera?.Eye;
         List<HighlightTargetView> views = new List<HighlightTargetView>(request.Targets.Count);
         List<ScreenMark> marks = new List<ScreenMark>(request.Targets.Count);
         for (int index = 0; index < request.Targets.Count; index++)
@@ -48,21 +50,20 @@ internal static class HighlightScreen
             views.Add(Found(request.Targets[index], index, eye, marks));
         }
 
-        PlayerScreen screen = camera.Screen;
-        List<string> notes = new List<string>();
-        int cleared = screen.Highlight(!request.Keep, marks, request.Seconds, notes);
-        return new HighlightView(views, cleared, request.Seconds, screen.Renderer, notes, screen.DrawnOn,
-            camera.Source);
+        List<string> notes = audience.Notes;
+        int cleared = audience.Each(screen => screen.Highlight(!request.Keep, marks, request.Seconds, notes));
+        return new HighlightView(views, cleared, request.Seconds, audience.Renderer, notes, audience.DrawnOn,
+            audience.Source);
     }
 
     // One target found: what it names, the mark the screen draws and the row the reply lists.
-    private static HighlightTargetView Found(HighlightTarget target, int index, Vec3 eye, List<ScreenMark> marks)
+    private static HighlightTargetView Found(HighlightTarget target, int index, Vec3? eye, List<ScreenMark> marks)
     {
         switch (target)
         {
             case HighlightTarget.Point point:
                 marks.Add(new ScreenMark(point, new List<Thing>()));
-                return HighlightTargetView.OfPoint(index, point, Heading.From(eye, point.At));
+                return HighlightTargetView.OfPoint(index, point, eye.HasValue ? Heading.From(eye.Value, point.At) : null);
             case HighlightTarget.Network network:
                 List<Thing> pieces = NetworkPieces(network.Id, $"targets[{index}].network", out ThingId resolved,
                     out bool truncated);
@@ -93,8 +94,14 @@ internal static class HighlightScreen
     }
 
     // The heading of the nearest of the things, so far ones can be found; null for none.
-    private static Heading? Nearest(Vec3 eye, List<Thing> things)
+    private static Heading? Nearest(Vec3? from, List<Thing> things)
     {
+        if (!from.HasValue)
+        {
+            return null;
+        }
+
+        Vec3 eye = from.Value;
         Heading? best = null;
         foreach (Thing thing in things)
         {

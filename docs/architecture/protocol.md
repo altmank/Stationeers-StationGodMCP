@@ -18,7 +18,7 @@ updates, job endings, world changes, a ping.
 ```text
 -> {"type":"hello","protocol":[2],"client":{"name":"dashboard","version":"3.0.0","library":"stationgodmcp"},"features":["shape"]}
 <- {"type":"welcome","protocol":2,"client_id":"c4","client":"anonymous",
-    "server":{"mod_version":"2.0.0","instance_id":"8f0c2d5e9a1b4c7d","pipe_name":"StationGodMCP","transport":"pipe",
+    "server":{"mod_version":"2.1.0","instance_id":"8f0c2d5e9a1b4c7d","pipe_name":"StationGodMCP","transport":"pipe",
               "role":"host","dedicated":false,"world":{"id":"3b9e1a40c2d84f6e","save":"Vulcan2_4","epoch":3},
               "game_state":"Running"},
     "catalogue":{"hash":"sha256:4f2a...","methods":98,"protocol_methods":6},

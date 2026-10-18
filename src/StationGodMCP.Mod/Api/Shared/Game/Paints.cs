@@ -152,6 +152,13 @@ internal static class PaintColor
                     $"{Names.Of(thing)} has no prefab colour to restore (its paint is a mask material).");
         }
 
+        return Named(text, swatches);
+    }
+
+    /// <summary>A colour named by its index or name (not "default", which is a thing's own); refused invalid_color.</summary>
+    internal static int Named(string given, List<ColorSwatch> swatches)
+    {
+        string text = given.Trim();
         if (int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out int index))
         {
             return GameManager.IsValidColor(index)

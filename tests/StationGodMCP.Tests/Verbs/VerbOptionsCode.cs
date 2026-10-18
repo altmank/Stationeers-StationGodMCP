@@ -22,8 +22,8 @@ internal static class VerbOptionsCode
 {
     private const string Namespace = "StationGodMCP.Pure.Verbs";
 
-    /// <summary>The shaping options the game takes as the call's shape; the rest of _shared.json's shaping is the hub's.</summary>
-    private static readonly string[] GameShaping = { "fields", "omit", "list_limits" };
+    /// <summary>The every-verb options the game takes (the call's shape, and as_player); the rest of _shared.json's shaping is the hub's.</summary>
+    private static readonly string[] GameShaping = { "fields", "omit", "list_limits", "as_player" };
 
     private static readonly (string Kind, string Type, string Empty, string[] Options)[] Kinds =
     {

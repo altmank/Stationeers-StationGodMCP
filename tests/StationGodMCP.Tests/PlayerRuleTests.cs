@@ -100,6 +100,7 @@ public sealed class PlayerRuleTests
 
         Assert.Equal(new[] { "LU", "Friend" }, missing.InPlay);
         Assert.Equal("There is no local player (a dedicated server) and 2 connected, living players (LU, Friend), so " +
-                     "which one is the player is ambiguous.", missing.Reason);
+                     "which one is the player is ambiguous: name one with as_player (as_player: \"LU\").",
+            missing.Reason);
     }
 }

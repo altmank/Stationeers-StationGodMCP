@@ -14,8 +14,8 @@ internal sealed class VerbCatalogue
 {
     internal const string WhatlessKey = "-";
 
-    /// <summary>The shaping options every verb but help and run_script takes (the tool list adds them).</summary>
-    internal static readonly string[] Shaping = ["fields", "omit", "list_limits", "output_file", "whole", "repeat"];
+    /// <summary>The options every verb but help and run_script takes, shaping and as_player (the tool list adds them).</summary>
+    internal static readonly string[] Shaping = ["fields", "omit", "list_limits", "output_file", "whole", "repeat", "as_player"];
 
     private const string SourcePrefix = "catalogue/verbs/";
     private const string GeneratedPrefix = "generated/verbs/";

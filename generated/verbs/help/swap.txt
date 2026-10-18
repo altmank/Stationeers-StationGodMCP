@@ -9,5 +9,5 @@ whats:
 - chute: remove chute pieces no item can pass to a consumer; junctions left with one way become straights
 
 Every what here takes: confirm, id, include, materials, max_wait, queue, refund_to, rows, skip_unmatched, verbose.
-Shaping on every call: fields, omit, list_limits, output_file, whole, repeat (help {topic: "shaping"}).
+On every call: fields, omit, list_limits, output_file, whole, repeat, as_player (help {topic: "shaping"}).
 help {verb: "swap", what} gives a what's options, reply keys and an example.

@@ -25,6 +25,30 @@ internal static class ThingColors
     internal static ThingColorView? ShownColorOf(Thing thing, List<ColorSwatch> swatches) =>
         thing.IsPaintable || thing.HasColorState ? ColorOf(thing, swatches) : null;
 
+    /// <summary>The index of the colour a thing shows (ColorOf), or null for a thing that shows none; no view made.</summary>
+    internal static int? ShownIndexOf(Thing thing)
+    {
+        if (thing.HasColorState)
+        {
+            return thing.ColorState;
+        }
+
+        return thing.IsPaintable ? GameManager.GetColorIndex(thing.CustomColor) : null;
+    }
+
+    /// <summary>A paintable thing painted off its prefab's own colour; null for a thing that is not paintable.</summary>
+    internal static bool? IsRepainted(Thing thing)
+    {
+        if (!thing.IsPaintable || thing.HasColorState)
+        {
+            return null;
+        }
+
+        ColorSwatch? swatch = thing.CustomColor;
+        Material? normal = swatch != null ? swatch.Normal : null;
+        return thing.PaintableMaterial == null || normal != thing.PaintableMaterial;
+    }
+
     /// <summary>
     /// The colour a thing shows: for a thing whose colour is a state (Thing.HasColorState, e.g. the LED display) the
     /// state the Color logic type reads and writes (Thing.ColorState, an index into the colour list), which is what it

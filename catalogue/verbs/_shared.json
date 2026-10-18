@@ -18,8 +18,8 @@
     "help",
     "run_script"
   ],
-  "instructions": "StationGod reads and changes a running Stationeers world. Each tool is a verb; most take what (the kind of thing) and share option names: find (lists), inspect (one thing in detail), survey (an area or network), read (live values), write (set values), plan (work out, change nothing), check (rules), build, swap (existing pieces), remove, move, trade, show (draw for the player), undo, server. help {verb, what} gives one in full. Targets: id (one, a list, or a ref \"r3\" from an earlier reply), near + radius, box, room, network. 'this', 'that' or 'here' is the thing the crosshair is on: inspect {what: \"looking_at\"}. Typed ids act at once; build, swap, remove, trade, undo and cheats report until confirm: true, and so does any write given a ref, network or spread; ask the user before a cheat. Shaping on every verb: fields, omit, list_limits, output_file, repeat (a ref: that call again), whole: true (lifts the 12 KB cut). For waits, polls and timed or repeated work, run_script; for many targets, give id a list. A script changes nothing unless the run has confirm: true. If the user says stop or hold: server {what: 'stop'} (load the server tool if it isn't).",
-  "shaping": ["fields", "omit", "list_limits", "output_file", "whole", "repeat"],
+  "instructions": "StationGod reads and changes a running Stationeers world. Each tool is a verb; most take what (the kind of thing) and share option names: find (lists), inspect (one thing in detail), survey (an area or network), read (live values), write (set values), plan (work out, change nothing), check (rules), build, swap (existing pieces), remove, move, trade, show (draw for the player), undo, server. help {verb, what} gives one in full. Targets: id (one, a list, or a ref \"r3\" from an earlier reply), near + radius, box, room, network. 'this', 'that' or 'here' is the thing the crosshair is on: inspect {what: \"looking_at\"}. Typed ids act at once; build, swap, remove, trade, undo and cheats report until confirm: true, and so does any write given a ref, network or spread; ask the user before a cheat. Shaping on every verb: fields, omit, list_limits, output_file, repeat (a ref: that call again), whole: true (lifts the 12 KB cut). Multiplayer: as_player (a name or id) on any verb says who \"the player\" is (near \"player\", looking_at, materials \"player\", show); show without it draws for every player. For waits, polls and timed or repeated work, run_script; for many targets, give id a list. A script changes nothing unless the run has confirm: true. If the user says stop or hold: server {what: 'stop'} (load the server tool if it isn't).",
+  "shaping": ["fields", "omit", "list_limits", "output_file", "whole", "repeat", "as_player"],
   "options": {
     "id": {
       "schema": {"type": ["string", "array"], "items": {"type": "string"}},
@@ -154,6 +154,11 @@
       "description": "No 4 KB cut; pages stay pages (limit, offset).",
       "default": "false",
       "x-script": "drop"
+    },
+    "as_player": {
+      "schema": {"type": "string"},
+      "description": "The player the call is for, by name or id: near \"player\", looking_at, materials or to \"player\", show's screen. Needed with several players on a dedicated server; show without it draws for each.",
+      "x-script": "same"
     },
     "repeat": {
       "schema": {"type": "string"},

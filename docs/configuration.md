@@ -62,6 +62,7 @@ wins over its variable.
 | `--confirmed-ceiling-s <n>` | | `30` | The longest a confirmed script run's reply (and `inspect job` on a live confirmed run) waits, whatever `max_wait` says. `0` turns the ceiling off. Whole seconds, at most 86400. |
 | `--journal-dir <folder>` | | `%LOCALAPPDATA%\StationGodMCP\journal` (Windows), else `$XDG_STATE_HOME/stationgodmcp/journal` | Where the hub keeps its journal of script runs (`docs/architecture/hub.md`, *The journal*). |
 | `--python <path>` | | `py -3` (Windows), else `python3` | The Python that runs script workers. |
+| `--as-player <name>` | `STATIONGODMCP_PLAYER` | none | On a multiplayer server, the player this agent acts for (a name as the game shows it, or their id): every verb call that names no `as_player` gets this one, scripts' calls too. Without it, a server with several players asks for `as_player` on calls about "the player", and `show` draws for every player. |
 
 The secret is never an argument, so it does not show in process lists. Set it in the agent's MCP
 registration (`claude mcp add --env "STATIONGODMCP_SECRET=..."`, or `[mcp_servers.stationeers.env]` in Codex).

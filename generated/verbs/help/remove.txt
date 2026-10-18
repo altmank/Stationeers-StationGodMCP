@@ -8,5 +8,5 @@ whats:
 - chute: chute pieces as a player remove them: by id, or the piece in each cell of waypoints or cells
 - script: delete a saved script and every version kept beside it
 
-Shaping on every call: fields, omit, list_limits, output_file, whole, repeat (help {topic: "shaping"}).
+On every call: fields, omit, list_limits, output_file, whole, repeat, as_player (help {topic: "shaping"}).
 help {verb: "remove", what} gives a what's options, reply keys and an example.

@@ -12,7 +12,7 @@ namespace StationGodMCP.Api.Views;
 internal sealed class HighlightView
 {
     internal HighlightView(List<HighlightTargetView> targets, int cleared, double seconds, string renderer,
-        List<string> notes, string? drawnOn = null, ViewSourceView? view = null)
+        List<string> notes, List<string>? drawnOn = null, ViewSourceView? view = null)
     {
         DrawnOn = drawnOn;
         View = view;
@@ -35,9 +35,9 @@ internal sealed class HighlightView
 
     public List<string> Notes { get; }
 
-    /// <summary>The player whose game drew them, when that is not this game (a client of a dedicated server).</summary>
+    /// <summary>The players whose games drew them, when not this game (clients of a dedicated server).</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-    public string? DrawnOn { get; }
+    public List<string>? DrawnOn { get; }
 
     /// <summary>The player's view distances were measured from: local or remote and its age.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
@@ -88,7 +88,10 @@ internal sealed class HighlightTargetView
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public PositionView? At { get; private set; }
 
-    /// <summary>From the camera to the point (things: the nearest of them); null when nothing was found.</summary>
+    /// <summary>
+    /// From the camera to the point (things: the nearest of them); null when nothing was found or no player's view is
+    /// current.
+    /// </summary>
     public double? DistanceM { get; private set; }
 
     public double? BearingDeg { get; private set; }
@@ -99,11 +102,14 @@ internal sealed class HighlightTargetView
     /// <summary>Metres above the camera (negative below).</summary>
     public double? RiseM { get; private set; }
 
-    internal static HighlightTargetView OfPoint(int index, HighlightTarget.Point point, Heading heading) =>
-        new HighlightTargetView(index, "point", point)
+    internal static HighlightTargetView OfPoint(int index, HighlightTarget.Point point, Heading? heading)
+    {
+        HighlightTargetView view = new HighlightTargetView(index, "point", point)
         {
             At = new PositionView(point.At.X, point.At.Y, point.At.Z)
-        }.With(heading);
+        };
+        return heading.HasValue ? view.With(heading.Value) : view;
+    }
 
     internal static HighlightTargetView OfThings(int index, HighlightTarget target, string kind, ThingId? network,
         int drawn, List<ThingId> missing, Heading? nearest, bool truncated)

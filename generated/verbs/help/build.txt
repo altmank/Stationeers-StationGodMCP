@@ -11,5 +11,5 @@ whats:
 - finish: build a placed structure on to a later build state, paying each state's materials
 
 Every what here takes: confirm.
-Shaping on every call: fields, omit, list_limits, output_file, whole, repeat (help {topic: "shaping"}).
+On every call: fields, omit, list_limits, output_file, whole, repeat, as_player (help {topic: "shaping"}).
 help {verb: "build", what} gives a what's options, reply keys and an example.

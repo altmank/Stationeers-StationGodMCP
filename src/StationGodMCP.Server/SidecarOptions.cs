@@ -12,7 +12,8 @@ namespace StationGodMCP.Server;
 /// the recording (docs/architecture/hub.md, Recording) to a file. The hub's options (hub.md, Modes): --hub serves the hub
 /// protocol on stdio instead of MCP; --confirmed-ceiling-s caps a confirmed run's reply wait (30, 0 for none);
 /// --journal-dir is where journals live; --python is the Python for script workers; --scripts-dir is where the saved
-/// scripts live (the four script whats and run_script {name}).
+/// scripts live (the four script whats and run_script {name}). --as-player (else STATIONGODMCP_PLAYER) names the player
+/// this sidecar's agent acts for on a multiplayer server: every verb call that names none gets it as as_player.
 /// </summary>
 internal sealed class SidecarOptions
 {
@@ -29,7 +30,7 @@ internal sealed class SidecarOptions
     private static readonly string[] ValueOptions =
     [
         "--pipe", "--host", "--port", "--secret-env", "--client", "--inline-limit-kb", "--output-dir", "--record",
-        "--confirmed-ceiling-s", "--journal-dir", "--python", "--scripts-dir"
+        "--confirmed-ceiling-s", "--journal-dir", "--python", "--scripts-dir", "--as-player"
     ];
 
     internal SidecarOptions(ClientOptions client, OutputFolder output, int inlineLimitBytes, string? recordPath = null)
@@ -66,6 +67,9 @@ internal sealed class SidecarOptions
 
     /// <summary>The Python for script workers: the program, then the arguments that come before the worker's own.</summary>
     internal IReadOnlyList<string> Python { get; init; } = DefaultPython;
+
+    /// <summary>The player every verb call that names none speaks for (as_player); null for the game's own rule.</summary>
+    internal string? AsPlayer { get; init; }
 
     /// <summary>
     /// Whether this hub adopts, at start, the journals other hubs left (hub.md, The journal): a hub serving an MCP client
@@ -128,6 +132,7 @@ internal sealed class SidecarOptions
             return new Parsed.Invalid("--scripts-dir must name a folder.");
         }
 
+        string? asPlayer = Argument(args, "--as-player") ?? environment("STATIONGODMCP_PLAYER");
         ClientOptions client = new(target)
         {
             ClientName = Argument(args, "--client"),
@@ -144,7 +149,8 @@ internal sealed class SidecarOptions
             ConfirmedCeilingSeconds = ceiling,
             JournalDirectory = journal != null ? Path.GetFullPath(journal.Trim()) : DefaultJournalDirectory(environment),
             ScriptsDirectory = scripts != null ? Path.GetFullPath(scripts.Trim()) : DefaultScriptsDirectory(environment),
-            Python = python != null ? [python.Trim()] : DefaultPython
+            Python = python != null ? [python.Trim()] : DefaultPython,
+            AsPlayer = string.IsNullOrWhiteSpace(asPlayer) ? null : asPlayer.Trim()
         });
     }
 

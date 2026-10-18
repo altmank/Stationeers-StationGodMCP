@@ -8,8 +8,9 @@ namespace StationGodMCP.Api.Shared.Game;
 
 /// <summary>
 /// A verb's id as the catalogue's id option takes it (catalogue/verbs/_shared.json, id): a thing's reference id as a
-/// decimal string, or "looking_at", the thing under the local player's crosshair (PlayerSight.Target). Refused
-/// thing_not_found, worded with the call's label, when the text names no id or nothing is under the crosshair.
+/// decimal string, or "looking_at", the thing under the player's crosshair (PlayerSight.Target: as_player's, or the
+/// rule's). Refused thing_not_found, worded with the call's label, when the text names no id or nothing is under the
+/// crosshair.
 /// </summary>
 internal static class TargetIds
 {
