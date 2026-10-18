@@ -1,0 +1,14 @@
+Fill terrain in a box at once: solid, back to the ground the world generated, level to a flat plane, or only its enclosed voids.
+Reports first; confirm: true does it.
+Cheat.
+Options:
+- box (list, required): Two corners [[x, y, z], [x, y, z]] in metres: every 1 m voxel whose centre lies inside (at most 32768, a 32 m cube).
+- mode (solid | original | level | voids, default solid): solid: every voxel filled; original: back to the generated ground (dug ground filled, added ground taken away); level: a flat plane at level, ground under it filled and above it dug; voids: only the box's enclosed empty pockets filled.
+- level (number): mode level: the plane's height in metres; voxels whose centre lies under it are filled, the rest dug.
+- ores (drop | discard, default drop): Ore in the ground it digs (level, original): drop leaves it as ore items, discard makes none.
+- confirm (boolean, default false): true acts; false only reports, whatever the call names (typed ids included). Left out, the write rule decides: typed ids act at once where the verb acts on them; a ref, network or spread reports.
+A cheat: no player fills ground by the box. Voxels whose cell holds a structure (a frame, wall, pipe, cable or device) are never touched, so ground meets frames at their faces and buries nothing: with mode level that makes a flat plane up to the frames' edges. Bedrock (below y 2) is never changed. A fill that would bury a player is refused (player_in_fill); players_in_box names who stands in the box.
+The report counts the voxels it fills and digs, those already so, those kept at a structure or at bedrock, the pockets it fills (voids) and the ore it releases; its box is the voxel-aligned box, ready for show preview's boxes (xray: true shows it through the ground). Find pockets first with find void, whose fill_box is the box to give with mode voids. Each voxel is set as the game's own dirt placement sets one, over frames from the bottom layer up, one slice per state packet with clients; a call cut short keeps what it did.
+placed: on a job reply the new ids (a run's log.placed, a structure job's result.placed; a brief poll counts them in log.placed_count), on a run report a count of the cells it would build.
+Reply: box {min, max}, cells, mode, level, filled, dug, unchanged, structure_kept, bedrock_kept, voids, ores_handling, ores [{prefab_name, minables, quantity}], players_in_box [{reference_id, prefab_name, display_name}]
+Example: build {what: "terrain", box: [[-920, 146, -560], [-910, 152, -548]], mode: "level", level: 150, confirm: true}

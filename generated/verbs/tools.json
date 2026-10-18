@@ -23,9 +23,10 @@
               "room",
               "gateway",
               "damaged",
+              "void",
               "script"
             ],
-            "description": "thing: any object: structures, devices, items, players; item: stackable items and kits anywhere; group_by sums; device: devices with logic; container: holders with items; frame: outer frames; pad: landing pads; water: water and steam sources; ore: deep miner ore spots; food: food and drink; plant: plants: stage, health, harvest; room: closed rooms: pressure, gases; gateway: device scopes (gateways); damaged: damaged and broken things; script: saved scripts"
+            "description": "thing: any object: structures, devices, items, players; item: stackable items and kits anywhere; group_by sums; device: devices with logic; container: holders with items; frame: outer frames; pad: landing pads; water: water and steam sources; ore: deep miner ore spots; food: food and drink; plant: plants: stage, health, harvest; room: closed rooms: pressure, gases; gateway: device scopes (gateways); damaged: damaged and broken things; void: underground pockets to fill; script: saved scripts"
           },
           "name": {"type": "string"},
           "prefab": {
@@ -64,6 +65,7 @@
           "min_damage": {"type": "number"},
           "broken_only": {"type": "boolean"},
           "structures_only": {"type": "boolean"},
+          "min_cells": {"type": "integer"},
           "text": {"type": "string", "description": "find script: text a saved script's name or description holds."},
           "fields": {"type": "array", "items": {"type": "string"}},
           "omit": {"type": "array", "items": {"type": "string"}},
@@ -483,14 +485,14 @@
     },
     {
       "name": "build",
-      "description": "Build new things as a player would, paying materials. Reports first; confirm: true builds and answers when the job is done.",
+      "description": "Build new things as a player would, paying materials. Reports first; confirm: true builds and answers when the job is done. terrain is a cheat: ask the user.",
       "inputSchema": {
         "type": "object",
         "properties": {
           "what": {
             "type": "string",
-            "enum": ["structure", "cable", "pipe", "chute", "blueprint", "finish"],
-            "description": "structure: any structure a kit builds, by prefab, at a point; cable: a cable run or pieces; pipe: a pipe run or pieces; chute: a chute run or pieces; blueprint: paste a blueprint; finish: a placed structure on to a later build state"
+            "enum": ["structure", "cable", "pipe", "chute", "blueprint", "terrain", "finish"],
+            "description": "structure: any structure a kit builds, by prefab, at a point; cable: a cable run or pieces; pipe: a pipe run or pieces; chute: a chute run or pieces; blueprint: paste a blueprint; terrain: fill or level a box of terrain; finish: a placed structure on to a later build state"
           },
           "placements": {"type": "array"},
           "prefab": {"type": ["string", "integer"]},
@@ -542,6 +544,10 @@
           "rows": {"type": "integer"},
           "blueprint": {"type": "string"},
           "turn": {"enum": [0, 90, 180, 270]},
+          "box": {"type": "array"},
+          "mode": {"enum": ["solid", "original", "level", "voids"]},
+          "level": {"type": "number"},
+          "ores": {"enum": ["drop", "discard"]},
           "id": {"type": ["string", "array"], "items": {"type": "string"}},
           "state": {"type": "integer"},
           "fields": {"type": "array", "items": {"type": "string"}},

@@ -16,7 +16,7 @@ def show(what: Literal['preview'], *,
     seconds: float = 30,  # How long to show.
     keep: bool = False,  # Keep what earlier calls drew.
     clear: bool = None,  # Only remove what is drawn.
-    xray: bool = False,  # Draw through walls and terrain.
+    xray: bool = False,  # Draw everything, boxes and cells too, through walls, frames and terrain.
 ) -> dict:
     """Wire boxes of a planned structure layout (build structure's dry run), plus cells and boxes.
     Reply:

@@ -376,6 +376,27 @@ def find(what: Literal['damaged'], *,
     """
 
 @overload
+def find(what: Literal['void'], *,
+    fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
+    box: list,  # Two corners [[x, y, z], [x, y, z]] in metres to search (at most 262144 voxels, a 64 m cube).
+    min_cells: int = 8,  # Leave out pockets of fewer voxels.
+) -> dict:  # main list: r['voids']: the page answered; .walk() goes through every entry, .all() pages in the rest
+    """Enclosed empty pockets underground in a box: dug or natural cavities no structure reaches.
+    A pocket is a set of joined empty voxels (under half density, joined face to face) that reaches neither the box's outer layer nor any cell holding a structure: empty space that reaches the edge may go on to the surface or a dug hallway (open_to_edge counts it: search a bigger box), and space joined to a frame, wall, pipe or device is part of the base (touching_structures). Each pocket gives its voxels, bounds, a voxel inside it, the players inside it, and fill_box, the box to give build terrain with mode voids. Read only: nothing changes.
+    Reply:
+      searched: {min: Vec3, max: Vec3}
+      searched_cells: int
+      voids: list[{index: int, cells: int, min: Vec3, max: Vec3, inside: Vec3, fill_box: list[list[float]], players_inside: list[Thing] | None}]
+      count: int
+      smaller_than_min: int
+      open_to_edge: int
+      open_to_edge_cells: int
+      touching_structures: int
+    Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}; Vec3 = {x: float, y: float, z: float}
+    Example: sg.find('void', box=[[-885, 145, -570], [-860, 175, -552]])
+    """
+
+@overload
 def find(what: Literal['script'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
     text: str = None,  # Keep scripts whose name or description holds this text, any case.
@@ -1759,7 +1780,7 @@ def plan(what: Literal['route'], *,
     reroute: dict = None,  # {id: [...]} or {between: [end, end]}: replace an old run; leave out start and end.
     trunk: dict = None,  # Bus mode instead of end: {waypoints} or {cells} every start branches from.
     grade: Literal['normal', 'heavy', 'super_heavy', 'gas', 'liquid', 'insulated_gas', 'insulated_liquid', 'chute'] = None,  # cable: normal, heavy (default), super_heavy; pipe (required): gas, liquid, insulated_gas, insulated_liquid; chute: chute.
-    style: Literal['supported', 'frame_edges', 'walls', 'hidden', 'inside_frames', 'free'] = 'supported',  # What the route keeps to.
+    style: Literal['supported', 'frame_edges', 'walls', 'hidden', 'inside_frames', 'free'] = 'supported',  # What the route keeps to. inside_frames: inside the frames' body only, never on a frame's face, leaving it only for the last 2 m to each end.
     allow: list[Literal['door_keepout', 'split']] = None,  # door_keepout: may enter a door keep-out; split: removals may split networks.
     split_long: bool = True,  # Split long straights the route meets.
     avoid: list[Literal['room_interior', 'walkways']] = None,  # Extra cost for room interiors or walkways.
@@ -2518,6 +2539,38 @@ def build(what: Literal['blueprint'], *,
       copy_y_angle: float
       expected_duration_s: float
     Example: sg.build('blueprint', blueprint='airlock', at=[700, 202, 660])
+    """
+
+@overload
+def build(what: Literal['terrain'], *,
+    fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
+    box: list,  # Two corners [[x, y, z], [x, y, z]] in metres: every 1 m voxel whose centre lies inside (at most 32768, a 32 m cube).
+    mode: Literal['solid', 'original', 'level', 'voids'] = 'solid',  # solid: every voxel filled; original: back to the generated ground (dug ground filled, added ground taken away); level: a flat plane at level, ground under it filled and above it dug; voids: only the box's enclosed empty pockets filled.
+    level: float = None,  # mode level: the plane's height in metres; voxels whose centre lies under it are filled, the rest dug.
+    ores: Literal['drop', 'discard'] = 'drop',  # Ore in the ground it digs (level, original): drop leaves it as ore items, discard makes none.
+) -> dict:
+    """Fill terrain in a box at once: solid, back to the ground the world generated, level to a flat plane, or only its enclosed voids.
+    A cheat: no player fills ground by the box. Voxels whose cell holds a structure (a frame, wall, pipe, cable or device) are never touched, so ground meets frames at their faces and buries nothing: with mode level that makes a flat plane up to the frames' edges. Bedrock (below y 2) is never changed. A fill that would bury a player is refused (player_in_fill); players_in_box names who stands in the box.
+    The report counts the voxels it fills and digs, those already so, those kept at a structure or at bedrock, the pockets it fills (voids) and the ore it releases; its box is the voxel-aligned box, ready for show preview's boxes (xray: true shows it through the ground). Find pockets first with find void, whose fill_box is the box to give with mode voids. Each voxel is set as the game's own dirt placement sets one, over frames from the bottom layer up, one slice per state packet with clients; a call cut short keeps what it did.
+    Reports in a report run; acts in a confirmed run.
+    Cheat: ask the user first.
+    placed: list[str] on a job reply, the new ids (a run's log.placed, a structure job's result.placed; a brief poll counts them in log.placed_count); int on a run report, the cells it would build.
+    Reply:
+      box: {min: Vec3, max: Vec3}
+      cells: int
+      mode: str
+      level: float | None
+      filled: int
+      dug: int
+      unchanged: int
+      structure_kept: int
+      bedrock_kept: int
+      voids: int | None (mode voids)
+      ores_handling: str
+      ores: list[{prefab_name: str, minables: int, quantity: int | None}]
+      players_in_box: list[Thing] | None
+    Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}; Vec3 = {x: float, y: float, z: float}
+    Example: sg.build('terrain', box=[[-920, 146, -560], [-910, 152, -548]], mode='level', level=150)
     """
 
 @overload
@@ -3561,7 +3614,7 @@ def show(what: Literal['preview'], *,
     seconds: float = 30,  # How long to show.
     keep: bool = False,  # Keep what earlier calls drew.
     clear: bool = None,  # Only remove what is drawn.
-    xray: bool = False,  # Draw through walls and terrain.
+    xray: bool = False,  # Draw everything, boxes and cells too, through walls, frames and terrain.
 ) -> dict:
     """Wire boxes of a planned structure layout (build structure's dry run), plus cells and boxes.
     Reply:

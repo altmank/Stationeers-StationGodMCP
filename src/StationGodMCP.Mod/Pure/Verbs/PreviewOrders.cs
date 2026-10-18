@@ -84,6 +84,11 @@ internal sealed class PreviewOrder
     /// <summary>The most boxes one call draws (the option's maxItems).</summary>
     internal const int MaximumBoxes = 64;
 
+    /// <summary>The note a drawing without xray answers: the lines are drawn as solid things are, so anything in front hides them.</summary>
+    internal const string HiddenNote =
+        "Drawn without xray: walls, frames and terrain in front hide the lines (a box in the ground cannot be seen). " +
+        "xray: true draws every box, cell and placement through them.";
+
     private static readonly string[] BoxKeys = { "min", "max", "color" };
 
     /// <summary>How long it shows when the call gives no seconds (the option's default).</summary>

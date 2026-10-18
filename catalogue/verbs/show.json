@@ -84,7 +84,7 @@
         "clear": {"schema": {"type": "boolean"}, "description": "Only remove what is drawn.", "x-script": "same"},
         "xray": {
           "schema": {"type": "boolean"},
-          "description": "Draw through walls and terrain.",
+          "description": "Draw everything, boxes and cells too, through walls, frames and terrain.",
           "default": "false",
           "x-script": "same"
         }

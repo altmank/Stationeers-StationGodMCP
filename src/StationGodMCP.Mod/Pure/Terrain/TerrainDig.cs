@@ -47,6 +47,10 @@ internal readonly struct VoxelPoint : IEquatable<VoxelPoint>
 internal sealed class DigBox
 {
     internal const long MostCells = 32768;
+
+    /// <summary>The most voxels find void reads in one call: a 64 m cube, read over frames, nothing changed.</summary>
+    internal const long MostSearched = 262144;
+
     internal const int BedrockY = 2;
 
     private DigBox(VoxelPoint low, VoxelPoint high)
@@ -61,12 +65,22 @@ internal sealed class DigBox
 
     internal long Cells => Span(Low.X, High.X) * Span(Low.Y, High.Y) * Span(Low.Z, High.Z);
 
+    internal int SizeX => High.X - Low.X + 1;
+
+    internal int SizeY => High.Y - Low.Y + 1;
+
+    internal int SizeZ => High.Z - Low.Z + 1;
+
     internal Vec3 Min => new Vec3(Low.X, Low.Y, Low.Z);
 
     internal Vec3 Max => new Vec3(High.X + 1, High.Y + 1, High.Z + 1);
 
     /// <summary>The box's voxels, or null with a problem on box: none in it, or more than MostCells.</summary>
-    internal static DigBox? Of(BoxCorners? corners, List<OptionProblem> problems)
+    internal static DigBox? Of(BoxCorners? corners, List<OptionProblem> problems) =>
+        Of(corners, problems, MostCells, "a call digs or fills");
+
+    /// <summary>The box's voxels, at most `most` of them (doing: what the call does with them, for the problem).</summary>
+    internal static DigBox? Of(BoxCorners? corners, List<OptionProblem> problems, long most, string doing)
     {
         if (corners == null)
         {
@@ -88,15 +102,39 @@ internal sealed class DigBox
         }
 
         DigBox box = new DigBox(low, high);
-        if (box.Cells > MostCells)
+        if (box.Cells > most)
         {
             problems.Add(new OptionProblem("box",
-                $"holds {box.Cells} voxels, more than {MostCells} (a 32 m cube) a call digs: split it, by height for one"));
+                $"holds {box.Cells} voxels, more than {most} (a {Edge(most)} m cube) {doing}: split it, by height for one"));
             return null;
         }
 
         return box;
     }
+
+    /// <summary>The box of whole voxels from low to high, both included (low at or under high on every axis).</summary>
+    internal static DigBox Between(VoxelPoint low, VoxelPoint high) => new DigBox(low, high);
+
+    /// <summary>The same box grown by margin voxels on every side.</summary>
+    internal DigBox Grown(int margin) =>
+        new DigBox(new VoxelPoint(Low.X - margin, Low.Y - margin, Low.Z - margin),
+            new VoxelPoint(High.X + margin, High.Y + margin, High.Z + margin));
+
+    /// <summary>A voxel's place in an array over the box (x fastest, then z, then y); -1 outside it.</summary>
+    internal int IndexOf(VoxelPoint voxel) =>
+        voxel.X < Low.X || voxel.X > High.X || voxel.Y < Low.Y || voxel.Y > High.Y || voxel.Z < Low.Z ||
+        voxel.Z > High.Z
+            ? -1
+            : ((voxel.Y - Low.Y) * SizeZ + (voxel.Z - Low.Z)) * SizeX + (voxel.X - Low.X);
+
+    /// <summary>The voxel at an array index (IndexOf's inverse).</summary>
+    internal VoxelPoint At(int index) =>
+        new VoxelPoint(Low.X + index % SizeX, Low.Y + index / (SizeX * SizeZ), Low.Z + index / SizeX % SizeZ);
+
+    /// <summary>Whether a voxel lies on the box's outer layer.</summary>
+    internal bool OnEdge(VoxelPoint voxel) =>
+        voxel.X == Low.X || voxel.X == High.X || voxel.Y == Low.Y || voxel.Y == High.Y || voxel.Z == Low.Z ||
+        voxel.Z == High.Z;
 
     /// <summary>Whether the game digs this voxel at all (above bedrock).</summary>
     internal static bool AboveBedrock(VoxelPoint voxel) => voxel.Y >= BedrockY;
@@ -121,7 +159,24 @@ internal sealed class DigBox
         }
     }
 
+    /// <summary>Every voxel in array order (IndexOf): bottom layer first, so a fill cut short rests on what it filled.</summary>
+    internal IEnumerable<VoxelPoint> BottomUp()
+    {
+        for (int y = Low.Y; y <= High.Y; y++)
+        {
+            for (int z = Low.Z; z <= High.Z; z++)
+            {
+                for (int x = Low.X; x <= High.X; x++)
+                {
+                    yield return new VoxelPoint(x, y, z);
+                }
+            }
+        }
+    }
+
     private static long Span(int low, int high) => (long)high - low + 1;
+
+    private static long Edge(long cells) => (long)Math.Round(Math.Pow(cells, 1.0 / 3.0));
 
     // The lowest whole metre p with p + 0.5 at or above edge, and the highest with p + 0.5 at or below it.
     private static int FirstIn(double edge) => (int)Math.Ceiling(edge - 0.5);
@@ -214,6 +269,21 @@ internal sealed class DigTally
     internal void Empty() => AlreadyEmpty++;
 
     internal void Bedrock() => BedrockKept++;
+
+    /// <summary>Voxels a fill raises (or would raise) to its density.</summary>
+    internal int Filled { get; private set; }
+
+    /// <summary>Voxels already as the fill would leave them.</summary>
+    internal int Unchanged { get; private set; }
+
+    /// <summary>Voxels a fill leaves alone because a structure stands in their cell.</summary>
+    internal int StructureKept { get; private set; }
+
+    internal void Fill() => Filled++;
+
+    internal void Same() => Unchanged++;
+
+    internal void Built() => StructureKept++;
 
     /// <summary>One minable released: its ore's prefab, and the quantity dropped (null when none was made or known).</summary>
     internal void Ore(string prefabName, int? quantity)

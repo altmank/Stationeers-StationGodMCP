@@ -211,7 +211,7 @@ route's own ends is released, and `notes` say how many cells were kept free. Wit
 | `style: "frame_edges"` | Supported, and along frame edges and corners, beam tops included. |
 | `style: "walls"` | Supported, and on or beside wall planes. |
 | `style: "hidden"` | Supported, and the least visible route: per cell inside a frame 1, on a frame's surface 3, on a wall's plane 5, in air 9. A hidden route up to three times as long beats one along a surface. |
-| `style: "inside_frames"` | Strict: only cells inside a frame or on its surface (beam tops and outer faces included), the start and end cells excepted. May give `no_route` where `hidden` would still find one. |
+| `style: "inside_frames"` | Strict: the whole run inside the frames' body (every 2 m cell a piece touches holds a frame), never on a frame's surface plane in a room; it leaves the frames only for the last 2 m to each end, to reach a port on a room's face. May give `no_route` where `hidden` would still find one. |
 | `style: "free"` | The shortest route, through air or not. |
 | `avoid: ["walkways"]`, `avoid: ["room_interior"]` | Extra cost for room cells above the floor, or away from every face plane. |
 | `avoid_networks` | `true`: never beside another network of the kind; or a list of network ids (network handles work too); an id naming no network is `network_not_found`. |

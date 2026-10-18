@@ -1,0 +1,7 @@
+Enclosed empty pockets underground in a box: dug or natural cavities no structure reaches.
+Options:
+- box (list, required): Two corners [[x, y, z], [x, y, z]] in metres to search (at most 262144 voxels, a 64 m cube).
+- min_cells (integer, default 8): Leave out pockets of fewer voxels.
+A pocket is a set of joined empty voxels (under half density, joined face to face) that reaches neither the box's outer layer nor any cell holding a structure: empty space that reaches the edge may go on to the surface or a dug hallway (open_to_edge counts it: search a bigger box), and space joined to a frame, wall, pipe or device is part of the base (touching_structures). Each pocket gives its voxels, bounds, a voxel inside it, the players inside it, and fill_box, the box to give build terrain with mode voids. Read only: nothing changes.
+Reply: searched {min, max}, searched_cells, voids [{index, cells, min, max, inside, fill_box, players_inside}], count, smaller_than_min, open_to_edge, open_to_edge_cells, touching_structures
+Example: find {what: "void", box: [[-885, 145, -570], [-860, 175, -552]]}

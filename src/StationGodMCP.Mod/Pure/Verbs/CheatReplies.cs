@@ -49,3 +49,17 @@ internal static class HealReplies
         return true;
     }
 }
+
+/// <summary>
+/// build terrain's report: the fill's reading as its body, and the box as its one target, [box, terrain, as it is ->
+/// N filled, M dug] with the what's undo mark.
+/// </summary>
+internal static class TerrainFillReplies
+{
+    internal static ReportReply Reported(TerrainFillView reading, string undoMark) =>
+        Report.Of(new[]
+        {
+            new ReportTarget(null, reading.Box, TerrainDigReplies.TargetName, "as it is",
+                $"{reading.Filled} filled, {reading.Dug} dug", undoMark)
+        }, reading);
+}

@@ -43,7 +43,7 @@
         },
         "style": {
           "schema": {"type": "string", "enum": ["supported", "frame_edges", "walls", "hidden", "inside_frames", "free"]},
-          "description": "What the route keeps to.",
+          "description": "What the route keeps to. inside_frames: inside the frames' body only, never on a frame's face, leaving it only for the last 2 m to each end.",
           "default": "supported",
           "x-script": "same"
         },

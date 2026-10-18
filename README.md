@@ -176,7 +176,7 @@ finished run's writes can be taken back with `undo {id: "script-14"}`.
 
 - **It can cheat.** Every what is a read, a write (what a player or a chip can do: logic, chips, labels, paint,
   item moves, trading, building), or a cheat (what no player can: `move {what: "gas"}` and `"player"`,
-  `write {what: "memory", "battery", "genes", "health"}`, `remove {what: "terrain"}`,
+  `write {what: "memory", "battery", "genes", "health"}`, `remove` and `build {what: "terrain"}`,
   `server {what: "command"}`, free placement, blueprint pastes,
   forced item moves). Every connection can call every verb; the class is there so an agent can tell you when a call
   is a cheat and ask first. Reports make even the risky writes show their targets first. There is no general undo:

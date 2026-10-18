@@ -27,6 +27,8 @@ connections and guard against merging networks, which `build structure` does not
 | `build finish` | Build a placed structure on to a later build state, paying each state's materials as a player's construction does. | `id`, `state` (default the next), `materials`, `free` (creative) |
 | `remove structure` | Remove structures as deconstructing them by hand would. Up to 256 in one job. | `id`, `allow: ["contents", "breach", "broken", "burst"]`, `refund_to` |
 | `remove terrain` | A cheat: dig out every terrain voxel in a box at once (see *Digging out terrain*). | `box`, `ores` (`drop` or `discard`), `confirm` |
+| `build terrain` | A cheat: fill a box's ground solid, back to the generated ground, level to a flat plane, or fill its enclosed voids (see *Filling and levelling terrain*). | `box`, `mode` (`solid`, `original`, `level`, `voids`), `level`, `ores`, `confirm` |
+| `find void` | Enclosed empty pockets underground in a box, each with the box to fill it with (see *Finding voids*). | `box`, `min_cells` |
 
 ## Replacing walls and frames
 
@@ -355,7 +357,8 @@ breaks frames and hurts players, a drill takes one voxel at a time). Ask before 
    it would release (`ores`, each ore's prefab and how many minables), the voxels already empty, those kept at
    bedrock (below y 2, which the game never digs) and any player standing in the box (`players_in_box`: they fall
    once it is dug). Its `box` is the voxel-aligned box it digs.
-2. Show that box to the player: `show {what: "preview", boxes: [the report's box]}`.
+2. Show that box to the player: `show {what: "preview", boxes: [the report's box], xray: true}` (without `xray`
+   the ground and frames in front hide the lines).
 3. On their go, the same call with `confirm: true` digs it and answers the same keys, the ore with the `quantity`
    dropped.
 
@@ -368,6 +371,44 @@ breaks frames and hurts players, a drill takes one voxel at a time). Ask before 
   the top down over several frames; on a server with players it sends a slice at a time. A call cut short keeps what
   it dug: report again to see what is left. Structures and frames in the box are not touched. It cannot be undone.
 - **Host only.**
+
+## Filling and levelling terrain
+
+`build terrain` is a cheat, the reverse of `remove terrain`: it fills a box's ground at once. Same flow: the report
+first (its `box` ready for `show preview` with `xray: true`), then the same call with `confirm: true` on the player's
+go.
+
+- **`mode: "solid"`** (default): every voxel in the box filled.
+- **`mode: "original"`**: the box back to the ground the world generated, as the console's `voxelfillnear` reverts
+  it: dug ground filled, ground added since taken away.
+- **`mode: "level", level: 150`**: a flat plane. Every voxel whose centre lies under `level` is filled and every one
+  above it dug, so the ground ends at the voxel layer under the plane. To smooth the ground around buried frames,
+  give the floor frames' top as `level` (frames at y 148 to 150: `level: 150`) and a box around them.
+- **`mode: "voids"`**: only the box's enclosed empty pockets (as `find void` finds them) filled.
+
+Guards, every mode:
+
+- **Structures are never buried.** A voxel whose 2 m cell holds a frame, wall or large device, or whose 0.5 m cells
+  hold a pipe, cable, chute or device, is left as it is (`structure_kept`): the ground stops at the frames' faces.
+- **Players are never buried.** A fill that would raise ground where a player stands is refused
+  (`player_in_fill`); `players_in_box` names who stands in the box (they fall where `level` digs).
+- Bedrock (below y 2) is never changed. Where `level` or `original` digs, ore is dropped or discarded as `ores` says.
+- At most 32,768 voxels a call (a 32 m cube). Each voxel is set as the game's dirt placement sets one, so the change
+  reaches every player and the space it closes leaves the air around it. Host only. It cannot be undone.
+
+## Finding voids
+
+`find void` lists the enclosed empty pockets of a box (at most 262,144 voxels, a 64 m cube): joined empty voxels that
+reach neither the box's outer layer nor any cell holding a structure. Space reaching the box's edge may go on to the
+surface or a dug hallway (`open_to_edge`: search a bigger box); space joined to a frame, wall, pipe or device is part
+of the base (`touching_structures`). Each pocket gives `cells`, its bounds, a voxel `inside` it, any `players_inside`
+and `fill_box`, the box one voxel bigger than the pocket on every side. To fill one:
+
+```json
+{ "what": "terrain", "box": [[-880, 152, -566], [-863, 173, -555]], "mode": "voids" }
+```
+
+`min_cells` (default 8) leaves out the small pockets natural ground is full of. Read only.
 
 ## Finishing a half-built structure
 

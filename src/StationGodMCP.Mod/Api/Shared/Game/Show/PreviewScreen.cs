@@ -56,6 +56,10 @@ internal static class PreviewScreen
         {
             notes.Add("Nothing to draw: pass placements (or prefab and at), cells or boxes.");
         }
+        else if (!order.Xray)
+        {
+            notes.Add(PreviewOrder.HiddenNote);
+        }
 
         return new ShowPreviewView(boxes.Count, cleared, order.Seconds, plan, notes, audience.DrawnOn, audience.Source);
     }

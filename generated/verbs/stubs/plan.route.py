@@ -6,7 +6,7 @@ def plan(what: Literal['route'], *,
     reroute: dict = None,  # {id: [...]} or {between: [end, end]}: replace an old run; leave out start and end.
     trunk: dict = None,  # Bus mode instead of end: {waypoints} or {cells} every start branches from.
     grade: Literal['normal', 'heavy', 'super_heavy', 'gas', 'liquid', 'insulated_gas', 'insulated_liquid', 'chute'] = None,  # cable: normal, heavy (default), super_heavy; pipe (required): gas, liquid, insulated_gas, insulated_liquid; chute: chute.
-    style: Literal['supported', 'frame_edges', 'walls', 'hidden', 'inside_frames', 'free'] = 'supported',  # What the route keeps to.
+    style: Literal['supported', 'frame_edges', 'walls', 'hidden', 'inside_frames', 'free'] = 'supported',  # What the route keeps to. inside_frames: inside the frames' body only, never on a frame's face, leaving it only for the last 2 m to each end.
     allow: list[Literal['door_keepout', 'split']] = None,  # door_keepout: may enter a door keep-out; split: removals may split networks.
     split_long: bool = True,  # Split long straights the route meets.
     avoid: list[Literal['room_interior', 'walkways']] = None,  # Extra cost for room interiors or walkways.

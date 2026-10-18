@@ -383,6 +383,10 @@
     "description": "The player is dead; a heal does not revive. A powered cryo tube revives a body in it.",
     "see": {"verb": "write", "what": "health"}
   },
+  "player_in_fill": {
+    "description": "A voxel the fill would raise is where a player stands. Move them (move player) or leave their place out of the box.",
+    "see": {"verb": "build", "what": "terrain"}
+  },
   "player_not_found": {
     "description": "No player has that name or reference id; the message lists the players. Give one of them.",
     "see": {"verb": "move", "what": "player"}

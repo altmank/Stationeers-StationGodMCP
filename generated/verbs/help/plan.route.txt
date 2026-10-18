@@ -6,7 +6,7 @@ Options:
 - reroute (object): {id: [...]} or {between: [end, end]}: replace an old run; leave out start and end.
 - trunk (object): Bus mode instead of end: {waypoints} or {cells} every start branches from.
 - grade (normal | heavy | super_heavy | gas | liquid | insulated_gas | insulated_liquid | chute): cable: normal, heavy (default), super_heavy; pipe (required): gas, liquid, insulated_gas, insulated_liquid; chute: chute.
-- style (supported | frame_edges | walls | hidden | inside_frames | free, default supported): What the route keeps to.
+- style (supported | frame_edges | walls | hidden | inside_frames | free, default supported): What the route keeps to. inside_frames: inside the frames' body only, never on a frame's face, leaving it only for the last 2 m to each end.
 - allow (list of door_keepout | split): door_keepout: may enter a door keep-out; split: removals may split networks.
 - split_long (boolean, default true): Split long straights the route meets.
 - avoid (list of room_interior | walkways): Extra cost for room interiors or walkways.

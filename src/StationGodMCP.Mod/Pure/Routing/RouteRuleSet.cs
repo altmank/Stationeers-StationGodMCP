@@ -101,7 +101,7 @@ internal enum RoutePreference
 /// <summary>
 /// The route rules as a cost per cell (kind agnostic; the kind decides what blocks through the facts). A blocked cell
 /// or an axis another kind's piece lies along is never used; a cell holding the kind's own piece is never passed
-/// through (it would join that piece); inside_frames refuses cells on no frame (OnFrame); avoid_networks refuses cells
+/// through (it would join that piece); inside_frames refuses cells outside the frames' body but near an end (LastMile); avoid_networks refuses cells
 /// next to pieces of networks not named as the route's own ends' (so the route never runs beside another network);
 /// prefer adds PreferencePenalty to cells not preferred (hidden: HiddenCost by how visible the cell is); avoid_room_interior adds InteriorPenalty to cells in a
 /// room's 2 m cell on none of its face planes; avoid_walkways adds it to cells in a room's 2 m cell above its floor
@@ -151,8 +151,68 @@ internal sealed class RouteRuleSet
 
     internal RoutePreference Prefer { get; }
 
-    /// <summary>Refuse every cell not inside or on the surface of a frame (OnFrame).</summary>
+    /// <summary>
+    /// Refuse every cell not inside a frame's body (CellVisibility.Inside: every 2 m cell it touches holds a frame), so a
+    /// run never lies on a frame's surface plane in a room; only LastMile's cells, the stub from an end to the frames,
+    /// may leave it.
+    /// </summary>
     internal bool InsideFrames { get; }
+
+    /// <summary>
+    /// How far an inside_frames route may run outside the frames' body from an end: 4 small cells (2 m), enough to
+    /// reach from a port on a room's face (on the frames' surface plane or one cell off it) into the frames behind it.
+    /// </summary>
+    internal const int LastMileSteps = 4;
+
+    /// <summary>The cells an inside_frames route may use outside the frames' body: within LastMileSteps of an end.</summary>
+    internal HashSet<GridCell> LastMile { get; private set; } = new HashSet<GridCell>();
+
+    /// <summary>The same rules, with the last-mile cells around these ends (LastMileAround).</summary>
+    internal RouteRuleSet WithLastMile(IEnumerable<GridCell> ends)
+    {
+        RouteRuleSet copy = Copy(FramesFirst);
+        copy.InsideRule = InsideRule;
+        copy.LastMile = LastMileAround(ends);
+        return copy;
+    }
+
+    /// <summary>Every cell within LastMileSteps small-cell steps (face to face) of one of the ends, the ends included.</summary>
+    internal static HashSet<GridCell> LastMileAround(IEnumerable<GridCell> ends)
+    {
+        HashSet<GridCell> cells = new HashSet<GridCell>();
+        List<GridCell> ring = new List<GridCell>();
+        foreach (GridCell end in ends)
+        {
+            if (cells.Add(end))
+            {
+                ring.Add(end);
+            }
+        }
+
+        for (int step = 0; step < LastMileSteps; step++)
+        {
+            List<GridCell> next = new List<GridCell>();
+            foreach (GridCell cell in ring)
+            {
+                foreach (GridStep direction in GridStep.All)
+                {
+                    GridCell beside = direction.From(cell);
+                    if (cells.Add(beside))
+                    {
+                        next.Add(beside);
+                    }
+                }
+            }
+
+            ring = next;
+        }
+
+        return cells;
+    }
+
+    private RouteRuleSet Copy(bool framesFirst) =>
+        new RouteRuleSet(Prefer, InsideFrames, AvoidRoomInterior, AvoidWalkways, AvoidNetworks, OwnNetworks, AvoidIds,
+            AvoidOwn, framesFirst);
 
     /// <summary>Cells in air cost AirPenalty more: a route over frames or along walls wins whenever one exists.</summary>
     internal bool FramesFirst { get; }
@@ -192,18 +252,18 @@ internal sealed class RouteRuleSet
     /// <summary>The same rules, honouring a lint rule that wants every cell inside a frame's body.</summary>
     internal RouteRuleSet WithInsideRule(RouteLintRule? rule)
     {
-        RouteRuleSet copy = new RouteRuleSet(Prefer, InsideFrames, AvoidRoomInterior, AvoidWalkways, AvoidNetworks,
-            OwnNetworks, AvoidIds, AvoidOwn, FramesFirst);
+        RouteRuleSet copy = Copy(FramesFirst);
         copy.InsideRule = rule;
+        copy.LastMile = LastMile;
         return copy;
     }
 
     /// <summary>The same rules without frames_first.</summary>
     internal RouteRuleSet WithoutFramesFirst()
     {
-        RouteRuleSet copy = new RouteRuleSet(Prefer, InsideFrames, AvoidRoomInterior, AvoidWalkways, AvoidNetworks,
-            OwnNetworks, AvoidIds, AvoidOwn);
+        RouteRuleSet copy = Copy(false);
         copy.InsideRule = InsideRule;
+        copy.LastMile = LastMile;
         return copy;
     }
 
@@ -212,9 +272,20 @@ internal sealed class RouteRuleSet
     /// <summary>The cost of a cell; at: where it is, for InsideRule's exempt cells (null: none exempt).</summary>
     internal CellCost Cost(SmallCellFacts cell, GridCell? at)
     {
-        if (cell.Blocked != null || cell.FamilyPiece || (InsideFrames && !OnFrame(cell)))
+        if (cell.Blocked != null || cell.FamilyPiece)
         {
             return CellCost.Blocked;
+        }
+
+        bool lastMile = false;
+        if (InsideFrames && cell.Visibility != CellVisibility.Inside)
+        {
+            if (!(at is GridCell stub && LastMile.Contains(stub)))
+            {
+                return CellCost.Blocked;
+            }
+
+            lastMile = true;
         }
 
         bool lintFlags = InsideRule != null && cell.Visibility != CellVisibility.Inside &&
@@ -246,6 +317,11 @@ internal sealed class RouteRuleSet
         if (lintFlags)
         {
             cost += LintPenalty;
+        }
+
+        if (lastMile)
+        {
+            cost += SurfaceCost;
         }
 
         if (Prefer == RoutePreference.FrameEdges && cell.Support != CellSupport.FrameEdge)
@@ -320,8 +396,9 @@ internal sealed class RouteRuleSet
 /// A route planner's style: the one choice of what the route keeps to, as RouteRuleSet's preference, inside_frames
 /// and frames_first. supported (the default): a cell in air costs AirPenalty more, so a route over frames or along
 /// walls wins whenever one exists. frame_edges, walls and hidden: supported, and prefer those cells (hidden: the least
-/// visible route, inside a frame cheapest). inside_frames: only cells inside a frame or on its surface (the start and
-/// end cells excepted); no_route when none. free: the shortest route, air or not.
+/// visible route, inside a frame cheapest). inside_frames: only cells inside the frames' body, never on a frame's surface
+/// plane, except the last stretch to each end (RouteRuleSet.LastMile, 2 m); no_route when none. free: the shortest
+/// route, air or not.
 /// </summary>
 internal sealed class RouteStyle
 {

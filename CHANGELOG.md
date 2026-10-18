@@ -1,5 +1,30 @@
 # Changelog
 
+## 2.4.0
+
+Fill and level terrain, find underground voids, and strict inside_frames routes.
+
+- **New `build terrain` (a cheat): the reverse of the dig.** Fills a box's ground at once, with the same report, show
+  box and confirm flow as `remove terrain` (at most 32,768 voxels). `mode`: `solid` (default) fills every voxel;
+  `original` puts the box back to the generated ground, as the console's `voxelfillnear` does (dug ground filled,
+  added ground taken away); `level` with `level: y` makes a flat plane, ground under it filled and above it dug, so
+  the ground around buried frames can be smoothed to their edges; `voids` fills only the box's enclosed pockets. A
+  voxel whose cell holds a structure (frame, wall, pipe, cable, chute, device) is never touched, so ground stops at
+  the frames' faces; bedrock is never changed; a fill that would bury a player is refused (`player_in_fill`). Each
+  voxel is set as the game's dirt placement sets one (VoxelAdd), from the bottom up over frames, one slice per state
+  packet with clients. Where it digs, ore is dropped or discarded as `ores` says.
+- **New `find void`: underground pockets.** Joined empty voxels in a box (up to a 64 m cube) that reach neither the
+  box's edge nor a structure: dug or natural cavities apart from the base. Each gives its size, bounds, a voxel
+  inside, any player inside, and `fill_box` for `build terrain` with mode `voids`. Space reaching the box's edge and
+  space joined to the base are counted apart.
+- **`style: inside_frames` keeps the whole run inside the frames' body.** A piece on a frame's surface plane (the
+  face of a floor or wall in a room) was taken as inside, so runs lay along the room's floor and walls. Now every cell
+  must be inside the frames (each 2 m cell it touches holds a frame), except the last 2 m to each end, where the run
+  reaches a port on a room's face.
+- **show preview says when its lines can be hidden.** Boxes and cells always honoured `xray`; a drawing without it
+  now notes that walls, frames and terrain in front hide the lines, and the option's help says it covers boxes.
+- Python `sg` 0.4.6: the stubs carry the two new whats.
+
 ## 2.3.0
 
 Two cheats, for clearing ground and for a hurt player, and a placement fix.

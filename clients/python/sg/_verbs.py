@@ -11,7 +11,7 @@ def find(what, *, fields=None, as_player=None, name=None, prefab=None, category=
         made_since=None, location=None, near=None, radius=None, box=None, limit=None, order=None, within=None,
         group_by=None, holders=None, exclude_in_use=None, gateway=None, include=None, min_mol=None, ores=None,
         separation=None, step=None, id=None, verbose=None, min_damage=None, broken_only=None, structures_only=None,
-        text=None, **options):
+        min_cells=None, text=None, **options):
     """List things in the world or an area, filtered, nearest first. sg.help('find', what) gives a what in full."""
     return verb_call('find', what, {'fields': fields, 'as_player': as_player, 'name': name, 'prefab': prefab,
                      'category': category, 'labelled': labelled, 'runtime_type': runtime_type, 'broken': broken,
@@ -21,7 +21,7 @@ def find(what, *, fields=None, as_player=None, name=None, prefab=None, category=
                      'exclude_in_use': exclude_in_use, 'gateway': gateway, 'include': include, 'min_mol': min_mol,
                      'ores': ores, 'separation': separation, 'step': step, 'id': id, 'verbose': verbose,
                      'min_damage': min_damage, 'broken_only': broken_only, 'structures_only': structures_only,
-                     'text': text}, options)
+                     'min_cells': min_cells, 'text': text}, options)
 
 
 def inspect(what, *, fields=None, as_player=None, id=None, gateway=None, include=None, prefab=None, slot=None,
@@ -122,8 +122,8 @@ def build(what=None, *, fields=None, as_player=None, placements=None, prefab=Non
         color=None, materials=None, free=None, allow=None, include=None, verbose=None, acknowledge_gas_lost=None,
         from_plan=None, grade=None, waypoints=None, cells=None, piece=None, pieces=None, branches=None,
         extra_ends=None, join=None, split_long=None, remove_ids=None, assume_removed=None, allow_bridge=None,
-        root=None, join_to=None, join_trunk=None, refund_to=None, rows=None, blueprint=None, turn=None, id=None,
-        state=None, **options):
+        root=None, join_to=None, join_trunk=None, refund_to=None, rows=None, blueprint=None, turn=None, box=None,
+        mode=None, level=None, ores=None, id=None, state=None, **options):
     """Build new things as a player would, paying materials. sg.help('build', what) gives a what in full."""
     return verb_call('build', what, {'fields': fields, 'as_player': as_player, 'placements': placements, 'prefab':
                      prefab, 'at': at, 'rotation': rotation, 'spread': spread, 'facing': facing, 'up': up, 'face':
@@ -134,7 +134,8 @@ def build(what=None, *, fields=None, as_player=None, placements=None, prefab=Non
                      'branches': branches, 'extra_ends': extra_ends, 'join': join, 'split_long': split_long,
                      'remove_ids': remove_ids, 'assume_removed': assume_removed, 'allow_bridge': allow_bridge,
                      'root': root, 'join_to': join_to, 'join_trunk': join_trunk, 'refund_to': refund_to, 'rows':
-                     rows, 'blueprint': blueprint, 'turn': turn, 'id': id, 'state': state}, options)
+                     rows, 'blueprint': blueprint, 'turn': turn, 'box': box, 'mode': mode, 'level': level, 'ores':
+                     ores, 'id': id, 'state': state}, options)
 
 
 def swap(what, *, fields=None, as_player=None, id=None, room=None, into=None, prefab=None, materials=None,

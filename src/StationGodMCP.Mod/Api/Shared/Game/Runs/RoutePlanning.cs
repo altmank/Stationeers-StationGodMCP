@@ -109,7 +109,7 @@ internal static class RoutePlanning
         GridFacts facts = new GridFacts(kind, mask, ignore);
         List<long> own = end?.Networks ?? new List<long>();
         RouteLintRule? lintRule = LintRuleOf(kind, starts, end);
-        RouteRuleSet rules = Rules(order, kind, starts, own, false).WithInsideRule(lintRule);
+        RouteRuleSet rules = Rules(order, kind, starts, end, own, false).WithInsideRule(lintRule);
         List<string> notes = Notes(rules, assumed);
         if (lintRule != null)
         {
@@ -184,7 +184,7 @@ internal static class RoutePlanning
             else if (order.Join == JoinMode.All)
             {
                 foreach (object? step in Grow(order, starts, main, facts,
-                             Rules(order, kind, starts, own, true).WithInsideRule(lintRule), reserved, openings, grown))
+                             Rules(order, kind, starts, end, own, true).WithInsideRule(lintRule), reserved, openings, grown))
                 {
                     yield return step;
                 }
@@ -626,21 +626,12 @@ internal static class RoutePlanning
             return null;
         }
 
-        List<GridCell> ends = new List<GridCell>();
-        foreach (RouteEndpoint endpoint in end != null ? new List<RouteEndpoint>(starts) { end } : starts)
-        {
-            foreach (RouteEnd routeEnd in endpoint.Ends)
-            {
-                ends.Add(routeEnd.Cell);
-            }
-        }
-
-        return RouteLintRule.From(Lint.LintRuleFiles.Current(), Pure.Lint.LintRoute.InsideFrames, ends);
+        return RouteLintRule.From(Lint.LintRuleFiles.Current(), Pure.Lint.LintRoute.InsideFrames, EndCells(starts, end));
     }
 
     [Profiled]
-    private static RouteRuleSet Rules(RouteOrder order, RunKind kind, List<RouteEndpoint> starts, List<long> target,
-        bool avoidOwn)
+    private static RouteRuleSet Rules(RouteOrder order, RunKind kind, List<RouteEndpoint> starts, RouteEndpoint? end,
+        List<long> target, bool avoidOwn)
     {
         HashSet<long> own = new HashSet<long>(target);
         foreach (RouteEndpoint start in starts)
@@ -649,8 +640,9 @@ internal static class RoutePlanning
         }
 
         RouteStyle style = order.Style;
-        return new RouteRuleSet(style.Prefer, style.InsideFrames, order.AvoidRoomInterior, order.AvoidWalkways,
-            order.AvoidAllNetworks, own, AvoidedNetworks(order, kind), avoidOwn, style.FramesFirst);
+        RouteRuleSet rules = new RouteRuleSet(style.Prefer, style.InsideFrames, order.AvoidRoomInterior,
+            order.AvoidWalkways, order.AvoidAllNetworks, own, AvoidedNetworks(order, kind), avoidOwn, style.FramesFirst);
+        return style.InsideFrames ? rules.WithLastMile(EndCells(starts, end)) : rules;
     }
 
     // avoid_networks as a list: network handles, each naming a network of the kind (network_not_found otherwise).

@@ -30,9 +30,7 @@ namespace StationGodMCP.Api.Shared.Game;
 /// loop, Explosion.cs:65); a dig does that after each slice. Ore: Vein.TryMineServer makes the ore item and marks the
 /// minable mined (Vein.cs:645-663), Vein.TryRemoveServer only marks it (Vein.cs:665-675).
 ///
-/// The state packet's voxel list (SyncList.Add) checks every event already queued before adding one, so a dig goes in
-/// slices of SliceVoxels and, with clients connected, waits after each for a state packet written after it
-/// (JobReplication, its own gate): each packet carries one slice, as a mining charge's at most ~4,200 voxels go in one.
+/// The edits go over frames in slices (VoxelWork), one slice per state packet when clients are connected.
 /// </summary>
 internal static class TerrainDigs
 {
@@ -77,7 +75,7 @@ internal static class TerrainDigs
     internal static IPendingResult Dig(DigBox box, OreHandling ores) => new Digging(box, ores);
 
     // Counts the voxel as empty, kept at bedrock, or solid (to dig); true when solid.
-    private static bool Solid(VoxelPoint voxel, DigTally tally)
+    internal static bool Solid(VoxelPoint voxel, DigTally tally)
     {
         if (VoxelTerrain.GetDensityWorldSpace(new Vector3Int(voxel.X, voxel.Y, voxel.Z)) <= 0f)
         {
@@ -95,10 +93,10 @@ internal static class TerrainDigs
         return true;
     }
 
-    private static Vector3 At(VoxelPoint voxel) => new Vector3(voxel.X, voxel.Y, voxel.Z);
+    internal static Vector3 At(VoxelPoint voxel) => new Vector3(voxel.X, voxel.Y, voxel.Z);
 
     // The ore item a vein's minables make; null for stone, which makes none (VoxelTerrain.OrePrefabHash).
-    private static string? OreName(Vein vein)
+    internal static string? OreName(Vein vein)
     {
         int hash = VoxelTerrain.OrePrefabHash(vein.Data.Type);
         if (hash == PrefabHashmap.Invalid)
@@ -110,7 +108,7 @@ internal static class TerrainDigs
         return prefab != null ? prefab.PrefabName : vein.Data.Type.ToString();
     }
 
-    private static List<ThingView> PlayersIn(DigBox box)
+    internal static List<ThingView> PlayersIn(DigBox box)
     {
         List<ThingView> inside = new List<ThingView>();
         foreach (NamedPlayer<Human> player in PlayerOrigin.NamedPlayers())
@@ -125,120 +123,156 @@ internal static class TerrainDigs
     }
 
     /// <summary>
-    /// The dig over frames: each step digs voxels top down until the slice is full, the frame's share is spent or the
-    /// call must stop (WorkStop), then rebuilds the host's terrain over what it dug; with clients the next slice waits
-    /// for the state packet that carries this one.
+    /// Sets one voxel's density as the game's own diggers and dirt placement do (SetDensityWorldSpace with VoxelAdd when
+    /// it rises, VoxelRemove when it falls, dirtyLods false; the node type is left as stored, so the host and a client,
+    /// whose replay sets only the density, VoxelTerrain.cs:63-66, keep the same ground). When it takes the voxel under
+    /// half density the ore there is released as ores says, and counted.
     /// </summary>
-    private sealed class Digging : IPendingResult
+    internal static void Set(VoxelPoint voxel, byte density, bool opens, OreHandling ores, DigTally tally)
     {
-        private const int SliceVoxels = 512;
+        Vector3 at = At(voxel);
+        Vein? vein = opens ? Vein.GetVeinAtPosition(at) : null;
+        byte before = VoxelTerrain.GetNodeInfoWorldSpace(at).Density;
+        VoxelTerrain.SetDensityWorldSpace(at, AsFloat(density),
+            density > before ? RoomChangeSource.VoxelAdd : RoomChangeSource.VoxelRemove, dirtyLods: false);
+        if (vein == null || OreName(vein) is not { } ore)
+        {
+            return;
+        }
 
+        Vector3Int point = new Vector3Int(voxel.X, voxel.Y, voxel.Z);
+        switch (ores)
+        {
+            case OreHandling.Drop:
+                Vector3 centre = new Vector3(voxel.X + 0.5f, voxel.Y + 0.5f, voxel.Z + 0.5f);
+                if (vein.TryMineServer(point, out Ore created, centre))
+                {
+                    tally.Ore(ore, created != null ? created.Quantity : 0);
+                }
+
+                break;
+            case OreHandling.Discard:
+                if (vein.TryRemoveServer(point))
+                {
+                    tally.Ore(ore, null);
+                }
+
+                break;
+            default:
+                throw new System.InvalidOperationException($"Unknown ore handling {ores.Name}.");
+        }
+    }
+
+    // The float SetDensityWorldSpace turns back into this byte: it stores (byte)(Clamp01(f) * 255) (DensityToByte,
+    // VoxelTerrain.cs:946-949), while DensityToFloat gives b / 256 (the DensityArray, VoxelTerrain.cs:191-449), which
+    // would store one less.
+    private static float AsFloat(byte density) => Mathf.Clamp01((density + 0.5f) / 255f);
+
+    // The dig: each voxel above bedrock that is not empty goes to density 0.
+    private sealed class Digging : VoxelWork
+    {
         private readonly DigBox _box;
         private readonly OreHandling _ores;
-        private readonly IEnumerator<VoxelPoint> _voxels;
-        private readonly DigTally _tally = new DigTally();
-        private readonly ClientReplication _gate = new ClientReplication();
-        private bool _done;
 
         internal Digging(DigBox box, OreHandling ores)
+            : base(box.TopDown())
         {
             _box = box;
             _ores = ores;
-            _voxels = box.TopDown().GetEnumerator();
         }
 
-        public bool Step(double untilMs)
+        protected override bool Visit(VoxelPoint voxel)
         {
-            if (_done)
-            {
-                return true;
-            }
-
-            if (!JobReplication.MayStep(_gate))
+            if (!Solid(voxel, Tally))
             {
                 return false;
             }
 
-            RequireHost();
-            DugArea area = new DugArea();
-            while (area.Count < SliceVoxels)
-            {
-                if (!_voxels.MoveNext())
-                {
-                    _done = true;
-                    break;
-                }
-
-                VoxelPoint voxel = _voxels.Current;
-                if (Solid(voxel, _tally))
-                {
-                    DigOut(voxel);
-                    area.Add(voxel);
-                }
-
-                if (StopwatchClock.Instance.NowMs >= untilMs || WorkStop.Requested)
-                {
-                    break;
-                }
-            }
-
-            if (area.Count > 0)
-            {
-                Rebuild(area);
-                _gate.Changed(Time.frameCount);
-            }
-
-            return _done;
+            Set(voxel, Densities.Empty, true, _ores, Tally);
+            return true;
         }
 
-        public object Result() => new TerrainDigView(_box, _tally, _ores, PlayersIn(_box));
+        public override object Result() => new TerrainDigView(_box, Tally, _ores, PlayersIn(_box));
+    }
+}
 
-        private void DigOut(VoxelPoint voxel)
+/// <summary>
+/// Voxel edits over frames: each step visits voxels in the given order until the slice holds SliceVoxels changes, the
+/// frame's share is spent or the call must stop (WorkStop), then rebuilds the host's terrain over what changed (the
+/// game's own diggers do it once for their whole area, LodManager.DirtyLodsBounds after the loop, Explosion.cs:65);
+/// with clients connected the next slice waits for a state packet written after it (JobReplication, a gate of its own),
+/// so each packet's voxel list (SyncList.Add checks every queued event before adding one) carries one slice.
+/// </summary>
+internal abstract class VoxelWork : IPendingResult
+{
+    private const int SliceVoxels = 512;
+
+    private readonly IEnumerator<VoxelPoint> _voxels;
+    private readonly ClientReplication _gate = new ClientReplication();
+    private bool _done;
+
+    protected VoxelWork(IEnumerable<VoxelPoint> voxels)
+    {
+        _voxels = voxels.GetEnumerator();
+    }
+
+    protected DigTally Tally { get; } = new DigTally();
+
+    public bool Step(double untilMs)
+    {
+        if (_done)
         {
-            Vector3 at = At(voxel);
-            Vein? vein = Vein.GetVeinAtPosition(at);
-            VoxelTerrain.SetDensityWorldSpace(at, 0f, RoomChangeSource.VoxelRemove, dirtyLods: false);
-            if (vein == null || OreName(vein) is not { } ore)
+            return true;
+        }
+
+        if (!JobReplication.MayStep(_gate))
+        {
+            return false;
+        }
+
+        TerrainDigs.RequireHost();
+        ChangedArea area = new ChangedArea();
+        while (area.Count < SliceVoxels)
+        {
+            if (!_voxels.MoveNext())
             {
-                return;
+                _done = true;
+                break;
             }
 
-            Vector3Int point = new Vector3Int(voxel.X, voxel.Y, voxel.Z);
-            switch (_ores)
+            VoxelPoint voxel = _voxels.Current;
+            if (Visit(voxel))
             {
-                case OreHandling.Drop:
-                    Vector3 centre = new Vector3(voxel.X + 0.5f, voxel.Y + 0.5f, voxel.Z + 0.5f);
-                    if (vein.TryMineServer(point, out Ore created, centre))
-                    {
-                        _tally.Ore(ore, created != null ? created.Quantity : 0);
-                    }
+                area.Add(voxel);
+            }
 
-                    break;
-                case OreHandling.Discard:
-                    if (vein.TryRemoveServer(point))
-                    {
-                        _tally.Ore(ore, null);
-                    }
-
-                    break;
-                default:
-                    throw new System.InvalidOperationException($"Unknown ore handling {_ores.Name}.");
+            if (StopwatchClock.Instance.NowMs >= untilMs || WorkStop.Requested)
+            {
+                break;
             }
         }
 
-        // The host's terrain mesh and colliders over the slice, rebuilt once (LodManager.DirtyLodsBounds).
-        private static void Rebuild(DugArea area)
+        if (area.Count > 0)
         {
             LodManager lods = LodManager.Instance;
             if (lods != null)
             {
                 lods.DirtyLodsBounds(area.Min, area.Max);
             }
+
+            _gate.Changed(Time.frameCount);
         }
+
+        return _done;
     }
 
-    // The bounds of the voxels one slice dug.
-    private sealed class DugArea
+    public abstract object Result();
+
+    /// <summary>Edits one voxel, counting it into Tally; true when its density changed.</summary>
+    protected abstract bool Visit(VoxelPoint voxel);
+
+    // The bounds of the voxels one slice changed.
+    private sealed class ChangedArea
     {
         private Vector3Int _min;
         private Vector3Int _max;

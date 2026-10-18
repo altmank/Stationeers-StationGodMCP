@@ -16,6 +16,6 @@ Options:
 - seconds (number, default 30): How long to show.
 - keep (boolean, default false): Keep what earlier calls drew.
 - clear (boolean): Only remove what is drawn.
-- xray (boolean, default false): Draw through walls and terrain.
+- xray (boolean, default false): Draw everything, boxes and cells too, through walls, frames and terrain.
 Reply: shown, cleared, seconds, plan {ready, problems, warnings, placements, materials, from, free, notes}, notes, drawn_on, view {source, age_s}
 Example: show {what: "preview", prefab: "StructureWallLight", at: [716, 203, 668], facing: "-x"}

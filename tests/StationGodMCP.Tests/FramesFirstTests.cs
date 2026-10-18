@@ -151,23 +151,68 @@ public sealed class FramesFirstTests
     }
 
     [Fact]
-    public void InsideFramesTakesTheTopOfABeamAndRefusesTheGap()
+    public void InsideFramesKeepsInsideTheBeamAndTakesItsTopOnlyNearAnEnd()
     {
-        // The beam top y 204 belongs to the empty 2 m cell above (y 204 to 206); inside_frames once judged it by that
-        // cell alone and refused it.
+        // LU (2.4.0): inside means inside the frames' body; a piece on a frame's surface plane shows in the room. The
+        // beam top y 204 and the frame's top face are refused, the beam's inside taken; near an end (the last mile) the
+        // top and the air beside it are taken, at a cost.
         World world = Solar();
         RouteRuleSet rules = new RouteRuleSet(RoutePreference.None, true, false, false, false, new HashSet<long>(),
             new HashSet<long>());
-        Assert.False(world.Small(M(708, 204, 657)).Large.Frame);
-        Assert.True(rules.Cost(world.Small(M(708, 204, 657))).Passable);
-        Assert.True(rules.Cost(world.Small(M(707, 204, 657))).Passable);
+        Assert.Equal(CellVisibility.Inside, world.Small(M(707.5, 203, 657)).Visibility);
         Assert.True(rules.Cost(world.Small(M(707.5, 203, 657))).Passable);
-        Assert.True(rules.Cost(world.Small(M(698, 203, 657))).Passable);
-        Assert.True(rules.Cost(world.Small(M(704, 204, 664))).Passable);
+        Assert.False(rules.Cost(world.Small(M(708, 204, 657))).Passable);
+        Assert.False(rules.Cost(world.Small(M(707, 204, 657))).Passable);
+        Assert.False(rules.Cost(world.Small(M(704, 204, 664))).Passable);
         Assert.False(rules.Cost(world.Small(M(704, 204, 657))).Passable);
         Assert.False(rules.Cost(world.Small(M(705.5, 203, 657))).Passable);
-        Assert.False(rules.Cost(world.Small(M(708, 204.5, 657))).Passable);
-        Assert.False(rules.Cost(world.Small(M(697.5, 203, 657))).Passable);
+
+        RouteRuleSet near = rules.WithLastMile(new[] { M(708, 204, 657) });
+        Assert.True(near.Cost(world.Small(M(708, 204, 657)), M(708, 204, 657)).Passable);
+        Assert.True(near.Cost(world.Small(M(708, 204.5, 657)), M(708, 204.5, 657)).Passable);
+        Assert.True(near.Cost(world.Small(M(707, 204, 657)), M(707, 204, 657)).Passable);
+        Assert.False(near.Cost(world.Small(M(705.5, 204, 657)), M(705.5, 204, 657)).Passable);
+        Assert.True(near.Cost(world.Small(M(708, 204, 657)), M(708, 204, 657)).Cost >
+                    near.Cost(world.Small(M(707.5, 203, 657)), M(707.5, 203, 657)).Cost);
+    }
+
+    [Fact]
+    public void TheCryoRoomRouteStaysInsideTheFloorAndWallFrames()
+    {
+        // bt's cryo room: floor frames y 148-150, the west wall's frames x -914 to -912 up to y 156; the room is x > -912,
+        // y > 150. A tube port at (-911.5, 150, -556) on the floor and the tank port at (-912, 152, -551) on the wall. Live,
+        // inside_frames ran along x -912 and y 150, the frames' faces in the room.
+        World world = new World()
+            .Frames(-920, -906, 148, 150, -560, -544)
+            .Frames(-914, -912, 150, 156, -560, -544);
+        GridCell tube = M(-911.5, 150, -556);
+        GridCell tank = M(-912, 152, -551);
+        Plan plan = RouteInside(world, tube, tank);
+
+        Assert.NotNull(plan.Result.Cells);
+        HashSet<GridCell> lastMile = RouteRuleSet.LastMileAround(new[] { tube, tank });
+        foreach (GridCell cell in plan.Cells)
+        {
+            if (!lastMile.Contains(cell))
+            {
+                Assert.Equal(CellVisibility.Inside, world.Small(cell).Visibility);
+                Assert.False(cell.X == -9120 && cell.Y >= 1500, $"{cell} lies on the wall's face in the room");
+                Assert.False(cell.Y == 1500 && cell.X >= -9120, $"{cell} lies on the floor's face in the room");
+            }
+        }
+    }
+
+    // inside_frames as RoutePlanning sets it: the last mile around both ends, each cell's cost judged where it is.
+    private static Plan RouteInside(World world, GridCell from, GridCell to)
+    {
+        int pad = 60;
+        GridCell min = new GridCell(Math.Min(from.X, to.X) - pad, Math.Min(from.Y, to.Y) - pad, Math.Min(from.Z, to.Z) - pad);
+        GridCell max = new GridCell(Math.Max(from.X, to.X) + pad, Math.Max(from.Y, to.Y) + pad, Math.Max(from.Z, to.Z) + pad);
+        RouteRuleSet rules = new RouteRuleSet(RoutePreference.None, true, false, false, false, new HashSet<long>(),
+            new HashSet<long>()).WithLastMile(new[] { from, to });
+        RouteResult result = RoutePlanner.Find(RouteEnd.Open(from), RouteEnd.Open(to),
+            cell => rules.Cost(world.Small(cell), cell), new RouteRules(2.0, AxisOrder.Any, 400, min, max), null);
+        return new Plan(result, 0, 0);
     }
 
     [Fact]
