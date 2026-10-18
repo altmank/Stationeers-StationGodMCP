@@ -10,7 +10,7 @@ Options:
 - prefab (string or integer or array): Prefab: a whole name, a hash, or parts with * ('*Battery*', '*Tank*Insulated*': each part, any order); or a list of them.
 - cell_detail (occupancy | full, default occupancy): occupancy: cells {at, empty, frame_id, faces, small}; full: cells {at, room_id, frame, walls, small, support} in place of those.
 - occupied_only (boolean, default false): Only cells holding something.
-- limit (integer, default 8): 2 m cells per page.
+- limit (integer, default 8): 2 m cells per page; with sections that leave cells out, every cell is read.
 - offset (integer, default 0): Entries to skip.
 A big area is many pages (125 cells at most each), and output_file writes one page. For a whole area, page with offset (has_more) or use a smaller box per call.
 Reply: legend, cells [{at, room_id, frame, walls, small, support, empty, frame_id, faces, small}], count, offset, limit, total, has_more, pieces [{reference_id, kind, prefab_name, at, cell_count, cell_box, cells, ends, network_id, grade, flow, carries, refund}], devices [{reference_id, prefab_name, display_name, at, rotation, ports, umbilical}], networks, network_visibility [{network_id, kind, pieces, cells, air_at, refund}], doors [{reference_id, prefab_name, display_name, faces, plane, band_m, port_cells}]

@@ -53,7 +53,7 @@ internal static class SurveyArea
         SurveyCellDetail detail = SurveyCellDetails.Of(options.CellDetail);
         bool withCells = SurveySections.Of(options.Sections).Includes(SurveySection.Cells);
         System.Func<long, KeptCell?> live = key => KeptCell.Of(facts, CellKey.Cell(key), withCells, detail);
-        int limit = paging.Limit ?? int.MaxValue;
+        int limit = SurveySections.Of(options.Sections).PageLimit(paging.Limit);
         if (walk.Continues)
         {
             return Run(new Page(options, facts, FramedPage<KeptCell>.Later(walk, limit, live)));

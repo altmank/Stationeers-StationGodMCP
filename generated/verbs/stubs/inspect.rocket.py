@@ -34,5 +34,5 @@ def inspect(what: Literal['rocket'], *,
       explanations: list[str] | None
     Types: Vec3 = {x: float, y: float, z: float}
     Example: sg.inspect('rocket', compact=True)
-    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
     """

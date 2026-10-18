@@ -11,5 +11,5 @@ def inspect(what: Literal['reagents'], *,
       total: float
       reagents: list[{reagent: str, name: str | None, quantity: float, unit: str | None}]
     Example: sg.inspect('reagents', id='4191359')
-    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
     """

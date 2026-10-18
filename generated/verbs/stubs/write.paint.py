@@ -21,5 +21,5 @@ def write(what: Literal['paint'], *,
     Types: Color = {index: int | None, name: str | None, is_default: bool}; Error = {code: str, message: str, data: Any | None, see: {verb: str |
         None, what: str | None, topic: str | None, subtopic: str | None} | None}
     Example: sg.write('paint', network='4639870', kind='pipe', color='Red')
-    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
     """

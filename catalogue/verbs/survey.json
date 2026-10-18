@@ -70,7 +70,7 @@
         "limit": {
           "use": "limit",
           "schema": {"type": "integer", "minimum": 1, "maximum": 125},
-          "description": "2 m cells per page.",
+          "description": "2 m cells per page; with sections that leave cells out, every cell is read.",
           "default": "8",
           "x-script": "The first n in order (2 m cells); left out, every one."
         },

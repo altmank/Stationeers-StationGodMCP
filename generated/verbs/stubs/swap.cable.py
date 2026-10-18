@@ -69,5 +69,5 @@ def swap(what: Literal['cable'], *,
     Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}; Vec3 = {x: float, y: float, z: float}
     Job views, one per help call (help {topic: "types", subtopic: "<name>"} or sg.help('types', '<name>')): JobBusy, JobDropped, JobQueued, UpgradeJob
     Example: sg.swap('cable', network='3768865', into='super_heavy')
-    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
     """

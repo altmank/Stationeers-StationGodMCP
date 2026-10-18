@@ -68,7 +68,7 @@ public sealed class C2bReviewTests
             new ScriptedGate(new WriteDecision.Act()));
 
         List<GameCall> undos = game.CallsTo("undo").ToList();
-        Same("""{"id":["place-41"],"confirm":true}""", undos[0].Params());
+        Same("""{"id":"place-41","confirm":true}""", undos[0].Params());
         Same("""{"id":"place-42","confirm":false}""", undos[1].Params());
         Assert.True((bool)game.Single("build").Params()["confirm"]!);
     }
@@ -172,7 +172,7 @@ public sealed class C2bReviewTests
         JsonNode view = (await Run(pipeline, "inspect", "job", """{"id":"write-2"}""", Face.Script)).Done()!;
         JsonNode undone = pipeline.Call("undo", null, """{"id":["write-1","write-2"],"confirm":true}""").Done()!;
 
-        Assert.Equal("write-2", (string)view["results"]![0]!["payload"]!["job_id"]!);
+        Assert.Equal("write-2", (string)view["job_id"]!);
         List<string> order = game.CallsTo("write").Skip(2).Select(call => (string)call.Params()["labels"]![0]!["id"]!).ToList();
         Assert.Equal(new[] { "4", "3", "2", "1" }, order);
         Assert.Equal(2, (int)undone["success_count"]!);

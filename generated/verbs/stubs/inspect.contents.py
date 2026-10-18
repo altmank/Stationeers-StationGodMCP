@@ -38,5 +38,5 @@ def inspect(what: Literal['contents'], *,
           contents: list[{prefab_name: str | None, quantity: float}], rots_when_taken: bool}], cursor_id: str | None} | None
     Types: Vec3 = {x: float, y: float, z: float}
     Example: sg.inspect('contents', id='player')
-    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
     """

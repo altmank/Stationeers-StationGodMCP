@@ -21,5 +21,5 @@ def inspect(what: Literal['genes'], *,
     Types: Error = {code: str, message: str, data: Any | None, see: {verb: str | None, what: str | None, topic: str | None, subtopic: str | None} |
         None}; Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}
     Example: sg.inspect('genes', id='3311223')
-    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
     """

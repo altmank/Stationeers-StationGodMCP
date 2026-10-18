@@ -300,7 +300,7 @@ def find(what: Literal['plant'], *,
       day_length_s: int
       debug_fast_growth: bool
     Example: sg.find('plant')
-    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
     """
 
 @overload
@@ -322,7 +322,7 @@ def find(what: Literal['room'], *,
       local_player_room_id: str | None
     Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}; Vec3 = {x: float, y: float, z: float}
     Example: sg.find('room', id='4820585')
-    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
     """
 
 @overload
@@ -436,7 +436,7 @@ def inspect(what: Literal['device'], *,
       writable: list[str]
     Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}
     Example: sg.inspect('device', id='4820585')
-    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
     """
 
 @overload
@@ -496,7 +496,7 @@ def inspect(what: Literal['slots'], *,
       slot_count: int
     Types: LogicType = {id: int, name: str | None}
     Example: sg.inspect('slots', id='1199811')
-    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
     """
 
 @overload
@@ -540,7 +540,7 @@ def inspect(what: Literal['contents'], *,
           contents: list[{prefab_name: str | None, quantity: float}], rots_when_taken: bool}], cursor_id: str | None} | None
     Types: Vec3 = {x: float, y: float, z: float}
     Example: sg.inspect('contents', id='player')
-    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
     """
 
 @overload
@@ -610,7 +610,7 @@ def inspect(what: Literal['health'], *,
     Types: Error = {code: str, message: str, data: Any | None, see: {verb: str | None, what: str | None, topic: str | None, subtopic: str | None} |
         None}; Vec3 = {x: float, y: float, z: float}
     Example: sg.inspect('health', network='5012345', kind='pipe', damaged_only=True)
-    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
     """
 
 @overload
@@ -632,7 +632,7 @@ def inspect(what: Literal['connections'], *,
     Types: Color = {index: int | None, name: str | None, is_default: bool}; Thing = {reference_id: str, prefab_name: str | None, display_name: str |
         None}; Vec3 = {x: float, y: float, z: float}
     Example: sg.inspect('connections', id=['2514519', '3575779'])
-    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
     """
 
 @overload
@@ -651,7 +651,7 @@ def inspect(what: Literal['atmosphere'], *,
           polluted_l: float, steam_mol: float, steam_if_condensed_l: float}} | None}]
       count: int
     Example: sg.inspect('atmosphere', id='2005300')
-    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
     """
 
 @overload
@@ -668,7 +668,7 @@ def inspect(what: Literal['reagents'], *,
       total: float
       reagents: list[{reagent: str, name: str | None, quantity: float, unit: str | None}]
     Example: sg.inspect('reagents', id='4191359')
-    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
     """
 
 @overload
@@ -695,7 +695,7 @@ def inspect(what: Literal['genes'], *,
     Types: Error = {code: str, message: str, data: Any | None, see: {verb: str | None, what: str | None, topic: str | None, subtopic: str | None} |
         None}; Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}
     Example: sg.inspect('genes', id='3311223')
-    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
     """
 
 @overload
@@ -766,7 +766,7 @@ def inspect(what: Literal['chip'], *,
       batch_device_count: int | None
     Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}
     Example: sg.inspect('chip', id='4820585', parts=['status', 'source'])
-    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
     """
 
 @overload
@@ -799,7 +799,7 @@ def inspect(what: Literal['screen'], *,
       image: {path: str, surface: str, width: int, height: int} | None
     Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}
     Example: sg.inspect('screen', id='4860097', text='error')
-    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
     """
 
 @overload
@@ -839,7 +839,7 @@ def inspect(what: Literal['rocket'], *,
       explanations: list[str] | None
     Types: Vec3 = {x: float, y: float, z: float}
     Example: sg.inspect('rocket', compact=True)
-    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
     """
 
 @overload
@@ -855,7 +855,7 @@ def inspect(what: Literal['vault'], *,
       count: int
     Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}; Vec3 = {x: float, y: float, z: float}
     Example: sg.inspect('vault')
-    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
     """
 
 @overload
@@ -1017,7 +1017,7 @@ def inspect(what: Literal['job'], *,
     Job views, one per help call (help {topic: "types", subtopic: "<name>"} or sg.help('types', '<name>')): BuildJob, JobQueued, RunJob, SwapJob,
         UpgradeJob
     Example: sg.inspect('job', id='place-41')
-    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
     """
 
 @overload
@@ -1032,7 +1032,7 @@ def inspect(what: Literal['controllers'], *,
       controllers: list[{reference_id: str, display_name: str | None, kind: str, how: str, logic_types: list[str], line: int | None, on: bool | None}]
       count: int
     Example: sg.inspect('controllers', id='4936423')
-    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
     """
 
 @overload
@@ -1210,7 +1210,7 @@ def survey(what: Literal['feeds'], *,
       unreached: list[Thing]
     Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}; Vec3 = {x: float, y: float, z: float}
     Example: sg.survey('feeds', id='720259')
-    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
     """
 
 @overload
@@ -1254,7 +1254,7 @@ def read(what: Literal['logic'], *,
     Types: Error = {code: str, message: str, data: Any | None, see: {verb: str | None, what: str | None, topic: str | None, subtopic: str | None} |
         None}; LogicType = {id: int, name: str | None}
     Example: sg.read('logic', id=['1199811', '1199812'], logic=['Pressure', 'Temperature'])
-    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
     """
 
 @overload
@@ -1277,7 +1277,7 @@ def read(what: Literal['snapshot'], *,
       count: int
       matched_count: int
     Example: sg.read('snapshot', prefab='StructureBatteryLarge', limit=10)
-    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
     """
 
 @overload
@@ -1297,7 +1297,7 @@ def read(what: Literal['memory'], *,
       count: int
       stack_size: int | None
     Example: sg.read('memory', id='4820585', start=0, count=32)
-    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
     """
 
 @overload
@@ -1387,7 +1387,7 @@ def read(what: Literal['flight_log'], *,
           burn_time_s: float, rule: str}], offset: int, every: int, has_more: bool}]
       count: int
     Example: sg.read('flight_log', limit=20)
-    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
     """
 
 @overload
@@ -1421,7 +1421,7 @@ def write(what: Literal['logic'], *,
     Types: Error = {code: str, message: str, data: Any | None, see: {verb: str | None, what: str | None, topic: str | None, subtopic: str | None} |
         None}; LogicType = {id: int, name: str | None}
     Example: sg.write('logic', id='4820585', logic='On', value=1)
-    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
     """
 
 @overload
@@ -1564,7 +1564,7 @@ def write(what: Literal['label'], *,
     Types: Error = {code: str, message: str, data: Any | None, see: {verb: str | None, what: str | None, topic: str | None, subtopic: str | None} |
         None}
     Example: sg.write('label', id='1199811', label='O2 Tank 1')
-    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
     """
 
 @overload
@@ -1591,7 +1591,7 @@ def write(what: Literal['paint'], *,
     Types: Color = {index: int | None, name: str | None, is_default: bool}; Error = {code: str, message: str, data: Any | None, see: {verb: str |
         None, what: str | None, topic: str | None, subtopic: str | None} | None}
     Example: sg.write('paint', network='4639870', kind='pipe', color='Red')
-    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
     """
 
 @overload
@@ -1696,7 +1696,7 @@ def write(what: Literal['battery'], *,
     Types: Error = {code: str, message: str, data: Any | None, see: {verb: str | None, what: str | None, topic: str | None, subtopic: str | None} |
         None}; Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}
     Example: sg.write('battery', within='player')
-    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
     """
 
 @overload
@@ -1892,7 +1892,7 @@ def plan(what: Literal['removal'], *,
       notes: list[str] | None
     Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}; Vec3 = {x: float, y: float, z: float}
     Example: sg.plan('removal', kind='cable', network='3768865')
-    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
     """
 
 @overload
@@ -1980,7 +1980,7 @@ def plan(what: Literal['flight'], *,
       mining: {site: str, kind: str, collectable: bool, units_per_hour: float, units_in_stop: float, slots_in_stop: int, problems: list[str] | None} |
           None
     Example: sg.plan('flight', id='4067059', node='pad')
-    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
     """
 
 @overload
@@ -2011,7 +2011,7 @@ def plan(what: Literal['mining'], *,
       count: int
       notes: list[str]
     Example: sg.plan('mining', collectable_only=True)
-    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
     """
 
 @overload
@@ -2058,7 +2058,7 @@ def plan(what: Literal['aim'], *,
       stale_pose_deg: float
       samples: int
     Example: sg.plan('aim', id='3300111')
-    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
     """
 
 @overload
@@ -2090,7 +2090,7 @@ def check(what: Literal['layout'], *,
           rule_id: str | None, field: str | None, line: int, column: int, position: int | None, message: str}]}
       elapsed_ms: float
     Example: sg.check('layout', room='17')
-    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
     """
 
 @overload
@@ -2122,7 +2122,7 @@ def check(what: Literal['rules'], *,
           str, values: list[str]}]}] | None
       valid: bool | None
     Example: sg.check('rules', action='explain', rule='door_keepout', id='1199811')
-    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
     """
 
 @overload
@@ -2145,7 +2145,7 @@ def check(what: Literal['replaceable'], *,
     Types: Error = {code: str, message: str, data: Any | None, see: {verb: str | None, what: str | None, topic: str | None, subtopic: str | None} |
         None}
     Example: sg.check('replaceable', id='r12.things')
-    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
     """
 
 @overload
@@ -2181,7 +2181,7 @@ def check(what: Literal['ignition'], *,
     Types: Error = {code: str, message: str, data: Any | None, see: {verb: str | None, what: str | None, topic: str | None, subtopic: str | None} |
         None}; Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}; Vec3 = {x: float, y: float, z: float}
     Example: sg.check('ignition', id='2005300')
-    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
     """
 
 @overload
@@ -2644,7 +2644,7 @@ def build(what: Literal['finish'], *,
     Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}; Error = {code: str, message: str, data: Any | None, see:
         {verb: str | None, what: str | None, topic: str | None, subtopic: str | None} | None}
     Example: sg.build('finish', id='1199811', state=2)
-    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
     """
 
 @overload
@@ -2708,7 +2708,7 @@ def swap(what: Literal['wall'], *,
     Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}; Vec3 = {x: float, y: float, z: float}
     Job views, one per help call (help {topic: "types", subtopic: "<name>"} or sg.help('types', '<name>')): JobBusy, JobDropped, JobQueued, SwapJob
     Example: sg.swap('wall', room='17', into='StructureCompositeWall')
-    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
     """
 
 @overload
@@ -2765,7 +2765,7 @@ def swap(what: Literal['frame'], *,
     Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}; Vec3 = {x: float, y: float, z: float}
     Job views, one per help call (help {topic: "types", subtopic: "<name>"} or sg.help('types', '<name>')): JobBusy, JobDropped, JobQueued, SwapJob
     Example: sg.swap('frame', room='17')
-    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
     """
 
 @overload
@@ -2840,7 +2840,7 @@ def swap(what: Literal['cable'], *,
     Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}; Vec3 = {x: float, y: float, z: float}
     Job views, one per help call (help {topic: "types", subtopic: "<name>"} or sg.help('types', '<name>')): JobBusy, JobDropped, JobQueued, UpgradeJob
     Example: sg.swap('cable', network='3768865', into='super_heavy')
-    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
     """
 
 @overload
@@ -2916,7 +2916,7 @@ def swap(what: Literal['pipe'], *,
     Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}; Vec3 = {x: float, y: float, z: float}
     Job views, one per help call (help {topic: "types", subtopic: "<name>"} or sg.help('types', '<name>')): JobBusy, JobDropped, JobQueued, UpgradeJob
     Example: sg.swap('pipe', network='5012345', into='insulated')
-    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
     """
 
 @overload
@@ -2987,7 +2987,7 @@ def swap(what: Literal['chute'], *,
     Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}; Vec3 = {x: float, y: float, z: float}
     Job views, one per help call (help {topic: "types", subtopic: "<name>"} or sg.help('types', '<name>')): JobBusy, JobDropped, JobQueued, UpgradeJob
     Example: sg.swap('chute', network='6100100')
-    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
     """
 
 @overload
@@ -3036,7 +3036,7 @@ def remove(what: Literal['structure'], *,
     Job views, one per help call (help {topic: "types", subtopic: "<name>"} or sg.help('types', '<name>')): BuildJob, JobBusy, JobDropped, JobQueued,
         RunJob
     Example: sg.remove('structure', id=['1559707'])
-    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
     """
 
 @overload
@@ -3102,7 +3102,7 @@ def remove(what: Literal['cable'], *,
     Job views, one per help call (help {topic: "types", subtopic: "<name>"} or sg.help('types', '<name>')): BuildJob, JobBusy, JobDropped, JobQueued,
         RunJob
     Example: sg.remove('cable', id=['3763565'])
-    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
     """
 
 @overload
@@ -3169,7 +3169,7 @@ def remove(what: Literal['pipe'], *,
     Job views, one per help call (help {topic: "types", subtopic: "<name>"} or sg.help('types', '<name>')): BuildJob, JobBusy, JobDropped, JobQueued,
         RunJob
     Example: sg.remove('pipe', id=['3763565'])
-    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
     """
 
 @overload
@@ -3235,7 +3235,7 @@ def remove(what: Literal['chute'], *,
     Job views, one per help call (help {topic: "types", subtopic: "<name>"} or sg.help('types', '<name>')): BuildJob, JobBusy, JobDropped, JobQueued,
         RunJob
     Example: sg.remove('chute', id=['3763565'])
-    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
     """
 
 @overload
@@ -3498,7 +3498,7 @@ def trade(what: Literal['inventory'], *,
     Types: Error = {code: str, message: str, data: Any | None, see: {verb: str | None, what: str | None, topic: str | None, subtopic: str | None} |
         None}
     Example: sg.trade('inventory', id='7')
-    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
     """
 
 @overload
@@ -3566,7 +3566,7 @@ def trade(what: Literal['buy'], *,
     Types: Error = {code: str, message: str, data: Any | None, see: {verb: str | None, what: str | None, topic: str | None, subtopic: str | None} |
         None}; Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}
     Example: sg.trade('buy', id='7', items=[{'prefab': 'ItemIronIngot', 'quantity': 50}])
-    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
     """
 
 @overload
@@ -3634,7 +3634,7 @@ def trade(what: Literal['sell'], *,
     Types: Error = {code: str, message: str, data: Any | None, see: {verb: str | None, what: str | None, topic: str | None, subtopic: str | None} |
         None}; Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}
     Example: sg.trade('sell', id='7', items=[{'prefab': 'ItemGoldIngot', 'quantity': 20}])
-    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
     """
 
 @overload
@@ -3766,7 +3766,7 @@ def undo(*,
     Types: Error = {code: str, message: str, data: Any | None, see: {verb: str | None, what: str | None, topic: str | None, subtopic: str | None} |
         None}
     Example: sg.undo(id='place-41')
-    In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.
+    One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
     """
 
 @overload

@@ -73,6 +73,13 @@ internal sealed class SurveySections
 
     internal bool Includes(SurveySection part) => (_parts & part) == part;
 
+    /// <summary>
+    /// How many cells one page reads: the call's limit while the reply lists the cells (the page they are on), and every
+    /// cell of the area when it leaves them out, so pieces and devices come from the whole area in one reply, never
+    /// from a first page of cells a caller cannot see or page on.
+    /// </summary>
+    internal int PageLimit(int? asked) => Includes(SurveySection.Cells) ? asked ?? int.MaxValue : int.MaxValue;
+
     /// <summary>The list when its part was asked for, else null (left out of the reply).</summary>
     internal List<T>? Pick<T>(SurveySection part, List<T> list) => Includes(part) ? list : null;
 }

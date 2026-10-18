@@ -17,9 +17,9 @@ internal static class VerbStubs
 {
     internal const int Width = 150;
 
-    // SPEC-NOTES note 28 (D13): in a script a per-id what answers the list wrapper whether given one id or a list.
+    // In a script a per-id what answers as the direct call does: one id the reply above, a list the rows.
     internal const string IdListLine =
-        "In a script this always answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above, given one id or a list.";
+        "One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.";
 
     internal const string PlacedLine =
         "placed: list[str] on a job reply, the new ids (a run's log.placed, a structure job's result.placed; a brief " +

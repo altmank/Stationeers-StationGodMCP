@@ -62,7 +62,7 @@ Per write what (`write`):
   prefab too, out of a store (with source) as well as into one.
 - Hand-declared reply shapes (no typed view existed): help,
   inspect job, move gas, read sample, server stop, undo.
-- Scripts (v9): two routes, no run repeat; in a script, per-id whats always answer `{results: [...]}` (note 28). The
+- Scripts (v9): two routes, no run repeat; a script call answers as the direct call does: one id the what's one-id shape, an id list `{results: [...]}`. The
   direct face keeps `repeat: "rN"` (call a ref again; face register D2).
 
 ## Generating and checking
