@@ -50,19 +50,29 @@ internal sealed class RefundReceivers
     /// <summary>
     /// The receivers of a route. A container a chain names must exist and have slots (refund_target_not_found or
     /// refund_target_not_container otherwise, as refusals); a target whose need is missing is skipped, with a
-    /// warning when the caller named the chain (the default skips quietly). fromNamed: whether the request passed
-    /// from_id (from is then null when it names no thing).
+    /// warning when the caller named the chain (the default skips quietly). The default with no player and no
+    /// materials holder gives nothing back (RefundChainRule.Effective), with a refund_nothing warning. fromNamed:
+    /// whether the request passed from_id (from is then null when it names no thing).
     /// </summary>
     internal static RefundReceivers Resolve(RefundRoute route, Thing? from, bool fromNamed, Vector3? pieceGround,
         List<GuardFinding> findings)
     {
         Human? player = from is Human human ? human : PlayerOrigin.Current().Player;
+        RefundFrom named = !fromNamed ? RefundFrom.Absent : from != null ? RefundFrom.Found : RefundFrom.Missing;
+        RefundRoute effective = RefundChainRule.Effective(route, player != null, named);
+        if (!ReferenceEquals(effective, route))
+        {
+            findings.Add(new GuardFinding("refund_nothing", GuardLevel.Warning,
+                "There is no player and no materials holder: nothing is given back. Name refund_to (a container's " +
+                "id, or ground) to keep the refund."));
+            route = effective;
+        }
+
         List<RefundTarget> usable = new List<RefundTarget>();
         Dictionary<long, Thing> containers = new Dictionary<long, Thing>();
         List<string> skipped = new List<string>();
         if (route is RefundRoute.Chain chain)
         {
-            RefundFrom named = !fromNamed ? RefundFrom.Absent : from != null ? RefundFrom.Found : RefundFrom.Missing;
             bool storage = from != null && Refunds.InventorySlots(from, Refunds.StoredIn(from)).Count > 0;
             RefundReach reach = new RefundReach(player != null, from is Stackable, storage, named);
             usable = RefundChainRule.Usable(chain.Targets, reach, skipped);

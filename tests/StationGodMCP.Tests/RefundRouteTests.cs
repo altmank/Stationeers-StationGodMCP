@@ -260,4 +260,19 @@ public sealed class RefundLedgerTests
         Assert.Contains("\"target\":\"ground\",\"where\":\"ground\",\"fallback\":true}", json);
         Assert.Contains("\"on_ground_as_fallback\":3", json);
     }
+
+    // A headless world: refund_to left out, no player and no materials gives nothing back, rather than kits and coils
+    // on the ground; a route the call names, or a materials holder, still receives the refund.
+    [Fact]
+    public void TheDefaultRefundWithNoPlayerAndNoHolderGivesNothingBack()
+    {
+        Assert.Same(RefundRoute.Nothing, RefundChainRule.Effective(RefundRoute.Default, player: false, RefundFrom.Absent));
+        Assert.Same(RefundRoute.Default, RefundChainRule.Effective(RefundRoute.Default, player: true, RefundFrom.Absent));
+        Assert.Same(RefundRoute.Default, RefundChainRule.Effective(RefundRoute.Default, player: false, RefundFrom.Found));
+        Assert.Same(RefundRoute.Default, RefundChainRule.Effective(RefundRoute.Default, player: false, RefundFrom.Missing));
+        RefundRoute ground = RefundRoute.OfWord("ground")!;
+        Assert.Same(ground, RefundChainRule.Effective(ground, player: false, RefundFrom.Absent));
+        RefundRoute named = RefundRoute.OfWords(new[] { "inventory", "source", "storage", "ground" }, out _)!;
+        Assert.Same(named, RefundChainRule.Effective(named, player: false, RefundFrom.Absent));
+    }
 }

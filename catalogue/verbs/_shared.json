@@ -120,7 +120,7 @@
     },
     "refund_to": {
       "schema": {"type": ["string", "integer", "array"]},
-      "description": "Where removed materials go: a word (inventory, source, storage, ground, none), a container id, or a list tried in turn.",
+      "description": "Where removed materials go: a word (inventory, source, storage, ground, none), a container id, or a list tried in turn. Left out with no player and no materials: none.",
       "default": "[inventory, source, storage, ground]",
       "x-script": "same"
     },

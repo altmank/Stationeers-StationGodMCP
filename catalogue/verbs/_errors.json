@@ -411,6 +411,9 @@
   "refund_failed": {
     "description": "Giving the refund_to back failed; the message says why. Check refund_to, then the ground in front of the code."
   },
+  "refund_nothing": {
+    "description": "A warning: there is no player and no materials holder, so refund_to left out gives nothing back. Name refund_to (a container's id, or ground) to keep the refund."
+  },
   "refused": {
     "description": "The atmosphere is a single world cell, which gas is not moved to or from. Name its room ({room} or {room_of}) instead.",
     "see": {"verb": "inspect", "what": "job"}

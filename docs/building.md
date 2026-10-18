@@ -70,7 +70,9 @@ This applies to every tool that changes the world: the `build`, `swap` and `remo
    | a reference id | Exactly that container and what is stored in it (as a string or a number). |
    | `ground` | A metre in front of `materials` or the player, at rest; where the first piece stood when there is neither. |
 
-   The default is `["inventory", "source", "storage", "ground"]`. Each target first tops up matching stacks, then
+   The default is `["inventory", "source", "storage", "ground"]`; with no player in the world and no `materials`
+   it gives nothing back (warning `refund_nothing`), so a headless removal drops no kits: name `refund_to` to keep
+   the refund. Each target first tops up matching stacks, then
    makes new stacks in empty slots that take the item, a holder's own slots before those of the items in them. Never
    a hidden slot, a body slot (hands, suit, helmet: only the slots of worn and held items) or a stack's own slot, such
    as a cable coil's: the game destroys what is in it with the coil. What fits no target goes on the ground in front

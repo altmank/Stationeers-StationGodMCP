@@ -309,6 +309,14 @@ internal static class RefundChainRule
     }
 
     /// <summary>
+    /// The route a refund takes: refund_to left out (the default chain), with no player and no materials holder named,
+    /// gives nothing back, so a world with nobody in it gets no kits dropped on the ground; any route the call names is
+    /// kept as named.
+    /// </summary>
+    internal static RefundRoute Effective(RefundRoute route, bool player, RefundFrom from) =>
+        ReferenceEquals(route, RefundRoute.Default) && !player && from == RefundFrom.Absent ? RefundRoute.Nothing : route;
+
+    /// <summary>
     /// Whether a refund along the route goes into from_id: the single word source, or a chain that names source or
     /// storage (the default does). Checked against the targets asked for, before any is skipped.
     /// </summary>

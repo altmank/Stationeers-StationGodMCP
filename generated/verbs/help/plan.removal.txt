@@ -8,7 +8,7 @@ Options:
 - root (string): For would_split's cut-off; default every supplier.
 - allow (list of split): split: report would_split as allowed.
 - materials (string or array): Holder(s) that pay materials and take source refunds, tried in order; ids or "player". Default the player.
-- refund_to (string or integer or array, default [inventory, source, storage, ground]): Where removed materials go: a word (inventory, source, storage, ground, none), a container id, or a list tried in turn.
+- refund_to (string or integer or array, default [inventory, source, storage, ground]): Where removed materials go: a word (inventory, source, storage, ground, none), a container id, or a list tried in turn. Left out with no player and no materials: none.
 - include (list of links | notes | network_devices): Parts to add to the reply.
 - rows (integer, default 5): Pieces listed; 0 for none.
 Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the one-id reply; a bad id is a row with error.

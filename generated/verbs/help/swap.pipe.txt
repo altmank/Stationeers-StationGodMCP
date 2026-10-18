@@ -12,7 +12,7 @@ Options:
 - acknowledge_gas_lost (string): The job id whose gas loss you accept (with the user's agreement); lifts the gas hold.
 - materials (string or array): Holder(s) that pay materials and take source refunds, tried in order; ids or "player". Default the player.
 - skip_unmatched (boolean, default false): Leave pieces that cannot change as they are instead of refusing.
-- refund_to (string or integer or array, default [inventory, source, storage, ground]): Where removed materials go: a word (inventory, source, storage, ground, none), a container id, or a list tried in turn.
+- refund_to (string or integer or array, default [inventory, source, storage, ground]): Where removed materials go: a word (inventory, source, storage, ground, none), a container id, or a list tried in turn. Left out with no player and no materials: none.
 - include (list of notes | network_devices): notes: fixed text; network_devices: each network's devices in the job's verification.
 - rows (integer, default 5): Pieces listed per list.
 - verbose (boolean, default false): The long form of the reply.
