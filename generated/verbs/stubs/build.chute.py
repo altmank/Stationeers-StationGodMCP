@@ -26,6 +26,7 @@ def build(what: Literal['chute'], *,
 ) -> dict:  # main list: r['cells']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """A chute run or pieces from Kit (Chute), source to sink, with flow guards.
     A build that pays from the player's inventory (materials left out, or "player") carries the warning materials_from_player. With from_plan, what may be left out: it comes from the plan.
+    Ending on an existing piece takes no hand swap: a run cell on a piece of the kind, a run end meeting one (join ends), or a piece's end pointing into one makes that piece the junction it needs in the same job (listed changed). To end on a network rather than a cell, give join_to with join_trunk: true.
     Reports in a report run; acts in a confirmed run.
     Cheat when free: true: ask the user first.
     placed: list[str] on a job reply, the new ids (a run's log.placed, a structure job's result.placed; a brief poll counts them in log.placed_count); int on a run report, the cells it would build.
