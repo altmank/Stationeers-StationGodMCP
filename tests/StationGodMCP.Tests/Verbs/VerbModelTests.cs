@@ -143,6 +143,26 @@ public sealed class VerbModelTests
         Assert.False(GameCatalogue.BuiltIn.ResendSafe("build", Json("""{"what":"cable","confirm":true}""")));
     }
 
+    [Theory]
+    [InlineData("server", "info")]
+    [InlineData("server", "console")]
+    [InlineData("trade", "contacts")]
+    [InlineData("show", "highlight")]
+    public void AReadWhatOfAWriteVerbReads(string verb, string what)
+    {
+        // server info at the main menu was refused as a write with no world loaded.
+        Assert.Equal("read", GameCatalogue.BuiltIn.EffectiveClass(verb, Json($$"""{"what":"{{what}}"}""")));
+        Assert.True(GameCatalogue.BuiltIn.ResendSafe(verb, Json($$"""{"what":"{{what}}"}""")));
+    }
+
+    [Fact]
+    public void AWriteWhatOfTheSameVerbStillWrites()
+    {
+        Assert.Equal("write", GameCatalogue.BuiltIn.EffectiveClass("server", Json("""{"what":"stop"}""")));
+        Assert.Equal("write", GameCatalogue.BuiltIn.EffectiveClass("trade",
+            Json("""{"what":"buy","confirm":true}""")));
+    }
+
     [Fact]
     public void ACheatWhatIsACheatWhenItSaysSoOrItsOptionIsSet()
     {

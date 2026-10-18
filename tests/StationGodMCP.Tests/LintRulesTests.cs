@@ -575,6 +575,27 @@ public sealed class LintChipProgramTests
         Assert.Equal("On", ops[2].Logic);
         Assert.Null(ops[2].NameHash);
     }
+
+    [Fact]
+    public void LuaCallsInCommentsAreNotRead()
+    {
+        string source = "-- ic.write(0, \"On\", 1)\n" +
+                        "--[[ batch_write(hash(\"StructureGasSensor\"), \"On\", 1)\n" +
+                        "ic.write(2, \"On\", 1) ]]\n" +
+                        "--[==[ ic.write(3, \"On\", 1) ]==]\n" +
+                        "ic.write(1, \"Setting\", 2) -- ic.write(4, \"On\", 1)\n" +
+                        "batch_write(hash(\"A--B\"), \"On\", 1)";
+
+        List<ChipOperation> ops = LintChipPrograms.Lua(source);
+
+        Assert.Equal(2, ops.Count);
+        Assert.Equal("batch_write", ops[0].Op);
+        Assert.Equal("A--B", ops[0].Prefab);
+        Assert.Equal(5, ops[0].Line);
+        Assert.Equal(1, ops[1].Pin);
+        Assert.Equal("Setting", ops[1].Logic);
+        Assert.Equal(4, ops[1].Line);
+    }
 }
 
 /// <summary>docs/lint-rules.md names every field of the model and every library function and form.</summary>

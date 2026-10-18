@@ -24,6 +24,10 @@ internal sealed class StructureBuildOrder
 
     internal const string ByPrefab = "prefab";
 
+    /// <summary>How far short of to a spread step may land and still be to: world coordinates such as 128.2 - 118.2
+    /// come out a few 1e-14 m under the distance the caller wrote.</summary>
+    private const double LandsOnToMetres = 1e-6;
+
     /// <summary>A placement's own fields, at the top level or in an item (above_floor read here: the shared reader
     /// knows it as above_floor).</summary>
     private static readonly string[] PlacementFields =
@@ -362,7 +366,7 @@ internal sealed class StructureBuildOrder
         }
 
         double distance = Distance(start, end);
-        long count = distance <= 0.0 ? 1 : (long)Math.Floor(distance / step) + 1;
+        long count = distance <= 0.0 ? 1 : (long)Math.Floor((distance + LandsOnToMetres) / step) + 1;
         if (points.Count + count > MaximumPlacements)
         {
             problems.Add(new OptionProblem(path, $"makes {points.Count + count} placements with the lines before " +

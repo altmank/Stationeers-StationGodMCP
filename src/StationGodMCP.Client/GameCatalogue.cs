@@ -75,9 +75,10 @@ public sealed class GameCatalogue
         !NeverResent.Contains(method) && ReadsOnly(method, parameters);
 
     /// <summary>
-    /// The read, write or cheat class of a call; null for a method the model does not have. A read-only verb reads; a
-    /// cheat what is a cheat when it says "always" or when its option is set; a confirm what without confirm: true
-    /// reports and changes nothing, so it reads; anything else writes.
+    /// The read, write or cheat class of a call; null for a method the model does not have. A read-only verb reads, and
+    /// so does a what with no write rules (server info, trade contacts); a cheat what is a cheat when it says "always"
+    /// or when its option is set; a confirm what without confirm: true reports and changes nothing, so it reads;
+    /// anything else writes.
     /// </summary>
     public string? EffectiveClass(string method, JsonElement parameters)
     {
@@ -99,6 +100,11 @@ public sealed class GameCatalogue
         if (verb.What(parameters) is not WhatRules what)
         {
             return "write";
+        }
+
+        if (!what.Writes)
+        {
+            return "read";
         }
 
         if (what.Cheat == "always" || (what.CheatOption is { } option && Flag(parameters, option)))

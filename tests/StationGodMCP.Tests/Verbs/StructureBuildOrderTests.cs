@@ -232,6 +232,22 @@ public sealed class StructureBuildOrderTests
     }
 
     [Fact]
+    public void AStepThatLandsOnToInWorldCoordinatesKeepsTo()
+    {
+        // 128.2 - 118.2 is 9.999999999999986 in doubles: to must not be floored away.
+        List<OptionProblem> problems = new();
+
+        StructureBuildOrder order = Order(
+            """{"prefab": "A", "spread": {"from": [118.2, 0, 5], "to": [128.2, 0, 5], "step": 2}}""", problems,
+            out _)!;
+
+        Assert.Empty(problems);
+        Assert.Equal(new[] { 118.2, 120.2, 122.2, 124.2, 126.2, 128.2 },
+            order.Placements.Select(placement => System.Math.Round(((AtForm.Absolute)placement.At).Point.X, 9)));
+        Assert.Equal(128.2, ((AtForm.Absolute)order.Placements[^1].At).Point.X);
+    }
+
+    [Fact]
     public void ASpreadListIsOneLineEach()
     {
         List<OptionProblem> problems = new();

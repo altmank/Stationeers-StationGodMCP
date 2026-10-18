@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.4.2
+
+- **`build structure` spread keeps its last placement.** A spread whose step lands exactly on `to` lost that last
+  placement at many world coordinates: 118.2 to 128.2 is 9.999999999999986 m in floating point, so a step of 2 made
+  5 placements, not 6. A step now counts as landing on `to` when it falls within a micrometre of it.
+- **Read calls are classed as reads.** `server info`, `server console`, `trade contacts` and `trade inventory` were
+  taken for writes because their verb has writes: with the game at the main menu `server info` was refused with "No
+  world is loaded", a dropped connection did not send them again, and a program's pass-through refused them. They
+  now behave as every other read.
+- **Commented-out Lua calls are no controllers.** A Lua chip's `-- ic.write(0, "On", 1)` (or a call inside a
+  `--[[ ]]` block) was read as a live write, so `inspect controllers`, driven_by and the lint function `chip_writes`
+  named that chip as controlling the device. Comments are now skipped, as they already were in IC10.
+
 ## 2.4.1
 
 - **`build terrain` restores the ground against frames on every side.** A voxel is a density node, the corner eight

@@ -420,10 +420,12 @@ internal static class LintChipPrograms
     /// <summary>
     /// The device calls of a Lua program, each with its 0-based line: batch_read / batch_write and their _slot and
     /// _name forms, and write / write_id (and _slot) with a constant device index (a pin, 0 for d0) or id. A device
-    /// index or id held in a variable is not resolved; nor is a logic type given as a number.
+    /// index or id held in a variable is not resolved; nor is a logic type given as a number. A call inside a comment
+    /// (-- to the line's end, or a --[[ ]] / --[==[ ]==] block) is no call.
     /// </summary>
     internal static List<ChipOperation> Lua(string source)
     {
+        source = WithoutLuaComments(source);
         List<ChipOperation> operations = new List<ChipOperation>();
         List<int> lineStarts = LineStarts(source);
         foreach (Match match in LuaBatch.Matches(source))
@@ -465,6 +467,121 @@ internal static class LintChipPrograms
         }
 
         return operations;
+    }
+
+    // The source with every comment's characters but its line breaks turned to spaces, so indexes and lines stay put;
+    // strings (quoted or long brackets) are kept whole, so a "--" inside one starts nothing.
+    private static string WithoutLuaComments(string source)
+    {
+        char[] text = source.ToCharArray();
+        int index = 0;
+        while (index < text.Length)
+        {
+            char c = text[index];
+            if (c == '"' || c == '\'')
+            {
+                index = QuotedEnd(text, index);
+            }
+            else if (c == '[' && LongBracketLevel(text, index) is int level)
+            {
+                index = LongBracketEnd(text, index, level);
+            }
+            else if (c == '-' && index + 1 < text.Length && text[index + 1] == '-')
+            {
+                int end = index + 2 < text.Length && text[index + 2] == '[' &&
+                          LongBracketLevel(text, index + 2) is int block
+                    ? LongBracketEnd(text, index + 2, block)
+                    : LineEnd(text, index);
+                for (int blank = index; blank < end; blank++)
+                {
+                    if (text[blank] != '\n' && text[blank] != '\r')
+                    {
+                        text[blank] = ' ';
+                    }
+                }
+
+                index = end;
+            }
+            else
+            {
+                index++;
+            }
+        }
+
+        return new string(text);
+    }
+
+    // Just past a quoted string's closing quote (a backslash escapes the next character); at its line's end when open.
+    private static int QuotedEnd(char[] text, int open)
+    {
+        for (int index = open + 1; index < text.Length; index++)
+        {
+            if (text[index] == '\\')
+            {
+                index++;
+            }
+            else if (text[index] == text[open])
+            {
+                return index + 1;
+            }
+            else if (text[index] == '\n')
+            {
+                return index;
+            }
+        }
+
+        return text.Length;
+    }
+
+    // The number of '=' in a long bracket opening at index ([[, [=[, [==[ ...); null when none opens there.
+    private static int? LongBracketLevel(char[] text, int index)
+    {
+        int level = 0;
+        int at = index + 1;
+        while (at < text.Length && text[at] == '=')
+        {
+            level++;
+            at++;
+        }
+
+        return at < text.Length && text[at] == '[' ? level : null;
+    }
+
+    // Just past the long bracket's close (], level '=', ]); the source's end when it never closes.
+    private static int LongBracketEnd(char[] text, int open, int level)
+    {
+        for (int index = open + level + 2; index < text.Length; index++)
+        {
+            if (text[index] != ']')
+            {
+                continue;
+            }
+
+            int at = index + 1;
+            int equals = 0;
+            while (at < text.Length && text[at] == '=')
+            {
+                equals++;
+                at++;
+            }
+
+            if (equals == level && at < text.Length && text[at] == ']')
+            {
+                return at + 1;
+            }
+        }
+
+        return text.Length;
+    }
+
+    private static int LineEnd(char[] text, int index)
+    {
+        while (index < text.Length && text[index] != '\n')
+        {
+            index++;
+        }
+
+        return index;
     }
 
     // The index each line starts at, for LineOf.
