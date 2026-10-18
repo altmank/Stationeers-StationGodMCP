@@ -11,7 +11,8 @@ namespace StationGodMCP.Verbs;
 
 /// <summary>
 /// move gas (catalogue move.json): gas moved from source to to, or deleted, at the next atmospherics tick (GasPlan,
-/// GasMoves); source "planet" with delete takes named gases out of the planet's air (PlanetGasRemoval). A cheat:
+/// GasMoves); source "planet" with delete takes named gases out of the planet's air (PlanetGasRemoval); source "create"
+/// makes named gases at temperature_k in to (creative worlds only). A cheat:
 /// without confirm the call reports the prediction from the same checks and queues nothing. A confirmed move answers
 /// status queued and its transfer_id, which inspect job follows.
 /// </summary>
@@ -23,7 +24,8 @@ internal static class MoveGas
         string label = MoveGasOptions.Spec.Label;
         List<OptionProblem> problems = new List<OptionProblem>();
         GasMoveOrder? order = GasMoveOrder.Of(options.Source, options.To, options.Delete == true, options.Gases,
-            options.AmountMol, Allow.Lifts(options.Allow, "burst"), options.Joined != false, problems);
+            options.AmountMol, Allow.Lifts(options.Allow, "burst"), options.Joined != false, problems,
+            options.TemperatureK);
         if (order == null)
         {
             return new VerbOutcome.Refused(OptionProblem.Refusal(label, problems));

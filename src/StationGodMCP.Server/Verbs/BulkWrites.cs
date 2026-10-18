@@ -160,7 +160,7 @@ internal sealed class BulkWrites
     internal static List<JsonObject> Rows(JsonNode? reply)
     {
         List<JsonObject> rows = [];
-        JsonNode? results = reply?["results"] ?? reply?["items"]?["results"];
+        JsonNode? results = reply?["results"] ?? (reply?["items"] as JsonObject)?["results"];
         if (results is JsonArray list)
         {
             foreach (JsonNode? row in list)

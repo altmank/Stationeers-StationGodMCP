@@ -138,10 +138,11 @@ internal sealed class GasMoveRequest
 {
     private const int MaximumGasNames = 256;
 
-    private GasMoveRequest(GasPlace source, GasDestination destination, Chemistry.GasType[] gases, double? amountMol,
-        bool allowBurst, bool joined)
+    private GasMoveRequest(GasPlace? source, GasDestination destination, Chemistry.GasType[] gases, double? amountMol,
+        bool allowBurst, bool joined, double? createdK)
     {
         Source = source;
+        CreatedK = createdK;
         Destination = destination;
         Gases = gases;
         AmountMol = amountMol;
@@ -149,7 +150,11 @@ internal sealed class GasMoveRequest
         Joined = joined;
     }
 
-    internal GasPlace Source { get; }
+    /// <summary>Where the gas comes from; null when it is made out of nothing (source "create").</summary>
+    internal GasPlace? Source { get; }
+
+    /// <summary>The temperature made gas arrives at; null unless the source is "create".</summary>
+    internal double? CreatedK { get; }
 
     internal GasDestination Destination { get; }
 
@@ -169,17 +174,36 @@ internal sealed class GasMoveRequest
 
     internal static GasMoveRequest Of(GasMoveOrder order, string label)
     {
-        GasPlace source = GasPlace.Resolve(order.Source, "source", label);
+        if (order.Creates && GasCreationRule.CreativeRefusal(WorldManager.IsCreative()) is { } refusal)
+        {
+            throw ApiErrors.Refused("not_creative", refusal + ".");
+        }
+
+        GasPlace? source = order.Creates ? null : GasPlace.Resolve(order.Source, "source", label);
         GasDestination destination = order.To == null
             ? GasDestination.Deleted.Instance
             : new GasDestination.Into(GasPlace.Resolve(order.To, "to", label));
-        if (destination is GasDestination.Into into && into.Target.SameAs(source))
+        if (source != null && destination is GasDestination.Into into && into.Target.SameAs(source))
         {
             throw ApiErrors.InvalidArgument("source and to are the same atmosphere or room.");
         }
 
         Chemistry.GasType[] gases = order.Gases != null ? ParseGases(order.Gases) : GasTypes.All;
-        return new GasMoveRequest(source, destination, gases, order.AmountMol, order.AllowBurst, order.Joined);
+        return new GasMoveRequest(source, destination, gases, order.AmountMol, order.AllowBurst, order.Joined,
+            order.Creates ? order.TemperatureK : null);
+    }
+
+    /// <summary>
+    /// The moles and energy of amount_mol of a gas made at the request's temperature: the energy the game gives a
+    /// mixture at a temperature (IdealGas.Energy of its heat capacity, as the addgas command sets it).
+    /// </summary>
+    internal (double moles, double energy) Created(Chemistry.GasType gas)
+    {
+        double moles = AmountMol ?? 0.0;
+        GasMixture mixture = GasMixtureHelper.Create();
+        mixture.Add(new Mole(gas, new MoleQuantity(moles), MoleEnergy.Zero));
+        mixture.TotalEnergy = IdealGas.Energy(mixture.HeatCapacity, new TemperatureKelvin(CreatedK ?? 0.0));
+        return (moles, mixture.GetMoleValue(gas).Energy.ToDouble());
     }
 
     internal static Chemistry.GasType[] ParseGases(IReadOnlyList<string> names)

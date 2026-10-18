@@ -109,6 +109,7 @@ internal static partial class VerbSurface
             BuildChuteOptions.Spec,
             BuildBlueprintOptions.Spec,
             BuildTerrainOptions.Spec,
+            BuildItemOptions.Spec,
             BuildFinishOptions.Spec),
         new VerbSpec("swap", false,
             SwapWallOptions.Spec,

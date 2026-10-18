@@ -107,6 +107,9 @@ own gas calls: each gas leaves with its share of the heat and arrives with it.
   `inspect atmosphere`, or a room (below). A single world cell is refused. `source: "planet"` with `delete: true` and
   named `gases` takes those gases out of the planet's own air (the mix Terraforming Reloaded reads) and its clouds and
   ice caps; it needs Terraforming Reloaded (`terraforming_mod_required`, after the arguments are checked).
+- `source: "create"` makes gas out of nothing, in creative worlds only (`not_creative` elsewhere): `amount_mol` of each
+  named gas at `temperature_k` (kelvin) arrives in `to`, as the console's `addgas` makes it, with every check on `to`
+  below. It works with no player and inside a script.
 - `gases` names the gases (`Oxygen`, `Nitrogen`, `CarbonDioxide`, `LiquidOxygen`, `Steam`...); omit for all of them.
   `amount_mol` caps each; omit for all of it. `delete: true` instead of `to` destroys the gas.
 - **Joined sets:** the game keeps some atmospheres at one mix every tick, for example a Gas Tank Storage's canisters and

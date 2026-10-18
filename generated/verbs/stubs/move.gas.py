@@ -1,15 +1,17 @@
 def move(what: Literal['gas'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
-    source: str | dict = None,  # A thing id, "looking_at", "planet" (with delete), or a room {room} or {room_of}.
+    source: str | dict = None,  # A thing id, "looking_at", "planet" (with delete), "create" (made out of nothing, with to), or a room {room} or {room_of}.
     to: str | dict = None,  # A thing id, "looking_at" or a room; left out with delete.
     delete: bool = False,  # Destroy the gas instead of moving it.
     gases: list[str] = None,  # Gas names as inspect atmosphere gives them; left out, every gas and liquid.
-    amount_mol: float = None,  # Moles of each gas, capped at what is there; left out, all.
+    amount_mol: float = None,  # Moles of each gas, capped at what is there; left out, all. Required with source create.
+    temperature_k: float = None,  # source create: the temperature the made gas arrives at, in kelvin.
     allow: list[Literal['burst']] = None,  # burst: move past a burst rating.
     joined: bool = True,  # Treat atmospheres the game mixes every tick as one.
 ) -> dict:
-    """Move gas and liquid between atmospheres or rooms, or delete it, with no pipe or pump.
+    """Move gas and liquid between atmospheres or rooms, delete it, or make it out of nothing, with no pipe or pump.
     Applied at the next atmospherics tick. A confirmed move waits for it (max_wait, default 30 s) and answers status applied or failed; past max_wait it answers queued and its id (inspect job).
+    source "create" is a cheat for creative worlds only (not_creative elsewhere): it makes amount_mol of each named gas at temperature_k in to, as the console's addgas does, with the same checks on to: move {what: "gas", source: "create", to: "2005300", gases: ["Oxygen"], amount_mol: 500, temperature_k: 293.15, confirm: true}.
     Reports in a report run; acts in a confirmed run.
     Cheat: ask the user first.
     Reply:

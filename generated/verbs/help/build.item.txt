@@ -1,0 +1,14 @@
+Make items out of nothing (chips, boards, kits, ingots): by prefab and quantity, into a holder's slots or on the ground at a point.
+Reports first; confirm: true does it.
+Cheat.
+Options:
+- prefab (string or integer, required): The item: a whole prefab name or hash (ItemIntegratedCircuit10, ItemKitConsole).
+- quantity (number, default 1): How many: a count of items, or of units for a stacking item (ore, ingot grams, coils), made in full stacks; at most 64 stacks.
+- to (string): The holder that gets them: a container, device, suit or "player"; or give at.
+- slot (integer): A slot index of to; left out, matching stacks are topped up, then empty slots are filled.
+- at (list): [x, y, z] in metres: the items appear there, loose; or give to.
+- confirm (boolean, default false): true acts; false only reports, whatever the call names (typed ids included). Left out, the write rule decides: typed ids act at once where the verb acts on them; a ref, network or spread reports.
+A cheat, for creative worlds only (not_creative elsewhere): no player makes items from nothing. Works with no player in the world. Into a holder, what its slots cannot take is refused (no_room) and nothing is made. The report lists each stack it would make; placed names the new items' ids.
+placed: on a job reply the new ids (a run's log.placed, a structure job's result.placed; a brief poll counts them in log.placed_count), on a run report a count of the cells it would build.
+Reply: placed, prefab_name, display_name, quantity, to {reference_id, prefab_name, display_name}, at {x, y, z}, items [{where, slot, quantity, reference_id}]
+Example: build {what: "item", prefab: "ItemIntegratedCircuit10", quantity: 2, to: "5200100", confirm: true}

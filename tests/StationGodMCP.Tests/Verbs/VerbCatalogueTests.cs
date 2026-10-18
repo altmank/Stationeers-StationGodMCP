@@ -341,7 +341,7 @@ public sealed class VerbCatalogueTests
     /// what does, it has x-cost's shape and one of its classes, and it is the class the what's old method reported by
     /// (dry_run absent or true; finish, the blueprints' paste, move gas and player, trade, write memory and battery
     /// and server command reported instant, write genes bounded; the 2.3 cheats remove terrain world, write health
-    /// instant, 2.4's build terrain world). The acting call keeps x-cost.
+    /// instant, 2.4's build terrain world, 2.5's build item instant). The acting call keeps x-cost.
     /// </summary>
     [Fact]
     public void EveryConfirmRouteWhatStatesItsReportCost()
@@ -358,7 +358,7 @@ public sealed class VerbCatalogueTests
               "trade.buy": "instant", "trade.sell": "instant",
               "undo": "plan",
               "write.memory": "instant", "write.battery": "instant", "write.genes": "bounded",
-              "remove.terrain": "world", "write.health": "instant", "build.terrain": "world"
+              "remove.terrain": "world", "write.health": "instant", "build.terrain": "world", "build.item": "instant"
             }
             """)!.AsObject();
         string[] classes = { "instant", "bounded", "world", "plan", "job", "stream" };
@@ -405,7 +405,7 @@ public sealed class VerbCatalogueTests
 
         Assert.True(problems.Count == 0, string.Join("\n", problems));
         Assert.True(expected.Count == 0, "no x-cost-report for: " + string.Join(", ", expected.Select(pair => pair.Key)));
-        Assert.Equal(27, confirmRoute);
+        Assert.Equal(28, confirmRoute);
     }
 
     /// <summary>
@@ -436,7 +436,7 @@ public sealed class VerbCatalogueTests
             Assert.Equal(acting, spec.CostFor(JObject.Parse("""{"confirm": true}""")).Class);
         }
 
-        Assert.Equal(27, confirmRoute);
+        Assert.Equal(28, confirmRoute);
     }
 
     // The cost class a catalogue word names.
@@ -539,7 +539,7 @@ public sealed class VerbCatalogueTests
         // values written
         "logic", "value", "start", "values", "code", "code_file", "run", "genes", "unit", "color", "label", "ratio",
         "joules", "quantity", "merge", "slot", "reagent", "at_most", "gases", "amount_mol", "delete", "joined", "command",
-        "items", "state", "surface", "element", "pixel", "event", "text", "safe_ground", "from_step",
+        "items", "state", "surface", "element", "pixel", "event", "text", "safe_ground", "from_step", "temperature_k",
         // new things at positions (placement cells are not seen-checked)
         "placements", "at", "rotation", "spread", "facing", "up", "face", "orient", "above_floor", "build_state", "grade",
         "piece", "pieces", "branches", "extra_ends", "blueprint", "turn", "from_plan",
@@ -550,7 +550,9 @@ public sealed class VerbCatalogueTests
         // remove terrain's ores says what becomes of the ore it digs, not which ore
         "remove terrain.ores",
         // build terrain's mode, level and ores say how it fills, not where
-        "build terrain.mode", "build terrain.level", "build terrain.ores", "build terrain.into_frames"
+        "build terrain.mode", "build terrain.level", "build terrain.ores", "build terrain.into_frames",
+        // build item's prefab and quantity say what it makes, not which thing it acts on
+        "build item.prefab"
     };
 
     [Fact]

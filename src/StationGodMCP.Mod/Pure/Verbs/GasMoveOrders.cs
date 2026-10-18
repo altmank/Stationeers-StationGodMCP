@@ -11,13 +11,15 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>
 /// move gas's order (catalogue move.json, gas): the source, to or delete (one of them), the gases (every one when left
 /// out; a room or the planet needs them named), amount_mol per gas (all when left out), allow burst and joined. The
-/// planet only gives gas up: source "planet" goes with delete and named gases.
+/// planet only gives gas up: source "planet" goes with delete and named gases. Source "create" makes gas out of
+/// nothing: it goes with to, named gases, amount_mol (each gas's moles) and temperature_k.
 /// </summary>
 internal sealed class GasMoveOrder
 {
     internal GasMoveOrder(GasPlaceOption source, GasPlaceOption? to, IReadOnlyList<string>? gases, double? amountMol,
-        bool allowBurst, bool joined)
+        bool allowBurst, bool joined, double? temperatureK = null)
     {
+        TemperatureK = temperatureK;
         Source = source;
         To = to;
         Gases = gases;
@@ -38,24 +40,32 @@ internal sealed class GasMoveOrder
 
     public bool Joined { get; }
 
+    /// <summary>The temperature gas made out of nothing arrives at (source "create"); null for any other source.</summary>
+    public double? TemperatureK { get; }
+
+    /// <summary>True when the gas is made out of nothing rather than taken from a source.</summary>
+    internal bool Creates => Source is GasPlaceOption.Created;
+
     private const string SourceOption = "source";
     private const string ToOption = "to";
     private const string DeleteOption = "delete";
     private const string GasesOption = "gases";
+    private const string TemperatureOption = "temperature_k";
 
     /// <summary>True when the gas is destroyed rather than moved.</summary>
     internal bool Deletes => To == null;
 
     /// <summary>The order the options give; null with every problem added.</summary>
     internal static GasMoveOrder? Of(JToken? source, JToken? to, bool delete, IReadOnlyList<string>? gases,
-        double? amountMol, bool allowBurst, bool joined, List<OptionProblem> problems)
+        double? amountMol, bool allowBurst, bool joined, List<OptionProblem> problems, double? temperatureK = null)
     {
         int before = problems.Count;
         GasPlaceOption? from = null;
         if (source == null)
         {
             problems.Add(new OptionProblem(SourceOption,
-                "is needed: a thing's id, \"looking_at\", \"planet\" (with delete), {\"room\"} or {\"room_of\"}"));
+                "is needed: a thing's id, \"looking_at\", \"planet\" (with delete), \"create\" (with to), {\"room\"} or " +
+                "{\"room_of\"}"));
         }
         else
         {
@@ -63,7 +73,41 @@ internal sealed class GasMoveOrder
         }
 
         GasPlaceOption? into = to == null ? null : GasPlaceOption.Of(to, ToOption, problems);
-        if (from is GasPlaceOption.Planet)
+        if (into is GasPlaceOption.Created or GasPlaceOption.Planet)
+        {
+            problems.Add(new OptionProblem(ToOption, "is a thing's id, \"looking_at\" or a room: gas is made or taken " +
+                "only at the source"));
+        }
+
+        if (from is GasPlaceOption.Created)
+        {
+            if (delete || to == null)
+            {
+                problems.Add(new OptionProblem(ToOption,
+                    "is needed, with no delete, when source is \"create\": where the made gas goes"));
+            }
+
+            if (gases == null)
+            {
+                problems.Add(new OptionProblem(GasesOption, "names the gases to make"));
+            }
+
+            if (amountMol == null)
+            {
+                problems.Add(new OptionProblem("amount_mol", "is needed with source \"create\": the moles of each gas"));
+            }
+
+            if (temperatureK is not { } kelvin)
+            {
+                problems.Add(new OptionProblem(TemperatureOption,
+                    "is needed with source \"create\": the temperature the gas arrives at"));
+            }
+            else if (!(kelvin > 0.0) || double.IsInfinity(kelvin))
+            {
+                problems.Add(new OptionProblem(TemperatureOption, "must be more than 0"));
+            }
+        }
+        else if (from is GasPlaceOption.Planet)
         {
             if (!delete || to != null)
             {
@@ -84,6 +128,12 @@ internal sealed class GasMoveOrder
                 : "or delete: true is needed: where the gas goes, or that it is destroyed"));
         }
 
+        if (temperatureK != null && from is not GasPlaceOption.Created)
+        {
+            problems.Add(new OptionProblem(TemperatureOption,
+                "goes with source \"create\": moved gas keeps its own heat"));
+        }
+
         if (from is { IsRoom: true } && gases == null)
         {
             problems.Add(new OptionProblem(GasesOption,
@@ -96,7 +146,7 @@ internal sealed class GasMoveOrder
         }
 
         return problems.Count == before
-            ? new GasMoveOrder(from!, delete ? null : into, gases, amountMol, allowBurst, joined)
+            ? new GasMoveOrder(from!, delete ? null : into, gases, amountMol, allowBurst, joined, temperatureK)
             : null;
     }
 }
@@ -145,4 +195,15 @@ internal static class GasReplies
         return new ReportTarget(id, null, name, side.Total.Before.TotalMol,
             side.Total.After.TotalMol, undoMark);
     }
+}
+
+/// <summary>Gas made out of nothing (move gas source "create") is a cheat for creative worlds only.</summary>
+internal static class GasCreationRule
+{
+    /// <summary>Why gas is not made in this world; null in a creative world.</summary>
+    internal static string? CreativeRefusal(bool creative) =>
+        creative
+            ? null
+            : "source \"create\" makes gas out of nothing and is only for creative worlds; move it from a tank or " +
+              "network instead";
 }

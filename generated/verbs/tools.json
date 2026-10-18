@@ -485,14 +485,14 @@
     },
     {
       "name": "build",
-      "description": "Build new things as a player would, paying materials. Reports first; confirm: true builds and answers when the job is done. terrain is a cheat: ask the user.",
+      "description": "Build new things as a player would, paying materials. Reports first; confirm: true builds and answers when the job is done. terrain and item are cheats: ask the user.",
       "inputSchema": {
         "type": "object",
         "properties": {
           "what": {
             "type": "string",
-            "enum": ["structure", "cable", "pipe", "chute", "blueprint", "terrain", "finish"],
-            "description": "structure: any structure a kit builds, by prefab, at a point; cable: a cable run or pieces; pipe: a pipe run or pieces; chute: a chute run or pieces; blueprint: paste a blueprint; terrain: fill or level a box of terrain; finish: a placed structure on to a later build state"
+            "enum": ["structure", "cable", "pipe", "chute", "blueprint", "terrain", "item", "finish"],
+            "description": "structure: any structure a kit builds, by prefab, at a point; cable: a cable run or pieces; pipe: a pipe run or pieces; chute: a chute run or pieces; blueprint: paste a blueprint; terrain: fill or level a box of terrain; item: make items by prefab (a cheat); finish: a placed structure on to a later build state"
           },
           "placements": {"type": "array"},
           "prefab": {"type": ["string", "integer"]},
@@ -517,7 +517,7 @@
           "acknowledge_gas_lost": {"type": "string"},
           "from_plan": {
             "type": "string",
-            "description": "A plan route or spot reply's ref ('r9'): build its build_arguments; what may be left out, options given replace the plan's."
+            "description": "A plan route or spot ref ('r9'): build its build_arguments; options given win, what may be left out."
           },
           "confirm": {"type": "boolean"},
           "queue": {"type": "boolean"},
@@ -549,6 +549,9 @@
           "level": {"type": "number"},
           "ores": {"enum": ["drop", "discard"]},
           "into_frames": {"type": "integer"},
+          "quantity": {"type": "number"},
+          "to": {"type": "string"},
+          "slot": {"type": "integer"},
           "id": {"type": ["string", "array"], "items": {"type": "string"}},
           "state": {"type": "integer"},
           "fields": {"type": "array", "items": {"type": "string"}},
@@ -704,7 +707,7 @@
           "force": {"type": "boolean"},
           "allow": {"type": "array", "items": {"enum": ["in_use", "ground", "burst"]}},
           "moves": {"type": "array"},
-          "source": {"type": ["string", "object"], "description": "item: a vault or silo. gas: a thing, room or planet."},
+          "source": {"type": ["string", "object"], "description": "item: a vault or silo. gas: a thing, room, planet, or create."},
           "prefab": {"type": ["string", "integer", "array"], "items": {"type": ["string", "integer"]}},
           "reagent": {"type": "string"},
           "items": {"type": ["array", "string"]},
@@ -719,6 +722,7 @@
           "delete": {"type": "boolean"},
           "gases": {"type": "array", "items": {"type": "string"}},
           "amount_mol": {"type": "number"},
+          "temperature_k": {"type": "number"},
           "joined": {"type": "boolean"},
           "max_wait": {"type": "number"},
           "player": {"type": "string"},

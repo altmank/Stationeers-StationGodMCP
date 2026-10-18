@@ -97,18 +97,24 @@ internal sealed class PendingGasMove
     internal GasPlan Plan { get; }
 
     internal bool Touches(Atmosphere atmosphere) =>
-        Plan.Source.All.Contains(atmosphere) || (Plan.Target != null && Plan.Target.All.Contains(atmosphere));
+        (Plan.Source != null && Plan.Source.All.Contains(atmosphere)) ||
+        (Plan.Target != null && Plan.Target.All.Contains(atmosphere));
 
     // The sides are the sets found when the move was asked for; a join made or broken within that half second is not
     // seen. Before and after are read live here.
     internal MoveGasView Apply()
     {
-        GasSide source = Plan.Source;
+        GasSide? source = Plan.Source;
         GasSide? target = Plan.Target;
-        if (source.AnyGone() || (target != null && target.AnyGone()))
+        if ((source != null && source.AnyGone()) || (target != null && target.AnyGone()))
         {
             throw ApiErrors.Refused("atmosphere_not_found",
                 "An atmosphere of this move was destroyed before the next atmospherics tick.");
+        }
+
+        if (source == null)
+        {
+            return Create(target!);
         }
 
         GasSnapshot[] sourceBefore = source.Live();
@@ -132,6 +138,22 @@ internal sealed class PendingGasMove
         GasSideView? to = target == null ? null : AppliedView(target, targetBefore!);
         return new MoveGasView(Id.ToString(CultureInfo.InvariantCulture), "applied", false, Plan.Request.Joined,
             AppliedView(source, sourceBefore), to, moved, null);
+    }
+
+    // Gas made out of nothing: each named gas's moles and energy delivered to the target, nothing taken anywhere.
+    private MoveGasView Create(GasSide target)
+    {
+        GasSnapshot[] targetBefore = target.Live();
+        List<MovedGasView> made = new List<MovedGasView>();
+        foreach (Chemistry.GasType gas in Plan.Request.Gases)
+        {
+            (double moles, double energy) = Plan.Request.Created(gas);
+            target.Deliver(gas, moles, energy);
+            made.Add(new MovedGasView(gas.ToString(), moles, energy));
+        }
+
+        return new MoveGasView(Id.ToString(CultureInfo.InvariantCulture), "applied", false, Plan.Request.Joined, null,
+            AppliedView(target, targetBefore), made, null);
     }
 
     private static GasSideView AppliedView(GasSide side, GasSnapshot[] before)

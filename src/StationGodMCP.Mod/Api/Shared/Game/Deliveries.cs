@@ -247,7 +247,7 @@ internal sealed class Delivery
     internal Vector3 Ground() => Refunds.GroundBeside(Holder, Body != null ? Body : Holder.RootParentHuman);
 
     // As the vend sets a new item's amount: an ingot's grams, an ore stack's count.
-    private static void SetAmount(Item item, double quantity)
+    internal static void SetAmount(Item item, double quantity)
     {
         switch (item)
         {

@@ -621,7 +621,7 @@ internal sealed class GasSide
 /// <summary>The predicted move: both sides before and after, and each gas moved.</summary>
 internal sealed class GasPlan
 {
-    private GasPlan(GasMoveRequest request, GasSide source, GasSide? target, List<MovedGasView> moved)
+    private GasPlan(GasMoveRequest request, GasSide? source, GasSide? target, List<MovedGasView> moved)
     {
         Request = request;
         Source = source;
@@ -631,7 +631,8 @@ internal sealed class GasPlan
 
     internal GasMoveRequest Request { get; }
 
-    internal GasSide Source { get; }
+    /// <summary>The source's joined set, or null when the gas is made out of nothing.</summary>
+    internal GasSide? Source { get; }
 
     /// <summary>The target's joined set, or null when the gas is deleted.</summary>
     internal GasSide? Target { get; }
@@ -640,8 +641,13 @@ internal sealed class GasPlan
 
     internal static GasPlan Predict(GasMoveRequest request)
     {
-        GasSide source = request.Source.SideOf(request.Joined);
         GasSide? target = request.Target?.SideOf(request.Joined);
+        if (request.Source == null)
+        {
+            return Creating(request, target!);
+        }
+
+        GasSide source = request.Source.SideOf(request.Joined);
         if (target != null && target.All.Members.Exists(member => source.All.Contains(member.Atmosphere)))
         {
             throw ApiErrors.Refused("same_joined_set",
@@ -665,6 +671,20 @@ internal sealed class GasPlan
         }
 
         return new GasPlan(request, source, target, moved);
+    }
+
+    // Gas made out of nothing: each named gas's amount_mol, at the request's temperature, all into the target.
+    private static GasPlan Creating(GasMoveRequest request, GasSide target)
+    {
+        List<MovedGasView> made = new List<MovedGasView>();
+        foreach (Chemistry.GasType gas in request.Gases)
+        {
+            (double moles, double energy) = request.Created(gas);
+            target.Receive(GasTypes.IndexOf(gas), moles, energy);
+            made.Add(new MovedGasView(gas.ToString(), moles, energy));
+        }
+
+        return new GasPlan(request, null, target, made);
     }
 
     // Each member gives its share of the amount (its moles over the set's), with its share of its own energy, exactly
@@ -708,17 +728,17 @@ internal sealed class GasPlan
 
     internal void RefuseIfBursting()
     {
-        Source.RefuseIfBursting("source");
+        Source?.RefuseIfBursting("source");
         Target?.RefuseIfBursting("to");
         Target?.RefuseIfReceivingBursts("to");
     }
 
     internal MoveGasView ToView(long transferId) =>
         new MoveGasView(transferId.ToString(CultureInfo.InvariantCulture), MoveGasView.Queued, true, Request.Joined,
-            Source.ToView(Source.After), Target?.ToView(Target.After), Moved, null);
+            Source?.ToView(Source.After), Target?.ToView(Target.After), Moved, null);
 
     /// <summary>The prediction alone, for a report: nothing was queued, so there is no transfer id.</summary>
     internal MoveGasView ToPrediction() =>
-        new MoveGasView(null, MoveGasView.Queued, true, Request.Joined, Source.ToView(Source.After),
+        new MoveGasView(null, MoveGasView.Queued, true, Request.Joined, Source?.ToView(Source.After),
             Target?.ToView(Target.After), Moved, null);
 }

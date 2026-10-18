@@ -1,11 +1,11 @@
 {
   "verb": "build",
-  "description": "Build new things as a player would, paying materials. Reports first; confirm: true builds and answers when the job is done. terrain is a cheat: ask the user.",
+  "description": "Build new things as a player would, paying materials. Reports first; confirm: true builds and answers when the job is done. terrain and item are cheats: ask the user.",
   "text": ["A build that pays from the player's inventory warns materials_from_player."],
   "read_only": false,
   "tool": {
     "options": {
-      "from_plan": "A plan route or spot reply's ref ('r9'): build its build_arguments; what may be left out, options given replace the plan's.",
+      "from_plan": "A plan route or spot ref ('r9'): build its build_arguments; options given win, what may be left out.",
       "grade": "cable: default heavy; pipe: required; chute: chute."
     }
   },
@@ -156,7 +156,11 @@
           "description": "Every cell, each next to the one before.",
           "x-script": "same"
         },
-        "piece": {"schema": {"type": "object"}, "description": "One piece {at, ends, label, color}; label and color optional.", "x-script": "same"},
+        "piece": {
+          "schema": {"type": "object"},
+          "description": "One piece {at, ends, label, color}; label and color optional.",
+          "x-script": "same"
+        },
         "pieces": {
           "schema": {"type": "array", "items": {"type": "object"}, "maxItems": 256},
           "description": "Separate pieces, each {at, ends, label, color}: label and color (a colour index or name) are optional.",
@@ -326,7 +330,11 @@
           "description": "Every cell, each next to the one before.",
           "x-script": "same"
         },
-        "piece": {"schema": {"type": "object"}, "description": "One piece {at, ends, label, color}; label and color optional.", "x-script": "same"},
+        "piece": {
+          "schema": {"type": "object"},
+          "description": "One piece {at, ends, label, color}; label and color optional.",
+          "x-script": "same"
+        },
         "pieces": {
           "schema": {"type": "array", "items": {"type": "object"}, "maxItems": 256},
           "description": "Separate pieces, each {at, ends, label, color}: label and color (a colour index or name) are optional.",
@@ -497,7 +505,11 @@
           "description": "Every cell, each next to the one before.",
           "x-script": "same"
         },
-        "piece": {"schema": {"type": "object"}, "description": "One piece {at, ends, label, color}; label and color optional.", "x-script": "same"},
+        "piece": {
+          "schema": {"type": "object"},
+          "description": "One piece {at, ends, label, color}; label and color optional.",
+          "x-script": "same"
+        },
         "pieces": {
           "schema": {"type": "array", "items": {"type": "object"}, "maxItems": 256},
           "description": "Separate pieces, each {at, ends, label, color}: label and color (a colour index or name) are optional.",
@@ -808,6 +820,70 @@
         "x-target": [{"path": "box", "role": "spread"}]
       },
       "brief": "fill or level a box of terrain"
+    },
+    "item": {
+      "summary": "make items out of nothing (chips, boards, kits, ingots): by prefab and quantity, into a holder's slots or on the ground at a point",
+      "options": {
+        "prefab": {
+          "use": "prefab",
+          "schema": {"type": ["string", "integer"]},
+          "description": "The item: a whole prefab name or hash (ItemIntegratedCircuit10, ItemKitConsole).",
+          "required": true
+        },
+        "quantity": {
+          "schema": {"type": "number", "minimum": 0},
+          "description": "How many: a count of items, or of units for a stacking item (ore, ingot grams, coils), made in full stacks; at most 64 stacks.",
+          "default": "1",
+          "x-script": "same"
+        },
+        "to": {
+          "schema": {"type": "string"},
+          "description": "The holder that gets them: a container, device, suit or \"player\"; or give at.",
+          "x-script": "same"
+        },
+        "slot": {
+          "schema": {"type": "integer", "minimum": 0},
+          "description": "A slot index of to; left out, matching stacks are topped up, then empty slots are filled.",
+          "x-script": "same"
+        },
+        "at": {
+          "schema": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3},
+          "description": "[x, y, z] in metres: the items appear there, loose; or give to.",
+          "x-script": "same"
+        },
+        "confirm": {"use": "confirm"}
+      },
+      "text": [
+        "A cheat, for creative worlds only (not_creative elsewhere): no player makes items from nothing. Works with no player in the world. Into a holder, what its slots cannot take is refused (no_room) and nothing is made. The report lists each stack it would make; placed names the new items' ids."
+      ],
+      "example": {"prefab": "ItemIntegratedCircuit10", "quantity": 2, "to": "5200100", "confirm": true},
+      "x-cost": {"class": "instant", "growth": "by-id"},
+      "x-cost-report": {"class": "instant"},
+      "reply": {
+        "list": "items",
+        "variants": [
+          {
+            "keys": {
+              "placed": "list[str]",
+              "prefab_name": "str",
+              "display_name": "str | None",
+              "quantity": "float",
+              "to": "Thing | None",
+              "at": "Vec3 | None",
+              "items": "list[{where: str, slot: {id: str, slot: int} | None, quantity: float, reference_id: str | None}]"
+            }
+          }
+        ],
+        "types": ["Thing", "Vec3"]
+      },
+      "write": {
+        "route": "confirm",
+        "cheat": "always",
+        "x-undo": "cannot",
+        "x-undo-mark": "[cannot undo: items made]",
+        "x-target": [{"path": "to", "role": "acts-on"}]
+      },
+      "brief": "make items by prefab (a cheat)"
     },
     "finish": {
       "summary": "build a placed structure on to a later build state, paying each state's materials",

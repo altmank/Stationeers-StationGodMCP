@@ -4,7 +4,7 @@ A report carries report_only: true and lists every target with its current and n
 
 whats:
 - item: items and kits (a kit such as Kit (Battery Large) is an item; a built structure is not) into a slot or the player's hands with the game's own moves; into or out of a vault or silo store
-- gas: move gas and liquid between atmospheres or rooms, or delete it, with no pipe or pump (cheat)
+- gas: move gas and liquid between atmospheres or rooms, delete it, or make it out of nothing, with no pipe or pump (cheat)
 - player: move a player anywhere at once: to a point, beside a thing or another player (cheat)
 
 Every what here takes: confirm, to.

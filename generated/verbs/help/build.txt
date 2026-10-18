@@ -1,4 +1,4 @@
-Build new things as a player would, paying materials. Reports first; confirm: true builds and answers when the job is done. terrain is a cheat: ask the user.
+Build new things as a player would, paying materials. Reports first; confirm: true builds and answers when the job is done. terrain and item are cheats: ask the user.
 A build that pays from the player's inventory warns materials_from_player.
 A report carries report_only: true and lists every target with its current and new value.
 
@@ -9,6 +9,7 @@ whats:
 - chute: a chute run or pieces from Kit (Chute), source to sink, with flow guards
 - blueprint: paste a BlueprintMod blueprint at an anchor and turn, skipping placement checks (cheat)
 - terrain: fill terrain in a box at once: solid, back to the ground the world generated, level to a flat plane, or only its enclosed voids (cheat)
+- item: make items out of nothing (chips, boards, kits, ingots): by prefab and quantity, into a holder's slots or on the ground at a point (cheat)
 - finish: build a placed structure on to a later build state, paying each state's materials
 
 Every what here takes: confirm.

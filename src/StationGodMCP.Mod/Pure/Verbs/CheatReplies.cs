@@ -63,3 +63,23 @@ internal static class TerrainFillReplies
                 $"{reading.Filled} filled, {reading.Dug} dug", undoMark)
         }, reading);
 }
+
+/// <summary>
+/// build item's report: the spawn's reading as its body (placed empty, each stack's id null), and each stack a target
+/// [holder id or the point, item, nothing -> quantity] with the what's undo mark.
+/// </summary>
+internal static class ItemSpawnReplies
+{
+    internal static ReportReply Reported(ItemSpawnView reading, string undoMark)
+    {
+        List<ReportTarget> targets = new List<ReportTarget>(reading.Items.Count);
+        foreach (PlacedView stack in reading.Items)
+        {
+            string? holder = stack.Slot?.Id.ToString() ?? reading.To?.ReferenceId.ToString();
+            object? cell = holder == null && reading.At is { } at ? new[] { at.X, at.Y, at.Z } : null;
+            targets.Add(new ReportTarget(holder, cell, reading.PrefabName, null, stack.Quantity, undoMark));
+        }
+
+        return Report.Of(targets, reading);
+    }
+}

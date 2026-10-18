@@ -6,7 +6,7 @@
   "tool": {
     "options": {
       "to": "item: the holder that gets them (a vault or silo makes a store move). gas: a thing or room.",
-      "source": "item: a vault or silo. gas: a thing, room or planet."
+      "source": "item: a vault or silo. gas: a thing, room, planet, or create."
     }
   },
   "whats": {
@@ -234,11 +234,11 @@
       "brief": "items and kits into a slot, the player, or a vault or silo"
     },
     "gas": {
-      "summary": "move gas and liquid between atmospheres or rooms, or delete it, with no pipe or pump",
+      "summary": "move gas and liquid between atmospheres or rooms, delete it, or make it out of nothing, with no pipe or pump",
       "options": {
         "source": {
           "schema": {"type": ["string", "object"]},
-          "description": "A thing id, \"looking_at\", \"planet\" (with delete), or a room {room} or {room_of}.",
+          "description": "A thing id, \"looking_at\", \"planet\" (with delete), \"create\" (made out of nothing, with to), or a room {room} or {room_of}.",
           "x-script": "same"
         },
         "to": {
@@ -259,7 +259,12 @@
         },
         "amount_mol": {
           "schema": {"type": "number"},
-          "description": "Moles of each gas, capped at what is there; left out, all.",
+          "description": "Moles of each gas, capped at what is there; left out, all. Required with source create.",
+          "x-script": "same"
+        },
+        "temperature_k": {
+          "schema": {"type": "number", "exclusiveMinimum": 0},
+          "description": "source create: the temperature the made gas arrives at, in kelvin.",
           "x-script": "same"
         },
         "allow": {
@@ -277,7 +282,8 @@
         "max_wait": {"use": "max_wait"}
       },
       "text": [
-        "Applied at the next atmospherics tick. A confirmed move waits for it (max_wait, default 30 s) and answers status applied or failed; past max_wait it answers queued and its id (inspect job)."
+        "Applied at the next atmospherics tick. A confirmed move waits for it (max_wait, default 30 s) and answers status applied or failed; past max_wait it answers queued and its id (inspect job).",
+        "source \"create\" is a cheat for creative worlds only (not_creative elsewhere): it makes amount_mol of each named gas at temperature_k in to, as the console's addgas does, with the same checks on to: move {what: \"gas\", source: \"create\", to: \"2005300\", gases: [\"Oxygen\"], amount_mol: 500, temperature_k: 293.15, confirm: true}."
       ],
       "example": {"source": "2005300", "gases": ["Hydrogen"], "delete": true},
       "x-cost": {"class": "job", "growth": "by-id"},

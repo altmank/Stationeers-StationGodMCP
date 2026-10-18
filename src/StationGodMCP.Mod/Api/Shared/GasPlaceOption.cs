@@ -9,12 +9,14 @@ namespace StationGodMCP.Api.Shared;
 
 /// <summary>
 /// move gas's source or to as given, before anything is looked up. A closed set: an atmosphere by its owner's id (a
-/// thing's id or "looking_at", a pipe network's or an atmosphere's id), the planet ("planet"), a room by the id find
-/// room reports ({"room": "..."}), or the room a thing is in ({"room_of": "<id>"}).
+/// thing's id or "looking_at", a pipe network's or an atmosphere's id), the planet ("planet"), gas made out of nothing
+/// ("create", a source only), a room by the id find room reports ({"room": "..."}), or the room a thing is in
+/// ({"room_of": "<id>"}).
 /// </summary>
 internal abstract class GasPlaceOption
 {
     private const string PlanetWord = "planet";
+    private const string CreateWord = "create";
     private const string RoomKey = "room";
     private const string RoomOfKey = "room_of";
 
@@ -38,6 +40,16 @@ internal abstract class GasPlaceOption
         internal static readonly Planet Instance = new Planet();
 
         private Planet()
+        {
+        }
+    }
+
+    /// <summary>Gas made out of nothing (a cheat for creative worlds): a source only.</summary>
+    internal sealed class Created : GasPlaceOption
+    {
+        internal static readonly Created Instance = new Created();
+
+        private Created()
         {
         }
     }
@@ -74,13 +86,16 @@ internal abstract class GasPlaceOption
             JValue { Type: JTokenType.String } value when ((string)value!).Trim().Length > 0 =>
                 string.Equals(((string)value!).Trim(), PlanetWord, StringComparison.OrdinalIgnoreCase)
                     ? Planet.Instance
-                    : new Atmosphere(((string)value!).Trim()),
+                    : string.Equals(((string)value!).Trim(), CreateWord, StringComparison.OrdinalIgnoreCase)
+                        ? Created.Instance
+                        : new Atmosphere(((string)value!).Trim()),
             _ => null
         };
         if (place == null)
         {
             problems.Add(new OptionProblem(option,
-                "is a thing's id, \"looking_at\", \"planet\", {\"room\": \"<id>\"} (a room as find room gives it) or " +
+                "is a thing's id, \"looking_at\", \"planet\", \"create\", {\"room\": \"<id>\"} (a room as find room " +
+                "gives it) or " +
                 "{\"room_of\": \"<id>\"} (the room that thing is in)"));
         }
 

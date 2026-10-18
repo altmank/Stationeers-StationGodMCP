@@ -2584,6 +2584,32 @@ def build(what: Literal['terrain'], *,
     """
 
 @overload
+def build(what: Literal['item'], *,
+    fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
+    prefab: str | int,  # The item: a whole prefab name or hash (ItemIntegratedCircuit10, ItemKitConsole).
+    quantity: float = 1,  # How many: a count of items, or of units for a stacking item (ore, ingot grams, coils), made in full stacks; at most 64 stacks.
+    to: str = None,  # The holder that gets them: a container, device, suit or "player"; or give at.
+    slot: int = None,  # A slot index of to; left out, matching stacks are topped up, then empty slots are filled.
+    at: list = None,  # [x, y, z] in metres: the items appear there, loose; or give to.
+) -> dict:  # main list: r['items']: the page answered; .walk() goes through every entry, .all() pages in the rest
+    """Make items out of nothing (chips, boards, kits, ingots): by prefab and quantity, into a holder's slots or on the ground at a point.
+    A cheat, for creative worlds only (not_creative elsewhere): no player makes items from nothing. Works with no player in the world. Into a holder, what its slots cannot take is refused (no_room) and nothing is made. The report lists each stack it would make; placed names the new items' ids.
+    Reports in a report run; acts in a confirmed run.
+    Cheat: ask the user first.
+    placed: list[str] on a job reply, the new ids (a run's log.placed, a structure job's result.placed; a brief poll counts them in log.placed_count); int on a run report, the cells it would build.
+    Reply:
+      placed: list[str]
+      prefab_name: str
+      display_name: str | None
+      quantity: float
+      to: Thing | None
+      at: Vec3 | None
+      items: list[{where: str, slot: {id: str, slot: int} | None, quantity: float, reference_id: str | None}]
+    Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}; Vec3 = {x: float, y: float, z: float}
+    Example: sg.build('item', prefab='ItemIntegratedCircuit10', quantity=2, to='5200100')
+    """
+
+@overload
 def build(what: Literal['finish'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
     id: str | list[str],  # One structure or a list, in order.
@@ -3361,16 +3387,18 @@ def move(what: Literal['item'], *,
 @overload
 def move(what: Literal['gas'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
-    source: str | dict = None,  # A thing id, "looking_at", "planet" (with delete), or a room {room} or {room_of}.
+    source: str | dict = None,  # A thing id, "looking_at", "planet" (with delete), "create" (made out of nothing, with to), or a room {room} or {room_of}.
     to: str | dict = None,  # A thing id, "looking_at" or a room; left out with delete.
     delete: bool = False,  # Destroy the gas instead of moving it.
     gases: list[str] = None,  # Gas names as inspect atmosphere gives them; left out, every gas and liquid.
-    amount_mol: float = None,  # Moles of each gas, capped at what is there; left out, all.
+    amount_mol: float = None,  # Moles of each gas, capped at what is there; left out, all. Required with source create.
+    temperature_k: float = None,  # source create: the temperature the made gas arrives at, in kelvin.
     allow: list[Literal['burst']] = None,  # burst: move past a burst rating.
     joined: bool = True,  # Treat atmospheres the game mixes every tick as one.
 ) -> dict:
-    """Move gas and liquid between atmospheres or rooms, or delete it, with no pipe or pump.
+    """Move gas and liquid between atmospheres or rooms, delete it, or make it out of nothing, with no pipe or pump.
     Applied at the next atmospherics tick. A confirmed move waits for it (max_wait, default 30 s) and answers status applied or failed; past max_wait it answers queued and its id (inspect job).
+    source "create" is a cheat for creative worlds only (not_creative elsewhere): it makes amount_mol of each named gas at temperature_k in to, as the console's addgas does, with the same checks on to: move {what: "gas", source: "create", to: "2005300", gases: ["Oxygen"], amount_mol: 500, temperature_k: 293.15, confirm: true}.
     Reports in a report run; acts in a confirmed run.
     Cheat: ask the user first.
     Reply:

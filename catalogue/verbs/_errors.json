@@ -396,7 +396,9 @@
     "see": {"verb": "move", "what": "player"}
   },
   "port_not_joined": {"description": "That port joins no network of the category. Name a port that is joined, or the network itself."},
-  "prefab_missing": {"description": "No prefab exists for what the vault or silo would make. Pick another item."},
+  "prefab_missing": {
+    "description": "No loaded prefab has that name or hash, or none exists for what the vault or silo would make. Pick another item."
+  },
   "protocol_error": {
     "description": "A message the protocol does not allow. The connection is closed after the reply; reconnect and send a valid message.",
     "see": {"topic": "errors"}

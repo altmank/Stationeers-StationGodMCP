@@ -1,6 +1,6 @@
 # catalogue/verbs: the verb catalogue
 
-The single source of StationGod's verb surface (PLAN v9 2.0): 15 verbs plus help and run_script, 102 whats. The MCP
+The single source of StationGod's verb surface (PLAN v9 2.0): 15 verbs plus help and run_script, 103 whats. The MCP
 tools array, the help pages and the Python stubs are generated from these files; edit them
 here, never the generated copies.
 

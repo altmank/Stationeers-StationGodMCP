@@ -19,6 +19,7 @@ internal sealed class MoveGasOptions
         new OptionSpec("delete", "{\"type\":\"boolean\"}", false, "false"),
         new OptionSpec("gases", "{\"type\":\"array\",\"items\":{\"type\":\"string\"}}"),
         new OptionSpec("amount_mol", "{\"type\":\"number\"}"),
+        new OptionSpec("temperature_k", "{\"type\":\"number\",\"exclusiveMinimum\":0}"),
         new OptionSpec("allow", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"burst\"]}}"),
         new OptionSpec("joined", "{\"type\":\"boolean\"}", false, "true"),
         new OptionSpec("confirm", "{\"type\":\"boolean\"}", false, "false"),
@@ -38,6 +39,8 @@ internal sealed class MoveGasOptions
 
     internal double? AmountMol { get; private set; }
 
+    internal double? TemperatureK { get; private set; }
+
     internal IReadOnlyList<string>? Allow { get; private set; }
 
     internal bool? Joined { get; private set; }
@@ -51,6 +54,7 @@ internal sealed class MoveGasOptions
         Delete = options.Flag("delete") ?? options.DefaultFlag("delete"),
         Gases = options.Words("gases"),
         AmountMol = options.Number("amount_mol"),
+        TemperatureK = options.Number("temperature_k"),
         Allow = options.Words("allow"),
         Joined = options.Flag("joined") ?? options.DefaultFlag("joined"),
     };

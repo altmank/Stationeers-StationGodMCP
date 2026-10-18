@@ -87,6 +87,7 @@ internal static class VerbHandlers
         VerbHandler.For(BuildBlueprintOptions.Spec, BuildBlueprintOptions.Bind, BuildBlueprint.Run),
         VerbHandler.For(BuildFinishOptions.Spec, BuildFinishOptions.Bind, BuildFinish.Run),
         VerbHandler.For(BuildTerrainOptions.Spec, BuildTerrainOptions.Bind, BuildTerrain.Run),
+        VerbHandler.For(BuildItemOptions.Spec, BuildItemOptions.Bind, BuildItem.Run),
         VerbHandler.For(CheckLayoutOptions.Spec, CheckLayoutOptions.Bind, CheckLayout.Run),
         VerbHandler.For(CheckRulesOptions.Spec, CheckRulesOptions.Bind, CheckRules.Run),
         VerbHandler.For(CheckReplaceableOptions.Spec, CheckReplaceableOptions.Bind, CheckReplaceable.Run),
