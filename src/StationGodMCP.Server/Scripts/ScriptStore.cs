@@ -134,7 +134,8 @@ internal sealed class ScriptStore
         if (shared != null && local != null)
         {
             return Refused(ScriptFailure.Exists,
-                $"'{name}' is saved in both shared and world {world}: remove one (remove script), then save the other again");
+                $"'{name}' is saved in both shared and world {world}: remove one (remove script {{name: \"{name}\", " +
+                "scope: \"shared\" or \"world\"}), then save the other again");
         }
 
         if (shared != null)
@@ -261,7 +262,15 @@ internal sealed class ScriptStore
         {
             return Refused(ScriptFailure.Exists,
                 $"'{name}' is already saved in the other scope ({Path.Combine(other, Path.GetFileName(clash))}): " +
-                "remove it (remove script), then save it here");
+                $"remove it (remove script {{name: \"{name}\", scope: \"{(scope == ScriptScope.Shared ? "world" : "shared")}\"}}), " +
+                "then save it here");
+        }
+
+        if (scope == ScriptScope.Shared && InAnyWorld(name) is { } elsewhere)
+        {
+            return Refused(ScriptFailure.Exists,
+                $"'{name}' is saved as a world script of another world ({elsewhere}), where a shared '{name}' would " +
+                "clash with it: save it shared under another name, or remove that one in its world first");
         }
 
         int version = NextVersion(folder, name);
@@ -285,10 +294,13 @@ internal sealed class ScriptStore
             signature.Parameters, path, text));
     }
 
-    /// <summary>Remove the script and its history; an unknown name is refused with the nearest names.</summary>
-    internal ScriptOutcome<SavedScript> Remove(string name, string? world)
+    /// <summary>
+    /// Remove the script and its history; an unknown name is refused with the nearest names. scope names the copy to
+    /// remove (shared, or this world's), so a name saved in both can lose one; left out, the one a run would open.
+    /// </summary>
+    internal ScriptOutcome<SavedScript> Remove(string name, string? world, ScriptScope? scope = null)
     {
-        ScriptOutcome<SavedScript> opened = Open(name, world);
+        ScriptOutcome<SavedScript> opened = scope is { } named ? OpenIn(name, world, named) : Open(name, world);
         if (opened is not ScriptOutcome<SavedScript>.Done done)
         {
             return opened;
@@ -312,6 +324,45 @@ internal sealed class ScriptStore
         }
 
         return new ScriptOutcome<SavedScript>.Done(script);
+    }
+
+    // The copy of that name in one scope: shared, or this world's.
+    private ScriptOutcome<SavedScript> OpenIn(string name, string? world, ScriptScope scope)
+    {
+        if (NameProblem(name) is { } problem)
+        {
+            return Refused(ScriptFailure.Name, problem);
+        }
+
+        string? folder = scope == ScriptScope.Shared ? SharedFolder : WorldFolder(world);
+        if (Lookup(folder, name, scope, scope == ScriptScope.World ? world : null) is { } script)
+        {
+            return new ScriptOutcome<SavedScript>.Done(script);
+        }
+
+        return folder != null && FileOf(folder, name) is { } headerless
+            ? Headerless(headerless)
+            : NotFound(name, world, $"No {(scope == ScriptScope.Shared ? "shared" : "world")} script is named '{name}'");
+    }
+
+    // A world script of that name in any world's folder: a shared one of the same name would clash in that world.
+    private string? InAnyWorld(string name)
+    {
+        string worlds = Path.Combine(_root, "world");
+        if (!Directory.Exists(worlds))
+        {
+            return null;
+        }
+
+        foreach (string folder in Directory.EnumerateDirectories(worlds))
+        {
+            if (FileOf(folder, name) is { } file)
+            {
+                return file;
+            }
+        }
+
+        return null;
     }
 
     // ---- names and folders ------------------------------------------------------------------------------------------

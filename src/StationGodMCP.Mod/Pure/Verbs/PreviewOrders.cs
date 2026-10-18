@@ -144,6 +144,10 @@ internal sealed class PreviewOrder
     internal bool HasPlacements => Arguments.Placements.Count > 0;
 
     /// <summary>The order show preview's options give; null with every problem added.</summary>
+    // A preview is asked for most when the spot is blocked, and show takes no verbose: a refused placement keeps its
+    // layout (what blocks it) in the reply.
+    private static readonly ReportDetail PreviewDetail = new ReportDetail(false, true);
+
     internal static PreviewOrder? Of(ShowPreviewOptions options, List<OptionProblem> problems)
     {
         int before = problems.Count;
@@ -166,7 +170,8 @@ internal sealed class PreviewOrder
         List<PreviewBox> boxes = BoxesOf(options.Boxes, seconds, xray, problems);
         return problems.Count == before
             ? new PreviewOrder(
-                new PlaceRequest(placements, null, false, Allow.Lifts(options.Allow, "door_keepout")), cells, boxes,
+                new PlaceRequest(placements, null, false, Allow.Lifts(options.Allow, "door_keepout"),
+                    detail: PreviewDetail), cells, boxes,
                 seconds, options.Keep ?? false, false, xray)
             : null;
     }

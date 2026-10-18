@@ -1,6 +1,7 @@
 def inspect(what: Literal['job'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
     id: str | list[str] = None,  # A job id (place-12, run-4, remove-3...), a script run (script-14), a gas transfer id, or "paste" (the last blueprint paste). Left out: the list above.
+    max_wait: float = 30,  # Seconds this call waits for the job to finish (default 30); 0 answers at once. The job goes on.
     verbose: bool = False,  # The whole job and preflight.
 ) -> dict:
     """One build, removal, swap or gas move by its id (place-41), or a script run (script-14): running, queued or finished. With no id: runs with notices pending (stopped or killed with something left, writes not done, or done and not yet seen).

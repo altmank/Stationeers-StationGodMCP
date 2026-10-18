@@ -253,6 +253,42 @@ public sealed class CursorAndJobTests
     }
 
     [Fact]
+    public void AConfirmedGasMoveAnswersOnceItsTickAppliedItByPollingItsTransferId()
+    {
+        FakeGameLink game = new();
+        game.WaitJob = _ => null;
+        int polls = 0;
+        game.Answer = call => call.Method == "move"
+            ? FakeGameLink.Ok("""{"transfer_id":"7","status":"queued","predicted":true,"deleted":true}""")
+            : FakeGameLink.Ok(++polls == 1
+                ? """{"transfer_id":"7","status":"queued"}"""
+                : """{"transfer_id":"7","status":"applied","predicted":false,"deleted":true}""");
+
+        JsonNode reply = game.Pipeline().Call("move", "gas",
+            """{"source":"2005300","gases":["Hydrogen"],"delete":true,"confirm":true}""").Done()!;
+
+        Assert.Equal("applied", (string?)reply["status"]);
+        Assert.All(game.CallsTo("inspect"), call => Assert.Equal("7", (string?)call.Params()["id"]));
+        Assert.Equal(2, game.CallsTo("inspect").Count);
+        Assert.Empty(game.Waited);
+        Assert.Null(reply["job_id"]);
+    }
+
+    [Fact]
+    public void AScriptCallAsksInspectJobForItsOwnWait()
+    {
+        FakeGameLink game = new();
+        game.WaitJob = _ => null;
+        game.Answer = _ => FakeGameLink.Ok("""{"job_id":"place-2","status":"waiting"}""");
+
+        JsonNode reply = game.Pipeline().Call("inspect", "job", """{"id":"place-2","max_wait":0}""", Face.Script).Done()!;
+
+        Assert.True((bool)reply["running"]!);
+        Assert.Null(game.Single("inspect").Params()["max_wait"]);
+        Assert.Empty(game.Waited);
+    }
+
+    [Fact]
     public void ARefusedPollIsTheAnswer()
     {
         FakeGameLink game = new();

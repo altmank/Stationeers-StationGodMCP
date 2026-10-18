@@ -4,6 +4,9 @@ A cheat changes the world in a way a player could not. Ask the user first. A che
 - write genes: edit plant genes as the Gene Splicer does
 - write health: heal a player: every kind of damage to the body and its organs (brain and lungs) set to none
 - build structure with free: true: any structure a kit builds (light, device, frame, wall, tank, rocket part) by prefab, at a point with a turn; several placements are one job
+- build cable with free: true: a cable run or pieces, as a coil builds it, of a grade; guards for bridging, splitting and overload
+- build pipe with free: true: a pipe run or pieces from the grade's kit, with the pipe guards and a gas check
+- build chute with free: true: a chute run or pieces from Kit (Chute), source to sink, with flow guards
 - build blueprint: paste a BlueprintMod blueprint at an anchor and turn, skipping placement checks
 - build terrain: fill terrain in a box at once: solid, back to the ground the world generated, level to a flat plane, or only its enclosed voids
 - build finish with free: true: build a placed structure on to a later build state, paying each state's materials

@@ -190,6 +190,10 @@ internal static class OptionCheck
         return names;
     }
 
+    /// <summary>Why a script call takes no max_wait, and the call that waits as long as wanted.</summary>
+    internal const string ScriptWaits = "not taken in a script: the call waits for its job up to 30 s; to wait " +
+        "longer or less, sg.inspect('job', id=<its job id>, max_wait=<seconds>)";
+
     // help is the hub's own page server: a script asks it by the same names (sg.help('read', 'logic')).
     private static string? FaceProblem(VerbEntry verb, OptionEntry option, Face face)
     {
@@ -206,6 +210,11 @@ internal static class OptionCheck
         if (face == Face.Program && option.Name == "list_limits")
         {
             return null;
+        }
+
+        if (face == Face.Script && option.Name == "max_wait")
+        {
+            return ScriptWaits;
         }
 
         return face == Face.Script ? "not taken in a script" : "not taken by a program";

@@ -67,8 +67,9 @@ internal sealed class NetworkPiece
 internal sealed class ThingSnapshot
 {
     internal ThingSnapshot(long id, string prefab, Vec3 position, CubeRotation? turn, int buildState, string? label,
-        NetworkPiece? piece = null, bool burnt = false)
+        NetworkPiece? piece = null, bool burnt = false, int? colour = null)
     {
+        Colour = colour;
         Id = id;
         Prefab = prefab;
         Position = position;
@@ -91,6 +92,9 @@ internal sealed class ThingSnapshot
     internal int BuildState { get; }
 
     internal string? Label { get; }
+
+    /// <summary>Its paint, as a colour index (GameManager.GetColorIndex); null when it carried none.</summary>
+    internal int? Colour { get; }
 
     /// <summary>
     /// Set for a cable, pipe or chute piece: it is built again by its place tool (piece by piece, with that tool's

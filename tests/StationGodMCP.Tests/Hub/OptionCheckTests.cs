@@ -117,7 +117,7 @@ public sealed class OptionCheckTests
             Face.Script).Failed();
 
         Assert.Equal("confirm: confirm belongs to the run", Assert.Single(write.Problems()));
-        Assert.Equal(new[] { "queue: not taken in a script", "max_wait: not taken in a script" }, build.Problems());
+        Assert.Equal(new[] { "queue: not taken in a script", "max_wait: " + OptionCheck.ScriptWaits }, build.Problems());
         Assert.Equal(new[] { "offset: not taken in a script", "omit: not taken in a script", "list_limits: not taken in a script" },
             find.Problems());
         Assert.Empty(game.Calls);

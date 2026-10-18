@@ -256,7 +256,7 @@ internal static class RunBuilder
     {
         try
         {
-            if (cell.Cost > 0)
+            if (cell.Cost > 0 && !plan.Request.Options.Free)
             {
                 ItemStock stock = stocks.TryGetValue(cell.Kit.Item.PrefabHash, out ItemStock found)
                     ? found
@@ -275,6 +275,11 @@ internal static class RunBuilder
             }
 
             SmallGrid built = cell.IsChange ? Change(plan, cell, gas) : Place(plan, cell, over);
+            if (MarkOf(plan, cell)?.Label is { } label)
+            {
+                Thing.RenameThing(built.ReferenceId, Labels.AsTheLabellerWrites(built, label));
+            }
+
             outcome.Built[cell.ForecastId] = built;
             // The gas this piece's merges queued lands before the next piece can merge the survivor away (JobGas).
             gas.Settle();
@@ -303,6 +308,10 @@ internal static class RunBuilder
         }
     }
 
+    // The label and paint the call gives the piece in this cell (the pieces form's label and color); null for none.
+    private static PieceMark? MarkOf(RunPlan plan, PlannedCell cell) =>
+        plan.Request.Build != null && plan.Request.Build.Marks.TryGetValue(cell.Cell, out PieceMark mark) ? mark : null;
+
     // A new piece as a coil places it; over a piece still standing there (a split long straight's cell), built into
     // its slot as the kit's merge builds one, taking its owner and colour.
     private static SmallGrid Place(RunPlan plan, PlannedCell cell, SmallGrid? over)
@@ -316,7 +325,7 @@ internal static class RunBuilder
                 LocalRotation = cell.Choice.Rotation
             }
             : new CreateStructureInstance(cell.Choice.Prefab, world.WorldToLocal(PieceShapes.CentreOf(cell.Cell)),
-                cell.Choice.Rotation, owner, cell.Look?.Colour ?? -1);
+                cell.Choice.Rotation, owner, MarkOf(plan, cell)?.Colour ?? cell.Look?.Colour ?? -1);
         SmallGrid built = Spawn(instance, cell);
         RequireInPlace(plan, cell, built);
         return built;

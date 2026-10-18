@@ -101,6 +101,43 @@ class CutListTests(HubCase):
         self.assertEqual(1, len(sg.inspect("slots", id=["1"])["results"][0]["slots"]))
 
 
+class UnreachableRestTests(HubCase):
+    """A list the game cut under a dict, and a main list whose rest no page reaches, are never handed over whole."""
+
+    def test_a_list_cut_under_a_dict_raises_truncated(self):
+        self.handler = lambda method, params: ok({
+            "found": True, "build_report": {"cells_total": 9, "cells": [{"action": "place"}] * 5},
+            "truncated": [{"list": "build_report.cells", "returned": 5, "total": 9, "more": "pass rows (max 1024)"}]})
+        reply = sg.plan("route", kind="pipe", grade="gas", start={"at": [0, 0, 0]}, end={"at": [4, 0, 0]})
+        with self.assertRaises(sg.Error) as raised:
+            for _ in reply["build_report"]["cells"]:
+                pass
+        self.assertEqual("pass rows (max 1024)", raised.exception.fix)
+
+    def test_a_capped_main_list_without_a_cursor_refuses_all_and_walk_at_its_end(self):
+        self.handler = lambda method, params: ok({
+            "findings": [{"code": "a"}] * 25, "count": 40,
+            "truncated": [{"list": "findings", "returned": 25, "total": 40, "more": "pass limit (max 500)"}]})
+        findings = sg.check("layout", room="r1")["findings"]
+        self.assertEqual(25, len(findings))
+        with self.assertRaises(sg.Error) as raised:
+            findings.all()
+        self.assertEqual("pass limit (max 500)", raised.exception.fix)
+        walked = []
+        with self.assertRaises(sg.Error):
+            for entry in findings.walk():
+                walked.append(entry)
+        self.assertEqual(25, len(walked))
+
+    def test_the_hubs_rest_unreachable_refuses_all(self):
+        self.handler = lambda method, params: ok({
+            "things": [{"reference_id": "1"}], "has_more": True,
+            "rest_unreachable": "find thing answers one page and keeps no walk; narrow the call for the rest."})
+        with self.assertRaises(sg.Error) as raised:
+            sg.find("thing")["things"].all()
+        self.assertIn("narrow the call", raised.exception.fix)
+
+
 class MainListTests(HubCase):
     PAGES = {None: ([1, 2], "c1"), "c1": ([3, 4], "c2"), "c2": ([5], None)}
 

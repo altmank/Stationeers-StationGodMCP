@@ -162,11 +162,7 @@ internal static class UpgradeReports
         return views;
     }
 
-    internal static RotationView RotationOf(Quaternion rotation)
-    {
-        Vector3 euler = rotation.eulerAngles;
-        return new RotationView(euler.x, euler.y, euler.z);
-    }
+    internal static RotationView RotationOf(Quaternion rotation) => Orientations.Degrees(rotation);
 
     // The views of the plan's swaps from up to (not including) until, added to pieces.
     [Profiled]

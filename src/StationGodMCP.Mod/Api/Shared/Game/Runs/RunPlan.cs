@@ -42,8 +42,10 @@ internal sealed class RunRequest
 /// </summary>
 internal sealed class RunBuild
 {
-    internal RunBuild(RunShape shape, Grade grade, JoinMode join, List<ExtraEnd> extra)
+    internal RunBuild(RunShape shape, Grade grade, JoinMode join, List<ExtraEnd> extra,
+        Dictionary<GridCell, PieceMark>? marks = null)
     {
+        Marks = marks ?? new Dictionary<GridCell, PieceMark>();
         Shape = shape;
         Grade = grade;
         Join = join;
@@ -60,6 +62,23 @@ internal sealed class RunBuild
     internal JoinMode Join { get; }
 
     internal List<ExtraEnd> Extra { get; }
+
+    /// <summary>The label and paint a piece is laid with, by its cell (the pieces form's label and color).</summary>
+    internal Dictionary<GridCell, PieceMark> Marks { get; }
+}
+
+/// <summary>A piece's label (as the Labeller writes it) and paint (a colour index); either may be left out.</summary>
+internal sealed class PieceMark
+{
+    internal PieceMark(string? label, int? colour)
+    {
+        Label = label;
+        Colour = colour;
+    }
+
+    internal string? Label { get; }
+
+    internal int? Colour { get; }
 }
 
 /// <summary>
@@ -121,8 +140,9 @@ internal sealed class RunOptions
 {
     internal RunOptions(EditAllowance allow, ThingId? from, RefundRoute refundTo, int listLimit, bool splitLong = true,
         RunTargets? targets = null, bool allowDoorKeepOut = false, RunDetail? detail = null,
-        List<ThingId>? moreFrom = null, bool allowLint = false)
+        List<ThingId>? moreFrom = null, bool allowLint = false, bool free = false)
     {
+        Free = free;
         MoreFrom = moreFrom ?? new List<ThingId>();
         Detail = detail ?? RunDetail.Brief;
         AllowDoorKeepOut = allowDoorKeepOut;
@@ -140,7 +160,7 @@ internal sealed class RunOptions
 
     internal RunOptions WithTargets(RunTargets targets) =>
         new RunOptions(Allow, From, RefundTo, ListLimit, SplitLong, targets, AllowDoorKeepOut, Detail, MoreFrom,
-            AllowLint);
+            AllowLint, Free);
 
     /// <summary>include_links and include_notes: what the report lists beyond its counts.</summary>
     internal RunDetail Detail { get; }
@@ -163,6 +183,9 @@ internal sealed class RunOptions
 
     /// <summary>The thing coils are taken from and given back to; null for the player.</summary>
     internal ThingId? From { get; }
+
+    /// <summary>free: a creative world's cheat; the run takes no coils or kits from anyone.</summary>
+    internal bool Free { get; }
 
     /// <summary>from_id's further things, tried after From for each coil or kit.</summary>
     internal List<ThingId> MoreFrom { get; }

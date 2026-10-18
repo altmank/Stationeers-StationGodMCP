@@ -1,6 +1,7 @@
 #nullable enable
 
 using System.Collections.Generic;
+using Newtonsoft.Json;
 using StationGodMCP.Api.Shared;
 
 namespace StationGodMCP.Api.Views;
@@ -9,6 +10,10 @@ namespace StationGodMCP.Api.Views;
 internal sealed class MoveGasView
 {
     internal const string Queued = "queued";
+
+    /// <summary>What a queued move's reply says of when it lands.</summary>
+    internal const string QueuedNote = "queued: applied at the next atmospherics tick, after anything else queued " +
+        "for that tick (an addgas sent now is moved or deleted with it); inspect job {id: transfer_id} reads the outcome.";
 
     internal MoveGasView(string? transferId, string status, bool predicted, bool joined, GasSideView? from,
         GasSideView? to, List<MovedGasView> moved, ErrorView? error)
@@ -22,6 +27,7 @@ internal sealed class MoveGasView
         Deleted = from != null && to == null;
         Moved = moved;
         Error = error;
+        Note = transferId != null && status == Queued ? QueuedNote : null;
     }
 
     /// <summary>Null for a report (nothing was queued).</summary>
@@ -44,6 +50,10 @@ internal sealed class MoveGasView
 
     public ErrorView? Error { get; }
 
+    /// <summary>A queued move's word on when it lands; left out once it applied or failed, and in a report.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public string? Note { get; }
+
     internal static MoveGasView Failed(string transferId, ErrorView error) =>
         new MoveGasView(transferId, "failed", false, false, null, null, new List<MovedGasView>(), error);
 }
@@ -58,7 +68,9 @@ internal sealed class GasMoveWaitingView
 
     public string TransferId { get; }
 
-    public string Status => "queued";
+    public string Status => MoveGasView.Queued;
+
+    public string Note => MoveGasView.QueuedNote;
 }
 
 internal sealed class GasSideView

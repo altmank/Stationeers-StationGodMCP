@@ -64,6 +64,13 @@ Write-Host "Testing $version"
 dotnet test (Join-Path $root 'tests\StationGodMCP.Tests\StationGodMCP.Tests.csproj') -nologo -v q
 if ($LASTEXITCODE -ne 0) { throw "Tests failed with exit code $LASTEXITCODE; nothing was built." }
 
+# The sg client's tests, test_generated among them: sg's verb layer stale against the catalogue (generate_catalogue.py
+# not run after a catalogue change) stops the build too.
+Push-Location (Join-Path $root 'clients\python')
+try { cmd /c "py -3 -m unittest discover -s tests 2>&1" }
+finally { Pop-Location }
+if ($LASTEXITCODE -ne 0) { throw "sg client tests failed with exit code $LASTEXITCODE; nothing was built." }
+
 Write-Host "Building $version against $GameDir (Workshop page $pageLength characters)"
 dotnet build (Join-Path $root 'StationGodMCP.csproj') -c Release -p:StationeersPath="$GameDir" -nologo -v q
 if ($LASTEXITCODE -ne 0) { throw "Build failed with exit code $LASTEXITCODE." }

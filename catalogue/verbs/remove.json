@@ -442,6 +442,11 @@
           "description": "The saved script's name.",
           "required": true,
           "x-script": "same"
+        },
+        "scope": {
+          "schema": {"type": "string", "enum": ["shared", "world"]},
+          "description": "Which copy: shared, or this world's; left out, the one a run would open. A name saved in both needs it.",
+          "x-script": "same"
         }
       },
       "text": [

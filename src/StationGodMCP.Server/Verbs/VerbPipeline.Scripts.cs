@@ -140,11 +140,17 @@ public sealed partial class VerbPipeline
         }
     }
 
-    // remove script {name}: the current file and every version kept beside it.
+    // remove script {name, scope}: the current file and every version kept beside it, of the copy scope names.
     private static VerbReply RemoveScript(ScriptStore store, JsonObject options, string? world)
     {
         string name = (JsonNodes.Text(options["name"]) ?? string.Empty).Trim();
-        switch (store.Remove(name, world))
+        ScriptScope? scope = JsonNodes.Text(options["scope"]) switch
+        {
+            "shared" => ScriptScope.Shared,
+            "world" => ScriptScope.World,
+            _ => null
+        };
+        switch (store.Remove(name, world, scope))
         {
             case ScriptOutcome<SavedScript>.Refused refused:
                 return Failed(refused);

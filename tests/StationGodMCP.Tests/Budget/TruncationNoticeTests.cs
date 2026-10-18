@@ -5,11 +5,13 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure.Shaping;
 using StationGodMCP.Tests.CatalogueChecks;
+using StationGodMCP.Tests.Verbs;
 using Xunit;
 
 namespace StationGodMCP.Tests.Budget;
@@ -48,6 +50,34 @@ public sealed class TruncationNoticeTests
         Assert.Equal(412, (int)entry["total"]!);
         Assert.Equal("pass limit (max 500) or offset 8", (string?)entry["more"]);
         Assert.Null(entry["at_least"]);
+    }
+
+    [Theory]
+    [InlineData("plan", "route")]
+    [InlineData("build", "cable")]
+    [InlineData("build", "pipe")]
+    [InlineData("build", "chute")]
+    [InlineData("remove", "cable")]
+    [InlineData("remove", "pipe")]
+    [InlineData("remove", "chute")]
+    [InlineData("plan", "removal")]
+    public void ARunReportsCutCellsNameRowsAnOptionOfEveryWhatThatAnswersOne(string verb, string what)
+    {
+        RunReportView report = new RunReportView(new RunHeaderView("build pipe", "dry_run", null, "gas", null),
+            new RunCellsView(new List<RunCellView>(), 12, 12, 0, 0, new List<RunRemovalView>(), 0),
+            new RunMaterialsView(null, new List<UpgradeCoilView>(), true, new List<UpgradeAmountView>()),
+            new RunNetworksView(new List<object>(), new List<RunNetworkAfterView>(), new List<RunBridgeView>(),
+                new List<RunSplitView>(), null),
+            new List<RunIssueView>(), new List<RunIssueView>());
+        Truncations.Begin();
+
+        report.NoteTruncations("build_report.");
+
+        Truncation note = Assert.Single(Truncations.Take());
+        Assert.Equal("build_report.cells", note.List);
+        Assert.Equal("pass rows (max 1024)", note.More);
+        JsonObject source = VerbCatalogue.Whats().Single(entry => entry.Verb == verb && entry.What == what).Source;
+        Assert.Contains(VerbCatalogue.OptionsOf(source), option => option.Name == "rows");
     }
 
     [Fact]

@@ -88,8 +88,9 @@ internal sealed class OreView
 internal sealed class TerrainFillView
 {
     internal TerrainFillView(DigBox box, FillMode mode, DigTally tally, int? voids, OreHandling ores,
-        List<ThingView> playersInBox)
+        List<ThingView> playersInBox, List<ThingView> covers)
     {
+        Covers = covers.Count > 0 ? covers : null;
         Box = new DigBoxView(PointView.Of(box.Min), PointView.Of(box.Max));
         Cells = box.Cells;
         Mode = mode.Name;
@@ -144,6 +145,13 @@ internal sealed class TerrainFillView
 
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public List<ThingView>? PlayersInBox { get; }
+
+    /// <summary>
+    /// The pipes, cables and chutes lying in open ground (outside frames) that the fill covers with ground; left out
+    /// when it covers none. They keep working buried.
+    /// </summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<ThingView>? Covers { get; }
 }
 
 /// <summary>

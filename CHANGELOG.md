@@ -1,5 +1,54 @@
 # Changelog
 
+## 2.4.3
+
+- **A cut cell list names the option that lifts it.** `plan route`'s `build_report.cells` (and the `cells` of
+  `build`/`remove` cable, pipe and chute reports) said "pass limit (max 1024)", an option none of them takes, and
+  `list_limits` cannot lift a list the game itself cuts at `rows`. The note now says "pass rows (max 1024)"; `rows`
+  works on every one of them, in `run_script` too.
+- **`build cable`, `build pipe` and `build chute` take `free: true`** (a cheat, creative worlds only, refused with
+  `not_creative` elsewhere; it reports until `confirm: true` as other cheats do). The run takes no coils or kits from
+  anyone, so it builds on a world with no player; what it replaces or removes gives nothing back unless `refund_to`
+  names where. Its undo gives nothing back either.
+- **`plan route`'s `rotation_deg` rebuilds the planned piece.** It was the game's `eulerAngles`, which for a piece
+  lying on its side (a vertical corner) can come back as another rotation, so `build structure` with that `rotation`
+  placed a corner with other ends (planned `+x, -y`, built `+x, -z`). `rotation_deg` is now the quarter turns
+  `build structure`'s `rotation` turns back into exactly the planned rotation; `swap` pieces' `rotation_deg` too.
+- **Run notices belong to their world.** A run that stopped with something left gave its notice on every reply,
+  also after the world changed, where its ids name other things and its undo is refused. Ended runs' notices (and
+  adopted journals' runs) now ride only the replies of the world they ran in; a journal run with no world gives none.
+- **A confirmed `move gas` waits for its tick.** The reply was meant to wait for the atmospherics tick (as it says),
+  but the wait looked for a `job_id` and a gas move names a `transfer_id`, so it answered `queued` at once and an
+  `addgas` sent next landed in the same tick and was deleted with it. The reply now waits (polling the transfer, up to
+  `max_wait`), and a move still queued says in its `note` that it applies at the next tick, after anything else
+  queued. It is not applied before the reply: the atmospherics thread owns the gas and the game holds no lock on it.
+- **`inspect job` takes `max_wait` in `run_script`**: how long that call waits for the job it names. Other script
+  calls' refusal of `max_wait` now says the call waits up to 30 s and names that call.
+- **`build {from_plan}` given a build's ref** says to use `repeat` with that ref, which sends the build again.
+- **A script name saved in both scopes can be cleared.** A world script `tidy` in world A and a shared `tidy` saved
+  from world B left world A unable to run, inspect, remove or save `tidy`: every verb refused "saved in both", and
+  `remove script` opened it the same way. `remove script` takes `scope` (`shared` or `world`) to remove one copy, and
+  a shared save is now refused while any world's folder holds that name.
+- **A crashed rocket's flight log is read, stopped and cleared.** `read flight_log` and `write flight_log` stop or
+  clear looked for the live rocket first, so a rocket destroyed on landing answered `rocket_not_found` while its log
+  (stopped, samples kept) was listed. They now find the log first, by the rocket's id or name; with `id` left out and
+  one log, that log.
+- **Undo of a removal brings back labels and paint.** Pieces of a removed pipe, cable or chute came back unnamed, and
+  no removed thing came back in its colour. The job's record now keeps the paint, and undo builds each structure and
+  piece with its label and colour. `build cable`, `pipe` and `chute`'s `piece` and `pieces` take `label` and `color`
+  for this (a colour index or name). A structure only keeps a colour `build structure` can build it in.
+- **`show preview` of a blocked placement keeps its layout.** It answered the layout out with "pass verbose: true",
+  an option `show preview` does not take; the layout (what blocks the spot) is now always in a preview's reply.
+- **`build terrain` names the pieces it covers.** Its help said pipes and cables are never buried, but a voxel is kept
+  only inside structures (all eight cubes around it built), so a pipe, cable or chute lying in open ground (outside
+  frames) is covered. The help now says so, and the report and the result list them in `covers`.
+- **sg 0.4.7.** A list the game cut under a dict (`build_report.cells`, `preflight.cells`) now raises
+  `sg.Error("truncated")` on use like any other cut list, instead of handing a script its first rows. A main list
+  whose rest no page reaches (a capped list without a walk, such as `check layout`'s `findings`, or the hub's
+  `rest_unreachable`) raises `truncated` from `all()` and at the end of `walk()` with the way to get the rest. sg's
+  verb layer is regenerated (`into_frames`, `free`, `inspect job`'s `max_wait`, `remove script`'s `scope`), and
+  `build.ps1` now runs sg's tests, so a stale verb layer stops the build.
+
 ## 2.4.2
 
 - **`build structure` spread keeps its last placement.** A spread whose step lands exactly on `to` lost that last

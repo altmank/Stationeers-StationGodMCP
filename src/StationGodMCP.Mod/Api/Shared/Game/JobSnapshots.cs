@@ -1,6 +1,7 @@
 #nullable enable
 
 using System.Collections.Generic;
+using Assets.Scripts;
 using Assets.Scripts.Objects;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -112,10 +113,27 @@ internal static class JobSnapshots
     internal static ThingSnapshot Of(Structure structure)
     {
         Quaternion rotation = structure.ThingTransformRotation;
+        NetworkPiece? piece = PieceOf(structure);
         return new ThingSnapshot(structure.ReferenceId, structure.PrefabName, Bodies.V(structure.ThingTransformPosition),
             CubeRotation.FromQuaternion(rotation.x, rotation.y, rotation.z, rotation.w),
             structure.CurrentBuildStateIndex,
-            string.IsNullOrEmpty(structure.CustomName) ? null : structure.CustomName, PieceOf(structure));
+            string.IsNullOrEmpty(structure.CustomName) ? null : structure.CustomName, piece,
+            colour: ColourOf(structure, piece != null));
+    }
+
+    // The paint a thing is built again in: a piece's (its run lays it in that colour, as a split long's singles take
+    // theirs), or a structure's that build structure can build in a colour (PlacePlanner's not_paintable rule); null
+    // for the rest, so its undo is never refused for a colour it cannot take.
+    private static int? ColourOf(Structure structure, bool piece)
+    {
+        if (structure.CustomColor == null)
+        {
+            return null;
+        }
+
+        bool builds = piece || (!structure.HasColorState && structure.IsPaintable && structure.PaintableMaterial != null &&
+                                structure.structureRenderMode == StructureRenderMode.Standard);
+        return builds ? GameManager.GetColorIndex(structure.CustomColor) : null;
     }
 
     private static ThingSnapshot BurntOf(Structure structure) =>

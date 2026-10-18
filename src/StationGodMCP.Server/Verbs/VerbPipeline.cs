@@ -571,15 +571,18 @@ public sealed partial class VerbPipeline
 
     /// <summary>
     /// A job the reply names (or inspect job's own id) is waited for until it is final or max_wait (default 30 s)
-    /// passes: on the jobs topic (IGameLink.WaitJobAsync), then one inspect job for its view; a link without job waits
-    /// is polled instead. A job still running answers its job id with running: true. Every poll carries the call's
+    /// passes: on the jobs topic (IGameLink.WaitJobAsync), then one inspect job for its view; a link without job waits,
+    /// and a gas move's transfer_id (no jobs topic event ends it), is polled instead. A job still running answers its
+    /// job id with running: true. Every poll carries the call's
     /// shape, so the job's view keeps only what the call's fields and omit keep.
     /// </summary>
     private async Task<(JsonNode? Result, VerbReply.Failed? Failed)> SettledAsync(WhatEntry what, JsonObject options,
         JsonNode? result, long stream, JsonElement? shape, CancellationToken cancellation)
     {
         double seconds = JsonNodes.Number(options["max_wait"]) ?? DefaultMaxWaitSeconds;
-        string? jobId = JsonNodes.Text(result?["job_id"]) ??
+        // A gas move names its transfer_id: inspect job reads it, but it ends on no jobs topic event, so it is polled.
+        string? transferId = JsonNodes.Text(result?["job_id"]) == null ? JsonNodes.Text(result?["transfer_id"]) : null;
+        string? jobId = JsonNodes.Text(result?["job_id"]) ?? transferId ??
                         (what.Key == "inspect.job" ? JsonNodes.Text(options["id"])?.Trim() : null);
         if (jobId == null || Settled(result))
         {
@@ -596,15 +599,14 @@ public sealed partial class VerbPipeline
         if (seconds > 0)
         {
             GameReply? polled;
-            try
-            {
-                // Null when the timeout passes, and early after a reconnect: either way one poll gives the job's view.
-                await _link.WaitJobAsync(jobId, TimeSpan.FromSeconds(seconds), cancellation).ConfigureAwait(false);
-                polled = await SendAsync(job, poll, stream, shape, cancellation).ConfigureAwait(false);
-            }
-            catch (NotSupportedException)
+            if (transferId != null)
             {
                 polled = await PolledAsync(job, poll, result, stream, seconds, shape, cancellation).ConfigureAwait(false);
+            }
+            else
+            {
+                polled = await JobWaitedAsync(job, poll, result, jobId, stream, seconds, shape, cancellation)
+                    .ConfigureAwait(false);
             }
 
             switch (polled)
@@ -620,11 +622,31 @@ public sealed partial class VerbPipeline
 
         if (!Settled(result) && result is JsonObject running)
         {
-            running["job_id"] ??= jobId;
+            if (transferId == null)
+            {
+                running["job_id"] ??= jobId;
+            }
+
             running["running"] = true;
         }
 
         return (result, null);
+    }
+
+    // A job's end heard on the jobs topic, then one inspect job for its view; a link without job waits polls instead.
+    private async Task<GameReply?> JobWaitedAsync(WhatEntry job, JsonObject poll, JsonNode? result, string jobId,
+        long stream, double seconds, JsonElement? shape, CancellationToken cancellation)
+    {
+        try
+        {
+            // Null when the timeout passes, and early after a reconnect: either way one poll gives the job's view.
+            await _link.WaitJobAsync(jobId, TimeSpan.FromSeconds(seconds), cancellation).ConfigureAwait(false);
+            return await SendAsync(job, poll, stream, shape, cancellation).ConfigureAwait(false);
+        }
+        catch (NotSupportedException)
+        {
+            return await PolledAsync(job, poll, result, stream, seconds, shape, cancellation).ConfigureAwait(false);
+        }
     }
 
     // A link without job waits: poll until the job is final or the time is up; the last poll's reply (null: none).

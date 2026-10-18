@@ -90,6 +90,23 @@ public sealed class RunStopTests
     }
 
     [PythonFact]
+    public async Task AStoppedRunsStickyNoticeRidesOnlyTheRepliesOfItsWorld()
+    {
+        await using RunBench bench = new();
+
+        string id = await bench.StartAsync("sg.write('logic', id='1', logic='On', value=1)\nsg.wait(30)", confirm: true, line: 2);
+        await bench.Host.StopAsync(new JsonObject());
+        await bench.EndedAsync(id);
+        bench.World.ChangeWorldQuietly("world-2");
+        var elsewhere = await bench.Host.NoticesAsync("read", "logic", null);
+        bench.World.ChangeWorldQuietly("world-1");
+        var back = await bench.Host.NoticesAsync("read", "logic", null);
+
+        Assert.Empty(elsewhere);
+        Assert.StartsWith("notice: script-1 (", Assert.Single(back));
+    }
+
+    [PythonFact]
     public async Task ADoneNoticeComesOnceOnTheNextRunReply()
     {
         await using RunBench bench = new();

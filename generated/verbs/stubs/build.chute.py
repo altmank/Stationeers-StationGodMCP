@@ -3,8 +3,8 @@ def build(what: Literal['chute'], *,
     grade: Literal['chute'] = 'chute',  # The chute kit (one grade).
     waypoints: list = None,  # Points joined by straight axis lines.
     cells: list = None,  # Every cell, each next to the one before.
-    piece: dict = None,  # One piece {at, ends}.
-    pieces: list = None,  # Separate pieces, each {at, ends}.
+    piece: dict = None,  # One piece {at, ends, label, color}; label and color optional.
+    pieces: list = None,  # Separate pieces, each {at, ends, label, color}: label and color (a colour index or name) are optional.
     branches: list = None,  # Side runs, each {waypoints or cells, attach}.
     extra_ends: list = None,  # Extra ends on run cells, each {at, toward}.
     join: Literal['ends', 'none', 'all'] = 'ends',  # What the run joins.
@@ -17,6 +17,7 @@ def build(what: Literal['chute'], *,
     join_to: str | dict = None,  # The network the run must end on.
     join_trunk: bool = False,  # With join_to: add the missing tap.
     materials: str | list[str] = None,  # Holder(s) that pay materials and take source refunds, tried in order; ids or "player". Default the player.
+    free: bool = False,  # Creative worlds: no materials, and what it replaces or removes gives nothing back unless refund_to names where. Cheat.
     refund_to: str | int | list = None,  # Where removed materials go: a word (inventory, source, storage, ground, none), a container id, or a list tried in turn. (default [inventory, source, storage, ground]) (default [inventory, source, storage, ground])
     include: list[Literal['links', 'notes', 'network_devices']] = None,  # Parts to add to the reply.
     rows: int = 5,  # Cells listed; 0 for none.
@@ -26,6 +27,7 @@ def build(what: Literal['chute'], *,
     """A chute run or pieces from Kit (Chute), source to sink, with flow guards.
     A build that pays from the player's inventory (materials left out, or "player") carries the warning materials_from_player. With from_plan, what may be left out: it comes from the plan.
     Reports in a report run; acts in a confirmed run.
+    Cheat when free: true: ask the user first.
     placed: list[str] on a job reply, the new ids (a run's log.placed, a structure job's result.placed; a brief poll counts them in log.placed_count); int on a run report, the cells it would build.
     Reply, one of:
     (JobQueued)

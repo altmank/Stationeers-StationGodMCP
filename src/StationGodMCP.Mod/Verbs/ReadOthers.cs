@@ -103,18 +103,17 @@ internal static class ReadFlightLog
         int every = (int)options.Every!.Value;
         if (options.Selector.Ids is not { } ids)
         {
-            return Answer.Of(Read(RocketLocator.One((string?)null), walk, paging, every));
+            return Answer.Of(Read(RocketFlightRecorder.Named(null), walk, paging, every));
         }
 
         return IdAnswers.Of(ids, id =>
         {
-            Objects.Rockets.Rocket rocket = RocketLocator.Find(id);
-            return (rocket.ReferenceId.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                Read(rocket, walk, paging, every));
+            RocketFlightLogEntry entry = RocketFlightRecorder.Named(id);
+            return (entry.RocketId.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                Read(entry, walk, paging, every));
         });
     }
 
-    private static FlightLogView Read(Objects.Rockets.Rocket rocket, WalkRequest walk, Paging paging, int every) =>
-        FlightLogs.View(RocketFlightRecorder.Require(rocket.ReferenceId), walk, paging.Offset,
-            paging.Limit ?? int.MaxValue, every);
+    private static FlightLogView Read(RocketFlightLogEntry entry, WalkRequest walk, Paging paging, int every) =>
+        FlightLogs.View(entry, walk, paging.Offset, paging.Limit ?? int.MaxValue, every);
 }

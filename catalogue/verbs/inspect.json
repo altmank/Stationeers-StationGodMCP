@@ -853,7 +853,8 @@
         },
         "max_wait": {
           "use": "max_wait",
-          "description": "How long this reply waits, at most your client's timeout; the job or run goes on."
+          "description": "How long this reply waits, at most your client's timeout; the job or run goes on.",
+          "x-script": "Seconds this call waits for the job to finish (default 30); 0 answers at once. The job goes on."
         },
         "verbose": {"use": "verbose", "description": "The whole job and preflight."}
       },

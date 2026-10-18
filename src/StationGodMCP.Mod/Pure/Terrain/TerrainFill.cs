@@ -161,9 +161,11 @@ internal abstract class VoxelChoice
 
     /// <summary>
     /// The fill's choice at a voxel: bedrock is never changed (the game does nothing there, VoxelTerrain.cs:953); a
-    /// voxel whose cell holds a structure is kept, so a fill never buries frames, walls, pipes or devices (the game's
-    /// own dirt placement checks only the density, VoxelTool.cs:95-97; this guard is StationGod's); a voxel already at
-    /// the density the mode wants is the same; any other is set.
+    /// voxel inside structures (reading.Built: all eight cubes around it built) is kept, so ground meets a frame or wall
+    /// at its faces (the game's own dirt placement checks only the density, VoxelTool.cs:95-97; this guard is
+    /// StationGod's); a voxel already at the density the mode wants is the same; any other is set. A pipe, cable or
+    /// chute lying in open ground fills one cube, never all eight around a voxel, so the fill covers it: TerrainCover
+    /// names those pieces in the report.
     /// </summary>
     internal static VoxelChoice Of(FillMode mode, VoxelPoint voxel, VoxelReading reading, bool inVoid)
     {
@@ -406,5 +408,47 @@ internal static class VoidSearch
         yield return new VoxelPoint(voxel.X, voxel.Y - 1, voxel.Z);
         yield return new VoxelPoint(voxel.X, voxel.Y, voxel.Z + 1);
         yield return new VoxelPoint(voxel.X, voxel.Y, voxel.Z - 1);
+    }
+}
+
+/// <summary>
+/// The pieces a fill covers: a 1 m cube holding a pipe, cable or chute and no large-grid structure (a piece lying in
+/// open ground, not inside a frame) is covered when the fill adds ground at any of the eight voxels at its corners.
+/// </summary>
+internal static class TerrainCover
+{
+    /// <summary>Whether the fill adds ground at a corner of the cube from (x, y, z) up.</summary>
+    internal static bool Covers(VoxelPoint cube, ICollection<VoxelPoint> added)
+    {
+        for (int dx = 0; dx <= 1; dx++)
+        {
+            for (int dy = 0; dy <= 1; dy++)
+            {
+                for (int dz = 0; dz <= 1; dz++)
+                {
+                    if (added.Contains(new VoxelPoint(cube.X + dx, cube.Y + dy, cube.Z + dz)))
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>The cubes that have the voxel as a corner: the eight cubes from (x - 1, y - 1, z - 1) to (x, y, z).</summary>
+    internal static IEnumerable<VoxelPoint> CubesAround(VoxelPoint voxel)
+    {
+        for (int dx = -1; dx <= 0; dx++)
+        {
+            for (int dy = -1; dy <= 0; dy++)
+            {
+                for (int dz = -1; dz <= 0; dz++)
+                {
+                    yield return new VoxelPoint(voxel.X + dx, voxel.Y + dy, voxel.Z + dz);
+                }
+            }
+        }
     }
 }

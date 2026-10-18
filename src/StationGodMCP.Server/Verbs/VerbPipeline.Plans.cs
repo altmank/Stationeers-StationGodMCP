@@ -82,6 +82,13 @@ public sealed partial class VerbPipeline
             return new PlanArguments.Refused($"no ref '{text}' (refs last until the world changes)");
         }
 
+        if (stored.Verb == "build")
+        {
+            return new PlanArguments.Refused(
+                $"{stored.Id} is a build {stored.What} call, not a plan: repeat: \"{stored.Id}\" sends that call again " +
+                "(the options given replace its own); from_plan takes a plan route or plan spot ref");
+        }
+
         if (stored.Verb != "plan" || !PlannedWhats.Contains(stored.What))
         {
             return new PlanArguments.Refused(

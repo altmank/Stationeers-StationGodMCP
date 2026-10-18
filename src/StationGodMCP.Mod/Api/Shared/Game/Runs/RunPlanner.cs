@@ -675,6 +675,17 @@ internal static class RunPlanner
         plan.From = Source(plan);
         Receivers(plan);
         HolderRemoved(plan);
+        bool free = plan.Request.Options.Free;
+        if (free && PlacementRule.FreeRefusal(true, WorldManager.IsCreative()) is { } refusal)
+        {
+            plan.Problem("not_creative", $"free: {refusal}.");
+        }
+
+        if (!SourceRule.Takes(plan.Request.Build != null, free))
+        {
+            return;
+        }
+
         Dictionary<int, int> needed = new Dictionary<int, int>();
         List<Kit> kits = new List<Kit>();
         foreach (PlannedCell cell in plan.Cells)
@@ -740,7 +751,7 @@ internal static class RunPlanner
             return null;
         }
 
-        bool builds = plan.Request.Build != null;
+        bool builds = SourceRule.Takes(plan.Request.Build != null, plan.Request.Options.Free);
         if (!SourceRule.NeedsSource(builds, plan.Request.Options.Refund))
         {
             return null;

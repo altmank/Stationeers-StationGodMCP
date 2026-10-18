@@ -148,6 +148,37 @@ public sealed class ScriptStoreTests : IDisposable
     }
 
     [PythonFact]
+    public void ASharedSaveIsRefusedWhileAnyWorldHoldsTheName()
+    {
+        Saved(_store.Save("tidy", Greet, "world A's", ScriptScope.World, "world-A"));
+
+        ScriptOutcome<SavedScript>.Refused refused =
+            Refused(_store.Save("tidy", Greet, "shared, saved from world B", ScriptScope.Shared, "world-B"));
+
+        Assert.Equal(ScriptFailure.Exists, refused.Code);
+        Assert.Contains("another world", refused.Message);
+        Assert.False(File.Exists(Path.Combine(_store.Root, "shared", "tidy.py")));
+    }
+
+    [PythonFact]
+    public void ANameSavedInBothScopesLosesOneCopyByRemoveWithItsScope()
+    {
+        // A clash left by an earlier version: world A's tidy and a shared tidy saved from world B.
+        Saved(_store.Save("tidy", Greet, "world A's", ScriptScope.World, "world-A"));
+        ScriptStore other = new(Path.Combine(_folder, "other"), new ScriptCode(ScriptCode.DefaultPython, RunBench.SgRoot));
+        Saved(other.Save("tidy", Greet, "shared", ScriptScope.Shared, null));
+        Directory.CreateDirectory(Path.Combine(_store.Root, "shared"));
+        File.Copy(Path.Combine(other.Root, "shared", "tidy.py"), Path.Combine(_store.Root, "shared", "tidy.py"));
+        Assert.Equal(ScriptFailure.Exists, Refused(_store.Open("tidy", "world-A")).Code);
+        Assert.Contains("scope", Refused(_store.Remove("tidy", "world-A")).Message);
+
+        SavedScript removed = Saved(_store.Remove("tidy", "world-A", ScriptScope.Shared));
+
+        Assert.Equal(ScriptScope.Shared, removed.Scope);
+        Assert.Equal("world-A", Saved(_store.Open("tidy", "world-A")).World);
+    }
+
+    [PythonFact]
     public void ANameCollidesCaseInsensitivelyWhereThePlatformDoes()
     {
         Saved(_store.Save("Greet", Greet, "d", ScriptScope.Shared, null));

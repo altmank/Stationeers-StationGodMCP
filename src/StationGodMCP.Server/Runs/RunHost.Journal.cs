@@ -82,7 +82,7 @@ public sealed partial class RunHost
         }
     }
 
-    // One line per adopted run that left something, on the session's first reply. The adopted journals retire once that
+    // One line per adopted run of this world that left something, on the session's first reply. The adopted journals retire once that
     // reply has gone (the next reply is built, or the hub ends) and only when their restores' outcomes are known.
     private async Task<List<string>> FirstReplyLinesAsync()
     {
@@ -124,7 +124,7 @@ public sealed partial class RunHost
                 }
 
                 notes.Reported = true;
-                if (record.Left.Count == 0 && record.Restores == null)
+                if (!OfThisWorld(record) || (record.Left.Count == 0 && record.Restores == null))
                 {
                     continue;
                 }

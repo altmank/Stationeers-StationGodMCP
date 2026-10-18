@@ -671,6 +671,7 @@
           "box": {"type": "array"},
           "ores": {"enum": ["drop", "discard"]},
           "name": {"type": "string", "description": "remove script: the saved script's name."},
+          "scope": {"enum": ["shared", "world"]},
           "fields": {"type": "array", "items": {"type": "string"}, "description": "Keys to keep."},
           "omit": {"type": "array", "items": {"type": "string"}, "description": "Key paths to leave out."},
           "list_limits": {"type": "object"},

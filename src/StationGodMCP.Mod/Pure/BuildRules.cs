@@ -173,6 +173,9 @@ internal static class SourceRule
     /// it; a removal with refund false moves no item, so it needs no player and no from_id.
     /// </summary>
     internal static bool NeedsSource(bool builds, bool refund) => builds || refund;
+
+    /// <summary>Whether a run takes coils or kits from a holder: one that builds, unless it builds free.</summary>
+    internal static bool Takes(bool builds, bool free) => builds && !free;
 }
 
 /// <summary>Whether removing a piece is refused, warned about or allowed, and why.</summary>

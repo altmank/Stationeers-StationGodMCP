@@ -174,7 +174,7 @@ public sealed class TerrainFillTests
         tally.Solid();
         tally.Built();
         TerrainFillView reading = new(box, new FillMode.Level(150), tally, null, OreHandling.Dropped,
-            new List<ThingView>());
+            new List<ThingView>(), new List<ThingView>());
 
         JObject report = Replies.Tree(TerrainFillReplies.Reported(reading, "[cannot undo: terrain fill]"));
 
@@ -197,4 +197,48 @@ public sealed class TerrainFillTests
         Assert.Null(entry["players_inside"]);
     }
 
+    [Fact]
+    public void APipeInDugGroundIsCoveredAndNamedWhileOneInAFrameIsNot()
+    {
+        // A pipe in the cube from (10, 5, 10) up, in dug ground with no frame: none of the voxels at its corners has all
+        // eight cubes built (the pipe fills one), so solid fills every one of them, and the cube is covered.
+        FillMode solid = new FillMode.Solid();
+        HashSet<VoxelPoint> added = new HashSet<VoxelPoint>();
+        VoxelPoint pipe = new VoxelPoint(10, 5, 10);
+        for (int dx = 0; dx <= 1; dx++)
+        {
+            for (int dy = 0; dy <= 1; dy++)
+            {
+                for (int dz = 0; dz <= 1; dz++)
+                {
+                    VoxelPoint corner = new VoxelPoint(pipe.X + dx, pipe.Y + dy, pipe.Z + dz);
+                    if (VoxelChoice.Of(solid, corner, Air, false) is VoxelChoice.Set { Adds: true })
+                    {
+                        added.Add(corner);
+                    }
+                }
+            }
+        }
+
+        Assert.Equal(8, added.Count);
+        Assert.True(TerrainCover.Covers(pipe, added));
+        Assert.Contains(pipe, TerrainCover.CubesAround(new VoxelPoint(11, 6, 11)));
+
+        // Inside structures every corner is kept: nothing is added there, nothing covered.
+        Assert.IsNotType<VoxelChoice.Set>(VoxelChoice.Of(solid, pipe, Frame, false));
+        Assert.False(TerrainCover.Covers(pipe, new HashSet<VoxelPoint>()));
+    }
+
+    [Fact]
+    public void TheReportNamesThePiecesTheFillCovers()
+    {
+        TerrainFillView view = new TerrainFillView(DigBox.Of(new BoxCorners(new Vec3(0, 3, 0), new Vec3(4, 7, 4)), new List<OptionProblem>())!,
+            new FillMode.Solid(), new DigTally(), null, OreHandling.Of(null), new List<ThingView>(),
+            new List<ThingView> { new ThingView(new ThingId(77), "StructurePipeStraight", "Pipe") });
+        TerrainFillView none = new TerrainFillView(DigBox.Of(new BoxCorners(new Vec3(0, 3, 0), new Vec3(4, 7, 4)), new List<OptionProblem>())!,
+            new FillMode.Solid(), new DigTally(), null, OreHandling.Of(null), new List<ThingView>(), new List<ThingView>());
+
+        Assert.Equal("77", Assert.Single(view.Covers!).ReferenceId.ToString());
+        Assert.Null(none.Covers);
+    }
 }

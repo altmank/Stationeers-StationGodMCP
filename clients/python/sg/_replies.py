@@ -53,9 +53,21 @@ class MainList(list):
     copy) sees only the entries fetched so far, so reading a reply never walks a list. `more` says whether entries
     remain behind the cursor."""
 
-    def __init__(self, entries=(), cursor=None):
+    def __init__(self, entries=(), cursor=None, rest=None):
         super().__init__(entries)
         self._cursor = cursor
+        self._rest = rest if cursor is None else None
+
+    def _unreachable(self):
+        """Raises sg.Error("truncated") when the game held entries back that no page reaches (the hub's
+        rest_unreachable, or the reply's truncated note on this list): the list is not whole, and walk() or all()
+        never hand it over as if it were."""
+        if self._rest is not None:
+            note = self._rest
+            raise Error("truncated",
+                        f"{note.get('list')}: the game sent {note.get('returned')} of "
+                        f"{'at least ' if note.get('at_least') else ''}{note.get('total')} entries and no page "
+                        "reaches the rest", fix=note.get("more"), data=dict(note))
 
     @property
     def more(self):
@@ -77,13 +89,16 @@ class MainList(list):
                 yield list.__getitem__(self, index)
                 index += 1
             if self._cursor is None:
+                self._unreachable()
                 return
             self._next_page()
 
     def all(self):
-        """Pages in every remaining entry and returns this list, now whole."""
+        """Pages in every remaining entry and returns this list, now whole; raises sg.Error("truncated") when the game
+        held back entries no page reaches."""
         while self._cursor is not None:
             self._next_page()
+        self._unreachable()
         return self
 
 
@@ -134,6 +149,9 @@ def _cut(value, steps, note):
     each = step.endswith("[]")
     key = step[:-2] if each else step
     found = dict.get(value, key)
+    if isinstance(found, dict) and not each and rest:
+        _cut(found, rest, note)
+        return
     if not isinstance(found, list) or isinstance(found, CutList):
         return
     if each:
@@ -166,12 +184,24 @@ def wrap(result, main=None):
     if key is None or not isinstance(result.get(key), list):
         key = "results" if isinstance(result.get("results"), list) else key
     if key is not None and isinstance(result.get(key), list):
-        dict.__setitem__(reply, key, MainList(dict.__getitem__(reply, key), result.get("cursor")))
+        dict.__setitem__(reply, key, MainList(dict.__getitem__(reply, key), result.get("cursor"),
+                                              _rest_of(result, key)))
         reply._main = key
     for note in result.get("truncated") or []:
         if isinstance(note, dict) and isinstance(note.get("list"), str) and note["list"] != key:
             _cut(reply, note["list"].split("."), note)
     return reply
+
+
+def _rest_of(result, key):
+    """The note of the main list's entries no page reaches: the reply's truncated note on it, else the hub's
+    rest_unreachable; None when the list is whole or pages on."""
+    for note in result.get("truncated") or []:
+        if isinstance(note, dict) and note.get("list") == key:
+            return note
+    if isinstance(result.get("rest_unreachable"), str):
+        return {"list": key, "returned": len(result.get(key)), "total": None, "more": result["rest_unreachable"]}
+    return None
 
 
 def plain(value):

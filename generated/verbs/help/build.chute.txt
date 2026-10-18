@@ -1,11 +1,12 @@
 A chute run or pieces from Kit (Chute), source to sink, with flow guards.
 Reports first; confirm: true does it.
+Cheat when free: true.
 Options:
 - grade (chute, default chute): The chute kit (one grade).
 - waypoints (list): Points joined by straight axis lines.
 - cells (list): Every cell, each next to the one before.
-- piece (object): One piece {at, ends}.
-- pieces (list): Separate pieces, each {at, ends}.
+- piece (object): One piece {at, ends, label, color}; label and color optional.
+- pieces (list): Separate pieces, each {at, ends, label, color}: label and color (a colour index or name) are optional.
 - branches (list): Side runs, each {waypoints or cells, attach}.
 - extra_ends (list): Extra ends on run cells, each {at, toward}.
 - join (ends | none | all, default ends): What the run joins.
@@ -18,6 +19,7 @@ Options:
 - join_to (string or object): The network the run must end on.
 - join_trunk (boolean, default false): With join_to: add the missing tap.
 - materials (string or array): Holder(s) that pay materials and take source refunds, tried in order; ids or "player". Default the player.
+- free (boolean, default false): Creative worlds: no materials, and what it replaces or removes gives nothing back unless refund_to names where. Cheat.
 - refund_to (string or integer or array, default [inventory, source, storage, ground]): Where removed materials go: a word (inventory, source, storage, ground, none), a container id, or a list tried in turn.
 - include (list of links | notes | network_devices): Parts to add to the reply.
 - rows (integer, default 5): Cells listed; 0 for none.

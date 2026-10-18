@@ -27,7 +27,8 @@ namespace StationGodMCP.Api.Shared.Game;
 ///
 /// A 1 m cube holds a structure when its 2 m cell lists one (Cell.AllStructures: frames, walls, large devices) or one
 /// of the eight 0.5 m cells it spans holds a piece or device (SmallCell.IsValid, SmallCell.cs:114-121). A voxel (a
-/// density node, the corner of eight cubes) is kept only when all eight cubes hold one.
+/// density node, the corner of eight cubes) is kept only when all eight cubes hold one, so a pipe, cable or chute lying
+/// in open ground is covered; the report names those (TerrainCover).
 /// </summary>
 internal static class TerrainFills
 {
@@ -84,6 +85,7 @@ internal static class TerrainFills
         DigTally tally = new DigTally();
         List<Human> bodies = PlayersNear(box);
         List<string> buried = new List<string>();
+        HashSet<VoxelPoint> added = new HashSet<VoxelPoint>();
         foreach (VoxelPoint voxel in box.BottomUp())
         {
             int index = box.IndexOf(voxel);
@@ -91,6 +93,7 @@ internal static class TerrainFills
             choice.Count(tally);
             if (choice is VoxelChoice.Set { Adds: true })
             {
+                added.Add(voxel);
                 foreach (Human body in bodies)
                 {
                     if (new PlayerBody(V(body.Position)).Overlaps(voxel) && !buried.Contains(body.DisplayName))
@@ -108,8 +111,64 @@ internal static class TerrainFills
                 "(move player) or leave their place out of the box.");
         }
 
+        List<ThingView> covered = Covered(added);
         return new FillPlan(box, mode, ores, intoFrames, readings, inVoid, voids,
-            new TerrainFillView(box, mode, tally, voids, ores, TerrainDigs.PlayersIn(box)));
+            new TerrainFillView(box, mode, tally, voids, ores, TerrainDigs.PlayersIn(box), covered), covered);
+    }
+
+    // The pipes, cables and chutes in open ground (no large-grid structure in their 2 m cell) at a corner of which the
+    // fill adds ground (TerrainCover): the fill covers them.
+    private static List<ThingView> Covered(HashSet<VoxelPoint> added)
+    {
+        GridController world = GridController.World;
+        HashSet<VoxelPoint> seen = new HashSet<VoxelPoint>();
+        HashSet<long> listed = new HashSet<long>();
+        List<ThingView> covered = new List<ThingView>();
+        foreach (VoxelPoint voxel in added)
+        {
+            foreach (VoxelPoint cube in TerrainCover.CubesAround(voxel))
+            {
+                if (!seen.Add(cube))
+                {
+                    continue;
+                }
+
+                Cell? large = world.GetCell(new Vector3(cube.X + 0.5f, cube.Y + 0.5f, cube.Z + 0.5f));
+                if (large != null && large.AllStructures.Count > 0)
+                {
+                    continue;
+                }
+
+                foreach (float dx in Quarters)
+                {
+                    foreach (float dy in Quarters)
+                    {
+                        foreach (float dz in Quarters)
+                        {
+                            SmallCell? small = world.GetSmallCell(new Vector3(cube.X + dx, cube.Y + dy, cube.Z + dz));
+                            if (small == null)
+                            {
+                                continue;
+                            }
+
+                            AddPiece(small.Pipe, listed, covered);
+                            AddPiece(small.Cable, listed, covered);
+                            AddPiece(small.Chute, listed, covered);
+                        }
+                    }
+                }
+            }
+        }
+
+        return covered;
+    }
+
+    private static void AddPiece(Assets.Scripts.Objects.Structure? piece, HashSet<long> listed, List<ThingView> covered)
+    {
+        if (piece != null && !piece.IsBeingDestroyed && listed.Add(piece.ReferenceId))
+        {
+            covered.Add(GameLookup.ViewOf(piece));
+        }
     }
 
     /// <summary>The checks of a fill as a body over frames: the box read, then planned (Plan).</summary>
@@ -276,7 +335,8 @@ internal static class TerrainFills
         }
 
         public override object Result() =>
-            new TerrainFillView(_plan.Box, _plan.Mode, Tally, _plan.Voids, _plan.Ores, TerrainDigs.PlayersIn(_plan.Box));
+            new TerrainFillView(_plan.Box, _plan.Mode, Tally, _plan.Voids, _plan.Ores, TerrainDigs.PlayersIn(_plan.Box),
+                _plan.Covered);
     }
 }
 
@@ -284,8 +344,9 @@ internal static class TerrainFills
 internal sealed class FillPlan
 {
     internal FillPlan(DigBox box, FillMode mode, OreHandling ores, int intoFrames, VoxelReading[] readings,
-        bool[] inVoid, int? voids, TerrainFillView reading)
+        bool[] inVoid, int? voids, TerrainFillView reading, List<ThingView> covered)
     {
+        Covered = covered;
         Box = box;
         Mode = mode;
         Ores = ores;
@@ -312,4 +373,7 @@ internal sealed class FillPlan
     internal int? Voids { get; }
 
     internal TerrainFillView Reading { get; }
+
+    /// <summary>The pipes, cables and chutes in open ground the fill covers, as planned.</summary>
+    internal List<ThingView> Covered { get; }
 }

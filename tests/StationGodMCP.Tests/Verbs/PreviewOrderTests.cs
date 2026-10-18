@@ -42,7 +42,8 @@ public sealed class PreviewOrderTests
         Assert.False(order.Clear);
         Assert.True(order.HasPlacements);
 
-        // The request the game plans: nobody pays, it is not free, no lint, no pad, a brief report.
+        // The request the game plans: nobody pays, it is not free, no lint, no pad, no notes, and a refused placement
+        // keeps its layout (show takes no verbose, so a brief report's "pass verbose" could not be followed).
         PlaceRequest arguments = order.Arguments;
         Assert.True(arguments.AllowDoorKeepOut);
         Assert.Null(arguments.From);
@@ -51,7 +52,7 @@ public sealed class PreviewOrderTests
         Assert.False(arguments.AllowPad);
         Assert.False(arguments.FootprintCells);
         Assert.False(arguments.Detail.Notes);
-        Assert.False(arguments.Detail.LayoutsWhenRefused);
+        Assert.True(arguments.Detail.LayoutsWhenRefused);
         Assert.Empty(arguments.MoreFrom);
         Assert.Equal(2, arguments.Placements.Count);
         PlacementRequest first = arguments.Placements[0];

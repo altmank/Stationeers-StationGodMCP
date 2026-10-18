@@ -149,10 +149,11 @@ internal static class RunReports
     private static string? NameOf(RunPlan plan, long id) =>
         plan.Things.TryGetValue(id, out SmallGrid thing) ? thing.PrefabName : null;
 
+    // rotation_deg as build structure's rotation takes it (Orientations.Degrees).
     private static PositionView Degrees(Quaternion rotation)
     {
-        Vector3 euler = rotation.eulerAngles;
-        return new PositionView(Mathf.Round(euler.x) % 360f, Mathf.Round(euler.y) % 360f, Mathf.Round(euler.z) % 360f);
+        RotationView degrees = Orientations.Degrees(rotation);
+        return new PositionView(degrees.X, degrees.Y, degrees.Z);
     }
 
     private static RunMaterialsView Materials(RunPlan plan)

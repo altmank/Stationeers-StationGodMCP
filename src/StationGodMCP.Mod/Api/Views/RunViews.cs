@@ -79,7 +79,7 @@ internal sealed class RunReportView : ITruncatingView
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public int? AirCells { get; }
 
-    /// <summary>The run's cells in order, then neighbours changed to join it; up to limit (0: none).</summary>
+    /// <summary>The run's cells in order, then neighbours changed to join it; up to rows (0: none).</summary>
     public List<RunCellView> Cells { get; }
 
     public List<RunRemovalView> Removals { get; }
@@ -107,7 +107,7 @@ internal sealed class RunReportView : ITruncatingView
 
     public void NoteTruncations(string path)
     {
-        Truncations.Capped(path + "cells", Cells.Count, CellsTotal, "limit", Pure.RunPath.MaximumCells);
+        Truncations.Capped(path + "cells", Cells.Count, CellsTotal, "rows", Pure.RunPath.MaximumCells);
         foreach (object network in NetworksBefore)
         {
             if (network is RunChuteNetworkView chute && chute.Items != null && chute.Items.Count < chute.ItemsRiding)

@@ -117,6 +117,23 @@ internal sealed class CubeRotation : IEquatable<CubeRotation>
         throw new InvalidOperationException("Every quarter-turn rotation is some Euler quarter turns.");
     }
 
+    /// <summary>
+    /// The rotation_deg a quarter-turn quaternion is reported as: EulerTurns in degrees, the form build structure's
+    /// rotation reads back through FromEuler into exactly this rotation. Quaternion.eulerAngles is not that form: with
+    /// forward on y (a lying piece, Euler x at 90 or 270) its y and z are fixed only together, and float noise in the
+    /// quaternion picks the pair. Null for a rotation off the grid.
+    /// </summary>
+    internal static (int X, int Y, int Z)? EulerDegreesOf(double x, double y, double z, double w)
+    {
+        if (FromQuaternion(x, y, z, w) is not { } turn)
+        {
+            return null;
+        }
+
+        (int xTurns, int yTurns, int zTurns) = turn.EulerTurns();
+        return (xTurns * 90, yTurns * 90, zTurns * 90);
+    }
+
     /// <summary>The rotation whose forward and up are these directions; null when they are on one axis.</summary>
     internal static CubeRotation? FromFacing(GridStep forward, GridStep up)
     {

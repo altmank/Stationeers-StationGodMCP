@@ -244,7 +244,7 @@ internal static class UndoReplies
     }
 
     // The pieces form of one kind and grade: each piece's cells with the ends it had there (a long straight comes back
-    // as singles).
+    // as singles, each with its label and paint).
     internal static JArray Cells(PieceRestore group)
     {
         JArray pieces = new JArray();
@@ -258,15 +258,31 @@ internal static class UndoReplies
                     ends.Add(step.Name);
                 }
 
-                pieces.Add(new JObject
+                JObject piece = new JObject
                 {
                     ["at"] = new JArray(cell.Cell.X / 10.0, cell.Cell.Y / 10.0, cell.Cell.Z / 10.0),
                     ["ends"] = ends
-                });
+                };
+                Marked(piece, snapshot);
+                pieces.Add(piece);
             }
         }
 
         return pieces;
+    }
+
+    // The label and paint a thing carried, as build's placements and pieces take them.
+    private static void Marked(JObject entry, ThingSnapshot snapshot)
+    {
+        if (snapshot.Label != null)
+        {
+            entry["label"] = snapshot.Label;
+        }
+
+        if (snapshot.Colour is { } colour)
+        {
+            entry["color"] = colour;
+        }
     }
 
     internal static string Text(long id) => id.ToString(CultureInfo.InvariantCulture);
@@ -285,7 +301,7 @@ internal static class UndoReplies
 
     /// <summary>
     /// The pieces form of one placement call: each thing the job removed as it stood, where it stood, its turn and
-    /// build state, and its label when it had one (the same form the old undo showed as place_arguments).
+    /// build state, and its label and paint when it had them (the same form the old undo showed as place_arguments).
     /// </summary>
     internal static JArray Placements(List<ThingSnapshot> restore)
     {
@@ -300,11 +316,7 @@ internal static class UndoReplies
                 ["rotation"] = new JArray(x * 90, y * 90, z * 90),
                 ["build_state"] = snapshot.BuildState
             };
-            if (snapshot.Label != null)
-            {
-                placement["label"] = snapshot.Label;
-            }
-
+            Marked(placement, snapshot);
             placements.Add(placement);
         }
 

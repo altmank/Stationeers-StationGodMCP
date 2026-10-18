@@ -40,11 +40,11 @@ internal static class FlightLogWrites
         return Shown(RocketFlightRecorder.Start(rocket, intervalS, capacity, path));
     }
 
-    internal static FlightLogView Stop(Rocket rocket) => Shown(RocketFlightRecorder.Stop(rocket.ReferenceId));
+    internal static FlightLogView Stop(RocketFlightLogEntry entry) => Shown(RocketFlightRecorder.Stop(entry.RocketId));
 
-    internal static FlightLogClearedView Clear(Rocket rocket)
+    internal static FlightLogClearedView Clear(RocketFlightLogEntry entry)
     {
-        RocketFlightRecorder.Clear(rocket.ReferenceId);
+        RocketFlightRecorder.Clear(entry.RocketId);
         return new FlightLogClearedView(true);
     }
 
@@ -163,6 +163,24 @@ internal static class RocketFlightRecorder
             ? entry
             : throw ApiErrors.Refused("no_flight_log", "This rocket has no flight log: start one with write " +
                 "flight_log, action start.");
+
+    /// <summary>
+    /// The log the call names (FlightLogPick: by rocket id or name, or the only one), the rocket gone or not; else the
+    /// log of the live rocket the id names (RocketLocator), refused when it has none.
+    /// </summary>
+    internal static RocketFlightLogEntry Named(string? id)
+    {
+        List<RocketFlightLogEntry> entries = new List<RocketFlightLogEntry>(Logs.Values);
+        List<(long RocketId, string RocketName)> keys = new List<(long RocketId, string RocketName)>(entries.Count);
+        foreach (RocketFlightLogEntry entry in entries)
+        {
+            keys.Add((entry.RocketId, entry.RocketName));
+        }
+
+        return FlightLogPick.Of(keys, id) is { } index
+            ? entries[index]
+            : Require(RocketLocator.One(id).ReferenceId);
+    }
 
     internal static RocketFlightLogEntry Stop(long rocketId)
     {

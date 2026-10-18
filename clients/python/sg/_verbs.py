@@ -27,14 +27,14 @@ def find(what, *, fields=None, as_player=None, name=None, prefab=None, category=
 def inspect(what, *, fields=None, as_player=None, id=None, gateway=None, include=None, prefab=None, slot=None,
         depth=None, name=None, limit=None, network=None, kind=None, damaged_only=None, unit=None, parts=None,
         start=None, count=None, log=None, targets=None, surface=None, type=None, text=None, shown_only=None,
-        compact=None, self_test=None, distance=None, verbose=None, **options):
+        compact=None, self_test=None, distance=None, max_wait=None, verbose=None, **options):
     """Describe one thing, or a few by id, in detail. sg.help('inspect', what) gives a what in full."""
     return verb_call('inspect', what, {'fields': fields, 'as_player': as_player, 'id': id, 'gateway': gateway,
                      'include': include, 'prefab': prefab, 'slot': slot, 'depth': depth, 'name': name, 'limit':
                      limit, 'network': network, 'kind': kind, 'damaged_only': damaged_only, 'unit': unit, 'parts':
                      parts, 'start': start, 'count': count, 'log': log, 'targets': targets, 'surface': surface,
                      'type': type, 'text': text, 'shown_only': shown_only, 'compact': compact, 'self_test':
-                     self_test, 'distance': distance, 'verbose': verbose}, options)
+                     self_test, 'distance': distance, 'max_wait': max_wait, 'verbose': verbose}, options)
 
 
 def survey(what, *, fields=None, as_player=None, box=None, room=None, sections=None, networks=None, include=None,
@@ -123,7 +123,7 @@ def build(what=None, *, fields=None, as_player=None, placements=None, prefab=Non
         from_plan=None, grade=None, waypoints=None, cells=None, piece=None, pieces=None, branches=None,
         extra_ends=None, join=None, split_long=None, remove_ids=None, assume_removed=None, allow_bridge=None,
         root=None, join_to=None, join_trunk=None, refund_to=None, rows=None, blueprint=None, turn=None, box=None,
-        mode=None, level=None, ores=None, id=None, state=None, **options):
+        mode=None, level=None, ores=None, into_frames=None, id=None, state=None, **options):
     """Build new things as a player would, paying materials. sg.help('build', what) gives a what in full."""
     return verb_call('build', what, {'fields': fields, 'as_player': as_player, 'placements': placements, 'prefab':
                      prefab, 'at': at, 'rotation': rotation, 'spread': spread, 'facing': facing, 'up': up, 'face':
@@ -135,7 +135,7 @@ def build(what=None, *, fields=None, as_player=None, placements=None, prefab=Non
                      'remove_ids': remove_ids, 'assume_removed': assume_removed, 'allow_bridge': allow_bridge,
                      'root': root, 'join_to': join_to, 'join_trunk': join_trunk, 'refund_to': refund_to, 'rows':
                      rows, 'blueprint': blueprint, 'turn': turn, 'box': box, 'mode': mode, 'level': level, 'ores':
-                     ores, 'id': id, 'state': state}, options)
+                     ores, 'into_frames': into_frames, 'id': id, 'state': state}, options)
 
 
 def swap(what, *, fields=None, as_player=None, id=None, room=None, into=None, prefab=None, materials=None,
@@ -152,12 +152,13 @@ def swap(what, *, fields=None, as_player=None, id=None, room=None, into=None, pr
 
 def remove(what, *, fields=None, as_player=None, id=None, allow=None, refund_to=None, materials=None, gas_to=None,
         include=None, verbose=None, acknowledge_gas_lost=None, waypoints=None, cells=None, root=None, rows=None,
-        box=None, ores=None, name=None, **options):
+        box=None, ores=None, name=None, scope=None, **options):
     """Take things away as a player would, with refunds and guards. sg.help('remove', what) gives a what in full."""
     return verb_call('remove', what, {'fields': fields, 'as_player': as_player, 'id': id, 'allow': allow,
                      'refund_to': refund_to, 'materials': materials, 'gas_to': gas_to, 'include': include,
                      'verbose': verbose, 'acknowledge_gas_lost': acknowledge_gas_lost, 'waypoints': waypoints,
-                     'cells': cells, 'root': root, 'rows': rows, 'box': box, 'ores': ores, 'name': name}, options)
+                     'cells': cells, 'root': root, 'rows': rows, 'box': box, 'ores': ores, 'name': name, 'scope':
+                     scope}, options)
 
 
 def move(what, *, fields=None, as_player=None, id=None, quantity=None, to=None, slot=None, merge=None, force=None,

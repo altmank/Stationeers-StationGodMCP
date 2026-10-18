@@ -75,12 +75,16 @@ public sealed class MoveGasReplyTests
             transfer_id = "7", status = "queued", predicted = true, joined = true, from = OldSide(), to = OldSide(),
             deleted = false,
             moved = new List<object> { new { gas = "Oxygen", amount_mol = 6.25, energy_j = 1200.5 } },
-            error = (object?)null
+            error = (object?)null, note = MoveGasView.QueuedNote
         };
         MoveGasView view = new MoveGasView("7", "queued", true, true, NewSide(), NewSide(),
             new List<MovedGasView> { new MovedGasView("Oxygen", 6.25, 1200.5) }, null);
         WireCheck.Same(old, view);
-        Assert.Equal(new[] { "transfer_id", "status", "predicted", "joined", "from", "to", "deleted", "moved", "error" },
+        Assert.Contains("next atmospherics tick", MoveGasView.QueuedNote);
+        Assert.Equal(new[]
+            {
+                "transfer_id", "status", "predicted", "joined", "from", "to", "deleted", "moved", "error", "note"
+            },
             Replies.Tree(GasReplies.Acted(view)).Properties().Select(key => key.Name));
     }
 
@@ -160,7 +164,8 @@ public sealed class MoveGasReplyTests
             error = new { code = "atmosphere_not_found", message = "Gone." }
         };
         WireCheck.Same(failed, MoveGasView.Failed("9", new ErrorView("atmosphere_not_found", "Gone.")));
-        WireCheck.Same(new { transfer_id = "10", status = "queued" }, new GasMoveWaitingView("10"));
+        WireCheck.Same(new { transfer_id = "10", status = "queued", note = MoveGasView.QueuedNote },
+            new GasMoveWaitingView("10"));
     }
 
     [Fact]

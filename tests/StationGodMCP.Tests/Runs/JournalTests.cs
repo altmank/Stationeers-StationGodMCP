@@ -131,6 +131,21 @@ public sealed class JournalTests : IDisposable
         Assert.True(File.Exists(path));
     }
 
+    [Theory]
+    [InlineData("world-0")]
+    [InlineData(null)]
+    public async Task AnAdoptedRunOfAnotherWorldOrNoneRidesNoReply(string? world)
+    {
+        OldJournal("4247-1000", "hub-5555555555555555", end: true, world: world);
+        RunWorld game = new();
+        await using RunHost host = new(game, new VerbPipeline(game), new SeenSet(), new RunHostSettings());
+
+        host.StartAdoption(_folder, null, _ => new FakeTokenLink(reachable: false));
+        List<string> first = await host.NoticesAsync("read", "logic", null);
+
+        Assert.Empty(first);
+    }
+
     [Fact]
     public async Task AResumedOldTokenIsEndedClosedWithoutByeAndReadAgainForItsRestores()
     {
@@ -239,7 +254,7 @@ public sealed class JournalTests : IDisposable
     };
 
     // An earlier hub's journal: script-3 wrote 1 On 0 -> 1 and held 7 On (after 0); ended stopped, or not ended at all.
-    private string OldJournal(string name, string token, bool end, bool holds = true)
+    private string OldJournal(string name, string token, bool end, bool holds = true, string? world = "world-1")
     {
         Directory.CreateDirectory(_folder);
         string path = Path.Combine(_folder, name + ".jsonl");
@@ -260,7 +275,11 @@ public sealed class JournalTests : IDisposable
             lines.Add("""{"t":"end","run":"script-3","state":"stopped","left":[{"id":"1","logic":"On","value":1,"before":0}]}""");
         }
 
-        File.WriteAllText(path, string.Join("\n", lines) + "\n");
+        string text = string.Join("\n", lines) + "\n";
+        text = world == null
+            ? text.Replace(",\"world\":\"world-1\"", "")
+            : text.Replace("\"world\":\"world-1\"", $"\"world\":\"{world}\"");
+        File.WriteAllText(path, text);
         return path;
     }
 

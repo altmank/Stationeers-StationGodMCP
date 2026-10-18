@@ -187,4 +187,33 @@ public sealed class RunBuildOrderTests
             problems, out _)!.AcknowledgeGasLost);
         Assert.Empty(problems);
     }
+
+    [Fact]
+    public void FreeIsACheatOfEveryRunWhatThatTakesNothingAndGivesNothingBackUnlessToldWhere()
+    {
+        List<OptionProblem> problems = new();
+
+        RunBuildOrder cable = Cable("""{"cells": [[0, 0, 0]], "free": true}""", problems, out _)!;
+        RunBuildOrder pipe = Pipe("""{"grade": "gas", "cells": [[0, 0, 0]], "free": true}""", problems, out _)!;
+        RunBuildOrder chute = Chute("""{"cells": [[0, 0, 0]], "free": true, "refund_to": "ground"}""", problems, out _)!;
+        RunBuildOrder paid = Pipe("""{"grade": "gas", "cells": [[0, 0, 0]]}""", problems, out _)!;
+
+        Assert.Empty(problems);
+        Assert.True(cable.Free && pipe.Free && chute.Free);
+        Assert.False(paid.Free);
+        Assert.Same(RefundRoute.Nothing, cable.Materials.RefundTo);
+        Assert.Same(RefundRoute.Nothing, pipe.Source.RefundTo);
+        Assert.True(pipe.Source.Free);
+        Assert.Same(RefundRoute.WherePieceStood, chute.Materials.RefundTo);
+        Assert.Same(RefundRoute.Default, paid.Materials.RefundTo);
+        Assert.False(SourceRule.Takes(builds: true, free: true));
+        Assert.True(SourceRule.Takes(builds: true, free: false));
+        foreach (string what in new[] { "cable", "pipe", "chute" })
+        {
+            System.Text.Json.Nodes.JsonObject source =
+                VerbCatalogue.Whats().Single(entry => entry.Verb == "build" && entry.What == what).Source;
+            Assert.Equal("free: true", (string?)source["write"]!["cheat"]);
+            Assert.Contains(VerbCatalogue.OptionsOf(source), option => option.Name == "free");
+        }
+    }
 }

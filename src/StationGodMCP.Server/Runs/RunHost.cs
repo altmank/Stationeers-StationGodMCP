@@ -697,7 +697,8 @@ public sealed partial class RunHost : IAsyncDisposable
     /// left something; every run that ended stopped or killed with something left or writes not done, until its final
     /// text is delivered (a sticky line on every reply); on run_script and inspect job a done notice, once, for each
     /// other run that ended unseen; the cost lines of live runs on run_script, inspect job and server info, on other
-    /// replies at most every CostLinesEvery; and "journal off" once when the journal stopped.
+    /// replies at most every CostLinesEvery; and "journal off" once when the journal stopped. An ended run's lines
+    /// ride only the replies of the world it ran in (OfThisWorld).
     /// </summary>
     internal async Task<List<string>> NoticesAsync(string verb, string? what, string? aboutId)
     {
@@ -728,6 +729,10 @@ public sealed partial class RunHost : IAsyncDisposable
                 if (record.IsLive)
                 {
                     live.Add(notes.Run!);
+                }
+                else if (!OfThisWorld(record))
+                {
+                    continue;
                 }
                 else if (!notes.Delivered && Sticky(record) is { } left)
                 {
@@ -765,6 +770,11 @@ public sealed partial class RunHost : IAsyncDisposable
 
         return lines;
     }
+
+    // An ended run speaks of the world it ran in: its ids name other things in another world, and its undo is refused
+    // there (undo_expired), so its notices ride only the replies of that world. A record that names no world (a journal
+    // line written before runs recorded one) is of none.
+    private bool OfThisWorld(RunRecord record) => record.World != null && record.World == _link.WorldId;
 
     // What a stopped or killed run left: its left: values and writes not done; null when nothing.
     private static string? Sticky(RunRecord record)

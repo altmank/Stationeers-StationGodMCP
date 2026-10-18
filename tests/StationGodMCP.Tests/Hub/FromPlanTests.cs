@@ -175,6 +175,22 @@ public sealed class FromPlanTests
     }
 
     [Fact]
+    public void ABuildRefIsRefusedWithTheRepeatThatSendsItAgain()
+    {
+        FakeGameLink game = new() { Answer = _ => FakeGameLink.Ok("""{"report_only":true,"ready":true,"placements":[],"targets":[]}""") };
+        VerbPipeline pipeline = game.Pipeline();
+        string built = (string)pipeline.Call("build", "structure",
+            """{"prefab":"StructureWallLight","at":[1,2,3],"confirm":false}""").Done()!["ref"]!;
+
+        VerbReply.Failed failed = pipeline.Call("build", "structure", $$"""{"from_plan":"{{built}}"}""").Failed();
+
+        Assert.Equal([$"from_plan: {built} is a build structure call, not a plan: repeat: \"{built}\" sends that call " +
+                      "again (the options given replace its own); from_plan takes a plan route or plan spot ref"],
+            failed.Problems());
+        Assert.Single(game.CallsTo("build"));
+    }
+
+    [Fact]
     public void APlanThatFoundNothingIsRefused()
     {
         FakeGameLink game = Planning("""{"found":false,"failure":"no_route: blocked","notes":[]}""");

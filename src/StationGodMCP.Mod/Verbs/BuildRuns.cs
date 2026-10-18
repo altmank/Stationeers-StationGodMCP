@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using Assets.Scripts;
 using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Pipes;
 using Newtonsoft.Json.Linq;
@@ -87,14 +88,15 @@ internal static class BuildRuns
 
     private static readonly string[] BranchKeys = { "waypoints", "cells", "attach" };
     private static readonly string[] ExtraEndKeys = { "at", "toward" };
-    private static readonly string[] PieceKeys = { "at", "ends" };
+    private static readonly string[] PieceKeys = { "at", "ends", "label", "color" };
 
     internal static VerbOutcome Run(RunKind kind, RunBuildOrder order)
     {
         string label = order.Label;
         Grade grade = GradeOf(kind, order, label);
         List<ExtraEnd> extra = new List<ExtraEnd>();
-        RunShape? shape = Shape(order, extra, out OptionProblem? problem);
+        Dictionary<GridCell, PieceMark> marks = new Dictionary<GridCell, PieceMark>();
+        RunShape? shape = Shape(order, extra, marks, out OptionProblem? problem);
         if (shape == null)
         {
             return new VerbOutcome.Refused(OptionProblem.Refusal(label, new[] { problem! }));
@@ -122,11 +124,11 @@ internal static class BuildRuns
             order.Report.Rows ?? RunArgs.DefaultListLimit, order.SplitLong,
             new RunTargets(order.Root, joinTo, order.JoinTrunk), order.AllowDoorKeepOut,
             new RunDetail(fields.Includes("links"), fields.Includes("notes"), fields.Includes("network_devices")),
-            more, order.AllowLint);
+            more, order.AllowLint, order.Free);
         RunRemoval removal = new RunRemoval(JobTargets.Read(ids), new List<GridCell>(), JobTargets.Read(assumed));
         RunRequest request = new RunRequest(kind, kind.PlaceTool,
-            new RunBuild(shape, grade, JoinOf(order), extra), removal, options);
-        JobSource source = new JobSource(from?.Value, false, order.Source.RefundTo, order.Source.Refund);
+            new RunBuild(shape, grade, JoinOf(order), extra, marks), removal, options);
+        JobSource source = new JobSource(from?.Value, order.Free, order.Source.RefundTo, order.Source.Refund);
         return WriteCheck<RunPlan>.Planned(answer => RunPlanner.Planning(request, true, answer), order.Report,
             plan => Act(plan, request, order, removed, unread, source),
             plan => Described(plan, request, order, removed, unread));
@@ -156,7 +158,8 @@ internal static class BuildRuns
 
     // The run the call gives: its extra ends, its cells from waypoints, cells, piece or pieces, its branches and the
     // shape they make; null with the problem when the call names no run.
-    private static RunShape? Shape(RunBuildOrder order, List<ExtraEnd> extra, out OptionProblem? problem)
+    private static RunShape? Shape(RunBuildOrder order, List<ExtraEnd> extra, Dictionary<GridCell, PieceMark> marks,
+        out OptionProblem? problem)
     {
         ExtraEnds(order.ExtraEnds, extra, out problem);
         if (problem != null)
@@ -164,7 +167,7 @@ internal static class BuildRuns
             return null;
         }
 
-        List<GridCell>? run = CellsOf(order, extra, out problem);
+        List<GridCell>? run = CellsOf(order, extra, marks, out problem);
         if (run == null)
         {
             return null;
@@ -202,7 +205,8 @@ internal static class BuildRuns
     }
 
     // The run's cells from waypoints, cells, piece or pieces; null with the problem when they make no run.
-    private static List<GridCell>? CellsOf(RunBuildOrder order, List<ExtraEnd> extra, out OptionProblem? problem)
+    private static List<GridCell>? CellsOf(RunBuildOrder order, List<ExtraEnd> extra,
+        Dictionary<GridCell, PieceMark> marks, out OptionProblem? problem)
     {
         problem = null;
         if (order.Form == RunBuildOrder.ByWaypoints)
@@ -221,11 +225,11 @@ internal static class BuildRuns
         if (order.Form == RunBuildOrder.ByPiece)
         {
             return order.Piece is JObject piece
-                ? Piece(piece, RunBuildOrder.ByPiece, extra, out problem)
+                ? Piece(piece, RunBuildOrder.ByPiece, extra, marks, out problem)
                 : NoRun(RunBuildOrder.ByPiece, "must be {at, ends}", out problem);
         }
 
-        return Pieces(order.Pieces, extra, out problem);
+        return Pieces(order.Pieces, extra, marks, out problem);
     }
 
     private static List<GridCell>? NoRun(string option, string? why, out OptionProblem? problem)
@@ -336,8 +340,9 @@ internal static class BuildRuns
         }
     }
 
-    // pieces: [{at, ends}], each one piece as the piece form lays it.
-    private static List<GridCell>? Pieces(JToken? given, List<ExtraEnd> extra, out OptionProblem? problem)
+    // pieces: [{at, ends, label, color}], each one piece as the piece form lays it.
+    private static List<GridCell>? Pieces(JToken? given, List<ExtraEnd> extra, Dictionary<GridCell, PieceMark> marks,
+        out OptionProblem? problem)
     {
         problem = null;
         if (!(given is JArray items) || items.Count == 0 || items.Count > MaximumPieces)
@@ -356,7 +361,7 @@ internal static class BuildRuns
                 return null;
             }
 
-            List<GridCell>? one = Piece(item, $"pieces[{index}]", extra, out problem);
+            List<GridCell>? one = Piece(item, $"pieces[{index}]", extra, marks, out problem);
             if (one == null)
             {
                 return null;
@@ -368,8 +373,9 @@ internal static class BuildRuns
         return cells;
     }
 
-    // One piece: the cell at names, and the ends it has there, each an extra end of that cell.
-    private static List<GridCell>? Piece(JObject piece, string name, List<ExtraEnd> extra, out OptionProblem? problem)
+    // One piece: the cell at names, the ends it has there (each an extra end of that cell), and its label and paint.
+    private static List<GridCell>? Piece(JObject piece, string name, List<ExtraEnd> extra,
+        Dictionary<GridCell, PieceMark> marks, out OptionProblem? problem)
     {
         if (NestedKeys.First(piece, name, PieceKeys) is { } unknown)
         {
@@ -405,9 +411,50 @@ internal static class BuildRuns
             extra.Add(new ExtraEnd(cell, step));
         }
 
-        problem = null;
-        return new List<GridCell> { cell };
+        if (MarkOf(piece, name, out problem) is { } mark)
+        {
+            marks[cell] = mark;
+        }
+
+        return problem == null ? new List<GridCell> { cell } : null;
     }
+
+    // A piece's label and paint ({label, color}: a colour's index or name), laid with it; null when it gives neither.
+    private static PieceMark? MarkOf(JObject piece, string name, out OptionProblem? problem)
+    {
+        problem = null;
+        JToken? label = piece["label"];
+        JToken? color = piece["color"];
+        if (label == null && color == null)
+        {
+            return null;
+        }
+
+        if (label != null && (label.Type != JTokenType.String || label.ToString().Trim().Length == 0))
+        {
+            problem = new OptionProblem($"{name}.label", "must be a name");
+            return null;
+        }
+
+        int? colour = null;
+        if (color != null)
+        {
+            if (color.Type != JTokenType.Integer && color.Type != JTokenType.String)
+            {
+                problem = new OptionProblem($"{name}.color", "must be a colour's index or name");
+                return null;
+            }
+
+            colour = PaintColor.Named(color.ToString(), Swatches());
+        }
+
+        return new PieceMark(label?.ToString(), colour);
+    }
+
+    private static List<ColorSwatch> Swatches() =>
+        Assets.Scripts.Util.Singleton<GameManager>.Instance != null
+            ? Assets.Scripts.Util.Singleton<GameManager>.Instance.CustomColors
+            : new List<ColorSwatch>();
 
     // The cells the option lists: each a position [x, y, z] in metres, snapped to the cell it falls in.
     private static List<GridCell> Points(JToken? given, string option)

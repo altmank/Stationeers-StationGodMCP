@@ -31,6 +31,7 @@ internal sealed class BuildCableOptions
         new OptionSpec("join_to", "{\"type\":[\"string\",\"object\"]}"),
         new OptionSpec("join_trunk", "{\"type\":\"boolean\"}", false, "false"),
         new OptionSpec("materials", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"},\"maxItems\":8}"),
+        new OptionSpec("free", "{\"type\":\"boolean\"}", false, "false"),
         new OptionSpec("refund_to", "{\"type\":[\"string\",\"integer\",\"array\"]}", false, "[inventory, source, storage, ground]"),
         new OptionSpec("include", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"links\",\"notes\",\"network_devices\"]}}"),
         new OptionSpec("rows", "{\"type\":\"integer\",\"minimum\":0,\"maximum\":1024}", false, "5"),
@@ -78,6 +79,8 @@ internal sealed class BuildCableOptions
 
     internal bool? JoinTrunk { get; private set; }
 
+    internal bool? Free { get; private set; }
+
     internal string? FromPlan { get; private set; }
 
     internal bool? Queue { get; private set; }
@@ -103,6 +106,7 @@ internal sealed class BuildCableOptions
         Root = options.Text("root"),
         JoinTo = options.Raw("join_to"),
         JoinTrunk = options.Flag("join_trunk") ?? options.DefaultFlag("join_trunk"),
+        Free = options.Flag("free") ?? options.DefaultFlag("free"),
         FromPlan = options.Text("from_plan"),
         Queue = options.Flag("queue") ?? options.DefaultFlag("queue"),
     };

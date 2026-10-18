@@ -1,6 +1,6 @@
 {
   "method": "pieces x 0.9055, calibrated on Claude Code all-loaded minus no-MCP runs (ENABLE_TOOL_SEARCH=false)",
-  "full_list": {"today": 89000, "verbs": 17107, "share": 0.192, "target_share": 0.25},
+  "full_list": {"today": 89000, "verbs": 17125, "share": 0.192, "target_share": 0.25},
   "per_fresh_context": {
     "today": 5147,
     "verbs_listing": 646,
@@ -21,7 +21,7 @@
     "check": 936,
     "build": 1440,
     "swap": 1391,
-    "remove": 1070,
+    "remove": 1088,
     "move": 898,
     "trade": 726,
     "show": 744,
