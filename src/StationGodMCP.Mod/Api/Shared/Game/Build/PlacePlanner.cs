@@ -15,6 +15,7 @@ using StationGodMCP.Api.Shared.Game.Structures;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Layout;
 using StationGodMCP.Pure.Protocol;
 using UnityEngine;
 using StationGodMCP.Pure.Profiling;
@@ -541,10 +542,45 @@ internal static class PlacePlanner
 
     // above_floor measures from the floor below at (AtResolver.FloorBelow); with none within reach the placement is
     // refused rather than measured from an invented one (structures-24).
+    // The floors the job's earlier placements put down, as standing by the time this one is built: a frame's top, and
+    // a face-placed piece on a horizontal face (a floor plate) at its face.
+    private static List<PlannedFloor> EarlierFloors(PlacePlan plan, PlannedPlacement placement)
+    {
+        List<PlannedFloor> floors = new List<PlannedFloor>();
+        foreach (PlannedPlacement earlier in plan.Placements)
+        {
+            if (earlier.Index >= placement.Index)
+            {
+                break;
+            }
+
+            if (!earlier.Resolved || plan.Problems.Exists(problem => problem.Index == earlier.Index))
+            {
+                continue;
+            }
+
+            Vector3 at = earlier.Position!.Value;
+            if (earlier.Prefab is global::Objects.Structures.Frame)
+            {
+                floors.Add(new PlannedFloor(PlannedFloor.ColumnOf(at.x), PlannedFloor.ColumnOf(at.z),
+                    System.Math.Round((at.y + 1.0) / 2.0) * 2.0));
+            }
+            else if (earlier.Prefab!.PlacementType == PlacementSnap.Face && earlier.Turn?.Forward is { } forward &&
+                     forward.Dy != 0)
+            {
+                floors.Add(new PlannedFloor(PlannedFloor.ColumnOf(at.x), PlannedFloor.ColumnOf(at.z),
+                    System.Math.Round(at.y / 2.0) * 2.0));
+            }
+        }
+
+        return floors;
+    }
+
     private static bool FloorFound(PlacePlan plan, PlannedPlacement placement)
     {
         Metres given = placement.ResolvedAt!.Point;
-        double? floor = AtResolver.FloorBelow(given, plan.Facts);
+        double? floor = PlannedFloorRule.Floor(AtResolver.FloorBelow(given, plan.Facts),
+            AtResolver.FirstPlaneBelow(given), AtResolver.FloorSearchM, given.X, given.Z, EarlierFloors(plan, placement));
         if (floor.HasValue)
         {
             placement.FloorY = floor.Value;
