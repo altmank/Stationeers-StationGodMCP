@@ -29,7 +29,12 @@ public sealed partial class VerbPipeline
         switch (what.Key)
         {
             case "write.script":
-                return Task.FromResult(WriteScript(store, options, world));
+                if (ReadFiles(what, options, out JsonObject read) is { } unreadable)
+                {
+                    return Task.FromResult(unreadable);
+                }
+
+                return Task.FromResult(WriteScript(store, read, world));
             case "find.script":
                 return Task.FromResult(FindScript(store, options, world));
             case "inspect.script":
@@ -42,11 +47,16 @@ public sealed partial class VerbPipeline
         }
     }
 
-    // write script {name, code, description, scope}: the next version, kept beside every older one.
+    // write script {name, code or code_file, description, scope}: the next version, kept beside every older one.
     private static VerbReply WriteScript(ScriptStore store, JsonObject options, string? world)
     {
         string name = (JsonNodes.Text(options["name"]) ?? string.Empty).Trim();
-        string code = JsonNodes.Text(options["code"]) ?? string.Empty;
+        if (JsonNodes.Text(options["code"]) is not { } code)
+        {
+            return OptionProblem.Refusal("write script",
+                [new OptionProblem("code", "or code_file is needed: the Python source to save")]);
+        }
+
         string description = (JsonNodes.Text(options["description"]) ?? string.Empty).Trim();
         if (description.Length == 0 || description.Contains('\n') || description.Contains('\r'))
         {

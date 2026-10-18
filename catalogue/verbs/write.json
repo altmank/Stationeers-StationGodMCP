@@ -745,7 +745,11 @@
         "code": {
           "schema": {"type": "string"},
           "description": "The Python source; it must define main(...), with type hints on the parameters run_script checks.",
-          "required": true,
+          "x-script": "same"
+        },
+        "code_file": {
+          "schema": {"type": "string"},
+          "description": "A file path on the MCP server's machine whose text is saved as code; give code or code_file.",
           "x-script": "same"
         },
         "description": {
@@ -762,7 +766,7 @@
         }
       },
       "text": [
-        "The hub saves it, not the game: under the server's --scripts-dir, in shared/ or world/<world id>/. Saving a name again writes the next version as <name>/v<N>.py and makes <name>.py it; every older version stays. The code is parsed once here: a script that does not parse, has no def main(...), or has positional-only parameters is refused. A shared script may not hard-code ids: a constant written as an id, an integer of 100000 and up, or digits that big written as a string are all refused. Not caught: an id built at run time, one below 100000 reached through a variable, and composite ids like '5-1234'. A world script belongs to the world it was saved in. A name is a Python module name, and may not collide with a script of the other scope a run can see, or with either in the same scope however it is cased."
+        "The hub saves it, not the game: under the server's --scripts-dir, in shared/ or world/<world id>/. Saving a name again writes the next version as <name>/v<N>.py and makes <name>.py it; every older version stays. The code is parsed once here: a script that does not parse, has no def main(...), or has positional-only parameters is refused. A shared script may not hard-code ids: a constant written as an id, an integer of 100000 and up, or digits that big written as a string are all refused. Not caught: an id built at run time, one below 100000 reached through a variable, and composite ids like '5-1234'. A world script belongs to the world it was saved in. The saved file may be edited where it lies: the next find, inspect or run of it reads main(...) again, rebuilds the header and saves the next version. A name is a Python module name, and may not collide with a script of the other scope a run can see, or with either in the same scope however it is cased."
       ],
       "example": {"name": "greet", "code": "def main(who: str) -> str: return 'hi ' + who", "description": "greet a player by name", "scope": "shared"},
       "reply": {

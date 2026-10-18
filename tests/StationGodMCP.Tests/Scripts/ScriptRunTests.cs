@@ -336,4 +336,54 @@ public sealed class ScriptRunTests : IDisposable
         Assert.Contains("script-1 done", ran);
         Assert.Contains("hi", ran);
     }
+
+    // ---- code_file, and a saved file edited where it lies -----------------------------------------------------------
+
+    [PythonFact]
+    public async Task WriteScriptReadsItsSourceFromCodeFile()
+    {
+        await using RunBench bench = new(scripts: _store);
+        Directory.CreateDirectory(_folder);
+        string source = Path.Combine(_folder, "greet_source.py");
+        File.WriteAllText(source, "def main(who: str) -> str:\n    return 'hi ' + who\n");
+
+        JsonObject saved = Done(await bench.Pipeline.CallAsync(new VerbCall("write", "script", new JsonObject
+        {
+            ["name"] = "greet_file",
+            ["code_file"] = source,
+            ["description"] = "greet, saved from a file",
+            ["scope"] = "shared"
+        }, Face.Direct), CancellationToken.None));
+        VerbReply neither = await bench.Pipeline.CallAsync(new VerbCall("write", "script", new JsonObject
+        {
+            ["name"] = "greet_none",
+            ["description"] = "no source",
+            ["scope"] = "shared"
+        }, Face.Direct), CancellationToken.None);
+
+        Assert.Equal(new[] { "who: str" }, saved["parameters"]!.AsArray().Select(node => (string)node!).ToArray());
+        Assert.EndsWith("return 'hi ' + who\n", File.ReadAllText((string)saved["file"]!));
+        Assert.Contains("code_file", Failed(neither).Message);
+    }
+
+    [PythonFact]
+    public async Task AScriptFileEditedOnDiskTakesItsNewParametersAtTheNextRun()
+    {
+        await using RunBench bench = new(scripts: _store);
+        JsonObject saved = Done(await SaveAsync(bench, "greet_edit", "def main(who: str) -> None:\n    print('hi', who)\n"));
+        string file = (string)saved["file"]!;
+        string text = File.ReadAllText(file);
+        File.WriteAllText(file, text.Replace("def main(who: str) -> None:\n    print('hi', who)\n",
+            "def main(who: str, times: int = 1) -> None:\n    print('hi', who, times)\n"));
+
+        string ran = RunBench.Text(await bench.Host.RunScriptAsync(
+            new JsonObject { ["name"] = "greet_edit", ["args"] = Args("""{"who": "LU", "times": 3}""") }, ReplyHooks.None));
+
+        Assert.True(ran.Contains("hi LU 3"), ran);
+        SavedScript now = Assert.IsType<ScriptOutcome<SavedScript>.Done>(_store.Open("greet_edit", null)).Value;
+        Assert.Equal(2, now.Version);
+        Assert.Equal(new[] { "who", "times" }, now.Parameters.Select(parameter => parameter.Name).ToArray());
+        Assert.Contains("# version: 2", File.ReadAllText(file));
+        Assert.True(File.Exists(Path.Combine(Path.GetDirectoryName(file)!, "greet_edit", "v2.py")));
+    }
 }

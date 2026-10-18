@@ -465,7 +465,67 @@ internal sealed class ScriptStore
     }
 
     private SavedScript? Lookup(string? folder, string name, ScriptScope scope, string? world) =>
-        folder == null ? null : Read(FileOf(folder, name), scope, world);
+        folder == null ? null : Fresh(Read(FileOf(folder, name), scope, world));
+
+    /// <summary>
+    /// A script as its file stands now: a file edited on disk since its version was saved (it no longer matches its
+    /// history copy) gets its header rebuilt from the source, its parameters parsed again and the next version
+    /// written, so a new main(...) argument is taken at once. A source that does not parse keeps the header it has
+    /// (its run then fails on the source itself).
+    /// </summary>
+    private SavedScript? Fresh(SavedScript? script)
+    {
+        if (script == null || !ScriptHeader.TryRead(script.Source, out ScriptHeaderFields header))
+        {
+            return script;
+        }
+
+        string folder = Path.GetDirectoryName(script.Path)!;
+        string history = HistoryOf(folder, script.Name, script.Version);
+        string? kept = null;
+        try
+        {
+            kept = File.Exists(history) ? File.ReadAllText(history, new UTF8Encoding(false)) : null;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            return script;
+        }
+
+        if (kept != null && kept == script.Source)
+        {
+            return script;
+        }
+
+        string body = ScriptHeader.Body(script.Source);
+        ScriptSignature signature = _code.Parse(body);
+        if (!signature.Ok)
+        {
+            return script;
+        }
+
+        int version = NextVersion(folder, script.Name);
+        ScriptHeaderFields rebuilt = new(script.Name, script.Scope, header.World, version, header.Description,
+            DateTimeOffset.UtcNow, signature.Parameters);
+        string text = ScriptHeader.Text(rebuilt, body);
+        try
+        {
+            string next = HistoryOf(folder, script.Name, version);
+            Directory.CreateDirectory(Path.GetDirectoryName(next)!);
+            File.WriteAllText(next, text, new UTF8Encoding(false));
+            File.WriteAllText(script.Path, text, new UTF8Encoding(false));
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            return script;
+        }
+
+        return new SavedScript(script.Name, script.Scope, rebuilt.World, version, rebuilt.Description,
+            signature.Parameters, script.Path, text);
+    }
+
+    private static string HistoryOf(string folder, string name, int version) =>
+        Path.Combine(folder, name, "v" + version.ToString(CultureInfo.InvariantCulture) + ".py");
 
     private List<SavedScript> ReadFolder(string folder, ScriptScope scope, string? world)
     {
@@ -477,7 +537,7 @@ internal sealed class ScriptStore
 
         foreach (string file in Directory.EnumerateFiles(folder, Pys))
         {
-            if (Read(file, scope, world) is { } script)
+            if (Fresh(Read(file, scope, world)) is { } script)
             {
                 scripts.Add(script);
             }
@@ -720,6 +780,30 @@ internal static class ScriptHeader
         text.Append(EndLine).Append('\n');
         text.Append(code);
         return text.ToString();
+    }
+
+    /// <summary>The code below a file's header: everything after the "# ---" line; the whole text when it has none.</summary>
+    internal static string Body(string text)
+    {
+        int at = 0;
+        while (at < text.Length)
+        {
+            int end = text.IndexOf('\n', at);
+            string line = (end < 0 ? text[at..] : text[at..end]).TrimEnd('\r');
+            if (line == EndLine)
+            {
+                return end < 0 ? string.Empty : text[(end + 1)..];
+            }
+
+            if (end < 0)
+            {
+                break;
+            }
+
+            at = end + 1;
+        }
+
+        return text;
     }
 
     /// <summary>Read a file's header; false for text that is not one (the store's format, or a hand-edited file).</summary>
