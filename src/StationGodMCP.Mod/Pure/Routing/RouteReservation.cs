@@ -111,4 +111,15 @@ internal static class EndCells
 {
     internal static (GridCell Inside, GridCell Beyond) Of(PieceModel thing, GridCell local, GridCell facing) =>
         thing.Occupies(local) && !thing.Occupies(facing) ? (local, facing) : (facing, local);
+
+    /// <summary>
+    /// Where a piece joining this end stands (the cell beyond it, outside the thing: a device port's own cell, a pipe's
+    /// neighbour cell) and the end that piece needs, pointing back into the thing; End is null when the two cells are
+    /// not neighbours.
+    /// </summary>
+    internal static (GridCell Cell, GridStep? End) Joining(PieceModel thing, GridCell local, GridCell facing)
+    {
+        (GridCell inside, GridCell beyond) = Of(thing, local, facing);
+        return (beyond, GridStep.Between(beyond, inside));
+    }
 }

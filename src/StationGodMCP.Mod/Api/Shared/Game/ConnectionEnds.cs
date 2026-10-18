@@ -70,7 +70,10 @@ internal static class EndsReader
             end.ConnectionType.ToString(), TypeName(end.ConnectionType), end.ConnectionRole.ToString(),
             RoleName(end.ConnectionRole));
         PositionView? position = end.Transform != null ? GameLookup.ViewOf(end.Transform.position) : null;
-        return new ConnectionEndView(index, kind, position, EndNetwork(grid, end, attached), connected);
+        (GridCell cell, GridStep? pieceEnd) = EndCells.Joining(PieceShapes.Live(grid),
+            PieceShapes.Cell(end.GetLocalGrid()), PieceShapes.Cell(end.GetFacingGrid()));
+        return new ConnectionEndView(index, kind, position, EndNetwork(grid, end, attached), connected,
+            GameLookup.ViewOf(PieceShapes.CentreOf(cell)), pieceEnd?.Name);
     }
 
     private static string? TypeName(NetworkType type)

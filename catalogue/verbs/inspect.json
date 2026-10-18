@@ -315,10 +315,12 @@
         }
       },
       "text": [
-        "id may be a list or a ref: the reply is {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload one reply; fields name its keys."
+        "id may be a list or a ref: the reply is {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload one reply; fields name its keys.",
+        "Each end: position is the end's own point; at is the centre of the cell a piece joining it stands in (as build reports a port's at) and piece_end the end that piece needs, pointing back into this thing: build pipe {piece: {at, ends: [piece_end, ...]}} joins it."
       ],
       "x-script-text": [
-        "A list of ids answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply below; fields name its keys."
+        "A list of ids answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply below; fields name its keys.",
+        "Each end: position is the end's own point; at is the centre of the cell a piece joining it stands in (as build reports a port's at) and piece_end the end that piece needs, pointing back into this thing: build pipe {piece: {at, ends: [piece_end, ...]}} joins it."
       ],
       "example": {"id": ["2514519", "3575779"]},
       "x-cost": {"class": "bounded", "growth": "by-id"},
@@ -334,7 +336,7 @@
               "rotation": "{facing: str | None, up: str | None, euler: Vec3} | None",
               "own_network": "{kind: str, id: str} | None",
               "color": "Color | None",
-              "ends": "list[{index: int, type: str, type_name: str | None, role: str, role_name: str | None, position: Vec3 | None, network: {kind: str, id: str} | None, connected: list[Thing]}]",
+              "ends": "list[{index: int, type: str, type_name: str | None, role: str, role_name: str | None, position: Vec3 | None, at: Vec3 | None, piece_end: str | None, network: {kind: str, id: str} | None, connected: list[Thing]}]",
               "count": "int"
             }
           }

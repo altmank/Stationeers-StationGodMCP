@@ -51,8 +51,10 @@ internal sealed class ConnectionsView
 internal sealed class ConnectionEndView
 {
     internal ConnectionEndView(int index, ConnectionKind kind, PositionView? position, NetworkRefView? network,
-        List<ThingView> connected)
+        List<ThingView> connected, PositionView? at = null, string? pieceEnd = null)
     {
+        At = at;
+        PieceEnd = pieceEnd;
         Index = index;
         Type = kind.Type;
         TypeName = kind.TypeName;
@@ -76,6 +78,12 @@ internal sealed class ConnectionEndView
     public string? RoleName { get; }
 
     public PositionView? Position { get; }
+
+    /// <summary>The centre of the small cell a piece joining this end stands in, as build reports a port's at.</summary>
+    public PositionView? At { get; }
+
+    /// <summary>The end a piece standing at at needs to join this one (+x, -y, ...): it points back into the thing.</summary>
+    public string? PieceEnd { get; }
 
     public NetworkRefView? Network { get; }
 
