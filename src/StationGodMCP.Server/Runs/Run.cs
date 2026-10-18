@@ -24,6 +24,7 @@ internal sealed partial class Run : IRunChannel, IPipelineExtras, IVerbCalls
     private readonly HashSet<string> _literals = new(StringComparer.Ordinal);
     private readonly HashSet<double> _literalNumbers = new();
     private readonly HashSet<string> _builds = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _reads = new(StringComparer.Ordinal);
     private readonly Dictionary<string, WrittenTarget> _lastWritten = new(StringComparer.Ordinal);
     private readonly List<string> _writtenOrder = [];
     private readonly HashSet<string> _contested = new(StringComparer.Ordinal);
@@ -1098,7 +1099,7 @@ internal sealed partial class Run : IRunChannel, IPipelineExtras, IVerbCalls
         }
 
         Observe(verb, what, context, reply);
-        return reply;
+        return context.ActRefused is { } refused ? refused : reply;
     }
 
     // ---- small helpers ----------------------------------------------------------------------------------------------

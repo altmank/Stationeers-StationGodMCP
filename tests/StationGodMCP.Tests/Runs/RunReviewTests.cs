@@ -224,7 +224,7 @@ public sealed class RunReviewTests
             "            seen.append(r['results'][0]['ok'])\n" +
             "        except BaseException:\n" +
             "            seen.append(False)\n" +
-            "pump = sg.find('thing')['things'][0]['reference_id']\n" +
+            "pump = str(990 + 9)\n" +
             "try:\n" +
             "    sg.write('logic', id=pump, logic='On', value=1)\n" +
             "finally:\n" +

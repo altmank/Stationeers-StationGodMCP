@@ -24,7 +24,7 @@ public sealed class VerbModelTests
 {
     // The identity of the committed catalogue/verbs/*.json: the hash every reader of those bytes must announce,
     // whatever line endings its own copy of them carries.
-    private const string CommittedHash = "sha256:8afa28af87ebb0d964f60e7821ad714d2f0a3d022dbcbe372c9ba0e297ac70fa";
+    private const string CommittedHash = "sha256:fc02ddc094db7b5faf11bdd15c2ff5b2a6cd43ed6b23157c37cc255f754e4cbd";
 
     [Fact]
     public void TheModAndTheClientComputeTheSameHashFromTheirOwnEmbeds()

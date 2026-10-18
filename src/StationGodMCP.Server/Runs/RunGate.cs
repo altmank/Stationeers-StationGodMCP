@@ -36,6 +36,12 @@ internal sealed class RunCallContext
 
     /// <summary>True when the gate stopped the run on this call (the stop is recorded already).</summary>
     internal bool RuleStop { get; set; }
+
+    /// <summary>
+    /// A write the gate let act that the game answered with its report instead (a check refused it, so nothing
+    /// acted): the error the script gets in place of that report.
+    /// </summary>
+    internal VerbReply.Failed? ActRefused { get; set; }
 }
 
 /// <summary>

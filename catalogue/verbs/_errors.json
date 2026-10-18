@@ -567,7 +567,7 @@
   "unknown_gene": {"description": "That is not a gene; the message lists the genes.", "see": {"verb": "inspect", "what": "genes"}},
   "unknown_subscription": {"description": "This connection has no subscription with that id.", "see": {"topic": "errors"}},
   "unseen_target": {
-    "description": "A run was stopped because a write named a target it had not seen: an id this session's replies never showed, or a selector (a network, a spread) not written out as a literal in the code. Nothing acted for that call. Find the things, or write the selector out, then send the code again with confirm: true.",
+    "description": "A run was stopped because a write named a target it had not seen: an id neither this session's replies nor the run's own reads showed, or a selector (a network, a spread) neither written out as a literal in the code nor read by the run. Nothing acted for that call. Find the things in the run, or write the selector out, then send the code again with confirm: true.",
     "see": {"verb": "run_script"}
   },
   "unsupported_protocol": {

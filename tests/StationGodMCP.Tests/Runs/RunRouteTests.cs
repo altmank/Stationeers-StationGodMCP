@@ -86,10 +86,23 @@ public sealed class RunRouteTests
     }
 
     [PythonFact]
-    public async Task AnIdFoundInsideTheRunStopsItAndTheSameCodeSentAgainActs()
+    public async Task AnIdFoundInsideTheRunActsInTheSameRun()
     {
         await using RunBench bench = new();
         const string code = "pump = sg.find('thing', name='Pump')['things'][0]['reference_id']\n" +
+                            "sg.write('logic', id=pump, logic='On', value=1)";
+
+        string text = await bench.RunAsync(code, confirm: true);
+
+        Assert.True(text.StartsWith("script-1 done\n"), text);
+        Assert.Equal(1, bench.World.Value("999", "On"));
+    }
+
+    [PythonFact]
+    public async Task AnIdNeitherReadNorWrittenStopsItAndTheSameCodeSentAgainActs()
+    {
+        await using RunBench bench = new();
+        const string code = "pump = str(990 + 9)\n" +
                             "sg.write('logic', id=pump, logic='On', value=1)";
 
         string first = await bench.RunAsync(code, confirm: true);
@@ -109,7 +122,7 @@ public sealed class RunRouteTests
         await using RunBench bench = new();
 
         string text = await bench.RunAsync(WriteOne + "\n" +
-                                           "pump = sg.find('thing')['things'][0]['reference_id']\n" +
+                                           "pump = str(990 + 9)\n" +
                                            "sg.write('logic', id=pump, logic='On', value=1)", confirm: true);
 
         Assert.Contains("stopped: unseen_target", text);
@@ -123,7 +136,7 @@ public sealed class RunRouteTests
         // Two benches: the first run's stop rows make 999 seen for the hub that showed them.
         await using RunBench bench = new();
         await using RunBench other = new();
-        const string find = "pump = sg.find('thing')['things'][0]['reference_id']\n";
+        const string find = "pump = str(990 + 9)\n";
 
         string caughtAsException = await other.RunAsync(find +
             "try:\n    sg.write('logic', id=pump, logic='On', value=1)\nexcept Exception:\n    print('caught')\n" +
@@ -347,20 +360,42 @@ public sealed class RunRouteTests
     }
 
     [PythonFact]
-    public async Task ANetworkSelectorTakenFromAReplyStopsTheRunAndItsLiteralActs()
+    public async Task ANetworkSelectorTheRunReadItselfActsAndAComputedOneStops()
     {
         await using RunBench bench = new();
 
-        string computed = await bench.RunAsync(UnseenThing + "sg.swap('cable', network=nw, into='super_heavy')",
+        string read = await bench.RunAsync(UnseenThing + "sg.swap('cable', network=nw, into='super_heavy')",
+            confirm: true);
+        string computed = await bench.RunAsync("sg.swap('cable', network=str(990 + 9), into='super_heavy')",
             confirm: true);
         int afterStop = bench.World.Count("swap.cable");
         string literal = await bench.RunAsync("sg.swap('cable', network='999', into='super_heavy')", confirm: true);
 
-        Assert.StartsWith("script-1 stopped: unseen_target (line 2: swap cable names targets not seen; nothing acted.)",
+        Assert.True(read.StartsWith("script-1 done"), read);
+        Assert.StartsWith("script-2 stopped: unseen_target (line 1: swap cable names targets not seen; nothing acted.)",
             computed);
-        Assert.Equal(0, afterStop);
-        Assert.StartsWith("script-2 done", literal);
-        Assert.Equal(1, bench.World.Count("swap.cable"));
+        Assert.Equal(1, afterStop);
+        Assert.StartsWith("script-3 done", literal);
+        Assert.Equal(2, bench.World.Count("swap.cable"));
+    }
+
+    // A write the gate let act that the game refused with its report (a build whose check failed) fails the call
+    // loudly, never a quiet REPORTED row in a confirmed run.
+    [PythonFact]
+    public async Task AnActTheGameRefusedWithItsReportFailsTheCall()
+    {
+        await using RunBench bench = new();
+        bench.World.Override = call => RunWorld.KeyOf(call) == "build.structure"
+            ? FakeGameLink.Ok("""{"ready":false,"problems":[{"index":0,"code":"cannot_place","message":"placement 0: the cell is blocked"}],"report_only":true,"targets":[{"cell":[1,2,3],"text":"[[1, 2, 3], StructureWallLight, null -> StructureWallLight] [undo]","undo":"[undo]"}]}""")
+            : null;
+
+        string text = await bench.RunAsync(
+            "try:\n    sg.build('structure', prefab='StructureWallLight', at=[1, 2, 3])\n" +
+            "except sg.Error as e:\n    print('refused:', e.code)\n", confirm: true);
+
+        Assert.Contains("refused: cannot_place", text);
+        Assert.DoesNotContain("REPORTED", text);
+        Assert.Contains(bench.World.Log, entry => entry == "build.structure");
     }
 
     [PythonFact]

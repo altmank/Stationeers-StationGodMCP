@@ -169,6 +169,8 @@ One set per hub (a documented limit: runs and the direct face share it). It hold
   returned text (within their cut), every run of 1 to 19 digits not touching a letter, digit, `.` or `-`. They are
   added when the text is sent (a run_script reply whose request was cancelled is never read, so it adds nothing), and a
   run's printed and returned value after the run ends. Nothing a script's worker is answered adds to it.
+- each run's own reads (for that run only): the ids, under the same keys, of every reply to a call of a what that
+  is not a write (find, inspect, survey, read, plan, check), as targets and as selector values;
 - each run's `literals` (for that run only), its selectors written in code (every string and number in a `network`,
   `near`, `room`, `box` value, or build blueprint's `at`, equal to one of its literals by value, floats included;
   booleans are switches, not selectors), a ref written as a literal that the agent was shown, its own builds
@@ -196,7 +198,9 @@ run does through `sg`, not what the Python language can reach (a public-release 
 - **Confirmed run** (`confirm: true`): writes act on seen targets. An unseen target refuses the call with
   `stopped: true`, code `unseen_target`, `data.rows` the call's targets as report rows (now seen), and `fix`:
   "nothing acted: send it again with confirm: true" when nothing acted, else "these acted: [...]; undo script-N
-  first, then send it again". The run is not resumed.
+  first, then send it again". The run is not resumed. A write the gate let act that the game answers with its
+  report (its own checks refused it: a build with a problem) is an error to the script, code the first problem's,
+  never a REPORTED row.
 - `confirm` in a script call is refused `invalid_argument` ("confirm belongs to the run").
 
 ### Stop

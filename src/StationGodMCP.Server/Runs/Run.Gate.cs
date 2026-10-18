@@ -199,7 +199,7 @@ internal sealed partial class Run
 
     // Under Sync.
     private bool IsSeen(string id) =>
-        id == Player || _literals.Contains(id) || _builds.Contains(id) || _seen.Contains(id);
+        id == Player || _literals.Contains(id) || _builds.Contains(id) || _reads.Contains(id) || _seen.Contains(id);
 
     // Under Sync: "r7" written in the code, or a path of it ("r7.things.2").
     private bool RefWritten(string reference)
@@ -247,7 +247,8 @@ internal sealed partial class Run
 
     /// <summary>
     /// A selector passes when it is written in the code: every string and number in it equals a literal by value (floats
-    /// included). Booleans and nulls are switches, not selectors, and are not asked about.
+    /// included), or is an id one of the run's own reads answered. Booleans and nulls are switches, not selectors, and
+    /// are not asked about.
     /// </summary>
     private bool SelectorWritten(JsonNode? node)
     {
@@ -274,7 +275,7 @@ internal sealed partial class Run
 
                 return true;
             case JsonValue value when JsonNodes.Text(value) is { } text:
-                return _literals.Contains(text);
+                return _literals.Contains(text) || _reads.Contains(text);
             case JsonValue value when JsonNodes.Number(value) is { } number:
                 return _literalNumbers.Contains(number);
             default:
@@ -511,10 +512,22 @@ internal sealed partial class Run
             return;
         }
 
+        WriteEntry? refusedEntry = null;
         lock (Record.Sync)
         {
             Gather(answer);
-            if (answer is JsonObject report && JsonNodes.IsTrue(report["report_only"]))
+            if (context.Pending is { } refusedAct && answer is JsonObject refusal && JsonNodes.IsTrue(refusal["report_only"]))
+            {
+                refusedEntry = refusedAct;
+                // The gate let it act, but the game's checks refused it and answered the report: nothing acted, and
+                // the script hears it as an error, never as a quiet report row.
+                context.ActRefused = ActRefusal(label, refusal);
+                refusedAct.Acted = false;
+                Record.Writes.Remove(refusedAct);
+                NoteRefused(refusedAct, context.ActRefused.ToJson());
+                context.Pending = null;
+            }
+            else if (answer is JsonObject report && JsonNodes.IsTrue(report["report_only"]))
             {
                 string mark = _pipeline.Catalogue.Verb(verb)?.What(what)?.Write?.UndoMark ?? "";
                 foreach (JsonNode? row in report["targets"] as JsonArray ?? [])
@@ -533,10 +546,25 @@ internal sealed partial class Run
                 CollectBuilds(answer, context.Pending);
             }
 
+            if (_pipeline.Catalogue.Verb(verb)?.What(what) is { Write: null } && answer != null)
+            {
+                // A read the run made itself: the ids it answered are seen by this run's later writes.
+                foreach (string id in SeenSet.IdsInJson(answer.ToJsonString()))
+                {
+                    _reads.Add(id);
+                }
+            }
+
             if (verb == "read" && what == "logic")
             {
                 NoteContested(answer);
             }
+        }
+
+        if (refusedEntry != null)
+        {
+            _journal.After(Record, refusedEntry);
+            return;
         }
 
         if (context.Pending is { } entry)
@@ -665,6 +693,16 @@ internal sealed partial class Run
         }
 
         return null;
+    }
+
+    // The error a refused act answers: the report's first problem (its code and message), with the whole report as data.
+    private static VerbReply.Failed ActRefusal(string label, JsonObject report)
+    {
+        JsonObject? problem = (report["problems"] as JsonArray)?.Count > 0 ? report["problems"]![0] as JsonObject : null;
+        string code = JsonNodes.Text(problem?["code"]) ?? "not_acted";
+        string why = JsonNodes.Text(problem?["message"]) ?? "the game answered its report instead of acting";
+        return new VerbReply.Failed(code, $"{label} did not act: {why}", "fix what the problem names and run it again",
+            report.DeepClone());
     }
 
     // Under Sync: what a build or swap made is the run's own and seen by it.
