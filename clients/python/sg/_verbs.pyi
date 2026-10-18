@@ -1133,7 +1133,7 @@ def survey(what: Literal['network'], *,
     box: list = None,  # Box form: the pieces in it (alone: open ends in it).
     kind: Literal['pipe', 'cable', 'chute'] = None,  # Box form: only this kind. With network, left out, it is read from the network.
     prefab: str | int | list = None,  # Only members whose prefab holds this part.
-    summarize: bool = False,  # Counts by prefab and colour, devices and open ends instead of members.
+    summarize: bool = False,  # Counts by prefab and colour, devices and open ends instead of members; summary has a pipe network's volume_l, pressure_kpa, temperature_k, total_mol and gases.
     open_ends: bool = False,  # Only members with an end nothing is attached at.
     near: str | list = None,  # Centre: [x, y, z], "player", "looking_at" or a thing's id (its position); with radius.
     radius: float = None,  # Metres around near.

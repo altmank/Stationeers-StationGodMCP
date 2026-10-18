@@ -176,7 +176,7 @@
         "prefab": {"use": "prefab", "description": "Only members whose prefab holds this part."},
         "summarize": {
           "schema": {"type": "boolean"},
-          "description": "Counts by prefab and colour, devices and open ends instead of members.",
+          "description": "Counts by prefab and colour, devices and open ends instead of members; summary has a pipe network's volume_l, pressure_kpa, temperature_k, total_mol and gases.",
           "default": "false",
           "x-script": "same"
         },

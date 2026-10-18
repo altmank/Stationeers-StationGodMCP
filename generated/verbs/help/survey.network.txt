@@ -4,7 +4,7 @@ Options:
 - box (list): Box form: the pieces in it (alone: open ends in it).
 - kind (pipe | cable | chute): Box form: only this kind. With network, left out, it is read from the network.
 - prefab (string or integer or array): Only members whose prefab holds this part.
-- summarize (boolean, default false): Counts by prefab and colour, devices and open ends instead of members.
+- summarize (boolean, default false): Counts by prefab and colour, devices and open ends instead of members; summary has a pipe network's volume_l, pressure_kpa, temperature_k, total_mol and gases.
 - open_ends (boolean, default false): Only members with an end nothing is attached at.
 - near (string or array): Centre: [x, y, z], "player", "looking_at" or a thing's id (its position); with radius.
 - radius (number): Metres around near.
