@@ -19,7 +19,8 @@
   and message, the report as `data`, and is listed refused.
 - **One reply shape on both faces.** A script call with one id answers the what's one-id shape, as a direct call
   does (`inspect atmosphere`, `inspect connections`, `read logic`); an id list answers `{results: [...]}` on both.
-  Scripts that read `['results'][0]` after a one-id call read the reply itself now.
+  Scripts that read `['results'][0]` after a one-id call read the reply itself now. A `--hub` program (the
+  dashboard) keeps rows for one id, as before.
 - **`survey area` with `sections` that leave `cells` out reads every cell**, so its `pieces` and `devices` come
   from the whole area, not from a first page of 8 cells nobody sees.
 - **Removals with no player give nothing back.** `refund_to` left out, with no player and no `materials` holder,

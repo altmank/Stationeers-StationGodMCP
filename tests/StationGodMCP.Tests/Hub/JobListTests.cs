@@ -56,7 +56,7 @@ public sealed class JobListTests
 
         JsonNode reply = game.Pipeline().Call("inspect", "job", """{"id":"place-2"}""", Face.Program).Done()!;
 
-        Same("""{"what":"job","id":"place-2"}""", game.Single("inspect").Params());
+        Same("""{"what":"job","id":["place-2"]}""", game.Single("inspect").Params());
         Same(JobRows("place-2"), reply);
     }
 

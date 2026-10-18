@@ -139,18 +139,20 @@ public sealed class VerbPipelineTests : IDisposable
     }
 
     [Fact]
-    public void OnEveryFaceOneIdGoesAsGivenSoTheReplyHasTheDirectShape()
+    public void AScriptSendsOneIdAsGivenAndAProgramAsAList()
     {
         FakeGameLink game = new();
 
         game.Pipeline().Call("inspect", "device", """{"id":"1"}""", Face.Script).Done();
         game.Pipeline().Call("inspect", "device", """{"id":"1"}""").Done();
         game.Pipeline().Call("inspect", "device", """{"id":["1"]}""", Face.Script).Done();
+        game.Pipeline().Call("inspect", "device", """{"id":"1"}""", Face.Program).Done();
 
         List<GameCall> calls = game.Calls.ToList();
         Assert.Equal("\"1\"", calls[0].Params()["id"]!.ToJsonString());
         Assert.Equal("\"1\"", calls[1].Params()["id"]!.ToJsonString());
         Assert.Equal("""["1"]""", calls[2].Params()["id"]!.ToJsonString());
+        Assert.Equal("""["1"]""", calls[3].Params()["id"]!.ToJsonString());
     }
 
     // ---- help --------------------------------------------------------------------------------------------------

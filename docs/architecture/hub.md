@@ -96,7 +96,7 @@ line has waited 35 s is ended (`slow_client`); a mod method a session may not pa
 | --- | --- | --- | --- | --- |
 | direct | the MCP client | the tool list's | single shape for one id; over 12 KB cut to about 4 KB with `ref`, `cut`, `next`; refs minted | typed ids act (move item included); build, swap, remove, trade, undo and cheats report until `confirm`; refs, networks and spreads report until `confirm` |
 | script | a run's worker | the stubs' (`confirm`, `max_wait`, `queue`, `offset` refused, D7) | replies as direct (one id the one-id shape, a list `{results: [...]}`); never cut; no refs minted | the run's route (*Runs*) |
-| program | a `--hub` caller | the stubs' plus `confirm` and `list_limits` | as script | as direct |
+| program | a `--hub` caller | the stubs' plus `confirm` and `list_limits` | per-id whats always `{results: [...]}` (D13); never cut; no refs minted | as direct |
 
 On the script and program faces a list reply's first page is the handler's first page (or the first `limit`
 entries, D3); when more remain, the reply's top level carries `"cursor": "<hub cursor>"` and the main list's key is

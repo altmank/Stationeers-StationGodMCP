@@ -269,8 +269,9 @@ public sealed partial class VerbPipeline
         return reply;
     }
 
-    // The options as sent, nulls dropped. Every face sends id as given: one id answers the what's single shape and a
-    // list answers rows, in a script as in a direct call.
+    // The options as sent, nulls dropped. The direct and script faces send id as given: one id answers the what's
+    // single shape and a list answers rows, in a script as in a direct call. The program face (a --hub caller such as
+    // the dashboard) answers rows even for one id (D13), the shape its callers are written to.
     private static JsonObject Normalised(WhatEntry what, Face face, JsonObject given)
     {
         JsonObject options = new();
@@ -280,6 +281,11 @@ public sealed partial class VerbPipeline
             {
                 options[name] = value.DeepClone();
             }
+        }
+
+        if (face == Face.Program && what.TakesIdList && JsonNodes.Text(options["id"]) is { } one)
+        {
+            options["id"] = new JsonArray(JsonValue.Create(one));
         }
 
         return options;
