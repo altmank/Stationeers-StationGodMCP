@@ -15,9 +15,14 @@
   },
   "whats": {
     "structure": {
-      "summary": "built structures by id (up to 256, one job), taken apart; every build state is refunded down to the kit",
+      "summary": "built structures by id or every one in a box (up to 256, one job), taken apart; every build state is refunded down to the kit",
       "options": {
-        "id": {"use": "id", "description": "The structures.", "required": true},
+        "id": {"use": "id", "description": "The structures; or give box."},
+        "box": {
+          "use": "box",
+          "description": "Every structure whose position lies in it (at most 32 m a side, 256 found), in one job; with id, both."
+        },
+        "prefab": {"use": "prefab", "description": "With box: only these prefabs."},
         "allow": {
           "use": "allow",
           "schema": {
@@ -47,6 +52,9 @@
         "queue": {"use": "queue"},
         "max_wait": {"use": "max_wait"}
       },
+      "text": [
+        "A box takes everything in it, frames and walls included: name prefab to keep to the pieces you mean, and read the report before confirm."
+      ],
       "example": {"id": ["1559707"], "confirm": true},
       "x-cost": {"class": "job", "growth": "plan"},
       "x-cost-report": {"class": "plan"},
@@ -83,6 +91,8 @@
         "x-undo-mark": "[undo]",
         "x-target": [
           {"path": "id", "role": "acts-on"},
+          {"path": "box", "role": "spread"},
+          {"path": "prefab", "role": "spread"},
           {"path": "gas_to", "role": "acts-on"},
           {"path": "materials", "role": "pays-from"},
           {"path": "refund_to", "role": "pays-from"}

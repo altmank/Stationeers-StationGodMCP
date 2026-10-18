@@ -1,6 +1,8 @@
 def remove(what: Literal['structure'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
-    id: str | list[str],  # The structures.
+    id: str | list[str] = None,  # The structures; or give box.
+    box: list = None,  # Every structure whose position lies in it (at most 32 m a side, 256 found), in one job; with id, both.
+    prefab: str | int | list = None,  # With box: only these prefabs.
     allow: list[Literal['contents', 'breach', 'broken', 'burst', 'unsupported']] = None,  # contents: items drop, gas goes; breach: joins spaces 1 kPa or more apart; broken: nothing back; burst; unsupported.
     refund_to: str | int | list = None,  # Where removed materials go: a word (inventory, source, storage, ground, none), a container id, or a list tried in turn. (default [inventory, source, storage, ground]) (default [inventory, source, storage, ground])
     materials: str = None,  # The one holder for source and storage refunds: an id or "player". Default the player.
@@ -9,7 +11,8 @@ def remove(what: Literal['structure'], *,
     verbose: bool = False,  # Dry run: each port a split cuts; real run: the whole job.
     acknowledge_gas_lost: str = None,  # The job id whose gas loss you accept (with the user's agreement); lifts the gas hold.
 ) -> dict:  # main list: r['removals']: the page answered; .walk() goes through every entry, .all() pages in the rest
-    """Built structures by id (up to 256, one job), taken apart; every build state is refunded down to the kit.
+    """Built structures by id or every one in a box (up to 256, one job), taken apart; every build state is refunded down to the kit.
+    A box takes everything in it, frames and walls included: name prefab to keep to the pieces you mean, and read the report before confirm.
     Reports in a report run; acts in a confirmed run.
     Reply, one of:
     (JobQueued)

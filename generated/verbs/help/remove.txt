@@ -2,7 +2,7 @@ Take things away as a player would, with refunds and guards. Reports first; conf
 A report carries report_only: true and lists every target with its current and new value.
 
 whats:
-- structure: built structures by id (up to 256, one job), taken apart; every build state is refunded down to the kit
+- structure: built structures by id or every one in a box (up to 256, one job), taken apart; every build state is refunded down to the kit
 - cable: cable pieces as wire cutters remove them: by id, or the piece in each cell of waypoints or cells
 - pipe: pipe pieces as a player remove them: by id, or the piece in each cell of waypoints or cells, never emptying or splitting a network that holds gas
 - chute: chute pieces as a player remove them: by id, or the piece in each cell of waypoints or cells

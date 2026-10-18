@@ -18,6 +18,7 @@ using StationGodMCP.Api.Shared.Game.Structures;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Verbs;
 using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Routing;
 using UnityEngine;
@@ -188,9 +189,11 @@ internal static class RemovePlanner
 
         BreachedFaces breached = new BreachedFaces();
         GridFacts grid = new GridFacts(new CableRunKind(), SmallGridBlock.None, new HashSet<long>());
+        // Every piece's support check reads the devices beside it; a neighbour of many pieces is read once.
+        PlanMemo<SmallGrid, NearBody> bodies = new PlanMemo<SmallGrid, NearBody>(NearBodies.BodyOf);
         foreach (PlannedTakedown takedown in plan.Takedowns)
         {
-            Guard(plan, takedown, seen, breached, gas, grid);
+            Guard(plan, takedown, seen, breached, gas, grid, bodies);
             yield return null;
         }
 
@@ -243,7 +246,7 @@ internal static class RemovePlanner
 
     [Profiled]
     private static void Guard(RemovePlan plan, PlannedTakedown takedown, HashSet<long> removed,
-        BreachedFaces breached, Dictionary<long, NetworkTakedown> gas, GridFacts grid)
+        BreachedFaces breached, Dictionary<long, NetworkTakedown> gas, GridFacts grid, PlanMemo<SmallGrid, NearBody> bodies)
     {
         Structure piece = takedown.Piece;
         RemovalFacts facts = new RemovalFacts
@@ -254,7 +257,7 @@ internal static class RemovePlanner
             Broken = Wrecks.IsBroken(piece),
             GameRefusal = GameRefusal(piece, removed),
             Attached = MountedOn(piece),
-            Unsupported = Unsupported(piece, removed, grid),
+            Unsupported = Unsupported(piece, removed, grid, bodies),
             GasMoles = piece.InternalAtmosphere != null ? piece.InternalAtmosphere.TotalMoles.ToDouble() : 0.0,
             GasFate = piece is Tank ? GasFate.Released : GasFate.Lost
         };
@@ -646,7 +649,8 @@ internal static class RemovePlanner
     // small-grid thing near them that rests on a surface (mounted on a face, or a grid-placed device standing on one;
     // cable, pipe and chute pieces run through cells and are left out), and for each face its back or bottom rests on
     // (MountRect), what holds that face now. Things the request removes too are skipped.
-    private static string? Unsupported(Structure piece, HashSet<long> removed, GridFacts grid)
+    private static string? Unsupported(Structure piece, HashSet<long> removed, GridFacts grid,
+        PlanMemo<SmallGrid, NearBody> bodies)
     {
         if (piece is SmallGrid)
         {
@@ -671,7 +675,8 @@ internal static class RemovePlanner
         }
 
         GridController world = GridController.World;
-        foreach (NearBody body in NearBodies.Around(Box3.Around(faces), grid, removed, NearKinds.AnyPiece))
+        foreach (NearBody body in NearBodies.Around(Box3.Around(faces), grid, removed, NearKinds.AnyPiece,
+                     known: bodies))
         {
             SmallGrid thing = body.Thing;
             MountRect? mount = RestingOn(thing, body);

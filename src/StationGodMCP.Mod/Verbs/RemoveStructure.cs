@@ -28,11 +28,68 @@ internal static class RemoveStructure
         string label = RemoveStructureOptions.Spec.Label;
         List<OptionProblem> problems = new List<OptionProblem>();
         List<ReportProblem> unread = new List<ReportProblem>();
-        List<ThingId?> named = JobTargets.Ids(options.Selector.Ids!.Ids, label, unread);
+        List<ThingId?> named = options.Selector.Ids is { } given
+            ? JobTargets.Ids(given.Ids, label, unread)
+            : new List<ThingId?>();
+        InBox(options.Selector, named, problems);
+        if (problems.Count > 0)
+        {
+            return new VerbOutcome.Refused(OptionProblem.Refusal(label, problems));
+        }
+
         RemoveStructureOrder? order = RemoveStructureOrder.Of(options, named, unread, problems);
         return order != null
             ? RemoveStructureRun.Run(order)
             : new VerbOutcome.Refused(OptionProblem.Refusal(label, problems));
+    }
+
+    // box: every structure in it (the prefab filter's, when given) joins the ids, after them and once each; one call is
+    // one job however many it finds, up to RemovalBox.MostStructures.
+    private static void InBox(Selector selector, List<ThingId?> named, List<OptionProblem> problems)
+    {
+        if (selector.Box == null)
+        {
+            if (selector.Ids == null)
+            {
+                problems.Add(new OptionProblem("id", "or box is needed: the structures to take down"));
+            }
+
+            if (selector.Prefab != null)
+            {
+                problems.Add(new OptionProblem("prefab", "goes with box: it filters what the box holds"));
+            }
+
+            return;
+        }
+
+        RemovalBox? box = RemovalBox.Of(selector.Box, problems);
+        if (box == null)
+        {
+            return;
+        }
+
+        List<ThingId> found = BoxStructures.In(box, selector.Prefab);
+        if (RemovalBox.TooMany(found.Count) is { } tooMany)
+        {
+            problems.Add(new OptionProblem("box", tooMany));
+            return;
+        }
+
+        if (found.Count == 0 && named.Count == 0)
+        {
+            problems.Add(new OptionProblem("box", selector.Prefab != null
+                ? "holds no structure the prefab filter keeps"
+                : "holds no structure"));
+            return;
+        }
+
+        foreach (ThingId id in found)
+        {
+            if (!named.Contains(id))
+            {
+                named.Add(id);
+            }
+        }
     }
 }
 

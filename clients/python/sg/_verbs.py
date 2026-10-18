@@ -152,15 +152,15 @@ def swap(what, *, fields=None, as_player=None, id=None, room=None, into=None, pr
                      'acknowledge_gas_lost': acknowledge_gas_lost, 'box': box, 'riding': riding}, options)
 
 
-def remove(what, *, fields=None, as_player=None, id=None, allow=None, refund_to=None, materials=None, gas_to=None,
-        include=None, verbose=None, acknowledge_gas_lost=None, waypoints=None, cells=None, root=None, rows=None,
-        box=None, ores=None, name=None, scope=None, **options):
+def remove(what, *, fields=None, as_player=None, id=None, box=None, prefab=None, allow=None, refund_to=None,
+        materials=None, gas_to=None, include=None, verbose=None, acknowledge_gas_lost=None, waypoints=None,
+        cells=None, root=None, rows=None, ores=None, name=None, scope=None, **options):
     """Take things away as a player would, with refunds and guards. sg.help('remove', what) gives a what in full."""
-    return verb_call('remove', what, {'fields': fields, 'as_player': as_player, 'id': id, 'allow': allow,
-                     'refund_to': refund_to, 'materials': materials, 'gas_to': gas_to, 'include': include,
-                     'verbose': verbose, 'acknowledge_gas_lost': acknowledge_gas_lost, 'waypoints': waypoints,
-                     'cells': cells, 'root': root, 'rows': rows, 'box': box, 'ores': ores, 'name': name, 'scope':
-                     scope}, options)
+    return verb_call('remove', what, {'fields': fields, 'as_player': as_player, 'id': id, 'box': box, 'prefab':
+                     prefab, 'allow': allow, 'refund_to': refund_to, 'materials': materials, 'gas_to': gas_to,
+                     'include': include, 'verbose': verbose, 'acknowledge_gas_lost': acknowledge_gas_lost,
+                     'waypoints': waypoints, 'cells': cells, 'root': root, 'rows': rows, 'ores': ores, 'name': name,
+                     'scope': scope}, options)
 
 
 def move(what, *, fields=None, as_player=None, id=None, quantity=None, to=None, slot=None, merge=None, force=None,

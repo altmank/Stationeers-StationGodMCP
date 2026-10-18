@@ -6,6 +6,7 @@ using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Pipes;
 using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Pure;
+using StationGodMCP.Pure.Verbs;
 
 namespace StationGodMCP.Api.Shared.Game;
 
@@ -64,7 +65,7 @@ internal static class NearBodies
     private const int DefaultMaximumCells = 4096;
 
     internal static List<NearBody> Around(Box3 region, GridFacts facts, HashSet<long> ignore, NearKinds kinds,
-        int maxCells = DefaultMaximumCells)
+        int maxCells = DefaultMaximumCells, PlanMemo<SmallGrid, NearBody>? known = null)
     {
         Dictionary<long, SmallGrid> found = new Dictionary<long, SmallGrid>();
         int scanned = 0;
@@ -76,7 +77,7 @@ internal static class NearBodies
                 {
                     if (++scanned > maxCells)
                     {
-                        return Bodies(found);
+                        return Bodies(found, known);
                     }
 
                     SmallCell? cell = facts.SmallAt(new GridCell(x, y, z));
@@ -102,10 +103,15 @@ internal static class NearBodies
             }
         }
 
-        return Bodies(found);
+        return Bodies(found, known);
     }
 
-    private static List<NearBody> Bodies(Dictionary<long, SmallGrid> found)
+    /// <summary>A thing's body as Around reads it: its mesh box and its small cells.</summary>
+    internal static NearBody BodyOf(SmallGrid thing) =>
+        new NearBody(thing, Game.Bodies.RenderBox(thing), new HashSet<GridCell>(Game.Bodies.SmallCells(thing)));
+
+    // known: the bodies one plan has read already (a removal asks about the same neighbours for every piece beside them).
+    private static List<NearBody> Bodies(Dictionary<long, SmallGrid> found, PlanMemo<SmallGrid, NearBody>? known)
     {
         List<long> ids = new List<long>(found.Keys);
         ids.Sort();
@@ -113,8 +119,7 @@ internal static class NearBodies
         foreach (long id in ids)
         {
             SmallGrid thing = found[id];
-            bodies.Add(new NearBody(thing, Game.Bodies.RenderBox(thing),
-                new HashSet<GridCell>(Game.Bodies.SmallCells(thing))));
+            bodies.Add(known != null ? known.Get(thing) : BodyOf(thing));
         }
 
         return bodies;
