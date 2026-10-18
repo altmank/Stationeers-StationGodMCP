@@ -25,8 +25,9 @@ namespace StationGodMCP.Api.Shared.Game;
 /// (VoxelChangeEvent). The fill sets densities through TerrainDigs.Set, so its digging (mode level, or original where
 /// ground was added) releases ore as a dig does.
 ///
-/// A voxel's cell holds a structure when its 2 m cell lists one (Cell.AllStructures: frames, walls, large devices) or
-/// one of the eight 0.5 m cells it spans holds a piece or device (SmallCell.IsValid, SmallCell.cs:114-121).
+/// A 1 m cube holds a structure when its 2 m cell lists one (Cell.AllStructures: frames, walls, large devices) or one
+/// of the eight 0.5 m cells it spans holds a piece or device (SmallCell.IsValid, SmallCell.cs:114-121). A voxel (a
+/// density node, the corner of eight cubes) is kept only when all eight cubes hold one.
 /// </summary>
 internal static class TerrainFills
 {
@@ -36,14 +37,20 @@ internal static class TerrainFills
     private static readonly float[] Quarters = { 0.25f, 0.75f };
 
     /// <summary>Every voxel of the box as it reads now, in DigBox.IndexOf order: a body over frames.</summary>
-    internal static IEnumerable<object?> Read(DigBox box, Answer<VoxelReading[]> answer)
+    internal static IEnumerable<object?> Read(DigBox box, Answer<VoxelReading[]> answer) => Read(box, 0, answer);
+
+    /// <summary>
+    /// The box read as a fill reaching intoFrames metres into structures (build terrain's into_frames): a voxel is kept
+    /// only when every 1 m cube within that reach of it is built.
+    /// </summary>
+    internal static IEnumerable<object?> Read(DigBox box, int intoFrames, Answer<VoxelReading[]> answer)
     {
         TerrainDigs.RequireHost();
         VoxelReading[] readings = new VoxelReading[box.Cells];
         int index = 0;
         foreach (VoxelPoint voxel in box.BottomUp())
         {
-            readings[index] = ReadingOf(voxel);
+            readings[index] = ReadingOf(voxel, intoFrames);
             if (++index % ReadsPerStep == 0)
             {
                 yield return null;
@@ -57,7 +64,7 @@ internal static class TerrainFills
     /// The fill planned over a box: the readings, the voxels in an enclosed pocket (voids mode), each voxel's choice
     /// counted, and the players whose body a raised voxel would take (refused: a fill never buries a player).
     /// </summary>
-    internal static FillPlan Plan(DigBox box, FillMode mode, OreHandling ores, VoxelReading[] readings)
+    internal static FillPlan Plan(DigBox box, FillMode mode, OreHandling ores, int intoFrames, VoxelReading[] readings)
     {
         bool[] inVoid = new bool[readings.Length];
         int? voids = null;
@@ -101,20 +108,21 @@ internal static class TerrainFills
                 "(move player) or leave their place out of the box.");
         }
 
-        return new FillPlan(box, mode, ores, readings, inVoid, voids,
+        return new FillPlan(box, mode, ores, intoFrames, readings, inVoid, voids,
             new TerrainFillView(box, mode, tally, voids, ores, TerrainDigs.PlayersIn(box)));
     }
 
     /// <summary>The checks of a fill as a body over frames: the box read, then planned (Plan).</summary>
-    internal static IEnumerable<object?> Checked(DigBox box, FillMode mode, OreHandling ores, Answer<FillPlan> answer)
+    internal static IEnumerable<object?> Checked(DigBox box, FillMode mode, OreHandling ores, int intoFrames,
+        Answer<FillPlan> answer)
     {
         Answer<VoxelReading[]> readings = new Answer<VoxelReading[]>();
-        foreach (object? step in Read(box, readings))
+        foreach (object? step in Read(box, intoFrames, readings))
         {
             yield return step;
         }
 
-        answer.Value = Plan(box, mode, ores, readings.Value);
+        answer.Value = Plan(box, mode, ores, intoFrames, readings.Value);
     }
 
     /// <summary>The fill itself: work the slice lane steps until every voxel is visited.</summary>
@@ -151,16 +159,49 @@ internal static class TerrainFills
         return new TerrainVoidsView(box, shown, smaller, found);
     }
 
-    private static VoxelReading ReadingOf(VoxelPoint voxel)
+    private static VoxelReading ReadingOf(VoxelPoint voxel, int intoFrames)
     {
         Vector3 at = TerrainDigs.At(voxel);
         Vector3Int point = new Vector3Int(voxel.X, voxel.Y, voxel.Z);
-        return new VoxelReading(VoxelTerrain.GetNodeInfoWorldSpace(at).Density,
-            VoxelTerrain.GetReadonlyDensityWorldSpace(point), Built(voxel));
+        NodeInfo now = VoxelTerrain.GetNodeInfoWorldSpace(at);
+        byte generated = VoxelTerrain.GetReadonlyDensityWorldSpace(point);
+        // An empty voxel has no material (VoxelOctree.cs:524-527), so one that stays empty is as generated.
+        bool material = generated == Densities.Empty || now.NodeType == GeneratedMaterial(voxel);
+        return new VoxelReading(now.Density, generated, Built(voxel, intoFrames), material);
     }
 
-    private static bool Built(VoxelPoint voxel)
+    /// <summary>The material the world generated a voxel with, as the console's voxelfillnear reads it.</summary>
+    internal static VoxelNodeType GeneratedMaterial(VoxelPoint voxel) =>
+        VoxelTerrain.GetReadonlyNodeTypeWorldSpace(TerrainDigs.At(voxel), (sbyte)VoxelTerrain.MaxDepth);
+
+    // A voxel is a density node at its integer point, the corner the eight 1 m cubes around it share; the ground's
+    // surface runs between nodes. It is kept only when all eight cubes are built: a node on a structure's face (built
+    // cubes on one side, open ground on the other) is set like any other, so ground meets every face of a frame alike.
+    // Testing the one cube on the node's + side kept the nodes on the -x, -y and -z faces as they were. intoFrames
+    // widens the test by that many cubes each way, so the nodes that far inside a structure are set too.
+    private static bool Built(VoxelPoint voxel, int intoFrames)
     {
+        for (int dx = -1 - intoFrames; dx <= intoFrames; dx++)
+        {
+            for (int dy = -1 - intoFrames; dy <= intoFrames; dy++)
+            {
+                for (int dz = -1 - intoFrames; dz <= intoFrames; dz++)
+                {
+                    if (!CubeBuilt(voxel.X + dx, voxel.Y + dy, voxel.Z + dz))
+                    {
+                        return false;
+                    }
+                }
+            }
+        }
+
+        return true;
+    }
+
+    // The 1 m cube from (x, y, z) up holds a structure.
+    private static bool CubeBuilt(int x, int y, int z)
+    {
+        VoxelPoint voxel = new VoxelPoint(x, y, z);
         GridController world = GridController.World;
         Cell? large = world.GetCell(new Vector3(voxel.X + 0.5f, voxel.Y + 0.5f, voxel.Z + 0.5f));
         if (large != null && large.AllStructures.Count > 0)
@@ -221,7 +262,7 @@ internal static class TerrainFills
         protected override bool Visit(VoxelPoint voxel)
         {
             int index = _plan.Box.IndexOf(voxel);
-            VoxelReading now = ReadingOf(voxel);
+            VoxelReading now = ReadingOf(voxel, _plan.IntoFrames);
             VoxelChoice choice = VoxelChoice.Of(_plan.Mode, voxel, now, _plan.InVoid[index]);
             choice.Count(Tally);
             if (!(choice is VoxelChoice.Set set))
@@ -229,7 +270,8 @@ internal static class TerrainFills
                 return false;
             }
 
-            TerrainDigs.Set(voxel, set.Density, set.Opens, _plan.Ores, Tally);
+            VoxelNodeType? material = _plan.Mode is FillMode.Original ? GeneratedMaterial(voxel) : null;
+            TerrainDigs.Set(voxel, set.Density, set.Opens, _plan.Ores, Tally, material);
             return true;
         }
 
@@ -241,12 +283,13 @@ internal static class TerrainFills
 /// <summary>A checked fill: its box, mode, ore handling, the voxels of its pockets, and the report's reading.</summary>
 internal sealed class FillPlan
 {
-    internal FillPlan(DigBox box, FillMode mode, OreHandling ores, VoxelReading[] readings, bool[] inVoid, int? voids,
-        TerrainFillView reading)
+    internal FillPlan(DigBox box, FillMode mode, OreHandling ores, int intoFrames, VoxelReading[] readings,
+        bool[] inVoid, int? voids, TerrainFillView reading)
     {
         Box = box;
         Mode = mode;
         Ores = ores;
+        IntoFrames = intoFrames;
         Readings = readings;
         InVoid = inVoid;
         Voids = voids;
@@ -258,6 +301,9 @@ internal sealed class FillPlan
     internal FillMode Mode { get; }
 
     internal OreHandling Ores { get; }
+
+    /// <summary>Metres the fill reaches into structures (build terrain's into_frames).</summary>
+    internal int IntoFrames { get; }
 
     internal VoxelReading[] Readings { get; }
 

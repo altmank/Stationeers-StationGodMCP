@@ -548,6 +548,7 @@
           "mode": {"enum": ["solid", "original", "level", "voids"]},
           "level": {"type": "number"},
           "ores": {"enum": ["drop", "discard"]},
+          "into_frames": {"type": "integer"},
           "id": {"type": ["string", "array"], "items": {"type": "string"}},
           "state": {"type": "integer"},
           "fields": {"type": "array", "items": {"type": "string"}},

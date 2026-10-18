@@ -97,6 +97,7 @@ internal sealed class TerrainFillView
         Filled = tally.Filled;
         Dug = tally.Dug;
         Unchanged = tally.Unchanged;
+        MaterialRestored = mode is FillMode.Original ? tally.MaterialRestored : null;
         StructureKept = tally.StructureKept;
         BedrockKept = tally.BedrockKept;
         Voids = voids;
@@ -124,6 +125,10 @@ internal sealed class TerrainFillView
     public int Dug { get; }
 
     public int Unchanged { get; }
+
+    /// <summary>Voxels whose shape was right but whose material it put back (mode original only).</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public int? MaterialRestored { get; }
 
     public int StructureKept { get; }
 

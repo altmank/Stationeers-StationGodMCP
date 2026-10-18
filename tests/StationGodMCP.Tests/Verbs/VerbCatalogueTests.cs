@@ -550,7 +550,7 @@ public sealed class VerbCatalogueTests
         // remove terrain's ores says what becomes of the ore it digs, not which ore
         "remove terrain.ores",
         // build terrain's mode, level and ores say how it fills, not where
-        "build terrain.mode", "build terrain.level", "build terrain.ores"
+        "build terrain.mode", "build terrain.level", "build terrain.ores", "build terrain.into_frames"
     };
 
     [Fact]

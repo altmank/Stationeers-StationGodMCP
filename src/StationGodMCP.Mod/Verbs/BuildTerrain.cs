@@ -29,7 +29,7 @@ internal static class BuildTerrain
 
         OreHandling ores = OreHandling.Of(options.Ores);
         string undoMark = BuildTerrainOptions.Spec.Write!.UndoMark;
-        return WriteCheck<FillPlan>.Planned(answer => TerrainFills.Checked(box, mode, ores, answer), options.Report,
+        return WriteCheck<FillPlan>.Planned(answer => TerrainFills.Checked(box, mode, ores, (int)(options.IntoFrames ?? 0), answer), options.Report,
             plan => new VerbOutcome.Pending(TerrainFills.Fill(plan)),
             plan => TerrainFillReplies.Reported(plan.Reading, undoMark));
     }

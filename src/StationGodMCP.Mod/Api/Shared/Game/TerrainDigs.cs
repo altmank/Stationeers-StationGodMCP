@@ -124,17 +124,20 @@ internal static class TerrainDigs
 
     /// <summary>
     /// Sets one voxel's density as the game's own diggers and dirt placement do (SetDensityWorldSpace with VoxelAdd when
-    /// it rises, VoxelRemove when it falls, dirtyLods false; the node type is left as stored, so the host and a client,
-    /// whose replay sets only the density, VoxelTerrain.cs:63-66, keep the same ground). When it takes the voxel under
-    /// half density the ore there is released as ores says, and counted.
+    /// it rises, VoxelRemove when it falls, dirtyLods false). The material is left as stored unless one is given, as
+    /// the console's voxelfillnear gives the generated one (VoxelFillNearCommand.cs:84-88); a client's replay sets only
+    /// the density (VoxelTerrain.cs:63-66), so clients get the material from the world they load on joining. When it
+    /// takes the voxel under half density the ore there is released as ores says, and counted.
     /// </summary>
-    internal static void Set(VoxelPoint voxel, byte density, bool opens, OreHandling ores, DigTally tally)
+    internal static void Set(VoxelPoint voxel, byte density, bool opens, OreHandling ores, DigTally tally,
+        VoxelNodeType? material = null)
     {
         Vector3 at = At(voxel);
         Vein? vein = opens ? Vein.GetVeinAtPosition(at) : null;
         byte before = VoxelTerrain.GetNodeInfoWorldSpace(at).Density;
         VoxelTerrain.SetDensityWorldSpace(at, AsFloat(density),
-            density > before ? RoomChangeSource.VoxelAdd : RoomChangeSource.VoxelRemove, dirtyLods: false);
+            density > before ? RoomChangeSource.VoxelAdd : RoomChangeSource.VoxelRemove, dirtyLods: false,
+            setNodeType: material != null, voxelType: material ?? VoxelNodeType.None);
         if (vein == null || OreName(vein) is not { } ore)
         {
             return;

@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.4.1
+
+- **`build terrain` restores the ground against frames on every side.** A voxel is a density node, the corner eight
+  1 m cubes share; a fill kept it when the one cube on its + side held a structure, so the nodes on a frame's -x, -y
+  and -z faces were never set and ground there stayed dug (or added). Now a node is kept only when all eight cubes
+  hold a structure: ground meets every face of a frame alike, and nothing fills inside a frame.
+- **`into_frames`: reach into the structures.** 0 (default) sets ground up to each frame's face; 1 or more also sets
+  that many metres inside the frames, where the 1 m beside them is not enough for a smooth meeting.
+- **Mode `original` puts back the generated material.** A dig to empty clears a voxel's material and a refill left it
+  cleared, so restored ground looked like placed dirt. Original now sets each voxel's generated material, as the
+  console's `voxelfillnear` does, and counts voxels whose shape was right but material wrong as `material_restored`.
+  Clients see the material from the world they load when they join; the shape reaches them at once.
+
 ## 2.4.0
 
 Fill and level terrain, find underground voids, and strict inside_frames routes.

@@ -9,15 +9,17 @@ namespace StationGodMCP.Pure;
 /// <summary>
 /// One voxel as a fill reads it: its density now and as the world generated it (bytes, 0 empty to 255 solid; the
 /// game keeps both, VoxelTerrain.GetNodeInfoWorldSpace and GetReadonlyDensityWorldSpace, VoxelTerrain.cs:891-910),
-/// and whether a structure stands in its cell (a frame, wall or device in the 2 m cell or one of its 0.5 m cells).
+/// whether it lies inside structures (TerrainFills.Built), and whether its material is still the generated one (a dig
+/// to density 0 clears it, VoxelOctree.cs:524-527, and a refill without a material leaves it cleared).
 /// </summary>
 internal readonly struct VoxelReading
 {
-    internal VoxelReading(byte density, byte generated, bool built)
+    internal VoxelReading(byte density, byte generated, bool built, bool materialAsGenerated = true)
     {
         Density = density;
         Generated = generated;
         Built = built;
+        MaterialAsGenerated = materialAsGenerated;
     }
 
     internal byte Density { get; }
@@ -25,6 +27,9 @@ internal readonly struct VoxelReading
     internal byte Generated { get; }
 
     internal bool Built { get; }
+
+    /// <summary>The voxel's material (stone, ice, an ore) is the one the world generated it with.</summary>
+    internal bool MaterialAsGenerated { get; }
 }
 
 /// <summary>
@@ -177,7 +182,8 @@ internal abstract class VoxelChoice
             return new Keep(KeepReason.Structure);
         }
 
-        return wanted == reading.Density ? new Keep(KeepReason.Same) : new Set(wanted, reading.Density);
+        bool materialRight = !(mode is FillMode.Original) || reading.MaterialAsGenerated;
+        return wanted == reading.Density && materialRight ? new Keep(KeepReason.Same) : new Set(wanted, reading.Density);
     }
 
     /// <summary>Counts the choice into a tally: filled, dug, the same, kept at a structure or at bedrock.</summary>
@@ -240,6 +246,10 @@ internal abstract class VoxelChoice
             if (Adds)
             {
                 tally.Fill();
+            }
+            else if (Density == Before)
+            {
+                tally.Material();
             }
             else
             {

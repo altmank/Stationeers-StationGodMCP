@@ -279,7 +279,12 @@ internal sealed class DigTally
     /// <summary>Voxels a fill leaves alone because a structure stands in their cell.</summary>
     internal int StructureKept { get; private set; }
 
+    /// <summary>Voxels a fill leaves at their density but gives back their generated material (mode original).</summary>
+    internal int MaterialRestored { get; private set; }
+
     internal void Fill() => Filled++;
+
+    internal void Material() => MaterialRestored++;
 
     internal void Same() => Unchanged++;
 

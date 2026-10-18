@@ -18,6 +18,7 @@ internal sealed class BuildTerrainOptions
         new OptionSpec("mode", "{\"type\":\"string\",\"enum\":[\"solid\",\"original\",\"level\",\"voids\"]}", false, "solid"),
         new OptionSpec("level", "{\"type\":\"number\"}"),
         new OptionSpec("ores", "{\"type\":\"string\",\"enum\":[\"drop\",\"discard\"]}", false, "drop"),
+        new OptionSpec("into_frames", "{\"type\":\"integer\",\"minimum\":0,\"maximum\":4}", false, "0"),
         new OptionSpec("confirm", "{\"type\":\"boolean\"}", false, "false"));
 
     internal Selector Selector { get; private set; } = Selector.None;
@@ -32,6 +33,8 @@ internal sealed class BuildTerrainOptions
 
     internal string? Ores { get; private set; }
 
+    internal long? IntoFrames { get; private set; }
+
     internal static BuildTerrainOptions Bind(OptionReader options) => new BuildTerrainOptions
     {
         Selector = Selector.Bind(options),
@@ -40,5 +43,6 @@ internal sealed class BuildTerrainOptions
         Mode = options.Text("mode") ?? options.DefaultText("mode"),
         Level = options.Number("level"),
         Ores = options.Text("ores") ?? options.DefaultText("ores"),
+        IntoFrames = options.Integer("into_frames") ?? options.DefaultInteger("into_frames"),
     };
 }
