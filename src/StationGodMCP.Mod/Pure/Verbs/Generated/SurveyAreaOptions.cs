@@ -18,7 +18,7 @@ internal sealed class SurveyAreaOptions
         new OptionSpec("room", "{\"type\":\"string\"}"),
         new OptionSpec("sections", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"cells\",\"pieces\",\"devices\",\"networks\",\"network_visibility\",\"doors\"]}}", false, "all"),
         new OptionSpec("networks", "{\"type\":\"boolean\"}", false, "true"),
-        new OptionSpec("include", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"refund\",\"piece_cells\"]}}"),
+        new OptionSpec("include", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"refund\",\"piece_cells\",\"wall_planes\"]}}"),
         new OptionSpec("network", "{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"maxItems\":64}"),
         new OptionSpec("kind", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"cable\",\"pipe\",\"chute\"]},\"maxItems\":3}"),
         new OptionSpec("prefab", "{\"type\":[\"string\",\"integer\",\"array\"],\"items\":{\"type\":[\"string\",\"integer\"]}}"),

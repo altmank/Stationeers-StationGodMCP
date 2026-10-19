@@ -41,8 +41,8 @@
         },
         "include": {
           "use": "include",
-          "schema": {"type": "array", "items": {"type": "string", "enum": ["refund", "piece_cells"]}},
-          "description": "refund: each piece's removal refund; piece_cells: every small cell of a long piece."
+          "schema": {"type": "array", "items": {"type": "string", "enum": ["refund", "piece_cells", "wall_planes"]}},
+          "description": "refund: each piece's removal refund; piece_cells: every small cell of a long piece; wall_planes: small marks its '.' cells on the cell's -x, -y and -z face planes with that face's 'w', 'g' or 'x' (door over window over wall)."
         },
         "network": {
           "use": "network",

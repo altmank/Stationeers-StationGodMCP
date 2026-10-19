@@ -27,6 +27,7 @@ internal static class SurveyArea
 {
     private const string Refund = "refund";
     private const string PieceCells = "piece_cells";
+    private const string WallPlanes = "wall_planes";
 
 
     internal static VerbOutcome Run(SurveyAreaOptions options)
@@ -52,7 +53,8 @@ internal static class SurveyArea
         GridFacts facts = AreaSurvey.Facts();
         SurveyCellDetail detail = SurveyCellDetails.Of(options.CellDetail);
         bool withCells = SurveySections.Of(options.Sections).Includes(SurveySection.Cells);
-        System.Func<long, KeptCell?> live = key => KeptCell.Of(facts, CellKey.Cell(key), withCells, detail);
+        bool planes = options.Fields.Includes(WallPlanes);
+        System.Func<long, KeptCell?> live = key => KeptCell.Of(facts, CellKey.Cell(key), withCells, detail, planes);
         int limit = SurveySections.Of(options.Sections).PageLimit(paging.Limit);
         if (walk.Continues)
         {
@@ -153,7 +155,8 @@ internal static class SurveyArea
 
         internal SurveyCell? View { get; }
 
-        internal static KeptCell Of(GridFacts facts, GridCell cell, bool withView, SurveyCellDetail detail) =>
-            new KeptCell(cell, withView ? AreaSurvey.CellView(facts, cell, detail) : null);
+        internal static KeptCell Of(GridFacts facts, GridCell cell, bool withView, SurveyCellDetail detail,
+            bool planes) =>
+            new KeptCell(cell, withView ? AreaSurvey.CellView(facts, cell, detail, planes) : null);
     }
 }

@@ -192,7 +192,7 @@
             "description": "Only these parts. Default all."
           },
           "networks": {"type": "boolean"},
-          "include": {"type": "array", "items": {"enum": ["refund", "piece_cells"]}},
+          "include": {"type": "array", "items": {"enum": ["refund", "piece_cells", "wall_planes"]}},
           "network": {
             "type": ["array", "string", "object"],
             "description": "area: Only pieces on these networks. network, feeds: A network: its id, a piece or device on it, or {id, port}."

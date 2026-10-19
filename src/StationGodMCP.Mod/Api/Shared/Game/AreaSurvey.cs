@@ -40,8 +40,9 @@ internal static class AreaSurvey
     internal static GridFacts Facts() => new GridFacts(new CableRunKind(), SmallGridBlock.None, new HashSet<long>());
 
     /// <summary>A cell as a page's view: what occupies it, or it in full.</summary>
-    internal static SurveyCell CellView(GridFacts facts, GridCell cell, SurveyCellDetail detail) =>
-        detail == SurveyCellDetail.Full ? CellView(facts, cell) : OccupancyView(facts, cell);
+    /// <summary>A cell as cell_detail asks; planes (include wall_planes) marks its small cells on wall planes.</summary>
+    internal static SurveyCell CellView(GridFacts facts, GridCell cell, SurveyCellDetail detail, bool planes = false) =>
+        detail == SurveyCellDetail.Full ? CellView(facts, cell, planes) : OccupancyView(facts, cell, planes);
 
     /// <summary>
     /// The cells' keys (CellKey) in their order, as a scan spread over frames (a ScanBuild body, one cell per step): with
@@ -179,7 +180,7 @@ internal static class AreaSurvey
     private static ThingId? NetworkIdOf(SmallGrid piece) =>
         NetworkOf(piece) is IReferencable network ? new ThingId(network.ReferenceId) : null;
 
-    private static SurveyOccupancyView OccupancyView(GridFacts facts, GridCell cell)
+    private static SurveyOccupancyView OccupancyView(GridFacts facts, GridCell cell, bool planes)
     {
         Frame? frame = facts.FrameAt(cell);
         List<SurveyFace> faces = new List<SurveyFace>();
@@ -191,23 +192,29 @@ internal static class AreaSurvey
             }
         }
 
+        string small = SmallCellCode.Encode(cell, facts.Occupancy);
         return new SurveyOccupancyView(GameLookup.ViewOf(PieceShapes.CentreOf(cell)),
-            frame != null ? new ThingId(frame.ReferenceId) : null, faces, SmallCellCode.Encode(cell, facts.Occupancy));
+            frame != null ? new ThingId(frame.ReferenceId) : null, faces,
+            planes ? SmallCellCode.WithPlanes(small, FaceCode.Encode(faces)) : small);
     }
 
-    private static SurveyCellView CellView(GridFacts facts, GridCell cell)
+    private static SurveyCellView CellView(GridFacts facts, GridCell cell, bool planes)
     {
         Frame? frame = facts.FrameAt(cell);
         Room? room = facts.RoomAt(cell);
         List<SurveyWallView> walls = new List<SurveyWallView>();
+        List<SurveyFace> faces = new List<SurveyFace>();
         foreach (GridStep face in GridStep.All)
         {
             foreach (Structure wall in facts.FaceStructures(cell, face))
             {
                 walls.Add(new SurveyWallView(face.Name, GameLookup.ViewOf(wall), !wall.CanAirPass,
                     Openings.KindOf(wall).ToString().ToLowerInvariant()));
+                faces.Add(new SurveyFace(face, Openings.KindOf(wall)));
             }
         }
+
+        string small = SmallCellCode.Encode(cell, facts.Occupancy);
 
         SurveyFrameView? frameView = frame != null
             ? new SurveyFrameView(GameLookup.ViewOf(frame), frame.CurrentBuildStateIndex,
@@ -215,7 +222,7 @@ internal static class AreaSurvey
             : null;
         return new SurveyCellView(GameLookup.ViewOf(PieceShapes.CentreOf(cell)),
             room != null ? room.RoomId.ToString(CultureInfo.InvariantCulture) : null, frameView, walls,
-            SmallCellCode.Encode(cell, facts.Occupancy),
+            planes ? SmallCellCode.WithPlanes(small, FaceCode.Encode(faces)) : small,
             OpeningZones.Overlay(CellSupports.Encode(cell, facts.Large), ZonesOf(facts, cell)));
     }
 

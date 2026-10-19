@@ -108,6 +108,46 @@ internal static class SmallCellCode
         return cell.Rocket ? 'r' : '.';
     }
 
+    /// <summary>
+    /// survey area include wall_planes: the empty ('.') small cells on the 2 m cell's minimum face planes (index 0 along
+    /// x, y or z: its -x, -y and -z faces; its + faces are the neighbours' index 0) marked with that face's structure
+    /// as faces gives it ('w' wall, 'g' window, 'x' door); a cell on two planes shows the door over the window over the
+    /// wall. faces is the six-character face code (+x, -x, +y, -y, +z, -z).
+    /// </summary>
+    internal static string WithPlanes(string encoded, string faces)
+    {
+        char[] cells = encoded.ToCharArray();
+        for (int index = 0; index < cells.Length && index < PerCell; index++)
+        {
+            if (cells[index] != '.')
+            {
+                continue;
+            }
+
+            int x = index % PerAxis;
+            int y = index / PerAxis % PerAxis;
+            int z = index / (PerAxis * PerAxis);
+            char plane = '.';
+            plane = Stronger(plane, x == 0 ? faces[1] : '.');
+            plane = Stronger(plane, y == 0 ? faces[3] : '.');
+            plane = Stronger(plane, z == 0 ? faces[5] : '.');
+            cells[index] = plane;
+        }
+
+        return new string(cells);
+    }
+
+    // Door over window over wall over nothing, as the face code ranks them.
+    private static char Stronger(char held, char other) => Rank(other) > Rank(held) ? other : held;
+
+    private static int Rank(char face) => face switch
+    {
+        'x' => 3,
+        'g' => 2,
+        'w' => 1,
+        _ => 0
+    };
+
     /// <summary>Whether an encoded string has a small cell other than '.': something, or a rocket's empty cell.</summary>
     internal static bool ShowsAny(string encoded)
     {

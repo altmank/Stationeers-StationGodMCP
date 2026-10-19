@@ -4,7 +4,7 @@ def survey(what: Literal['area'], *,
     room: str = None,  # A room id.
     sections: list[Literal['cells', 'pieces', 'devices', 'networks', 'network_visibility', 'doors']] = 'all',  # Only these parts. (default all)
     networks: bool = True,  # Include the networks of the pieces.
-    include: list[Literal['refund', 'piece_cells']] = None,  # refund: each piece's removal refund; piece_cells: every small cell of a long piece.
+    include: list[Literal['refund', 'piece_cells', 'wall_planes']] = None,  # refund: each piece's removal refund; piece_cells: every small cell of a long piece; wall_planes: small marks its '.' cells on the cell's -x, -y and -z face planes with that face's 'w', 'g' or 'x' (door over window over wall).
     network: list[str] = None,  # Only pieces on these networks.
     kind: list[Literal['cable', 'pipe', 'chute']] = None,  # Only pieces of these kinds.
     prefab: str | int | list = None,  # Prefab: a whole name, a hash, or parts with * ('*Battery*', '*Tank*Insulated*': each part, any order); or a list of them.
