@@ -17,6 +17,23 @@ internal static class Orientations
 {
     internal static OrientationView Of(Thing thing) => Of(thing.ThingTransformRotation);
 
+    /// <summary>
+    /// controls_facing: the world side a structure's controls face (its prefab's control face, PrefabControls, turned as
+    /// it stands); null for anything with no control face, a non-structure, or a structure off the quarter turns.
+    /// </summary>
+    internal static string? ControlsFacing(Thing thing)
+    {
+        if (!(thing is Structure structure))
+        {
+            return null;
+        }
+
+        Structure? prefab = Prefab.Find(structure.PrefabHash) as Structure;
+        Quaternion rotation = thing.ThingTransformRotation;
+        return ControlFaceRule.FacingOf(PrefabControls.Of(prefab != null ? prefab : structure),
+            CubeRotation.FromQuaternion(rotation.x, rotation.y, rotation.z, rotation.w));
+    }
+
     internal static OrientationView Of(Quaternion rotation)
     {
         CubeRotation? turn = CubeRotation.FromQuaternion(rotation.x, rotation.y, rotation.z, rotation.w);

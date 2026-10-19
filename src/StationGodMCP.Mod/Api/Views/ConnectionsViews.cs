@@ -13,8 +13,10 @@ namespace StationGodMCP.Api.Views;
 internal sealed class ConnectionsView
 {
     internal ConnectionsView(ThingView thing, PositionView position, NetworkRefView? ownNetwork,
-        List<ConnectionEndView> ends, OrientationView? rotation = null, ThingColorView? color = null)
+        List<ConnectionEndView> ends, OrientationView? rotation = null, ThingColorView? color = null,
+        string? controlsFacing = null)
     {
+        ControlsFacing = controlsFacing;
         Color = color;
         Rotation = rotation;
         Thing = thing;
@@ -34,6 +36,13 @@ internal sealed class ConnectionsView
     /// </summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public OrientationView? Rotation { get; }
+
+    /// <summary>
+    /// The world side its controls face (+x, -x, +y, -y, +z, -z): the prefab's control side (inspect prefab's controls)
+    /// turned as it stands. Structures with controls only; left out otherwise.
+    /// </summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public string? ControlsFacing { get; }
 
     /// <summary>A pipe, cable or chute's own network; null for a device.</summary>
     public NetworkRefView? OwnNetwork { get; }

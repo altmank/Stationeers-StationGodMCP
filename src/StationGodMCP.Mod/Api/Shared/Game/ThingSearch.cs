@@ -76,7 +76,8 @@ internal static class ThingSearch
             RocketOf(thing),
             ThingColors.ShownColorOf(thing, swatches),
             BuildStates.Unfinished(thing),
-            thing is Item item and IQuantity ? WorldItems.QuantityOf(item) : null);
+            thing is Item item and IQuantity ? WorldItems.QuantityOf(item) : null,
+            Orientations.ControlsFacing(thing));
     }
 
     /// <summary>Where a thing is, as a found thing's location: its holder chain's for a dynamic thing, else built or world.</summary>

@@ -55,8 +55,10 @@ internal sealed class FoundThingView
         bool labelable, string location, string? carriedBy, List<HeldInView> heldIn, PositionView position,
         double? distanceM, bool isDevice, bool hasAtmosphere, OrientationView? rotation = null, bool isBroken = false,
         string condition = "intact", PrintView? made = null, string? rocketState = null,
-        ThingColorView? color = null, BuildStateView? buildState = null, double? quantity = null)
+        ThingColorView? color = null, BuildStateView? buildState = null, double? quantity = null,
+        string? controlsFacing = null)
     {
+        ControlsFacing = controlsFacing;
         Quantity = quantity;
         BuildState = buildState;
         Color = color;
@@ -146,6 +148,13 @@ internal sealed class FoundThingView
     /// </summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public OrientationView? Rotation { get; }
+
+    /// <summary>
+    /// The world side its controls face (+x, -x, +y, -y, +z, -z): the prefab's control side (inspect prefab's controls)
+    /// turned as it stands. Structures with controls only; left out otherwise.
+    /// </summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public string? ControlsFacing { get; }
 
     /// <summary>
     /// The state of the rocket a structure is part of (OnLaunchMount, Launching, Landing...), so a position taken while

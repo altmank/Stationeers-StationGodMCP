@@ -32,8 +32,8 @@ def find(what: Literal['thing'], *,
           game_name: str, kind: str, runtime_type: str, labelable: bool, location: str, carried_by: str | None, held_in: list[{reference_id: str,
           prefab_name: str | None, display_name: str | None, slot_index: int, slot_name: str | None}], position: Vec3, distance_m: float | None,
           is_device: bool, has_atmosphere: bool, is_broken: bool, condition: str, rotation: {facing: str | None, up: str | None, euler: Vec3} | None,
-          rocket_state: str | None, color: Color | None, build_state: {current: int, last: int, complete: bool, next: list[{prefab_name: str,
-          display_name: str, quantity: int | None, tool: bool}] | None} | None}]
+          controls_facing: str | None, rocket_state: str | None, color: Color | None, build_state: {current: int, last: int, complete: bool, next:
+          list[{prefab_name: str, display_name: str, quantity: int | None, tool: bool}] | None} | None}]
       count: int
       total: int
       offset: int
@@ -631,6 +631,7 @@ def inspect(what: Literal['connections'], *,
       thing: Thing
       position: Vec3
       rotation: {facing: str | None, up: str | None, euler: Vec3} | None
+      controls_facing: str | None
       own_network: {kind: str, id: str} | None
       color: Color | None
       ends: list[{index: int, type: str, type_name: str | None, role: str, role_name: str | None, position: Vec3 | None, at: Vec3 | None, piece_end:

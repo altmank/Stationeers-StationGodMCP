@@ -58,6 +58,13 @@ internal static class ControlFaceRule
 {
     internal const double OuterShare = 0.5;
 
+    /// <summary>
+    /// The world side a placed thing's controls face (controls_facing): its prefab's control face turned as it stands;
+    /// null when the prefab has none, or the thing stands off the grid's quarter turns.
+    /// </summary>
+    internal static string? FacingOf(ControlFace? controls, CubeRotation? turn) =>
+        controls != null && turn != null ? turn.Turn(controls.Local).Name : null;
+
     internal static ControlFace? Of(IReadOnlyList<Vec3> controls, Box3 body)
     {
         if (controls.Count == 0)

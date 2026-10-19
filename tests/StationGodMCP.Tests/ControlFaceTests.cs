@@ -32,6 +32,21 @@ public sealed class ControlFaceTests
     }
 
     [Fact]
+    public void TheControlsFacingIsTheControlFaceTurnedAsTheThingStands()
+    {
+        ControlFace face = ControlFaceRule.Of(new List<Vec3> { new Vec3(0.45, 0.5, 0.0), new Vec3(0.4, 0.2, 0.1) }, Body)!;
+        GridStep minusX = System.Array.Find(GridStep.All, step => step.Name == "-x")!;
+        GridStep up = System.Array.Find(GridStep.All, step => step.Name == "+y")!;
+        CubeRotation facingMinusX = CubeRotation.FromFacing(minusX, up)!;
+
+        // Controls on its +x side; a quarter turn that brings its front (+z) to -x brings its +x side to +z.
+        Assert.Equal("+x", face.Local.Name);
+        Assert.Equal("+z", ControlFaceRule.FacingOf(face, facingMinusX));
+        Assert.Null(ControlFaceRule.FacingOf(null, facingMinusX));
+        Assert.Null(ControlFaceRule.FacingOf(face, null));
+    }
+
+    [Fact]
     public void ControlsNearTheMiddleFallBackToForward()
     {
         ControlFace face = ControlFaceRule.Of(new List<Vec3> { new Vec3(0.1, 0.5, 0.1) }, Body)!;

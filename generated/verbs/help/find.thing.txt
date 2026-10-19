@@ -18,5 +18,5 @@ Options:
 - limit (integer, default 8): Entries per page.
 - offset (integer, default 0): Entries to skip.
 - order (nearest | id, default nearest): nearest (default) or id (stable pages).
-Reply: things [{made, reference_id, prefab_name, display_name, custom_name, quantity, game_name, kind, runtime_type, labelable, location, carried_by, held_in, position, distance_m, is_device, has_atmosphere, is_broken, condition, rotation, rocket_state, color, build_state}], count, total, offset, limit, has_more, scanned, local_player {reference_id, display_name, position}
+Reply: things [{made, reference_id, prefab_name, display_name, custom_name, quantity, game_name, kind, runtime_type, labelable, location, carried_by, held_in, position, distance_m, is_device, has_atmosphere, is_broken, condition, rotation, controls_facing, rocket_state, color, build_state}], count, total, offset, limit, has_more, scanned, local_player {reference_id, display_name, position}
 Example: find {what: "thing", prefab: "*Battery*", near: "player", radius: 30}

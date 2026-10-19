@@ -9,6 +9,7 @@ def inspect(what: Literal['connections'], *,
       thing: Thing
       position: Vec3
       rotation: {facing: str | None, up: str | None, euler: Vec3} | None
+      controls_facing: str | None
       own_network: {kind: str, id: str} | None
       color: Color | None
       ends: list[{index: int, type: str, type_name: str | None, role: str, role_name: str | None, position: Vec3 | None, at: Vec3 | None, piece_end:
