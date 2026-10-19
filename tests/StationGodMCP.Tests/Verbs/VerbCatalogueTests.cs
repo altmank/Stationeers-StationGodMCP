@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using Newtonsoft.Json.Linq;
@@ -224,6 +225,31 @@ public sealed class VerbCatalogueTests
             Assert.NotNull(VerbHelp.WhatPage(VerbCatalogue.Verb(verb), what));
             Assert.NotEmpty(VerbStubs.Stub(VerbCatalogue.Verb(verb), what));
         }
+    }
+
+    [Fact]
+    public void TheServedToolListNamesEveryWhatOfEveryVerb()
+    {
+        // tools/list answers the server's embedded copy: build item (a cheat) included, like every other what.
+        JsonElement tools = StationGodMCP.Server.VerbCatalogue.Embedded.Tools;
+        foreach (JsonObject verb in VerbCatalogue.Verbs)
+        {
+            if (verb["whats"] is not JsonObject whats || whats.Count == 0 || whats.ContainsKey("-"))
+            {
+                continue;
+            }
+
+            string name = (string)verb["verb"]!;
+            JsonElement tool = tools.EnumerateArray().Single(entry => entry.GetProperty("name").GetString() == name);
+            List<string> served = tool.GetProperty("inputSchema").GetProperty("properties").GetProperty("what")
+                .GetProperty("enum").EnumerateArray().Select(value => value.GetString()!).ToList();
+            Assert.Equal(whats.Select(pair => pair.Key).Order(), served.Order());
+        }
+
+        Assert.Contains("item", StationGodMCP.Server.VerbCatalogue.Embedded.Tools.EnumerateArray()
+            .Single(entry => entry.GetProperty("name").GetString() == "build").GetProperty("inputSchema")
+            .GetProperty("properties").GetProperty("what").GetProperty("enum").EnumerateArray()
+            .Select(value => value.GetString()));
     }
 
     /// <summary>
