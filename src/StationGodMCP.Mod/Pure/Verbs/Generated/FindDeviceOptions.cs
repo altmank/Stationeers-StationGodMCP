@@ -17,6 +17,9 @@ internal sealed class FindDeviceOptions
         new OptionSpec("gateway", "{\"type\":\"string\"}", false, "world"),
         new OptionSpec("prefab", "{\"type\":[\"string\",\"integer\",\"array\"],\"items\":{\"type\":[\"string\",\"integer\"]}}"),
         new OptionSpec("name", "{\"type\":\"string\"}"),
+        new OptionSpec("near", "{\"type\":[\"string\",\"array\"]}"),
+        new OptionSpec("radius", "{\"type\":\"number\",\"minimum\":0}"),
+        new OptionSpec("box", "{\"type\":\"array\",\"minItems\":2,\"maxItems\":2}"),
         new OptionSpec("limit", "{\"type\":\"integer\",\"minimum\":1,\"maximum\":4096}", false, "25"),
         new OptionSpec("offset", "{\"type\":\"integer\",\"minimum\":0}", false, "0"),
         new OptionSpec("cursor", "{\"type\":\"string\"}"));

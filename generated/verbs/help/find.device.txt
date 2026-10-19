@@ -3,6 +3,9 @@ Options:
 - gateway (string, default world): "world" (default) or a gateway id: only devices on its data networks.
 - prefab (string or integer or array): Prefab: a whole name, a hash, or parts with * ('*Battery*', '*Tank*Insulated*': each part, any order); or a list of them.
 - name (string): Part of the shown name or label, any case.
+- near (string or array): Centre: [x, y, z], "player", "looking_at" or a thing's id (its position); with radius.
+- radius (number): Metres around near; at most 1000 around a point, no limit around "player".
+- box (list): Two corners [[x, y, z], [x, y, z]].
 - limit (integer, default 25): Entries per page.
 - offset (integer, default 0): Entries to skip.
 Paging and prefab parts are applied by the verb layer to the handler's whole list (it walks every device either way).

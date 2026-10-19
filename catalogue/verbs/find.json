@@ -194,6 +194,9 @@
         "gateway": {"use": "gateway"},
         "prefab": {"use": "prefab"},
         "name": {"use": "name"},
+        "near": {"use": "near"},
+        "radius": {"use": "radius", "schema": {"type": "number", "minimum": 0}, "description": "Metres around near; at most 1000 around a point, no limit around \"player\"."},
+        "box": {"use": "box"},
         "limit": {"use": "limit", "schema": {"type": "integer", "minimum": 1, "maximum": 4096}, "default": "25"},
         "offset": {"use": "offset"},
         "cursor": {"use": "cursor"}

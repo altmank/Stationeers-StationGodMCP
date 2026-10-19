@@ -14,7 +14,8 @@ namespace StationGodMCP.Verbs;
 
 /// <summary>
 /// find device (catalogue find.json): every device with logic in the gateway's scope (DeviceScope: devices, then worn
-/// and held logic items), by reference id, kept by prefab and by part of the shown name, then paged (offset, limit);
+/// and held logic items), by reference id, kept by prefab, by part of the shown name and by place (near with radius, or
+/// box, as find thing: where the device's outermost holder stands), then paged (offset, limit);
 /// {devices, count, total, offset, limit, has_more, gateway_id}. The first page keeps the matching ids and describes
 /// only its own devices; with the wire cursor the rest stays under a cursor (ThingListPage), whose later pages describe
 /// each device as it is then, passing over devices gone meanwhile. Read only.
@@ -25,6 +26,8 @@ namespace StationGodMCP.Verbs;
 internal static class FindDevice
 {
     private const string List = "devices";
+
+    private const double MaximumRadiusM = 1000.0;
 
 
     // find device answers no scan counts.
@@ -41,15 +44,25 @@ internal static class FindDevice
         }
 
         Selector selector = options.Selector;
+        List<OptionProblem> problems = selector.AreaProblems(MaximumRadiusM);
+        if (problems.Count > 0)
+        {
+            return new VerbOutcome.Refused(OptionProblem.Refusal(FindDeviceOptions.Spec.Label, problems));
+        }
+
+        PointArea area = selector.Near is { } near && selector.Radius is { } radius
+            ? PointArea.Near(NearCentres.Of(near, FindDeviceOptions.Spec.Label), radius)
+            : selector.AreaAround(null);
         Dictionary<long, ScopedTarget> devices = new Dictionary<long, ScopedTarget>();
         return ThingListPage<DeviceView, object>.Scan(walk, paging,
-            new ScanBuild(keys => Kept(scope, selector, devices, keys), ListOrder.ReferenceId), static () => NoCounts,
+            new ScanBuild(keys => Kept(scope, selector, area, devices, keys), ListOrder.ReferenceId), static () => NoCounts,
             id => ViewOf(scope, devices.TryGetValue(id, out ScopedTarget? device) ? device : null),
             (page, cursorId, _) => Reply(page, scope, cursorId));
     }
 
-    // The scope's devices (DeviceScope.Scan), then each one the prefab and name filters keep keyed by id, one per step.
-    private static IEnumerable<object?> Kept(DeviceScope scope, Selector selector,
+    // The scope's devices (DeviceScope.Scan), then each one the prefab, name and area filters keep keyed by id, one per
+    // step.
+    private static IEnumerable<object?> Kept(DeviceScope scope, Selector selector, PointArea area,
         Dictionary<long, ScopedTarget> devices, ScanKeys keys)
     {
         foreach (object? step in scope.Scan(devices))
@@ -61,13 +74,25 @@ internal static class FindDevice
         {
             keys.Candidates++;
             if ((selector.Prefab == null || selector.Prefab.Keeps(device.PrefabName, device.PrefabHash)) &&
-                ItemFilter.Contains(device.DisplayName, selector.Name))
+                ItemFilter.Contains(device.DisplayName, selector.Name) && Inside(area, device))
             {
                 keys.Add(new ListKey(null, null, 0, device.ReferenceId));
             }
 
             yield return null;
         }
+    }
+
+    // Where the device stands: its outermost holder's place (a worn or held logic item is where its wearer is).
+    private static bool Inside(PointArea area, ScopedTarget device)
+    {
+        if (area == PointArea.Anywhere)
+        {
+            return true;
+        }
+
+        UnityEngine.Vector3 position = HolderChain.PlaceOf(device.Thing).Position;
+        return area.Contains(new Vec3(position.x, position.y, position.z));
     }
 
     private static DeviceView? ViewOf(DeviceScope scope, ScopedTarget? device) =>

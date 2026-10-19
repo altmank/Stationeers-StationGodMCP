@@ -146,6 +146,16 @@ public sealed class OptionCheckTests
         Assert.Equal(125, (int)sent.Params()["offset"]!);
     }
 
+    [Theory]
+    [InlineData("""{"box":[[0,0,0],[8,4,8]]}""", "box")]
+    [InlineData("""{"near":"player","radius":12}""", "near")]
+    public void FindDeviceTakesBoxAndNearLikeFindThing(string options, string sentKey)
+    {
+        GameCall sent = Verbs.Sent("find", "device", options, Face.Direct);
+
+        Assert.NotNull(sent.Params()[sentKey]);
+    }
+
     [Fact]
     public void TheProgramFaceSendsListLimitsToTheModAsTheCallsShape()
     {

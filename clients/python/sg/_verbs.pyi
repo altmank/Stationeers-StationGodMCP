@@ -100,6 +100,9 @@ def find(what: Literal['device'], *,
     gateway: str = 'world',  # "world" (default) or a gateway id: only devices on its data networks.
     prefab: str | int | list = None,  # Prefab: a whole name, a hash, or parts with * ('*Battery*', '*Tank*Insulated*': each part, any order); or a list of them.
     name: str = None,  # Part of the shown name or label, any case.
+    near: str | list = None,  # Centre: [x, y, z], "player", "looking_at" or a thing's id (its position); with radius.
+    radius: float = None,  # Metres around near; at most 1000 around a point, no limit around "player".
+    box: list = None,  # Two corners [[x, y, z], [x, y, z]].
     limit: int = 25,  # The first n in order (entries); left out, every one.
 ) -> dict:  # main list: r['devices']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Devices with logic, in the world or on one gateway's data networks.
