@@ -735,7 +735,8 @@ public sealed class VerbCatalogueTests
     public void TheRunLevelOptionsAreNotInScripts()
     {
         // D7: confirm, max_wait, queue and offset are run-level or walk-level in a script; inspect job's max_wait is the
-        // one wait a script call asks for itself (how long that call waits for the job it names).
+        // one wait a script call asks for itself (how long that call waits for the job it names), and find thing's and
+        // survey area's offset start a page where a script wants it (a big floor read in parts).
         foreach (string name in new[] { "confirm", "max_wait", "queue", "offset" })
         {
             Assert.Equal("drop", (string?)VerbCatalogue.SharedOption(name)["x-script"]);
@@ -751,7 +752,8 @@ public sealed class VerbCatalogueTests
             foreach ((string name, JsonObject option) in VerbCatalogue.OptionsOf(source))
             {
                 bool scriptWait = verb == "inspect" && what == "job" && name == "max_wait";
-                if (name is "confirm" or "max_wait" or "queue" or "offset" && !scriptWait)
+                bool scriptOffset = name == "offset" && ((verb == "find" && what == "thing") || (verb == "survey" && what == "area"));
+                if (name is "confirm" or "max_wait" or "queue" or "offset" && !scriptWait && !scriptOffset)
                 {
                     Assert.True((string?)option["x-script"] == "drop", $"{verb} {what}.{name} is in the stub");
                 }

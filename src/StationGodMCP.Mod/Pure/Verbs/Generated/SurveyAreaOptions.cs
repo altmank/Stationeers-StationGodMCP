@@ -24,7 +24,7 @@ internal sealed class SurveyAreaOptions
         new OptionSpec("prefab", "{\"type\":[\"string\",\"integer\",\"array\"],\"items\":{\"type\":[\"string\",\"integer\"]}}"),
         new OptionSpec("cell_detail", "{\"type\":\"string\",\"enum\":[\"occupancy\",\"full\"]}", false, "occupancy"),
         new OptionSpec("occupied_only", "{\"type\":\"boolean\"}", false, "false"),
-        new OptionSpec("limit", "{\"type\":\"integer\",\"minimum\":1,\"maximum\":125}", false, "8"),
+        new OptionSpec("limit", "{\"type\":\"integer\",\"minimum\":1,\"maximum\":1000}", false, "8"),
         new OptionSpec("offset", "{\"type\":\"integer\",\"minimum\":0}", false, "0"),
         new OptionSpec("cursor", "{\"type\":\"string\"}"));
 

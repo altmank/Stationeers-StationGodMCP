@@ -12,6 +12,6 @@ Options:
 - occupied_only (boolean, default false): Only cells holding something.
 - limit (integer, default 8): 2 m cells per page; with sections that leave cells out, every cell is read.
 - offset (integer, default 0): Entries to skip.
-A big area is many pages (125 cells at most each), and output_file writes one page. For a whole area, page with offset (has_more) or use a smaller box per call.
+A big area is many pages (1000 cells at most each), and output_file writes one page. For a whole area, page with offset (has_more) or use a smaller box per call.
 Reply: legend, cells [{at, room_id, frame, walls, small, support, empty, frame_id, faces, small}], count, offset, limit, total, has_more, pieces [{reference_id, kind, prefab_name, at, cell_count, cell_box, cells, ends, network_id, grade, flow, carries, refund}], devices [{reference_id, prefab_name, display_name, at, rotation, ports, umbilical}], networks, network_visibility [{network_id, kind, pieces, cells, air_at, refund}], doors [{reference_id, prefab_name, display_name, faces, plane, band_m, port_cells}]
 Example: survey {what: "area", room: "17", sections: ["pieces", "devices"]}

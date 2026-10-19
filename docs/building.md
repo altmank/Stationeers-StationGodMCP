@@ -152,7 +152,7 @@ and role, and the networks with their loads or contents. `rotation` is `{facing,
 ones; `include: ["refund"]` adds what removing each piece would give back. A piece filling more than one small cell
 (a long straight, an in-line tank) gives `cell_count` and `cell_box`; `include: ["piece_cells"]` lists every cell.
 `occupied_only: true` pages only through cells holding a frame, a face structure or a small-grid thing, so a large,
-mostly empty box takes few pages. Pages of 8 cells (`limit` up to 125, `offset`).
+mostly empty box takes few pages. Pages of 8 cells (`limit` up to 1000, `offset`, in a script too).
 
 A whole survey of a small box can run to tens of kilobytes. Ask for what you need:
 

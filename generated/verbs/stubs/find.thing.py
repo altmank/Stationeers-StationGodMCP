@@ -16,6 +16,7 @@ def find(what: Literal['thing'], *,
     radius: float = None,  # Metres around near; at most 1000 around a point, no limit around "player".
     box: list = None,  # Two corners [[x, y, z], [x, y, z]].
     limit: int = 8,  # The first n in order (entries); left out, every one.
+    offset: int = 0,  # Entries to skip: the page starts there; walk() and all() go on from it.
     order: Literal['nearest', 'id'] = 'nearest',  # nearest (default) or id (stable pages).
 ) -> dict:  # main list: r['things']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Any object: structures, devices, tanks, loose items, players, animals.

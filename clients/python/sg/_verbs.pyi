@@ -22,6 +22,7 @@ def find(what: Literal['thing'], *,
     radius: float = None,  # Metres around near; at most 1000 around a point, no limit around "player".
     box: list = None,  # Two corners [[x, y, z], [x, y, z]].
     limit: int = 8,  # The first n in order (entries); left out, every one.
+    offset: int = 0,  # Entries to skip: the page starts there; walk() and all() go on from it.
     order: Literal['nearest', 'id'] = 'nearest',  # nearest (default) or id (stable pages).
 ) -> dict:  # main list: r['things']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Any object: structures, devices, tanks, loose items, players, animals.
@@ -1073,9 +1074,10 @@ def survey(what: Literal['area'], *,
     cell_detail: Literal['occupancy', 'full'] = 'occupancy',  # occupancy: cells {at, empty, frame_id, faces, small}; full: cells {at, room_id, frame, walls, small, support} in place of those.
     occupied_only: bool = False,  # Only cells holding something.
     limit: int = 8,  # The first n in order (2 m cells); left out, every one.
+    offset: int = 0,  # 2 m cells to skip: the page starts there; walk() and all() go on from it.
 ) -> dict:  # main list: r['cells']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """The 2 m cells of a box or room: what occupies each, the pieces, devices, ports and networks.
-    A big area is many pages (125 cells each); r['cells'].walk() goes through them all.
+    A big area is many pages (1000 cells at most each); offset starts at a cell, and r['cells'].walk() goes through them all.
     Reply:
       legend: str | None
       cells: list[{at: Vec3, room_id: str | None, frame: {reference_id: str, prefab_name: str | None, build_state: int, build_states: int, blocks_air:

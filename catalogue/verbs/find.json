@@ -71,7 +71,7 @@
         },
         "box": {"use": "box"},
         "limit": {"use": "limit", "schema": {"type": "integer", "minimum": 1, "maximum": 500}, "default": "8"},
-        "offset": {"use": "offset"},
+        "offset": {"use": "offset", "x-script": "Entries to skip: the page starts there; walk() and all() go on from it."},
         "cursor": {"use": "cursor"},
         "order": {"use": "order"}
       },

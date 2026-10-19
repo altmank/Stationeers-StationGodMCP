@@ -42,7 +42,7 @@ public sealed class SurveyVerbTests
         Assert.Null(box.Paging.CursorId);
         Assert.Equal("k2", SurveyAreaOptions.Bind(Reader(SurveyAreaOptions.Spec, """{"cursor": "k2"}""")).Paging
             .CursorId);
-        Assert.NotNull(Check("""{"what": "area", "room": "28", "limit": 126}"""));
+        Assert.NotNull(Check("""{"what": "area", "room": "28", "limit": 1001}"""));
     }
 
     [Fact]

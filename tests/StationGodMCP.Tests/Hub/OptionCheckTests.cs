@@ -113,7 +113,7 @@ public sealed class OptionCheckTests
             Face.Script).Failed();
         VerbReply.Failed build = game.Pipeline().Call("build", "structure",
             """{"prefab":"StructureWallLight","at":[1,2,3],"queue":true,"max_wait":3}""", Face.Script).Failed();
-        VerbReply.Failed find = game.Pipeline().Call("find", "thing", """{"offset":8,"omit":["a"],"list_limits":{"things":5}}""",
+        VerbReply.Failed find = game.Pipeline().Call("find", "item", """{"offset":8,"omit":["a"],"list_limits":{"items":5}}""",
             Face.Script).Failed();
 
         Assert.Equal("confirm: confirm belongs to the run", Assert.Single(write.Problems()));
@@ -130,9 +130,20 @@ public sealed class OptionCheckTests
 
         game.Pipeline().Call("write", "logic", """{"id":"1","logic":"On","value":1,"confirm":true}""", Face.Program).Done();
         game.Pipeline().Call("find", "thing", """{"list_limits":{"things":5}}""", Face.Program).Done();
-        VerbReply.Failed offset = game.Pipeline().Call("find", "thing", """{"offset":8}""", Face.Program).Failed();
+        VerbReply.Failed offset = game.Pipeline().Call("find", "item", """{"offset":8}""", Face.Program).Failed();
 
         Assert.Equal("offset: not taken by a program", Assert.Single(offset.Problems()));
+    }
+
+    [Theory]
+    [InlineData("find", "thing")]
+    [InlineData("survey", "area")]
+    public void FindThingAndSurveyAreaTakeOffsetInAScript(string verb, string what)
+    {
+        string box = verb == "survey" ? ""","box":[[0,0,0],[30,2,12]]""" : "";
+        GameCall sent = Verbs.Sent(verb, what, "{\"offset\":125" + box + "}", Face.Script);
+
+        Assert.Equal(125, (int)sent.Params()["offset"]!);
     }
 
     [Fact]

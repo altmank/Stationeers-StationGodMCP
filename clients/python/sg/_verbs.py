@@ -8,20 +8,20 @@ from ._calls import verb_call
 
 def find(what, *, fields=None, as_player=None, name=None, prefab=None, category=None, labelled=None,
         runtime_type=None, broken=None, color=None, painted=None, has_atmosphere=None, made_by=None,
-        made_since=None, location=None, near=None, radius=None, box=None, limit=None, order=None, within=None,
-        group_by=None, holders=None, exclude_in_use=None, gateway=None, include=None, min_mol=None, ores=None,
-        separation=None, step=None, id=None, verbose=None, min_damage=None, broken_only=None, structures_only=None,
-        min_cells=None, text=None, **options):
+        made_since=None, location=None, near=None, radius=None, box=None, limit=None, offset=None, order=None,
+        within=None, group_by=None, holders=None, exclude_in_use=None, gateway=None, include=None, min_mol=None,
+        ores=None, separation=None, step=None, id=None, verbose=None, min_damage=None, broken_only=None,
+        structures_only=None, min_cells=None, text=None, **options):
     """List things in the world or an area, filtered, nearest first. sg.help('find', what) gives a what in full."""
     return verb_call('find', what, {'fields': fields, 'as_player': as_player, 'name': name, 'prefab': prefab,
                      'category': category, 'labelled': labelled, 'runtime_type': runtime_type, 'broken': broken,
                      'color': color, 'painted': painted, 'has_atmosphere': has_atmosphere, 'made_by': made_by,
                      'made_since': made_since, 'location': location, 'near': near, 'radius': radius, 'box': box,
-                     'limit': limit, 'order': order, 'within': within, 'group_by': group_by, 'holders': holders,
-                     'exclude_in_use': exclude_in_use, 'gateway': gateway, 'include': include, 'min_mol': min_mol,
-                     'ores': ores, 'separation': separation, 'step': step, 'id': id, 'verbose': verbose,
-                     'min_damage': min_damage, 'broken_only': broken_only, 'structures_only': structures_only,
-                     'min_cells': min_cells, 'text': text}, options)
+                     'limit': limit, 'offset': offset, 'order': order, 'within': within, 'group_by': group_by,
+                     'holders': holders, 'exclude_in_use': exclude_in_use, 'gateway': gateway, 'include': include,
+                     'min_mol': min_mol, 'ores': ores, 'separation': separation, 'step': step, 'id': id, 'verbose':
+                     verbose, 'min_damage': min_damage, 'broken_only': broken_only, 'structures_only':
+                     structures_only, 'min_cells': min_cells, 'text': text}, options)
 
 
 def inspect(what, *, fields=None, as_player=None, id=None, gateway=None, include=None, prefab=None, slot=None,
@@ -38,16 +38,16 @@ def inspect(what, *, fields=None, as_player=None, id=None, gateway=None, include
 
 
 def survey(what, *, fields=None, as_player=None, box=None, room=None, sections=None, networks=None, include=None,
-        network=None, kind=None, prefab=None, cell_detail=None, occupied_only=None, limit=None, plane=None,
-        side=None, looking=None, at=None, half_width=None, free_rects=None, summarize=None, open_ends=None,
-        near=None, radius=None, id=None, port=None, **options):
+        network=None, kind=None, prefab=None, cell_detail=None, occupied_only=None, limit=None, offset=None,
+        plane=None, side=None, looking=None, at=None, half_width=None, free_rects=None, summarize=None,
+        open_ends=None, near=None, radius=None, id=None, port=None, **options):
     """Map an area or a network as a whole: the grid's cells, a wall face, a network's members, feed paths. sg.help('survey', what) gives a what in full."""
     return verb_call('survey', what, {'fields': fields, 'as_player': as_player, 'box': box, 'room': room,
                      'sections': sections, 'networks': networks, 'include': include, 'network': network, 'kind':
                      kind, 'prefab': prefab, 'cell_detail': cell_detail, 'occupied_only': occupied_only, 'limit':
-                     limit, 'plane': plane, 'side': side, 'looking': looking, 'at': at, 'half_width': half_width,
-                     'free_rects': free_rects, 'summarize': summarize, 'open_ends': open_ends, 'near': near,
-                     'radius': radius, 'id': id, 'port': port}, options)
+                     limit, 'offset': offset, 'plane': plane, 'side': side, 'looking': looking, 'at': at,
+                     'half_width': half_width, 'free_rects': free_rects, 'summarize': summarize, 'open_ends':
+                     open_ends, 'near': near, 'radius': radius, 'id': id, 'port': port}, options)
 
 
 def read(what, *, fields=None, as_player=None, id=None, logic=None, reads=None, gateway=None, include=None,

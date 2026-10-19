@@ -69,18 +69,18 @@
         },
         "limit": {
           "use": "limit",
-          "schema": {"type": "integer", "minimum": 1, "maximum": 125},
+          "schema": {"type": "integer", "minimum": 1, "maximum": 1000},
           "description": "2 m cells per page; with sections that leave cells out, every cell is read.",
           "default": "8",
           "x-script": "The first n in order (2 m cells); left out, every one."
         },
-        "offset": {"use": "offset"},
+        "offset": {"use": "offset", "x-script": "2 m cells to skip: the page starts there; walk() and all() go on from it."},
         "cursor": {"use": "cursor"}
       },
       "text": [
-        "A big area is many pages (125 cells at most each), and output_file writes one page. For a whole area, page with offset (has_more) or use a smaller box per call."
+        "A big area is many pages (1000 cells at most each), and output_file writes one page. For a whole area, page with offset (has_more) or use a smaller box per call."
       ],
-      "x-script-text": ["A big area is many pages (125 cells each); r['cells'].walk() goes through them all."],
+      "x-script-text": ["A big area is many pages (1000 cells at most each); offset starts at a cell, and r['cells'].walk() goes through them all."],
       "example": {"room": "17", "sections": ["pieces", "devices"]},
       "x-cost": {"class": "world", "growth": "area"},
       "x-default-limits": {"pieces": 40, "devices": 20},
