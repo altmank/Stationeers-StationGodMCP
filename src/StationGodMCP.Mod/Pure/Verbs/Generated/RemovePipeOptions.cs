@@ -17,7 +17,7 @@ internal sealed class RemovePipeOptions
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}"),
         new OptionSpec("waypoints", "{\"type\":\"array\",\"items\":{\"type\":\"array\"},\"maxItems\":1024}"),
         new OptionSpec("cells", "{\"type\":\"array\",\"items\":{\"type\":\"array\"},\"maxItems\":1024}"),
-        new OptionSpec("allow", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"split\"]}}"),
+        new OptionSpec("allow", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"split\",\"contents\"]}}"),
         new OptionSpec("root", "{\"type\":\"string\"}", false, "every supplier"),
         new OptionSpec("materials", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"},\"maxItems\":8}"),
         new OptionSpec("refund_to", "{\"type\":[\"string\",\"integer\",\"array\"]}", false, "[inventory, source, storage, ground]"),

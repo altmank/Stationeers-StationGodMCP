@@ -4,7 +4,7 @@ Options:
 - id (string or array): Pieces.
 - waypoints (list): The piece in every cell along these lines.
 - cells (list): The piece in each cell.
-- allow (list of split): split: may split networks or leave ports joined to nothing.
+- allow (list of split | contents): split: may split networks or leave ports joined to nothing; contents: may split a network holding gas (the game divides it by volume).
 - root (string, default every supplier): The device would_split measures cut-off against.
 - materials (string or array): Holder(s) that pay materials and take source refunds, tried in order; ids or "player". Default the player.
 - refund_to (string or integer or array, default [inventory, source, storage, ground]): Where removed materials go: a word (inventory, source, storage, ground, none), a container id, or a list tried in turn. Left out with no player and no materials: none.

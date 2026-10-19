@@ -139,7 +139,8 @@ internal static class RemoveRuns
         List<ThingId> more = new List<ThingId>();
         ThingId? from = JobTargets.Payers(call.Materials, label, more);
         ThingId? root = call.Root != null ? TargetIds.Of(call.Root, label) : null;
-        RunOptions options = new RunOptions(new EditAllowance(new HashSet<long>(), Allows(call.Allow, "split")), from,
+        RunOptions options = new RunOptions(
+            new EditAllowance(new HashSet<long>(), Allows(call.Allow, "split"), Allows(call.Allow, "contents")), from,
             call.Materials.RefundTo, call.Report.Rows ?? RunArgs.DefaultListLimit, true,
             new RunTargets(root, null, false), false,
             new RunDetail(call.Fields.Includes("links"), call.Fields.Includes("notes"),

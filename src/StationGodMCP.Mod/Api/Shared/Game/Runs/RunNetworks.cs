@@ -235,11 +235,12 @@ internal static class RunNetworks
     }
 
     /// <summary>
-    /// Removing pipes never loses or moves contents: a network with contents may not be emptied (the game's removal
-    /// of its last pipe deletes them) or split (the game divides them among the parts by volume, which this does not
-    /// predict).
+    /// Removing pipes never loses contents and moves them only when asked: a network with contents may not be emptied
+    /// (the game's removal of its last pipe deletes them) or split (the game divides them among the parts by volume,
+    /// which this does not predict) unless allow contents (remove pipe), which makes the split a warning
+    /// (ContentsGuard).
     /// </summary>
-    internal static LayoutIssue? PipeRemovalProblem(Forecast forecast, RunNetworkContext context)
+    internal static LayoutIssue? PipeRemovalProblem(Forecast forecast, RunNetworkContext context, EditAllowance allow)
     {
         foreach (long gone in forecast.Gone)
         {
@@ -257,9 +258,13 @@ internal static class RunNetworks
             double moles = MolesOf(context, split.Network);
             if (moles > ContentsMol)
             {
-                return new LayoutIssue("contents_would_move",
+                return new LayoutIssue(ContentsGuard.ContentsWouldMove,
                     $"Network {split.Network} holds {moles:0.###} mol and would split in {split.Parts.Count}; the " +
-                    "game would divide the contents among the parts. Empty it first.", null, split.Network);
+                    "game would divide the contents among the parts by volume. " +
+                    (allow.Contents
+                        ? "Allowed (allow contents)."
+                        : "Empty it first, or remove pipe with allow: [\"contents\"] splits it anyway."),
+                    null, split.Network);
             }
         }
 

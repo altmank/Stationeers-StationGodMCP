@@ -855,8 +855,13 @@ internal static class RunPlanner
             }
         }
 
-        LayoutIssue? removal = plan.Request.Kind.RemovalProblem(forecast.Result, forecast.Context);
-        if (removal != null)
+        EditAllowance allow = plan.Request.Options.Allow;
+        LayoutIssue? removal = plan.Request.Kind.RemovalProblem(forecast.Result, forecast.Context, allow);
+        if (removal != null && ContentsGuard.Warns(removal, allow))
+        {
+            plan.Warnings.Add(removal);
+        }
+        else if (removal != null)
         {
             plan.Problems.Add(removal);
         }

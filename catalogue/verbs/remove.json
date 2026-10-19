@@ -213,8 +213,8 @@
         },
         "allow": {
           "use": "allow",
-          "schema": {"type": "array", "items": {"type": "string", "enum": ["split"]}},
-          "description": "split: may split networks or leave ports joined to nothing."
+          "schema": {"type": "array", "items": {"type": "string", "enum": ["split", "contents"]}},
+          "description": "split: may split networks or leave ports joined to nothing; contents: may split a network holding gas (the game divides it by volume)."
         },
         "root": {
           "schema": {"type": "string"},

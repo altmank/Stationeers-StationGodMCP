@@ -95,7 +95,8 @@ internal sealed class ChuteRunKind : RunKind
     internal override KindGuard GuardOf(ForecastNetwork after, RunNetworkContext context) =>
         new KindGuard(null, null, null);
 
-    internal override LayoutIssue? RemovalProblem(Forecast forecast, RunNetworkContext context) => null;
+    internal override LayoutIssue? RemovalProblem(Forecast forecast, RunNetworkContext context, EditAllowance allow) =>
+        null;
 
     internal override string? Holding(SmallGrid piece)
     {

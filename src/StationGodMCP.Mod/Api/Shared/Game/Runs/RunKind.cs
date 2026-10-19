@@ -100,7 +100,7 @@ internal abstract class RunKind
     /// <summary>
     /// A problem when the removals would lose or move a network's contents (pipes): null when removing is safe.
     /// </summary>
-    internal abstract LayoutIssue? RemovalProblem(Forecast forecast, RunNetworkContext context);
+    internal abstract LayoutIssue? RemovalProblem(Forecast forecast, RunNetworkContext context, EditAllowance allow);
 
     /// <summary>The problem code when the source holds too few of the kit or coil a run is built from.</summary>
     internal virtual string ShortageCode => "not_enough_coils";
@@ -243,7 +243,8 @@ internal sealed class CableRunKind : RunKind
     internal override KindGuard GuardOf(ForecastNetwork after, RunNetworkContext context) =>
         RunNetworks.PowerGuard(after, context);
 
-    internal override LayoutIssue? RemovalProblem(Forecast forecast, RunNetworkContext context) => null;
+    internal override LayoutIssue? RemovalProblem(Forecast forecast, RunNetworkContext context, EditAllowance allow) =>
+        null;
 
     internal override List<string> Notes => new List<string>
     {
@@ -325,8 +326,8 @@ internal sealed class PipeRunKind : RunKind
     internal override KindGuard GuardOf(ForecastNetwork after, RunNetworkContext context) =>
         RunNetworks.PipeGuard(after, context);
 
-    internal override LayoutIssue? RemovalProblem(Forecast forecast, RunNetworkContext context) =>
-        RunNetworks.PipeRemovalProblem(forecast, context);
+    internal override LayoutIssue? RemovalProblem(Forecast forecast, RunNetworkContext context, EditAllowance allow) =>
+        RunNetworks.PipeRemovalProblem(forecast, context, allow);
 
     internal override List<string> Notes => new List<string>
     {

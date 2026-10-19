@@ -9,10 +9,11 @@ namespace StationGodMCP.Pure;
 /// <summary>What the caller allows an edit to do to networks: merges and device bridges by id, and splits.</summary>
 internal sealed class EditAllowance
 {
-    internal EditAllowance(HashSet<long> bridge, bool split)
+    internal EditAllowance(HashSet<long> bridge, bool split, bool contents = false)
     {
         Bridge = bridge;
         Split = split;
+        Contents = contents;
     }
 
     internal static EditAllowance Nothing => new EditAllowance(new HashSet<long>(), false);
@@ -22,6 +23,23 @@ internal sealed class EditAllowance
 
     /// <summary>allow_split: networks may fall apart and ports lose their connection.</summary>
     internal bool Split { get; }
+
+    /// <summary>allow contents (remove pipe): a network holding gas may split, the game dividing it among the parts.</summary>
+    internal bool Contents { get; }
+}
+
+/// <summary>
+/// remove pipe allow contents: a removal that splits a network holding contents (contents_would_move) is reported as a
+/// warning instead of a problem, so it goes ahead and the game divides the contents among the parts by volume, as
+/// remove structure allow contents lets gas go. Emptying a network (holds_contents) stays refused: the game deletes the
+/// contents with the last pipe, which the job's gas check would find lost.
+/// </summary>
+internal static class ContentsGuard
+{
+    internal const string ContentsWouldMove = "contents_would_move";
+
+    internal static bool Warns(LayoutIssue removal, EditAllowance allow) =>
+        allow.Contents && removal.Code == ContentsWouldMove;
 }
 
 /// <summary>A network's power numbers before an edit (CableNetwork.PotentialLoad, RequiredLoad, weakest ratings).</summary>

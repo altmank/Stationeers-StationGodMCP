@@ -3120,7 +3120,7 @@ def remove(what: Literal['pipe'], *,
     id: str | list[str] = None,  # Pieces.
     waypoints: list = None,  # The piece in every cell along these lines.
     cells: list = None,  # The piece in each cell.
-    allow: list[Literal['split']] = None,  # split: may split networks or leave ports joined to nothing.
+    allow: list[Literal['split', 'contents']] = None,  # split: may split networks or leave ports joined to nothing; contents: may split a network holding gas (the game divides it by volume).
     root: str = None,  # The device would_split measures cut-off against. (default every supplier) (default every supplier)
     materials: str | list[str] = None,  # Holder(s) that pay materials and take source refunds, tried in order; ids or "player". Default the player.
     refund_to: str | int | list = None,  # Where removed materials go: a word (inventory, source, storage, ground, none), a container id, or a list tried in turn. (default [inventory, source, storage, ground]) (default [inventory, source, storage, ground])
