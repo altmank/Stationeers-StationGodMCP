@@ -3,7 +3,7 @@
   <Name>StationGod MCP</Name>
   <ModID>net.xceled.stationeers.stationgodmcp</ModID>
   <Author>XCeled</Author>
-  <Version>2.5.1</Version>
+  <Version>2.6.0</Version>
   <Description>[h1]Let an AI agent read and run your Stationeers base[/h1]
 StationGod MCP connects an AI agent such as Claude Code or Codex to your running game through the Model Context Protocol (MCP), the standard way these agents call outside tools. The agent can then read every device, chip, room, network and planet value you could look up yourself, and act on them: write logic, program chips, move gas and items, and build or rebuild cables, pipes, chutes, walls and frames with the checks the game itself applies.
 
@@ -69,14 +69,17 @@ Developed with the use of generative AI, and tokens aren't free. Buy me a coffee
 [url=https://ko-fi.com/xceled]ko-fi.com/xceled[/url]
   </Description>
   <ChangeLog>
+v2.6.0
+- Runs a hub restart ends keep their output (inspect job script-pid.N); inspect job whole and output_file; plan route keeps devices' free port cells; build item takes modded boards; remove pipe allow contents; find device near and box; new rules room_without_door and controls_unreachable.
+
 v2.5.1
 - Script helpers (sg 0.4.9): sg.ok and sg.failed, sg.values, sg.trace, sg.until_job, sg.geom.
 
 v2.5.0
-- New creative cheats: build item makes items, move gas source create makes gas. Scripts act on ids their own reads found; refused builds fail loudly. remove structure box, build structure logic, find room near, write script code_file.
+- New cheats build item and move gas source create. Scripts act on ids their own reads found; refused builds fail loudly.
 
 v2.4.3
-- build pipe, cable and chute take free (a cheat); plan route rotation_deg rebuilds the planned piece; confirmed gas moves wait for their tick; undo restores labels and paint; crashed rockets' flight logs read.
+- Free run builds (a cheat), exact rotation_deg, gas moves wait their tick, undo restores labels and paint.
 
 v2.4.2
 - spread keeps its last step; server info works at the main menu; commented-out Lua calls are no controllers.

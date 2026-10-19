@@ -1,5 +1,35 @@
 # Changelog
 
+## 2.6.0
+
+- **Runs a hub restart ends keep their output.** A run lives in the hub that started it, so when the MCP client
+  restarts the hub (a reconnect) the run ends. Its printed output now goes to the hub's journal as it prints (before
+  each sg call and every 8 KB), and its end line keeps its returned value, error and stop. The next hub's first reply
+  names each such run as "ended by hub restart" with `inspect {what: "job", id: "script-<pid>.N"}`, which shows its
+  output and returned value; `inspect job script-N` with the old number names the new id.
+- **`inspect job` of a run takes `whole: true`** (its returned value and printed output without the 4 KB cut) and
+  **`output_file`** (`{id, state, returned, printed, error, text}` whole in the file).
+- **Plan refs keep the whole `build_arguments`** when `fields` name only part of it (`build_arguments.branches`), so
+  `from_plan` builds the route.
+- **`build item` into a named slot** judges a prefab that reports no slot class (ScriptedScreens' Circuitboard (Lua
+  Chip)) on the made item, as `move item` judges it: the Lua board goes into a Console's slot.
+- **`plan route` keeps devices' free port cells free by default**, every kind: the cell where a piece joining a free
+  port of the route's kind stands is not taken. `allow: ["device_ports"]` lets the route take them.
+- **`read logic` `atmosphere: true`** reads the thing's own atmosphere (as `{}`); `false` reads none.
+- **`remove pipe` `allow: ["contents"]`** lets a removal split a network holding gas (a warning; the game divides it
+  among the parts by volume). Emptying a network stays refused.
+- **`find thing` and `survey area` take `offset` in scripts**; `survey area` pages up to 1000 cells.
+- **`find device` takes `near` with `radius`, and `box`**, as `find thing`.
+- **`controls_facing`** (the world side a structure's controls face) on `find thing` rows and `inspect connections`.
+- **New check layout rules** `room_without_door` (a room holding devices that no door, airlock, hatch or force-field
+  door leads into; room field `door_count`) and `controls_unreachable` (lint function `controls_reach`: a first walk
+  from a room's doors over 2 m cells, each with a 1 m wide free column, to the cell in front of a device's controls).
+- **`survey area` `include: ["wall_planes"]`**: small strings mark the cells on a cell's -x, -y and -z face planes
+  with that face's wall, window or door.
+- **`job_ended` events carry a swap or upgrade job's `swapped` and `removed`**, so undo and `sg.until_job` read them
+  from the event.
+- **sg 0.4.10.**
+
 ## 2.5.1
 
 - **`sg.ok(reply)` and `sg.failed(reply)`.** `ok` returns a reply's result rows when every one is ok and raises one
