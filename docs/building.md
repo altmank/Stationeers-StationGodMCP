@@ -199,11 +199,12 @@ or a long straight, any of its cells. For pipes, `{id}` of an in-line tank or a 
 pipe thing with its own ends that is neither a pipe piece nor a device) is the cell beyond its free end, and the pipe
 there gets an end toward it, as at a device port; name the end with `port` when more than one is free.
 
-**Keeping cells free.** `reserve_cells: [[x, y, z], ...]` and `reserve_ports: [{id, port}]` are cells the
-search treats as blocked, a port's being the cell a piece joining it stands in. Reserve a device's other ports while
-routing to one of them, so this run cannot take the cell the next run needs. A reserved cell that is one of the
-route's own ends is released, and `notes` say how many cells were kept free. Without them the report still warns
-`blocks_port` when a new piece takes a free port's cell without joining that port.
+**Keeping cells free.** Every device's free port of the route's kind keeps its cell (where a piece joining it
+stands) out of the route by default, whatever the kind; `allow: ["device_ports"]` lets the route take them.
+`reserve_cells: [[x, y, z], ...]` and `reserve_ports: [{id, port}]` add cells the search treats as blocked, a port's
+being the cell a piece joining it stands in (a port of a thing that is not a device, such as an in-line tank). A
+reserved cell that is one of the route's own ends is released, and `notes` say how many cells were kept free. The
+report still warns `blocks_port` when a new piece takes a free port's cell without joining that port.
 
 **Rules.**
 

@@ -377,7 +377,7 @@
           "trunk": {"type": "object"},
           "grade": {"enum": ["normal", "heavy", "super_heavy", "gas", "liquid", "insulated_gas", "insulated_liquid", "chute"]},
           "style": {"enum": ["supported", "frame_edges", "walls", "hidden", "inside_frames", "free"]},
-          "allow": {"type": "array", "items": {"enum": ["door_keepout", "split"]}},
+          "allow": {"type": "array", "items": {"enum": ["door_keepout", "split", "device_ports"]}},
           "split_long": {"type": "boolean"},
           "avoid": {"type": "array", "items": {"enum": ["room_interior", "walkways"]}},
           "avoid_networks": {"type": ["boolean", "array"]},

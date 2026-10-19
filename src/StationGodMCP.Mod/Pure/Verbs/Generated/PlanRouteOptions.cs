@@ -21,7 +21,7 @@ internal sealed class PlanRouteOptions
         new OptionSpec("trunk", "{\"type\":\"object\"}"),
         new OptionSpec("grade", "{\"type\":\"string\",\"enum\":[\"normal\",\"heavy\",\"super_heavy\",\"gas\",\"liquid\",\"insulated_gas\",\"insulated_liquid\",\"chute\"]}"),
         new OptionSpec("style", "{\"type\":\"string\",\"enum\":[\"supported\",\"frame_edges\",\"walls\",\"hidden\",\"inside_frames\",\"free\"]}", false, "supported"),
-        new OptionSpec("allow", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"door_keepout\",\"split\"]}}"),
+        new OptionSpec("allow", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"door_keepout\",\"split\",\"device_ports\"]}}"),
         new OptionSpec("split_long", "{\"type\":\"boolean\"}", false, "true"),
         new OptionSpec("avoid", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"room_interior\",\"walkways\"]}}"),
         new OptionSpec("avoid_networks", "{\"type\":[\"boolean\",\"array\"]}"),

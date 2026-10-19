@@ -51,6 +51,53 @@ internal sealed class RouteReservation
         _cells.Count == 0 ? cost : cell => _cells.Contains(cell) ? CellCost.Blocked : cost(cell);
 }
 
+/// <summary>A device's port of the route's kind: the small cell a piece joining it stands in, and whether a piece of the
+/// kind stands there already (then the port is joined, or that piece is the cell's own business).</summary>
+internal readonly struct FreePortCell
+{
+    internal FreePortCell(GridCell cell, bool taken)
+    {
+        Cell = cell;
+        Taken = taken;
+    }
+
+    internal GridCell Cell { get; }
+
+    internal bool Taken { get; }
+}
+
+/// <summary>
+/// plan route keeps devices' free ports usable: the cell where a piece joining a free port of the route's kind stands
+/// is reserved, every kind, unless allow device_ports. A route piece there with no end toward the port would leave it
+/// unusable (RunLayout blocks_port). Only cells inside the search's box count; the route's own ends are released by
+/// RouteReservation.Of as for reserve_ports.
+/// </summary>
+internal static class DevicePortCells
+{
+    internal static List<GridCell> Kept(IEnumerable<FreePortCell> ports, GridCell min, GridCell max, bool allowed)
+    {
+        List<GridCell> kept = new List<GridCell>();
+        if (allowed)
+        {
+            return kept;
+        }
+
+        foreach (FreePortCell port in ports)
+        {
+            GridCell cell = port.Cell;
+            if (!port.Taken && Inside(cell, min, max) && !kept.Contains(cell))
+            {
+                kept.Add(cell);
+            }
+        }
+
+        return kept;
+    }
+
+    internal static bool Inside(GridCell cell, GridCell min, GridCell max) =>
+        cell.X >= min.X && cell.X <= max.X && cell.Y >= min.Y && cell.Y <= max.Y && cell.Z >= min.Z && cell.Z <= max.Z;
+}
+
 /// <summary>
 /// Which free end of a thing a route starts or ends at: the one named (port), else the only free one. A candidate is
 /// an end of the route's kind; free when nothing is joined to it.

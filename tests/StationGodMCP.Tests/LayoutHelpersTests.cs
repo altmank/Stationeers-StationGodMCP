@@ -306,6 +306,28 @@ public sealed class RouteEndsAndReservationTests
         Assert.DoesNotContain(At(2, 0, 0), around.Cells!);
         Assert.Equal(At(4, 0, 0), around.Cells![around.Cells.Count - 1]);
     }
+
+    [Fact]
+    public void ADevicesFreePortCellIsKeptOutOfARouteByDefault()
+    {
+        RouteRules box = new RouteRules(2.0, AxisOrder.Any, 400, At(-3, -3, -3), At(7, 3, 3));
+        FreePortCell[] ports =
+        {
+            new FreePortCell(At(2, 0, 0), taken: false),
+            new FreePortCell(At(3, 0, 0), taken: true),
+            new FreePortCell(At(20, 0, 0), taken: false)
+        };
+
+        List<GridCell> kept = DevicePortCells.Kept(ports, At(-3, -3, -3), At(7, 3, 3), allowed: false);
+        RouteReservation reserved = RouteReservation.Of(kept, new[] { At(0, 0, 0), At(4, 0, 0) });
+        RouteResult route = RoutePlanner.Find(RouteEnd.Open(At(0, 0, 0)), RouteEnd.Open(At(4, 0, 0)),
+            reserved.Guard(Open), box);
+
+        // The free port in the box is kept; a port with a piece there already and one outside the search are not.
+        Assert.Equal(new List<GridCell> { At(2, 0, 0) }, kept);
+        Assert.DoesNotContain(At(2, 0, 0), route.Cells!);
+        Assert.Empty(DevicePortCells.Kept(ports, At(-3, -3, -3), At(7, 3, 3), allowed: true));
+    }
 }
 
 /// <summary>move gas's report and the label refusal for in-line tanks.</summary>

@@ -82,6 +82,9 @@ internal sealed class RouteOrder
 
     public bool AllowSplit { get; private set; }
 
+    /// <summary>allow device_ports: the route may take the cells where pieces joining devices' free ports stand.</summary>
+    public bool AllowDevicePorts { get; private set; }
+
     public bool SplitLong { get; private set; } = true;
 
     public bool AvoidRoomInterior { get; private set; }
@@ -140,6 +143,7 @@ internal sealed class RouteOrder
             Allow = options.Allow,
             AllowDoorKeepOut = Has(options.Allow, "door_keepout"),
             AllowSplit = Has(options.Allow, "split"),
+            AllowDevicePorts = Has(options.Allow, "device_ports"),
             SplitLong = options.SplitLong ?? true,
             AvoidRoomInterior = Has(options.Avoid, "room_interior"),
             AvoidWalkways = Has(options.Avoid, "walkways"),

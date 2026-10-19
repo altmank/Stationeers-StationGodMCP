@@ -49,8 +49,8 @@
         },
         "allow": {
           "use": "allow",
-          "schema": {"type": "array", "items": {"type": "string", "enum": ["door_keepout", "split"]}},
-          "description": "door_keepout: may enter a door keep-out; split: removals may split networks."
+          "schema": {"type": "array", "items": {"type": "string", "enum": ["door_keepout", "split", "device_ports"]}},
+          "description": "door_keepout: may enter a door keep-out; split: removals may split networks; device_ports: may take the cells where pieces joining devices' free ports stand (kept free by default)."
         },
         "split_long": {
           "schema": {"type": "boolean"},

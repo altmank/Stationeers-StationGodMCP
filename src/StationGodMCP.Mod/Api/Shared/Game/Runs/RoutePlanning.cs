@@ -3,6 +3,8 @@
 using System;
 using System.Collections.Generic;
 using Assets.Scripts.Objects;
+using Assets.Scripts.Objects.Pipes;
+using World = StationGodMCP.WorldModel.World;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
@@ -119,7 +121,14 @@ internal static class RoutePlanning
                       "to route through a room.");
         }
 
-        RouteReservation reserved = Reservation(order, starts, end, trunk, notes);
+        (GridCell Min, GridCell Max)? portBox = PortBox(order, starts, end, trunk);
+        Answer<List<FreePortCell>> portCells = new Answer<List<FreePortCell>>();
+        foreach (object? step in FreePortCells(kind, facts, portBox, portCells))
+        {
+            yield return step;
+        }
+
+        RouteReservation reserved = Reservation(order, kind, portCells.Value, portBox, starts, end, trunk, notes);
         OpeningGuard openings = Openings(order, facts, starts, end, notes);
         yield return null;
         Answer<RouteTree> grown = new Answer<RouteTree>();
@@ -320,15 +329,20 @@ internal static class RoutePlanning
     }
 
     /// <summary>
-    /// reserve_cells (positions) and reserve_ports ({id, port}: the cell a piece joining that port stands in) as cells
-    /// the search treats as blocked, so this run leaves them for another; any that is one of this route's own ends is
-    /// released, with a note.
+    /// reserve_cells (positions), reserve_ports ({id, port}: the cell a piece joining that port stands in) and, unless
+    /// allow device_ports, the joining cells of every device's free port of the route's kind inside the search's box
+    /// (Pure/DevicePortCells) as cells the search treats as blocked, so this run leaves them for another; any that is
+    /// one of this route's own ends is released, with a note.
     /// </summary>
     [Profiled]
-    private static RouteReservation Reservation(RouteOrder order, List<RouteEndpoint> starts, RouteEndpoint? end,
-        List<GridCell>? trunk, List<string> notes)
+    private static RouteReservation Reservation(RouteOrder order, RunKind kind, List<FreePortCell> found,
+        (GridCell Min, GridCell Max)? box, List<RouteEndpoint> starts, RouteEndpoint? end, List<GridCell>? trunk,
+        List<string> notes)
     {
-        if (!order.Reserves)
+        List<GridCell> ports = box is { } within
+            ? DevicePortCells.Kept(found, within.Min, within.Max, order.AllowDevicePorts)
+            : new List<GridCell>();
+        if (!order.Reserves && ports.Count == 0)
         {
             return RouteReservation.None;
         }
@@ -340,8 +354,13 @@ internal static class RoutePlanning
             cells.Add(RouteEnds.JoiningCell(GameLookup.RequireThing(port.Id), port.Port, $"reserve_ports[{index}]"));
         }
 
+        cells.AddRange(ports);
         RouteReservation reserved = RouteReservation.Of(cells, EndCells(starts, end));
-        notes.Add($"reserve: {reserved.Count} cell(s) kept free (the search treats them as blocked).");
+        notes.Add($"reserve: {reserved.Count} cell(s) kept free (the search treats them as blocked)" +
+                  (ports.Count > 0
+                      ? $", {ports.Count} of them where pieces joining devices' free {kind.Noun} ports stand (allow " +
+                        "device_ports lets the route take them)."
+                      : "."));
         if (reserved.Released.Count > 0)
         {
             notes.Add($"reserve: {reserved.Released.Count} reserved cell(s) are this route's own ends and were not " +
@@ -358,6 +377,79 @@ internal static class RoutePlanning
 
         return reserved;
     }
+
+    // The box the search may use (the route's ends and trunk, padded by margin as SearchRules pads them); null when
+    // device ports are not reserved (allow device_ports) or there are no ends.
+    private static (GridCell Min, GridCell Max)? PortBox(RouteOrder order, List<RouteEndpoint> starts, RouteEndpoint? end,
+        List<GridCell>? trunk)
+    {
+        List<GridCell> ends = EndCells(starts, end);
+        if (trunk != null)
+        {
+            ends.AddRange(trunk);
+        }
+
+        if (order.AllowDevicePorts || ends.Count == 0)
+        {
+            return null;
+        }
+
+        int pad = (int)Math.Ceiling(order.MarginM * 10.0 / GridStep.CellSize) * GridStep.CellSize;
+        GridCell low = ends[0];
+        GridCell high = ends[0];
+        foreach (GridCell cell in ends)
+        {
+            low = new GridCell(Math.Min(low.X, cell.X), Math.Min(low.Y, cell.Y), Math.Min(low.Z, cell.Z));
+            high = new GridCell(Math.Max(high.X, cell.X), Math.Max(high.Y, cell.Y), Math.Max(high.Z, cell.Z));
+        }
+
+        return (new GridCell(low.X - pad, low.Y - pad, low.Z - pad), new GridCell(high.X + pad, high.Y + pad, high.Z + pad));
+    }
+
+    // Every device port of the route's kind whose joining cell (its end's own cell) lies in the box, with whether a
+    // piece of the kind stands there already; a slice of devices per step.
+    private static IEnumerable<object?> FreePortCells(RunKind kind, GridFacts facts, (GridCell Min, GridCell Max)? box,
+        Answer<List<FreePortCell>> answer)
+    {
+        List<FreePortCell> ports = new List<FreePortCell>();
+        answer.Value = ports;
+        if (box is not { } within)
+        {
+            yield break;
+        }
+
+        int type = kind.AnyEndType;
+        List<Device> devices = World.Devices();
+        for (int index = 0; index < devices.Count; index++)
+        {
+            if (index % DevicesPerStep == DevicesPerStep - 1)
+            {
+                yield return null;
+            }
+
+            Device device = devices[index];
+            if (device == null || device.OpenEnds == null)
+            {
+                continue;
+            }
+
+            foreach (Connection port in device.OpenEnds)
+            {
+                if (port?.Transform == null || ((int)port.ConnectionType & type) == 0)
+                {
+                    continue;
+                }
+
+                GridCell cell = PieceShapes.Cell(port.GetLocalGrid());
+                if (DevicePortCells.Inside(cell, within.Min, within.Max))
+                {
+                    ports.Add(new FreePortCell(cell, facts.Small(cell).FamilyPiece));
+                }
+            }
+        }
+    }
+
+    private const int DevicesPerStep = 2048;
 
     // The positions given, each snapped to its small cell.
     private static List<GridCell> Cells(JToken? given, string option)
