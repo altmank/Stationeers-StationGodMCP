@@ -138,6 +138,18 @@ class WorkerTests(WorkerCase):
         _, end = self.serve_one("print('hello')\nprint([{'id': '7', 'name': 'Battery'}, {'id': '12'}])")
         self.assertEqual("hello\nid  name\n--  -------\n7   Battery\n12\n", end["printed"])
 
+    def test_printed_output_goes_to_the_hub_before_each_call_and_in_pieces_when_long(self):
+        hub, end = self.serve_one("print('one')\nsg.wait(0)\nprint('x' * 20000)\nsg.wait(0)\nprint('end')")
+        pieces = [message["text"] for message in hub.of_type("run_printed")]
+        # The first piece went before the first call; the long line was sent in pieces of at most 8 KB; the last piece
+        # went before run_end; together they are what run_end carries.
+        self.assertEqual("one\n", pieces[0])
+        self.assertTrue(all(len(piece) <= 8192 for piece in pieces))
+        self.assertEqual("end\n", pieces[-1])
+        self.assertEqual(end["printed"], "".join(pieces))
+        kinds = [message["type"] for message in hub.messages if message["type"] in ("run_printed", "run_end")]
+        self.assertEqual("run_end", kinds[-1])
+
     def test_the_lines_sent_are_the_code_lines(self):
         hub, _ = self.serve_one("\n\nsg.find('thing')\nfor i in range(2):\n    sg.wait(0)\n", find_handler)
         self.assertEqual([("verb", 3), ("wait", 5), ("wait", 5)],

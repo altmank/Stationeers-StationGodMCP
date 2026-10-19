@@ -413,7 +413,7 @@ public sealed partial class RunHost : IAsyncDisposable
         Notes? notes = NotesOf(id);
         if (notes == null)
         {
-            return new VerbReply.Failed("job_not_found", $"No run {id} in this session.");
+            return new VerbReply.Failed("job_not_found", $"No run {id} in this session." + EarlierNamed(id));
         }
 
         if (notes.Run is not { } run)
@@ -643,7 +643,7 @@ public sealed partial class RunHost : IAsyncDisposable
         Notes? notes = NotesOf(id);
         if (notes == null)
         {
-            return new VerbReply.Failed("ref_not_found", $"No run {id} in this session.");
+            return new VerbReply.Failed("ref_not_found", $"No run {id} in this session." + EarlierNamed(id));
         }
 
         if (notes.Record.IsLive)
@@ -660,6 +660,34 @@ public sealed partial class RunHost : IAsyncDisposable
                 ["printed"] = notes.Record.Printed
             });
         }
+    }
+
+    // " A run of an earlier hub had that number: script-4242.114." when an adopted run's id ends with this one's number
+    // (an earlier hub's script-114 is script-<pid>.114 here); empty otherwise.
+    private string EarlierNamed(string id)
+    {
+        string trimmed = id.Trim();
+        if (!IsRunId(trimmed) || trimmed.Contains('.', StringComparison.Ordinal))
+        {
+            return string.Empty;
+        }
+
+        string suffix = "." + trimmed[Prefix.Length..];
+        List<string> matches = [];
+        lock (_gate)
+        {
+            foreach (Notes notes in _order)
+            {
+                if (notes.Record.Adopted && notes.Record.Id.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
+                {
+                    matches.Add(notes.Record.Id);
+                }
+            }
+        }
+
+        return matches.Count == 0
+            ? string.Empty
+            : $" An earlier hub's run of that number is {string.Join(" or ", matches)} now: ask for that id.";
     }
 
     /// <summary>The code line a live run's latest sg call came from; null when it has made none or is not live.</summary>

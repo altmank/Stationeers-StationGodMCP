@@ -9,6 +9,13 @@ namespace StationGodMCP.Server;
 /// </summary>
 public sealed partial class RunHost
 {
+    /// <summary>The stop code of a run the hub's end stopped; adoption knows such runs by it.</summary>
+    internal const string HubRestartCode = "session_end";
+
+    internal const string HubRestartMessage =
+        "ended by hub restart: the MCP client closed this hub (a reconnect or client restart does); the next hub " +
+        "keeps its printed output and returned value";
+
     /// <summary>
     /// Runs the session-end order once; later calls return at once. direct: the MCP client's calls that arrived before
     /// EOF and are still in flight; the window waits for them too, as for the runs' cleanup.
@@ -30,7 +37,7 @@ public sealed partial class RunHost
         List<Task> ended = [];
         foreach (Run run in live)
         {
-            run.RequestStop("session_end", "the session ended: the hub is closing", world: false, secondKills: false);
+            run.RequestStop(HubRestartCode, HubRestartMessage, world: false, secondKills: false);
             ended.Add(run.Ended);
         }
 

@@ -61,6 +61,11 @@ internal static class RunText
                 }
             }
 
+            if (run.PrintedCut)
+            {
+                text.Append($"... (the journal kept the first {Run.JournalledPrinted} characters of its printed output)\n");
+            }
+
             if (run.Error is { Length: > 0 } error)
             {
                 text.Append(error.TrimEnd('\n')).Append('\n');

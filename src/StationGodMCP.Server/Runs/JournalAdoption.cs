@@ -297,6 +297,7 @@ internal sealed class AdoptedJournal : IDisposable
         Dictionary<string, RunRecord> runs = new(StringComparer.Ordinal);
         Dictionary<long, (RunRecord Run, WriteEntry Write)> calls = new();
         HashSet<string> ended = new(StringComparer.Ordinal);
+        Dictionary<RunRecord, StringBuilder> printed = new(ReferenceEqualityComparer.Instance);
         string? line;
         while ((line = reader.ReadLine()) != null)
         {
@@ -312,7 +313,16 @@ internal sealed class AdoptedJournal : IDisposable
                 continue;
             }
 
-            if (entry != null)
+            if (entry == null)
+            {
+                continue;
+            }
+
+            if (JsonNodes.Text(entry["t"]) == "printed")
+            {
+                Printed(entry, runs, printed);
+            }
+            else
             {
                 Take(entry, runs, calls, ended);
             }
@@ -320,11 +330,17 @@ internal sealed class AdoptedJournal : IDisposable
 
         foreach (RunRecord run in Runs)
         {
+            if (printed.TryGetValue(run, out StringBuilder? output) && run.Printed.Length == 0)
+            {
+                run.Printed = output.ToString();
+            }
+
             if (!ended.Contains(run.Id))
             {
                 // The hub ended before the run did: what it changed is reckoned from its writes.
                 run.State = RunState.Killed;
-                run.Error = "the hub that ran it ended before the run did";
+                run.EndedByHubRestart = true;
+                run.Error = "ended by hub restart: the hub that ran it ended before the run did";
                 LeftFromWrites(run);
             }
         }
@@ -376,6 +392,11 @@ internal sealed class AdoptedJournal : IDisposable
             case "end" when run != null:
                 ended.Add(run.Id);
                 run.State = StateOf(JsonNodes.Text(entry["state"]));
+                run.Returned = entry["returned"]?.DeepClone();
+                run.Error = JsonNodes.Text(entry["error"]);
+                run.StopCode = JsonNodes.Text(entry["stop_code"]);
+                run.StopMessage = JsonNodes.Text(entry["stop"]);
+                run.EndedByHubRestart = run.StopCode == RunHost.HubRestartCode;
                 foreach (JsonNode? left in entry["left"] as JsonArray ?? [])
                 {
                     if (JsonNodes.Text(left?["id"]) is { } leftId && JsonNodes.Text(left!["logic"]) is { } leftLogic)
@@ -392,6 +413,29 @@ internal sealed class AdoptedJournal : IDisposable
                 Retired = true;
                 break;
         }
+    }
+
+    // A printed line: one piece of the run's output, in order; a cut line says the run printed more than was journalled.
+    private static void Printed(JsonObject entry, Dictionary<string, RunRecord> runs, Dictionary<RunRecord, StringBuilder> printed)
+    {
+        if (JsonNodes.Text(entry["run"]) is not { } id || !runs.TryGetValue(id, out RunRecord? run))
+        {
+            return;
+        }
+
+        if (JsonNodes.IsTrue(entry["cut"]))
+        {
+            run.PrintedCut = true;
+            return;
+        }
+
+        if (!printed.TryGetValue(run, out StringBuilder? output))
+        {
+            output = new StringBuilder();
+            printed[run] = output;
+        }
+
+        output.Append(JsonNodes.Text(entry["text"]));
     }
 
     private string AdoptedId(string id) =>

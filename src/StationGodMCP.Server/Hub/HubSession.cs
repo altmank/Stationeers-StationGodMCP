@@ -39,6 +39,7 @@ public sealed partial class HubSession
     private static readonly string[] VerbKeys = ["verb", "what", "args", "line"];
     private static readonly string[] AnalysisKeys = ["type", "literals", "while_lines", "writes", "holds", "syntax_error"];
     private static readonly string[] RunEndKeys = ["type", "state", "returned", "printed", "error"];
+    private static readonly string[] PrintedKeys = ["type", "text"];
     // A run's session calls the pipeline's own methods and, because a subscription is read-only (it reads the mod's
     // own topics) and cannot take a write past the run's gate, subscribe and unsubscribe: a script's sg.watch and
     // sg.changes need both.
@@ -258,6 +259,8 @@ public sealed partial class HubSession
                 return await RunAnalysisAsync(message, line).ConfigureAwait(false);
             case "run_end":
                 return await RunEndAsync(message, line).ConfigureAwait(false);
+            case "run_printed":
+                return await RunPrintedAsync(message, line).ConfigureAwait(false);
             case "hello":
                 return Broken(null, "hello was answered already; a session says hello once.", line);
             default:
@@ -886,6 +889,36 @@ public sealed partial class HubSession
         }
 
         await channel.AnalysisAsync(message).ConfigureAwait(false);
+        return null;
+    }
+
+    // A piece of what the run printed, sent as it goes so the journal keeps it should the hub end before the run does.
+    private async Task<HubSessionEnd?> RunPrintedAsync(JsonElement message, string line)
+    {
+        if (_settings.RunChannel is not { } channel)
+        {
+            return Broken(null, "run_printed belongs to a run's session; this session serves no run.", line);
+        }
+
+        if (KeyProblem(message, PrintedKeys) is { } problem)
+        {
+            return Broken(null, problem, line);
+        }
+
+        if (!message.TryGetProperty("text", out JsonElement text) || text.ValueKind != JsonValueKind.String)
+        {
+            return Broken(null, "run_printed needs text, a string.", line);
+        }
+
+        lock (_gate)
+        {
+            if (_runEnded)
+            {
+                return Broken(null, "The run has ended; run_printed belongs to a run that is still going.", line);
+            }
+        }
+
+        await channel.PrintedAsync(text.GetString()!).ConfigureAwait(false);
         return null;
     }
 

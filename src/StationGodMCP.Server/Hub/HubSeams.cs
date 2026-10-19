@@ -122,7 +122,7 @@ public sealed class ProgramFaceExtras : IPipelineExtras
 /// <summary>
 /// The run a worker's session serves (hub.md, Runs): it takes the worker's run_analysis - one for the run's own code
 /// and one for each saved script the code loads, each merged into the run by Run.AnalysisAsync - and its run_end. A
-/// session refuses run_analysis only after run_end; a session without a channel refuses both messages with
+/// session refuses run_analysis and run_printed only after run_end; a session without a channel refuses all three with
 /// protocol_error.
 /// </summary>
 public interface IRunChannel
@@ -130,6 +130,9 @@ public interface IRunChannel
     Task AnalysisAsync(JsonElement message);
 
     Task EndedAsync(JsonElement message);
+
+    /// <summary>A piece of the run's printed output, sent while it runs (run_printed).</summary>
+    Task PrintedAsync(string text);
 
     /// <summary>Whether this run started the job (a job-start reply named it while running). A run hears job_ended
     /// events of its own jobs alone; a session with no run hears every job.</summary>

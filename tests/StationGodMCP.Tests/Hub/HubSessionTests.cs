@@ -715,5 +715,11 @@ public sealed class HubSessionTests
             Messages.Add(message.GetProperty("type").GetString()!);
             return Task.CompletedTask;
         }
+
+        public Task PrintedAsync(string text)
+        {
+            Messages.Add("run_printed " + text);
+            return Task.CompletedTask;
+        }
     }
 }

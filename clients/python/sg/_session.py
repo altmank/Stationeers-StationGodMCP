@@ -28,6 +28,7 @@ class Run:
         self.scripts_dir = scripts_dir
         self.world = world
         self.stop = None
+        self.before_call = None
 
     def add_while_lines(self, filename, lines):
         """Registers another file's while-body lines under the name its code is compiled with (a saved script the run
@@ -117,6 +118,8 @@ def request(method, params, call=None, line=True):
     if line:
         params["line"] = at
     transport = current_transport()
+    if _run is not None and _run.before_call is not None:
+        _run.before_call()
     started = time.monotonic()
     try:
         reply = transport.call(method, params)

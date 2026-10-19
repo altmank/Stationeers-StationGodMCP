@@ -124,19 +124,24 @@ public sealed partial class RunHost
                 }
 
                 notes.Reported = true;
-                if (!OfThisWorld(record) || (record.Left.Count == 0 && record.Restores == null))
+                bool somethingLeft = record.Left.Count > 0 || record.Restores != null;
+                if (!OfThisWorld(record) || (!somethingLeft && !record.EndedByHubRestart))
                 {
                     continue;
                 }
 
+                string how = record.EndedByHubRestart ? "ended by hub restart" : Run.StateWord(record.State);
                 string left = record.Left.Count > 0 ? "; left: " + string.Join(", ", record.Left) : "";
                 string restores = record.Restores != null ? "; " + record.Restores : "";
                 string torn = notes.Journal is { TornLines: > 0 } journal
                     ? $"; {journal.TornLines} torn journal lines skipped"
                     : "";
-                lines.Add($"notice: {record.Id} ({record.FirstLine}) {Run.StateWord(record.State)} in an earlier session" +
-                          $"{left}{restores}{torn}; undo it with undo {{id: \"{record.Id}\"}}; if you did not start it, " +
-                          "leave it");
+                string log = record.EndedByHubRestart
+                    ? $"; its printed output and returned value: inspect {{what: \"job\", id: \"{record.Id}\"}}"
+                    : "";
+                string undo = somethingLeft || Undoable(record) ? $"; undo it with undo {{id: \"{record.Id}\"}}" : "";
+                lines.Add($"notice: {record.Id} ({record.FirstLine}) {how} in an earlier session" +
+                          $"{left}{restores}{torn}{log}{undo}; if you did not start it, leave it");
             }
         }
 

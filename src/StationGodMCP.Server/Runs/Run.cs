@@ -52,6 +52,8 @@ internal sealed partial class Run : IRunChannel, IPipelineExtras, IVerbCalls
     private string? _lastWrite;
     private int _sequence;
     private JsonElement? _runEnd;
+    private readonly System.Text.StringBuilder _printedSoFar = new();
+    private bool _printedCut;
     private string? _runEndProblem;
     private HubSessionEnd _sessionEnd;
     private ScriptWorker? _worker;
@@ -544,6 +546,7 @@ internal sealed partial class Run : IRunChannel, IPipelineExtras, IVerbCalls
 
             if (_runEnd is not { } end)
             {
+                Record.Printed = _printedSoFar.ToString();
                 if (!_killed && stderr.Length > 0)
                 {
                     Record.Error = "the worker died: " + stderr;
@@ -1001,6 +1004,46 @@ internal sealed partial class Run : IRunChannel, IPipelineExtras, IVerbCalls
         Kill();
         return Task.CompletedTask;
     }
+
+    /// <summary>
+    /// run_printed: kept as the output so far (a run that ends without run_end shows it) and journalled, up to
+    /// JournalledPrinted characters, so a hub that ends mid-run leaves it for the next one.
+    /// </summary>
+    public Task PrintedAsync(string text)
+    {
+        string? journalled = null;
+        bool cutNow = false;
+        lock (Record.Sync)
+        {
+            _printedSoFar.Append(text);
+            if (!_printedCut)
+            {
+                if (_printedSoFar.Length <= JournalledPrinted)
+                {
+                    journalled = text;
+                }
+                else
+                {
+                    _printedCut = true;
+                    cutNow = true;
+                }
+            }
+        }
+
+        if (journalled != null)
+        {
+            _journal.Printed(Record, journalled, cut: false);
+        }
+        else if (cutNow)
+        {
+            _journal.Printed(Record, string.Empty, cut: true);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    /// <summary>The most printed output one run journals (characters); past it the journal notes the cut.</summary>
+    internal const int JournalledPrinted = 1_000_000;
 
     private static readonly string[] EndStates = ["done", "stopped", "pass_end", "failed"];
 

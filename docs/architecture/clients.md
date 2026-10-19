@@ -206,7 +206,8 @@ environment: every PYTHON* variable removed; PYTHONHASHSEED=0, PYTHONIOENCODING=
 hash randomisation on refuses to run, because set and str-keyed order would differ between a report run and its
 confirmed run. A worker serves one run and exits: it moves the protocol to private descriptors numbered 100 and up
 (fd 0 becomes the null device, fd 1 stderr), says `hello` and takes `run.code` from the `welcome`, sends
-`run_analysis` before any code runs, runs the code as a function body, and always sends `run_end` — `done`, `stopped`,
+`run_analysis` before any code runs, runs the code as a function body (sending what it prints as `run_printed`
+pieces before each sg call and at 8 KB, so the hub journals it), and always sends `run_end` — `done`, `stopped`,
 `pass_end` or `failed` — then exits at once (`worker.py:1-45`, `:57-100`). The hub keeps the run's end state itself
 and kills the worker after `run_end` ([hub.md](hub.md), *Runs*).
 

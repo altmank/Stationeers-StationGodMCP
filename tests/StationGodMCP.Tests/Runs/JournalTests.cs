@@ -172,7 +172,7 @@ public sealed class JournalTests : IDisposable
         Assert.False(links[1].SessionEnded);
         Assert.Equal(true, links[1].ClosedWithBye);
         string line = Assert.Single(first);
-        Assert.Contains("killed in an earlier session", line);
+        Assert.Contains("ended by hub restart in an earlier session", line);
         Assert.Contains("held restores applied: 7 On=0", line);
         Assert.DoesNotContain("7 On=1", line);
         Assert.False(File.Exists(path));
@@ -243,6 +243,68 @@ public sealed class JournalTests : IDisposable
 
         Assert.True(File.Exists(journal.FilePath));
         Assert.DoesNotContain("\"retired\"", File.ReadAllText(journal.FilePath));
+    }
+
+    [PythonFact]
+    public async Task ARunTheHubsEndStoppedKeepsItsPrintedOutputForTheNextHub()
+    {
+        Journal journal = Journal.Open(_folder, "hub-00000000000000b1", mcp: true, () => "world-1");
+        RunBench bench = new(adjust: settings => new RunHostSettings
+        {
+            SgRoot = settings.SgRoot,
+            CleanupWindow = TimeSpan.FromSeconds(20),
+            Journal = journal
+        });
+        await bench.StartAsync("for i in range(3):\n    print('sample', i)\ntry:\n    sg.wait(600)\nfinally:\n" +
+                               "    print('closing')", confirm: false, line: 4);
+        // Printed before the wait is on disk while the run is live: a hub killed now still leaves it.
+        await RunBench.UntilAsync(() => journal.Lines().Any(line => line.Contains("sample 2")), "the printed line");
+
+        await bench.Host.EndSessionAsync();
+        await bench.DisposeAsync();
+
+        RunWorld world = new();
+        await using RunHost next = new(world, new VerbPipeline(world), new SeenSet(), new RunHostSettings());
+        next.StartAdoption(_folder, null, _ => new FakeTokenLink(reachable: false));
+        List<string> first = await next.NoticesAsync("read", "logic", null);
+        string id = "script-" + Environment.ProcessId + ".1";
+        VerbReply inspected = (await next.InspectJobAsync(new JsonObject { ["id"] = id }))!;
+        VerbReply.Failed oldId = Assert.IsType<VerbReply.Failed>(await next.InspectJobAsync(new JsonObject { ["id"] = "script-1" }));
+
+        string notice = Assert.Single(first);
+        Assert.StartsWith($"notice: {id} (for i in range(3):) ended by hub restart in an earlier session", notice);
+        Assert.Contains($"inspect {{what: \"job\", id: \"{id}\"}}", notice);
+        string text = (string)((VerbReply.Done)inspected).Reply!["text"]!;
+        Assert.StartsWith($"{id} stopped: session_end (ended by hub restart", text);
+        Assert.Contains("sample 0\nsample 1\nsample 2\nclosing", text);
+        Assert.Contains(id, oldId.Message);
+    }
+
+    [Fact]
+    public async Task AnAdoptedRunKeepsItsReturnedValueAndARunWithNoEndLineIsEndedByHubRestart()
+    {
+        Directory.CreateDirectory(_folder);
+        File.WriteAllText(Path.Combine(_folder, "4250-1000.jsonl"), string.Join("\n",
+            """{"t":"hub","hub":"4250-1000","token":"hub-6666666666666666","world":"world-1","mcp":true}""",
+            """{"t":"run","run":"script-7","first_line":"x = 1","confirm":false,"world":"world-1"}""",
+            """{"t":"printed","run":"script-7","text":"a\n"}""",
+            """{"t":"end","run":"script-7","state":"done","left":[],"returned":{"total":42}}""",
+            """{"t":"run","run":"script-8","first_line":"y = 2","confirm":false,"world":"world-1"}""",
+            """{"t":"printed","run":"script-8","text":"first\n"}""",
+            """{"t":"printed","run":"script-8","text":"second\n"}""") + "\n");
+        RunWorld world = new();
+        await using RunHost host = new(world, new VerbPipeline(world), new SeenSet(), new RunHostSettings());
+
+        host.StartAdoption(_folder, null, _ => new FakeTokenLink(reachable: false));
+        List<string> first = await host.NoticesAsync("read", "logic", null);
+        JsonNode done = ((VerbReply.Done)(await host.InspectJobAsync(new JsonObject { ["id"] = "script-4250.7" }))!).Reply!;
+        JsonNode killed = ((VerbReply.Done)(await host.InspectJobAsync(new JsonObject { ["id"] = "script-4250.8" }))!).Reply!;
+
+        string notice = Assert.Single(first);
+        Assert.StartsWith("notice: script-4250.8 (y = 2) ended by hub restart in an earlier session", notice);
+        Assert.Contains("returned: {\"total\":42}", (string)done["text"]!);
+        Assert.Contains("first\nsecond", (string)killed["text"]!);
+        Assert.Contains("ended by hub restart: the hub that ran it ended before the run did", (string)killed["text"]!);
     }
 
     internal static RunHostSettings WithJournal(RunHostSettings settings, IRunJournal journal) => new()

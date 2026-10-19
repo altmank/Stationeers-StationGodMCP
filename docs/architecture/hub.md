@@ -159,6 +159,11 @@ reply) and exits:
 `state` is `done`, `stopped` (an `sg.Stopped` reached the top), `pass_end` (a report pass ended) or `failed` (any
 other exception; `error` is the failed-run text of note 22, built in the worker).
 
+While the code runs, the worker sends what it has printed since the last piece as `{"type":"run_printed","text":
+"..."}` (no reply; pieces of at most 8192 characters) before each sg call, whenever 8 KB wait, and before `run_end`.
+The hub journals each piece (`printed` lines), so a run cut off by the hub's end keeps its output; `run_end`'s
+`printed` still carries the whole of it.
+
 ### The seen set
 
 One set per hub (a documented limit: runs and the direct face share it). It holds:
@@ -260,7 +265,9 @@ for the life of the hub. Lines are JSON, appended and flushed before the call th
   served the same game (the hub line's `target`, pipe or host:port, when both say); a `--hub` child never adopts.
   Adopted runs keep their ids with the old hub's prefix: `script-<pid>.N`, or `script-<pid>-<last 5 digits of its
   start ms>.N` when two journals share a pid (a reused pid).
-- Besides the lines above: `hold_cleared` (`{run, id, logic}`, a hold's registration gone: restored, cleared, or
+- Besides the lines above: `printed` (`{run, text}`, a piece of the run's printed output, up to 1,000,000 characters a
+  run; past that one `{run, cut: true}`), and the `end` line also carries `returned` (up to 1,000,000 characters of
+  JSON), `error`, and `stop_code` and `stop` when a stop ended the run. `hold_cleared` (`{run, id, logic}`, a hold's registration gone: restored, cleared, or
   never made) and `world` (`{world, holds_dropped}`, a world change that dropped live runs' holds). The `hold` line is
   written before its `hold_restore set` goes. Each line is one write, so a line torn by a crash never runs into the
   next; adoption skips and counts torn lines.
@@ -268,7 +275,10 @@ for the life of the hub. Lines are JSON, appended and flushed before the call th
   (inside the window) send `session_end`, close without `bye`, and reconnect with the token after about a second; the
   `welcome.restores` it then gets (or got first) is appended as a `restores` line. Then `bye`.
 - The next session's first reply carries one line per adopted run that left something, with before-values and the held
-  restores applied or skipped. `undo script-<pid>.N` works from the journal in the same world.
+  restores applied or skipped, and one per run ended by hub restart (the hub's stdin closed, stop code `session_end`,
+  or no end line at all), naming `inspect job script-<pid>.N`, which shows its journalled printed output and returned
+  value. Runs cannot outlive their hub (each worker talks to it over its own stdin and stdout, and dies with it); the
+  journal is what survives. `inspect job script-N` for an id this hub never had names the adopted run of that number. `undo script-<pid>.N` works from the journal in the same world.
 - A journal retires (`retired` line, then the file may be deleted) when every run in it is ended and reported, after
   the reply that reported it has gone; an adopted journal that held restores whose outcomes could not be read is kept
   for the next hub.

@@ -318,13 +318,39 @@ public sealed class Journal : IRunJournal, IDisposable
         ["logic"] = logic
     });
 
+    /// <summary>The longest returned value (as JSON text) an end line carries; a longer one is noted, not kept.</summary>
+    internal const int JournalledReturned = 1_000_000;
+
+    public void Printed(RunRecord run, string text, bool cut)
+    {
+        JsonObject line = new() { ["t"] = "printed", ["run"] = run.Id };
+        if (cut)
+        {
+            line["cut"] = true;
+        }
+        else
+        {
+            line["text"] = text;
+        }
+
+        Append(line);
+    }
+
     public void Ended(RunRecord run)
     {
         JsonArray left = [];
         string state;
+        JsonNode? returned;
+        string? error;
+        string? stopCode;
+        string? stopMessage;
         lock (run.Sync)
         {
             state = Run.StateWord(run.State);
+            returned = run.Returned?.DeepClone();
+            error = run.Error;
+            stopCode = run.StopCode;
+            stopMessage = run.StopMessage;
             foreach (LeftTarget target in run.Left)
             {
                 left.Add(new JsonObject
@@ -337,7 +363,27 @@ public sealed class Journal : IRunJournal, IDisposable
             }
         }
 
-        Append(new JsonObject { ["t"] = "end", ["run"] = run.Id, ["state"] = state, ["left"] = left });
+        JsonObject end = new() { ["t"] = "end", ["run"] = run.Id, ["state"] = state, ["left"] = left };
+        if (returned != null)
+        {
+            int length = returned.ToJsonString(LineOptions).Length;
+            end["returned"] = length <= JournalledReturned
+                ? returned
+                : $"(the returned value, {length} characters of JSON, was too long to journal)";
+        }
+
+        if (error != null)
+        {
+            end["error"] = error;
+        }
+
+        if (stopCode != null)
+        {
+            end["stop_code"] = stopCode;
+            end["stop"] = stopMessage;
+        }
+
+        Append(end);
     }
 
     public void WorldChanged(string? world, List<string> holdsDropped)

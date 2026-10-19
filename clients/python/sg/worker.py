@@ -21,7 +21,8 @@ reach the next one. It:
    worker;
 3. sends run_analysis before any user code runs;
 4. runs the code as a function body with `sg`, `print` (tables for row lists) and `time.sleep` (sg.wait) in place,
-   capturing what it prints;
+   capturing what it prints and sending it to the hub as it goes (run_printed, before each sg call and whenever 8 KB
+   are waiting), so the hub journals it and a run cut off by the hub's end keeps its output;
 5. sends run_end {state, returned, printed, error} whatever happened: done, stopped, pass_end or failed;
 6. exits at once (os._exit, bound at import so the code cannot replace it), so threads the code left behind cannot
    hold the process or make more calls.
@@ -48,6 +49,7 @@ BOOT = "import sys; sys.path.insert(0, sys.argv[1]); import sg.worker; sg.worker
 CLIENT_NAME = "sg-worker"
 HUB_GONE_GRACE_S = 2.0
 PROTOCOL_FD_FLOOR = 100
+PRINTED_CHUNK = 8192
 
 # Bound now, before any user code runs: a run that replaces os._exit or threading.Timer cannot keep the worker alive.
 _hard_exit = os._exit
@@ -164,9 +166,10 @@ def run_one(transport, run):
 
     import sg  # the package itself, as the code sees it
     namespace = {"__name__": "__script__", "__builtins__": builtins, "sg": sg, "print": run_print}
-    printed = io.StringIO()
+    printed = StreamedOutput(transport)
     run_state = _session.Run(run.get("id"), analysis.while_lines, scripts_dir=run.get("scripts_dir"),
                              world=run.get("world"))
+    run_state.before_call = printed.send_pending
     _session.begin_run(run_state)
     sys.stdout = sys.__stdout__ = printed
     time.sleep = sg.wait
@@ -185,8 +188,45 @@ def run_one(transport, run):
         exception = error
     returned = returnable(returned)
     sys.stdout = sys.__stdout__ = sys.stderr
+    printed.send_pending()
     state, error = end_state(run_state.stop, exception, source)
     return _run_end(state, returned, printed.getvalue(), error)
+
+
+class StreamedOutput(io.StringIO):
+    """What the run prints: kept whole for run_end, and sent to the hub in pieces of at most PRINTED_CHUNK characters
+    as run_printed messages (no reply) when send_pending is called (before each sg call, at the end) or when a piece
+    is full. A piece that cannot be sent (the hub is gone) is dropped: run_end still carries everything."""
+
+    def __init__(self, transport):
+        super().__init__()
+        self._transport = transport
+        self._pending = []
+        self._pending_length = 0
+        self._lock = threading.Lock()
+
+    def write(self, text):
+        written = super().write(text)
+        with self._lock:
+            self._pending.append(text)
+            self._pending_length += len(text)
+            full = self._pending_length >= PRINTED_CHUNK
+        if full:
+            self.send_pending()
+        return written
+
+    def send_pending(self):
+        with self._lock:
+            if not self._pending:
+                return
+            text = "".join(self._pending)
+            self._pending = []
+            self._pending_length = 0
+        for start in range(0, len(text), PRINTED_CHUNK):
+            try:
+                self._transport.send({"type": "run_printed", "text": text[start:start + PRINTED_CHUNK]})
+            except Exception:  # noqa: BLE001 - the hub is gone: run_end (if it can still go) carries it all
+                return
 
 
 def end_state(stop, exception, source):

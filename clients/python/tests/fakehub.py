@@ -26,9 +26,10 @@ RUN_REFUSED_MESSAGES = ("stream_end", "release", "cursor_close", "session_end")
 RUN_CALLS_ONLY = ("a run's session calls verb, ref, more, wait, hold, subscribe and unsubscribe; other mod methods "
                   "go through verb")
 
-# Every message a session takes besides hello (protocol.md, Framing); run_analysis and run_end belong to a run.
+# Every message a session takes besides hello (protocol.md, Framing); run_analysis, run_printed and run_end belong to a
+# run.
 KNOWN_MESSAGES = ("call", "cancel", "stream_end", "release", "cursor_close", "session_end", "bye",
-                  "run_analysis", "run_end")
+                  "run_analysis", "run_printed", "run_end")
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PACKAGE_ROOT = os.path.dirname(HERE)

@@ -135,6 +135,9 @@ public interface IRunJournal
 
     void Ended(RunRecord run);
 
+    /// <summary>A piece of the run's printed output as it arrived; cut true once the run printed more than is journalled.</summary>
+    void Printed(RunRecord run, string text, bool cut);
+
     void WorldChanged(string? world, List<string> holdsDropped);
 
     /// <summary>True when the journal wants a confirmed logic write's before values ahead of the call line.</summary>
@@ -198,6 +201,10 @@ public sealed class NoRunJournal : IRunJournal
     }
 
     public void Ended(RunRecord run)
+    {
+    }
+
+    public void Printed(RunRecord run, string text, bool cut)
     {
     }
 
@@ -320,6 +327,15 @@ public sealed class RunRecord
 
     /// <summary>True for a run of an earlier hub, read from its journal.</summary>
     public bool Adopted { get; internal set; }
+
+    /// <summary>
+    /// For an adopted run: true when the hub that ran it ended first (stdin closed by a client restart or reconnect, or the
+    /// process gone) and so ended the run; its printed output and returned value are what the journal kept.
+    /// </summary>
+    public bool EndedByHubRestart { get; internal set; }
+
+    /// <summary>For an adopted run: true when it printed more than the journal keeps (Run.JournalledPrinted).</summary>
+    public bool PrintedCut { get; internal set; }
 
     /// <summary>The sg calls the worker made.</summary>
     public int Calls { get; internal set; }
