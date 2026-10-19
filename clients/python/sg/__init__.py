@@ -11,11 +11,15 @@ sg never talks to the mod directly: every call is the hub protocol over the hub'
 (docs/architecture/hub.md). sg.help(verb, what) gives any what's options and reply.
 """
 from . import _session, _transport
-from . import lib
+from . import geom, lib
 from ._errors import Error, Stopped
 from ._follow import Following, follow
 from ._helpers import changes, help, hold, jobs, ref, script, wait, watch
+from ._jobs_wait import until_job
 from ._replies import MainList, Reply, Row
+from ._rows import failed, ok
+from ._trace import trace
+from ._values import value, values
 from ._transport import VERSION as __version__
 from ._verbs import (build, check, find, inspect, move, plan, read, remove, server, show, survey, swap, trade, undo,
                      write)
@@ -24,6 +28,7 @@ __all__ = [
     "Error", "Stopped", "Reply", "MainList", "Row", "connect", "close",
     "find", "inspect", "survey", "read", "write", "plan", "check", "build", "swap", "remove", "move", "trade", "show",
     "undo", "server", "help", "ref", "wait", "watch", "changes", "jobs", "hold", "script", "follow", "Following",
+    "ok", "failed", "values", "value", "trace", "until_job", "geom",
 ]
 
 

@@ -184,11 +184,15 @@ class WorkerTests(WorkerCase):
         handler = lambda method, params: refused("thing_not_found", "No thing with reference id 99.",  # noqa: E731
                                                  fix="find it first: sg.find('thing')")
         _, end = self.serve_one("dev = '99'\nsg.inspect('device', id=dev)\n", handler)
+        lines = end["error"].split("\n")
         self.assertEqual(["line 2: sg.inspect('device', id=dev)",
                           "sg.Error: thing_not_found: No thing with reference id 99.",
                           "call: sg.inspect('device', id='99'); code: thing_not_found; "
                           "fix: find it first: sg.find('thing'); maybe_ran: false",
-                          "values: dev = '99'"], end["error"].split("\n"))
+                          "values: dev = '99'",
+                          "last calls:"], lines[:5])
+        self.assertEqual(1, len(lines[5:]))
+        self.assertRegex(lines[5], r'^  inspect\.device \{"id":"99"\} [0-9.]+ms error thing_not_found$')
 
     def test_a_syntax_error_fails_the_run_before_anything_runs(self):
         hub, end = self.serve_one("x = (\n")

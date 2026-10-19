@@ -6,7 +6,9 @@ compiles the code under the file name "<script>", so the line is found by walkin
 from that file. Outside a run (a program using sg.connect()) there is no such frame and the line is None.
 """
 import sys
+import time
 
+from . import _trace
 from ._errors import Error, Stopped, _PassEnd, from_error
 
 SCRIPT_FILENAME = "<script>"
@@ -114,11 +116,22 @@ def request(method, params, call=None, line=True):
     params = dict(params)
     if line:
         params["line"] = at
-    reply = current_transport().call(method, params)
+    transport = current_transport()
+    started = time.monotonic()
+    try:
+        reply = transport.call(method, params)
+    except Exception as raised:
+        _trace.record_raised(method, params, (time.monotonic() - started) * 1000, raised)
+        if isinstance(raised, Error):
+            _trace.annotate(raised)
+        raise
+    _trace.record(method, params, (time.monotonic() - started) * 1000, reply)
     if reply.get("ok"):
         return reply.get("result")
     exception = from_error(reply.get("error"), call=call if call is not None else {"method": method, **params},
                            line=at)
     if _run is not None and _replaces(_run.stop, exception):
         _run.stop = exception
+    if isinstance(exception, Error):
+        _trace.annotate(exception)
     raise exception

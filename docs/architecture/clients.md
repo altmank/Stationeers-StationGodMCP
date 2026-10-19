@@ -63,6 +63,11 @@ clients/python/
     _replies.py           Reply, Row, MainList (paging with the hub's `more`)
     _verbs.py, _verbs.pyi generated: one function per verb (not help or run_script); IDE stubs, one overload per what
     _helpers.py           wait, watch, changes, jobs, hold, ref, script, help
+    _rows.py              ok, failed
+    _values.py            values, value
+    _trace.py             trace (the last 20 calls; the last 5 on every sg.Error)
+    _jobs_wait.py         until_job
+    geom.py               sg.geom: cells, merge_rects, tiles (pure Python, no hub call)
     _catalogue.py         generated tables: verbs, whats, write whats, main lists, topics
     lib.py                saved scripts as modules (`from sg.lib import <name>`)
     worker.py             the run_script worker
@@ -120,6 +125,72 @@ its stdin is closed at exit, and on Windows it is in a kill-on-close Job Object 
 - `hold` registers the restore with the mod before it writes, so the mod also applies it at session end or after an
   unresumed disconnect, in the same world, while the target still holds the run's last written value
   (`_helpers.py:387-430`).
+
+### Library helpers
+
+These read replies on both faces: one id answers the what's one-id shape in a run and `{results: [row]}` in a
+program ([hub.md](hub.md), *Faces*).
+
+**`sg.ok(reply)`, `sg.failed(reply)`** (`_rows.py`). `ok` returns the reply's result rows when every one is ok, and
+raises one `sg.Error("rows_failed")` otherwise: its message names each failed row (`row 1 (6): not_found: no such
+id`, then `(fix: ...)` when the row has a fix), its `data` holds the failed rows. `failed` returns the failed rows. A
+reply with no `results` (one id in a run) is one good row: `ok` returns `[reply]`, `failed` `[]`. Rows behind a
+cursor are paged in first.
+
+```python
+rows = sg.ok(sg.write('logic', id=pumps, logic='On', value=1))
+```
+
+**`sg.values(ids, *logic)`, `sg.value(id, logic)`** (`_values.py`). `values` reads every id for every logic type with
+`read logic`'s `reads` (rows on every face), split into as few calls as its bounds allow: 256 pairs with one logic
+type, else `min(128, 1024 // len(logic))` devices per call. It returns `{id: {Logic: value}}` keyed by the id as
+replies give it (text; `result[7]` finds `result['7']`). ids may be ids, rows or a main list. Every failed read is
+raised together, after the last call, as one `sg.Error("read_failed")` whose `data.failed` lists `{id, logic,
+code}`. `value` returns one float.
+
+```python
+temps = sg.values(sg.find('thing', prefab='*Tank*')['things'], 'Pressure', 'Temperature')
+```
+
+**`sg.trace()`** (`_trace.py`). The last 20 calls sg made, newest last: `{verb, what, args, ms, ok, code}`, `args`
+as JSON cut to 120 characters, hub methods other than `verb` (`wait`, `more`, `subscribe`) under their own name with
+`what` None. A call whose connection failed is recorded with `ok` false and the raised error's code. Every
+`sg.Error` raised by a call or by these helpers carries the last 5 calls after its message (`str(error)`, and
+`error.last_calls`); a failed run's text puts them after the values line.
+
+**`sg.until_job(reply_or_ids, timeout)`** (`_jobs_wait.py`). Waits until the jobs a write started end and returns
+`{job_ids, created_ids, removed, changed, placed}`, merged in order, in the shape a `job_ended` event gives them
+(`Pure/Layout/JobEndFacts.cs`); a swap or upgrade job's top-level `swapped` and `removed` are read too. It takes a
+write's reply (one job, or rows naming several), a job id or a list of them. It subscribes to the jobs topic first,
+then reads each job with `inspect job` (`max_wait: 0`): the mod sends `job_ended` only to subscriptions open when
+the job ends and the hub replays none (`Protocol/SubscriptionHub.cs`, `Hub/HubSession.Relay.cs`), so a job that
+ended earlier is found by the read. Without a live subscription it reads the jobs every second; with one, every 5 s
+as well (a run hears only its own jobs' events). A job that ended with an error raises `sg.Error("job_failed")`;
+the timeout raises `sg.Error("timeout", maybe_ran=True)`; a reply naming no job, or no ids, raises
+`invalid_argument`. A report (`report_only`) comes back as it is, and in a report run a wait the hub answers at once
+ends it with `report_only: True`.
+
+```python
+done = sg.until_job(sg.build('pipe', waypoints=path), timeout=120)
+sg.write('label', id=done['created_ids'], label='Fuel')
+```
+
+**`sg.geom`** (`geom.py`). Grid arithmetic in pure Python, no hub call. The large grid (`size=2`) has 2 m cells
+centred on odd metres, the cell around x spanning `[x-1, x+1]` (`Pure/Layout/LargeCells.cs`, `Centre`); the small
+grid (`size=0.5`) has 0.5 m cells centred on multiples of 0.5 m (`Pure/Routing/GridStep.cs`). A box is two corners
+`[[x, y, z], [x, y, z]]` in any order, as the verbs' `box` takes it, and covers every cell whose centre lies inside
+it, sides included. Boxes sg.geom returns are the cells' outer bounds, so a verb given one takes the same cells.
+
+- `cells(box, size=2)`: the cell centres `(x, y, z)` in the box, y then z then x ascending.
+- `merge_rects(cells, size=2)`: boxes that cover exactly the given cells, each cell once; greedy, growing along x,
+  then z, then y.
+- `tiles(box, max_cells, size=2)`: boxes of at most `max_cells` cells each, of even size, covering exactly the box's
+  cells (for verbs that bound a box's size).
+
+```python
+for part in sg.geom.tiles([[0, 0, 0], [24, 2, 24]], 64):
+    sg.remove('structure', box=part, prefab='StructureFrame')
+```
 
 ### Runs: the worker
 

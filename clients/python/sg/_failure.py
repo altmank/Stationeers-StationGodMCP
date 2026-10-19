@@ -2,7 +2,7 @@
 
 In order: `line N: <source>`; the exception type and message; for sg.Error the call sent, its code, fix and
 maybe_ran; for a KeyError on a reply dict the keys it has, nearest first; the values of the names on that line, each
-cut at 80 characters.
+cut at 80 characters; for sg.Error the last calls sg made (sg.trace), one line each.
 """
 import difflib
 import io
@@ -32,8 +32,11 @@ def failed_text(exception, source):
     if line is not None:
         text = source_lines[line - 1].strip() if 0 < line <= len(source_lines) else ""
         parts.append(f"line {line}: {text}")
-    parts.append(f"{exception_name(exception)}: {exception}")
-    if isinstance(exception, Error):
+    error = isinstance(exception, Error)
+    # An sg.Error's str() carries the last calls after its message: they go at the end here, after the values.
+    parts.append(f"{exception_name(exception)}: " +
+                 (f"{exception.code}: {exception.message}" if error else str(exception)))
+    if error:
         parts.append(f"call: {call_text(exception.call)}; code: {exception.code}; fix: {exception.fix}; "
                      f"maybe_ran: {str(exception.maybe_ran).lower()}")
     keys = getattr(exception, "reply_keys", None)
@@ -43,6 +46,9 @@ def failed_text(exception, source):
         values = line_values(source_lines[line - 1], frame)
         if values:
             parts.append("values: " + "; ".join(values))
+    if error and getattr(exception, "last_calls", None):
+        parts.append("last calls:")
+        parts.extend(exception.last_calls)
     return "\n".join(parts)
 
 

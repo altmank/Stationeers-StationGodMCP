@@ -1,5 +1,27 @@
 # Changelog
 
+## 2.5.1
+
+- **`sg.ok(reply)` and `sg.failed(reply)`.** `ok` returns a reply's result rows when every one is ok and raises one
+  `sg.Error("rows_failed")` naming each failed row's index, `reference_id`, code and message (and its fix, when the
+  row has one), the failed rows as `data`; `failed` lists them. A one-id reply with no `results` is one good row, so
+  both work on a script's one-id shape and on a program's rows; rows behind a cursor are paged in.
+- **`sg.values(ids, *logic)` and `sg.value(id, logic)`.** Logic values of many devices in as few `read logic` calls
+  as its limits allow (256 pairs, or 128 items and 1,024 values per call), as `{id: {Logic: value}}` keyed by the
+  replies' id text (an int id finds the same entry); every failed read is raised together as one
+  `sg.Error("read_failed")`.
+- **`sg.trace()`**: the last 20 calls sg made (`verb`, `what`, `args` cut to 120 characters, `ms`, `ok`, `code`),
+  calls whose connection failed included. Every `sg.Error` carries the last 5 after its message, in a program and in
+  a `run_script` run, where a failed run's text lists them after the values.
+- **`sg.until_job(reply_or_ids, timeout)`** waits for the jobs a write started (its reply on either face, a job id or
+  a list) and returns `{job_ids, created_ids, removed, changed, placed}` merged across them; a swap or upgrade job's
+  `swapped` counts as `changed` and its new ids as `created_ids`. It raises `job_failed` for a job that ended with an
+  error and `timeout` (`maybe_ran`) at the timeout; a report returns as it is.
+- **`sg.geom`**, pure Python: `cells(box, size=2)` lists the cell centres a box holds (2 m cells on odd metres, or
+  0.5 m cells on half metres), `merge_rects(cells, size=2)` boxes covering exactly the given cells, and
+  `tiles(box, max_cells, size=2)` cuts a box into boxes of at most `max_cells` cells.
+- **sg 0.4.9.**
+
 ## 2.5.0
 
 - **New `build item`** (a cheat, creative worlds only; `not_creative` elsewhere): makes items out of nothing by
