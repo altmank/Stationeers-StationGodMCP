@@ -119,10 +119,11 @@ public sealed partial class VerbPipeline
 
     /// <summary>
     /// A direct plan route or plan spot call's shaping as sent: the caller's fields with build_arguments added when they
-    /// leave it out (Hidden), and the caller's omit without the selectors that would drop it (Omitted). Shown takes those
-    /// back out of the reply, so the caller sees what was asked and the ref keeps the whole plan.
+    /// do not name it whole (Hidden; Parts holds the keys of it they did name, as build_arguments.branches names
+    /// branches), and the caller's omit without the selectors that would drop it (Omitted). Shown takes those back out
+    /// of the reply, so the caller sees what was asked and the ref keeps the whole plan.
     /// </summary>
-    private sealed record PlanShaping(JsonObject Sent, bool Hidden, IReadOnlyList<string> Omitted)
+    private sealed record PlanShaping(JsonObject Sent, bool Hidden, IReadOnlyList<string> Parts, IReadOnlyList<string> Omitted)
     {
         internal JsonNode? Shown(JsonNode planned)
         {
@@ -133,7 +134,7 @@ public sealed partial class VerbPipeline
 
             if (Hidden)
             {
-                HideArguments(shown);
+                HideArguments(shown, Parts);
             }
 
             foreach (string omitted in Omitted)
@@ -158,7 +159,9 @@ public sealed partial class VerbPipeline
 
         JsonArray? fields = options[SidecarArguments.FieldsArgument] as JsonArray;
         JsonArray? omit = options[SidecarArguments.OmitArgument] as JsonArray;
-        bool hidden = fields != null && !fields.Any(field => JsonNodes.Text(field)?.Contains(PlanArgumentsKey) == true);
+        List<string> selectors = fields?.Select(JsonNodes.Text).OfType<string>().Select(field => field.Trim()).ToList() ?? [];
+        bool hidden = fields != null && !selectors.Any(NamesWholeArguments);
+        List<string> parts = selectors.Select(ArgumentsPart).OfType<string>().Distinct().ToList();
         List<string> omitted = omit?.Select(JsonNodes.Text).OfType<string>().Where(DropsArguments).ToList() ?? [];
         if (!hidden && omitted.Count == 0)
         {
@@ -178,24 +181,37 @@ public sealed partial class VerbPipeline
             sent[SidecarArguments.OmitArgument] = kept.Count > 0 ? kept : null;
         }
 
-        return new PlanShaping(sent, hidden, omitted);
+        return new PlanShaping(sent, hidden, parts, omitted);
+    }
+
+    // build_arguments as a whole: by its name, or as spots.build_arguments.
+    private static bool NamesWholeArguments(string selector) =>
+        selector == PlanArgumentsKey || selector == "spots." + PlanArgumentsKey;
+
+    // The key of build_arguments a path names (build_arguments.branches, spots.build_arguments.at.0): branches, at.
+    private static string? ArgumentsPart(string selector)
+    {
+        string[] steps = selector.Split('.');
+        int at = Array.IndexOf(steps, PlanArgumentsKey);
+        return at >= 0 && at + 1 < steps.Length ? steps[at + 1] : null;
     }
 
     // An omit selector that leaves build_arguments out: it names it, or the spots that hold it.
     private static bool DropsArguments(string selector) =>
         selector.Contains(PlanArgumentsKey) || selector.Trim() == "spots";
 
-    // build_arguments out of the reply's top and its top-level lists' entries; a list left holding only empty entries
-    // goes (fields kept it for build_arguments alone), and so does the added name's fields_unmatched mention.
-    private static void HideArguments(JsonObject shown)
+    // build_arguments out of the reply's top and its top-level lists' entries, or cut to the parts the caller's fields
+    // named; a list left holding only empty entries goes (fields kept it for build_arguments alone), and so does the
+    // added name's fields_unmatched mention.
+    private static void HideArguments(JsonObject shown, IReadOnlyList<string> parts)
     {
-        shown.Remove(PlanArgumentsKey);
+        CutArguments(shown, parts);
         foreach (string name in shown.Where(pair => pair.Value is JsonArray).Select(pair => pair.Key).ToList())
         {
             JsonArray entries = (JsonArray)shown[name]!;
             foreach (JsonObject entry in entries.OfType<JsonObject>())
             {
-                entry.Remove(PlanArgumentsKey);
+                CutArguments(entry, parts);
             }
 
             if (entries.Count > 0 && entries.All(entry => entry is JsonObject { Count: 0 }))
@@ -220,6 +236,20 @@ public sealed partial class VerbPipeline
             shown.Remove(UnmatchedKey);
             shown.Remove(ClosestKey);
             shown.Remove(ValidKey);
+        }
+    }
+
+    private static void CutArguments(JsonObject holder, IReadOnlyList<string> parts)
+    {
+        if (parts.Count == 0 || holder[PlanArgumentsKey] is not JsonObject arguments)
+        {
+            holder.Remove(PlanArgumentsKey);
+            return;
+        }
+
+        foreach (string key in arguments.Select(pair => pair.Key).Where(key => !parts.Contains(key)).ToList())
+        {
+            arguments.Remove(key);
         }
     }
 

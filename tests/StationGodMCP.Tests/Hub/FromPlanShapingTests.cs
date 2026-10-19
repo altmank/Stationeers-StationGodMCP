@@ -1,5 +1,6 @@
 #nullable enable
 
+using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json.Nodes;
 using StationGodMCP.Client;
@@ -37,8 +38,24 @@ public sealed class FromPlanShapingTests
             string[] selectors = fields.Select(field => (string)field!).ToArray();
             foreach (string key in shaped.Select(pair => pair.Key).ToList())
             {
-                if (selectors.Any(selector => selector.Split('.')[0] == key))
+                if (selectors.Contains(key))
                 {
+                    continue;
+                }
+
+                // A path into a top-level object keeps only the keys it names there.
+                List<string> named = selectors.Where(selector => selector.Split('.')[0] == key && selector.Contains('.'))
+                    .Select(selector => selector.Split('.')[1]).ToList();
+                if (named.Count > 0)
+                {
+                    if (shaped[key] is JsonObject kept)
+                    {
+                        foreach (string name in kept.Select(pair => pair.Key).Where(name => !named.Contains(name)).ToList())
+                        {
+                            kept.Remove(name);
+                        }
+                    }
+
                     continue;
                 }
 
@@ -129,6 +146,22 @@ public sealed class FromPlanShapingTests
 
         Assert.Equal(["found", "route", "ref"], shown.AsObject().Select(pair => pair.Key));
         Assert.Contains("build_arguments", (string)JsonNode.Parse(game.Single("plan").Shape!.Value.GetRawText())!["fields"]![2]!);
+    }
+
+    [Theory]
+    [InlineData("""{"fields":["build_arguments.grade"]}""")]
+    [InlineData("""{"fields":["found","build_arguments.grade","build_arguments.join"]}""")]
+    public void FieldsNamingPartOfTheArgumentsShowThatPartAndTheRefBuildsTheWholeRoute(string shaping)
+    {
+        FakeGameLink game = Planning(RoutePlan);
+        VerbPipeline pipeline = game.Pipeline();
+        List<string> asked = JsonNode.Parse(shaping)!["fields"]!.AsArray().Select(field => (string)field!)
+            .Where(field => field.StartsWith("build_arguments.")).Select(field => field["build_arguments.".Length..]).ToList();
+
+        JsonNode shown = Plan(pipeline, "route", shaping);
+
+        Assert.Equal(asked, shown["build_arguments"]!.AsObject().Select(pair => pair.Key));
+        Same(Arguments, Built(game, pipeline, (string)shown["ref"]!));
     }
 
     [Fact]
