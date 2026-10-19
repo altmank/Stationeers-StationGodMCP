@@ -106,18 +106,13 @@ class UntilJobTests(HubCase):
                           "changed": [{"old_reference_id": "6", "new_reference_id": "8"}],
                           "placed": [{"reference_id": "1"}]}, result)
 
-    def test_a_swap_jobs_event_without_lists_reads_its_final_reply(self):
-        # JobEndFacts reads a run's log and a structure job's result: a swap job's event has no list, its final reply
-        # has swapped at the top level.
+    def test_a_swap_jobs_event_carries_its_swapped_as_changed_and_created(self):
+        # JobEndFacts reads a swap or upgrade job's top-level swapped and removed: the event alone gives them, and
+        # the job is not read again once it has ended.
         inspected = {"swap-3": {"job_id": "swap-3", "status": "waiting"}}
-        final = {"job_id": "swap-3", "tool": "swap", "status": "applied", "swapped_count": 1, "not_swapped": [],
-                 "swapped": [{"old_reference_id": "20", "new_reference_id": "21", "prefab_name": "Wall",
-                              "target_prefab_name": "WallIron"}]}
-
-        def ends():
-            inspected["swap-3"] = final
-            self.hub.write(ended({"job_id": "swap-3", "tool": "swap", "status": "applied"}))
-        self.handler = self.make_handler(inspected, on_wait=ends)
+        event = {"job_id": "swap-3", "tool": "swap", "status": "applied", "created_ids": ["21"],
+                 "changed": [{"old_reference_id": "20", "new_reference_id": "21", "target_prefab_name": "WallIron"}]}
+        self.handler = self.make_handler(inspected, on_wait=lambda: self.hub.write(ended(event)))
         result = sg.until_job("swap-3", timeout=30)
         self.assertEqual({"job_ids": ["swap-3"], "created_ids": ["21"], "removed": [],
                           "changed": [{"old_reference_id": "20", "new_reference_id": "21",

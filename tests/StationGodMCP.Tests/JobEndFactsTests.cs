@@ -50,6 +50,28 @@ public sealed class JobEndFactsTests
     }
 
     [Fact]
+    public void ASwapOrUpgradeJobsFactsAreItsSwappedAndRemoved()
+    {
+        JObject reply = JObject.Parse("""
+            {"job_id": "swap-4", "tool": "swap pipe", "status": "applied",
+             "swapped": [{"old_reference_id": "11", "new_reference_id": "21", "prefab_name": "StructurePipeStraight",
+                          "target_prefab_name": "StructureInsulatedPipeStraight"}],
+             "swapped_count": 1, "removed": ["12"]}
+            """);
+
+        JObject facts = JobEndFacts.Of(reply);
+
+        Assert.Equal(new JArray("21"), facts["created_ids"]);
+        Assert.Equal(new JArray("12"), facts["removed"]);
+        Assert.Equal(new JArray(new JObject
+        {
+            ["old_reference_id"] = "11", ["new_reference_id"] = "21", ["target_prefab_name"] = "StructureInsulatedPipeStraight"
+        }), facts["changed"]);
+        Assert.Equal(new List<long> { 12, 11 }, JobEndFacts.Removed(facts));
+        Assert.Equal(new List<(long, string?)> { (21, "StructureInsulatedPipeStraight") }, JobEndFacts.Created(facts));
+    }
+
+    [Fact]
     public void AJobThatChangedNothingCarriesNoLists()
     {
         JObject facts = JobEndFacts.Of(Wire(new RunJobView("run-2", "build cable", "refused", null,

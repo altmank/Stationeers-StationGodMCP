@@ -8,8 +8,7 @@ inspect job: a job that ended before the subscription is seen by the read, one t
 The lists are the job's facts as the mod's JobEndFacts (Pure/Layout/JobEndFacts.cs) gives them in a job_ended event:
 created_ids, removed (ids), changed {old_reference_id, new_reference_id, target_prefab_name} and placed
 {reference_id, prefab_name}. A final reply read with inspect is turned into the same lists: a piece run's log, a
-structure job's result, and a swap or upgrade job's top-level swapped (as changed and created_ids) and removed, which
-JobEndFacts does not read, so an event that carries no list is followed by one inspect of its final reply.
+structure job's result, and a swap or upgrade job's top-level swapped (as changed and created_ids) and removed.
 """
 import time
 from collections.abc import Mapping
@@ -55,7 +54,7 @@ def until_job(reply_or_ids, timeout):
                 while job is not None:
                     job_id = str(job.get("job_id"))
                     if job_id in job_ids and job_id not in finished:
-                        finished[job_id] = _final_reply(job_id, job)
+                        finished[job_id] = job
                     job = subscription.take()
             for job_id in job_ids:
                 if job_id in finished:
@@ -137,18 +136,6 @@ def _inspect_job(job_id):
             raise raised
         reply = _payload(row)
     return reply if isinstance(reply, Mapping) else None
-
-
-def _final_reply(job_id, job):
-    """A job_ended event's job, or its final reply when the event carries no list (a swap or upgrade job's lists are
-    not in its facts); the event's job when the final reply can no longer be read."""
-    if any(job.get(name) for name in _LISTS):
-        return job
-    try:
-        final = _inspect_job(job_id)
-    except Error:
-        return job
-    return final if final is not None and _final(final) else job
 
 
 def _final(job):

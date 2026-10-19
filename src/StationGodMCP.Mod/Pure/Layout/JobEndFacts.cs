@@ -12,9 +12,12 @@ namespace StationGodMCP.Pure;
 /// from. {job_id, tool, status, error {code, message}, created_ids, removed, changed, placed}, each key present only
 /// when the job's final reply has it, a list only when it holds something:
 /// <list type="bullet">
-/// <item>created_ids: every id the job built, new and changed pieces (a run's log.created_ids);</item>
-/// <item>removed: every id it removed outright (a run's log.removed, a structure job's result.removed);</item>
-/// <item>changed: a run's changed pieces {old_reference_id, new_reference_id, target_prefab_name};</item>
+/// <item>created_ids: every id the job built, new and changed pieces (a run's log.created_ids, a swap or upgrade job's
+/// swapped new ids);</item>
+/// <item>removed: every id it removed outright (a run's log.removed, a structure job's result.removed, a swap or
+/// upgrade job's removed);</item>
+/// <item>changed: a run's changed pieces and a swap or upgrade job's swapped ones {old_reference_id, new_reference_id,
+/// target_prefab_name};</item>
 /// <item>placed: the new things {reference_id, prefab_name} (a run's log.placed, a structure job's result.placed).</item>
 /// </list>
 /// </summary>
@@ -43,6 +46,11 @@ internal static class JobEndFacts
             AddId(created, id);
         }
 
+        foreach (JToken swap in Array(reply["swapped"]))
+        {
+            AddId(created, swap["new_reference_id"]);
+        }
+
         JArray removed = new JArray();
         foreach (JToken id in Array(log?["removed"]))
         {
@@ -54,10 +62,20 @@ internal static class JobEndFacts
             AddId(removed, piece["reference_id"]);
         }
 
+        foreach (JToken id in Array(reply["removed"]))
+        {
+            AddId(removed, id);
+        }
+
         JArray changed = new JArray();
         foreach (JToken change in Array(log?["changed"]))
         {
             changed.Add(Change(change));
+        }
+
+        foreach (JToken swap in Array(reply["swapped"]))
+        {
+            changed.Add(Change(swap));
         }
 
         JArray placed = new JArray();
