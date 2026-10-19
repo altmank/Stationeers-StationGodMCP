@@ -151,6 +151,7 @@ internal static class LintModel
             .Field("temperature", numberOrNull, "Kelvin, at its first cell.")
             .Field("gases", gases, "Moles by gas name, at its first cell.")
             .Field("devices", things, "The devices and 2 m structures standing in it, among the things the lint call reads.")
+            .Field("door_count", number, "The doors, airlocks, hatches and force-field doors on the faces between its cells and the cells outside it.")
             .Field("position", vec, "Its first cell's centre.");
 
         Slot

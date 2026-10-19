@@ -201,6 +201,7 @@ The mod builds in only rules whose finding is a fact of the game's code in any w
 | `cable_grade_matches_network` | warning | audit | a cable lighter than its network's heaviest while the power through the network is more than its weakest cable carries (the power tick burns a cable rated below that flow) |
 | `fuel_oxidiser_mix_temperature` | warning | audit, write | a pipe network holding fuel and oxidiser above its auto-ignition temperature |
 | `deep_miner_column_clear` | warning | both | a frame or other full-cell structure in a deep miner's drill column, which stops it |
+| `room_without_door` | warning | audit | a room holding devices that no door, airlock, hatch or force-field door leads into: a player reaches them only by taking a wall down |
 
 Every other rule belongs to a world: a planet, a storm, a building style. Such rules live in that world's own
 `lint-rules.json`, in its save's folder, as whole rules (`id`, `level`, `on`, `select`, `let`, `assert`, `message`,
@@ -335,6 +336,7 @@ A room the game has found: cells sealed from the outside.
 | `temperature` | `number?` | Kelvin, at its first cell. |
 | `gases` | `map<number>` | Moles by gas name, at its first cell. |
 | `devices` | `list<thing>` | The devices and 2 m structures standing in it, among the things the lint call reads. |
+| `door_count` | `number` | The doors, airlocks, hatches and force-field doors on the faces between its cells and the cells outside it. |
 | `position` | `vec` | Its first cell's centre. |
 
 ### slot

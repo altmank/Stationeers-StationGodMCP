@@ -197,7 +197,11 @@ internal sealed class NetworkSubject : LintSubject
         : null;
 }
 
-/// <summary>A room of the lint model: its id, size, the air at its first cell, and the region's things in it.</summary>
+/// <summary>
+/// A room of the lint model: its id, size, the air at its first cell, the region's things in it, and the doors on its
+/// boundary (a face between one of its 2 m cells and a cell outside it holding a door, airlock, hatch or force-field door:
+/// Openings.IsDoor).
+/// </summary>
 internal sealed class RoomSubject : LintSubject
 {
     private readonly GameLintWorld _world;
@@ -232,6 +236,43 @@ internal sealed class RoomSubject : LintSubject
         }
     }
 
+    // Distinct doors on the faces between the room's cells and the cells outside it.
+    private int DoorCount()
+    {
+        GridController? grid = GridController.World;
+        if (grid == null)
+        {
+            return 0;
+        }
+
+        HashSet<WorldGrid> inside = new HashSet<WorldGrid>(_room.Grids);
+        HashSet<long> doors = new HashSet<long>();
+        int half = SmallCellCode.Large / 2;
+        foreach (WorldGrid cell in _room.Grids)
+        {
+            Grid3 at = cell.Value;
+            foreach (GridStep face in GridStep.All)
+            {
+                if (inside.Contains(new WorldGrid(at.x + face.Dx * SmallCellCode.Large,
+                        at.y + face.Dy * SmallCellCode.Large, at.z + face.Dz * SmallCellCode.Large)))
+                {
+                    continue;
+                }
+
+                foreach (Structure structure in grid.GetFaceStructures(new Grid3(at.x + face.Dx * half,
+                             at.y + face.Dy * half, at.z + face.Dz * half)))
+                {
+                    if (structure != null && !structure.IsBeingDestroyed && Runs.Openings.IsDoor(structure))
+                    {
+                        doors.Add(structure.ReferenceId);
+                    }
+                }
+            }
+        }
+
+        return doors.Count;
+    }
+
     protected override LintValue Compute(string field)
     {
         Atmosphere? air = First is WorldGrid grid ? AtmosphericsController.World?.SampleGlobalAtmosphere(grid) : null;
@@ -249,6 +290,8 @@ internal sealed class RoomSubject : LintSubject
                 return air != null ? LintRecords.Gases(air.GasMixture) : LintValue.Of(new Dictionary<string, LintValue>());
             case "devices":
                 return LintValue.Objects(_world.ThingsIn(this));
+            case "door_count":
+                return LintValue.Of(DoorCount());
             case "position":
                 return LintValue.Of(Position ?? Vec3.Zero);
             default:

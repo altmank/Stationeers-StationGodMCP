@@ -90,6 +90,19 @@
         "pass": [ { "prefab": "StructureDeepMiner", "runtime_types": ["DeepMiner"], "reference_id": 80, "display_name": "Deep Miner", "drill_column()": [ { "position": [1, 1, 1] } ] } ],
         "fail": [ { "prefab": "StructureDeepMiner", "runtime_types": ["DeepMiner"], "reference_id": 80, "display_name": "Deep Miner", "drill_column()": [ { "position": [1, -1, 1], "blocker": { "prefab": "StructureFrame", "reference_id": 81 } } ] } ]
       }
+    },
+    {
+      "id": "room_without_door",
+      "level": "warning",
+      "description": "A room holding devices that no door, airlock, hatch or force-field door leads into (none on the faces between its cells and the cells outside it): a player reaches its devices only by taking a wall down.",
+      "on": ["audit"],
+      "select": "rooms where any(devices, d => d.kind == \"device\")",
+      "assert": "door_count > 0",
+      "message": "room {id} ({cell_count} cells) holds {count(devices, d => d.kind == \"device\")} devices, and no door, airlock, hatch or force-field door leads into it.",
+      "examples": {
+        "pass": [ { "id": 5, "cell_count": 12, "door_count": 1, "devices": [ { "kind": "device" } ] } ],
+        "fail": [ { "id": 5, "cell_count": 12, "door_count": 0, "devices": [ { "kind": "device" }, { "kind": "wall" } ] } ]
+      }
     }
   ]
 }
