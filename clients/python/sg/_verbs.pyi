@@ -1221,7 +1221,7 @@ def read(what: Literal['logic'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
     id: str | list[str] = None,  # Device(s); with logic, every id is read for every logic type.
     logic: str | int | list = None,  # Logic type(s): name (Temperature) or number.
-    reads: list = None,  # Separate reads, each {id, logic, slots: [{index, logic}], atmosphere: {of, port}, reagents: True}: up to 256 pairs, or 128 per-item reads.
+    reads: list = None,  # Separate reads, each {id, logic, slots: [{index, logic}], atmosphere: True or {of, port}, reagents: True}: up to 256 pairs, or 128 per-item reads.
     gateway: str = 'world',  # "world" (default) or a gateway id: only devices on its data networks.
     include: list[Literal['clock']] = None,  # clock: the game clock in the same frame.
 ) -> dict:  # main list: r['results']: the page answered; .walk() goes through every entry, .all() pages in the rest

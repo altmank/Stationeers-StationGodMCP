@@ -222,7 +222,7 @@ internal abstract class LogicReadRequest
                 ? Atmosphere(atmosphereToken, $"{path}.atmosphere", problems)
                 : null;
             bool reagents = Present(read["reagents"]) is { } reagentsToken && Flag(reagentsToken, $"{path}.reagents", problems);
-            if (types == null && Present(read["slots"]) == null && Present(read["atmosphere"]) == null && !reagents)
+            if (types == null && Present(read["slots"]) == null && atmosphere == null && !reagents)
             {
                 problems.Add(new OptionProblem(path, "asks for nothing: give logic, slots, atmosphere or reagents: true"));
             }
@@ -387,8 +387,14 @@ internal abstract class LogicReadRequest
         return ok ? slots : null;
     }
 
+    // {} or true: the thing's own; {of: "internal"}; {port: n}; false asks for none.
     private static AtmosphereTarget? Atmosphere(JToken token, string path, List<OptionProblem> problems)
     {
+        if (token.Type == JTokenType.Boolean)
+        {
+            return (bool)token ? AtmosphereTarget.Own.Instance : null;
+        }
+
         if (token is not JObject atmosphere)
         {
             problems.Add(new OptionProblem(path, "must be {} (its own), {of: \"internal\"} or {port: n}"));

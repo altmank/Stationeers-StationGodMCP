@@ -2,7 +2,7 @@ Logic values of devices, by type name or number; also slot logic, atmosphere and
 Options:
 - id (string or array): Device(s); with logic, every id is read for every logic type.
 - logic (string or integer or array): Logic type(s): name (Temperature) or number.
-- reads (list): Separate reads, each {id, logic, slots: [{index, logic}], atmosphere: {of, port}, reagents: true}: up to 256 pairs, or 128 per-item reads.
+- reads (list): Separate reads, each {id, logic, slots: [{index, logic}], atmosphere: true or {of, port}, reagents: true}: up to 256 pairs, or 128 per-item reads.
 - gateway (string, default world): "world" (default) or a gateway id: only devices on its data networks.
 - include (list of clock): clock: the game clock in the same frame.
 One rule for the reply: one id and one logic type answer {reference_id, logic_type {id, name}, value}. id and logic lists, or reads whose every entry is a pair, answer one row per (id, logic) pair, index counting the pairs: results [{index, ok, reference_id, logic_type, value} or {index, ok, reference_id, error}], up to 256. Any entry with a logic list, slots, atmosphere or reagents, or include, answers one row per item in one frame: results [{index, ok, reference_id, logic {Type: value}, logic_errors, slots, atmosphere, reagents, errors} or {index, ok, reference_id, error}], up to 128 items and 1,024 values; more is refused, naming the bound.

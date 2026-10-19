@@ -89,6 +89,16 @@ public sealed class ReadLogicTests
     }
 
     [Fact]
+    public void AtmosphereTrueIsTheThingsOwnAtmosphere()
+    {
+        LogicReadRequest.Items items = Parsed<LogicReadRequest.Items>(
+            """{"reads": [{"id": "1", "atmosphere": true}, {"id": "2", "logic": "On", "atmosphere": false}]}""");
+
+        Assert.IsType<AtmosphereTarget.Own>(items.Request.Items[0].Atmosphere);
+        Assert.Null(items.Request.Items[1].Atmosphere);
+    }
+
+    [Fact]
     public void IncludeClockMakesEveryFormItems()
     {
         Assert.True(Parsed<LogicReadRequest.Items>("""{"id": "1", "logic": "On", "include": ["clock"]}""").Request.Clock);
@@ -126,7 +136,8 @@ public sealed class ReadLogicTests
     [InlineData("""{"reads": [{"id": "1", "atmosphere": {"port": "Input"}}]}""", "reads[0].atmosphere.port: must be an integer")]
     [InlineData("""{"reads": [{"id": "1", "atmosphere": {"of": "pipe"}}]}""", "reads[0].atmosphere.of: must be \"internal\"")]
     [InlineData("""{"reads": [{"id": "1", "atmosphere": {"of": "internal", "port": 0}}]}""", "takes of or port, not both")]
-    [InlineData("""{"reads": [{"id": "1", "atmosphere": true}]}""", "reads[0].atmosphere: must be {}")]
+    [InlineData("""{"reads": [{"id": "1", "atmosphere": "own"}]}""", "reads[0].atmosphere: must be {}")]
+    [InlineData("""{"reads": [{"id": "1", "atmosphere": false}]}""", "reads[0]: asks for nothing")]
     [InlineData("""{"reads": [{"id": "1", "reagents": "yes"}]}""", "reads[0].reagents: must be true or false")]
     [InlineData("""{"reads": [{"logic": "On"}]}""", "reads[0].id: is needed")]
     [InlineData("""{"reads": [{"id": "1"}]}""", "reads[0]: asks for nothing")]

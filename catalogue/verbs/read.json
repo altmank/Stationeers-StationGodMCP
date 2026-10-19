@@ -16,8 +16,8 @@
         },
         "reads": {
           "schema": {"type": "array", "items": {"type": "object"}, "maxItems": 256},
-          "description": "Separate reads, each {id, logic, slots: [{index, logic}], atmosphere: {of, port}, reagents: true}: up to 256 pairs, or 128 per-item reads.",
-          "x-script": "Separate reads, each {id, logic, slots: [{index, logic}], atmosphere: {of, port}, reagents: True}: up to 256 pairs, or 128 per-item reads."
+          "description": "Separate reads, each {id, logic, slots: [{index, logic}], atmosphere: true or {of, port}, reagents: true}: up to 256 pairs, or 128 per-item reads.",
+          "x-script": "Separate reads, each {id, logic, slots: [{index, logic}], atmosphere: True or {of, port}, reagents: True}: up to 256 pairs, or 128 per-item reads."
         },
         "gateway": {"use": "gateway"},
         "include": {
