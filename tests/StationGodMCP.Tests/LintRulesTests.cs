@@ -70,6 +70,7 @@ internal static class LintTestKit
             .Add(new LintFunction("replaceable", "(x: thing) -> placement", "test", _ => throw new LintEvaluationException("no game in tests"), cached: true))
             .Add(new LintFunction("controls_side", "(x: thing) -> controls?", "test", _ => LintValue.Null))
             .Add(new LintFunction("controls_blocked", "(x: thing) -> string?", "test", _ => LintValue.Null))
+            .Add(new LintFunction("controls_reach", "(x: thing) -> string?", "test", _ => LintValue.Null))
             .Add(new LintFunction("clips_surface", "(x: thing) -> string?", "test", _ => LintValue.Null))
             .Add(new LintFunction("port_stub", "(x: thing) -> bool", "test", _ => LintValue.False))
             .Add(new LintFunction("window_crossed", "(x: thing) -> string?", "test", _ => LintValue.Null))
@@ -170,10 +171,10 @@ public sealed class LintRuleFileTests
     {
         LintRuleSet set = LintTestKit.Defaults();
         Assert.Empty(set.Errors);
-        Assert.Equal(7, set.Rules.Count);
+        Assert.Equal(8, set.Rules.Count);
     }
 
-    // A world with no lint file gets the built-in rules only: the seven game-cited ones.
+    // A world with no lint file gets the built-in rules only: the eight game-cited ones.
     [Fact]
     public void WithNoLintFileOnlyTheBuiltInRulesApply()
     {
@@ -186,14 +187,14 @@ public sealed class LintRuleFileTests
         Assert.Null(RouteLintRule.From(set, LintRoute.InsideFrames, new GridCell[0]));
     }
 
-    // LU's world file holds the other 20 whole: with it, all 27 load, his 20 from his file.
+    // LU's world file holds the other 20 whole: with it, all 28 load, his 20 from his file.
     [Fact]
     public void LusWorldFileAddsItsTwentyWholeRules()
     {
         LintRuleSet set = LintTestKit.World();
 
         Assert.Empty(set.Errors);
-        Assert.Equal(27, set.Rules.Count);
+        Assert.Equal(28, set.Rules.Count);
         Assert.Equal(20, set.Rules.Count(rule => rule.Origin == LintRuleOrigin.Save));
         Assert.Equal(ConflictLevel.Problem, set.Find("controls_blocked")!.Level);
         Assert.Equal("run_crosses_window", RouteLintRule.From(set, LintRoute.OffWindows, new GridCell[0])!.Id);
@@ -226,6 +227,7 @@ public sealed class LintRuleFileTests
     [InlineData("outdoor_liquid_insulated", "warning")]
     [InlineData("deep_miner_column_clear", "warning")]
     [InlineData("room_without_door", "warning")]
+    [InlineData("controls_unreachable", "warning")]
     [InlineData("cable_on_frames", "warning")]
     public void TheGeneralRulesShipAtTheirLevels(string id, string level)
     {

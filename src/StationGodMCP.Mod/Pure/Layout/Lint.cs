@@ -18,6 +18,7 @@ internal static class LintCodes
     internal const string FuelOxidiserMixTemperature = "fuel_oxidiser_mix_temperature";
     internal const string DeepMinerColumnClear = "deep_miner_column_clear";
     internal const string RoomWithoutDoor = "room_without_door";
+    internal const string ControlsUnreachable = "controls_unreachable";
 
     /// <summary>Every rule with its level, in report order.</summary>
     internal static readonly (string Code, ConflictLevel Level)[] Rules =
@@ -28,7 +29,8 @@ internal static class LintCodes
         (CableGradeMatchesNetwork, ConflictLevel.Warning),
         (FuelOxidiserMixTemperature, ConflictLevel.Warning),
         (DeepMinerColumnClear, ConflictLevel.Warning),
-        (RoomWithoutDoor, ConflictLevel.Warning)
+        (RoomWithoutDoor, ConflictLevel.Warning),
+        (ControlsUnreachable, ConflictLevel.Warning)
     };
 
     internal static ConflictLevel LevelOf(string code)

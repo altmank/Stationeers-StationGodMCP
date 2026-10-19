@@ -62,6 +62,13 @@ internal static class LintGameLibrary
                 "a quarter of that side within 0.5 m of it or across it, as controls sunk in a floor), as text; null when " +
                 "that side is clear, when it has no control side, or when that side is a face-mounted thing's front.",
                 ControlsBlocked, cached: true))
+            .Add(new LintFunction("controls_reach", "(x: thing) -> string?",
+                "Why no walk from a door of its room reaches the 2 m cell in front of the side its controls face, as text " +
+                "(a first version: the room's 2 m cells, each with a 1 m wide column free of devices, chutes and other " +
+                "small things, no frame, crossed where a face has no wall or window; cables and pipes are walked over, " +
+                "and a ladder or stairs taken wherever a floor is open); null when a walk does, when it has no control " +
+                "side, or when that cell is outdoors or in a room with no door.",
+                ControlsReach, cached: true))
             .Add(new LintFunction("clips_surface", "(x: thing) -> string?",
                 "The wall, floor or ceiling plate or frame body a small-grid device's mesh box (Thing.Bounds) runs into " +
                 "by more than 0.1 m, other than the surface it rests on (the face plane behind its small cells along its " +
@@ -175,6 +182,52 @@ internal static class LintGameLibrary
             thing.IsSmallGrid ? new List<GridCell>() : thing.LargeCells, thing.RenderBox, world.Facts,
             Own(thing), world.IsGone, true, out _, out _);
         return LintValue.Of(blocked);
+    }
+
+    private static LintValue ControlsReach(LintCall call)
+    {
+        ThingSubject thing = Thing(call);
+        if (thing.IsPlanned || !(thing.Cube is CubeRotation turn) ||
+            !(PrefabControls.Of(PrefabOf(thing)) is ControlFace controls))
+        {
+            return LintValue.Null;
+        }
+
+        GridStep side = turn.Turn(controls.Local);
+        GridCell? front = FrontCell(thing, side);
+        return front is { } target ? LintValue.Of(World(call).WalkTo(target)) : LintValue.Null;
+    }
+
+    // The 2 m cell holding the first cell beyond the thing on its controls side: a small cell past its small cells, or
+    // the 2 m cell past its 2 m cells.
+    private static GridCell? FrontCell(ThingSubject thing, GridStep side)
+    {
+        if (thing.IsSmallGrid)
+        {
+            HashSet<GridCell> own = new HashSet<GridCell>(thing.SmallCells);
+            foreach (GridCell cell in thing.SmallCells)
+            {
+                GridCell beyond = side.From(cell);
+                if (!own.Contains(beyond))
+                {
+                    return SmallCellCode.LargeOf(beyond);
+                }
+            }
+
+            return null;
+        }
+
+        HashSet<GridCell> large = new HashSet<GridCell>(thing.LargeCells);
+        foreach (GridCell cell in thing.LargeCells)
+        {
+            GridCell beyond = WalkReach.Beside(cell, side);
+            if (!large.Contains(beyond))
+            {
+                return beyond;
+            }
+        }
+
+        return null;
     }
 
     private static LintValue ClipsSurface(LintCall call)

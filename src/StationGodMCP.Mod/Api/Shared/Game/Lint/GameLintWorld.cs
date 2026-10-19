@@ -86,6 +86,107 @@ internal sealed class GameLintWorld : ILintWorld
 
     internal GridFacts Facts { get; }
 
+    // controls_reach's walk (WalkReach): each 2 m cell's verdict, each room's cells and the cells inside its doors.
+    private readonly Dictionary<GridCell, bool> _walkable = new Dictionary<GridCell, bool>();
+    private readonly Dictionary<long, (HashSet<GridCell> Cells, List<GridCell> Doors)> _walkRooms =
+        new Dictionary<long, (HashSet<GridCell> Cells, List<GridCell> Doors)>();
+
+    /// <summary>
+    /// controls_reach: why no walk from a door of the room reaches the 2 m cell (WalkReach), as text; null when one
+    /// does, or when the cell is outdoors or in a room with no door (room_without_door finds that).
+    /// </summary>
+    internal string? WalkTo(GridCell target)
+    {
+        Room? room = Facts.RoomAt(target);
+        if (room == null)
+        {
+            return null;
+        }
+
+        if (!_walkRooms.TryGetValue(room.RoomId, out (HashSet<GridCell> Cells, List<GridCell> Doors) walk))
+        {
+            walk = (new HashSet<GridCell>(), new List<GridCell>());
+            foreach (WorldGrid grid in room.Grids)
+            {
+                walk.Cells.Add(new GridCell(grid.Value.x, grid.Value.y, grid.Value.z));
+            }
+
+            foreach (GridCell cell in walk.Cells)
+            {
+                foreach (GridStep face in GridStep.All)
+                {
+                    if (walk.Cells.Contains(WalkReach.Beside(cell, face)))
+                    {
+                        continue;
+                    }
+
+                    foreach (Structure structure in Facts.FaceStructures(cell, face))
+                    {
+                        if (Openings.IsDoor(structure))
+                        {
+                            walk.Doors.Add(cell);
+                            break;
+                        }
+                    }
+                }
+            }
+
+            _walkRooms[room.RoomId] = walk;
+        }
+
+        if (walk.Doors.Count == 0)
+        {
+            return null;
+        }
+
+        string at = PieceShapes.CentreOf(target).ToString();
+        HashSet<GridCell> cells = walk.Cells;
+        if (!Walkable(target, cells))
+        {
+            return Facts.FrameAt(target) is Objects.Structures.Frame frame
+                ? $"the 2 m cell in front of its controls ({at}) holds frame {frame.ReferenceId}"
+                : $"the 2 m cell in front of its controls ({at}) has no 1 m wide free column (devices, chutes or " +
+                  "other small things fill it)";
+        }
+
+        return WalkReach.Reaches(walk.Doors, target, cell => Walkable(cell, cells), Crossable)
+            ? null
+            : $"no walk from a door of room {room.RoomId} reaches the 2 m cell in front of its controls ({at}): " +
+              "devices, chutes, frames, walls or windows cut it off (each 2 m cell on the way needs a 1 m wide free " +
+              "column)";
+    }
+
+    private bool Walkable(GridCell cell, HashSet<GridCell> room)
+    {
+        if (!room.Contains(cell))
+        {
+            return false;
+        }
+
+        if (!_walkable.TryGetValue(cell, out bool walkable))
+        {
+            walkable = Facts.FrameAt(cell) == null &&
+                       WalkReach.HasClearColumn(SmallCellCode.Encode(cell, Facts.Occupancy));
+            _walkable[cell] = walkable;
+        }
+
+        return walkable;
+    }
+
+    // A face with no wall or window on it (a door passes).
+    private bool Crossable(GridCell cell, GridStep face)
+    {
+        foreach (Structure structure in Facts.FaceStructures(cell, face))
+        {
+            if (!Openings.IsDoor(structure))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     internal BuildCatalogue Catalogue => _catalogue ??= WorldModel.Prefabs.Build;
 
     internal int Cells { get; private set; }

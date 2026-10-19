@@ -103,6 +103,20 @@
         "pass": [ { "id": 5, "cell_count": 12, "door_count": 1, "devices": [ { "kind": "device" } ] } ],
         "fail": [ { "id": 5, "cell_count": 12, "door_count": 0, "devices": [ { "kind": "device" }, { "kind": "wall" } ] } ]
       }
+    },
+    {
+      "id": "controls_unreachable",
+      "level": "warning",
+      "description": "A device whose controls no walk from a door of its room reaches (controls_reach, a first version: 2 m cells each with a 1 m wide free column, no frame, crossed where a face has no wall or window).",
+      "on": ["audit"],
+      "select": "devices",
+      "let": { "r": "controls_reach(x)" },
+      "assert": "not has(r)",
+      "message": "{display_name} ({prefab} {reference_id}): {r}.",
+      "examples": {
+        "pass": [ { "prefab": "StructureConsole", "reference_id": 1, "display_name": "Console", "controls_reach()": null } ],
+        "fail": [ { "prefab": "StructureConsole", "reference_id": 1, "display_name": "Console", "controls_reach()": "no walk from a door of room 4 reaches the 2 m cell in front of its controls" } ]
+      }
     }
   ]
 }
