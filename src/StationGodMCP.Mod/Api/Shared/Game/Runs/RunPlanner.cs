@@ -676,10 +676,6 @@ internal static class RunPlanner
         Receivers(plan);
         HolderRemoved(plan);
         bool free = plan.Request.Options.Free;
-        if (free && PlacementRule.FreeRefusal(true, WorldManager.IsCreative()) is { } refusal)
-        {
-            plan.Problem("not_creative", $"free: {refusal}.");
-        }
 
         if (!SourceRule.Takes(plan.Request.Build != null, free))
         {

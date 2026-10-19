@@ -251,6 +251,13 @@ internal static class ConsoleBridge
     }
 
     /// <summary>
+    /// True while StationGod itself runs a command line on this thread (server command, and every script or MCP path to
+    /// it): the cheat switch's console command refuses then, so only someone typing at the console turns it.
+    /// </summary>
+    internal static bool RunningForStationGod =>
+        Volatile.Read(ref _captureThreadId) == Thread.CurrentThread.ManagedThreadId;
+
+    /// <summary>
     /// Runs <paramref name="command"/> and returns the lines it printed on this thread, oldest
     /// first. Truncation keeps the oldest, because an error prints its message before its stack
     /// trace. <paramref name="concurrentLines"/> counts lines another thread printed into the

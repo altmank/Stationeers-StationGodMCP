@@ -3,6 +3,7 @@
 using System.Collections.Generic;
 using Newtonsoft.Json;
 using StationGodMCP.Api.Shared;
+using StationGodMCP.Pure;
 
 namespace StationGodMCP.Api.Views;
 
@@ -103,7 +104,7 @@ internal sealed class GameClockView
 internal sealed class ModInfoView
 {
     internal ModInfoView(ModIdentity identity, List<MethodStatsView> methods, List<ReflectionMemberView> reflection,
-        int missingCount, RuntimeView runtime)
+        int missingCount, RuntimeView runtime, CheatsView cheats)
     {
         ModId = identity.ModId;
         ModVersion = identity.ModVersion;
@@ -115,6 +116,7 @@ internal sealed class ModInfoView
         Reflection = reflection;
         MissingCount = missingCount;
         Runtime = runtime;
+        Cheats = cheats;
     }
 
     public string ModId { get; }
@@ -139,6 +141,9 @@ internal sealed class ModInfoView
 
     /// <summary>What the mod costs the game: per-method timings and sizes, per-frame load, the collector and heap.</summary>
     public RuntimeView Runtime { get; }
+
+    /// <summary>The cheat switch (CheatSwitch): on or off, minutes left, a creative world, the cheats run under it.</summary>
+    public CheatsView Cheats { get; }
 }
 
 internal sealed class ModIdentity

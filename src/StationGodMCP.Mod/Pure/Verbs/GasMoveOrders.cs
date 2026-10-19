@@ -197,13 +197,3 @@ internal static class GasReplies
     }
 }
 
-/// <summary>Gas made out of nothing (move gas source "create") is a cheat for creative worlds only.</summary>
-internal static class GasCreationRule
-{
-    /// <summary>Why gas is not made in this world; null in a creative world.</summary>
-    internal static string? CreativeRefusal(bool creative) =>
-        creative
-            ? null
-            : "source \"create\" makes gas out of nothing and is only for creative worlds; move it from a tank or " +
-              "network instead";
-}

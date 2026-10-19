@@ -200,11 +200,17 @@ public sealed class PlacementResolutionTests
     }
 
     [Fact]
-    public void FreePlacementNeedsACreativeWorld()
+    public void FreePlacementNeedsCreativeOrTheCheatSwitch()
     {
-        Assert.NotNull(PlacementRule.FreeRefusal(true, false));
-        Assert.Null(PlacementRule.FreeRefusal(true, true));
-        Assert.Null(PlacementRule.FreeRefusal(false, false));
+        foreach (string what in new[] { "structure", "cable", "pipe", "chute", "finish" })
+        {
+            JObject free = new() { ["what"] = what, ["free"] = true, ["confirm"] = true };
+            JObject paid = new() { ["what"] = what, ["free"] = false, ["confirm"] = true };
+            Assert.Equal(CheatSwitch.OffCode, CheatSwitchTests.Refused("build", free, creative: false, minutesOn: null));
+            Assert.Null(CheatSwitchTests.Refused("build", free, creative: true, minutesOn: null));
+            Assert.Null(CheatSwitchTests.Refused("build", free, creative: false, minutesOn: 1));
+            Assert.Null(CheatSwitchTests.Refused("build", paid, creative: false, minutesOn: null));
+        }
     }
 }
 

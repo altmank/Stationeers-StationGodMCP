@@ -235,7 +235,7 @@ internal sealed class PlaceRequest
     /// <summary>from_id's further things, tried after From for each material.</summary>
     internal List<ThingId> MoreFrom { get; }
 
-    /// <summary>Place without materials (creative worlds only).</summary>
+    /// <summary>Place without materials (a cheat).</summary>
     internal bool Free { get; }
 
     /// <summary>allow_door_keepout: a piece in a door's keep-out is a warning instead of a problem.</summary>

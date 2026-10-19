@@ -138,15 +138,12 @@ internal abstract class BuildStatePick
     }
 }
 
-/// <summary>The cheap guards of build structure that need no game: free placement and the cursor's turn axes.</summary>
+/// <summary>
+/// The cheap guard of build structure that needs no game: the cursor's turn axes. Free placement is a cheat: the cheat
+/// switch (CheatSwitch) admits it before the build runs.
+/// </summary>
 internal static class PlacementRule
 {
-    /// <summary>Why free placement is refused; null when it is allowed (asked for in a creative world) or not asked.</summary>
-    internal static string? FreeRefusal(bool free, bool creative) =>
-        free && !creative
-            ? "free placement is only for creative worlds; take the materials from an inventory instead"
-            : null;
-
     /// <summary>
     /// Whether the construction cursor can turn a grid-placed prefab to this rotation from its start, turning only
     /// about the axes it allows (RotationAxis), 90 degrees at a time, or 180 about x for a mounted piece.

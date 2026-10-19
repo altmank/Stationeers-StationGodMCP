@@ -16,7 +16,7 @@ namespace StationGodMCP.Api.Shared.Game;
 /// <summary>
 /// build item: items made out of nothing with OnServer.Create, as a fabricator's output and a vault's vend are made
 /// (Delivery): into a holder's slots (matching stacks topped up, then new stacks in empty slots, or the one slot named),
-/// or loose at a point, each stack at most the item's full stack. Creative worlds only (ItemSpawnRule), host only. A
+/// or loose at a point, each stack at most the item's full stack. A cheat (CheatSwitch admits it), host only. A
 /// holder that cannot take it all is refused before anything is made.
 /// </summary>
 internal static class ItemSpawns
@@ -27,10 +27,6 @@ internal static class ItemSpawns
     internal static ItemSpawnPlan Check(ItemSpawnOrder order, string label)
     {
         HostOnly.Require();
-        if (ItemSpawnRule.CreativeRefusal(WorldManager.IsCreative()) is { } refusal)
-        {
-            throw ApiErrors.Refused("not_creative", refusal + ".");
-        }
 
         Item prefab = ItemPrefab(order.Prefab);
         double full = Delivery.FullStack(prefab);

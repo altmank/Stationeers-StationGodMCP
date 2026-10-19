@@ -58,7 +58,8 @@ internal static class VerbHelp
     /// <summary>The cheats: every what whose write rules declare cheat, always or under an option.</summary>
     internal static string Cheats()
     {
-        StringBuilder text = new("A cheat changes the world in a way a player could not. Ask the user first. A cheat reports until confirm: true.\n");
+        StringBuilder text = new("A cheat changes the world in a way a player could not. Ask the user first. A cheat reports until confirm: true.\n" +
+            "Outside a creative world every cheat is refused as cheats_off unless the user turned cheats on at the game's console for some minutes (stationgod cheats on <minutes>; StationGod cannot run it). A cheat let through carries cheat {cheats_on, minutes_left, note}; server info shows the switch and the cheats run under it.\n");
         foreach ((string verb, string what, JsonObject source) in VerbCatalogue.Whats())
         {
             if (VerbCatalogue.WriteOf(source)?["cheat"] is JsonValue cheat)

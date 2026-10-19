@@ -174,11 +174,6 @@ internal sealed class GasMoveRequest
 
     internal static GasMoveRequest Of(GasMoveOrder order, string label)
     {
-        if (order.Creates && GasCreationRule.CreativeRefusal(WorldManager.IsCreative()) is { } refusal)
-        {
-            throw ApiErrors.Refused("not_creative", refusal + ".");
-        }
-
         GasPlace? source = order.Creates ? null : GasPlace.Resolve(order.Source, "source", label);
         GasDestination destination = order.To == null
             ? GasDestination.Deleted.Instance

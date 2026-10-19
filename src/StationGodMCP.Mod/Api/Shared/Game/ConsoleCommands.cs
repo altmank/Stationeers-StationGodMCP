@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure;
 using StationGodMCP.Pure.Verbs;
 using Util.Commands;
 
@@ -15,7 +16,8 @@ namespace StationGodMCP.Api.Shared.Game;
 /// system console). A command the registry does not know (CommandLine.CommandsMap), or one the console would only
 /// queue for later (RequiresGameManagerIsInitialized before GameManager.IsInitialized), is refused: the acting call
 /// answers command_not_found or command_not_ready, and a report lists that refusal as its problem. Without confirm the
-/// command is not run: the report says what would run.
+/// command is not run: the report says what would run. The cheat switch's own command (stationgod) is refused as
+/// console_only, report and act alike: only someone at the console turns it.
 /// </summary>
 internal static class ConsoleCommands
 {
@@ -60,6 +62,11 @@ internal static class ConsoleCommands
     internal static ConsolePlan Check(ConsoleOrder order)
     {
         string? key = ConsoleBridge.ResolveCommandKey(order.Command);
+        if (key == CheatSwitch.CommandKey)
+        {
+            throw ApiErrors.Refused(CheatSwitch.ConsoleOnlyCode, CheatSwitch.ConsoleOnlyRefusal());
+        }
+
         CommandBase definition = Require(key);
         return new ConsolePlan(new ConsoleCommandInfo(order.Command, key, definition.Scope.ToString(),
             definition.HelpText, definition.Arguments), definition, order.Lines);

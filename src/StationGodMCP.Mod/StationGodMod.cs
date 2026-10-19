@@ -35,7 +35,7 @@ public sealed class StationGodMod : ModBehaviour
 {
     public const string ModId = "net.xceled.stationeers.stationgodmcp";
     public const string DisplayName = "StationGod MCP";
-    public const string Version = "2.6.0";
+    public const string Version = "2.7.0";
 
     private static readonly DeadlineWatch Deadlines = new DeadlineWatch();
 
@@ -149,6 +149,7 @@ public sealed class StationGodMod : ModBehaviour
             StreamStores.Main.Register(HeldJobSessionEnds.Instance);
             _dispatcher.Restores = Restores;
             Api.ApiHost.Prepare();
+            Api.Shared.Game.Cheats.Register();
             Prefab.OnPrefabsLoaded += RegisterPrefabs;
             if (WorldModel.World.PrefabsLoaded)
             {

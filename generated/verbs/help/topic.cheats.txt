@@ -1,4 +1,5 @@
 A cheat changes the world in a way a player could not. Ask the user first. A cheat reports until confirm: true.
+Outside a creative world every cheat is refused as cheats_off unless the user turned cheats on at the game's console for some minutes (stationgod cheats on <minutes>; StationGod cannot run it). A cheat let through carries cheat {cheats_on, minutes_left, note}; server info shows the switch and the cheats run under it.
 - write memory: up to 512 values into a device's memory from start, as a chip's put does
 - write battery: set the charge of batteries and cells: full by default, or a ratio or joules
 - write genes: edit plant genes as the Gene Splicer does

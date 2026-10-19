@@ -24,7 +24,7 @@ connections and guard against merging networks, which `build structure` does not
 | `show highlight` | Show things, whole networks or far points through walls, frames and terrain, tinted, with labels; timed, nothing changed (1.7.0+). | `targets` (`id`, `network` or `at`, with `color`, `label`, `pulse`); `seconds`, `keep`, `clear` |
 | `inspect prefab` | A prefab in its own frame: placement, allowed turns, footprint (`grid_box`, `small_cell_count`), ports, visual up (1.4.3+). | `prefab`, `include: ["small_cells"]` (each cell's offset) |
 | `build structure` | Place any kit-built structure at a position and turn, at a build state, with a label and colour, and logic values set once it is built (`logic: {"On": 1}`). Up to 64 in one job. | `prefab`, `at`, `facing` / `rotation` / `face` / `orient`, `build_state`, `label`, `color`, `logic`; or `placements: [...]`, each with its own `label`, `color` and the rest |
-| `build finish` | Build a placed structure on to a later build state, paying each state's materials as a player's construction does. | `id`, `state` (default the next), `materials`, `free` (creative) |
+| `build finish` | Build a placed structure on to a later build state, paying each state's materials as a player's construction does. | `id`, `state` (default the next), `materials`, `free` (a cheat) |
 | `remove structure` | Remove structures as deconstructing them by hand would. Up to 256 in one job, by id or every one in a `box` (at most 32 m a side; `prefab` filters it). | `id` or `box` + `prefab`, `allow: ["contents", "breach", "broken", "burst"]`, `refund_to` |
 | `remove terrain` | A cheat: dig out every terrain voxel in a box at once (see *Digging out terrain*). | `box`, `ores` (`drop` or `discard`), `confirm` |
 | `build terrain` | A cheat: fill a box's ground solid, back to the generated ground, level to a flat plane, or fill its enclosed voids (see *Filling and levelling terrain*). | `box`, `mode` (`solid`, `original`, `level`, `voids`), `level`, `ores`, `confirm` |
@@ -131,7 +131,8 @@ Tool wear, welder fuel and battery charge are not charged.
   piece that requires one), an earlier placement puts there. When the reason is "requires a Frame below" and a frame fills the spot's own cell, `cannot_place`
   says so: such pieces stand in the free cell on top of a frame.
 - **Cost:** every build state's items up to the chosen state, from your inventory or `materials`. `free: true` places
-  without materials, in creative worlds only (`not_creative` otherwise). It waives the materials, never the checks:
+  without materials; it is a cheat, so outside a creative world it is refused (`cheats_off`) unless cheats are on at the
+  console (`stationgod cheats on <minutes>`). It waives the materials, never the checks:
   every placement is one a player's cursor would accept there.
 - **Refused per placement:** `invalid_prefab` (not loaded, not a structure, no kit builds it),
   `invalid_rotation`, `invalid_build_state`, `cannot_place` (with the game's reason; a broken structure in the way is

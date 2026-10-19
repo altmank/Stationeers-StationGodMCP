@@ -50,6 +50,9 @@
   "card_not_usable": {
     "description": "The credit card is not where the game's sell can use it. Use a card a player carries or a vending machine holds."
   },
+  "cheats_off": {
+    "description": "That call is a cheat and the world is not creative, so cheats are off. Nothing was done. Only the user can turn them on, for some minutes, at the game's console: stationgod cheats on <minutes>. Ask the user; there is no other way."
+  },
   "client_cannot_move": {
     "description": "The player plays on another machine whose game this server cannot reach, so nothing moved; the message says why. They need the same StationGod version.",
     "see": {"verb": "move", "what": "player"}
@@ -63,6 +66,10 @@
   },
   "command_not_ready": {
     "description": "The game has not finished loading, so the console would not run the command yet. Try again once the world is loaded.",
+    "see": {"verb": "server", "what": "command"}
+  },
+  "console_only": {
+    "description": "The stationgod console command turns StationGod's cheats on or off, and only someone typing at the game's console can run it; server command and scripts cannot. Ask the user.",
     "see": {"verb": "server", "what": "command"}
   },
   "contact_not_found": {"description": "No trader contact has that reference id. trade contacts lists them."},
@@ -297,9 +304,6 @@
   "not_connectable": {
     "description": "That thing is not a pipe, cable, chute or device, so it has no connection ends.",
     "see": {"verb": "inspect", "what": "connections"}
-  },
-  "not_creative": {
-    "description": "free takes no materials and is only for creative worlds. Pay from an inventory with materials instead."
   },
   "not_enough_coils": {
     "description": "The code holds fewer coils or pipes than the run needs. The message names what is missing; bring more or use another materials."

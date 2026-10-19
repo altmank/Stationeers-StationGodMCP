@@ -3,6 +3,7 @@
 using System.Collections.Generic;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure;
 using Xunit;
 
 namespace StationGodMCP.Tests;
@@ -61,8 +62,9 @@ public sealed class HostWireTests
                 new MethodStatsView("read.clock", 2, 0, 0.5, 0.3), new MethodStatsView("planet", 0, 0, 0.0, 0.0)
             },
             new List<ReflectionMemberView> { new ReflectionMemberView("Plant._stageTime", true, false) }, 0,
-            RuntimeWireTests.EmptyRuntime());
-        // 1.9.1 added runtime at the end; everything before it is unchanged.
-        WireCheck.SameAfterRenames(old, view, new Dictionary<string, string>(), "runtime");
+            RuntimeWireTests.EmptyRuntime(),
+            new CheatsView(false, null, false, new List<CheatRunView>()));
+        // 1.9.1 added runtime at the end and 2.7.0 cheats; everything before them is unchanged.
+        WireCheck.SameAfterRenames(old, view, new Dictionary<string, string>(), "runtime", "cheats");
     }
 }

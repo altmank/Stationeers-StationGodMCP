@@ -2,7 +2,7 @@ StationGod and the game server: mod version, health and costs, profiling, the in
 A report carries report_only: true and lists every target with its current and new value.
 
 whats:
-- info: the running mod: version, per-method calls and times, game members, its cost to the game
+- info: the running mod: version, per-method calls and times, game members, its cost to the game, the cheat switch
 - profiling: profile StationGod's main-thread cost: on, off, reset, report
 - console: the latest in-game console lines, oldest first
 - command: run any console command and answer what it printed: spawn, delete, teleport, storms, settings (cheat)

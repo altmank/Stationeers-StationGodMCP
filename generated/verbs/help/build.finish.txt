@@ -5,7 +5,7 @@ Options:
 - id (string or array, required): One structure, a list or a ref, in order.
 - state (integer): The build state to reach; default the next.
 - materials (string or array): Holder(s) that pay materials and take source refunds, tried in order; ids or "player". Default the player.
-- free (boolean, default false): Creative worlds: no materials. Cheat.
+- free (boolean, default false): No materials. Cheat.
 - confirm (boolean, default false): true acts; false only reports, whatever the call names (typed ids included). Left out, the write rule decides: typed ids act at once where the verb acts on them; a ref, network or spread reports.
 Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the one-id reply; a bad id is a row with error.
 placed: on a job reply the new ids (a run's log.placed, a structure job's result.placed; a brief poll counts them in log.placed_count), on a run report a count of the cells it would build.

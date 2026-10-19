@@ -54,7 +54,7 @@ internal sealed class StructureBuildOrder
     /// <summary>Who pays; a placement refunds nothing, so the refund route is the default.</summary>
     public MaterialsSource Materials { get; private set; } = MaterialsSource.Player;
 
-    /// <summary>free: place without materials (creative worlds only).</summary>
+    /// <summary>free: place without materials (a cheat).</summary>
     public bool Free { get; private set; }
 
     /// <summary>allow door_keepout: a placement in a door's keep-out is a warning instead of a problem.</summary>

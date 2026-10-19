@@ -44,7 +44,7 @@ internal abstract class GasPlaceOption
         }
     }
 
-    /// <summary>Gas made out of nothing (a cheat for creative worlds): a source only.</summary>
+    /// <summary>Gas made out of nothing (a cheat): a source only.</summary>
     internal sealed class Created : GasPlaceOption
     {
         internal static readonly Created Instance = new Created();

@@ -160,7 +160,9 @@ folder; the pipe name matches (see *Two games on one machine*).
 - The pipe and the TCP listener open only on the host. On a client the mod serves no requests: it shares its player's
   view with a server running StationGod and draws what that server sends it.
 - Anyone who can run a program on the host's machine can open the pipe; over TCP only the secret gets in. Every
-  connection can call every tool, cheats included; agents tell you when a tool is a cheat.
+  connection can call every tool, cheats included; agents tell you when a tool is a cheat. Outside a creative world
+  cheats are refused until you turn them on at the console (`stationgod cheats on <minutes>`; see the README's
+  *Safety*).
 - Building jobs hold the game tick for a frame or two; players see a brief pause.
 
 ## Dedicated servers and remote access

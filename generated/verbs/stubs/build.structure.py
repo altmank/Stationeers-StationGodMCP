@@ -15,7 +15,7 @@ def build(what: Literal['structure'], *,
     color: str | int = None,  # A colour name or index.
     logic: dict = None,  # Logic values set once it is built, {On: 1, Setting: 50}, as write logic sets them; needs the finished build state.
     materials: str | list[str] = None,  # Holder(s) that pay materials and take source refunds, tried in order; ids or "player". Default the player.
-    free: bool = False,  # Creative worlds: no materials. Cheat.
+    free: bool = False,  # No materials. Cheat.
     allow: list[Literal['door_keepout', 'lint', 'pad']] = None,  # door_keepout: a keep-out cell is a warning; lint: lint problems are warnings the report marks PASSED; pad: a placement in a landing pad's approach is a problem; allowed, a PASSED warning.
     include: list[Literal['notes', 'footprint_cells']] = None,  # footprint_cells: each footprint's cells.
     verbose: bool = False,  # Report: layouts a refused report leaves out; real run: the whole preflight.

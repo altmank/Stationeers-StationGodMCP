@@ -1,5 +1,22 @@
 # Changelog
 
+## 2.7.0
+
+- **The cheat switch.** Outside a creative world every cheat is now refused as `cheats_off` (report and act alike)
+  until someone at the host's console turns cheats on: `stationgod cheats on <minutes>` (1 to 1440, real time; it
+  turns itself off after), `stationgod cheats off`, and `stationgod cheats` for the state; the command is listed in
+  the console's `help`. It works at the F3 console and a dedicated server's console. StationGod cannot run it:
+  through `server command` or a script it is refused as `console_only`. The world's difficulty is not changed, and
+  the switch is never saved: it is off at every start and every world load. This replaces the creative-only refusals
+  (`not_creative`) of `build item`, `move gas` source `"create"` and free placement, and now covers every cheat: build
+  item, blueprint and terrain, free builds and `build finish`, `remove terrain`, `move item` `force`, `move gas`,
+  `move player`, `write memory`, `battery`, `genes` and `health`, and `server command`. Creative worlds allow every
+  cheat as before.
+- **No player is told.** While the switch lets a cheat through, its reply carries `cheat` (`cheats_on`,
+  `minutes_left`, a note), and `server info` shows `cheats`: on or off, the minutes left, whether the world is
+  creative, and the last 20 cheats run under it in this world.
+- **sg 0.4.11** (help text only).
+
 ## 2.6.0
 
 - **Runs a hub restart ends keep their output.** A run lives in the hub that started it, so when the MCP client

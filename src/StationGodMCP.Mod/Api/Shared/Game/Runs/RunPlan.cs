@@ -184,7 +184,7 @@ internal sealed class RunOptions
     /// <summary>The thing coils are taken from and given back to; null for the player.</summary>
     internal ThingId? From { get; }
 
-    /// <summary>free: a creative world's cheat; the run takes no coils or kits from anyone.</summary>
+    /// <summary>free: a cheat; the run takes no coils or kits from anyone.</summary>
     internal bool Free { get; }
 
     /// <summary>from_id's further things, tried after From for each coil or kit.</summary>

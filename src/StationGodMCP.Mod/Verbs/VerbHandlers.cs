@@ -7,7 +7,8 @@ namespace StationGodMCP.Verbs;
 
 /// <summary>
 /// The game's (verb, what) handler table: one verb-native handler per what, each binding its generated options class
-/// (VerbHandler.For(XOptions.Spec, XOptions.Bind, run)). A verb with no handler here answers method_not_found.
+/// (VerbHandler.For(XOptions.Spec, XOptions.Bind, run)). A verb with no handler here answers method_not_found. Every
+/// cheat passes the game's cheat switch (Cheats.Main) first.
 /// </summary>
 internal static class VerbHandlers
 {
@@ -109,5 +110,5 @@ internal static class VerbHandlers
         VerbHandler.For(ServerInfoOptions.Spec, ServerInfoOptions.Bind, ServerInfo.Run),
         VerbHandler.For(ServerProfilingOptions.Spec, ServerProfiling.Call.Bind, ServerProfiling.Run),
         VerbHandler.For(UndoOptions.Spec, UndoOrders.Bind, Undo.Run),
-    });
+    }, Api.Shared.Game.Cheats.Main);
 }

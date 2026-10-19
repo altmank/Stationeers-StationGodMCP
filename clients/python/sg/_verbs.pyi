@@ -2213,7 +2213,7 @@ def build(what: Literal['structure'], *,
     color: str | int = None,  # A colour name or index.
     logic: dict = None,  # Logic values set once it is built, {On: 1, Setting: 50}, as write logic sets them; needs the finished build state.
     materials: str | list[str] = None,  # Holder(s) that pay materials and take source refunds, tried in order; ids or "player". Default the player.
-    free: bool = False,  # Creative worlds: no materials. Cheat.
+    free: bool = False,  # No materials. Cheat.
     allow: list[Literal['door_keepout', 'lint', 'pad']] = None,  # door_keepout: a keep-out cell is a warning; lint: lint problems are warnings the report marks PASSED; pad: a placement in a landing pad's approach is a problem; allowed, a PASSED warning.
     include: list[Literal['notes', 'footprint_cells']] = None,  # footprint_cells: each footprint's cells.
     verbose: bool = False,  # Report: layouts a refused report leaves out; real run: the whole preflight.
@@ -2288,7 +2288,7 @@ def build(what: Literal['cable'], *,
     join_to: str | dict = None,  # The network the run must end on.
     join_trunk: bool = False,  # With join_to: add the missing tap.
     materials: str | list[str] = None,  # Holder(s) that pay materials and take source refunds, tried in order; ids or "player". Default the player.
-    free: bool = False,  # Creative worlds: no materials, and what it replaces or removes gives nothing back unless refund_to names where. Cheat.
+    free: bool = False,  # No materials, and what it replaces or removes gives nothing back unless refund_to names where. Cheat.
     refund_to: str | int | list = None,  # Where removed materials go: a word (inventory, source, storage, ground, none), a container id, or a list tried in turn. (default [inventory, source, storage, ground]) (default [inventory, source, storage, ground])
     include: list[Literal['links', 'notes', 'network_devices']] = None,  # Parts to add to the reply.
     rows: int = 5,  # Cells listed; 0 for none.
@@ -2370,7 +2370,7 @@ def build(what: Literal['pipe'], *,
     join_to: str | dict = None,  # The network the run must end on.
     join_trunk: bool = False,  # With join_to: add the missing tap.
     materials: str | list[str] = None,  # Holder(s) that pay materials and take source refunds, tried in order; ids or "player". Default the player.
-    free: bool = False,  # Creative worlds: no materials, and what it replaces or removes gives nothing back unless refund_to names where. Cheat.
+    free: bool = False,  # No materials, and what it replaces or removes gives nothing back unless refund_to names where. Cheat.
     refund_to: str | int | list = None,  # Where removed materials go: a word (inventory, source, storage, ground, none), a container id, or a list tried in turn. (default [inventory, source, storage, ground]) (default [inventory, source, storage, ground])
     include: list[Literal['links', 'notes', 'network_devices']] = None,  # Parts to add to the reply.
     rows: int = 5,  # Cells listed; 0 for none.
@@ -2453,7 +2453,7 @@ def build(what: Literal['chute'], *,
     join_to: str | dict = None,  # The network the run must end on.
     join_trunk: bool = False,  # With join_to: add the missing tap.
     materials: str | list[str] = None,  # Holder(s) that pay materials and take source refunds, tried in order; ids or "player". Default the player.
-    free: bool = False,  # Creative worlds: no materials, and what it replaces or removes gives nothing back unless refund_to names where. Cheat.
+    free: bool = False,  # No materials, and what it replaces or removes gives nothing back unless refund_to names where. Cheat.
     refund_to: str | int | list = None,  # Where removed materials go: a word (inventory, source, storage, ground, none), a container id, or a list tried in turn. (default [inventory, source, storage, ground]) (default [inventory, source, storage, ground])
     include: list[Literal['links', 'notes', 'network_devices']] = None,  # Parts to add to the reply.
     rows: int = 5,  # Cells listed; 0 for none.
@@ -2609,7 +2609,7 @@ def build(what: Literal['item'], *,
     at: list = None,  # [x, y, z] in metres: the items appear there, loose; or give to.
 ) -> dict:  # main list: r['items']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Make items out of nothing (chips, boards, kits, ingots): by prefab and quantity, into a holder's slots or on the ground at a point.
-    A cheat, for creative worlds only (not_creative elsewhere): no player makes items from nothing. Works with no player in the world. Into a holder, what its slots cannot take is refused (no_room) and nothing is made. The report lists each stack it would make; placed names the new items' ids.
+    A cheat (cheats_off outside creative unless the user turned cheats on): no player makes items from nothing. Works with no player in the world. Into a holder, what its slots cannot take is refused (no_room) and nothing is made. The report lists each stack it would make; placed names the new items' ids.
     Reports in a report run; acts in a confirmed run.
     Cheat: ask the user first.
     placed: list[str] on a job reply, the new ids (a run's log.placed, a structure job's result.placed; a brief poll counts them in log.placed_count); int on a run report, the cells it would build.
@@ -2631,7 +2631,7 @@ def build(what: Literal['finish'], *,
     id: str | list[str],  # One structure or a list, in order.
     state: int = None,  # The build state to reach; default the next.
     materials: str | list[str] = None,  # Holder(s) that pay materials and take source refunds, tried in order; ids or "player". Default the player.
-    free: bool = False,  # Creative worlds: no materials. Cheat.
+    free: bool = False,  # No materials. Cheat.
 ) -> dict:
     """Build a placed structure on to a later build state, paying each state's materials.
     Reports in a report run; acts in a confirmed run.
@@ -3417,7 +3417,7 @@ def move(what: Literal['gas'], *,
 ) -> dict:
     """Move gas and liquid between atmospheres or rooms, delete it, or make it out of nothing, with no pipe or pump.
     Applied at the next atmospherics tick. A confirmed move waits for it (max_wait, default 30 s) and answers status applied or failed; past max_wait it answers queued and its id (inspect job).
-    source "create" is a cheat for creative worlds only (not_creative elsewhere): it makes amount_mol of each named gas at temperature_k in to, as the console's addgas does, with the same checks on to: move {what: "gas", source: "create", to: "2005300", gases: ["Oxygen"], amount_mol: 500, temperature_k: 293.15, confirm: true}.
+    source "create" makes amount_mol of each named gas at temperature_k in to, as the console's addgas does, with the same checks on to: move {what: "gas", source: "create", to: "2005300", gases: ["Oxygen"], amount_mol: 500, temperature_k: 293.15, confirm: true}.
     Reports in a report run; acts in a confirmed run.
     Cheat: ask the user first.
     Reply:
@@ -3790,7 +3790,7 @@ def server(what: Literal['info'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
     include: list[Literal['counters']] = None,  # counters: job holds, print log, lint chip programs, batch console, prefab index, frame_ms and update_ms (StationGod's whole frame, job steps included).
 ) -> dict:  # main list: r['methods']: the page answered; .walk() goes through every entry, .all() pages in the rest
-    """The running mod: version, per-method calls and times, game members, its cost to the game.
+    """The running mod: version, per-method calls and times, game members, its cost to the game, the cheat switch.
     Reply:
       mod_id: str
       mod_version: str
@@ -3820,6 +3820,7 @@ def server(what: Literal['info'], *,
           worst_ms: float | None, worst_frame: int | None, over_budget: int, buckets: list[int], recent: list[{frame: int, ms: float}]} | None,
           profiling: {since_s: float, slow_frame_ms: float, frame_ms: {p50: float | None, p95: float | None, max: float | None}, worst_frame_ms: float
           | None, top: list[{name: str, ms: float}]} | None}
+      cheats: {on: bool, minutes_left: float | None, creative: bool, command: str, runs: list[{what: str, at_utc: str, minutes_left: float}]}
     Example: sg.server('info')
     """
 

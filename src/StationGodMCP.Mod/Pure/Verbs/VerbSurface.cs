@@ -181,15 +181,17 @@ internal sealed class WhatSpec
 
 /// <summary>
 /// A write what's rules: route (acts: typed ids act at once; confirm: reports until confirm), undo class (undo, cannot,
-/// mixed) and the undo mark its report rows carry (x-undo-mark).
+/// mixed), the undo mark its report rows carry (x-undo-mark), and what makes a call of it a cheat (cheat: "always", or
+/// the option given true, "free: true").
 /// </summary>
 internal sealed class WriteSpec
 {
-    internal WriteSpec(string route, string undo, string undoMark)
+    internal WriteSpec(string route, string undo, string undoMark, string? cheat = null)
     {
         Route = route;
         Undo = undo;
         UndoMark = undoMark;
+        Cheat = cheat;
     }
 
     public string Route { get; }
@@ -197,6 +199,37 @@ internal sealed class WriteSpec
     public string Undo { get; }
 
     public string UndoMark { get; }
+
+    /// <summary>The catalogue's cheat mark: "always", "free: true", or null for a write that is never a cheat.</summary>
+    public string? Cheat { get; }
+
+    /// <summary>True when a call with these raw params is a cheat: always, or its option given true (the hub's IsCheat).</summary>
+    internal bool IsCheat(JObject? parameters)
+    {
+        if (Cheat == null)
+        {
+            return false;
+        }
+
+        if (Cheat == "always")
+        {
+            return true;
+        }
+
+        int colon = Cheat.IndexOf(':');
+        return colon > 0 && parameters?[Cheat.Substring(0, colon).Trim()] is { Type: JTokenType.Boolean } given &&
+               (bool)given;
+    }
+
+    /// <summary>
+    /// True when a call with these raw params acts rather than reports: confirm: true on the confirm route; on the acts
+    /// route anything but confirm: false.
+    /// </summary>
+    internal bool Acts(JObject? parameters)
+    {
+        bool? confirm = parameters?["confirm"] is { Type: JTokenType.Boolean } given ? (bool)given : (bool?)null;
+        return Route == "confirm" ? confirm == true : confirm != false;
+    }
 }
 
 /// <summary>

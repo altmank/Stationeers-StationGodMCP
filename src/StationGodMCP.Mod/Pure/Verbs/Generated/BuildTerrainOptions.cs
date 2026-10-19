@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of build terrain, in verb names (catalogue/verbs/build.json).</summary>
 internal sealed class BuildTerrainOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("build", "terrain", null, null, new WriteSpec("confirm", "cannot", "[cannot undo: terrain fill]"), new WhatCost(CostClass.World), new WhatCost(CostClass.World), null,
+    internal static WhatSpec Spec { get; } = new WhatSpec("build", "terrain", null, null, new WriteSpec("confirm", "cannot", "[cannot undo: terrain fill]", "always"), new WhatCost(CostClass.World), new WhatCost(CostClass.World), null,
         new OptionSpec("box", "{\"type\":\"array\",\"minItems\":2,\"maxItems\":2}", true),
         new OptionSpec("mode", "{\"type\":\"string\",\"enum\":[\"solid\",\"original\",\"level\",\"voids\"]}", false, "solid"),
         new OptionSpec("level", "{\"type\":\"number\"}"),

@@ -183,7 +183,7 @@ internal sealed class PlacePlan
 /// some kit builds), the turn (refused where the cursor cannot turn a grid-placed piece that way), the position as
 /// the cursor snaps it, the game's own cursor check, the slot a small-grid piece takes, the build state, label and
 /// colour, and the cost: the build states up to the chosen one (MaterialRule; state 0 is the kit). Materials come
-/// from the source as a kit's placement takes them, or not at all with free in a creative world.
+/// from the source as a kit's placement takes them, or not at all with free (a cheat).
 /// </summary>
 internal static class PlacePlanner
 {
@@ -219,11 +219,6 @@ internal static class PlacePlanner
         }
 
         PlacePlan plan = new PlacePlan(arguments);
-        string? free = PlacementRule.FreeRefusal(arguments.Free, WorldManager.IsCreative());
-        if (free != null)
-        {
-            plan.Problem("not_creative", $"free: {free}.");
-        }
 
         Source(plan);
         BuildCatalogue catalogue = WorldModel.Prefabs.Build;

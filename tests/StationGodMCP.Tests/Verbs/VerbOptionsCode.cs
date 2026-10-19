@@ -241,7 +241,9 @@ internal static class VerbOptionsCode
 
         string undo = (string)write["x-undo"]!;
         string mark = (string?)write["x-undo-mark"] ?? (undo == "undo" ? "[undo]" : "[cannot undo]");
-        return "new WriteSpec(" + Literal((string)write["route"]!) + ", " + Literal(undo) + ", " + Literal(mark) + ")";
+        string? cheat = (string?)write["cheat"];
+        return "new WriteSpec(" + Literal((string)write["route"]!) + ", " + Literal(undo) + ", " + Literal(mark) +
+            (cheat == null ? string.Empty : ", " + Literal(cheat)) + ")";
     }
 
     private static string OptionSpec(string name, JsonObject option)

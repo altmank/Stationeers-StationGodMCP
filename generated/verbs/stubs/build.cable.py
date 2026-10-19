@@ -17,7 +17,7 @@ def build(what: Literal['cable'], *,
     join_to: str | dict = None,  # The network the run must end on.
     join_trunk: bool = False,  # With join_to: add the missing tap.
     materials: str | list[str] = None,  # Holder(s) that pay materials and take source refunds, tried in order; ids or "player". Default the player.
-    free: bool = False,  # Creative worlds: no materials, and what it replaces or removes gives nothing back unless refund_to names where. Cheat.
+    free: bool = False,  # No materials, and what it replaces or removes gives nothing back unless refund_to names where. Cheat.
     refund_to: str | int | list = None,  # Where removed materials go: a word (inventory, source, storage, ground, none), a container id, or a list tried in turn. (default [inventory, source, storage, ground]) (default [inventory, source, storage, ground])
     include: list[Literal['links', 'notes', 'network_devices']] = None,  # Parts to add to the reply.
     rows: int = 5,  # Cells listed; 0 for none.

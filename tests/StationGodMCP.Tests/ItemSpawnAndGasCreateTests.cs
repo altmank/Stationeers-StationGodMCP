@@ -88,12 +88,16 @@ public sealed class ItemSpawnAndGasCreateTests
     }
 
     [Fact]
-    public void MakingThingsOutOfNothingIsForCreativeWorldsOnly()
+    public void MakingThingsOutOfNothingNeedsCreativeOrTheCheatSwitch()
     {
-        Assert.Null(ItemSpawnRule.CreativeRefusal(creative: true));
-        Assert.Contains("creative", ItemSpawnRule.CreativeRefusal(creative: false));
-        Assert.Null(GasCreationRule.CreativeRefusal(creative: true));
-        Assert.Contains("creative", GasCreationRule.CreativeRefusal(creative: false));
+        JObject item = new() { ["what"] = "item", ["prefab"] = "ItemIronIngot", ["quantity"] = 10, ["confirm"] = true };
+        JObject gas = new() { ["what"] = "gas", ["source"] = "create", ["to"] = "2005300", ["confirm"] = true };
+        foreach ((string verb, JObject call) in new[] { ("build", item), ("move", gas) })
+        {
+            Assert.Null(CheatSwitchTests.Refused(verb, call, creative: true, minutesOn: null));
+            Assert.Equal(CheatSwitch.OffCode, CheatSwitchTests.Refused(verb, call, creative: false, minutesOn: null));
+            Assert.Null(CheatSwitchTests.Refused(verb, call, creative: false, minutesOn: 5));
+        }
     }
 
     private static GasMoveOrder? Gas(out List<OptionProblem> problems, string? to = "2005300", bool delete = false,

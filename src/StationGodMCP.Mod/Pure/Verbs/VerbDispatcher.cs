@@ -42,15 +42,19 @@ internal sealed class VerbHandler
 /// <summary>
 /// Verb calls (PLAN 2.0, wire form {"method": "&lt;verb&gt;", "params": {"what", ...options}}): the verb, then the what
 /// and options checked (OptionCheck), the what's options bound, and the handler the (verb, what) table holds run. That
-/// table is the only one: a verb or what with no handler is an unknown method, like any name that is no verb.
+/// table is the only one: a verb or what with no handler is an unknown method, like any name that is no verb. A cheat
+/// passes the cheat gate (CheatSwitch) before its handler runs; with no gate every cheat runs.
 /// </summary>
 internal sealed class VerbDispatcher
 {
     private readonly Dictionary<string, Dictionary<string, VerbHandler>> _handlers =
         new Dictionary<string, Dictionary<string, VerbHandler>>(StringComparer.Ordinal);
 
-    internal VerbDispatcher(IEnumerable<VerbHandler> handlers)
+    private readonly ICheatGate? _cheats;
+
+    internal VerbDispatcher(IEnumerable<VerbHandler> handlers, ICheatGate? cheats = null)
     {
+        _cheats = cheats;
         foreach (VerbHandler handler in handlers)
         {
             if (!_handlers.TryGetValue(handler.What.Verb, out Dictionary<string, VerbHandler>? whats))
@@ -150,7 +154,18 @@ internal sealed class VerbDispatcher
             return new VerbOutcome.Refused(VerbError.UnknownMethod(method, what == null ? null : WhatOf(what)));
         }
 
-        return handler.Run(new OptionReader(what, parameters, shape));
+        if (_cheats?.Admit(what, parameters) is { } off)
+        {
+            return new VerbOutcome.Refused(off);
+        }
+
+        VerbOutcome outcome = handler.Run(new OptionReader(what, parameters, shape));
+        if (outcome is not VerbOutcome.Refused)
+        {
+            _cheats?.Ran(what, parameters);
+        }
+
+        return outcome;
     }
 
     private static string? WhatOf(WhatSpec what) => what.Name == VerbSurface.WhatlessKey ? null : what.Name;

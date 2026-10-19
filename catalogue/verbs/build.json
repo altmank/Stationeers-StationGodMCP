@@ -78,7 +78,7 @@
         "materials": {"use": "materials"},
         "free": {
           "schema": {"type": "boolean"},
-          "description": "Creative worlds: no materials. Cheat.",
+          "description": "No materials. Cheat.",
           "default": "false",
           "x-script": "same"
         },
@@ -233,7 +233,7 @@
         "materials": {"use": "materials"},
         "free": {
           "schema": {"type": "boolean"},
-          "description": "Creative worlds: no materials, and what it replaces or removes gives nothing back unless refund_to names where. Cheat.",
+          "description": "No materials, and what it replaces or removes gives nothing back unless refund_to names where. Cheat.",
           "default": "false",
           "x-script": "same"
         },
@@ -408,7 +408,7 @@
         "materials": {"use": "materials"},
         "free": {
           "schema": {"type": "boolean"},
-          "description": "Creative worlds: no materials, and what it replaces or removes gives nothing back unless refund_to names where. Cheat.",
+          "description": "No materials, and what it replaces or removes gives nothing back unless refund_to names where. Cheat.",
           "default": "false",
           "x-script": "same"
         },
@@ -584,7 +584,7 @@
         "materials": {"use": "materials"},
         "free": {
           "schema": {"type": "boolean"},
-          "description": "Creative worlds: no materials, and what it replaces or removes gives nothing back unless refund_to names where. Cheat.",
+          "description": "No materials, and what it replaces or removes gives nothing back unless refund_to names where. Cheat.",
           "default": "false",
           "x-script": "same"
         },
@@ -863,7 +863,7 @@
         "confirm": {"use": "confirm"}
       },
       "text": [
-        "A cheat, for creative worlds only (not_creative elsewhere): no player makes items from nothing. Works with no player in the world. Into a holder, what its slots cannot take is refused (no_room) and nothing is made. The report lists each stack it would make; placed names the new items' ids."
+        "A cheat (cheats_off outside creative unless the user turned cheats on): no player makes items from nothing. Works with no player in the world. Into a holder, what its slots cannot take is refused (no_room) and nothing is made. The report lists each stack it would make; placed names the new items' ids."
       ],
       "example": {"prefab": "ItemIntegratedCircuit10", "quantity": 2, "to": "5200100", "confirm": true},
       "x-cost": {"class": "instant", "growth": "by-id"},
@@ -911,7 +911,7 @@
         "materials": {"use": "materials"},
         "free": {
           "schema": {"type": "boolean"},
-          "description": "Creative worlds: no materials. Cheat.",
+          "description": "No materials. Cheat.",
           "default": "false",
           "x-script": "same"
         },

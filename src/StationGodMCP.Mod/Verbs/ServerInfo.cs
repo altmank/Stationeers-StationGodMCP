@@ -26,7 +26,8 @@ namespace StationGodMCP.Verbs;
 /// handler, serialisation, queue wait and reply size, the costliest methods up to ReplyDefaults.RuntimeMethods or the
 /// call's own list_limits for methods; per-frame load; the collector and the Mono heap; and, with include: ["counters"],
 /// the counters of the mod's game-side work). The methods list is the whats with a handler
-/// (VerbHandlers.Dispatcher.Keys): a retired per-tool method is not listed. Read only.
+/// (VerbHandlers.Dispatcher.Keys): a retired per-tool method is not listed. cheats is the cheat switch: on or off, the
+/// minutes left, whether the world is creative, and the cheats run under it in this world. Read only.
 /// </summary>
 [ReplyFact(FactRule.Live, "the mod's counters and the game's state")]
 internal static class ServerInfo
@@ -50,7 +51,8 @@ internal static class ServerInfo
         ReflectionReport reflection = GameMembers.Report();
         RuntimeView runtime = Runtime(options.Fields.Includes("counters"), options.Fields.Shape);
         runtime.NoteTruncations("runtime.");
-        return Answer.Of(new ModInfoView(identity, methods, reflection.Members, reflection.Missing, runtime));
+        return Answer.Of(new ModInfoView(identity, methods, reflection.Members, reflection.Missing, runtime,
+            Cheats.Main.View()));
     }
 
     private static RuntimeView Runtime(bool counters, ShapeRequest? shape) =>

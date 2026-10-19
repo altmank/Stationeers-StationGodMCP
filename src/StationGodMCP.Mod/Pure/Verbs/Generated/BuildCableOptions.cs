@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of build cable, in verb names (catalogue/verbs/build.json).</summary>
 internal sealed class BuildCableOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("build", "cable", "cells", null, new WriteSpec("confirm", "undo", "[undo]"), new WhatCost(CostClass.Job), new WhatCost(CostClass.Plan), null,
+    internal static WhatSpec Spec { get; } = new WhatSpec("build", "cable", "cells", null, new WriteSpec("confirm", "undo", "[undo]", "free: true"), new WhatCost(CostClass.Job), new WhatCost(CostClass.Plan), null,
         new OptionSpec("grade", "{\"type\":\"string\",\"enum\":[\"normal\",\"heavy\",\"super_heavy\"]}", false, "heavy"),
         new OptionSpec("waypoints", "{\"type\":\"array\",\"items\":{\"type\":\"array\"},\"maxItems\":1024}"),
         new OptionSpec("cells", "{\"type\":\"array\",\"items\":{\"type\":\"array\"},\"maxItems\":1024}"),

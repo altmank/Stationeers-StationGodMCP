@@ -32,7 +32,7 @@ internal static class BuildStructure
 /// <summary>
 /// build structure over PlacePlanner, BuildReports and BuildJobs: any structure a kit builds, one placement or a list
 /// of them in one job, at a point with a turn, at a build state, with a label and a colour, checked as the game's own
-/// cursor checks it, paid from the holders materials names (or free in a creative world). Without confirm, a Report.Of
+/// cursor checks it, paid from the holders materials names (or free, a cheat). Without confirm, a Report.Of
 /// report: every placement a target (the id of the fuselage piece it replaces, else the cell) [name, current -> new]
 /// with the what's undo mark ([undo]; PASSED for a placement a lint problem was let through on), the plan's report the
 /// body (tool, status and job_id left out), every problem with the placement it is about, and a gas hold the confirmed

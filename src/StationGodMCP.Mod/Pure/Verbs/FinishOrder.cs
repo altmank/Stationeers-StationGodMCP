@@ -6,8 +6,8 @@ namespace StationGodMCP.Pure.Verbs;
 
 /// <summary>
 /// build finish's call, checked without the game: the structures to build on, one or a list in order (a ref the hub
-/// expanded to one); the build state to reach, default the one above the current state; free: true, the creative
-/// world's cheat that takes no materials; the holders that pay (materials); and confirm: until confirm the call reports
+/// expanded to one); the build state to reach, default the one above the current state; free: true, the
+/// cheat that takes no materials; the holders that pay (materials); and confirm: until confirm the call reports
 /// what it would do, and confirm acts at once, one structure at a time, each failing alone.
 /// </summary>
 internal sealed class FinishOrder
@@ -35,7 +35,7 @@ internal sealed class FinishOrder
     /// <summary>The build state to reach; null: the one above the current state.</summary>
     public long? State { get; }
 
-    /// <summary>free: a creative world's cheat, with no materials taken.</summary>
+    /// <summary>free: a cheat, with no materials taken.</summary>
     public bool Free { get; }
 
     /// <summary>Who pays the materials, in order.</summary>

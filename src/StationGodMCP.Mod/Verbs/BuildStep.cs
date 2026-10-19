@@ -76,10 +76,6 @@ internal static class BuildStep
         }
 
         bool free = order.Free;
-        if (PlacementRule.FreeRefusal(free, WorldManager.IsCreative()) is { } freeRefusal)
-        {
-            throw ApiErrors.Refused("not_creative", $"free: {freeRefusal}.");
-        }
 
         List<ThingId> more = new List<ThingId>();
         ThingId? payer = free ? null : JobTargets.Payers(order.Materials, order.Label, more);

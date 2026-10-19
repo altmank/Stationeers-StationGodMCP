@@ -11,7 +11,7 @@ def move(what: Literal['gas'], *,
 ) -> dict:
     """Move gas and liquid between atmospheres or rooms, delete it, or make it out of nothing, with no pipe or pump.
     Applied at the next atmospherics tick. A confirmed move waits for it (max_wait, default 30 s) and answers status applied or failed; past max_wait it answers queued and its id (inspect job).
-    source "create" is a cheat for creative worlds only (not_creative elsewhere): it makes amount_mol of each named gas at temperature_k in to, as the console's addgas does, with the same checks on to: move {what: "gas", source: "create", to: "2005300", gases: ["Oxygen"], amount_mol: 500, temperature_k: 293.15, confirm: true}.
+    source "create" makes amount_mol of each named gas at temperature_k in to, as the console's addgas does, with the same checks on to: move {what: "gas", source: "create", to: "2005300", gases: ["Oxygen"], amount_mol: 500, temperature_k: 293.15, confirm: true}.
     Reports in a report run; acts in a confirmed run.
     Cheat: ask the user first.
     Reply:

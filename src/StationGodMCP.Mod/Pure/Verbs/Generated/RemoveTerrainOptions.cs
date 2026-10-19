@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of remove terrain, in verb names (catalogue/verbs/remove.json).</summary>
 internal sealed class RemoveTerrainOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("remove", "terrain", null, null, new WriteSpec("confirm", "cannot", "[cannot undo: terrain dig]"), new WhatCost(CostClass.World), new WhatCost(CostClass.World), null,
+    internal static WhatSpec Spec { get; } = new WhatSpec("remove", "terrain", null, null, new WriteSpec("confirm", "cannot", "[cannot undo: terrain dig]", "always"), new WhatCost(CostClass.World), new WhatCost(CostClass.World), null,
         new OptionSpec("box", "{\"type\":\"array\",\"minItems\":2,\"maxItems\":2}", true),
         new OptionSpec("ores", "{\"type\":\"string\",\"enum\":[\"drop\",\"discard\"]}", false, "drop"),
         new OptionSpec("confirm", "{\"type\":\"boolean\"}", false, "false"));

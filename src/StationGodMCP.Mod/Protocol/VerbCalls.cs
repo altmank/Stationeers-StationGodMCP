@@ -8,6 +8,7 @@ using System.Text;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure;
 using StationGodMCP.Pure.Paging;
 using StationGodMCP.Pure.Scheduling;
 using StationGodMCP.Pure.Shaping;
@@ -44,13 +45,15 @@ internal sealed class VerbRunner
 
 /// <summary>
 /// What a handler adds to its reply on the side while it runs (PLAN 2.0 cut notes): the lists it cut (Truncations,
-/// written as truncated by the shaping writer) and the gas hold its job met (GasHoldReply, added as gas_hold). Gathered
+/// written as truncated by the shaping writer), the gas hold its job met (GasHoldReply, added as gas_hold) and the
+/// cheat switch that let it through (CheatNote, added as cheat). Gathered
 /// around each run of the handler's code, a deferred call's slices too, and written with its answer.
 /// </summary>
 internal sealed class VerbNotes
 {
     private readonly List<Truncation> _truncations = new List<Truncation>();
     private GasHoldView? _gasHold;
+    private CheatNoteView? _cheat;
 
     internal IReadOnlyList<Truncation> Truncations => _truncations;
 
@@ -59,6 +62,7 @@ internal sealed class VerbNotes
     {
         Pure.Shaping.Truncations.Begin();
         GasHoldReply.Begin();
+        CheatNote.Begin();
     }
 
     /// <summary>Adds what the run since Begin noted; a later gas hold replaces an earlier one.</summary>
@@ -66,11 +70,33 @@ internal sealed class VerbNotes
     {
         Pure.Shaping.Truncations.MoveInto(_truncations);
         _gasHold = GasHoldReply.Take() ?? _gasHold;
+        _cheat = CheatNote.Take() ?? _cheat;
     }
 
-    /// <summary>The reply with gas_hold added when the run met one (its keys spread, nothing copied).</summary>
-    internal object Attach(object reply) =>
-        _gasHold == null ? reply : new ReplyObject().Spread(reply).Add("gas_hold", _gasHold);
+    /// <summary>
+    /// The reply with gas_hold added when the run met one and cheat when the cheat switch let it through (its keys
+    /// spread, nothing copied).
+    /// </summary>
+    internal object Attach(object reply)
+    {
+        if (_gasHold == null && _cheat == null)
+        {
+            return reply;
+        }
+
+        ReplyObject attached = new ReplyObject().Spread(reply);
+        if (_gasHold != null)
+        {
+            attached.Add("gas_hold", _gasHold);
+        }
+
+        if (_cheat != null)
+        {
+            attached.Add("cheat", _cheat);
+        }
+
+        return attached;
+    }
 }
 
 /// <summary>

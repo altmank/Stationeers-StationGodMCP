@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of write health, in verb names (catalogue/verbs/write.json).</summary>
 internal sealed class WriteHealthOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("write", "health", "parts", null, new WriteSpec("confirm", "cannot", "[cannot undo: heal]"), new WhatCost(CostClass.Instant), new WhatCost(CostClass.Instant), null,
+    internal static WhatSpec Spec { get; } = new WhatSpec("write", "health", "parts", null, new WriteSpec("confirm", "cannot", "[cannot undo: heal]", "always"), new WhatCost(CostClass.Instant), new WhatCost(CostClass.Instant), null,
         new OptionSpec("player", "{\"type\":\"string\"}"),
         new OptionSpec("confirm", "{\"type\":\"boolean\"}", false, "false"));
 

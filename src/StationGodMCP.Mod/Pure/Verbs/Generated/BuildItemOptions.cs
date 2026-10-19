@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of build item, in verb names (catalogue/verbs/build.json).</summary>
 internal sealed class BuildItemOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("build", "item", "items", null, new WriteSpec("confirm", "cannot", "[cannot undo: items made]"), new WhatCost(CostClass.Instant), new WhatCost(CostClass.Instant), null,
+    internal static WhatSpec Spec { get; } = new WhatSpec("build", "item", "items", null, new WriteSpec("confirm", "cannot", "[cannot undo: items made]", "always"), new WhatCost(CostClass.Instant), new WhatCost(CostClass.Instant), null,
         new OptionSpec("prefab", "{\"type\":[\"string\",\"integer\"]}", true),
         new OptionSpec("quantity", "{\"type\":\"number\",\"minimum\":0}", false, "1"),
         new OptionSpec("to", "{\"type\":\"string\"}"),

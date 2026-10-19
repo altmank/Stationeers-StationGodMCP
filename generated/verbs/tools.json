@@ -862,7 +862,7 @@
           "what": {
             "type": "string",
             "enum": ["info", "profiling", "console", "command", "stop"],
-            "description": "info: the running mod: version, per-method calls and times, game members, its cost to the game; profiling: profile StationGod's main-thread cost: on, off, reset, report; console: the latest in-game console lines, oldest first; command: run any console command and answer what it printed: spawn, delete, teleport, storms, settings; stop: stop a script run or drop a waiting job; no id: every run"
+            "description": "info: the running mod: version, per-method calls and times, game members, its cost to the game, the cheat switch; profiling: profile StationGod's main-thread cost: on, off, reset, report; console: the latest in-game console lines, oldest first; command: run any console command and answer what it printed: spawn, delete, teleport, storms, settings; stop: stop a script run or drop a waiting job; no id: every run"
           },
           "include": {"type": "array", "items": {"enum": ["counters"]}},
           "action": {"enum": ["on", "off", "reset", "report"]},

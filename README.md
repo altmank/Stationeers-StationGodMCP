@@ -177,11 +177,26 @@ finished run's writes can be taken back with `undo {id: "script-14"}`.
 - **It can cheat.** Every what is a read, a write (what a player or a chip can do: logic, chips, labels, paint,
   item moves, trading, building), or a cheat (what no player can: `move {what: "gas"}` and `"player"`,
   `write {what: "memory", "battery", "genes", "health"}`, `remove` and `build {what: "terrain"}`,
-  `build {what: "item"}` (creative worlds only),
-  `server {what: "command"}`, free placement, blueprint pastes,
+  `build {what: "item"}`, `server {what: "command"}`, free placement, blueprint pastes,
   forced item moves). Every connection can call every verb; the class is there so an agent can tell you when a call
   is a cheat and ask first. Reports make even the risky writes show their targets first. There is no general undo:
   save first.
+- **Cheats are off outside creative worlds, until you turn them on.** In a world that is not creative every cheat is
+  refused (`cheats_off`), report included. To let StationGod cheat for a while without changing the world's
+  difficulty, type at the host's console (F3, or a dedicated server's own console):
+
+  | Command | What it does |
+  | --- | --- |
+  | `stationgod cheats on <minutes>` | Cheats on for 1 to 1440 minutes (real time); it turns itself off after. |
+  | `stationgod cheats off` | Cheats off now. |
+  | `stationgod cheats` | Prints whether they are on and the minutes left. |
+
+  Only someone typing at the console can run it: through StationGod (`server command`, scripts, any MCP call) it is
+  refused (`console_only`), so an agent cannot turn cheats on. The switch is never saved: it is off whenever the game
+  starts and whenever a world is loaded. No player is told anything. While it is on, each cheat's reply carries
+  `cheat` (`cheats_on`, `minutes_left`, a note) and `server info` shows `cheats` (on or off, minutes left, and the
+  last 20 cheats run under it). Cheats still report first and need `confirm: true`. Creative worlds allow every cheat,
+  as before.
 - **Host only.** The mod runs on the game that hosts; its changes reach other players through the game's own sync.
   Every player who joins needs the same version, because the StationGod Gateway is a new structure.
 - **The building verbs refuse rather than guess.** They never make materials, never delete a pipe network's

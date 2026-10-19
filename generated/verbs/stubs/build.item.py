@@ -7,7 +7,7 @@ def build(what: Literal['item'], *,
     at: list = None,  # [x, y, z] in metres: the items appear there, loose; or give to.
 ) -> dict:  # main list: r['items']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Make items out of nothing (chips, boards, kits, ingots): by prefab and quantity, into a holder's slots or on the ground at a point.
-    A cheat, for creative worlds only (not_creative elsewhere): no player makes items from nothing. Works with no player in the world. Into a holder, what its slots cannot take is refused (no_room) and nothing is made. The report lists each stack it would make; placed names the new items' ids.
+    A cheat (cheats_off outside creative unless the user turned cheats on): no player makes items from nothing. Works with no player in the world. Into a holder, what its slots cannot take is refused (no_room) and nothing is made. The report lists each stack it would make; placed names the new items' ids.
     Reports in a report run; acts in a confirmed run.
     Cheat: ask the user first.
     placed: list[str] on a job reply, the new ids (a run's log.placed, a structure job's result.placed; a brief poll counts them in log.placed_count); int on a run report, the cells it would build.

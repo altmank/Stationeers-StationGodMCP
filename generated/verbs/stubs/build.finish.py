@@ -3,7 +3,7 @@ def build(what: Literal['finish'], *,
     id: str | list[str],  # One structure or a list, in order.
     state: int = None,  # The build state to reach; default the next.
     materials: str | list[str] = None,  # Holder(s) that pay materials and take source refunds, tried in order; ids or "player". Default the player.
-    free: bool = False,  # Creative worlds: no materials. Cheat.
+    free: bool = False,  # No materials. Cheat.
 ) -> dict:
     """Build a placed structure on to a later build state, paying each state's materials.
     Reports in a report run; acts in a confirmed run.

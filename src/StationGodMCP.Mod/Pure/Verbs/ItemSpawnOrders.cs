@@ -97,7 +97,7 @@ internal sealed class ItemSpawnOrder
 }
 
 /// <summary>
-/// What build item may make: only in a creative world (no player makes items out of nothing), a whole count of an item
+/// What build item may make (a cheat: the cheat switch, CheatSwitch, admits it), a whole count of an item
 /// that counts whole (every item but a consumable's fractional amount), and at most MaximumStacks full stacks in one
 /// call, each at most the item's full stack.
 /// </summary>
@@ -105,12 +105,6 @@ internal static class ItemSpawnRule
 {
     /// <summary>The most stacks one call makes: enough for any build's kits, small enough to stay one frame's work.</summary>
     internal const int MaximumStacks = 64;
-
-    /// <summary>Why items are not made in this world; null in a creative world.</summary>
-    internal static string? CreativeRefusal(bool creative) =>
-        creative
-            ? null
-            : "making items is only for creative worlds; take them from storage, a vault or a fabricator instead";
 
     /// <summary>
     /// Why this quantity is refused for an item whose full stack is fullStack (1 for an item that does not stack);

@@ -68,6 +68,7 @@ internal static class WorldStores
         scope.Register("chip_programs", Pure.Lint.LintChipPrograms.Clear);
         scope.Register("stream_stores", Protocol.StreamStores.Main.WorldChanged);
         scope.Register("resume_holds", static () => StationGodMod.Holds?.WorldChanged());
+        scope.Register("cheat_switch", Cheats.Main.Clear);
         return scope;
     }
 

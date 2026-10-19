@@ -12,7 +12,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// and lint) and split_long; the pieces it takes down itself (remove_ids) and the things it checks as gone
 /// (assume_removed); what it may bridge and must end up on (allow_bridge, join_to), the device a split is measured
 /// against (root) and whether it adds the tap (join_trunk); who pays and where the refunds go (materials, refund_to,
-/// free: a creative world's cheat that takes nothing and, unless refund_to names where, gives nothing back); and how its report is answered (include, rows, verbose, queue, acknowledge_gas_lost). Positions, ends and branch
+/// free: a cheat that takes nothing and, unless refund_to names where, gives nothing back); and how its report is answered (include, rows, verbose, queue, acknowledge_gas_lost). Positions, ends and branch
 /// cells stay as given: only the game resolves them. The what's label prefixes every refusal ("build cable: ...").
 /// </summary>
 internal sealed class RunBuildOrder
@@ -101,7 +101,7 @@ internal sealed class RunBuildOrder
     /// <summary>Who pays and where the refunds go.</summary>
     public MaterialsSource Materials { get; private set; } = MaterialsSource.Player;
 
-    /// <summary>free: no materials taken (a creative world's cheat); refund_to left out then gives nothing back.</summary>
+    /// <summary>free: no materials taken (a cheat); refund_to left out then gives nothing back.</summary>
     public bool Free { get; private set; }
 
     /// <summary>include and verbose, as the call gives them.</summary>
