@@ -44,6 +44,9 @@ internal sealed class Delivery
 
     internal List<Slot> Empty { get; }
 
+    // Named empty slots whose class is checked on the made item (Pure/MadeItemSlotRule): the prefab reports none.
+    private HashSet<Slot> CheckOnMade { get; } = new HashSet<Slot>();
+
     internal static double FullStack(Item prefab) =>
         prefab switch
         {
@@ -93,6 +96,15 @@ internal sealed class Delivery
         }
 
         Offer(slot, prefab, bodySlots: true);
+        if (Stacks.Count == 0 && Empty.Count == 0 && slot.Get() == null &&
+            MadeItemSlotRule.Judge(false, prefab.SlotType != Slot.Class.None, (bool)prefab.CanEnter(slot),
+                prefab is DraggableThing) == MadeItemSlot.CheckMade)
+        {
+            Empty.Add(slot);
+            CheckOnMade.Add(slot);
+            return;
+        }
+
         if (Stacks.Count == 0 && Empty.Count == 0)
         {
             DynamicThing? occupant = slot.Get();
@@ -194,6 +206,9 @@ internal sealed class Delivery
             case PlacementStep.TopUp topUp:
                 TopUp(Stacks[topUp.Stack], prefab, step.Quantity, placed);
                 break;
+            case PlacementStep.NewStack newStack when CheckOnMade.Contains(Empty[newStack.Slot]):
+                placed.Add(IntoCheckedSlot(Empty[newStack.Slot], prefab, step.Quantity));
+                break;
             case PlacementStep.NewStack newStack:
                 Slot slot = Empty[newStack.Slot];
                 Item made = OnServer.Create<Item>(prefab, slot);
@@ -213,6 +228,24 @@ internal sealed class Delivery
                     new ThingId(MakeAtGround(prefab, step.Quantity).ReferenceId)));
                 break;
         }
+    }
+
+    // Made beside the holder, judged by move item's test (Slot.AllowMove on the made item), then moved in; refused and
+    // taken back when the made item's class does not fit either.
+    private PlacedView IntoCheckedSlot(Slot slot, Item prefab, double quantity)
+    {
+        Item made = MakeAtGround(prefab, quantity);
+        if (!SlotAccess.TakesNew(made, slot))
+        {
+            string why = SlotAccess.WhyRefused(made, slot);
+            OnServer.Destroy(made);
+            throw ApiErrors.Refused("slot_refuses", $"{SlotAccess.Label(slot)} does not take {Names.Of(prefab)}: {why}.");
+        }
+
+        OnServer.MoveToSlot(made, slot);
+        return made.ParentSlot == slot
+            ? new PlacedView(PlacedView.InSlot, RefOf(slot), quantity, new ThingId(made.ReferenceId))
+            : new PlacedView(PlacedView.Ground, null, quantity, new ThingId(made.ReferenceId));
     }
 
     private void TopUp(Slot slot, Item prefab, double quantity, List<PlacedView> placed)
