@@ -8,6 +8,7 @@ def inspect(what: Literal['job'], *,
     status: queued or waiting (not started yet), then applied, applied_with_differences, applied_unchecked, stopped or refused (jobs); queued, then applied or failed (gas moves). Only queued and waiting are not final.
     A script run answers run_script's text block: script-N and its state (done, REPORT, stopped, killed, or running with the line and what it waits on), the returned value, and the footer so far, with its cost line.
     On a live confirmed run it answers within 30 s, whatever max_wait says.
+    A run's returned value and printed output are cut at 4 KB: whole: true shows them whole, output_file writes {id, state, returned, printed, error, text} whole to the file. A run of an earlier hub (ended by hub restart) is script-<pid>.N, its output read from the journal.
     Reply, one of:
     (a build or removal job)
       BuildJob

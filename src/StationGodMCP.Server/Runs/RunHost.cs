@@ -289,17 +289,17 @@ public sealed partial class RunHost : IAsyncDisposable
     }
 
     // The final text (now delivered, so its notices are done, and what it shows is seen), or the running line.
-    private async Task<string> ReplyTextAsync(Run run, bool shown = true)
+    private async Task<string> ReplyTextAsync(Run run, bool shown = true, bool whole = false)
     {
         if (run.Ended.IsCompleted)
         {
             if (!shown)
             {
-                return RunText.Final(run.Record, null);
+                return RunText.Final(run.Record, null, whole);
             }
 
             MarkSeen(run.Record.Id);
-            return RunText.Final(run.Record, Seen);
+            return RunText.Final(run.Record, Seen, whole);
         }
 
         StreamCost? cost = await LiveCostAsync(run).ConfigureAwait(false);
@@ -416,15 +416,47 @@ public sealed partial class RunHost : IAsyncDisposable
             return new VerbReply.Failed("job_not_found", $"No run {id} in this session." + EarlierNamed(id));
         }
 
+        bool whole = JsonNodes.IsTrue(options["whole"]);
         if (notes.Run is not { } run)
         {
             MarkSeen(notes.Record.Id);
-            return new VerbReply.Done(new JsonObject { ["text"] = RunText.Final(notes.Record, Seen) });
+            return new VerbReply.Done(new JsonObject { ["text"] = RunText.Final(notes.Record, Seen, whole) });
         }
 
         await WaitReplyAsync(run, MaxWait(options, _settings.InspectWait), DateTime.UtcNow, ReplyHooks.None)
             .ConfigureAwait(false);
-        return new VerbReply.Done(new JsonObject { ["text"] = await ReplyTextAsync(run).ConfigureAwait(false) });
+        return new VerbReply.Done(new JsonObject { ["text"] = await ReplyTextAsync(run, whole: whole).ConfigureAwait(false) });
+    }
+
+    /// <summary>
+    /// inspect job output_file for a run: {id, first_line, state, returned, printed, error, text}, whole (no cut); null
+    /// when there is no run of that id. A live run gives its running line and no returned value.
+    /// </summary>
+    internal JsonObject? RunFile(string id)
+    {
+        Notes? notes = NotesOf(id);
+        if (notes == null)
+        {
+            return null;
+        }
+
+        RunRecord record = notes.Record;
+        string text = record.IsLive
+            ? RunText.Running(record, notes.Run?.Line, notes.Run?.ActedWrites ?? 0, notes.Run?.LastWrite, null)
+            : RunText.Final(record, null, whole: true);
+        lock (record.Sync)
+        {
+            return new JsonObject
+            {
+                ["id"] = record.Id,
+                ["first_line"] = record.FirstLine,
+                ["state"] = Run.StateWord(record.State),
+                ["returned"] = record.Returned?.DeepClone(),
+                ["printed"] = record.Printed,
+                ["error"] = record.Error,
+                ["text"] = text
+            };
+        }
     }
 
     // The runs with notices pending: ended and not yet seen (an adopted run until it is inspected or undone).

@@ -283,7 +283,8 @@ internal sealed class McpAdapter : IAsyncDisposable
                 _options.Output.WhereFilesGo(Environment.MachineName)), verb, what).ConfigureAwait(false);
         }
 
-        if (_runs != null && await RunsAsync(verb, what, options, parameters, requestId).ConfigureAwait(false) is { } runs)
+        if (_runs != null && await RunsAsync(verb, what, options, parameters, requestId, output).ConfigureAwait(false) is
+                { } runs)
         {
             return runs;
         }
@@ -301,7 +302,7 @@ internal sealed class McpAdapter : IAsyncDisposable
 
     // run_script, and inspect job and server stop for runs: the run host's. Null when the call is not a run's.
     private async Task<object?> RunsAsync(string verb, string? what, JsonObject options, JsonElement parameters,
-        object? requestId)
+        object? requestId, OutputChoice output)
     {
         VerbReply? reply;
         string? about = JsonNodes.Text(options["id"])?.Trim();
@@ -337,6 +338,14 @@ internal sealed class McpAdapter : IAsyncDisposable
         else if (verb == "inspect" && what == "job")
         {
             reply = await _runs!.InspectJobAsync(options).ConfigureAwait(false);
+            if (reply is VerbReply.Done && output is OutputChoice.ToFile && about != null &&
+                _runs.RunFile(about) is { } file)
+            {
+                // A run's whole returned value and printed output go to the file; the reply is its pointer.
+                _runs.MarkSeen(about);
+                return await SentAsync(Delivered("inspect_job", output, JsonNodes.ToElement(file)), isError: false, verb,
+                    what, about).ConfigureAwait(false);
+            }
         }
         else if (verb == "server" && what == "stop")
         {

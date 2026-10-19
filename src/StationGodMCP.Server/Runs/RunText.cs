@@ -18,8 +18,11 @@ internal static class RunText
     private const int CompactItems = 8;
     private const int ReportedRows = 60;
 
-    /// <summary>The whole reply of a finished run, adding what it shows to the seen set.</summary>
-    internal static string Final(RunRecord run, SeenSet? seen)
+    /// <summary>
+    /// The whole reply of a finished run, adding what it shows to the seen set; whole lifts the 4 KB cut of its returned
+    /// value and printed output (inspect job whole: true).
+    /// </summary>
+    internal static string Final(RunRecord run, SeenSet? seen, bool whole = false)
     {
         StringBuilder text = new();
         lock (run.Sync)
@@ -39,12 +42,12 @@ internal static class RunText
 
             if (run.Returned != null)
             {
-                string returned = Cut(Run.Shown(run.Returned), out bool cut);
+                string returned = Cut(Run.Shown(run.Returned), whole, out bool cut);
                 seen?.ShownPlain(returned);
                 text.Append("returned: ").Append(returned);
                 if (cut)
                 {
-                    text.Append($" ... (cut at 4 KB; the rest in sg.ref('{run.Id}'))");
+                    text.Append($" ... (cut at 4 KB; {AllOfIt(run)})");
                 }
 
                 text.Append('\n');
@@ -52,12 +55,12 @@ internal static class RunText
 
             if (run.Printed.Length > 0)
             {
-                string printed = Cut(run.Printed.TrimEnd('\n'), out bool cut);
+                string printed = Cut(run.Printed.TrimEnd('\n'), whole, out bool cut);
                 seen?.ShownPlain(printed);
                 text.Append(printed).Append('\n');
                 if (cut)
                 {
-                    text.Append($"... (printed output cut at 4 KB; the rest in sg.ref('{run.Id}'))\n");
+                    text.Append($"... (printed output cut at 4 KB; {AllOfIt(run)})\n");
                 }
             }
 
@@ -305,6 +308,21 @@ internal static class RunText
         WriteGroup.Cleanup => "CLEANUP",
         _ => "DONE"
     };
+
+    private static string AllOfIt(RunRecord run) =>
+        $"all of it: inspect {{what: \"job\", id: \"{run.Id}\", whole: true}} or with output_file; in a script " +
+        $"sg.ref('{run.Id}')";
+
+    private static string Cut(string text, bool whole, out bool cut)
+    {
+        if (whole)
+        {
+            cut = false;
+            return text;
+        }
+
+        return Cut(text, out cut);
+    }
 
     /// <summary>The text cut at about 4 KB of UTF-8, on a character boundary.</summary>
     internal static string Cut(string text, out bool cut)

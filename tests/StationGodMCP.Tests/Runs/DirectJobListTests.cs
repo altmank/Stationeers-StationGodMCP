@@ -99,6 +99,33 @@ public sealed class DirectJobListTests
         Assert.Equal(new[] { "text" }, single.EnumerateObject().Select(property => property.Name));
     }
 
+    [PythonFact]
+    public async Task InspectJobOfARunTakesWholeAndOutputFile()
+    {
+        RunWorld world = new();
+        await using McpAdapter adapter = new(Options(), world, runs: new RunHostSettings { SgRoot = RunBench.SgRoot });
+        await adapter.HandleAsync(
+            """{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"run_script","arguments":{"code":"return 'v' * 10000","confirm":true}}}""");
+        string file = "job-" + Guid.NewGuid().ToString("N")[..8] + ".json";
+
+        string cut = Text((await adapter.HandleAsync(
+            """{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"inspect","arguments":{"what":"job","id":"script-1"}}}"""))!);
+        string whole = Text((await adapter.HandleAsync(
+            """{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"inspect","arguments":{"what":"job","id":"script-1","whole":true}}}"""))!);
+        JsonElement pointer = Structured((await adapter.HandleAsync(
+            "{\"jsonrpc\":\"2.0\",\"id\":4,\"method\":\"tools/call\",\"params\":{\"name\":\"inspect\",\"arguments\":" +
+            "{\"what\":\"job\",\"id\":\"script-1\",\"output_file\":\"" + file + "\"}}}"))!);
+
+        Assert.Contains("cut at 4 KB", cut);
+        Assert.Contains(new string('v', 10000), whole);
+        Assert.DoesNotContain("cut at 4 KB", whole);
+        string path = pointer.GetProperty("output_file").GetString()!;
+        using JsonDocument written = JsonDocument.Parse(System.IO.File.ReadAllText(path));
+        Assert.Equal(new string('v', 10000), written.RootElement.GetProperty("returned").GetString());
+        Assert.Equal("done", written.RootElement.GetProperty("state").GetString());
+        System.IO.File.Delete(path);
+    }
+
     private static JsonElement Structured(string response)
     {
         using JsonDocument document = JsonDocument.Parse(response);
