@@ -177,8 +177,10 @@ finished run's writes can be taken back with `undo {id: "script-14"}`.
 - **It can cheat.** Every what is a read, a write (what a player or a chip can do: logic, chips, labels, paint,
   item moves, trading, building), or a cheat (what no player can: `move {what: "gas"}` and `"player"`,
   `write {what: "memory", "battery", "genes", "health"}`, `remove` and `build {what: "terrain"}`,
-  `build {what: "item"}`, `server {what: "command"}`, free placement, blueprint pastes,
-  forced item moves). Every connection can call every verb; the class is there so an agent can tell you when a call
+  `build {what: "item"}`, free placement, blueprint pastes, forced item moves, and `server {what: "command"}` for a
+  console command that changes the world: `thing spawn` or `delete`, `teleport`, `setbatteries`, `power chargeall`,
+  `plant grow`, `difficulty <name>`, any [creative] command, and any command StationGod does not know; read-only and
+  diagnostic commands such as `help`, `organs`, `thing info` or `rocket print` are not cheats). Every connection can call every verb; the class is there so an agent can tell you when a call
   is a cheat and ask first. Reports make even the risky writes show their targets first. There is no general undo:
   save first.
 - **Cheats are off outside creative worlds, until you turn them on.** In a world that is not creative every cheat is

@@ -5,7 +5,7 @@ whats:
 - info: the running mod: version, per-method calls and times, game members, its cost to the game, the cheat switch
 - profiling: profile StationGod's main-thread cost: on, off, reset, report
 - console: the latest in-game console lines, oldest first
-- command: run any console command and answer what it printed: spawn, delete, teleport, storms, settings (cheat)
+- command: run any console command and answer what it printed: spawn, delete, teleport, storms, settings
 - stop: stop a script run, or drop a job still waiting in the queue; with no id, every live run. The run gets sg.Stopped once, so its finally runs; held restores and logic writes to targets it already wrote act as CLEANUP until the kill (5 s, longer while a call is in flight, never past 30 s, or a second stop); other writes answer an error row. The reply lists what the run left changed (left), each job it started that is still in flight with its fate (a started job is not stopped: it runs to its end), and the undo of its writes
 
 On every call: fields, omit, list_limits, output_file, whole, repeat, as_player (help {topic: "shaping"}).

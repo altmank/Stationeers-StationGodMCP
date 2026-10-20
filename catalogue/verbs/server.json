@@ -132,10 +132,12 @@
       },
       "text": [
         "Read-only commands (help, rocket print) also need confirm: true; the game does not mark which commands change nothing.",
+        "Outside a creative world, with cheats off, a command that changes the world outside normal play is refused as cheats_off, naming the command and why: thing spawn or delete, teleport, deletenear, deletelooseitems, setbatteries, power chargeall, plant grow, structure completeall, difficulty <name>, storm start, any [creative] command, and any command or subcommand StationGod does not know. Read-only and diagnostic commands (help, organs, thing find or info, rocket print, listnetworkdevices, terraform status) run.",
         "The stationgod command (the cheat switch) is refused as console_only: only someone typing at the game's console runs it."
       ],
       "x-script-text": [
-        "Read-only commands (help, rocket print) also only report in a report run; the game does not mark which commands change nothing."
+        "Read-only commands (help, rocket print) also only report in a report run; the game does not mark which commands change nothing.",
+        "Outside a creative world, with cheats off, a command that changes the world outside normal play (thing spawn, teleport, setbatteries, any command StationGod does not know) is refused as cheats_off; read-only ones run."
       ],
       "example": {"command": "help", "confirm": true},
       "x-cost": {"class": "world", "growth": "by-id"},
@@ -164,7 +166,7 @@
       },
       "write": {
         "route": "confirm",
-        "cheat": "always",
+        "cheat": "by command",
         "x-undo": "cannot",
         "x-undo-mark": "[cannot undo: console]",
         "x-target": []

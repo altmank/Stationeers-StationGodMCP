@@ -84,12 +84,13 @@ internal sealed class CheatSwitch : ICheatGate
             return null;
         }
 
+        string label = what.Write.CheatLabel(what.Label, parameters);
         if (MinutesLeft is not { } left)
         {
-            return new VerbError(OffCode, Refusal(what.Label));
+            return new VerbError(OffCode, Refusal(label));
         }
 
-        CheatNote.Set(new CheatNoteView(left, what.Write.Acts(parameters)));
+        CheatNote.Set(new CheatNoteView(left, what.Write.Acts(parameters), label));
         return null;
     }
 
@@ -106,7 +107,7 @@ internal sealed class CheatSwitch : ICheatGate
             _runs.RemoveAt(0);
         }
 
-        _runs.Add(new CheatRunView(what.Label, _utcNow().ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture),
+        _runs.Add(new CheatRunView(what.Write.CheatLabel(what.Label, parameters), _utcNow().ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture),
             left));
     }
 
@@ -201,13 +202,13 @@ internal static class CheatNote
 /// <summary>A reply's cheat: it ran (or would run) as a cheat because the console's switch is on, and for how long.</summary>
 internal sealed class CheatNoteView
 {
-    internal CheatNoteView(double minutesLeft, bool acts)
+    internal CheatNoteView(double minutesLeft, bool acts, string label)
     {
         MinutesLeft = minutesLeft;
         string left = minutesLeft.ToString("0.0", CultureInfo.InvariantCulture);
         Note = acts
-            ? $"Ran as a cheat: cheats are on at the game's console for {left} more minutes."
-            : $"A cheat: allowed because cheats are on at the game's console for {left} more minutes.";
+            ? $"Ran as a cheat ({label}): cheats are on at the game's console for {left} more minutes."
+            : $"A cheat ({label}): allowed because cheats are on at the game's console for {left} more minutes.";
     }
 
     public bool CheatsOn => true;
@@ -217,7 +218,7 @@ internal sealed class CheatNoteView
     public string Note { get; }
 }
 
-/// <summary>One cheat that ran under the switch: the what (build item), when (UTC), and the minutes then left.</summary>
+/// <summary>One cheat that ran under the switch: the what (build item; server command with its command), when (UTC), and the minutes then left.</summary>
 internal sealed class CheatRunView
 {
     internal CheatRunView(string what, string atUtc, double minutesLeft)

@@ -65,13 +65,27 @@ internal static class VerbHelp
             if (VerbCatalogue.WriteOf(source)?["cheat"] is JsonValue cheat)
             {
                 string call = what == VerbCatalogue.WhatlessKey ? verb : verb + " " + what;
-                text.Append("- ").Append(call).Append((string)cheat! == "always" ? "" : " with " + (string)cheat!)
+                text.Append("- ").Append(call).Append(CheatWhen((string)cheat!, " with ", " for "))
                     .Append(": ").Append((string)source["summary"]!).Append('\n');
             }
         }
 
         return text.ToString();
     }
+
+    /// <summary>
+    /// What makes a call a cheat, as help says it: nothing for always, the option (after option), or for server command
+    /// the console lines that change the world (after command).
+    /// </summary>
+    internal static string CheatWhen(string cheat, string option, string command) => cheat switch
+    {
+        "always" => "",
+        "by command" => command + "a command that changes the world outside normal play (thing spawn or delete, " +
+            "teleport, deletenear, setbatteries, power chargeall, plant grow, difficulty <name>, storm start, a " +
+            "[creative] command, or one StationGod does not know); read-only ones (help, organs, thing info, rocket " +
+            "print, terraform status) are not",
+        _ => option + cheat
+    };
 
     internal static string VerbPage(JsonObject verb)
     {
@@ -139,7 +153,7 @@ internal static class VerbHelp
 
         if (write?["cheat"] is JsonValue cheat)
         {
-            text.Append((string)cheat! == "always" ? "Cheat.\n" : "Cheat when " + (string)cheat! + ".\n");
+            text.Append("Cheat").Append(CheatWhen((string)cheat!, " when ", " for ")).Append(".\n");
         }
 
         List<(string Name, JsonObject Option)> options = VerbCatalogue.OptionsOf(source).ToList();

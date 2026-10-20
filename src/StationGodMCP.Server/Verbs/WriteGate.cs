@@ -349,7 +349,11 @@ internal sealed class DirectWriteGate(VerbCatalogue catalogue) : IWriteGate
         return false;
     }
 
-    /// <summary>A cheat: always, or when its option is given true (free: true, force: true).</summary>
+    /// <summary>
+    /// A cheat: always, or when its option is given true (free: true, force: true). A what that is a cheat by command
+    /// (server command) counts here too: only the mod tells which console lines are cheats, and every line reports
+    /// until confirm: true.
+    /// </summary>
     internal static bool IsCheat(WhatEntry what, JsonObject args)
     {
         string? cheat = what.Write?.Cheat;
@@ -358,7 +362,7 @@ internal sealed class DirectWriteGate(VerbCatalogue catalogue) : IWriteGate
             return false;
         }
 
-        if (cheat == "always")
+        if (cheat is "always" or "by command")
         {
             return true;
         }

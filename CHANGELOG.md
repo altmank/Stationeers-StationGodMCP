@@ -1,5 +1,21 @@
 # Changelog
 
+## 2.7.1
+
+- **Console commands are not cheats en masse.** In 2.7.0 every `server command` was a cheat, so with cheats off even
+  `help` was refused. Now only a command that changes the world outside normal play is: `thing spawn`, `spawnvel` and
+  `delete`, `teleport`, `deletenear`, `voxelfillnear` and every other command the game scopes [creative],
+  `deletelooseitems`, `deleteoutofbounds`, `cleanupplayers`, `setbatteries`, `power chargeall`, `plant grow`,
+  `structure completeall`, `addgas`, `difficulty <name>`, `storm start` and `stop`, `player set...`, the rocket
+  helpers (`refuel`, `recharge`, `clone`, `instantmove`, `abandon`, `refresh`, `relink ... apply`), trader
+  `land`/`call`/`depart`/`regenerate`, space map and orbit changes, and Terraforming Reloaded's `terraform set <key>
+  <value>`, `size`, `reset`, `gas add`/`remove` and `curves reload`. Read-only and diagnostic commands (`help`,
+  `organs`, `thing find`/`info`, `rocket print`, `listnetworkdevices`, `terraform status`, ...) run with cheats off.
+  A command or subcommand StationGod does not know is a cheat. The refusal, the reply's `cheat` note and the
+  `server info` log name the command and why (`server command 'thing spawn' (makes things out of nothing)`). Every
+  console command still reports until `confirm: true`.
+- **sg 0.4.12** (help text only).
+
 ## 2.7.0
 
 - **The cheat switch.** Outside a creative world every cheat is now refused as `cheats_off` (report and act alike)

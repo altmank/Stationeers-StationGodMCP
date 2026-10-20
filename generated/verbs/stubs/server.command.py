@@ -5,8 +5,9 @@ def server(what: Literal['command'], *,
 ) -> dict:  # main list: r['output']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Run any console command and answer what it printed: spawn, delete, teleport, storms, settings.
     Read-only commands (help, rocket print) also only report in a report run; the game does not mark which commands change nothing.
+    Outside a creative world, with cheats off, a command that changes the world outside normal play (thing spawn, teleport, setbatteries, any command StationGod does not know) is refused as cheats_off; read-only ones run.
     Reports in a report run; acts in a confirmed run.
-    Cheat: ask the user first.
+    Cheat when by command: ask the user first.
     Reply:
       command: str
       command_key: str | None

@@ -61,6 +61,12 @@ public sealed class CheatSwitchTests
     private static JObject Call(string what, string? option, bool confirm = true)
     {
         JObject call = new JObject { ["what"] = what, ["confirm"] = confirm };
+        if (what == "command")
+        {
+            // server command is a cheat by its console line (ConsoleCheatsTests); this one makes things.
+            call["command"] = "thing spawn ItemKitWall 5";
+        }
+
         if (option != null)
         {
             call[option] = true;
@@ -142,7 +148,7 @@ public sealed class CheatSwitchTests
         table.Run("build", Call("item", null, confirm: false), null, checkedAlready: true);
         CheatNoteView? report = CheatNote.Take();
         Assert.NotNull(report);
-        Assert.StartsWith("A cheat: allowed", report!.Note);
+        Assert.StartsWith("A cheat (build item): allowed", report!.Note);
         Assert.Empty(cheats.Runs);
 
         clock.Advance(60_000);
@@ -150,7 +156,7 @@ public sealed class CheatSwitchTests
         table.Run("build", Call("item", null), null, checkedAlready: true);
         CheatNoteView? ran = CheatNote.Take();
         Assert.Equal(9.0, ran!.MinutesLeft);
-        Assert.StartsWith("Ran as a cheat", ran.Note);
+        Assert.StartsWith("Ran as a cheat (build item)", ran.Note);
         CheatRunView run = Assert.Single(cheats.Runs);
         Assert.Equal("build item", run.What);
         Assert.Equal("2026-10-19T12:00:00Z", run.AtUtc);

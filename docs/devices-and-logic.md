@@ -254,6 +254,15 @@ A cell's charge display and its percentage catch up on the next power tick (abou
 unrestricted: the console can spawn and delete things, teleport players, change world settings and quit the game, and
 none of it can be undone. Refusals such as "requires creative mode" come back as red output lines, not as errors.
 
+Outside a creative world, with cheats off, a command that changes the world outside normal play is refused as
+`cheats_off`, and the refusal names the command and why. That covers `thing spawn`, `spawnvel` and `delete`,
+`teleport`, `deletenear` and the other [creative] commands, bulk deletes, `setbatteries`, `power chargeall`, `plant
+grow`, `structure completeall`, `difficulty <name>`, storms, the rocket, trader, orbit and space map helpers, and
+Terraforming Reloaded's changes (`terraform set <key> <value>`, `size`, `reset`, `gas add`/`remove`). A command or
+subcommand StationGod does not know counts as one too. Read-only and diagnostic commands (`help`, `organs`, `thing
+info`, `rocket print`, `listnetworkdevices`, `terraform status`) run with cheats off. Every command still reports
+until `confirm: true`.
+
 Some commands (`save`, `load`, `new`, `difficulty` and others) finish on a background task and print nothing before the
 call returns: the reply then says `completes_asynchronously`. Read the result a moment later with `server console`.
 

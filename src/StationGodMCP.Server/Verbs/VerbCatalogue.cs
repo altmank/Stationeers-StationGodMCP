@@ -374,7 +374,10 @@ internal sealed class WriteRules
     /// <summary>The mark a report row carries (x-undo-mark).</summary>
     internal string UndoMark { get; }
 
-    /// <summary>"always", or the option that makes the write a cheat ("free: true", "force: true"); null for none.</summary>
+    /// <summary>
+    /// "always", the option that makes the write a cheat ("free: true", "force: true"), or "by command" (server command:
+    /// the mod classifies the console line); null for none.
+    /// </summary>
     internal string? Cheat { get; }
 
     internal string Route { get; }

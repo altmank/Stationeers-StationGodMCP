@@ -200,10 +200,20 @@ internal sealed class WriteSpec
 
     public string UndoMark { get; }
 
-    /// <summary>The catalogue's cheat mark: "always", "free: true", or null for a write that is never a cheat.</summary>
+    /// <summary>
+    /// The mark of server command: a cheat when its console command line is one (ConsoleCheats), not en masse.
+    /// </summary>
+    internal const string ByCommand = "by command";
+
+    /// <summary>
+    /// The catalogue's cheat mark: "always", "free: true", "by command", or null for a write that is never a cheat.
+    /// </summary>
     public string? Cheat { get; }
 
-    /// <summary>True when a call with these raw params is a cheat: always, or its option given true (the hub's IsCheat).</summary>
+    /// <summary>
+    /// True when a call with these raw params is a cheat: always, its option given true (the hub's IsCheat), or by
+    /// command a console line ConsoleCheats calls one.
+    /// </summary>
     internal bool IsCheat(JObject? parameters)
     {
         if (Cheat == null)
@@ -216,10 +226,33 @@ internal sealed class WriteSpec
             return true;
         }
 
+        if (Cheat == ByCommand)
+        {
+            return ConsoleCheats.Why(CommandOf(parameters)) != null;
+        }
+
         int colon = Cheat.IndexOf(':');
         return colon > 0 && parameters?[Cheat.Substring(0, colon).Trim()] is { Type: JTokenType.Boolean } given &&
                (bool)given;
     }
+
+    /// <summary>
+    /// What a refusal or note calls a cheat call of this what: the label, and for a by-command what the console command
+    /// with why it is a cheat (server command 'thing spawn': makes things out of nothing).
+    /// </summary>
+    internal string CheatLabel(string label, JObject? parameters)
+    {
+        if (Cheat != ByCommand)
+        {
+            return label;
+        }
+
+        string? line = CommandOf(parameters);
+        return $"{label} '{ConsoleCheats.Named(line)}' ({ConsoleCheats.Why(line)})";
+    }
+
+    private static string? CommandOf(JObject? parameters) =>
+        parameters?["command"] is { Type: JTokenType.String } command ? (string?)command : null;
 
     /// <summary>
     /// True when a call with these raw params acts rather than reports: confirm: true on the confirm route; on the acts
