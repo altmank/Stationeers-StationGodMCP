@@ -17,12 +17,31 @@ def verb_call(verb, what, options, extra):
     return wrap(result, MAIN_LISTS.get((verb, what if what is not None else "-")))
 
 
+# How much of a call an error echoes back: each value's text, and the whole call's. A failed call that carried a
+# large list (168 placements) would otherwise put tens of KB of its own arguments into the run's reply.
+VALUE_LIMIT = 120
+CALL_LIMIT = 400
+
+
 def call_text(call):
-    """A call as the Python that sent it, e.g. sg.write('logic', id='122643', logic='On', value=1)."""
+    """A call as the Python that sent it, e.g. sg.write('logic', id='122643', logic='On', value=1); a long value
+    shows its start and size, and the whole text is cut at CALL_LIMIT characters."""
     if not isinstance(call, dict):
-        return repr(call)
+        return _cut(repr(call), CALL_LIMIT)
     if "verb" not in call:
-        return repr(call)
+        return _cut(repr(call), CALL_LIMIT)
     parts = [repr(call["what"])] if call.get("what") is not None else []
-    parts += [f"{name}={value!r}" for name, value in (call.get("args") or {}).items()]
-    return f"sg.{call['verb']}({', '.join(parts)})"
+    parts += [f"{name}={_value_text(value)}" for name, value in (call.get("args") or {}).items()]
+    return _cut(f"sg.{call['verb']}({', '.join(parts)})", CALL_LIMIT)
+
+
+def _value_text(value):
+    text = repr(value)
+    if len(text) <= VALUE_LIMIT:
+        return text
+    size = f"{len(value)} items, " if isinstance(value, (list, tuple, dict)) else ""
+    return f"{text[:VALUE_LIMIT]}... ({size}{len(text)} chars)"
+
+
+def _cut(text, limit):
+    return text if len(text) <= limit else f"{text[:limit]}... ({len(text)} chars)"

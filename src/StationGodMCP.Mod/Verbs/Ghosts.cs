@@ -135,7 +135,7 @@ internal static class ShowGhost
                     : Bodies.V(rotation.eulerAngles);
                 int state = placement.State ?? placement.Prefab.BuildStates.Count - 1;
                 ghosts.Add(new GhostPlacement(placement.Prefab.PrefabHash, state, Bodies.V(placement.Position.Value),
-                    euler, order.TintOf(placement.Index), placement.Args.Label ?? order.Label));
+                    euler, order.TintOf(placement.Index), order.LabelOf(placement.Index)));
             }
 
             List<string> refused = new List<string>();

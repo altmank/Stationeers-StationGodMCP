@@ -20,8 +20,9 @@ internal sealed class GhostOrder
     private static readonly string[] ClearWords = { "agent", "all" };
 
     private GhostOrder(PlaceRequest arguments, Dictionary<int, Rgba> tints, Rgba tint, List<long> remove, string? clear,
-        string? label)
+        string? label, Dictionary<int, string> labels)
     {
+        Labels = labels;
         Arguments = arguments;
         Tints = tints;
         Tint = tint;
@@ -48,11 +49,18 @@ internal sealed class GhostOrder
 
     internal Rgba TintOf(int index) => Tints.TryGetValue(index, out Rgba own) ? own : Tint;
 
+    /// <summary>The placements' labels by index (the call's label already in each placement without its own).</summary>
+    internal Dictionary<int, string> Labels { get; }
+
+    internal string? LabelOf(int index) => Labels.TryGetValue(index, out string? label) ? label : null;
+
     internal static GhostOrder? Of(ShowGhostOptions options, List<OptionProblem> problems)
     {
         int before = problems.Count;
         Dictionary<int, Rgba> tints = new Dictionary<int, Rgba>();
-        List<PlacementRequest> placements = PreviewOrder.Placements(GivenPlacements.Of(options), tints, problems);
+        Dictionary<int, string> labels = new Dictionary<int, string>();
+        List<PlacementRequest> placements = PreviewOrder.Placements(GivenPlacements.Of(options), tints, labels,
+            problems);
         Rgba tint = GhostTints.Default;
         if (options.Tint != null && GhostTints.TryRead(options.Tint, "tint", problems, out Rgba given))
         {
@@ -74,7 +82,7 @@ internal sealed class GhostOrder
 
         return problems.Count == before
             ? new GhostOrder(new PlaceRequest(placements, null, true, Allow.Lifts(options.Allow, "door_keepout"),
-                detail: new ReportDetail(false, true)), tints, tint, remove, clear, options.Label)
+                detail: new ReportDetail(false, true)), tints, tint, remove, clear, options.Label, labels)
             : null;
     }
 
@@ -188,7 +196,7 @@ internal sealed class GhostFilter
         }
 
         JArray placements = new JArray();
-        for (int index = 0; index < ghosts.Count && index < PlaceRequest.MaximumPlacements; index++)
+        for (int index = 0; index < ghosts.Count && index < StructureBuildOrder.MaximumPlacements; index++)
         {
             JObject placement = BuildArguments(ghosts[index]);
             placement.Remove("what");

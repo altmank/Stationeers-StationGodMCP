@@ -35,6 +35,7 @@
             "items": {"type": ["string", "integer"]},
             "description": "Whole name, hash, or parts with * ('*Tank*Insulated*'); or a list."
           },
+          "exclude_prefab": {"type": ["string", "integer", "array"]},
           "category": {"enum": ["any", "item", "dynamic", "structure", "entity", "other"]},
           "labelled": {"type": "boolean"},
           "runtime_type": {"type": "string"},
@@ -196,7 +197,7 @@
             "description": "Only these parts. Default all."
           },
           "networks": {"type": "boolean"},
-          "include": {"type": "array", "items": {"enum": ["refund", "piece_cells", "wall_planes"]}},
+          "include": {"type": "array", "items": {"enum": ["refund", "piece_cells", "wall_planes", "legend"]}},
           "network": {
             "type": ["array", "string", "object"],
             "description": "area: Only pieces on these networks. network, feeds: A network: its id, a piece or device on it, or {id, port}."

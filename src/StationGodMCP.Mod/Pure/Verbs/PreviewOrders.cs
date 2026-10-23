@@ -204,7 +204,7 @@ internal enum PreviewStyle
 internal sealed class PreviewOrder
 {
     /// <summary>The most placements one call draws (the option's maxItems).</summary>
-    internal const int MaximumPlacements = PlaceRequest.MaximumPlacements;
+    internal const int MaximumPlacements = 512;
 
     /// <summary>The most cells one call draws (the option's maxItems).</summary>
     internal const int MaximumCells = 512;
@@ -223,7 +223,7 @@ internal sealed class PreviewOrder
     internal const double DefaultSeconds = 30.0;
 
     /// <summary>The longest it shows (the option's maximum).</summary>
-    internal const double MaximumSeconds = 300.0;
+    internal const double MaximumSeconds = 3600.0;
 
     /// <summary>The two ways the call names its placements: the list, or one at the top level.</summary>
     private const string ByPlacements = "placements";
@@ -280,6 +280,12 @@ internal sealed class PreviewOrder
     /// <summary>The run to plan and draw, as build cable, pipe or chute would read it; null without run.</summary>
     public RunBuildOrder? Run { get; private set; }
 
+    /// <summary>The placements' labels (each ghost's tooltip), by placement index.</summary>
+    public Dictionary<int, string> Labels { get; } = new Dictionary<int, string>();
+
+    /// <summary>The label placement index shows as its ghost's tooltip; null for none.</summary>
+    internal string? LabelOf(int index) => Labels.TryGetValue(index, out string? label) ? label : null;
+
     /// <summary>The tint placement index draws its ghost with.</summary>
     internal Rgba TintOf(int index) => PlacementTints.TryGetValue(index, out Rgba own) ? own : Tint;
 
@@ -335,7 +341,8 @@ internal sealed class PreviewOrder
         }
 
         Dictionary<int, Rgba> tints = new Dictionary<int, Rgba>();
-        List<PlacementRequest> placements = Placements(GivenPlacements.Of(options), tints, problems);
+        Dictionary<int, string> labels = new Dictionary<int, string>();
+        List<PlacementRequest> placements = Placements(GivenPlacements.Of(options), tints, labels, problems);
         List<PreviewBox> cells = CellsOf(options.Cells, seconds, xray, problems);
         List<PreviewBox> boxes = BoxesOf(options.Boxes, seconds, xray, problems);
         PreviewStyle style = StyleOf(options.Style, problems);
@@ -364,6 +371,11 @@ internal sealed class PreviewOrder
         foreach (KeyValuePair<int, Rgba> own in tints)
         {
             order.PlacementTints[own.Key] = own.Value;
+        }
+
+        foreach (KeyValuePair<int, string> own in labels)
+        {
+            order.Labels[own.Key] = own.Value;
         }
 
         return order;
@@ -459,18 +471,26 @@ internal sealed class PreviewOrder
 
     // The placements the call names: the list read item by item, or the one placement's own fields at the top level.
     // Nothing at all is no problem: the call may draw only cells and boxes.
+    // A label is a ghost's tooltip, kept by index (labels), never sent to the planner: a frame or wall the Labeller
+    // cannot name would make every such placement a problem.
     internal static List<PlacementRequest> Placements(GivenPlacements options, Dictionary<int, Rgba> tints,
-        List<OptionProblem> problems)
+        Dictionary<int, string> labels, List<OptionProblem> problems)
     {
         List<PlacementRequest> placements = new List<PlacementRequest>();
         if (options.Placements != null)
         {
             BesideTheList(options, problems);
-            Items(options.Placements, placements, tints, options.LabelForAll ? options.Label : null, options.Spec, problems);
+            Items(options.Placements, placements, tints, labels, options.LabelForAll ? options.Label : null,
+                options.Spec, problems);
             return placements;
         }
 
         One(options, placements, problems);
+        if (placements.Count > 0 && options.Label != null)
+        {
+            labels[0] = options.Label;
+        }
+
         return placements;
     }
 
@@ -503,9 +523,9 @@ internal sealed class PreviewOrder
         _ => false
     };
 
-    // The placements list: each item read as a placement, the what's 1 to 64 of them, and its own tint.
+    // The placements list: each item read as a placement, 1 to MaximumPlacements of them, with its own tint and label.
     private static void Items(JToken given, List<PlacementRequest> placements, Dictionary<int, Rgba> tints,
-        string? label, WhatSpec spec, List<OptionProblem> problems)
+        Dictionary<int, string> labels, string? label, WhatSpec spec, List<OptionProblem> problems)
     {
         if (!(given is JArray items) || items.Count == 0 || items.Count > MaximumPlacements)
         {
@@ -531,10 +551,22 @@ internal sealed class PreviewOrder
             }
 
             JObject item = entry;
-            if (label != null && entry["label"] == null)
+            if (entry["label"] is { } ownLabel)
             {
                 item = (JObject)entry.DeepClone();
-                item["label"] = label;
+                item.Remove("label");
+                if (ownLabel.Type == JTokenType.String)
+                {
+                    labels[index] = (string)ownLabel!;
+                }
+                else
+                {
+                    problems.Add(new OptionProblem($"{path}.label", "is text: what the ghost is"));
+                }
+            }
+            else if (label != null)
+            {
+                labels[index] = label;
             }
 
             if (entry[TintKey] is { } own)
@@ -601,11 +633,6 @@ internal sealed class PreviewOrder
             item["build_state"] = options.BuildState.DeepClone();
         }
 
-        if (options.Label != null)
-        {
-            item["label"] = options.Label;
-        }
-
         if (item.Count > 0)
         {
             PlacementOrders.Add(placements, item, 0, string.Empty, options.Spec, problems);
@@ -639,6 +666,32 @@ internal sealed class PreviewOrder
         }
 
         return cells;
+    }
+
+    // A box's colour: the five box names as they always were, else any tint name or [r, g, b] / [r, g, b, a] (a box is
+    // a line, so opaque unless an alpha is given); none is yellow.
+    private static bool BoxColour(JToken? given, string path, List<OptionProblem> problems, out Rgba colour)
+    {
+        if (given == null || given.Type == JTokenType.Null)
+        {
+            colour = PreviewColours.Cell;
+            return true;
+        }
+
+        if (given.Type == JTokenType.String && PreviewColours.TryRead(given.Value<string>(), out colour))
+        {
+            return true;
+        }
+
+        bool alpha = given is JArray { Count: 4 };
+        if (!GhostTints.TryRead(given, path, problems, out Rgba tint))
+        {
+            colour = default;
+            return false;
+        }
+
+        colour = alpha ? tint : new Rgba(tint.Red, tint.Green, tint.Blue, 1f);
+        return true;
     }
 
     // The boxes: up to 64, each {min, max, color}; a box without a colour is yellow.
@@ -692,16 +745,8 @@ internal sealed class PreviewOrder
                 continue;
             }
 
-            string? colour = null;
-            if (item["color"] is JToken name && name.Type == JTokenType.String)
+            if (!BoxColour(item["color"], path + ".color", problems, out Rgba tint))
             {
-                colour = name.Value<string>();
-            }
-
-            if (!PreviewColours.TryRead(colour, out Rgba tint))
-            {
-                problems.Add(new OptionProblem(path + ".color",
-                    "is red, green, white, cyan or yellow", NearestNames.Of(colour ?? string.Empty, PreviewColours.Names)));
                 continue;
             }
 

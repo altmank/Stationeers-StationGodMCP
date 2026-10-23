@@ -26,8 +26,9 @@ public sealed class GhostOrderTests
              "placements": [{"prefab": "A", "at": [0, 0, 0]}, {"prefab": "B", "at": [1, 0, 0], "label": "spare", "tint": "red"}]}
             """, new List<OptionProblem>())!;
 
-        Assert.Equal("O2 line", order.Arguments.Placements[0].Label);
-        Assert.Equal("spare", order.Arguments.Placements[1].Label);
+        Assert.Equal("O2 line", order.LabelOf(0));
+        Assert.Equal("spare", order.LabelOf(1));
+        Assert.Null(order.Arguments.Placements[1].Label);
         Assert.Equal(GhostTints.ByName("purple"), order.TintOf(0));
         Assert.Equal(GhostTints.ByName("red"), order.TintOf(1));
         Assert.True(order.Arguments.Free);
@@ -38,7 +39,8 @@ public sealed class GhostOrderTests
     {
         GhostOrder order = Order("""{"prefab": "A", "at": [0, 0, 0], "label": "pump"}""", new List<OptionProblem>())!;
 
-        Assert.Equal("pump", Assert.Single(order.Arguments.Placements).Label);
+        Assert.Single(order.Arguments.Placements);
+        Assert.Equal("pump", order.LabelOf(0));
     }
 
     [Fact]

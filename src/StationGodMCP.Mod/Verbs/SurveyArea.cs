@@ -134,7 +134,8 @@ internal static class SurveyArea
                 }
             }
 
-            string? legend = !withCells ? null
+            // The legend (about 2 KB) only when asked: help survey area holds it, so a run of calls need not repeat it.
+            string? legend = !withCells || !_options.Fields.Includes("legend") ? null
                 : detail == SurveyCellDetail.Full ? SurveyLegends.Full
                 : SurveyLegends.Occupancy;
             return SurveyAreaReply.Of(new Page<SurveyCell>(views, page.Total, page.Offset, page.Limit, page.HasMore),

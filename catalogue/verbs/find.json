@@ -10,6 +10,11 @@
       "options": {
         "name": {"use": "name", "description": "Part of the shown or game name, any case."},
         "prefab": {"use": "prefab"},
+        "exclude_prefab": {
+          "schema": {"type": ["string", "integer", "array"]},
+          "description": "Leave these prefabs out, as prefab names them ('*Frame*', '*Wall*'); or a list.",
+          "x-script": "same"
+        },
         "category": {
           "schema": {"type": "string", "enum": ["any", "item", "dynamic", "structure", "entity", "other"]},
           "description": "Only this kind of thing.",

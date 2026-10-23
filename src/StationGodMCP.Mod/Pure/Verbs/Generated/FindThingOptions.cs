@@ -16,6 +16,7 @@ internal sealed class FindThingOptions
     internal static WhatSpec Spec { get; } = new WhatSpec("find", "thing", "things", null, null, new WhatCost(CostClass.World), null, null,
         new OptionSpec("name", "{\"type\":\"string\"}"),
         new OptionSpec("prefab", "{\"type\":[\"string\",\"integer\",\"array\"],\"items\":{\"type\":[\"string\",\"integer\"]}}"),
+        new OptionSpec("exclude_prefab", "{\"type\":[\"string\",\"integer\",\"array\"]}"),
         new OptionSpec("category", "{\"type\":\"string\",\"enum\":[\"any\",\"item\",\"dynamic\",\"structure\",\"entity\",\"other\"]}", false, "any"),
         new OptionSpec("labelled", "{\"type\":\"boolean\"}", false, "false"),
         new OptionSpec("runtime_type", "{\"type\":\"string\"}"),
@@ -39,6 +40,8 @@ internal sealed class FindThingOptions
     internal Fields Fields { get; private set; } = Fields.None;
 
     internal Paging Paging { get; private set; } = Paging.All;
+
+    internal JToken? ExcludePrefab { get; private set; }
 
     internal string? Category { get; private set; }
 
@@ -65,6 +68,7 @@ internal sealed class FindThingOptions
         Selector = Selector.Bind(options),
         Fields = Fields.Bind(options),
         Paging = Paging.Bind(options),
+        ExcludePrefab = options.Raw("exclude_prefab"),
         Category = options.Text("category") ?? options.DefaultText("category"),
         Labelled = options.Flag("labelled") ?? options.DefaultFlag("labelled"),
         RuntimeType = options.Text("runtime_type"),

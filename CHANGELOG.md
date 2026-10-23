@@ -1,5 +1,20 @@
 # Changelog
 
+## 2.9.2
+
+From the MCP pane's furnace-block planning (heavy replies):
+- **find thing `exclude_prefab`**: leave prefabs out, as `prefab` names them (`["*Frame*", "*Wall*"]`). A box of
+  structures came to 177 KB, mostly frames and walls. (The two find replies written to files that session carried no
+  `fields` at all, and the hub sends `fields` to the game with `output_file` as without it, now pinned by a test.)
+- **A failed call in a script no longer echoes its whole arguments**: each value shows at most 120 characters and its
+  size (`placements=[{...}]... (168 items, 20934 chars)`), the whole call at most 400.
+- **survey area's legend only on request**: `include: ["legend"]`; the legends are in `help survey area`.
+- **show preview and show ghost take 512 placements** (build structure keeps 64). A label is now only the ghost's
+  tooltip and never goes to the planner, so labels on frames and walls no longer raise a Labeller problem per piece.
+- **show preview**: `seconds` up to 3600; a box's `color` takes any tint name (orange, purple ...) or `[r, g, b]` /
+  `[r, g, b, a]`, opaque unless an alpha is given.
+- **sg 0.4.15**: the shorter failed-call text; find thing's `exclude_prefab`.
+
 ## 2.9.1
 
 - **A run_script call the client cancels after it started no longer stands.** A call the user rejects or interrupts

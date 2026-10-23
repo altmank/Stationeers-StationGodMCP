@@ -17,7 +17,7 @@ def show(what: Literal['preview'], *,
     tint: str | list = None,  # The ghosts' colour, yours to choose (no meaning of its own): a palette name (show highlight's), [r, g, b] or [r, g, b, a] each 0 to 1; alpha 0.4 when left out.
     allow: list[Literal['door_keepout']] = None,  # Guards to lift, by name.
     cells: list = None,  # Yellow 0.5 m cubes at these points.
-    boxes: list = None,  # {min, max, color} boxes.
+    boxes: list = None,  # {min, max, color} boxes; color: red, green, white, cyan, yellow, any tint name, or [r, g, b] / [r, g, b, a].
     seconds: float = 30,  # How long to show.
     keep: bool = False,  # Keep what earlier calls drew.
     clear: bool = None,  # Only remove what is drawn.

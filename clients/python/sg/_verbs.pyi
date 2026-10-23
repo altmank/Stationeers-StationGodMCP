@@ -8,6 +8,7 @@ def find(what: Literal['thing'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
     name: str = None,  # Part of the shown or game name, any case.
     prefab: str | int | list = None,  # Prefab: a whole name, a hash, or parts with * ('*Battery*', '*Tank*Insulated*': each part, any order); or a list of them.
+    exclude_prefab: str | int | list = None,  # Leave these prefabs out, as prefab names them ('*Frame*', '*Wall*'); or a list.
     category: Literal['any', 'item', 'dynamic', 'structure', 'entity', 'other'] = 'any',  # Only this kind of thing.
     labelled: bool = False,  # Only things with a Labeller name.
     runtime_type: str = None,  # Only things of this game class or one built on it ('Device', 'Pipe').
@@ -1098,7 +1099,7 @@ def survey(what: Literal['area'], *,
     room: str = None,  # A room id.
     sections: list[Literal['cells', 'pieces', 'devices', 'networks', 'network_visibility', 'doors']] = 'all',  # Only these parts. (default all)
     networks: bool = True,  # Include the networks of the pieces.
-    include: list[Literal['refund', 'piece_cells', 'wall_planes']] = None,  # refund: each piece's removal refund; piece_cells: every small cell of a long piece; wall_planes: small marks its '.' cells on the cell's -x, -y and -z face planes with that face's 'w', 'g' or 'x' (door over window over wall).
+    include: list[Literal['refund', 'piece_cells', 'wall_planes', 'legend']] = None,  # refund: each piece's removal refund; piece_cells: every small cell of a long piece; wall_planes: small marks its '.' cells on the cell's -x, -y and -z face planes with that face's 'w', 'g' or 'x' (door over window over wall); legend: what each cell's keys and characters mean (also in help survey area).
     network: list[str] = None,  # Only pieces on these networks.
     kind: list[Literal['cable', 'pipe', 'chute']] = None,  # Only pieces of these kinds.
     prefab: str | int | list = None,  # Prefab: a whole name, a hash, or parts with * ('*Battery*', '*Tank*Insulated*': each part, any order); or a list of them.
@@ -3700,7 +3701,7 @@ def show(what: Literal['preview'], *,
     tint: str | list = None,  # The ghosts' colour, yours to choose (no meaning of its own): a palette name (show highlight's), [r, g, b] or [r, g, b, a] each 0 to 1; alpha 0.4 when left out.
     allow: list[Literal['door_keepout']] = None,  # Guards to lift, by name.
     cells: list = None,  # Yellow 0.5 m cubes at these points.
-    boxes: list = None,  # {min, max, color} boxes.
+    boxes: list = None,  # {min, max, color} boxes; color: red, green, white, cyan, yellow, any tint name, or [r, g, b] / [r, g, b, a].
     seconds: float = 30,  # How long to show.
     keep: bool = False,  # Keep what earlier calls drew.
     clear: bool = None,  # Only remove what is drawn.

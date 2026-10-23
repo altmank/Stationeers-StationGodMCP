@@ -110,7 +110,7 @@ internal static class PreviewScreen
         int state = placement.State ?? placement.Prefab.BuildStates.Count - 1;
         return new GhostSpec(placement.Prefab.PrefabHash, state, Bodies.V(placement.Position.Value),
             Bodies.V(placement.Rotation.eulerAngles), order.TintOf(placement.Index), seconds, order.Xray,
-            label: placement.Args.Label);
+            label: order.LabelOf(placement.Index));
     }
 
     // The plan in short (verbose has build structure's whole report): ready, the problems and warnings, and where

@@ -141,9 +141,9 @@ public sealed class PreviewOrderTests
     [InlineData("""{"placements": [{"prefab": "A", "at": [0, 0, 0]}], "above_floor": 1}""", "above_floor")]
     [InlineData("""{"cells": [[1, 1]]}""", "cells[0]")]
     [InlineData("""{"boxes": [{"min": [0, 0, 0]}]}""", "boxes[0].max")]
-    [InlineData("""{"boxes": [{"min": [0, 0, 0], "max": [1, 1, 1], "color": "purple"}]}""", "boxes[0].color")]
+    [InlineData("""{"boxes": [{"min": [0, 0, 0], "max": [1, 1, 1], "color": "violet"}]}""", "boxes[0].color")]
     [InlineData("""{"boxes": [3]}""", "boxes[0]")]
-    [InlineData("""{"seconds": 301}""", "seconds")]
+    [InlineData("""{"seconds": 3601}""", "seconds")]
     public void AMalformedCallIsAProblemAtItsPath(string json, string path)
     {
         List<OptionProblem> problems = new();
@@ -216,6 +216,47 @@ public sealed class PreviewOrderTests
         JObject cleared = JObject.Parse(
             WireCheck.New(new ShowPreviewView(0, 0, 2, 0, null, null, new List<string> { "Cleared." })));
         Assert.False(cleared.ContainsKey("plan"));
+    }
+
+    [Fact]
+    public void ABoxTakesAnyTintNameOrChannelsOpaque()
+    {
+        PreviewOrder order = Drawn("""
+            {"boxes": [{"min": [0, 0, 0], "max": [1, 1, 1], "color": "orange"},
+                       {"min": [0, 0, 0], "max": [1, 1, 1], "color": [0.1, 0.2, 0.3]},
+                       {"min": [0, 0, 0], "max": [1, 1, 1], "color": [0.1, 0.2, 0.3, 0.5]},
+                       {"min": [0, 0, 0], "max": [1, 1, 1], "color": "red"}]}
+            """);
+
+        Assert.Equal(1f, order.Boxes[0].Color.Alpha);
+        Assert.Equal(new Rgba(0.1f, 0.2f, 0.3f, 1f), order.Boxes[1].Color);
+        Assert.Equal(new Rgba(0.1f, 0.2f, 0.3f, 0.5f), order.Boxes[2].Color);
+        Assert.Equal(PreviewColours.Problem, order.Boxes[3].Color);
+    }
+
+    [Fact]
+    public void LabelsAreTooltipsAndNeverReachThePlanner()
+    {
+        // A frame or wall label the Labeller cannot write would be a problem for every placement if planned.
+        PreviewOrder order = Drawn("""
+            {"style": "ghost", "placements": [{"prefab": "StructureFrame", "at": [0, 0, 0], "label": "furnace frame"},
+                                              {"prefab": "StructureFrame", "at": [2, 0, 0]}]}
+            """);
+        PreviewOrder one = Drawn("""{"prefab": "StructureWallLight", "at": [0, 0, 0], "label": "lamp"}""");
+
+        Assert.Null(order.Arguments.Placements[0].Label);
+        Assert.Equal("furnace frame", order.LabelOf(0));
+        Assert.Null(order.LabelOf(1));
+        Assert.Null(Assert.Single(one.Arguments.Placements).Label);
+        Assert.Equal("lamp", one.LabelOf(0));
+    }
+
+    [Fact]
+    public void APreviewTakesUpTo512Placements()
+    {
+        PreviewOrder order = Drawn("{\"placements\": [" + Placements(168) + "]}");
+
+        Assert.Equal(168, order.Arguments.Placements.Count);
     }
 
     [Fact]

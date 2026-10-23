@@ -356,9 +356,14 @@ internal sealed class PrefabFilter
 
     public IReadOnlyList<PrefabPattern> Patterns { get; }
 
-    internal static PrefabFilter? Bind(OptionReader options)
+    internal static PrefabFilter? Bind(OptionReader options) => Of(options.Raw("prefab"), "prefab", options.Problem);
+
+    /// <summary>
+    /// The filter an option gives (prefab, or another taking the same forms, such as exclude_prefab); null when it is
+    /// left out or names no pattern that reads. Each entry that does not read is a problem at its path.
+    /// </summary>
+    internal static PrefabFilter? Of(JToken? given, string option, System.Action<string, string> problem)
     {
-        JToken? given = options.Raw("prefab");
         if (given == null)
         {
             return null;
@@ -372,7 +377,7 @@ internal sealed class PrefabFilter
             PrefabPattern? pattern = PrefabPattern.Of(entry);
             if (pattern == null)
             {
-                options.Problem(list ? $"prefab[{index}]" : "prefab", "must be a prefab's name, its hash, or parts with *");
+                problem(list ? $"{option}[{index}]" : option, "must be a prefab's name, its hash, or parts with *");
             }
             else
             {

@@ -14,7 +14,7 @@ namespace StationGodMCP.Pure.Verbs;
 internal sealed class ShowGhostOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("show", "ghost", null, null, null, new WhatCost(CostClass.Instant), null, null,
-        new OptionSpec("placements", "{\"type\":\"array\",\"items\":{\"type\":\"object\"},\"maxItems\":64}"),
+        new OptionSpec("placements", "{\"type\":\"array\",\"items\":{\"type\":\"object\"},\"maxItems\":512}"),
         new OptionSpec("prefab", "{\"type\":[\"string\",\"integer\"]}"),
         new OptionSpec("at", "{\"type\":[\"array\",\"object\",\"string\"]}"),
         new OptionSpec("rotation", "{\"type\":\"array\",\"items\":{\"type\":\"number\"},\"maxItems\":3}"),

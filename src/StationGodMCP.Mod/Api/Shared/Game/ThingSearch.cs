@@ -173,6 +173,9 @@ internal sealed class ThingFilter
 
     internal PrefabFilter? Prefab { get; }
 
+    /// <summary>exclude_prefab: the prefabs left out whatever else matches; null for none.</summary>
+    internal PrefabFilter? Excluded { get; set; }
+
     /// <summary>any, or one of ThingKinds.</summary>
     internal string Category { get; }
 
@@ -212,6 +215,7 @@ internal sealed class ThingFilter
     internal bool Keeps(Thing thing) =>
         (!Labelled || !string.IsNullOrEmpty(thing.CustomName)) &&
         (Prefab == null || Prefab.Keeps(thing.PrefabName, thing.PrefabHash)) &&
+        (Excluded == null || !Excluded.Keeps(thing.PrefabName, thing.PrefabHash)) &&
         (Category == ThingLocations.Any || ThingKinds.Of(thing) == Category) &&
         (!Broken.HasValue || Wrecks.IsBroken(thing) == Broken.Value) &&
         (!ColorIndex.HasValue || ThingColors.ShownIndexOf(thing) == ColorIndex.Value) &&

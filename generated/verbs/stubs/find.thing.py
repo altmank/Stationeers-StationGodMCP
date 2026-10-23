@@ -2,6 +2,7 @@ def find(what: Literal['thing'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
     name: str = None,  # Part of the shown or game name, any case.
     prefab: str | int | list = None,  # Prefab: a whole name, a hash, or parts with * ('*Battery*', '*Tank*Insulated*': each part, any order); or a list of them.
+    exclude_prefab: str | int | list = None,  # Leave these prefabs out, as prefab names them ('*Frame*', '*Wall*'); or a list.
     category: Literal['any', 'item', 'dynamic', 'structure', 'entity', 'other'] = 'any',  # Only this kind of thing.
     labelled: bool = False,  # Only things with a Labeller name.
     runtime_type: str = None,  # Only things of this game class or one built on it ('Device', 'Pipe').

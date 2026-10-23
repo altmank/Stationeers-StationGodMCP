@@ -20,7 +20,7 @@
       "summary": "a planned structure layout or cable, pipe or chute run (build's dry run) as wire boxes or see-through ghosts, plus cells and boxes",
       "options": {
         "placements": {
-          "schema": {"type": "array", "items": {"type": "object"}, "maxItems": 64},
+          "schema": {"type": "array", "items": {"type": "object"}, "maxItems": 512},
           "description": "As build structure's placements; each may give its own tint, and its label shows as the ghost's tooltip.",
           "x-script": "same"
         },
@@ -95,11 +95,11 @@
         },
         "boxes": {
           "schema": {"type": "array", "items": {"type": "object"}, "maxItems": 64},
-          "description": "{min, max, color} boxes.",
+          "description": "{min, max, color} boxes; color: red, green, white, cyan, yellow, any tint name, or [r, g, b] / [r, g, b, a].",
           "x-script": "same"
         },
         "seconds": {
-          "schema": {"type": "number", "minimum": 0, "maximum": 300},
+          "schema": {"type": "number", "minimum": 0, "maximum": 3600},
           "description": "How long to show.",
           "default": "30",
           "x-script": "same"
@@ -194,7 +194,7 @@
       "brief": "persistent ghosts on the board",
       "options": {
         "placements": {
-          "schema": {"type": "array", "items": {"type": "object"}, "maxItems": 64},
+          "schema": {"type": "array", "items": {"type": "object"}, "maxItems": 512},
           "description": "As build structure's placements; each may give its own tint and label.",
           "x-script": "same"
         },

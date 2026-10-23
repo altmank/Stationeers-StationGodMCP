@@ -14,7 +14,7 @@ namespace StationGodMCP.Pure.Verbs;
 internal sealed class ShowPreviewOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("show", "preview", null, null, null, new WhatCost(CostClass.Instant, when: new[] { new CostWhen("run", CostClass.Plan) }), null, null,
-        new OptionSpec("placements", "{\"type\":\"array\",\"items\":{\"type\":\"object\"},\"maxItems\":64}"),
+        new OptionSpec("placements", "{\"type\":\"array\",\"items\":{\"type\":\"object\"},\"maxItems\":512}"),
         new OptionSpec("prefab", "{\"type\":[\"string\",\"integer\"]}"),
         new OptionSpec("at", "{\"type\":[\"array\",\"object\",\"string\"]}"),
         new OptionSpec("rotation", "{\"type\":\"array\",\"items\":{\"type\":\"number\"},\"maxItems\":3}"),
@@ -32,7 +32,7 @@ internal sealed class ShowPreviewOptions
         new OptionSpec("allow", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"door_keepout\"]}}"),
         new OptionSpec("cells", "{\"type\":\"array\",\"items\":{\"type\":\"array\"},\"maxItems\":512}"),
         new OptionSpec("boxes", "{\"type\":\"array\",\"items\":{\"type\":\"object\"},\"maxItems\":64}"),
-        new OptionSpec("seconds", "{\"type\":\"number\",\"minimum\":0,\"maximum\":300}", false, "30"),
+        new OptionSpec("seconds", "{\"type\":\"number\",\"minimum\":0,\"maximum\":3600}", false, "30"),
         new OptionSpec("keep", "{\"type\":\"boolean\"}", false, "false"),
         new OptionSpec("clear", "{\"type\":\"boolean\"}"),
         new OptionSpec("xray", "{\"type\":\"boolean\"}", false, "false"),

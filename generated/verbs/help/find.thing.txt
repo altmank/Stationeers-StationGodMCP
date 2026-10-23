@@ -2,6 +2,7 @@ Any object: structures, devices, tanks, loose items, players, animals.
 Options:
 - name (string): Part of the shown or game name, any case.
 - prefab (string or integer or array): Prefab: a whole name, a hash, or parts with * ('*Battery*', '*Tank*Insulated*': each part, any order); or a list of them.
+- exclude_prefab (string or integer or array): Leave these prefabs out, as prefab names them ('*Frame*', '*Wall*'); or a list.
 - category (any | item | dynamic | structure | entity | other, default any): Only this kind of thing.
 - labelled (boolean, default false): Only things with a Labeller name.
 - runtime_type (string): Only things of this game class or one built on it ('Device', 'Pipe').

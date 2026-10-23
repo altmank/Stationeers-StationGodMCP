@@ -47,12 +47,14 @@ internal static class FindThing
         else
         {
             List<OptionProblem> problems = options.Selector.AreaProblems(MaximumRadiusM);
+            PrefabFilter? excluded = PrefabFilter.Of(options.ExcludePrefab, "exclude_prefab",
+                (path, problem) => problems.Add(new OptionProblem(path, problem)));
             if (problems.Count > 0)
             {
                 return new VerbOutcome.Refused(OptionProblem.Refusal(FindThingOptions.Spec.Label, problems));
             }
 
-            ThingFilter filter = FilterOf(options);
+            ThingFilter filter = FilterOf(options, excluded);
 
             PlayerOrigin origin = PlayerOrigin.Current().RequireIf(filter.NearPlayerM.HasValue);
             WalkBuild<Thing> build = new WalkBuild<Thing>(ThingSearch.Candidates(filter),
@@ -66,7 +68,7 @@ internal static class FindThing
     }
 
     // The filter the options give, once their area options go together.
-    private static ThingFilter FilterOf(FindThingOptions options)
+    private static ThingFilter FilterOf(FindThingOptions options, PrefabFilter? excluded)
     {
         Selector selector = options.Selector;
         double? nearPlayer = selector.Near is NearPoint.Player ? selector.Radius : null;
@@ -76,7 +78,10 @@ internal static class FindThing
         return new ThingFilter(selector.Name, selector.Prefab, options.Category ?? ThingLocations.Any,
             options.RuntimeType, options.Labelled ?? false, options.HasAtmosphere, nearPlayer, options.Broken,
             MadeOf(options.MadeBy, options.MadeSince), options.Location ?? ThingLocations.Any, area,
-            options.Color != null ? PaintColor.Named(options.Color, ThingColors.Swatches()) : null, options.Painted);
+            options.Color != null ? PaintColor.Named(options.Color, ThingColors.Swatches()) : null, options.Painted)
+        {
+            Excluded = excluded
+        };
     }
 
     // made_by: a maker's reference id, or text in its prefab or shown name; made_since: a game time, or a negative
