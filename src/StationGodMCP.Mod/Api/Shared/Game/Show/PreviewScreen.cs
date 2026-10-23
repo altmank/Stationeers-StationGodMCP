@@ -46,11 +46,13 @@ internal static class PreviewScreen
         List<PreviewBox> boxes = new List<PreviewBox>();
         List<GhostSpec> ghosts = new List<GhostSpec>();
         List<string> notes = audience.Notes;
-        ReplyObject? plan = null;
+        object? plan = null;
         if (order.HasPlacements)
         {
             PlacePlan planned = PlacePlanner.Plan(order.Arguments, lint: false);
-            plan = JobReports.Body(BuildReports.Of(planned, BuildReports.DryRun, null), planned.Ready);
+            plan = order.Verbose
+                ? JobReports.Body(BuildReports.Of(planned, BuildReports.DryRun, null), planned.Ready)
+                : Brief(planned);
             foreach (PlannedPlacement placement in planned.Placements)
             {
                 if (order.DrawsBoxes)
@@ -74,18 +76,26 @@ internal static class PreviewScreen
 
         boxes.AddRange(order.Cells);
         boxes.AddRange(order.Boxes);
-        int cleared = audience.Each(screen => screen.Preview(!order.Keep, boxes) + screen.Ghost(!order.Keep, ghosts));
+        int total = 0;
+        int cleared = audience.Each(screen =>
+        {
+            int gone = screen.Preview(!order.Keep, boxes) + screen.Ghost(!order.Keep, ghosts);
+            total = System.Math.Max(total, screen.GhostsShown);
+            return gone;
+        });
         if (boxes.Count == 0 && ghosts.Count == 0)
         {
             notes.Add("Nothing to draw: pass placements (or prefab and at), run, cells or boxes.");
         }
         else if (!order.Xray)
         {
-            notes.Add(PreviewOrder.HiddenNote);
+            notes.Add(order.HasRun && order.DrawsGhosts
+                ? PreviewOrder.HiddenNote + " A run's ghosts are drawn see-through anyway."
+                : PreviewOrder.HiddenNote);
         }
 
         return new ShowPreviewView(boxes.Count, ghosts.Count, cleared, order.Seconds, plan, runView, notes,
-            audience.DrawnOn, audience.Source);
+            audience.DrawnOn, audience.Source) { GhostsTotal = total };
     }
 
     // A placement's ghost: its prefab at its build state, where and as it would be placed; null when the plan could
@@ -99,7 +109,24 @@ internal static class PreviewScreen
 
         int state = placement.State ?? placement.Prefab.BuildStates.Count - 1;
         return new GhostSpec(placement.Prefab.PrefabHash, state, Bodies.V(placement.Position.Value),
-            Bodies.V(placement.Rotation.eulerAngles), order.TintOf(placement.Index), seconds, order.Xray);
+            Bodies.V(placement.Rotation.eulerAngles), order.TintOf(placement.Index), seconds, order.Xray,
+            label: placement.Args.Label);
+    }
+
+    // The plan in short (verbose has build structure's whole report): ready, the problems and warnings, and where
+    // each placement went.
+    private static PreviewPlanView Brief(PlacePlan plan)
+    {
+        List<PreviewPlacementView> placements = new List<PreviewPlacementView>(plan.Placements.Count);
+        foreach (PlannedPlacement placement in plan.Placements)
+        {
+            placements.Add(new PreviewPlacementView(placement.Index,
+                placement.Prefab != null ? placement.Prefab.PrefabName : placement.Args.Prefab.ToString(),
+                placement.Position.HasValue ? GameLookup.ViewOf(placement.Position.Value) : null,
+                placement.Turn != null ? OrientationView.Of(placement.Turn) : null, placement.State));
+        }
+
+        return new PreviewPlanView(plan.Ready, plan.Problems, plan.Warnings, placements);
     }
 
     // A run's new and changed pieces: each one's cell as a box (red where no piece could be chosen), and each piece's
@@ -126,9 +153,10 @@ internal static class PreviewScreen
             }
 
             Structure prefab = cell.Choice.Prefab;
+            // Pieces lie inside floors and frames: without the see-through pass a floor's run cannot be seen.
             ghosts.Add(new GhostSpec(prefab.PrefabHash, prefab.BuildStates.Count - 1,
                 Bodies.V(PieceShapes.CentreOf(cell.Cell)), Bodies.V(cell.Choice.Rotation.eulerAngles), order.Tint,
-                seconds, order.Xray));
+                seconds, xray: true));
         }
 
         if (order.DrawsBoxes)

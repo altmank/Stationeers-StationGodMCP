@@ -1,0 +1,21 @@
+Put planned structures on the world's ghost board, where every player sees them until they are built or taken off; or take ghosts off.
+Options:
+- placements (list): As build structure's placements; each may give its own tint and label.
+- prefab (string or integer): Prefab: a whole name, a hash, or parts with * ('*Battery*', '*Tank*Insulated*': each part, any order); or a list of them.
+- at (array or object or string): A point, "looking_at", or a relative or look-face form (help positions).
+- rotation (list): [x, y, z] degrees, multiples of 90.
+- facing (string): Where the front points (as build structure).
+- up (string): Where the top points (as build structure).
+- face (string): Face-placed pieces: the cell face it sits on.
+- orient (object): {mount, upright, controls_toward, ports: [{role, index, type, toward}], flow: {from, to}}: choose the turn by intent. mount: wall, floor, ceiling or an axis; a target (controls_toward, toward, from, to): an axis, room, player, a point or a thing's id.
+- above_floor (number): Bottom this many metres above the floor below at.
+- build_state (string or integer): finished (default), first, or a state index.
+- from_plan (string): A plan spot ref ("r9"; one spot: "r9.spots.2", default the first): put its placement on the board.
+- tint (string or array): The ghosts' colour, yours to choose: a name (cyan, magenta, yellow, green, orange, blue, red, white, purple, pink, khaki, brown, black, gray), [r, g, b] or [r, g, b, a] each 0 to 1.
+- label (string): What the ghosts are, shown as a tooltip when the crosshair is on one, and in find ghost; a placement's own label wins.
+- remove (list): Ghost ids to take off the board (find ghost lists them).
+- clear (agent | all): Take off every ghost agents placed, or every ghost.
+- allow (list of door_keepout): Guards to lift, by name.
+A ghost lasts until it is taken off or a structure of its prefab is built where it stands, kept with the save; players see it, move around it, take it off (RemoveGhostKey) and place their own (ghost mode, the ghost menu). The placements are planned as build structure plans them (nothing built, materials not checked) and each goes on the board where the plan put it, problems or not; the reply's plan says why one would not build. find ghost lists the board.
+Reply: placed [{id, prefab_name, position}], removed, total, plan {ready, problems, warnings}, notes
+Example: show {what: "ghost", prefab: "StructureVolumePump", at: [716, 203, 668], facing: "+x", tint: "orange", label: "second pump"}

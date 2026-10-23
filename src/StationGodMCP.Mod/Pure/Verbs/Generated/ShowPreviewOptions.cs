@@ -24,6 +24,7 @@ internal sealed class ShowPreviewOptions
         new OptionSpec("orient", "{\"type\":\"object\"}"),
         new OptionSpec("above_floor", "{\"type\":\"number\"}"),
         new OptionSpec("build_state", "{\"type\":[\"string\",\"integer\"]}"),
+        new OptionSpec("label", "{\"type\":\"string\"}"),
         new OptionSpec("run", "{\"type\":\"object\"}"),
         new OptionSpec("from_plan", "{\"type\":\"string\"}"),
         new OptionSpec("style", "{\"type\":\"string\",\"enum\":[\"boxes\",\"ghost\",\"both\"]}", false, "boxes"),
@@ -34,7 +35,8 @@ internal sealed class ShowPreviewOptions
         new OptionSpec("seconds", "{\"type\":\"number\",\"minimum\":0,\"maximum\":300}", false, "30"),
         new OptionSpec("keep", "{\"type\":\"boolean\"}", false, "false"),
         new OptionSpec("clear", "{\"type\":\"boolean\"}"),
-        new OptionSpec("xray", "{\"type\":\"boolean\"}", false, "false"));
+        new OptionSpec("xray", "{\"type\":\"boolean\"}", false, "false"),
+        new OptionSpec("verbose", "{\"type\":\"boolean\"}", false, "false"));
 
     internal Selector Selector { get; private set; } = Selector.None;
 
@@ -57,6 +59,8 @@ internal sealed class ShowPreviewOptions
     internal double? AboveFloor { get; private set; }
 
     internal JToken? BuildState { get; private set; }
+
+    internal string? Label { get; private set; }
 
     internal JToken? Run { get; private set; }
 
@@ -93,6 +97,7 @@ internal sealed class ShowPreviewOptions
         Orient = options.Raw("orient"),
         AboveFloor = options.Number("above_floor"),
         BuildState = options.Raw("build_state"),
+        Label = options.Text("label"),
         Run = options.Raw("run"),
         FromPlan = options.Text("from_plan"),
         Style = options.Text("style") ?? options.DefaultText("style"),

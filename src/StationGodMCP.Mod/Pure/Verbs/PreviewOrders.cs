@@ -66,11 +66,26 @@ internal static class PreviewColours
 }
 
 /// <summary>
-/// The tint a ghost is drawn with: the agent's choice, with no meaning of its own. A palette name (show highlight's),
-/// [r, g, b] or [r, g, b, a], each 0 to 1; without an alpha a ghost is see-through at DefaultAlpha.
+/// The tint a ghost is drawn with: the agent's or the player's choice, with no meaning of its own. A name (show
+/// highlight's palette and the game's paint colours: purple, pink, khaki, brown, black, gray), [r, g, b] or
+/// [r, g, b, a], each 0 to 1; without an alpha a ghost is see-through at DefaultAlpha.
 /// </summary>
 internal static class GhostTints
 {
+    // The game's paint colours show highlight's palette lacks.
+    private static readonly (string Name, Rgba Tint)[] Paints =
+    {
+        ("purple", new Rgba(0.6f, 0.3f, 0.95f, DefaultAlpha)),
+        ("pink", new Rgba(1f, 0.5f, 0.75f, DefaultAlpha)),
+        ("khaki", new Rgba(0.76f, 0.7f, 0.45f, DefaultAlpha)),
+        ("brown", new Rgba(0.55f, 0.35f, 0.2f, DefaultAlpha)),
+        ("black", new Rgba(0.12f, 0.12f, 0.12f, DefaultAlpha)),
+        ("gray", new Rgba(0.6f, 0.6f, 0.6f, DefaultAlpha))
+    };
+
+    /// <summary>Every name a tint takes, in the order the ghost menu lists them.</summary>
+    internal static readonly IReadOnlyList<string> Names = NamesOf();
+
     /// <summary>How see-through a ghost is when its tint gives no alpha.</summary>
     internal const float DefaultAlpha = 0.4f;
 
@@ -78,7 +93,32 @@ internal static class GhostTints
     internal static readonly Rgba Default = new Rgba(0.45f, 0.75f, 1f, DefaultAlpha);
 
     private static readonly string Wanted =
-        $"is one of {string.Join(", ", HighlightRequest.ColorNames)}, or [r, g, b] or [r, g, b, a] with each 0 to 1";
+        $"is one of {string.Join(", ", Names)}, or [r, g, b] or [r, g, b, a] with each 0 to 1";
+
+    /// <summary>The tint a name gives (trimmed, any case; grey is gray), at DefaultAlpha; null for no such name.</summary>
+    internal static Rgba? ByName(string name)
+    {
+        string trimmed = name.Trim();
+        if (HighlightRequest.ByName(trimmed) is { } known)
+        {
+            return new Rgba((float)known.Tint.Red, (float)known.Tint.Green, (float)known.Tint.Blue, DefaultAlpha);
+        }
+
+        if (string.Equals(trimmed, "grey", StringComparison.OrdinalIgnoreCase))
+        {
+            trimmed = "gray";
+        }
+
+        foreach ((string paint, Rgba tint) in Paints)
+        {
+            if (string.Equals(paint, trimmed, StringComparison.OrdinalIgnoreCase))
+            {
+                return tint;
+            }
+        }
+
+        return null;
+    }
 
     /// <summary>The tint given at path; false with the problem when it reads as none.</summary>
     internal static bool TryRead(JToken given, string path, List<OptionProblem> problems, out Rgba tint)
@@ -87,13 +127,13 @@ internal static class GhostTints
         if (given.Type == JTokenType.String)
         {
             string name = given.Value<string>()!.Trim();
-            if (HighlightRequest.ByName(name) is { } known)
+            if (ByName(name) is { } known)
             {
-                tint = new Rgba((float)known.Tint.Red, (float)known.Tint.Green, (float)known.Tint.Blue, DefaultAlpha);
+                tint = known;
                 return true;
             }
 
-            problems.Add(new OptionProblem(path, Wanted, NearestNames.Of(name, HighlightRequest.ColorNames)));
+            problems.Add(new OptionProblem(path, Wanted, NearestNames.Of(name, Names)));
             return false;
         }
 
@@ -116,6 +156,17 @@ internal static class GhostTints
 
         problems.Add(new OptionProblem(path, Wanted));
         return false;
+    }
+
+    private static List<string> NamesOf()
+    {
+        List<string> names = new List<string>(HighlightRequest.ColorNames);
+        foreach ((string name, Rgba _) in Paints)
+        {
+            names.Add(name);
+        }
+
+        return names;
     }
 
     private static bool Channel(JToken token, out float value)
@@ -141,11 +192,12 @@ internal enum PreviewStyle
 }
 
 /// <summary>
-/// show preview's call, checked without the game: the placements (1 to 64, or the one at the top level by prefab and
+/// show preview's call, checked without the game (planned free: a preview pays nothing, so materials never make it
+/// not ready): the placements (1 to 64, or the one at the top level by prefab and
 /// at) read by the shared place readers, each with its own tint, allow door_keepout, a run (build cable, pipe or chute's
 /// options with what, read by RunBuildOrder as those whats read them), the style (boxes, ghost or both) and the ghosts'
 /// tint, the cells (up to 512 yellow 0.5 m cubes) and boxes (up to 64, each {min, max, color}) it draws, seconds (30
-/// by default, at most 300), keep, clear and xray. The request the game plans is built here: nobody pays, it is not
+/// by default, at most 300), keep, clear and xray. The request the game plans is built here: nobody pays, it is
 /// free, no lint and no pad, a brief report. clear only removes what is drawn, so nothing else is read then. The
 /// what's label prefixes every refusal ("show preview: ..."), every problem naming its path (boxes[2].color).
 /// </summary>
@@ -192,7 +244,7 @@ internal sealed class PreviewOrder
     /// <summary>A placement's own field at the top level, which goes in each item beside a placements list.</summary>
     private static readonly string[] PlacementFields =
     {
-        "prefab", "at", "rotation", "facing", "up", "face", "orient", "above_floor", "build_state"
+        "prefab", "at", "rotation", "facing", "up", "face", "orient", "above_floor", "build_state", "label"
     };
 
     /// <summary>A placement item's keys: the place readers' and its tint.</summary>
@@ -231,7 +283,7 @@ internal sealed class PreviewOrder
     /// <summary>The tint placement index draws its ghost with.</summary>
     internal Rgba TintOf(int index) => PlacementTints.TryGetValue(index, out Rgba own) ? own : Tint;
 
-    /// <summary>The request the game plans: the placements, from nobody, not free, no lint, no pad, a brief report.</summary>
+    /// <summary>The request the game plans: the placements, from nobody, free, no lint, no pad, a brief report.</summary>
     public PlaceRequest Arguments { get; }
 
     /// <summary>The yellow 0.5 m cubes the call draws.</summary>
@@ -250,6 +302,9 @@ internal sealed class PreviewOrder
 
     /// <summary>Draw through walls, frames and terrain.</summary>
     public bool Xray { get; }
+
+    /// <summary>plan: build structure's whole report, not the brief one.</summary>
+    public bool Verbose { get; private set; }
 
     /// <summary>Whether the call names placements: without them nothing is planned and only cells and boxes are drawn.</summary>
     internal bool HasPlacements => Arguments.Placements.Count > 0;
@@ -280,7 +335,7 @@ internal sealed class PreviewOrder
         }
 
         Dictionary<int, Rgba> tints = new Dictionary<int, Rgba>();
-        List<PlacementRequest> placements = Placements(options, tints, problems);
+        List<PlacementRequest> placements = Placements(GivenPlacements.Of(options), tints, problems);
         List<PreviewBox> cells = CellsOf(options.Cells, seconds, xray, problems);
         List<PreviewBox> boxes = BoxesOf(options.Boxes, seconds, xray, problems);
         PreviewStyle style = StyleOf(options.Style, problems);
@@ -297,13 +352,14 @@ internal sealed class PreviewOrder
         }
 
         PreviewOrder order = new PreviewOrder(
-            new PlaceRequest(placements, null, false, Allow.Lifts(options.Allow, "door_keepout"),
+            new PlaceRequest(placements, null, true, Allow.Lifts(options.Allow, "door_keepout"),
                 detail: PreviewDetail), cells, boxes,
             seconds, options.Keep ?? false, false, xray)
         {
             Style = style,
             Tint = tint,
-            Run = run
+            Run = run,
+            Verbose = options.Fields.Verbose
         };
         foreach (KeyValuePair<int, Rgba> own in tints)
         {
@@ -365,6 +421,8 @@ internal sealed class PreviewOrder
             return null;
         }
 
+        // A preview builds nothing, so it pays nothing: planned free, ready means build would place it.
+        options["free"] = true;
         OptionReader reader = new OptionReader(spec, options);
         List<OptionProblem> read = new List<OptionProblem>();
         VerbError? missing;
@@ -401,14 +459,14 @@ internal sealed class PreviewOrder
 
     // The placements the call names: the list read item by item, or the one placement's own fields at the top level.
     // Nothing at all is no problem: the call may draw only cells and boxes.
-    private static List<PlacementRequest> Placements(ShowPreviewOptions options, Dictionary<int, Rgba> tints,
+    internal static List<PlacementRequest> Placements(GivenPlacements options, Dictionary<int, Rgba> tints,
         List<OptionProblem> problems)
     {
         List<PlacementRequest> placements = new List<PlacementRequest>();
         if (options.Placements != null)
         {
             BesideTheList(options, problems);
-            Items(options.Placements, placements, tints, problems);
+            Items(options.Placements, placements, tints, options.LabelForAll ? options.Label : null, options.Spec, problems);
             return placements;
         }
 
@@ -417,7 +475,7 @@ internal sealed class PreviewOrder
     }
 
     // A placement's own field beside a placements list belongs in each item instead.
-    private static void BesideTheList(ShowPreviewOptions options, List<OptionProblem> problems)
+    private static void BesideTheList(GivenPlacements options, List<OptionProblem> problems)
     {
         foreach (string field in PlacementFields)
         {
@@ -430,9 +488,9 @@ internal sealed class PreviewOrder
     }
 
     // Whether the call gives a placement field at the top level.
-    private static bool Given(ShowPreviewOptions options, string field) => field switch
+    private static bool Given(GivenPlacements options, string field) => field switch
     {
-        "prefab" => options.Selector.Prefab != null,
+        "prefab" => options.Prefab != null,
         "at" => options.At != null,
         "rotation" => options.Rotation != null,
         "facing" => options.Facing != null,
@@ -441,12 +499,13 @@ internal sealed class PreviewOrder
         "orient" => options.Orient != null,
         "above_floor" => options.AboveFloor.HasValue,
         "build_state" => options.BuildState != null,
+        "label" => options.Label != null && !options.LabelForAll,
         _ => false
     };
 
     // The placements list: each item read as a placement, the what's 1 to 64 of them, and its own tint.
     private static void Items(JToken given, List<PlacementRequest> placements, Dictionary<int, Rgba> tints,
-        List<OptionProblem> problems)
+        string? label, WhatSpec spec, List<OptionProblem> problems)
     {
         if (!(given is JArray items) || items.Count == 0 || items.Count > MaximumPlacements)
         {
@@ -472,9 +531,15 @@ internal sealed class PreviewOrder
             }
 
             JObject item = entry;
-            if (entry[TintKey] is { } own)
+            if (label != null && entry["label"] == null)
             {
                 item = (JObject)entry.DeepClone();
+                item["label"] = label;
+            }
+
+            if (entry[TintKey] is { } own)
+            {
+                item = (JObject)item.DeepClone();
                 item.Remove(TintKey);
                 if (GhostTints.TryRead(own, $"{path}.{TintKey}", problems, out Rgba tint))
                 {
@@ -482,16 +547,16 @@ internal sealed class PreviewOrder
                 }
             }
 
-            PlacementOrders.Add(placements, item, index, path + ".", ShowPreviewOptions.Spec, problems);
+            PlacementOrders.Add(placements, item, index, path + ".", spec, problems);
         }
     }
 
     // The one placement's own fields at the top level; a call that gives none is no problem (it may draw only cells
     // and boxes). The prefab first: a * pattern is no placement, and reading one would only repeat that it is missing.
-    private static void One(ShowPreviewOptions options, List<PlacementRequest> placements, List<OptionProblem> problems)
+    private static void One(GivenPlacements options, List<PlacementRequest> placements, List<OptionProblem> problems)
     {
         JObject item = new JObject();
-        if (!PlacementOrders.Prefab(options.Selector.Prefab, ByPrefab, item, problems))
+        if (!PlacementOrders.Prefab(options.Prefab, ByPrefab, item, problems))
         {
             return;
         }
@@ -536,9 +601,14 @@ internal sealed class PreviewOrder
             item["build_state"] = options.BuildState.DeepClone();
         }
 
+        if (options.Label != null)
+        {
+            item["label"] = options.Label;
+        }
+
         if (item.Count > 0)
         {
-            PlacementOrders.Add(placements, item, 0, string.Empty, ShowPreviewOptions.Spec, problems);
+            PlacementOrders.Add(placements, item, 0, string.Empty, options.Spec, problems);
         }
     }
 
@@ -641,4 +711,71 @@ internal sealed class PreviewOrder
 
         return boxes;
     }
+}
+
+
+/// <summary>
+/// The placement fields a call gives (show preview's, show ghost's): the placements list, or one placement's own
+/// fields at the top level. With LabelForAll a top-level label goes beside a list, into each placement without one.
+/// </summary>
+internal sealed class GivenPlacements
+{
+    internal WhatSpec Spec { get; private set; } = ShowPreviewOptions.Spec;
+
+    internal JToken? Placements { get; private set; }
+
+    internal PrefabFilter? Prefab { get; private set; }
+
+    internal JToken? At { get; private set; }
+
+    internal JToken? Rotation { get; private set; }
+
+    internal string? Facing { get; private set; }
+
+    internal string? Up { get; private set; }
+
+    internal string? Face { get; private set; }
+
+    internal JToken? Orient { get; private set; }
+
+    internal double? AboveFloor { get; private set; }
+
+    internal JToken? BuildState { get; private set; }
+
+    internal string? Label { get; private set; }
+
+    internal bool LabelForAll { get; private set; }
+
+    internal static GivenPlacements Of(ShowPreviewOptions options) => new GivenPlacements
+    {
+        Spec = ShowPreviewOptions.Spec,
+        Placements = options.Placements,
+        Prefab = options.Selector.Prefab,
+        At = options.At,
+        Rotation = options.Rotation,
+        Facing = options.Facing,
+        Up = options.Up,
+        Face = options.Face,
+        Orient = options.Orient,
+        AboveFloor = options.AboveFloor,
+        BuildState = options.BuildState,
+        Label = options.Label
+    };
+
+    internal static GivenPlacements Of(ShowGhostOptions options) => new GivenPlacements
+    {
+        Spec = ShowGhostOptions.Spec,
+        Placements = options.Placements,
+        Prefab = options.Selector.Prefab,
+        At = options.At,
+        Rotation = options.Rotation,
+        Facing = options.Facing,
+        Up = options.Up,
+        Face = options.Face,
+        Orient = options.Orient,
+        AboveFloor = options.AboveFloor,
+        BuildState = options.BuildState,
+        Label = options.Label,
+        LabelForAll = true
+    };
 }

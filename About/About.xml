@@ -3,7 +3,7 @@
   <Name>StationGod MCP</Name>
   <ModID>net.xceled.stationeers.stationgodmcp</ModID>
   <Author>XCeled</Author>
-  <Version>2.8.0</Version>
+  <Version>2.9.0</Version>
   <Description>[h1]Let an AI agent read and run your Stationeers base[/h1]
 StationGod MCP connects an AI agent such as Claude Code or Codex to your running game through the Model Context Protocol (MCP), the standard way these agents call outside tools. The agent can then read every device, chip, room, network and planet value you could look up yourself, and act on them: write logic, program chips, move gas and items, and build or rebuild cables, pipes, chutes, walls and frames with the checks the game itself applies.
 
@@ -69,8 +69,11 @@ Developed with the use of generative AI, and tokens aren't free. Buy me a coffee
 [url=https://ko-fi.com/xceled]ko-fi.com/xceled[/url]
   </Description>
   <ChangeLog>
+v2.9.0
+- Ghosts for players: ghost mode (Ctrl+G) and the ghost menu (Ctrl+Shift+G) place planned structures every player sees, with labels on hover; agents list and build them.
+
 v2.8.0
-- show preview draws ghosts: see-through structures in your tint (style ghost), through walls with xray; previews runs (run) and plan refs.
+- show preview draws see-through ghosts of structures and runs.
 
 v2.7.1
 - server command is a cheat only for commands that change the world; read-only ones run.
@@ -106,7 +109,7 @@ v2.2.0
 - inspect contents compact by default; move item tops up stacks first; find thing gives quantity; job replies keep fields and omit.
 
 v2.1.0
-- Multiplayer: as_player on every verb (sidecar --as-player for all calls); show draws for every player. find thing filters by color. run_script on an installed sidecar.
+- as_player on every verb; show draws for every player; find thing filters by color.
 
 v2.0.2
 - build from_plan builds the whole plan even when the plan call's fields or omit hid build_arguments.

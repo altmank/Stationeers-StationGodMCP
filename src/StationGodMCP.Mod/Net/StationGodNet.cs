@@ -12,8 +12,9 @@ namespace StationGodMCP.Net;
 
 /// <summary>
 /// StationGod's messages between games, over StationeersLaunchPad's LaunchPadBooster: a client's view to the server
-/// (ViewMessage), the server's drawings back to that client (DrawMessage), the server's order to move that client's
-/// player (MoveMessage), and the server's announcement in every joining player's join data (HostAnnouncement).
+/// (ViewMessage), the server's drawings back to that client (DrawMessage, the ghost board too), the server's order to
+/// move that client's player (MoveMessage), a client's player's ghost requests (GhostMessage), and the server's
+/// announcement in every joining player's join data (HostAnnouncement).
 ///
 /// StationGod is optional on every machine. Registered as not required, with a version check that accepts any version,
 /// so LaunchPadBooster never refuses a join over StationGod: a player without it, or with another version, joins as
@@ -129,6 +130,26 @@ internal static class StationGodNet
         }
     }
 
+    /// <summary>Sends a ghost request to the server; false when it could not.</summary>
+    internal static bool SendGhostRequest(byte[] payload)
+    {
+        if (!Active || payload.Length > MaximumPayload)
+        {
+            return false;
+        }
+
+        try
+        {
+            SendGhostToHost(payload);
+            return true;
+        }
+        catch (Exception exception)
+        {
+            OnceLog.Warning("send_ghost", $"Could not send the ghost to the server: {exception.Message}");
+            return false;
+        }
+    }
+
     // Its own method, never inlined, so a missing or older LaunchPadBooster fails inside Register's try.
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static void RegisterWithBooster()
@@ -140,6 +161,7 @@ internal static class StationGodNet
         mod.Networking.RegisterMessage<ViewMessage>();
         mod.Networking.RegisterMessage<DrawMessage>();
         mod.Networking.RegisterMessage<MoveMessage>();
+        mod.Networking.RegisterMessage<GhostMessage>();
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
@@ -147,6 +169,9 @@ internal static class StationGodNet
 
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static void SendDrawToClient(Client client, byte[] payload) => new DrawMessage(payload).SendToClient(client);
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void SendGhostToHost(byte[] payload) => new GhostMessage(payload).SendToHost();
 
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static void SendMoveToClient(Client client, byte[] payload) => new MoveMessage(payload).SendToClient(client);
@@ -369,6 +394,58 @@ public sealed class MoveMessage : INetworkMessage
         catch (Exception exception)
         {
             OnceLog.Warning("process_move", $"The server's move could not be made: {exception.Message}");
+        }
+    }
+}
+
+
+/// <summary>A client's player's ghost request, to the server. Read and handled on the main thread.</summary>
+public sealed class GhostMessage : INetworkMessage
+{
+    private const int MaximumBytes = 65536;
+
+    private byte[] _payload = Array.Empty<byte>();
+    private bool _readable;
+
+    public GhostMessage()
+    {
+    }
+
+    internal GhostMessage(byte[] payload)
+    {
+        _payload = payload;
+        _readable = true;
+    }
+
+    public void Serialize(RocketBinaryWriter writer) => Envelope.Write(writer, _payload);
+
+    public void Deserialize(RocketBinaryReader reader)
+    {
+        try
+        {
+            byte[]? payload = Envelope.Read(reader, MaximumBytes);
+            _readable = payload != null;
+            _payload = payload ?? Array.Empty<byte>();
+        }
+        catch (Exception exception)
+        {
+            _readable = false;
+            OnceLog.Warning("read_ghost", $"A player's ghost request did not read: {exception.Message}");
+        }
+    }
+
+    public void Process(long clientId)
+    {
+        try
+        {
+            if (NetworkManager.IsServer && _readable)
+            {
+                Api.Shared.Game.GhostBoardStore.Receive(clientId, _payload);
+            }
+        }
+        catch (Exception exception)
+        {
+            OnceLog.Warning("process_ghost", $"A player's ghost request could not be handled: {exception.Message}");
         }
     }
 }

@@ -29,6 +29,9 @@ internal static class ViewReporter
     private static float _sentAt = float.NegativeInfinity;
     private static int _sequence;
 
+    /// <summary>Whether the server announced a StationGod this game may send to (views and ghost requests).</summary>
+    internal static bool HostListens => _link.MaySend && StationGodNet.Active;
+
     /// <summary>The server's announcement from the join data.</summary>
     internal static void Announced(Announcement announcement)
     {

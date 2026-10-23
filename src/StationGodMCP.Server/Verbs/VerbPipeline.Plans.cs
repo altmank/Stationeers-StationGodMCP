@@ -45,6 +45,11 @@ public sealed partial class VerbPipeline
         options.Remove("what");
         if (Previews(call))
         {
+            if (call.What == "ghost" && plannedWhat != "structure")
+            {
+                return PlanRefusal(call, $"the plan builds {plannedWhat}: show ghost takes a plan spot or find ghost ref");
+            }
+
             resolved = Resolved(call, call.What, Previewed(call, options, plannedWhat));
             return null;
         }
@@ -80,8 +85,8 @@ public sealed partial class VerbPipeline
             Recorded = call.Recorded
         };
 
-    // show preview takes from_plan too: it draws what build would build from the plan.
-    private static bool Previews(VerbCall call) => call.Verb == "show" && call.What == "preview";
+    // show preview and show ghost take from_plan too: they draw what build would build from the plan.
+    private static bool Previews(VerbCall call) => call.Verb == "show" && (call.What == "preview" || call.What == "ghost");
 
     /// <summary>
     /// show preview's options from a plan's build_arguments: a route's (cable, pipe or chute) become run, with what
@@ -98,6 +103,11 @@ public sealed partial class VerbPipeline
                 foreach (string field in PreviewPlacementFields.Where(field => planned[field] != null))
                 {
                     options[field] = planned[field]!.DeepClone();
+                }
+
+                if (planned["placements"] is JsonArray placements)
+                {
+                    options["placements"] = placements.DeepClone();
                 }
             }
         }
@@ -143,10 +153,12 @@ public sealed partial class VerbPipeline
                 "(the options given replace its own); from_plan takes a plan route or plan spot ref");
         }
 
-        if (stored.Verb != "plan" || !PlannedWhats.Contains(stored.What))
+        bool ghosts = stored.Verb == "find" && stored.What == "ghost";
+        if ((stored.Verb != "plan" || !PlannedWhats.Contains(stored.What)) && !ghosts)
         {
             return new PlanArguments.Refused(
-                $"{stored.Id} is a {stored.Verb} {stored.What} call; from_plan takes a plan route or plan spot ref");
+                $"{stored.Id} is a {stored.Verb} {stored.What} call; from_plan takes a plan route, plan spot or find " +
+                "ghost ref");
         }
 
         return At(stored.Planned ?? stored.Whole, parsed.Path) is JsonObject entry

@@ -190,8 +190,9 @@ public sealed class RemoteViewTests
         DrawCommand.Ghosts read =
             Assert.IsType<DrawCommand.Ghosts>(Assert.IsType<WireRead<DrawCommand>.Read>(DrawWire.Decode(bytes)).Value);
 
-        // protocol, kind, replace, count; then each ghost: hash, state, position, euler, tint, seconds, xray, source
-        Assert.Equal(7 + 2 * (4 + 4 + 12 + 12 + 16 + 4 + 1 + 1), bytes.Length);
+        // protocol, kind, replace, count; then each ghost: hash, state, position, euler, tint, seconds, xray, source,
+        // label (none: 2)
+        Assert.Equal(7 + 2 * (4 + 4 + 12 + 12 + 16 + 4 + 1 + 1 + 2), bytes.Length);
         Assert.True(read.Replace);
         Assert.Equal(2, read.List.Count);
         GhostSpec first = read.List[0];
@@ -220,7 +221,7 @@ public sealed class RemoteViewTests
             Assert.IsType<WireRead<DrawCommand>.Malformed>(DrawWire.Decode(bytes.AsSpan(0, length).ToArray()));
         }
 
-        bytes[^1] = 7;
+        bytes[^3] = 7;
         Assert.IsType<WireRead<DrawCommand>.Malformed>(DrawWire.Decode(bytes));
     }
 

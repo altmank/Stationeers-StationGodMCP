@@ -411,6 +411,9 @@ internal abstract class PlayerScreen
 
     internal abstract int ClearGhosts();
 
+    /// <summary>The preview ghosts on this screen now.</summary>
+    internal abstract int GhostsShown { get; }
+
     internal abstract int Highlight(bool replace, IReadOnlyList<ScreenMark> marks, double seconds, List<string> notes);
 
     internal abstract int ClearHighlights();
@@ -472,6 +475,8 @@ internal abstract class PlayerScreen
 
         internal override int ClearGhosts() => Ghosts.Clear();
 
+        internal override int GhostsShown => Ghosts.Count;
+
         internal override int Highlight(bool replace, IReadOnlyList<ScreenMark> marks, double seconds, List<string> notes)
         {
             if (XRay.MeshMaterial == null)
@@ -522,6 +527,8 @@ internal abstract class PlayerScreen
             Send(new DrawCommand.Ghosts(replace, ghosts));
 
         internal override int ClearGhosts() => Send(new DrawCommand.Ghosts(true, new List<GhostSpec>()));
+
+        internal override int GhostsShown => RemoteDrawings.Live(_connectionId, typeof(DrawCommand.Ghosts));
 
         internal override int Highlight(bool replace, IReadOnlyList<ScreenMark> marks, double seconds, List<string> notes)
         {

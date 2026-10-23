@@ -417,6 +417,33 @@ def find(what: Literal['script'], *,
     """
 
 @overload
+def find(what: Literal['ghost'], *,
+    fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
+    ids: list = None,  # Only these ghosts, by id.
+    near: str | list = None,  # Only ghosts near this: [x, y, z], "player", "looking_at" or a thing's id; nearest first.
+    radius: float = None,  # Metres from near; left out, every ghost, nearest first.
+    prefab: str | int | list = None,  # Prefab: a whole name, a hash, or parts with * ('*Battery*', '*Tank*Insulated*': each part, any order); or a list of them.
+    owner: str = None,  # Only ghosts this player placed (their name, any case), or "agent".
+    source: Literal['player', 'agent'] = None,  # Only ghosts players placed, or agents.
+    limit: int = 50,  # The first n in order (entries); left out, every one.
+) -> dict:  # main list: r['ghosts']: the page answered; .walk() goes through every entry, .all() pages in the rest
+    """Ghosts: structures players (ghost mode, the ghost menu) or agents (show ghost) planned in the world but did not build, with build_arguments to build them.
+    Each ghost carries build_arguments for build structure; the reply's build_arguments place every listed ghost (up to 64) in one build. from_plan takes a find ghost ref: "r5" builds the listed ghosts, "r5.ghosts.2" one. A ghost goes off the board by itself once a structure of its prefab is built where it stands in its turn; show ghost {remove} takes ghosts off.
+    Reply:
+      ghosts: list[{id: int, prefab_name: str, display_name: str | None, position: Vec3, rotation_deg: Vec3, build_state: int, owner: str, source:
+          str, label: str | None, tint: list[float], placed_at: str, distance_m: float | None, build_arguments: {what: str, prefab: str, at:
+          list[float], rotation: list[float], build_state: int}}]
+      count: int
+      total: int
+      offset: int
+      limit: int | None
+      has_more: bool
+      build_arguments: {what: str, placements: list[{prefab: str, at: list[float], rotation: list[float], build_state: int}]} | None
+    Types: Vec3 = {x: float, y: float, z: float}
+    Example: sg.find('ghost', near='player', radius=20)
+    """
+
+@overload
 def inspect(what: Literal['device'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
     id: str | list[str],  # Target: an id, a list of ids, or "looking_at" (the thing the crosshair is on); "player" where the what says.
@@ -3656,7 +3683,7 @@ def trade(what: Literal['sell'], *,
 @overload
 def show(what: Literal['preview'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
-    placements: list = None,  # As build structure's placements; each may give its own tint.
+    placements: list = None,  # As build structure's placements; each may give its own tint, and its label shows as the ghost's tooltip.
     prefab: str | int = None,  # Prefab: a whole name, a hash, or parts with * ('*Battery*', '*Tank*Insulated*': each part, any order); or a list of them.
     at: list | dict | str = None,  # A point, "looking_at", or a relative or look-face form (help positions).
     rotation: list = None,  # [x, y, z] degrees, multiples of 90.
@@ -3666,6 +3693,7 @@ def show(what: Literal['preview'], *,
     orient: dict = None,  # {mount, upright, controls_toward, ports: [{role, index, type, toward}], flow: {from, to}}: choose the turn by intent. mount: wall, floor, ceiling or an axis; a target (controls_toward, toward, from, to): an axis, room, player, a point or a thing's id.
     above_floor: float = None,  # Bottom this many metres above the floor below at.
     build_state: str | int = None,  # finished (default), first, or a state index.
+    label: str = None,  # What the placement is, shown as a tooltip when the crosshair is on its ghost (as build structure's label).
     run: dict = None,  # A cable, pipe or chute run to plan and draw: build cable, pipe or chute's options with what ({what: "pipe", grade, waypoints, ...}); nothing is built.
     from_plan: str = None,  # A plan route or plan spot reply (p = sg.plan('route', ...)), or one spot (p['spots'][2]): preview its build_arguments.
     style: Literal['boxes', 'ghost', 'both'] = 'boxes',  # boxes: footprint, body and port wire boxes; ghost: the structures' own meshes at the build state, see-through and tinted; both.
@@ -3676,32 +3704,20 @@ def show(what: Literal['preview'], *,
     seconds: float = 30,  # How long to show.
     keep: bool = False,  # Keep what earlier calls drew.
     clear: bool = None,  # Only remove what is drawn.
-    xray: bool = False,  # Draw everything through walls, frames and terrain: boxes and cells whole, ghosts fainter where hidden.
+    xray: bool = False,  # Draw everything through walls, frames and terrain: boxes and cells whole, ghosts fainter where hidden. A run's ghosts always get the see-through pass (pieces sit inside floors and frames).
+    verbose: bool = False,  # plan: build structure's whole report of each placement (orient alternatives, port checks, layout, cost) in place of the brief one.
 ) -> dict:
     """A planned structure layout or cable, pipe or chute run (build's dry run) as wire boxes or see-through ghosts, plus cells and boxes.
+    Materials are not checked: ready means build would place it. A new call replaces what the last drew (keep: true adds); ghosts counts this call's ghosts, ghosts_total every preview ghost on screen.
     Reply:
       shown: int
       ghosts: int
+      ghosts_total: int
       cleared: int
       seconds: float
       plan: {ready: bool, problems: list[{code: str, message: str, index: int | None, reference_id: str | None}], warnings: list[{code: str, message:
-          str, index: int | None, reference_id: str | None}], placements: list[{index: int, prefab_name: str | None, prefab_hash: int | None,
-          display_name: str | None, placement: str | None, position: Vec3 | None, orientation: {facing: str | None, up: str | None, euler: Vec3} |
-          None, face: str | None, ports: list[{index: int, at: Vec3, toward: str, type: str, role: str, network_id: str | None}] | None, build_state:
-          int | None, build_states: int | None, label: str | None, color: {index: int | None, name: str | None} | None, cost: list[{prefab_name: str |
-          None, quantity: int}], layout: {footprint: {small_cells: {count: int, cells: list[{x: float, y: float, z: float}] | None}, large_cells:
-          list[Vec3] | None, body: {origin: {x: float, y: float, z: float}, render_box: {min: PointView, max: PointView, size: PointView},
-          centre_offset: {x: float, y: float, z: float}, grid_box: {min: PointView, max: PointView, size: PointView} | None, grid_cells: int}, mount:
-          {plane: str, outward: str, axes: list[str], min: list[float], max: list[float]} | None}, sections: {walls: list[{face: {x: float, y: float,
-          z: float}, reference_id: str | None, prefab_name: str | None, kind: str}], count: int, crosses_seam: bool} | None, conflicts: list[{code:
-          str, level: str, message: str, reference_id: str | None}], port_checks: list[{index: int, at: Vec3, toward: str, type: str, role: str, flow:
-          str | None, occupant: Thing | None, joins: bool, would_join_network: str | None, blocked: str | None, in_door_keep_out: bool}] | None} |
-          None, orient: {chosen: {facing: str | None, up: str | None, euler: Vec3, score: float | None, reasons: list[str], reversed_flow: bool} |
-          None, alternatives: list[{facing: str | None, up: str | None, euler: Vec3, score: float | None, reasons: list[str], reversed_flow: bool}],
-          tried: int, mode_flip: {logic_type: str, value: int, reason: str} | None} | None, resolved: {at: {x: float, y: float, z: float}, at_how:
-          str, facing: str | None, facing_how: str | None, view: {source: str, age_s: float} | None} | None}], materials: list[{prefab_name: str |
-          None, needed: int, available: int, paid_by: list[{reference_id: str, name: str | None, quantity: int, available: int}] | None}], from: Thing
-          | None, free: bool, notes: list[str] | None} | None
+          str, index: int | None, reference_id: str | None}], placements: list[{index: int, prefab_name: str | None, position: Vec3 | None,
+          orientation: {facing: str | None, up: str | None, euler: Vec3} | None, build_state: int | None}]} | None
       run: {what: str, ready: bool, pieces: int, problems: list[{code: str, message: str}], warnings: list[{code: str, message: str}]} | None
       notes: list[str]
       drawn_on: list[str] | None
@@ -3731,6 +3747,39 @@ def show(what: Literal['highlight'], *,
       view: {source: str, age_s: float} | None
     Types: Vec3 = {x: float, y: float, z: float}
     Example: sg.show('highlight', targets=[{'id': '1199811', 'label': 'this one'}])
+    """
+
+@overload
+def show(what: Literal['ghost'], *,
+    fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
+    placements: list = None,  # As build structure's placements; each may give its own tint and label.
+    prefab: str | int = None,  # Prefab: a whole name, a hash, or parts with * ('*Battery*', '*Tank*Insulated*': each part, any order); or a list of them.
+    at: list | dict | str = None,  # A point, "looking_at", or a relative or look-face form (help positions).
+    rotation: list = None,  # [x, y, z] degrees, multiples of 90.
+    facing: str = None,  # Where the front points (as build structure).
+    up: str = None,  # Where the top points (as build structure).
+    face: str = None,  # Face-placed pieces: the cell face it sits on.
+    orient: dict = None,  # {mount, upright, controls_toward, ports: [{role, index, type, toward}], flow: {from, to}}: choose the turn by intent. mount: wall, floor, ceiling or an axis; a target (controls_toward, toward, from, to): an axis, room, player, a point or a thing's id.
+    above_floor: float = None,  # Bottom this many metres above the floor below at.
+    build_state: str | int = None,  # finished (default), first, or a state index.
+    from_plan: str = None,  # A plan spot reply (p = sg.plan('spot', ...)) or one spot (p['spots'][2]): put it on the board.
+    tint: str | list = None,  # The ghosts' colour, yours to choose: a name (cyan, magenta, yellow, green, orange, blue, red, white, purple, pink, khaki, brown, black, gray), [r, g, b] or [r, g, b, a] each 0 to 1.
+    label: str = None,  # What the ghosts are, shown as a tooltip when the crosshair is on one, and in find ghost; a placement's own label wins.
+    remove: list = None,  # Ghost ids to take off the board (find ghost lists them).
+    clear: Literal['agent', 'all'] = None,  # Take off every ghost agents placed, or every ghost.
+    allow: list[Literal['door_keepout']] = None,  # Guards to lift, by name.
+) -> dict:
+    """Put planned structures on the world's ghost board, where every player sees them until they are built or taken off; or take ghosts off.
+    A ghost lasts until it is taken off or a structure of its prefab is built where it stands, kept with the save; players see it, move around it, take it off (RemoveGhostKey) and place their own (ghost mode, the ghost menu). The placements are planned as build structure plans them (nothing built, materials not checked) and each goes on the board where the plan put it, problems or not; the reply's plan says why one would not build. find ghost lists the board.
+    Reply:
+      placed: list[{id: int, prefab_name: str, position: Vec3}]
+      removed: list[int]
+      total: int
+      plan: {ready: bool, problems: list[{code: str, message: str, index: int | None, reference_id: str | None}], warnings: list[{code: str, message:
+          str, index: int | None, reference_id: str | None}]} | None
+      notes: list[str]
+    Types: Vec3 = {x: float, y: float, z: float}
+    Example: sg.show('ghost', prefab='StructureVolumePump', at=[716, 203, 668], facing='+x', tint='orange', label='second pump')
     """
 
 @overload

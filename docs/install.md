@@ -151,7 +151,7 @@ folder; the pipe name matches (see *Two games on one machine*).
   (`drawn_on` lists them; a player whose game cannot be reached is a note, not a failure). A view the player has
   since walked away from (more than
   0.3 m, or older than 5 s once they moved) is refused `view_stale` rather than read; standing still keeps it current,
-  alt-tabbed or not. Both games need the same view protocol, which this version calls 3; the log of each says when
+  alt-tabbed or not. Both games need the same view protocol, which this version calls 4; the log of each says when
   they differ.
 - StationGod's messages between games go through StationeersLaunchPad's networking. As soon as any mod uses it, a game
   expects it on the other side of a join, so on a server where StationGod is the only mod that does, a player whose

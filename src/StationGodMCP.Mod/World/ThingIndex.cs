@@ -479,7 +479,11 @@ internal static class ThingIndex
 internal static class RegisterThingPatch
 {
     [MethodImpl(MethodImplOptions.NoInlining)]
-    private static void Postfix(Thing thing) => ThingIndex.Arrived(thing);
+    private static void Postfix(Thing thing)
+    {
+        ThingIndex.Arrived(thing);
+        Api.Shared.Game.GhostBoardStore.Arrived(thing);
+    }
 }
 
 [HarmonyPatch(typeof(OcclusionManager), nameof(OcclusionManager.Deregister), new[] { typeof(Thing) })]

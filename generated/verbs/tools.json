@@ -24,9 +24,10 @@
               "gateway",
               "damaged",
               "void",
-              "script"
+              "script",
+              "ghost"
             ],
-            "description": "thing: any object: structures, devices, items, players; item: stackable items and kits anywhere; group_by sums; device: devices with logic; container: holders with items; frame: outer frames; pad: landing pads; water: water and steam sources; ore: deep miner ore spots; food: food and drink; plant: plants: stage, health, harvest; room: closed rooms: pressure, gases; gateway: device scopes (gateways); damaged: damaged and broken things; void: underground pockets to fill; script: saved scripts"
+            "description": "thing: any object: structures, devices, items, players; item: stackable items and kits anywhere; group_by sums; device: devices with logic; container: holders with items; frame: outer frames; pad: landing pads; water: water and steam sources; ore: deep miner ore spots; food: food and drink; plant: plants: stage, health, harvest; room: closed rooms: pressure, gases; gateway: device scopes (gateways); damaged: damaged and broken things; void: underground pockets to fill; script: saved scripts; ghost: planned structures (ghosts)"
           },
           "name": {"type": "string"},
           "prefab": {
@@ -67,6 +68,9 @@
           "structures_only": {"type": "boolean"},
           "min_cells": {"type": "integer"},
           "text": {"type": "string", "description": "find script: text a saved script's name or description holds."},
+          "ids": {"type": "array", "items": {"type": "integer"}},
+          "owner": {"type": "string"},
+          "source": {"enum": ["player", "agent"]},
           "fields": {"type": "array", "items": {"type": "string"}},
           "omit": {"type": "array", "items": {"type": "string"}},
           "list_limits": {"type": "object"},
@@ -784,8 +788,8 @@
         "properties": {
           "what": {
             "type": "string",
-            "enum": ["preview", "highlight"],
-            "description": "preview: a planned structure layout or cable, pipe or chute run (build's dry run) as wire boxes or see-through ghosts, plus cells and boxes; highlight: show the player where things, a network or far points are, tinted and labelled"
+            "enum": ["preview", "highlight", "ghost"],
+            "description": "preview: a planned structure layout or cable, pipe or chute run (build's dry run) as wire boxes or see-through ghosts, plus cells and boxes; highlight: show the player where things, a network or far points are, tinted and labelled; ghost: persistent ghosts on the board"
           },
           "placements": {"type": "array", "description": "As build structure's placements."},
           "prefab": {
@@ -800,6 +804,7 @@
           "orient": {"type": "object"},
           "above_floor": {"type": "number"},
           "build_state": {"type": ["string", "integer"]},
+          "label": {"type": "string"},
           "run": {"type": "object", "description": "A cable, pipe or chute run to plan and draw: build's options with what."},
           "from_plan": {"type": "string", "description": "A plan route or spot ref ('r9'): preview its build_arguments."},
           "style": {
@@ -812,12 +817,14 @@
           "boxes": {"type": "array", "description": "{min, max, color} boxes."},
           "seconds": {"type": "number"},
           "keep": {"type": "boolean"},
-          "clear": {"type": "boolean"},
+          "clear": {"type": ["boolean", "string"]},
           "xray": {"type": "boolean"},
+          "verbose": {"type": "boolean"},
           "targets": {
             "type": "array",
             "description": "Up to 64, each one of {id (one or a list), network, at} with color, label, pulse."
           },
+          "remove": {"type": "array", "items": {"type": "integer"}},
           "fields": {"type": "array", "items": {"type": "string"}, "description": "Keys to keep."},
           "omit": {"type": "array", "items": {"type": "string"}, "description": "Key paths to leave out."},
           "list_limits": {"type": "object"},

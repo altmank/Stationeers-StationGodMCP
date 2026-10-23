@@ -71,6 +71,19 @@ internal static class RemoteDrawings
         return cleared;
     }
 
+    /// <summary>How many drawings of the kind sent on the connection are still showing.</summary>
+    internal static int Live(long connectionId, System.Type kind)
+    {
+        if (!Showing.TryGetValue((connectionId, kind), out List<float>? untils))
+        {
+            return 0;
+        }
+
+        float now = RemoteViews.Now;
+        untils.RemoveAll(until => until <= now);
+        return untils.Count;
+    }
+
     internal static void Prune()
     {
         foreach ((long Connection, System.Type Kind) key in new List<(long, System.Type)>(Showing.Keys))
@@ -147,6 +160,9 @@ internal static class RemoteDrawing
                     Highlights.Add(MarkOf(mark));
                 }
 
+                return;
+            case DrawCommand.Board board:
+                GhostBoardStore.Mirror(board);
                 return;
             case DrawCommand.Ghosts ghosts:
                 if (ghosts.Replace)

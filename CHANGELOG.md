@@ -1,5 +1,33 @@
 # Changelog
 
+## 2.9.0
+
+- **Ghosts for players.** The world now keeps a ghost board: structures planned but not built, which every player
+  sees until they are built or taken off. It is saved beside the save (`stationgod-ghosts.json`) and kept in step on
+  every StationGod client. A structure built where a ghost of its prefab and turn stands takes that ghost off.
+  - **Ghost mode** (`[Ghosts] GhostModeKey`, default Ctrl+G): with a kit in hand the game's own cursor moves, turns and
+    snaps as always, and a click places a ghost instead of building (nothing paid, and allowed where the game would
+    not build yet). The cursor takes the ghost tint while it is on.
+  - **The ghost menu** (`MenuKey`, default Ctrl+Shift+G): search every structure, pick one to place ghosts of it
+    without its kit (right click or Escape ends it), choose the tint, and switch ghost mode or the ghosts' visibility.
+  - **Taking off and hiding:** in either mode the ghost under the crosshair is drawn brighter and `RemoveGhostKey`
+    (Delete) takes it off; `ShowGhostsKey` (Ctrl+H) hides or shows every ghost. All keys are BepInEx shortcuts in
+    `[Ghosts]`; `Enabled = false` turns the player tools off; `Tint` sets the starting colour.
+- **Labels on hover.** A ghost's label shows as a tooltip under the crosshair, with its structure and who placed it,
+  for previews (`show preview`'s `label`, per placement or at the top level) and board ghosts alike.
+- **`find ghost`** lists the board (ids, prefab, owner, source, near and radius; nearest first) with each ghost's
+  `build_arguments` and the page's as one build. `from_plan` takes a find ghost ref: `build {from_plan: "r5"}` builds
+  the listed ghosts, `"r5.ghosts.2"` one.
+- **`show ghost`** puts placements on the board for every player (planned as build structure plans them, free),
+  with `tint` and `label`; `remove` takes ghosts off by id, `clear: "agent"` or `"all"` empties it. Takes a plan spot
+  ref in `from_plan`.
+- **show preview, from live use:** the reply's `plan` is brief by default (ready, problems, warnings, where each
+  placement went), `verbose: true` for build structure's whole report; previews plan free, so missing materials no
+  longer make `ready` false; a run's ghosts always get the see-through pass (pieces sit inside floors and frames);
+  `ghosts_total` beside `ghosts`; tints take the game's paint names too (purple, pink, khaki, brown, black, gray).
+- View protocol 4: a 2.8 game and a 2.9 game no longer share views or drawings.
+- **sg 0.4.14**: `sg.find('ghost', ...)`, `sg.show('ghost', ...)`; show preview's `label` and `verbose`.
+
 ## 2.8.0
 
 - **Ghosts in show preview.** `style: "ghost"` draws each planned placement as the structure itself: its prefab's

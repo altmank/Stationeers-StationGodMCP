@@ -218,7 +218,44 @@ show {what: "preview", style: "both", placements: [
   {prefab: "StructureFiltration", at: [718, 203, 668], facing: "+x", tint: [1, 0.5, 0, 0.6]}]}
 ```
 
-A player whose game runs StationGod sees the ghosts too (`drawn_on`); both games need 2.8.0 or later.
+A player whose game runs StationGod sees the ghosts too (`drawn_on`); both games need 2.9.0 or later.
+
+`label` (per placement, or at the top level for one) shows as a tooltip when your crosshair is on the ghost, with the
+structure's name, so a layout of tanks and machines says what each one is for. The reply's `plan` is short (ready,
+problems, warnings, where each placement went); `verbose: true` gives build structure's whole report. A preview
+plans free: missing materials never make it not ready. `ghosts` counts this call's ghosts, `ghosts_total` all the
+preview ghosts on screen.
+
+### Ghosts that stay: the ghost board (2.9.0+)
+
+Preview ghosts vanish after their seconds. The **ghost board** keeps planned structures in the world for every player
+until they are built or taken off; it is saved with the save (`stationgod-ghosts.json` in the save's folder). A
+structure built where a ghost of its prefab and turn stands takes that ghost off by itself.
+
+In the game:
+
+| Key (`[Ghosts]` in the config) | Default | Does |
+|---|---|---|
+| `GhostModeKey` | Ctrl+G | Ghost mode: with a kit in hand, a click places a ghost of the structure instead of building it (nothing paid; allowed where the game would not build yet). The cursor takes the ghost tint. |
+| `MenuKey` | Ctrl+Shift+G | The ghost menu: search any structure and place ghosts of it without its kit (right click or Escape stops), pick the tint, switch ghost mode and visibility. |
+| `RemoveGhostKey` | Delete | In ghost mode or while placing from the menu: takes off the ghost under the crosshair (drawn brighter). |
+| `ShowGhostsKey` | Ctrl+H | Hides or shows every ghost in your game. |
+
+`Enabled = false` turns these off; `Tint` is the colour new ghosts start with. Hovering any ghost shows its label,
+its structure and who placed it.
+
+For agents: `find ghost` lists the board (`near`, `radius`, `prefab`, `owner`, `source`, `ids`), each ghost with
+`build_arguments`, and the page's `build_arguments` as one build; `build {from_plan: "r5"}` builds every listed ghost,
+`"r5.ghosts.2"` one. `show ghost` puts placements on the board (as `build structure` takes them, with `tint` and
+`label`), `remove: [ids]` takes ghosts off, `clear: "agent"` or `"all"` empties it.
+
+```
+show {what: "ghost", label: "O2 line", tint: "purple", placements: [
+  {prefab: "StructureTankSmall", at: [-317, 96.5, 897.5], label: "silanol tank"},
+  {prefab: "StructureTankSmall", at: [-315, 96.5, 897.5], label: "helium tank"}]}
+find {what: "ghost", near: "player", radius: 30}
+build {from_plan: "r5", confirm: true}
+```
 
 ### Pointing things out (1.7.0+)
 

@@ -1,0 +1,13 @@
+Ghosts: structures players (ghost mode, the ghost menu) or agents (show ghost) planned in the world but did not build, with build_arguments to build them.
+Options:
+- ids (list): Only these ghosts, by id.
+- near (string or array): Only ghosts near this: [x, y, z], "player", "looking_at" or a thing's id; nearest first.
+- radius (number): Metres from near; left out, every ghost, nearest first.
+- prefab (string or integer or array): Prefab: a whole name, a hash, or parts with * ('*Battery*', '*Tank*Insulated*': each part, any order); or a list of them.
+- owner (string): Only ghosts this player placed (their name, any case), or "agent".
+- source (player | agent): Only ghosts players placed, or agents.
+- limit (integer, default 50): Entries per page.
+- offset (integer, default 0): Entries to skip.
+Each ghost carries build_arguments for build structure; the reply's build_arguments place every listed ghost (up to 64) in one build. from_plan takes a find ghost ref: "r5" builds the listed ghosts, "r5.ghosts.2" one. A ghost goes off the board by itself once a structure of its prefab is built where it stands in its turn; show ghost {remove} takes ghosts off.
+Reply: ghosts [{id, prefab_name, display_name, position, rotation_deg, build_state, owner, source, label, tint, placed_at, distance_m, build_arguments}], count, total, offset, limit, has_more, build_arguments {what, placements}
+Example: find {what: "ghost", near: "player", radius: 20}

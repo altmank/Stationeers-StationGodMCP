@@ -42,12 +42,12 @@ public sealed class PreviewOrderTests
         Assert.False(order.Clear);
         Assert.True(order.HasPlacements);
 
-        // The request the game plans: nobody pays, it is not free, no lint, no pad, no notes, and a refused placement
-        // keeps its layout (show takes no verbose, so a brief report's "pass verbose" could not be followed).
+        // The request the game plans: nobody pays, it is free (a preview pays nothing), no lint, no pad, no notes,
+        // and a refused placement keeps its layout.
         PlaceRequest arguments = order.Arguments;
         Assert.True(arguments.AllowDoorKeepOut);
         Assert.Null(arguments.From);
-        Assert.False(arguments.Free);
+        Assert.True(arguments.Free);
         Assert.False(arguments.AllowLint);
         Assert.False(arguments.AllowPad);
         Assert.False(arguments.FootprintCells);
@@ -294,7 +294,7 @@ public sealed class PreviewOrderTests
 
     [Theory]
     [InlineData("""{"style": "ghosts"}""", "style")]
-    [InlineData("""{"tint": "purple"}""", "tint")]
+    [InlineData("""{"tint": "violet"}""", "tint")]
     [InlineData("""{"tint": [1, 1]}""", "tint")]
     [InlineData("""{"tint": [1, 1, 2]}""", "tint")]
     [InlineData("""{"placements": [{"prefab": "A", "at": [0, 0, 0], "tint": 3}]}""", "placements[0].tint")]

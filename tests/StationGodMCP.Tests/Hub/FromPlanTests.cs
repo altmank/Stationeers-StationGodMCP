@@ -170,7 +170,8 @@ public sealed class FromPlanTests
 
         VerbReply.Failed failed = pipeline.Call("build", null, $$"""{"from_plan":"{{found}}"}""").Failed();
 
-        Assert.Equal([$"from_plan: {found} is a find thing call; from_plan takes a plan route or plan spot ref"],
+        Assert.Equal([$"from_plan: {found} is a find thing call; from_plan takes a plan route, plan spot or find " +
+                      "ghost ref"],
             failed.Problems());
     }
 
@@ -212,6 +213,31 @@ public sealed class FromPlanTests
         VerbReply.Failed failed = pipeline.Call("build", "pipe", $$"""{"from_plan":"{{plan}}"}""").Failed();
 
         Assert.Equal(["from_plan: the plan builds cable: leave what out or give what: cable"], failed.Problems());
+    }
+
+    // ---- find ghost ----
+
+    private const string GhostList =
+        """{"ghosts":[{"id":4,"prefab_name":"StructureTankSmall","build_arguments":{"what":"structure","prefab":"StructureTankSmall","at":[1,2,3],"rotation":[0,90,0],"build_state":2}},""" +
+        """{"id":5,"prefab_name":"StructureVolumePump","build_arguments":{"what":"structure","prefab":"StructureVolumePump","at":[4,5,6],"rotation":[0,0,0],"build_state":1}}],"count":2,"total":3,"offset":0,"has_more":true,"build_arguments":{"what":"structure","placements":[""" +
+        """{"prefab":"StructureTankSmall","at":[1,2,3],"rotation":[0,90,0],"build_state":2},""" +
+        """{"prefab":"StructureVolumePump","at":[4,5,6],"rotation":[0,0,0],"build_state":1}]}}""";
+
+    [Fact]
+    public void AFindGhostRefBuildsEveryListedGhostOrOne()
+    {
+        FakeGameLink game = new() { Answer = call => FakeGameLink.Ok(call.Method == "find" ? GhostList : "{}") };
+        VerbPipeline pipeline = game.Pipeline();
+        string found = (string)pipeline.Call("find", "ghost", """{"ids":[4,5,6]}""").Done()!["ref"]!;
+
+        pipeline.Call("build", null, $$"""{"from_plan":"{{found}}","confirm":true}""").Done();
+        pipeline.Call("build", null, $$"""{"from_plan":"{{found}}.ghosts.1","confirm":true}""").Done();
+
+        JsonObject[] sent = game.CallsTo("build").Select(call => call.Params()).ToArray();
+        Assert.Equal("structure", (string)sent[0]["what"]!);
+        Assert.Equal(2, sent[0]["placements"]!.AsArray().Count);
+        Assert.Equal("StructureVolumePump", (string)sent[1]["prefab"]!);
+        Same("[4,5,6]", sent[1]["at"]);
     }
 
     // ---- show preview ----

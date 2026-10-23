@@ -21,7 +21,7 @@
       "options": {
         "placements": {
           "schema": {"type": "array", "items": {"type": "object"}, "maxItems": 64},
-          "description": "As build structure's placements; each may give its own tint.",
+          "description": "As build structure's placements; each may give its own tint, and its label shows as the ghost's tooltip.",
           "x-script": "same"
         },
         "prefab": {"use": "prefab", "schema": {"type": ["string", "integer"]}},
@@ -59,6 +59,11 @@
         "build_state": {
           "schema": {"type": ["string", "integer"]},
           "description": "finished (default), first, or a state index.",
+          "x-script": "same"
+        },
+        "label": {
+          "schema": {"type": "string"},
+          "description": "What the placement is, shown as a tooltip when the crosshair is on its ghost (as build structure's label).",
           "x-script": "same"
         },
         "run": {
@@ -108,9 +113,13 @@
         "clear": {"schema": {"type": "boolean"}, "description": "Only remove what is drawn.", "x-script": "same"},
         "xray": {
           "schema": {"type": "boolean"},
-          "description": "Draw everything through walls, frames and terrain: boxes and cells whole, ghosts fainter where hidden.",
+          "description": "Draw everything through walls, frames and terrain: boxes and cells whole, ghosts fainter where hidden. A run's ghosts always get the see-through pass (pieces sit inside floors and frames).",
           "default": "false",
           "x-script": "same"
+        },
+        "verbose": {
+          "use": "verbose",
+          "description": "plan: build structure's whole report of each placement (orient alternatives, port checks, layout, cost) in place of the brief one."
         }
       },
       "example": {"prefab": "StructureWallLight", "at": [716, 203, 668], "facing": "-x"},
@@ -121,9 +130,10 @@
             "keys": {
               "shown": "int",
               "ghosts": "int",
+              "ghosts_total": "int",
               "cleared": "int",
               "seconds": "float",
-              "plan": "{ready: bool, problems: list[{code: str, message: str, index: int | None, reference_id: str | None}], warnings: list[{code: str, message: str, index: int | None, reference_id: str | None}], placements: list[{index: int, prefab_name: str | None, prefab_hash: int | None, display_name: str | None, placement: str | None, position: Vec3 | None, orientation: {facing: str | None, up: str | None, euler: Vec3} | None, face: str | None, ports: list[{index: int, at: Vec3, toward: str, type: str, role: str, network_id: str | None}] | None, build_state: int | None, build_states: int | None, label: str | None, color: {index: int | None, name: str | None} | None, cost: list[{prefab_name: str | None, quantity: int}], layout: {footprint: {small_cells: {count: int, cells: list[{x: float, y: float, z: float}] | None}, large_cells: list[Vec3] | None, body: {origin: {x: float, y: float, z: float}, render_box: {min: PointView, max: PointView, size: PointView}, centre_offset: {x: float, y: float, z: float}, grid_box: {min: PointView, max: PointView, size: PointView} | None, grid_cells: int}, mount: {plane: str, outward: str, axes: list[str], min: list[float], max: list[float]} | None}, sections: {walls: list[{face: {x: float, y: float, z: float}, reference_id: str | None, prefab_name: str | None, kind: str}], count: int, crosses_seam: bool} | None, conflicts: list[{code: str, level: str, message: str, reference_id: str | None}], port_checks: list[{index: int, at: Vec3, toward: str, type: str, role: str, flow: str | None, occupant: Thing | None, joins: bool, would_join_network: str | None, blocked: str | None, in_door_keep_out: bool}] | None} | None, orient: {chosen: {facing: str | None, up: str | None, euler: Vec3, score: float | None, reasons: list[str], reversed_flow: bool} | None, alternatives: list[{facing: str | None, up: str | None, euler: Vec3, score: float | None, reasons: list[str], reversed_flow: bool}], tried: int, mode_flip: {logic_type: str, value: int, reason: str} | None} | None, resolved: {at: {x: float, y: float, z: float}, at_how: str, facing: str | None, facing_how: str | None, view: {source: str, age_s: float} | None} | None}], materials: list[{prefab_name: str | None, needed: int, available: int, paid_by: list[{reference_id: str, name: str | None, quantity: int, available: int}] | None}], from: Thing | None, free: bool, notes: list[str] | None} | None",
+              "plan": "{ready: bool, problems: list[{code: str, message: str, index: int | None, reference_id: str | None}], warnings: list[{code: str, message: str, index: int | None, reference_id: str | None}], placements: list[{index: int, prefab_name: str | None, position: Vec3 | None, orientation: {facing: str | None, up: str | None, euler: Vec3} | None, build_state: int | None}]} | None",
               "run": "{what: str, ready: bool, pieces: int, problems: list[{code: str, message: str}], warnings: list[{code: str, message: str}]} | None",
               "notes": "list[str]",
               "drawn_on": "list[str] | None",
@@ -133,7 +143,10 @@
         ],
         "types": ["Thing", "Vec3"]
       },
-      "x-cost-when": [{"given": "run", "class": "plan"}]
+      "x-cost-when": [{"given": "run", "class": "plan"}],
+      "text": [
+        "Materials are not checked: ready means build would place it. A new call replaces what the last drew (keep: true adds); ghosts counts this call's ghosts, ghosts_total every preview ghost on screen."
+      ]
     },
     "highlight": {
       "summary": "show the player where things, a network or far points are, tinted and labelled",
@@ -170,6 +183,105 @@
               "notes": "list[str]",
               "drawn_on": "list[str] | None",
               "view": "{source: str, age_s: float} | None"
+            }
+          }
+        ],
+        "types": ["Vec3"]
+      }
+    },
+    "ghost": {
+      "summary": "put planned structures on the world's ghost board, where every player sees them until they are built or taken off; or take ghosts off",
+      "brief": "persistent ghosts on the board",
+      "options": {
+        "placements": {
+          "schema": {"type": "array", "items": {"type": "object"}, "maxItems": 64},
+          "description": "As build structure's placements; each may give its own tint and label.",
+          "x-script": "same"
+        },
+        "prefab": {"use": "prefab", "schema": {"type": ["string", "integer"]}},
+        "at": {
+          "schema": {"type": ["array", "object", "string"]},
+          "description": "A point, \"looking_at\", or a relative or look-face form (help positions).",
+          "x-script": "same"
+        },
+        "rotation": {
+          "schema": {"type": "array", "items": {"type": "number"}, "maxItems": 3},
+          "description": "[x, y, z] degrees, multiples of 90.",
+          "x-script": "same"
+        },
+        "facing": {
+          "schema": {"type": "string"},
+          "description": "Where the front points (as build structure).",
+          "x-script": "same"
+        },
+        "up": {"schema": {"type": "string"}, "description": "Where the top points (as build structure).", "x-script": "same"},
+        "face": {
+          "schema": {"type": "string"},
+          "description": "Face-placed pieces: the cell face it sits on.",
+          "x-script": "same"
+        },
+        "orient": {
+          "schema": {"type": "object"},
+          "description": "{mount, upright, controls_toward, ports: [{role, index, type, toward}], flow: {from, to}}: choose the turn by intent. mount: wall, floor, ceiling or an axis; a target (controls_toward, toward, from, to): an axis, room, player, a point or a thing's id.",
+          "x-script": "same"
+        },
+        "above_floor": {
+          "schema": {"type": "number"},
+          "description": "Bottom this many metres above the floor below at.",
+          "x-script": "same"
+        },
+        "build_state": {
+          "schema": {"type": ["string", "integer"]},
+          "description": "finished (default), first, or a state index.",
+          "x-script": "same"
+        },
+        "from_plan": {
+          "use": "from_plan",
+          "description": "A plan spot ref (\"r9\"; one spot: \"r9.spots.2\", default the first): put its placement on the board.",
+          "x-script": "A plan spot reply (p = sg.plan('spot', ...)) or one spot (p['spots'][2]): put it on the board."
+        },
+        "tint": {
+          "schema": {"type": ["string", "array"]},
+          "description": "The ghosts' colour, yours to choose: a name (cyan, magenta, yellow, green, orange, blue, red, white, purple, pink, khaki, brown, black, gray), [r, g, b] or [r, g, b, a] each 0 to 1.",
+          "x-script": "same"
+        },
+        "label": {
+          "schema": {"type": "string"},
+          "description": "What the ghosts are, shown as a tooltip when the crosshair is on one, and in find ghost; a placement's own label wins.",
+          "x-script": "same"
+        },
+        "remove": {
+          "schema": {"type": "array", "items": {"type": "integer"}, "maxItems": 256},
+          "description": "Ghost ids to take off the board (find ghost lists them).",
+          "x-script": "same"
+        },
+        "clear": {
+          "schema": {"type": "string", "enum": ["agent", "all"]},
+          "description": "Take off every ghost agents placed, or every ghost.",
+          "x-script": "same"
+        },
+        "allow": {"use": "allow", "schema": {"type": "array", "items": {"type": "string", "enum": ["door_keepout"]}}}
+      },
+      "text": [
+        "A ghost lasts until it is taken off or a structure of its prefab is built where it stands, kept with the save; players see it, move around it, take it off (RemoveGhostKey) and place their own (ghost mode, the ghost menu). The placements are planned as build structure plans them (nothing built, materials not checked) and each goes on the board where the plan put it, problems or not; the reply's plan says why one would not build. find ghost lists the board."
+      ],
+      "example": {
+        "prefab": "StructureVolumePump",
+        "at": [716, 203, 668],
+        "facing": "+x",
+        "tint": "orange",
+        "label": "second pump"
+      },
+      "x-cost": {"class": "instant", "growth": "by-id"},
+      "reply": {
+        "variants": [
+          {
+            "keys": {
+              "placed": "list[{id: int, prefab_name: str, position: Vec3}]",
+              "removed": "list[int]",
+              "total": "int",
+              "plan": "{ready: bool, problems: list[{code: str, message: str, index: int | None, reference_id: str | None}], warnings: list[{code: str, message: str, index: int | None, reference_id: str | None}]} | None",
+              "notes": "list[str]"
             }
           }
         ],

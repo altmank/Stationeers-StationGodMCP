@@ -35,7 +35,7 @@ public sealed class StationGodMod : ModBehaviour
 {
     public const string ModId = "net.xceled.stationeers.stationgodmcp";
     public const string DisplayName = "StationGod MCP";
-    public const string Version = "2.8.0";
+    public const string Version = "2.9.0";
 
     private static readonly DeadlineWatch Deadlines = new DeadlineWatch();
 
@@ -134,6 +134,8 @@ public sealed class StationGodMod : ModBehaviour
             WorldModel.DamagedThings.Verify = PerformanceSettings.VerifyFacts;
             Api.Shared.Game.GatewayMaps.Verify = PerformanceSettings.VerifyFacts;
             Net.StationGodNet.Register(MultiplayerSettings.ShareViews(configuration));
+            GhostSettings.Load(configuration);
+            GhostControls.LoadTint();
             LaneScheduler scheduler = new LaneScheduler(PerformanceSettings.Scheduler, world: CallWorld);
             _dispatcher = new StationGodRequestDispatcher(Deadlines, scheduler);
             _subscriptions = new SubscriptionHub(Subscriptions.ReadDevicesReader.Instance,
@@ -239,6 +241,7 @@ public sealed class StationGodMod : ModBehaviour
                 Net.ViewReporter.Tick();
                 Previews.Tick();
                 Ghosts.Tick();
+                GhostControls.Tick();
                 Highlights.Tick();
                 return;
             }
@@ -273,7 +276,9 @@ public sealed class StationGodMod : ModBehaviour
             using (Prof.Scope(ProfId.Previews))
             {
                 Previews.Tick();
+                GhostBoardStore.Tick();
                 Ghosts.Tick();
+                GhostControls.Tick();
             }
 
             using (Prof.Scope(ProfId.Highlights))
@@ -324,7 +329,7 @@ public sealed class StationGodMod : ModBehaviour
         HeldTickJobs.Ended = null;
         HeldTickJobs.Abandon();
         Previews.Clear();
-        Ghosts.Clear();
+        Ghosts.ClearAll();
         Highlights.Clear();
         ProfilingControl.Shutdown();
         _harmony?.UnpatchSelf();

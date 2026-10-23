@@ -946,8 +946,11 @@ internal sealed class ShowPreviewView
     /// <summary>The wire boxes drawn.</summary>
     public int Shown { get; }
 
-    /// <summary>The ghosts drawn.</summary>
+    /// <summary>The ghosts this call drew.</summary>
     public int Ghosts { get; }
+
+    /// <summary>Every preview ghost on the player's screen after this call (its own and those kept).</summary>
+    public int GhostsTotal { get; set; }
 
     public int Cleared { get; }
 
@@ -973,6 +976,51 @@ internal sealed class ShowPreviewView
     /// <summary>The player's view the screen was found through: local or remote and its age.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public ViewSourceView? View { get; }
+}
+
+/// <summary>show preview's plan in short: ready, the problems and warnings, and where each placement went.</summary>
+internal sealed class PreviewPlanView
+{
+    internal PreviewPlanView(bool ready, List<BuildIssueView> problems, List<BuildIssueView> warnings,
+        List<PreviewPlacementView> placements)
+    {
+        Ready = ready;
+        Problems = problems;
+        Warnings = warnings;
+        Placements = placements;
+    }
+
+    public bool Ready { get; }
+
+    public List<BuildIssueView> Problems { get; }
+
+    public List<BuildIssueView> Warnings { get; }
+
+    public List<PreviewPlacementView> Placements { get; }
+}
+
+/// <summary>One placement of show preview's brief plan.</summary>
+internal sealed class PreviewPlacementView
+{
+    internal PreviewPlacementView(int index, string? prefabName, PositionView? position, OrientationView? orientation,
+        int? buildState)
+    {
+        Index = index;
+        PrefabName = prefabName;
+        Position = position;
+        Orientation = orientation;
+        BuildState = buildState;
+    }
+
+    public int Index { get; }
+
+    public string? PrefabName { get; }
+
+    public PositionView? Position { get; }
+
+    public OrientationView? Orientation { get; }
+
+    public int? BuildState { get; }
 }
 
 /// <summary>

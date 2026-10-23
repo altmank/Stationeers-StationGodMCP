@@ -47,7 +47,14 @@ internal static class RemoteViews
 
                 if (Book.Offer(human.ReferenceId, read.Value, Now))
                 {
+                    bool first = !ConnectionOf.TryGetValue(human.ReferenceId, out long before) || before != connectionId;
                     ConnectionOf[human.ReferenceId] = connectionId;
+                    if (first)
+                    {
+                        // A StationGod client's first view: it gets the ghost board now, and every change after.
+                        GhostBoardStore.SyncTo(connectionId);
+                    }
+
                     OnceLog.Info($"view_kept:{human.ReferenceId}",
                         $"Keeping {NameOf(client, connectionId)}'s views for {human.DisplayName} ({human.ReferenceId}).");
                 }
@@ -71,6 +78,21 @@ internal static class RemoteViews
         return view != null && ConnectionOf.TryGetValue(human.ReferenceId, out long connection)
             ? (view, connection)
             : null;
+    }
+
+    /// <summary>The connections StationGod clients send views on (each once): who gets the ghost board.</summary>
+    internal static List<long> Connections()
+    {
+        List<long> connections = new List<long>();
+        foreach (long connection in ConnectionOf.Values)
+        {
+            if (!connections.Contains(connection))
+            {
+                connections.Add(connection);
+            }
+        }
+
+        return connections;
     }
 
     /// <summary>Why the views of a player's connection are ignored; null when none were.</summary>

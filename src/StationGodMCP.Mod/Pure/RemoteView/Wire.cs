@@ -253,9 +253,10 @@ internal abstract class WireRead<T>
 /// The remote-view protocol: the first byte of every payload StationGod sends between games. A layout never changes
 /// under a number; a changed layout takes the next one, and a game reading another number ignores the payload.
 /// A number also names the messages a game reads: 1 views and drawings, 2 also moves (MoveWire), 3 also ghosts
-/// (DrawWire's kind 3), so a server sends a move only to a client whose views carry 2 or more.
+/// (DrawWire's kind 3), 4 also the ghost board (DrawWire's kind 4) and ghost requests (GhostWire), so a server
+/// sends a move only to a client whose views carry 2 or more.
 /// </summary>
 internal static class ViewProtocol
 {
-    internal const byte Current = 3;
+    internal const byte Current = 4;
 }
