@@ -314,6 +314,16 @@ public sealed class RunRecord
     /// <summary>True while an undo of the run is going: a second one at the same time answers undo_running.</summary>
     internal bool UndoRunning { get; set; }
 
+    /// <summary>
+    /// The client cancelled the run_script call after the run had started (a call the user rejected or interrupted
+    /// in the MCP client): the run was stopped and its writes undone by the hub. Null otherwise; once set, what the
+    /// automatic undo did, for the run's sticky notice.
+    /// </summary>
+    internal string? CancelledByClient { get; set; }
+
+    /// <summary>The cancelled run was inspected by id: its notice has been read and stops.</summary>
+    internal bool CancelNoticed { get; set; }
+
     /// <summary>The (id, logic) targets undo has dealt with: reverted, already back, or with no value to go back to.</summary>
     internal HashSet<string> UndoneTargets { get; } = new(StringComparer.Ordinal);
 

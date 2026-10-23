@@ -215,8 +215,15 @@ public sealed partial class RunHost : IAsyncDisposable
         DateTime asked = DateTime.UtcNow;
         Run run = Start(code!, JsonNodes.IsTrue(options["confirm"]), saved);
         using CancellationTokenRegistration cancel = hooks.Cancelled.Register(() =>
-            run.RequestStop("stopped", "the agent cancelled the run_script request", world: false));
+            run.RequestStop("stopped", "the client cancelled the run_script call (rejected or interrupted)",
+                world: false));
         await WaitReplyAsync(run, MaxWait(options, _settings.DefaultMaxWait), asked, hooks).ConfigureAwait(false);
+        if (hooks.Cancelled.IsCancellationRequested)
+        {
+            // The user said no to this call, but it had reached the game: what it changed must not stand.
+            _ = Task.Run(() => UndoCancelledAsync(run.Record, run.Ended));
+        }
+
         // A cancelled request's reply is never read, so nothing in it counts as shown.
         return new VerbReply.Done(new JsonObject
         {
@@ -783,6 +790,21 @@ public sealed partial class RunHost : IAsyncDisposable
                 RunRecord record = notes.Record;
                 if (string.Equals(record.Id, aboutId, StringComparison.OrdinalIgnoreCase) || record.Adopted)
                 {
+                    if (runReply && verb == "inspect")
+                    {
+                        lock (record.Sync)
+                        {
+                            record.CancelNoticed = true;
+                        }
+                    }
+
+                    continue;
+                }
+
+                if (CancelledLine(record) is { } cancelled)
+                {
+                    // Sticky until the run is inspected by id, whether or not its undo marked it delivered.
+                    lines.Add(cancelled);
                     continue;
                 }
 
@@ -835,6 +857,70 @@ public sealed partial class RunHost : IAsyncDisposable
     // there (undo_expired), so its notices ride only the replies of that world. A record that names no world (a journal
     // line written before runs recorded one) is of none.
     private bool OfThisWorld(RunRecord record) => record.World != null && record.World == _link.WorldId;
+
+    /// <summary>
+    /// A run whose run_script call the client cancelled after it started (the user rejected or interrupted it): once it
+    /// has ended, its logic writes are reverted (overwrite not allowed, so a value someone changed since stays), and
+    /// what that did is kept for the run's notice.
+    /// </summary>
+    private async Task UndoCancelledAsync(RunRecord record, Task ended)
+    {
+        lock (record.Sync)
+        {
+            record.CancelledByClient = "being undone";
+        }
+
+        await ended.ConfigureAwait(false);
+        string outcome;
+        try
+        {
+            VerbReply? reply = await UndoAsync(new JsonObject { ["id"] = record.Id, ["confirm"] = true })
+                .ConfigureAwait(false);
+            outcome = reply switch
+            {
+                VerbReply.Done { Reply: JsonObject done } => UndoneText(done),
+                VerbReply.Failed { Code: "already_undone" } => "already undone",
+                VerbReply.Failed failed => $"not undone ({failed.Code}: {failed.Message})",
+                _ => "nothing to undo"
+            };
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or IOException)
+        {
+            outcome = $"not undone ({exception.Message})";
+        }
+
+        lock (record.Sync)
+        {
+            record.CancelledByClient = outcome;
+        }
+    }
+
+    // "3 writes reverted; not undone: printed items" from an undo's reply.
+    private static string UndoneText(JsonObject done)
+    {
+        int reverted = (int?)JsonNodes.Number(done["reverted"]) ?? 0;
+        int count = (int?)JsonNodes.Number(done["count"]) ?? 0;
+        string text = count == 0 ? "no logic writes to revert" : $"{reverted} of {count} logic writes reverted";
+        if (done["not_undone"] is JsonArray notUndone && notUndone.Count > 0)
+        {
+            text += "; not undone: " + string.Join(", ", notUndone.Select(JsonNodes.Text).OfType<string>());
+        }
+
+        return text;
+    }
+
+    // The notice of a run the client cancelled after it started; null for any other run.
+    private static string? CancelledLine(RunRecord record)
+    {
+        lock (record.Sync)
+        {
+            return record.CancelledByClient is { } outcome && !record.CancelNoticed
+                ? $"notice: {record.Id} ({record.FirstLine}) STARTED IN THE GAME although its run_script call was " +
+                  $"cancelled in the client (rejected or interrupted after it was sent); it was stopped at once, " +
+                  $"then the hub undid it: {outcome}. inspect it by id to see what it did."
+                : null;
+        }
+    }
 
     // What a stopped or killed run left: its left: values and writes not done; null when nothing.
     private static string? Sticky(RunRecord record)

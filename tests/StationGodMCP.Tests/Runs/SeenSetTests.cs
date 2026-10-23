@@ -85,7 +85,31 @@ public sealed class SeenSetTests
         await RunBench.UntilAsync(() => !record.IsLive, "script-1 to end");
 
         Assert.Equal(RunState.Stopped, record.State);
-        Assert.Equal("the agent cancelled the run_script request", record.StopMessage);
+        Assert.Equal("the client cancelled the run_script call (rejected or interrupted)", record.StopMessage);
+    }
+
+    [PythonFact]
+    public async Task ACancelledRunScriptThatAlreadyWroteIsUndoneAndSaysSo()
+    {
+        // A call the user rejected or interrupted after it was sent: its write must not stand, and the next reply
+        // says the run started anyway and what the hub undid.
+        RunWorld world = new();
+        await using McpAdapter adapter = new(Options(), world, runs: new RunHostSettings { SgRoot = RunBench.SgRoot });
+
+        Task<string?> pending = adapter.HandleAsync(
+            """{"jsonrpc":"2.0","id":"r7","method":"tools/call","params":{"name":"run_script","arguments":{"code":"sg.write('logic', id='999', logic='On', value=1); sg.wait(30)","confirm":true}}}""");
+        await RunBench.UntilAsync(() => world.Value("999", "On") == 1, "script-1's write");
+        await adapter.HandleAsync("""{"jsonrpc":"2.0","method":"notifications/cancelled","params":{"requestId":"r7"}}""");
+        await pending.WaitAsync(TimeSpan.FromSeconds(30));
+        await RunBench.UntilAsync(() => world.Value("999", "On") == 0, "script-1's write to be undone");
+
+        RunRecord record = adapter.Runs!.Find("script-1")!;
+        await RunBench.UntilAsync(() => record.CancelledByClient is { } done && done != "being undone",
+            "the undo's outcome");
+        string? next = await adapter.HandleAsync(
+            """{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"find","arguments":{"what":"thing"}}}""");
+        Assert.Contains("STARTED IN THE GAME", next);
+        Assert.Contains("1 of 1 logic writes reverted", next);
     }
 
     [PythonFact]

@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.9.1
+
+- **A run_script call the client cancels after it started no longer stands.** A call the user rejects or interrupts
+  in the MCP client after it was sent arrives as a cancel; the hub already stopped the run, but what it had written
+  stayed (live: a printer job and a storm override ran though the calls showed as rejected). Now the hub also undoes
+  the run's logic writes once it has stopped (a value someone changed since is left), and every reply carries a
+  notice until the run is inspected by id: `script-N ... STARTED IN THE GAME although its run_script call was
+  cancelled in the client ...; then the hub undid it: 2 of 2 logic writes reverted; not undone: ...`. What undo cannot
+  take back (items a printer made, gas moved) is named there. The stop reason reads "the client cancelled the
+  run_script call (rejected or interrupted)".
+
 ## 2.9.0
 
 - **Ghosts for players.** The world now keeps a ghost board: structures planned but not built, which every player
