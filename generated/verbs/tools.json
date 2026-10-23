@@ -778,14 +778,14 @@
     },
     {
       "name": "show",
-      "description": "Draw on the player's screen only, for a while: a build preview, or highlights through walls. Nothing in the world changes.",
+      "description": "Draw on the player's screen only, for a while: a build preview (wire boxes or ghosts of the structures), or highlights through walls. Nothing in the world changes.",
       "inputSchema": {
         "type": "object",
         "properties": {
           "what": {
             "type": "string",
             "enum": ["preview", "highlight"],
-            "description": "preview: wire boxes of a planned structure layout (build structure's dry run), plus cells and boxes; highlight: show the player where things, a network or far points are, tinted and labelled"
+            "description": "preview: a planned structure layout or cable, pipe or chute run (build's dry run) as wire boxes or see-through ghosts, plus cells and boxes; highlight: show the player where things, a network or far points are, tinted and labelled"
           },
           "placements": {"type": "array", "description": "As build structure's placements."},
           "prefab": {
@@ -800,6 +800,13 @@
           "orient": {"type": "object"},
           "above_floor": {"type": "number"},
           "build_state": {"type": ["string", "integer"]},
+          "run": {"type": "object", "description": "A cable, pipe or chute run to plan and draw: build's options with what."},
+          "from_plan": {"type": "string", "description": "A plan route or spot ref ('r9'): preview its build_arguments."},
+          "style": {
+            "enum": ["boxes", "ghost", "both"],
+            "description": "boxes (default), ghost (the structures' own meshes, see-through) or both."
+          },
+          "tint": {"type": ["string", "array"]},
           "allow": {"type": "array", "items": {"enum": ["door_keepout"]}},
           "cells": {"type": "array"},
           "boxes": {"type": "array", "description": "{min, max, color} boxes."},

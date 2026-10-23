@@ -20,7 +20,7 @@ connections and guard against merging networks, which `build structure` does not
 | `check layout` | Check a room or box against the layout rules: runs in doorways, floating or across windows, blocked ports, overlapping or out-facing devices, seams (1.4.3+); things a player could not place again where they stand (1.5.0+); rules from `lint-rules.json`, yours per save (1.7.0+, [lint-rules.md](lint-rules.md)). | `room` or `box`, `codes`, `exclude_codes`, `id`, `since`, `limit` |
 | `check rules` | The lint rules in effect: list, validate a rule file, the fields and functions rules can use, run each rule's examples, explain a finding (1.7.0+). | `action`, `rule`, `rules_text`, `id` |
 | `check replaceable` | For each thing, could a player place it again exactly where it stands, with its neighbours present (1.5.0+). | `id` |
-| `show preview` | Draw wire boxes in your game for a planned placement's footprint, body and ports, or any cells and boxes; timed, nothing built (1.4.3+). | as `build structure`, or `cells`, `boxes`; `seconds`, `clear`, `xray` |
+| `show preview` | Draw wire boxes or see-through ghosts in your game for planned placements or a cable, pipe or chute run, or any cells and boxes; timed, nothing built (1.4.3+; ghosts and runs 2.8.0+). | as `build structure`, or `run`, `from_plan`, `cells`, `boxes`; `style`, `tint`, `seconds`, `clear`, `xray` |
 | `show highlight` | Show things, whole networks or far points through walls, frames and terrain, tinted, with labels; timed, nothing changed (1.7.0+). | `targets` (`id`, `network` or `at`, with `color`, `label`, `pulse`); `seconds`, `keep`, `clear` |
 | `inspect prefab` | A prefab in its own frame: placement, allowed turns, footprint (`grid_box`, `small_cell_count`), ports, visual up (1.4.3+). | `prefab`, `include: ["small_cells"]` (each cell's offset) |
 | `build structure` | Place any kit-built structure at a position and turn, at a build state, with a label and colour, and logic values set once it is built (`logic: {"On": 1}`). Up to 64 in one job. | `prefab`, `at`, `facing` / `rotation` / `face` / `orient`, `build_state`, `label`, `color`, `logic`; or `placements: [...]`, each with its own `label`, `color` and the rest |
@@ -197,6 +197,28 @@ blocked), for `seconds` (default 30). `cells` (yellow 0.5 m cubes, e.g. a planne
 too; a new call replaces the last (`keep: true` adds), `clear: true` removes them. Nothing in the world changes and
 other players see nothing. The lines are hidden by walls and frames in front of them, like anything else; `xray: true`
 (1.7.0+) draws them through everything.
+
+**Ghosts (2.8.0+).** `style: "ghost"` draws each placement as the structure itself: its own meshes at its build
+state, see-through, where and as it would be placed, in the look the game gives a structure in your hand. `style:
+"both"` draws the ghosts and the wire boxes. The colour is `tint`, yours to choose, with no meaning of its own: a
+name (cyan, magenta, yellow, green, orange, blue, red, white), `[r, g, b]` or `[r, g, b, a]` from 0 to 1 (alpha 0.4
+when left out). Each placement may give its own `tint`, so one call can show several machines in different colours.
+With `xray: true` a ghost behind walls, frames or terrain still shows, fainter, and the parts in view brighter.
+
+`run` previews a cable, pipe or chute run: it takes `build cable`, `pipe` or `chute`'s options with `what`
+(`{what: "pipe", grade: "insulated", waypoints: [...]}`), plans it as the build would (nothing is built) and draws
+each new or changed piece, as a ghost or as its cell's box; the reply's `run` says whether the build would take it as
+it is, how many pieces it lays, and the plan's problems and warnings. `from_plan` takes a `plan route` or `plan spot`
+ref (`"r9"`, `"r9.spots.2"`): a route is drawn as its run, a spot as its placement.
+
+```
+show {what: "preview", from_plan: "r9", style: "ghost", tint: "orange", xray: true}
+show {what: "preview", style: "both", placements: [
+  {prefab: "StructureVolumePump", at: [716, 203, 668], facing: "+x", tint: "cyan"},
+  {prefab: "StructureFiltration", at: [718, 203, 668], facing: "+x", tint: [1, 0.5, 0, 0.6]}]}
+```
+
+A player whose game runs StationGod sees the ghosts too (`drawn_on`); both games need 2.8.0 or later.
 
 ### Pointing things out (1.7.0+)
 

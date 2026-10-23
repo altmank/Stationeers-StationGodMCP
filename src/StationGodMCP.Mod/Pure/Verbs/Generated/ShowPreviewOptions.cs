@@ -13,7 +13,7 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of show preview, in verb names (catalogue/verbs/show.json).</summary>
 internal sealed class ShowPreviewOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("show", "preview", null, null, null, new WhatCost(CostClass.Instant), null, null,
+    internal static WhatSpec Spec { get; } = new WhatSpec("show", "preview", null, null, null, new WhatCost(CostClass.Instant, when: new[] { new CostWhen("run", CostClass.Plan) }), null, null,
         new OptionSpec("placements", "{\"type\":\"array\",\"items\":{\"type\":\"object\"},\"maxItems\":64}"),
         new OptionSpec("prefab", "{\"type\":[\"string\",\"integer\"]}"),
         new OptionSpec("at", "{\"type\":[\"array\",\"object\",\"string\"]}"),
@@ -24,6 +24,10 @@ internal sealed class ShowPreviewOptions
         new OptionSpec("orient", "{\"type\":\"object\"}"),
         new OptionSpec("above_floor", "{\"type\":\"number\"}"),
         new OptionSpec("build_state", "{\"type\":[\"string\",\"integer\"]}"),
+        new OptionSpec("run", "{\"type\":\"object\"}"),
+        new OptionSpec("from_plan", "{\"type\":\"string\"}"),
+        new OptionSpec("style", "{\"type\":\"string\",\"enum\":[\"boxes\",\"ghost\",\"both\"]}", false, "boxes"),
+        new OptionSpec("tint", "{\"type\":[\"string\",\"array\"]}"),
         new OptionSpec("allow", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"door_keepout\"]}}"),
         new OptionSpec("cells", "{\"type\":\"array\",\"items\":{\"type\":\"array\"},\"maxItems\":512}"),
         new OptionSpec("boxes", "{\"type\":\"array\",\"items\":{\"type\":\"object\"},\"maxItems\":64}"),
@@ -54,6 +58,14 @@ internal sealed class ShowPreviewOptions
 
     internal JToken? BuildState { get; private set; }
 
+    internal JToken? Run { get; private set; }
+
+    internal string? FromPlan { get; private set; }
+
+    internal string? Style { get; private set; }
+
+    internal JToken? Tint { get; private set; }
+
     internal IReadOnlyList<string>? Allow { get; private set; }
 
     internal JToken? Cells { get; private set; }
@@ -81,6 +93,10 @@ internal sealed class ShowPreviewOptions
         Orient = options.Raw("orient"),
         AboveFloor = options.Number("above_floor"),
         BuildState = options.Raw("build_state"),
+        Run = options.Raw("run"),
+        FromPlan = options.Text("from_plan"),
+        Style = options.Text("style") ?? options.DefaultText("style"),
+        Tint = options.Raw("tint"),
         Allow = options.Words("allow"),
         Cells = options.Raw("cells"),
         Boxes = options.Raw("boxes"),

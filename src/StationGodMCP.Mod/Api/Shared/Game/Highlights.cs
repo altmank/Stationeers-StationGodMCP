@@ -70,7 +70,7 @@ internal static class Highlights
             mark.Draw(Draws, eye, now);
         }
 
-        Draws.Flush(material);
+        Draws.Flush(material, XRay.Instanced);
     }
 
     internal static int Clear()
@@ -97,9 +97,9 @@ internal static class Highlights
 }
 
 /// <summary>
-/// One frame's meshes: grouped per mesh and submesh for the T-Ray material's instanced colours, else one by one. Kept
-/// across frames (BeginFrame empties the groups but keeps their lists), with one property block and one pair of batch
-/// arrays, so drawing allocates nothing.
+/// One frame's meshes: grouped per mesh and submesh for a material with instanced colours (the T-Ray's), else one by
+/// one. Kept across frames (BeginFrame empties the groups but keeps their lists), with one property block and one pair
+/// of batch arrays, so drawing allocates nothing.
 /// </summary>
 internal sealed class MeshDraws
 {
@@ -126,7 +126,8 @@ internal sealed class MeshDraws
         }
     }
 
-    internal void Flush(Material material)
+    /// <summary>Draws the frame's meshes with the material; instanced when it takes a per-instance colour array.</summary>
+    internal void Flush(Material material, bool instanced)
     {
         foreach (KeyValuePair<(Mesh, int), FrameGroups<(Mesh, int), Matrix4x4, Vector4>.Group> entry in _groups)
         {
@@ -137,7 +138,7 @@ internal sealed class MeshDraws
                 continue;
             }
 
-            if (XRay.Instanced)
+            if (instanced)
             {
                 for (int start = 0; start < group.Count; start += BatchSize)
                 {

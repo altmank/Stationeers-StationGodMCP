@@ -92,24 +92,46 @@ internal static class BuildRuns
 
     internal static VerbOutcome Run(RunKind kind, RunBuildOrder order)
     {
+        List<ThingId?> removed = new List<ThingId?>();
+        List<ReportProblem> unread = new List<ReportProblem>();
+        RunRequest? request = RequestOf(kind, order, removed, unread, out ThingId? from, out OptionProblem? problem);
+        if (request == null)
+        {
+            return new VerbOutcome.Refused(OptionProblem.Refusal(order.Label, new[] { problem! }));
+        }
+
+        JobSource source = new JobSource(from?.Value, order.Free, order.Source.RefundTo, order.Source.Refund);
+        return WriteCheck<RunPlan>.Planned(answer => RunPlanner.Planning(request, true, answer), order.Report,
+            plan => Act(plan, request, order, removed, unread, source),
+            plan => Described(plan, request, order, removed, unread));
+    }
+
+    /// <summary>
+    /// The request an order names: its grade, its run (the shape, extra ends and piece marks), the pieces it takes down
+    /// and checks as gone (into removed, in remove_ids then assume_removed order, unreadable ids into unread), who
+    /// pays and its rules. Null with the problem when the call names no run its shape reads as. show preview plans
+    /// the same request without acting.
+    /// </summary>
+    internal static RunRequest? RequestOf(RunKind kind, RunBuildOrder order, List<ThingId?> removed,
+        List<ReportProblem> unread, out ThingId? from, out OptionProblem? problem)
+    {
+        from = null;
         string label = order.Label;
         Grade grade = GradeOf(kind, order, label);
         List<ExtraEnd> extra = new List<ExtraEnd>();
         Dictionary<GridCell, PieceMark> marks = new Dictionary<GridCell, PieceMark>();
-        RunShape? shape = Shape(order, extra, marks, out OptionProblem? problem);
+        RunShape? shape = Shape(order, extra, marks, out problem);
         if (shape == null)
         {
-            return new VerbOutcome.Refused(OptionProblem.Refusal(label, new[] { problem! }));
+            return null;
         }
 
-        List<ThingId?> removed = new List<ThingId?>();
-        List<ReportProblem> unread = new List<ReportProblem>();
         List<ThingId?> ids = JobTargets.Ids(order.RemoveIds, label, unread);
         List<ThingId?> assumed = JobTargets.Ids(order.AssumeRemoved, label, unread, ids.Count);
         removed.AddRange(ids);
         removed.AddRange(assumed);
         List<ThingId> more = new List<ThingId>();
-        ThingId? from = JobTargets.Payers(order.Materials, label, more);
+        from = JobTargets.Payers(order.Materials, label, more);
         HashSet<long> bridge = NetworkHandles.ResolveAllowances(order.AllowBridge, "allow_bridge", kind.Family,
             kind.Bridges);
         ThingId? joinTo = order.JoinTo != null ? NetworkHandles.Resolve(order.JoinTo, "join_to", kind.Family) : null;
@@ -126,13 +148,17 @@ internal static class BuildRuns
             new RunDetail(fields.Includes("links"), fields.Includes("notes"), fields.Includes("network_devices")),
             more, order.AllowLint, order.Free);
         RunRemoval removal = new RunRemoval(JobTargets.Read(ids), new List<GridCell>(), JobTargets.Read(assumed));
-        RunRequest request = new RunRequest(kind, kind.PlaceTool,
-            new RunBuild(shape, grade, JoinOf(order), extra, marks), removal, options);
-        JobSource source = new JobSource(from?.Value, order.Free, order.Source.RefundTo, order.Source.Refund);
-        return WriteCheck<RunPlan>.Planned(answer => RunPlanner.Planning(request, true, answer), order.Report,
-            plan => Act(plan, request, order, removed, unread, source),
-            plan => Described(plan, request, order, removed, unread));
+        return new RunRequest(kind, kind.PlaceTool, new RunBuild(shape, grade, JoinOf(order), extra, marks), removal,
+            options);
     }
+
+    /// <summary>The run kind a build what names: cable, pipe or chute.</summary>
+    internal static RunKind KindOf(string what) => what switch
+    {
+        "pipe" => new PipeRunKind(),
+        "chute" => new ChuteRunKind(),
+        _ => new CableRunKind()
+    };
 
     // The grade word as the family's grade; a what that must name one is refused before this (RunBuildOrder).
     private static Grade GradeOf(RunKind kind, RunBuildOrder order, string label)

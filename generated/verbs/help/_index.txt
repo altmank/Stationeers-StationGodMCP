@@ -11,7 +11,7 @@ Verbs (each a tool; most take what):
 - remove: Take things away as a player would, with refunds and guards.
 - move: Move items, gas and players.
 - trade: Trade with traders: contacts in the sky, what each buys and sells, and buying or selling with the landed trader.
-- show: Draw on the player's screen only, for a while: a build preview, or highlights through walls.
+- show: Draw on the player's screen only, for a while: a build preview (wire boxes or ghosts of the structures), or highlights through walls.
 - undo: Undo a finished build or removal job, a bulk write (write-N), a script run (script-14: the whole run, newest first), or the newest blueprint paste.
 - server: StationGod and the game server: mod version, health and costs, profiling, the in-game console.
 - help: StationGod's help, from the MCP server: help {} lists verbs and topics; {verb} a verb's whats and options; {verb, what} one what in full; {topic} a shared topic.

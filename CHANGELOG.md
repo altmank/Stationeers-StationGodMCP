@@ -1,5 +1,25 @@
 # Changelog
 
+## 2.8.0
+
+- **Ghosts in show preview.** `style: "ghost"` draws each planned placement as the structure itself: its prefab's
+  own meshes at the build state it would be built to, see-through, where and as it would stand, in the shader the
+  game's construction cursor uses. `style: "both"` adds the wire boxes; `boxes` stays the default. The colour is
+  `tint`, the agent's choice with no meaning of its own: a palette name, `[r, g, b]` or `[r, g, b, a]` (alpha 0.4
+  when left out), for the call or per placement. With `xray: true` a second, fainter pass in the T-Ray material shows
+  a ghost through walls, frames and terrain.
+- **Runs in show preview.** `run` takes `build cable`, `pipe` or `chute`'s options with `what` and plans the run as
+  the build would, without the lint, never acting; each new or changed piece is drawn as a ghost (finished, in the
+  turn the run lays it) or as its cell's box. The reply's `run` is brief: `what`, `ready`, `pieces`, `problems`,
+  `warnings`. A call with `run` is scheduled as a plan.
+- **`from_plan` in show preview.** A `plan route` or `plan spot` ref, or from a script the plan reply or one spot:
+  a route becomes `run`, a spot the one placement; options given beside it replace the plan's.
+- **Remote players see ghosts.** Ghosts travel to a player's StationGod as prefab hash, build state, position, turn,
+  tint, seconds, xray and source (agent or player, so ghosts a player places can later use the same path). The view
+  protocol is now 3: a 2.7 game and a 2.8 game no longer share views or drawings.
+- Reply: `ghosts` (drawn) beside `shown` (boxes). New error `no_ghost_material`.
+- **sg 0.4.13**: `sg.show('preview', ...)` takes `run`, `from_plan`, `style` and `tint`.
+
 ## 2.7.1
 
 - **Console commands are not cheats en masse.** In 2.7.0 every `server command` was a cheat, so with cheats off even

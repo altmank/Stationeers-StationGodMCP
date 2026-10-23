@@ -3,10 +3,11 @@ using System.Text.Json.Nodes;
 namespace StationGodMCP.Server;
 
 /// <summary>
-/// build's from_plan (refs topic): a plan route or plan spot ref ("r9", one spot "r9.spots.2", default the first), or
-/// on the script and program faces the plan reply or one spot itself, stands for that plan's build_arguments. The call
-/// is resolved before it is checked: what comes from the plan when it is left out, the options given replace the
-/// plan's, and a run given (waypoints, cells, piece, pieces) replaces the plan's run. A plan's ref holds its
+/// build's and show preview's from_plan (refs topic): a plan route or plan spot ref ("r9", one spot "r9.spots.2",
+/// default the first), or on the script and program faces the plan reply or one spot itself, stands for that plan's
+/// build_arguments. The call is resolved before it is checked: for build, what comes from the plan when it is left
+/// out, the options given replace the plan's, and a run given (waypoints, cells, piece, pieces) replaces the plan's
+/// run; for show preview, a route becomes its run and a spot its one placement (Previewed). A plan's ref holds its
 /// build_arguments whatever the call's shaping showed: fields and omit change only what the caller sees.
 /// </summary>
 public sealed partial class VerbPipeline
@@ -28,7 +29,7 @@ public sealed partial class VerbPipeline
     private VerbReply.Failed? FromPlan(VerbCall call, out VerbCall resolved)
     {
         resolved = call;
-        if (call.Verb != "build" || call.Args[FromPlanOption] is not { } given)
+        if ((call.Verb != "build" && !Previews(call)) || call.Args[FromPlanOption] is not { } given)
         {
             return null;
         }
@@ -42,6 +43,12 @@ public sealed partial class VerbPipeline
         JsonObject options = (JsonObject)((PlanArguments.Found)planned).Options.DeepClone();
         string? plannedWhat = JsonNodes.Text(options["what"]);
         options.Remove("what");
+        if (Previews(call))
+        {
+            resolved = Resolved(call, call.What, Previewed(call, options, plannedWhat));
+            return null;
+        }
+
         if (call.What != null && plannedWhat != null && call.What != plannedWhat)
         {
             return PlanRefusal(call, $"the plan builds {plannedWhat}: leave what out or give what: {plannedWhat}");
@@ -60,15 +67,62 @@ public sealed partial class VerbPipeline
             options[name] = value?.DeepClone();
         }
 
-        resolved = new VerbCall(call.Verb, call.What ?? plannedWhat, options, call.Face, call.Stream, call.Line)
+        resolved = Resolved(call, call.What ?? plannedWhat, options);
+        return null;
+    }
+
+    private static VerbCall Resolved(VerbCall call, string? what, JsonObject options) =>
+        new(call.Verb, what, options, call.Face, call.Stream, call.Line)
         {
             Gate = call.Gate,
             LateReply = call.LateReply,
             Note = call.Note,
             Recorded = call.Recorded
         };
-        return null;
+
+    // show preview takes from_plan too: it draws what build would build from the plan.
+    private static bool Previews(VerbCall call) => call.Verb == "show" && call.What == "preview";
+
+    /// <summary>
+    /// show preview's options from a plan's build_arguments: a route's (cable, pipe or chute) become run, with what
+    /// (a run given beside from_plan replaces it); a spot's placement fields go to the top level, as the one placement
+    /// (placements given beside it replace it). The other options given are kept as they are.
+    /// </summary>
+    private static JsonObject Previewed(VerbCall call, JsonObject planned, string? plannedWhat)
+    {
+        JsonObject options = new();
+        if (plannedWhat == "structure")
+        {
+            if (call.Args["placements"] == null)
+            {
+                foreach (string field in PreviewPlacementFields.Where(field => planned[field] != null))
+                {
+                    options[field] = planned[field]!.DeepClone();
+                }
+            }
+        }
+        else if (call.Args["run"] == null)
+        {
+            JsonObject run = new() { ["what"] = plannedWhat };
+            foreach ((string name, JsonNode? value) in planned)
+            {
+                run[name] = value?.DeepClone();
+            }
+
+            options["run"] = run;
+        }
+
+        foreach ((string name, JsonNode? value) in call.Args.Where(option => option.Key != FromPlanOption))
+        {
+            options[name] = value?.DeepClone();
+        }
+
+        return options;
     }
+
+    // The placement fields show preview takes at its top level (a spot's build_arguments may carry more: label, color).
+    private static readonly string[] PreviewPlacementFields =
+        ["prefab", "at", "rotation", "facing", "up", "face", "orient", "above_floor", "build_state"];
 
     private static VerbReply.Failed PlanRefusal(VerbCall call, string problem) =>
         OptionProblem.Refusal(call.What == null ? call.Verb : $"{call.Verb} {call.What}",

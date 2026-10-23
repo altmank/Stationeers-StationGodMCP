@@ -25,8 +25,9 @@ internal readonly struct Rgba
 }
 
 /// <summary>
-/// What the server asks a client's StationGod to draw for its player: show preview's wire boxes or show highlight's marks.
-/// Replace removes that kind's earlier drawings first (a call without keep); a replace with nothing to draw is clear.
+/// What the server asks a client's StationGod to draw for its player: show preview's wire boxes or ghosts, or show
+/// highlight's marks. Replace removes that kind's earlier drawings first (a call without keep); a replace with nothing
+/// to draw is clear.
 /// </summary>
 internal abstract class DrawCommand
 {
@@ -56,6 +57,62 @@ internal abstract class DrawCommand
 
         internal IReadOnlyList<MarkSpec> Marks { get; }
     }
+
+    internal sealed class Ghosts : DrawCommand
+    {
+        internal Ghosts(bool replace, IReadOnlyList<GhostSpec> ghosts) : base(replace)
+        {
+            List = ghosts;
+        }
+
+        internal IReadOnlyList<GhostSpec> List { get; }
+    }
+}
+
+/// <summary>Who put a ghost there: an agent's call (show preview), or a player in their game.</summary>
+internal enum GhostSource : byte
+{
+    Agent = 1,
+    Player = 2
+}
+
+/// <summary>
+/// One ghost: a structure's meshes at a build state, drawn tinted where a placement or a run's piece would stand, for
+/// its seconds; xray draws it through walls, frames and terrain too. The prefab goes by hash, the same on every
+/// machine; the turn as Euler degrees (Quaternion.Euler). Source says who put it there, so a ghost a player places
+/// travels and draws the same way as an agent's.
+/// </summary>
+internal sealed class GhostSpec
+{
+    internal GhostSpec(int prefabHash, int buildState, Vec3 position, Vec3 euler, Rgba tint, float seconds, bool xray,
+        GhostSource source = GhostSource.Agent)
+    {
+        PrefabHash = prefabHash;
+        BuildState = buildState;
+        Position = position;
+        Euler = euler;
+        Tint = tint;
+        Seconds = seconds;
+        XRay = xray;
+        Source = source;
+    }
+
+    internal int PrefabHash { get; }
+
+    /// <summary>The build state whose meshes are drawn; past the prefab's last, its last.</summary>
+    internal int BuildState { get; }
+
+    internal Vec3 Position { get; }
+
+    internal Vec3 Euler { get; }
+
+    internal Rgba Tint { get; }
+
+    internal float Seconds { get; }
+
+    internal bool XRay { get; }
+
+    internal GhostSource Source { get; }
 }
 
 /// <summary>One show preview wire box: its corners, colour, seconds, a short name and whether it shows through walls.</summary>
@@ -124,21 +181,29 @@ internal abstract class MarkSpec
 }
 
 /// <summary>
-/// A DrawCommand's bytes, protocol 1 and 2: protocol (1), kind (1: 1 previews, 2 highlights), replace (1), count (4), then
-/// each box as min, max (12 each), colour (16), seconds (4), name (text), xray (1), or each mark as its kind (1: 1
-/// point, 2 things), tint (16), pulse (1), seconds (4), label (text), then the point (12) or a count (4) and that many
-/// reference ids (8 each). Counts above the caps are refused on both ends; the sender keeps within them.
+/// A DrawCommand's bytes, protocol 1 to 3: protocol (1), kind (1: 1 previews, 2 highlights, 3 ghosts from protocol 3),
+/// replace (1), count (4), then each box as min, max (12 each), colour (16), seconds (4), name (text), xray (1), or
+/// each mark as its kind (1: 1 point, 2 things), tint (16), pulse (1), seconds (4), label (text), then the point (12)
+/// or a count (4) and that many reference ids (8 each), or each ghost as prefab hash (4), build state (4), position
+/// (12), Euler degrees (12), tint (16), seconds (4), xray (1), source (1). Counts above the caps are refused on both
+/// ends; the sender keeps within them.
 /// </summary>
 internal static class DrawWire
 {
     internal const int MaximumBoxes = 2048;
     internal const int MaximumMarks = 64;
 
+    /// <summary>The most ghosts in one command (54 bytes each).</summary>
+    internal const int MaximumGhosts = 2048;
+
+    private const int GhostBytes = 54;
+
     /// <summary>The most thing ids in one command, all marks together: 128 KB of ids.</summary>
     internal const int MaximumIds = 16384;
 
     private const byte PreviewsKind = 1;
     private const byte HighlightsKind = 2;
+    private const byte GhostsKind = 3;
     private const byte PointMark = 1;
     private const byte ThingsMark = 2;
 
@@ -173,6 +238,16 @@ internal static class DrawWire
                 }
 
                 break;
+            case DrawCommand.Ghosts ghosts:
+                writer.Byte(GhostsKind);
+                writer.Bool(ghosts.Replace);
+                writer.Int32(ghosts.List.Count);
+                foreach (GhostSpec ghost in ghosts.List)
+                {
+                    Write(writer, ghost);
+                }
+
+                break;
             default:
                 throw new System.InvalidOperationException($"No wire form for {command.GetType().Name}.");
         }
@@ -201,6 +276,7 @@ internal static class DrawWire
         {
             PreviewsKind when count >= 0 && count <= MaximumBoxes => new DrawCommand.Previews(replace, Boxes(reader, count)),
             HighlightsKind when count >= 0 && count <= MaximumMarks => Marks(reader, count, replace),
+            GhostsKind when count >= 0 && count <= MaximumGhosts => new DrawCommand.Ghosts(replace, Ghosts(reader, count)),
             _ => null
         };
         if (command == null)
@@ -266,6 +342,43 @@ internal static class DrawWire
         }
 
         return new DrawCommand.Highlights(replace, marks);
+    }
+
+    private static List<GhostSpec> Ghosts(WireReader reader, int count)
+    {
+        List<GhostSpec> ghosts = new List<GhostSpec>(System.Math.Min(count, reader.Remaining / GhostBytes));
+        for (int index = 0; index < count && !reader.Failed; index++)
+        {
+            int hash = reader.Int32();
+            int state = reader.Int32();
+            Vec3 position = reader.Vector();
+            Vec3 euler = reader.Vector();
+            Rgba tint = Color(reader);
+            float seconds = reader.Single();
+            bool xray = reader.Bool();
+            byte source = reader.Byte();
+            if (source != (byte)GhostSource.Agent && source != (byte)GhostSource.Player)
+            {
+                reader.Fail();
+                break;
+            }
+
+            ghosts.Add(new GhostSpec(hash, state, position, euler, tint, seconds, xray, (GhostSource)source));
+        }
+
+        return ghosts;
+    }
+
+    private static void Write(WireWriter writer, GhostSpec ghost)
+    {
+        writer.Int32(ghost.PrefabHash);
+        writer.Int32(ghost.BuildState);
+        writer.Vector(ghost.Position);
+        writer.Vector(ghost.Euler);
+        Write(writer, ghost.Tint);
+        writer.Single(ghost.Seconds);
+        writer.Bool(ghost.XRay);
+        writer.Byte((byte)ghost.Source);
     }
 
     private static void Write(WireWriter writer, MarkSpec mark)

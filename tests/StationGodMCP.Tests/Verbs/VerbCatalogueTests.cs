@@ -359,7 +359,10 @@ public sealed class VerbCatalogueTests
             }
         }
 
-        Assert.Equal(new[] { "find.device.prefab=bounded", "find.device.name=bounded", "find.room.id=bounded" }, stated);
+        Assert.Equal(new[]
+        {
+            "find.device.prefab=bounded", "find.device.name=bounded", "find.room.id=bounded", "show.preview.run=plan"
+        }, stated);
     }
 
     /// <summary>

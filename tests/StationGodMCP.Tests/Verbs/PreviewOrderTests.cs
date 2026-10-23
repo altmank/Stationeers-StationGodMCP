@@ -204,16 +204,113 @@ public sealed class PreviewOrderTests
         // The plan is build structure's own report of the placements, without the keys a job reply has: the reply's
         // key is plan (the catalogue's), and it is left out altogether when the call drew no placement.
         JObject plan = new JObject { ["ready"] = true, ["placements"] = new JArray() };
-        JObject drawn = JObject.Parse(WireCheck.New(new ShowPreviewView(3, 0, 30, plan, new List<string>(), null,
-            new ViewSourceView("local", 0.0))));
+        JObject drawn = JObject.Parse(WireCheck.New(new ShowPreviewView(3, 2, 0, 30, plan, null, new List<string>(),
+            null, new ViewSourceView("local", 0.0))));
 
         Assert.Equal(3, (int)drawn["shown"]!);
+        Assert.Equal(2, (int)drawn["ghosts"]!);
         Assert.True((bool)drawn["plan"]!["ready"]!);
         Assert.False(drawn.ContainsKey("dry_run"));
+        Assert.False(drawn.ContainsKey("run"));
 
         JObject cleared = JObject.Parse(
-            WireCheck.New(new ShowPreviewView(0, 2, 0, null, new List<string> { "Cleared." })));
+            WireCheck.New(new ShowPreviewView(0, 0, 2, 0, null, null, new List<string> { "Cleared." })));
         Assert.False(cleared.ContainsKey("plan"));
+    }
+
+    [Fact]
+    public void TheReplyCarriesTheRunBrief()
+    {
+        RunPreviewView run = new RunPreviewView("pipe", false, 4,
+            new List<LayoutIssue> { new LayoutIssue("not_enough_materials", "Short of 2 pipe kits.") },
+            new List<LayoutIssue>());
+
+        JObject drawn = JObject.Parse(WireCheck.New(new ShowPreviewView(0, 4, 0, 30, null, run, new List<string>())));
+
+        JObject brief = (JObject)drawn["run"]!;
+        Assert.Equal("pipe", (string)brief["what"]!);
+        Assert.False((bool)brief["ready"]!);
+        Assert.Equal(4, (int)brief["pieces"]!);
+        Assert.Equal("not_enough_materials", (string)brief["problems"]![0]!["code"]!);
+        Assert.Empty((JArray)brief["warnings"]!);
+    }
+
+    [Fact]
+    public void TheStyleIsBoxesUnlessAsked()
+    {
+        PreviewOrder boxes = Drawn("""{"prefab": "A", "at": [0, 0, 0]}""");
+        PreviewOrder ghost = Drawn("""{"prefab": "A", "at": [0, 0, 0], "style": "ghost"}""");
+        PreviewOrder both = Drawn("""{"prefab": "A", "at": [0, 0, 0], "style": " Both "}""");
+
+        Assert.Equal(PreviewStyle.Boxes, boxes.Style);
+        Assert.True(boxes.DrawsBoxes);
+        Assert.False(boxes.DrawsGhosts);
+        Assert.False(ghost.DrawsBoxes);
+        Assert.True(ghost.DrawsGhosts);
+        Assert.True(both.DrawsBoxes && both.DrawsGhosts);
+    }
+
+    [Fact]
+    public void ATintHasNoDefaultMeaningAndIsTheCallersChoice()
+    {
+        // Without a tint the ghosts take one fixed colour; a palette name or [r, g, b] keeps the default alpha, and
+        // [r, g, b, a] gives its own. A placement's own tint wins over the call's.
+        PreviewOrder plain = Drawn("""{"prefab": "A", "at": [0, 0, 0], "style": "ghost"}""");
+        Assert.Equal(GhostTints.Default, plain.TintOf(0));
+
+        PreviewOrder named = Drawn("""{"prefab": "A", "at": [0, 0, 0], "style": "ghost", "tint": "magenta"}""");
+        Assert.Equal(new Rgba(1f, 0.25f, 0.9f, GhostTints.DefaultAlpha), named.TintOf(0));
+
+        PreviewOrder rgb = Drawn("""{"prefab": "A", "at": [0, 0, 0], "tint": [0.1, 0.2, 0.3]}""");
+        Assert.Equal(new Rgba(0.1f, 0.2f, 0.3f, GhostTints.DefaultAlpha), rgb.TintOf(0));
+
+        PreviewOrder own = Drawn("""
+            {"style": "both", "tint": [0, 1, 0, 0.8],
+             "placements": [{"prefab": "A", "at": [0, 0, 0]}, {"prefab": "B", "at": [1, 0, 0], "tint": "red"}]}
+            """);
+        Assert.Equal(new Rgba(0f, 1f, 0f, 0.8f), own.TintOf(0));
+        Assert.Equal(new Rgba(1f, 0.2f, 0.2f, GhostTints.DefaultAlpha), own.TintOf(1));
+
+        // The tint never reaches the place readers (build structure's color is paint, not this).
+        Assert.Null(own.Arguments.Placements[1].Color);
+    }
+
+    [Fact]
+    public void ARunIsReadAsItsBuildWhatReadsIt()
+    {
+        PreviewOrder order = Drawn("""
+            {"style": "ghost", "run": {"what": "pipe", "grade": "insulated", "waypoints": [[1, 2, 3], [1, 2, 5]],
+                                       "join": "none"}}
+            """);
+
+        Assert.True(order.HasRun);
+        Assert.False(order.HasPlacements);
+        RunBuildOrder run = order.Run!;
+        Assert.Equal("pipe", run.Kind);
+        Assert.Equal("insulated", run.Grade);
+        Assert.Equal(RunBuildOrder.ByWaypoints, run.Form);
+        Assert.Equal("none", run.Join);
+    }
+
+    [Theory]
+    [InlineData("""{"style": "ghosts"}""", "style")]
+    [InlineData("""{"tint": "purple"}""", "tint")]
+    [InlineData("""{"tint": [1, 1]}""", "tint")]
+    [InlineData("""{"tint": [1, 1, 2]}""", "tint")]
+    [InlineData("""{"placements": [{"prefab": "A", "at": [0, 0, 0], "tint": 3}]}""", "placements[0].tint")]
+    [InlineData("""{"run": [1]}""", "run")]
+    [InlineData("""{"run": {"waypoints": [[0, 0, 0], [0, 0, 1]]}}""", "run.what")]
+    [InlineData("""{"run": {"what": "wire", "waypoints": [[0, 0, 0], [0, 0, 1]]}}""", "run.what")]
+    [InlineData("""{"run": {"what": "pipe", "grade": "insulated"}}""", "run")]
+    [InlineData("""{"run": {"what": "cable", "waypoint": [[0, 0, 0], [0, 0, 1]]}}""", "run.waypoint")]
+    [InlineData("""{"run": {"what": "pipe", "waypoints": [[0, 0, 0], [0, 0, 1]]}}""", "run.grade")]
+    public void AMalformedGhostOrRunIsAProblemAtItsPath(string json, string path)
+    {
+        List<OptionProblem> problems = new();
+
+        Assert.Null(Order(json, problems));
+
+        Assert.Contains(path, problems.ConvertAll(problem => problem.Path));
     }
 
     [Fact]

@@ -66,12 +66,88 @@ internal static class PreviewColours
 }
 
 /// <summary>
+/// The tint a ghost is drawn with: the agent's choice, with no meaning of its own. A palette name (show highlight's),
+/// [r, g, b] or [r, g, b, a], each 0 to 1; without an alpha a ghost is see-through at DefaultAlpha.
+/// </summary>
+internal static class GhostTints
+{
+    /// <summary>How see-through a ghost is when its tint gives no alpha.</summary>
+    internal const float DefaultAlpha = 0.4f;
+
+    /// <summary>The tint a call that gives none draws its ghosts with.</summary>
+    internal static readonly Rgba Default = new Rgba(0.45f, 0.75f, 1f, DefaultAlpha);
+
+    private static readonly string Wanted =
+        $"is one of {string.Join(", ", HighlightRequest.ColorNames)}, or [r, g, b] or [r, g, b, a] with each 0 to 1";
+
+    /// <summary>The tint given at path; false with the problem when it reads as none.</summary>
+    internal static bool TryRead(JToken given, string path, List<OptionProblem> problems, out Rgba tint)
+    {
+        tint = Default;
+        if (given.Type == JTokenType.String)
+        {
+            string name = given.Value<string>()!.Trim();
+            if (HighlightRequest.ByName(name) is { } known)
+            {
+                tint = new Rgba((float)known.Tint.Red, (float)known.Tint.Green, (float)known.Tint.Blue, DefaultAlpha);
+                return true;
+            }
+
+            problems.Add(new OptionProblem(path, Wanted, NearestNames.Of(name, HighlightRequest.ColorNames)));
+            return false;
+        }
+
+        if (given is JArray channels && (channels.Count == 3 || channels.Count == 4))
+        {
+            float[] read = new float[4];
+            read[3] = DefaultAlpha;
+            bool all = true;
+            for (int index = 0; index < channels.Count; index++)
+            {
+                all &= Channel(channels[index], out read[index]);
+            }
+
+            if (all)
+            {
+                tint = new Rgba(read[0], read[1], read[2], read[3]);
+                return true;
+            }
+        }
+
+        problems.Add(new OptionProblem(path, Wanted));
+        return false;
+    }
+
+    private static bool Channel(JToken token, out float value)
+    {
+        value = 0f;
+        if (token.Type != JTokenType.Integer && token.Type != JTokenType.Float)
+        {
+            return false;
+        }
+
+        double read = token.Value<double>();
+        value = (float)read;
+        return read >= 0 && read <= 1;
+    }
+}
+
+/// <summary>How show preview draws a plan: wire boxes (as before ghosts), ghosts of the structures, or both.</summary>
+internal enum PreviewStyle
+{
+    Boxes,
+    Ghost,
+    Both
+}
+
+/// <summary>
 /// show preview's call, checked without the game: the placements (1 to 64, or the one at the top level by prefab and
-/// at) read by the shared place readers, allow door_keepout, the cells (up to 512 yellow 0.5 m cubes) and boxes (up to
-/// 64, each {min, max, color}) it draws, seconds (30 by default, at most 300), keep, clear and xray. The request the
-/// game plans is built here: nobody pays, it is not free, no lint and no pad, a brief report. clear only removes what
-/// is drawn, so nothing else is read then. The what's label prefixes every refusal ("show preview: ..."), every
-/// problem naming its path (boxes[2].color).
+/// at) read by the shared place readers, each with its own tint, allow door_keepout, a run (build cable, pipe or chute's
+/// options with what, read by RunBuildOrder as those whats read them), the style (boxes, ghost or both) and the ghosts'
+/// tint, the cells (up to 512 yellow 0.5 m cubes) and boxes (up to 64, each {min, max, color}) it draws, seconds (30
+/// by default, at most 300), keep, clear and xray. The request the game plans is built here: nobody pays, it is not
+/// free, no lint and no pad, a brief report. clear only removes what is drawn, so nothing else is read then. The
+/// what's label prefixes every refusal ("show preview: ..."), every problem naming its path (boxes[2].color).
 /// </summary>
 internal sealed class PreviewOrder
 {
@@ -102,11 +178,25 @@ internal sealed class PreviewOrder
 
     private const string ByPrefab = "prefab";
 
+    /// <summary>The option naming a run to plan and draw.</summary>
+    internal const string ByRun = "run";
+
+    /// <summary>A placement item's own tint, read here and never passed to the place readers.</summary>
+    private const string TintKey = "tint";
+
+    /// <summary>The whats a run builds as.</summary>
+    private static readonly string[] RunKinds = { "cable", "pipe", "chute" };
+
+    private static readonly string[] StyleNames = { "boxes", "ghost", "both" };
+
     /// <summary>A placement's own field at the top level, which goes in each item beside a placements list.</summary>
     private static readonly string[] PlacementFields =
     {
         "prefab", "at", "rotation", "facing", "up", "face", "orient", "above_floor", "build_state"
     };
+
+    /// <summary>A placement item's keys: the place readers' and its tint.</summary>
+    private static readonly string[] PlacementItemKeys = ItemKeys();
 
     private PreviewOrder(PlaceRequest arguments, List<PreviewBox> cells, List<PreviewBox> boxes, double seconds,
         bool keep, bool clear, bool xray)
@@ -119,6 +209,27 @@ internal sealed class PreviewOrder
         Clear = clear;
         Xray = xray;
     }
+
+    /// <summary>boxes (the default), ghost or both.</summary>
+    public PreviewStyle Style { get; private set; } = PreviewStyle.Boxes;
+
+    /// <summary>Whether wire boxes are drawn for the plan.</summary>
+    internal bool DrawsBoxes => Style != PreviewStyle.Ghost;
+
+    /// <summary>Whether ghosts are drawn for the plan.</summary>
+    internal bool DrawsGhosts => Style != PreviewStyle.Boxes;
+
+    /// <summary>The call's tint for its ghosts (a placement's own tint wins).</summary>
+    public Rgba Tint { get; private set; } = GhostTints.Default;
+
+    /// <summary>The placements' own tints, by placement index.</summary>
+    public Dictionary<int, Rgba> PlacementTints { get; } = new Dictionary<int, Rgba>();
+
+    /// <summary>The run to plan and draw, as build cable, pipe or chute would read it; null without run.</summary>
+    public RunBuildOrder? Run { get; private set; }
+
+    /// <summary>The tint placement index draws its ghost with.</summary>
+    internal Rgba TintOf(int index) => PlacementTints.TryGetValue(index, out Rgba own) ? own : Tint;
 
     /// <summary>The request the game plans: the placements, from nobody, not free, no lint, no pad, a brief report.</summary>
     public PlaceRequest Arguments { get; }
@@ -143,6 +254,9 @@ internal sealed class PreviewOrder
     /// <summary>Whether the call names placements: without them nothing is planned and only cells and boxes are drawn.</summary>
     internal bool HasPlacements => Arguments.Placements.Count > 0;
 
+    /// <summary>Whether the call names a run: planned in the game (over ticks) before anything is drawn.</summary>
+    internal bool HasRun => Run != null;
+
     /// <summary>The order show preview's options give; null with every problem added.</summary>
     // A preview is asked for most when the spot is blocked, and show takes no verbose: a refused placement keeps its
     // layout (what blocks it) in the reply.
@@ -165,26 +279,136 @@ internal sealed class PreviewOrder
             problems.Add(new OptionProblem("seconds", $"is at most {MaximumSeconds}"));
         }
 
-        List<PlacementRequest> placements = Placements(options, problems);
+        Dictionary<int, Rgba> tints = new Dictionary<int, Rgba>();
+        List<PlacementRequest> placements = Placements(options, tints, problems);
         List<PreviewBox> cells = CellsOf(options.Cells, seconds, xray, problems);
         List<PreviewBox> boxes = BoxesOf(options.Boxes, seconds, xray, problems);
-        return problems.Count == before
-            ? new PreviewOrder(
-                new PlaceRequest(placements, null, false, Allow.Lifts(options.Allow, "door_keepout"),
-                    detail: PreviewDetail), cells, boxes,
-                seconds, options.Keep ?? false, false, xray)
-            : null;
+        PreviewStyle style = StyleOf(options.Style, problems);
+        Rgba tint = GhostTints.Default;
+        if (options.Tint != null && GhostTints.TryRead(options.Tint, TintKey, problems, out Rgba given))
+        {
+            tint = given;
+        }
+
+        RunBuildOrder? run = RunOf(options.Run, problems);
+        if (problems.Count > before)
+        {
+            return null;
+        }
+
+        PreviewOrder order = new PreviewOrder(
+            new PlaceRequest(placements, null, false, Allow.Lifts(options.Allow, "door_keepout"),
+                detail: PreviewDetail), cells, boxes,
+            seconds, options.Keep ?? false, false, xray)
+        {
+            Style = style,
+            Tint = tint,
+            Run = run
+        };
+        foreach (KeyValuePair<int, Rgba> own in tints)
+        {
+            order.PlacementTints[own.Key] = own.Value;
+        }
+
+        return order;
+    }
+
+    // style: boxes (the default), ghost or both.
+    private static PreviewStyle StyleOf(string? given, List<OptionProblem> problems)
+    {
+        switch (given?.Trim().ToLowerInvariant())
+        {
+            case null:
+            case "boxes":
+                return PreviewStyle.Boxes;
+            case "ghost":
+                return PreviewStyle.Ghost;
+            case "both":
+                return PreviewStyle.Both;
+            default:
+                problems.Add(new OptionProblem("style", "is boxes, ghost or both", NearestNames.Of(given, StyleNames)));
+                return PreviewStyle.Boxes;
+        }
+    }
+
+    // run: build cable, pipe or chute's options with what, read as that what reads them (its own option names only;
+    // confirm and the like are read and never acted on: a preview builds nothing). Problems keep their path under run.
+    private static RunBuildOrder? RunOf(JToken? given, List<OptionProblem> problems)
+    {
+        if (given == null)
+        {
+            return null;
+        }
+
+        if (!(given is JObject run))
+        {
+            problems.Add(new OptionProblem(ByRun,
+                "is build cable, pipe or chute's options with what: {what: \"pipe\", grade, waypoints, ...}"));
+            return null;
+        }
+
+        string? kind = run["what"] is { Type: JTokenType.String } what ? ((string)what!).Trim() : null;
+        if (kind == null || Array.IndexOf(RunKinds, kind) < 0)
+        {
+            problems.Add(new OptionProblem(ByRun + ".what", "is cable, pipe or chute",
+                NearestNames.Of(kind ?? string.Empty, RunKinds)));
+            return null;
+        }
+
+        JObject options = (JObject)run.DeepClone();
+        options.Remove("what");
+        WhatSpec spec = RunBuildOrder.SpecOf(kind);
+        int before = problems.Count;
+        NestedKeys.Check(options, ByRun, spec.OptionNames, problems);
+        if (problems.Count > before)
+        {
+            return null;
+        }
+
+        OptionReader reader = new OptionReader(spec, options);
+        List<OptionProblem> read = new List<OptionProblem>();
+        VerbError? missing;
+        RunBuildOrder? order = kind switch
+        {
+            "pipe" => RunBuildOrder.Of(BuildPipeOptions.Bind(reader), read, out missing),
+            "chute" => RunBuildOrder.Of(BuildChuteOptions.Bind(reader), read, out missing),
+            _ => RunBuildOrder.Of(BuildCableOptions.Bind(reader), read, out missing)
+        };
+        if (reader.HasProblems)
+        {
+            read.InsertRange(0, reader.Problems);
+        }
+
+        foreach (OptionProblem problem in read)
+        {
+            problems.Add(new OptionProblem($"{ByRun}.{problem.Path}", problem.Problem, problem.Nearest));
+        }
+
+        if (missing != null)
+        {
+            problems.Add(new OptionProblem(ByRun, "names no run: give waypoints, cells, piece or pieces"));
+        }
+
+        return problems.Count == before ? order : null;
+    }
+
+    // A placement item's keys: the place readers' and tint.
+    private static string[] ItemKeys()
+    {
+        List<string> keys = new List<string>(PlacementReader.PlacementKeys) { TintKey };
+        return keys.ToArray();
     }
 
     // The placements the call names: the list read item by item, or the one placement's own fields at the top level.
     // Nothing at all is no problem: the call may draw only cells and boxes.
-    private static List<PlacementRequest> Placements(ShowPreviewOptions options, List<OptionProblem> problems)
+    private static List<PlacementRequest> Placements(ShowPreviewOptions options, Dictionary<int, Rgba> tints,
+        List<OptionProblem> problems)
     {
         List<PlacementRequest> placements = new List<PlacementRequest>();
         if (options.Placements != null)
         {
             BesideTheList(options, problems);
-            Items(options.Placements, placements, problems);
+            Items(options.Placements, placements, tints, problems);
             return placements;
         }
 
@@ -220,8 +444,9 @@ internal sealed class PreviewOrder
         _ => false
     };
 
-    // The placements list: each item read as a placement, the what's 1 to 64 of them.
-    private static void Items(JToken given, List<PlacementRequest> placements, List<OptionProblem> problems)
+    // The placements list: each item read as a placement, the what's 1 to 64 of them, and its own tint.
+    private static void Items(JToken given, List<PlacementRequest> placements, Dictionary<int, Rgba> tints,
+        List<OptionProblem> problems)
     {
         if (!(given is JArray items) || items.Count == 0 || items.Count > MaximumPlacements)
         {
@@ -233,10 +458,28 @@ internal sealed class PreviewOrder
         for (int index = 0; index < items.Count; index++)
         {
             string path = $"{ByPlacements}[{index}]";
-            if (!(items[index] is JObject item))
+            if (!(items[index] is JObject entry))
             {
                 problems.Add(new OptionProblem(path, "is an object: {prefab, at, ...}"));
                 continue;
+            }
+
+            int before = problems.Count;
+            NestedKeys.Check(entry, path, PlacementItemKeys, problems);
+            if (problems.Count > before)
+            {
+                continue;
+            }
+
+            JObject item = entry;
+            if (entry[TintKey] is { } own)
+            {
+                item = (JObject)entry.DeepClone();
+                item.Remove(TintKey);
+                if (GhostTints.TryRead(own, $"{path}.{TintKey}", problems, out Rgba tint))
+                {
+                    tints[index] = tint;
+                }
             }
 
             PlacementOrders.Add(placements, item, index, path + ".", ShowPreviewOptions.Spec, problems);

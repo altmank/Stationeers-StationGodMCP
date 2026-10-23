@@ -213,4 +213,53 @@ public sealed class FromPlanTests
 
         Assert.Equal(["from_plan: the plan builds cable: leave what out or give what: cable"], failed.Problems());
     }
+
+    // ---- show preview ----
+
+    private static JsonObject PreviewSent(FakeGameLink game) => game.Single("show").Params();
+
+    [Fact]
+    public void APreviewOfARouteDrawsItsRun()
+    {
+        FakeGameLink game = Planning(RoutePlan);
+        VerbPipeline pipeline = game.Pipeline();
+        string plan = Planned(pipeline, "route");
+
+        pipeline.Call("show", "preview", $$"""{"from_plan":"{{plan}}","style":"ghost","tint":"magenta"}""").Done();
+
+        JsonObject sent = PreviewSent(game);
+        Assert.Null(sent["from_plan"]);
+        Assert.Equal("ghost", (string)sent["style"]!);
+        Same("""{"what":"cable","waypoints":[[1,2,3],[1,2,5]],"grade":"normal","join":"ends"}""", sent["run"]);
+    }
+
+    [Fact]
+    public void APreviewOfASpotDrawsItsPlacement()
+    {
+        FakeGameLink game = Planning(SpotPlan);
+        VerbPipeline pipeline = game.Pipeline();
+        string plan = Planned(pipeline, "spot");
+
+        pipeline.Call("show", "preview", $$"""{"from_plan":"{{plan}}.spots.1","style":"both"}""").Done();
+
+        JsonObject sent = PreviewSent(game);
+        Assert.Equal("StructureWallLight", (string)sent["prefab"]!);
+        Same("[4,5,6]", sent["at"]);
+        Assert.Equal("-z", (string)sent["facing"]!);
+        Assert.Equal("preview", (string)sent["what"]!);
+        Assert.Null(sent["run"]);
+    }
+
+    [Fact]
+    public void ARunOrPlacementsGivenBesideItReplaceThePlans()
+    {
+        FakeGameLink game = Planning(RoutePlan);
+        VerbPipeline pipeline = game.Pipeline();
+        string plan = Planned(pipeline, "route");
+
+        pipeline.Call("show", "preview",
+            $$$"""{"from_plan":"{{{plan}}}","run":{"what":"pipe","grade":"normal","cells":[[0,0,0],[0,0,0.5]]}}""").Done();
+
+        Same("""{"what":"pipe","grade":"normal","cells":[[0,0,0],[0,0,0.5]]}""", PreviewSent(game)["run"]);
+    }
 }

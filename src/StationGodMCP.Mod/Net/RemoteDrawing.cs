@@ -17,8 +17,8 @@ namespace StationGodMCP.Net;
 /// </summary>
 internal static class RemoteDrawings
 {
-    private static readonly Dictionary<(long Connection, bool Previews), List<float>> Showing =
-        new Dictionary<(long, bool), List<float>>();
+    private static readonly Dictionary<(long Connection, System.Type Kind), List<float>> Showing =
+        new Dictionary<(long, System.Type), List<float>>();
 
     /// <summary>Sends the command; the number of drawings of its kind it cleared, or null when it could not be sent.</summary>
     internal static int? Send(long connectionId, DrawCommand command)
@@ -28,12 +28,12 @@ internal static class RemoteDrawings
             return null;
         }
 
-        bool previews = command is DrawCommand.Previews;
+        System.Type kind = command.GetType();
         float now = RemoteViews.Now;
-        if (!Showing.TryGetValue((connectionId, previews), out List<float>? untils))
+        if (!Showing.TryGetValue((connectionId, kind), out List<float>? untils))
         {
             untils = new List<float>();
-            Showing[(connectionId, previews)] = untils;
+            Showing[(connectionId, kind)] = untils;
         }
 
         untils.RemoveAll(until => until <= now);
@@ -59,6 +59,13 @@ internal static class RemoteDrawings
                 }
 
                 break;
+            case DrawCommand.Ghosts ghosts:
+                foreach (GhostSpec ghost in ghosts.List)
+                {
+                    untils.Add(now + ghost.Seconds);
+                }
+
+                break;
         }
 
         return cleared;
@@ -66,7 +73,7 @@ internal static class RemoteDrawings
 
     internal static void Prune()
     {
-        foreach ((long Connection, bool Previews) key in new List<(long, bool)>(Showing.Keys))
+        foreach ((long Connection, System.Type Kind) key in new List<(long, System.Type)>(Showing.Keys))
         {
             if (Client.Find(key.Connection) == null)
             {
@@ -79,9 +86,9 @@ internal static class RemoteDrawings
 }
 
 /// <summary>
-/// A client's side: draws what the server sent for this player with this game's own Previews and Highlights, as the
-/// tools draw for a local player. Things are found by reference id, the same on every machine; one this game does not
-/// have is left out.
+/// A client's side: draws what the server sent for this player with this game's own Previews, Ghosts and Highlights, as
+/// the tools draw for a local player. Things are found by reference id and ghosts' prefabs by hash, the same on every
+/// machine; one this game does not have is left out.
 /// </summary>
 internal static class RemoteDrawing
 {
@@ -140,6 +147,20 @@ internal static class RemoteDrawing
                     Highlights.Add(MarkOf(mark));
                 }
 
+                return;
+            case DrawCommand.Ghosts ghosts:
+                if (ghosts.Replace)
+                {
+                    Ghosts.Clear();
+                }
+
+                if (ghosts.List.Count > 0 && !Ghosts.CanDraw)
+                {
+                    OnceLog.Warning("draw_ghosts", "This game has no material to draw the server's ghosts with.");
+                    return;
+                }
+
+                Ghosts.Show(ghosts.List);
                 return;
         }
     }

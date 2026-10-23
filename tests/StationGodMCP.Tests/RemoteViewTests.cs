@@ -177,6 +177,54 @@ public sealed class RemoteViewTests
     }
 
     [Fact]
+    public void GhostsRoundTripExactly()
+    {
+        DrawCommand sent = new DrawCommand.Ghosts(true, new List<GhostSpec>
+        {
+            new GhostSpec(-1234567, 2, new Vec3(716.5, 203.25, 668), new Vec3(0, 90, 270),
+                new Rgba(0.1f, 0.2f, 0.3f, 0.4f), 45f, true),
+            new GhostSpec(int.MaxValue, 0, new Vec3(-1, 0, 1), new Vec3(0, 0, 0), Green, 5f, false, GhostSource.Player)
+        });
+
+        byte[] bytes = DrawWire.Encode(sent);
+        DrawCommand.Ghosts read =
+            Assert.IsType<DrawCommand.Ghosts>(Assert.IsType<WireRead<DrawCommand>.Read>(DrawWire.Decode(bytes)).Value);
+
+        // protocol, kind, replace, count; then each ghost: hash, state, position, euler, tint, seconds, xray, source
+        Assert.Equal(7 + 2 * (4 + 4 + 12 + 12 + 16 + 4 + 1 + 1), bytes.Length);
+        Assert.True(read.Replace);
+        Assert.Equal(2, read.List.Count);
+        GhostSpec first = read.List[0];
+        Assert.Equal(-1234567, first.PrefabHash);
+        Assert.Equal(2, first.BuildState);
+        Assert.Equal(new Vec3(716.5, 203.25, 668), first.Position);
+        Assert.Equal(new Vec3(0, 90, 270), first.Euler);
+        Assert.Equal(new Rgba(0.1f, 0.2f, 0.3f, 0.4f), first.Tint);
+        Assert.Equal(45f, first.Seconds);
+        Assert.True(first.XRay);
+        Assert.Equal(GhostSource.Agent, first.Source);
+        Assert.Equal(GhostSource.Player, read.List[1].Source);
+        Assert.False(read.List[1].XRay);
+    }
+
+    [Fact]
+    public void EveryTruncationOfGhostsIsRefusedAndSoIsAnUnknownSource()
+    {
+        byte[] bytes = DrawWire.Encode(new DrawCommand.Ghosts(false, new List<GhostSpec>
+        {
+            new GhostSpec(1, 0, new Vec3(0, 0, 0), new Vec3(0, 0, 0), Green, 5f, false)
+        }));
+
+        for (int length = 0; length < bytes.Length; length++)
+        {
+            Assert.IsType<WireRead<DrawCommand>.Malformed>(DrawWire.Decode(bytes.AsSpan(0, length).ToArray()));
+        }
+
+        bytes[^1] = 7;
+        Assert.IsType<WireRead<DrawCommand>.Malformed>(DrawWire.Decode(bytes));
+    }
+
+    [Fact]
     public void AClearIsAReplaceWithNothing()
     {
         byte[] bytes = DrawWire.Encode(new DrawCommand.Highlights(true, new List<MarkSpec>()));

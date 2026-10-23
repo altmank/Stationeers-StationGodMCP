@@ -250,6 +250,10 @@
     "description": "The plant has no gene set yet. Wait until it grows one.",
     "see": {"verb": "inspect", "what": "genes"}
   },
+  "no_ghost_material": {
+    "description": "This game build has neither the construction cursor's shader nor a built-in one to draw ghosts with. Use style boxes.",
+    "see": {"verb": "show", "what": "preview"}
+  },
   "no_kit": {"description": "No coil or kit builds this piece, so it cannot be placed or put back. Pick another piece."},
   "no_line_shader": {
     "description": "This game build has no built-in shader to draw lines with, so nothing can be drawn.",

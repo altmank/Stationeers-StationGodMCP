@@ -923,22 +923,31 @@ internal sealed class PrintView
     public ThingId? SplitFrom { get; }
 }
 
-/// <summary>show preview: how many boxes it drew, how many earlier ones it cleared, for how long, and the plan.</summary>
+/// <summary>
+/// show preview: how many boxes and ghosts it drew, how many earlier ones it cleared, for how long, the placements'
+/// plan and the run's.
+/// </summary>
 internal sealed class ShowPreviewView
 {
-    internal ShowPreviewView(int shown, int cleared, double seconds, object? plan, List<string> notes,
-        List<string>? drawnOn = null, ViewSourceView? view = null)
+    internal ShowPreviewView(int shown, int ghosts, int cleared, double seconds, object? plan, RunPreviewView? run,
+        List<string> notes, List<string>? drawnOn = null, ViewSourceView? view = null)
     {
         DrawnOn = drawnOn;
         View = view;
         Shown = shown;
+        Ghosts = ghosts;
         Cleared = cleared;
         Seconds = seconds;
         Plan = plan;
+        Run = run;
         Notes = notes;
     }
 
+    /// <summary>The wire boxes drawn.</summary>
     public int Shown { get; }
+
+    /// <summary>The ghosts drawn.</summary>
+    public int Ghosts { get; }
 
     public int Cleared { get; }
 
@@ -951,6 +960,10 @@ internal sealed class ShowPreviewView
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public object? Plan { get; }
 
+    /// <summary>The run's plan, brief; left out without run.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public RunPreviewView? Run { get; }
+
     public List<string> Notes { get; }
 
     /// <summary>The players whose games drew them, when not this game (clients of a dedicated server).</summary>
@@ -960,6 +973,58 @@ internal sealed class ShowPreviewView
     /// <summary>The player's view the screen was found through: local or remote and its age.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public ViewSourceView? View { get; }
+}
+
+/// <summary>
+/// show preview's run, brief: what it builds, whether build would take it as it is, how many pieces it lays or changes,
+/// and the plan's problems and warnings (build's dry run has the whole report).
+/// </summary>
+internal sealed class RunPreviewView
+{
+    internal RunPreviewView(string what, bool ready, int pieces, List<LayoutIssue> problems,
+        List<LayoutIssue> warnings)
+    {
+        What = what;
+        Ready = ready;
+        Pieces = pieces;
+        Problems = Issues(problems);
+        Warnings = Issues(warnings);
+    }
+
+    public string What { get; }
+
+    public bool Ready { get; }
+
+    public int Pieces { get; }
+
+    public List<RunPreviewIssue> Problems { get; }
+
+    public List<RunPreviewIssue> Warnings { get; }
+
+    private static List<RunPreviewIssue> Issues(List<LayoutIssue> issues)
+    {
+        List<RunPreviewIssue> views = new List<RunPreviewIssue>(issues.Count);
+        foreach (LayoutIssue issue in issues)
+        {
+            views.Add(new RunPreviewIssue(issue.Code, issue.Message));
+        }
+
+        return views;
+    }
+}
+
+/// <summary>One problem or warning of a run's plan.</summary>
+internal sealed class RunPreviewIssue
+{
+    internal RunPreviewIssue(string code, string message)
+    {
+        Code = code;
+        Message = message;
+    }
+
+    public string Code { get; }
+
+    public string Message { get; }
 }
 
 /// <summary>

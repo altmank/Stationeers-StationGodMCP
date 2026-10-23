@@ -406,6 +406,11 @@ internal abstract class PlayerScreen
 
     internal abstract int ClearPreviews();
 
+    /// <summary>Shows show preview's ghosts, replacing the ghosts shown when asked; how many it cleared.</summary>
+    internal abstract int Ghost(bool replace, IReadOnlyList<GhostSpec> ghosts);
+
+    internal abstract int ClearGhosts();
+
     internal abstract int Highlight(bool replace, IReadOnlyList<ScreenMark> marks, double seconds, List<string> notes);
 
     internal abstract int ClearHighlights();
@@ -452,6 +457,21 @@ internal abstract class PlayerScreen
 
         internal override int ClearPreviews() => Previews.Clear();
 
+        internal override int Ghost(bool replace, IReadOnlyList<GhostSpec> ghosts)
+        {
+            if (ghosts.Count > 0 && !Ghosts.CanDraw)
+            {
+                throw ApiErrors.Refused("no_ghost_material",
+                    "Neither the construction cursor's shader nor a built-in shader to draw ghosts with was found.");
+            }
+
+            int cleared = replace ? Ghosts.Clear() : 0;
+            Ghosts.Show(ghosts);
+            return cleared;
+        }
+
+        internal override int ClearGhosts() => Ghosts.Clear();
+
         internal override int Highlight(bool replace, IReadOnlyList<ScreenMark> marks, double seconds, List<string> notes)
         {
             if (XRay.MeshMaterial == null)
@@ -497,6 +517,11 @@ internal abstract class PlayerScreen
             Send(new DrawCommand.Previews(replace, boxes));
 
         internal override int ClearPreviews() => Send(new DrawCommand.Previews(true, new List<PreviewBox>()));
+
+        internal override int Ghost(bool replace, IReadOnlyList<GhostSpec> ghosts) =>
+            Send(new DrawCommand.Ghosts(replace, ghosts));
+
+        internal override int ClearGhosts() => Send(new DrawCommand.Ghosts(true, new List<GhostSpec>()));
 
         internal override int Highlight(bool replace, IReadOnlyList<ScreenMark> marks, double seconds, List<string> notes)
         {

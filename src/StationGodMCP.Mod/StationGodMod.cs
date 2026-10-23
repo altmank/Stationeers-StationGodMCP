@@ -35,7 +35,7 @@ public sealed class StationGodMod : ModBehaviour
 {
     public const string ModId = "net.xceled.stationeers.stationgodmcp";
     public const string DisplayName = "StationGod MCP";
-    public const string Version = "2.7.1";
+    public const string Version = "2.8.0";
 
     private static readonly DeadlineWatch Deadlines = new DeadlineWatch();
 
@@ -238,6 +238,7 @@ public sealed class StationGodMod : ModBehaviour
                 StopServers("world_unloaded");
                 Net.ViewReporter.Tick();
                 Previews.Tick();
+                Ghosts.Tick();
                 Highlights.Tick();
                 return;
             }
@@ -272,6 +273,7 @@ public sealed class StationGodMod : ModBehaviour
             using (Prof.Scope(ProfId.Previews))
             {
                 Previews.Tick();
+                Ghosts.Tick();
             }
 
             using (Prof.Scope(ProfId.Highlights))
@@ -322,6 +324,7 @@ public sealed class StationGodMod : ModBehaviour
         HeldTickJobs.Ended = null;
         HeldTickJobs.Abandon();
         Previews.Clear();
+        Ghosts.Clear();
         Highlights.Clear();
         ProfilingControl.Shutdown();
         _harmony?.UnpatchSelf();
