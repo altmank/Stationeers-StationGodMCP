@@ -124,10 +124,11 @@ internal static class NetworkReader
             if (family.IsPiece(piece))
             {
                 IReferencable? owner = family.NetworkOf(piece);
+                List<int> open = OpenEnds(piece, family.NetworkKind);
                 return new NetworkMemberView(GameLookup.ViewOf(piece), family.NetworkKind,
-                    GameLookup.ViewOf(piece.Position), OpenEnds(piece, family.NetworkKind),
+                    GameLookup.ViewOf(piece.Position), open,
                     owner != null ? new ThingId(owner.ReferenceId) : (ThingId?)null,
-                    ThingColors.ShownColorOf(piece, swatches));
+                    ThingColors.ShownColorOf(piece, swatches), OpenEndDetails(piece, open));
             }
         }
 
@@ -245,7 +246,27 @@ internal static class NetworkReader
 
     private static NetworkMemberView MemberView(Thing member, string role, List<int>? openEnds, ThingColorView? color) =>
         new NetworkMemberView(GameLookup.ViewOf(member), role, GameLookup.ViewOf(member.Position), openEnds, null,
-            color);
+            color, OpenEndDetails(member, openEnds));
+
+    // Each listed open end described (type, role, joining cell, direction); null when none is listed.
+    private static List<OpenEndView>? OpenEndDetails(Thing member, List<int>? open)
+    {
+        if (open == null || open.Count == 0 || !(member is SmallGrid grid) || grid.OpenEnds == null)
+        {
+            return null;
+        }
+
+        List<OpenEndView> details = new List<OpenEndView>(open.Count);
+        foreach (int index in open)
+        {
+            if (index >= 0 && index < grid.OpenEnds.Count && grid.OpenEnds[index] != null)
+            {
+                details.Add(EndsReader.OpenEndOf(grid, grid.OpenEnds[index], index));
+            }
+        }
+
+        return details;
+    }
 
     private static ApiException NotFound(string kind, ThingId id) =>
         ApiErrors.Refused("network_not_found", $"No {kind} network has id {id}.");

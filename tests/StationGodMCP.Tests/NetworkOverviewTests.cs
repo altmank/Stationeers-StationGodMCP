@@ -54,4 +54,26 @@ public sealed class NetworkOverviewTests
         Assert.Equal(1, (int)wire["open_ends"]![0]!["open_ends"]![0]!);
         Assert.Equal(1, (int)wire["open_end_count"]!);
     }
+
+    [Fact]
+    public void AnOpenEndSaysWhetherItIsADevicePortOrAPieceEndAndWhichEnd()
+    {
+        // A dead-cable-tail walk must tell a battery's free data port from a cable junction's open end.
+        NetworkMemberView battery = new NetworkMemberView(new ThingView(new ThingId(57037), "StructureBattery",
+            "Station Battery"), "device", new PositionView(1, 2, 3), new List<int> { 2 }, null, null,
+            new List<OpenEndView> { new OpenEndView(2, "Data", "None", new PositionView(1, 2, 3.5), "+z") });
+        NetworkMemberView junction = new NetworkMemberView(new ThingView(new ThingId(9), "StructureCableJunction",
+            "Cable (Junction)"), "cable", new PositionView(4, 2, 3), new List<int> { 1 }, null, null,
+            new List<OpenEndView> { new OpenEndView(1, "PowerAndData", "None", new PositionView(4.5, 2, 3), "+x") });
+
+        JObject port = JObject.Parse(WireCheck.New(battery));
+        JObject end = JObject.Parse(WireCheck.New(junction));
+
+        Assert.Equal("device", (string)port["member"]!);
+        Assert.Equal("Data", (string)port["open_end_details"]![0]!["type"]!);
+        Assert.Equal("+z", (string)port["open_end_details"]![0]!["toward"]!);
+        Assert.Equal("cable", (string)end["member"]!);
+        Assert.Equal(1, (int)end["open_end_details"]![0]!["index"]!);
+        Assert.Equal(4.5, (double)end["open_end_details"]![0]!["at"]!["x"]!);
+    }
 }

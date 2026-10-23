@@ -56,6 +56,36 @@ internal sealed class ConnectionsView
     public int Count { get; }
 }
 
+/// <summary>
+/// One open end of a network member: its index (as inspect connections lists ends), connection type and role, the cell
+/// a piece joining it takes (at) and the way it points (toward).
+/// </summary>
+internal sealed class OpenEndView
+{
+    internal OpenEndView(int index, string type, string role, PositionView? at, string? toward)
+    {
+        Index = index;
+        Type = type;
+        Role = role;
+        At = at;
+        Toward = toward;
+    }
+
+    public int Index { get; }
+
+    /// <summary>NetworkType: Power, Data, PowerAndData, Pipe, PipeLiquid, Chute...</summary>
+    public string Type { get; }
+
+    /// <summary>ConnectionRole: None, Input, Input2, Output, Output2, Waste.</summary>
+    public string Role { get; }
+
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public PositionView? At { get; }
+
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public string? Toward { get; }
+}
+
 /// <summary>One connection end (SmallGrid.OpenEnds).</summary>
 internal sealed class ConnectionEndView
 {
@@ -170,8 +200,9 @@ internal sealed class NetworkMemberFilter
 internal sealed class NetworkMemberView
 {
     internal NetworkMemberView(ThingView thing, string member, PositionView position, List<int>? openEnds = null,
-        ThingId? networkId = null, ThingColorView? color = null)
+        ThingId? networkId = null, ThingColorView? color = null, List<OpenEndView>? openEndDetails = null)
     {
+        OpenEndDetails = openEndDetails;
         Color = color;
         NetworkId = networkId;
         OpenEnds = openEnds;
@@ -200,6 +231,13 @@ internal sealed class NetworkMemberView
     /// <summary>With open_ends_only: the indexes (as inspect connections lists ends) of its open ends of the network's kind.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public List<int>? OpenEnds { get; }
+
+    /// <summary>
+    /// Each open end in open_ends: its connection type and role, the cell beside it a joining piece takes, and the way
+    /// it points (a junction's open end among its others, a device's free port).
+    /// </summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<OpenEndView>? OpenEndDetails { get; }
 
     /// <summary>The box form: the network the piece is on; left out in the network form, which names it once.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]

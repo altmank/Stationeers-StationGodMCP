@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.9.3
+
+- **survey network's open ends say what each one is.** With `open_ends: true` a device with a free port (a logic
+  switch's data port, a battery's) and a cable piece with an open end stood in one list, told apart only by `member`
+  (`device`, or the network's kind for a piece), and `open_ends` gave bare indexes. Each member with open ends now
+  carries `open_end_details`: per open end its `index` (as inspect connections lists ends), connection `type` (Power,
+  Data, PowerAndData, Pipe ...) and `role`, `at` (the cell a joining piece takes) and `toward` (the way the end
+  points), so a junction's open end is named among its others and a device's free port is a port, not a cable tail.
+  The same in the box form and in summarize's open_ends list.
+
 ## 2.9.2
 
 From the MCP pane's furnace-block planning (heavy replies):

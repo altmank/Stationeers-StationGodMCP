@@ -58,6 +58,15 @@ internal static class EndsReader
             Orientations.ControlsFacing(thing));
     }
 
+    /// <summary>An open end as survey network lists it: type, role, the joining cell and the way it points.</summary>
+    internal static OpenEndView OpenEndOf(SmallGrid grid, Connection end, int index)
+    {
+        (GridCell cell, GridStep? pieceEnd) = EndCells.Joining(PieceShapes.Live(grid),
+            PieceShapes.Cell(end.GetLocalGrid()), PieceShapes.Cell(end.GetFacingGrid()));
+        return new OpenEndView(index, end.ConnectionType.ToString(), end.ConnectionRole.ToString(),
+            GameLookup.ViewOf(PieceShapes.CentreOf(cell)), pieceEnd?.Name);
+    }
+
     private static ConnectionEndView ReadEnd(SmallGrid grid, Connection end, int index)
     {
         List<Thing> attached = AttachedAt(grid, end);

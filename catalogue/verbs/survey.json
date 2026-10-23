@@ -184,7 +184,7 @@
         },
         "open_ends": {
           "schema": {"type": "boolean"},
-          "description": "Only members with an end nothing is attached at.",
+          "description": "Only members with an end nothing is attached at. member says device (its open ends are free ports) or the network's kind (a piece); open_end_details names each open end's type, role, joining cell and direction.",
           "default": "false",
           "x-script": "same"
         },
@@ -213,7 +213,7 @@
               "network": "{kind: str, id: str}",
               "summary": "{required_w: float, potential_w: float, actual_w: float, shortfall_w: float, lowest_cable_max_w: float | None, lowest_fuse_break_w: float | None, overloaded: bool, fuse_overloaded: bool, cable_count: int, fuse_count: int} | {content: str, volume_l: float, pressure_kpa: float, temperature_k: float, total_mol: float, liquid_volume_l: float, gases: list[{gas: str, state: str, amount_mol: float}]} | {member_count: int} | None",
               "warning": "str | None",
-              "members": "list[{reference_id: str, prefab_name: str | None, display_name: str | None, member: str, position: Vec3, color: Color | None, open_ends: list[int] | None, network_id: str | None}]",
+              "members": "list[{reference_id: str, prefab_name: str | None, display_name: str | None, member: str, position: Vec3, color: Color | None, open_ends: list[int] | None, open_end_details: list[{index: int, type: str, role: str, at: Vec3 | None, toward: str | None}] | None, network_id: str | None}]",
               "count": "int",
               "structure_count": "int",
               "device_count": "int",
@@ -235,8 +235,8 @@
               "structure_count": "int",
               "device_count": "int",
               "by_prefab": "list[{prefab_name: str, display_name: str | None, member: str, count: int, colors: dict[str, int] | None}]",
-              "devices": "list[{reference_id: str, prefab_name: str | None, display_name: str | None, member: str, position: Vec3, color: Color | None, open_ends: list[int] | None, network_id: str | None}]",
-              "open_ends": "list[{reference_id: str, prefab_name: str | None, display_name: str | None, member: str, position: Vec3, color: Color | None, open_ends: list[int] | None, network_id: str | None}]",
+              "devices": "list[{reference_id: str, prefab_name: str | None, display_name: str | None, member: str, position: Vec3, color: Color | None, open_ends: list[int] | None, open_end_details: list[{index: int, type: str, role: str, at: Vec3 | None, toward: str | None}] | None, network_id: str | None}]",
+              "open_ends": "list[{reference_id: str, prefab_name: str | None, display_name: str | None, member: str, position: Vec3, color: Color | None, open_ends: list[int] | None, open_end_details: list[{index: int, type: str, role: str, at: Vec3 | None, toward: str | None}] | None, network_id: str | None}]",
               "open_end_count": "int"
             }
           },
@@ -244,7 +244,7 @@
             "label": "AreaOpenEnds",
             "view": "AreaOpenEnds",
             "keys": {
-              "members": "list[{reference_id: str, prefab_name: str | None, display_name: str | None, member: str, position: Vec3, color: Color | None, open_ends: list[int] | None, network_id: str | None}]",
+              "members": "list[{reference_id: str, prefab_name: str | None, display_name: str | None, member: str, position: Vec3, color: Color | None, open_ends: list[int] | None, open_end_details: list[{index: int, type: str, role: str, at: Vec3 | None, toward: str | None}] | None, network_id: str | None}]",
               "count": "int",
               "offset": "int",
               "limit": "int",
