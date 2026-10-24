@@ -10,6 +10,7 @@ using Assets.Scripts.Objects.Entities;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.LatticeLink.Model;
+using StationGodMCP.Net;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.RemoteView;
 using StationGodMCP.Pure.Verbs;
@@ -206,6 +207,15 @@ internal static class LatticeBoard
 
     private static void Attach(L.IGhostSystem system)
     {
+        // Turn.Axes, Turn.Of and Selector.Everything came with contract 0.2.
+        if (system.Version.Major != L.ApiVersion.ContractMajor || system.Version.Minor < 2)
+        {
+            OnceLog.Warning("lattice_version",
+                $"Lattice {system.Version.Major}.{system.Version.Minor} runs; StationGod needs contract " +
+                $"{L.ApiVersion.ContractMajor}.2 or later (minor). Ghosts stay off until Lattice is updated.");
+            return;
+        }
+
         _system = system;
         _agentPlan = null;
         Answered.Clear();
@@ -320,18 +330,9 @@ internal static class LatticeBoard
 
     private static List<BoardGhost> AllBuildGhosts(L.IGhostSystem system)
     {
-        List<L.Selector> plans = new List<L.Selector> { new L.Selector.InPlan(system.Plans.Default) };
-        foreach (L.Plan plan in system.Plans.All)
-        {
-            if (plan.Id != system.Plans.Default)
-            {
-                plans.Add(new L.Selector.InPlan(plan.Id));
-            }
-        }
-
         List<BoardGhost> all = new List<BoardGhost>();
         L.Result<L.ValueList<L.Ghost>, L.Reason> picked =
-            system.Board.As(LatticeNames.Agent).Select(new L.Selector.Any(L.ValueList.From(plans)));
+            system.Board.As(LatticeNames.Agent).Select(new L.Selector.Everything());
         if (picked.TryGet(out L.ValueList<L.Ghost> ghosts))
         {
             foreach (L.Ghost ghost in ghosts)

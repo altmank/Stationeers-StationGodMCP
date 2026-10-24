@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.10.1
+
+- **Lattice's turns from the contract.** A ghost's turn is read and written through Lattice's own `Turn.Axes` and
+  `Turn.Of` (where a turn sends +X, +Y and +Z), not a copy of Lattice's numbering; attaching reads the whole board
+  with `Selector.Everything`. Needs Lattice contract 0.2 or later: with an older Lattice, StationGod logs a warning
+  once and leaves the ghosts off until Lattice is updated.
+
 ## 2.10.0
 
 - **Ghosts on Lattice.** With Lattice (the ghost core library) installed, the world's ghosts are Lattice's: StationGod

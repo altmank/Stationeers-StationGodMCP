@@ -80,7 +80,8 @@ internal static class LatticeText
 
 /// <summary>
 /// The board's ghosts and Lattice's, both ways. A Lattice cell is the game's Grid3 key of a structure's position
-/// (metres x 10, rounded away from zero), its turn one of LatticeTurns. Only build ghosts are on StationGod's board;
+/// (metres x 10, rounded away from zero), its turn the contract's (Turn.Axes: where it sends +X, +Y, +Z; Turn.Of back).
+/// Only build ghosts are on StationGod's board;
 /// remove, swap and finish ghosts are Lattice's alone.
 /// </summary>
 internal static class LatticeGhosts
@@ -101,7 +102,7 @@ internal static class LatticeGhosts
 
         L.Placement target = build.Target;
         int hash = target.Piece.Hash;
-        CubeRotation rotation = LatticeTurns.RotationOf(target.Turn.Index) ?? CubeRotation.Identity;
+        CubeRotation rotation = RotationOf(target.Turn);
         (int xTurns, int yTurns, int zTurns) = rotation.EulerTurns();
         int last = lastState(hash);
         int state = last;
@@ -176,8 +177,36 @@ internal static class LatticeGhosts
             return null;
         }
 
-        int index = LatticeTurns.IndexOf(CubeRotation.FromEuler(x, y, z));
-        return L.Turn.Create(index).TryGet(out L.Turn turn) ? turn : null;
+        return TurnOf(CubeRotation.FromEuler(x, y, z));
+    }
+
+    /// <summary>The Lattice turn of a quarter-turn rotation: where it sends local +X and +Y.</summary>
+    internal static L.Turn? TurnOf(CubeRotation rotation) =>
+        L.Turn.Of(AxisOf(rotation.Right), AxisOf(rotation.Up)).TryGet(out L.Turn turn) ? turn : null;
+
+    /// <summary>The rotation a Lattice turn makes.</summary>
+    internal static CubeRotation RotationOf(L.Turn turn)
+    {
+        L.TurnAxes axes = turn.Axes;
+        return CubeRotation.FromAxes(UnitOf(axes.X), UnitOf(axes.Y));
+    }
+
+    private static L.SignedAxis AxisOf(GridStep step)
+    {
+        L.AxisSign sign = step.Dx + step.Dy + step.Dz > 0 ? L.AxisSign.Plus : L.AxisSign.Minus;
+        L.Axis axis = step.Dx != 0 ? L.Axis.X : step.Dy != 0 ? L.Axis.Y : L.Axis.Z;
+        return new L.SignedAxis(axis, sign);
+    }
+
+    private static (int X, int Y, int Z) UnitOf(L.SignedAxis axis)
+    {
+        int sign = axis.Sign == L.AxisSign.Minus ? -1 : 1;
+        return axis.Axis switch
+        {
+            L.Axis.X => (sign, 0, 0),
+            L.Axis.Y => (0, sign, 0),
+            _ => (0, 0, sign)
+        };
     }
 
     internal static L.Tint TintOf(Rgba tint) => new L.Tint(Byte(tint.Red), Byte(tint.Green), Byte(tint.Blue),

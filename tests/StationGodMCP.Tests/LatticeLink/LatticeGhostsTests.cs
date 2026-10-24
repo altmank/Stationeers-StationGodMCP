@@ -11,46 +11,31 @@ using L = Lattice.Api;
 namespace StationGodMCP.Tests.LatticeLink;
 
 /// <summary>
-/// StationGod's ghosts on Lattice without the game: Lattice's turn numbering (checked once against Lattice.Core's own
-/// TurnReading, all 24, and pinned here), board placements into Lattice drafts and Lattice ghosts back, and Lattice's
-/// findings as find ghost's check.
+/// StationGod's ghosts on Lattice without the game: Lattice's turns (Turn.Axes, Turn.Of) as StationGod's rotations,
+/// board placements into Lattice drafts and Lattice ghosts back, and Lattice's findings as find ghost's check.
 /// </summary>
 public sealed class LatticeGhostsTests
 {
     private static readonly Rgba Orange = new Rgba(1f, 0.6f, 0.2f, 0.4f);
 
-    // Lattice's turn index -> (forward, up) of the turned piece, as Lattice.Core's TurnTable gives them.
-    private static readonly string[][] Turns =
-    {
-        new[] { "+z", "+y" }, new[] { "+x", "+y" }, new[] { "-z", "+y" }, new[] { "-x", "+y" },
-        new[] { "-z", "-y" }, new[] { "+x", "-y" }, new[] { "+z", "-y" }, new[] { "-x", "-y" },
-        new[] { "+z", "+x" }, new[] { "-y", "+x" }, new[] { "-z", "+x" }, new[] { "+y", "+x" },
-        new[] { "+z", "-x" }, new[] { "+y", "-x" }, new[] { "-z", "-x" }, new[] { "-y", "-x" },
-        new[] { "-y", "+z" }, new[] { "+x", "+z" }, new[] { "+y", "+z" }, new[] { "-x", "+z" },
-        new[] { "+y", "-z" }, new[] { "+x", "-z" }, new[] { "-y", "-z" }, new[] { "-x", "-z" }
-    };
-
     [Fact]
-    public void LatticeTurnsNumberTheCubeTurnsAsLatticeDoes()
+    public void EveryLatticeTurnIsTheRotationItsAxesSay()
     {
         HashSet<CubeRotation> seen = new HashSet<CubeRotation>();
-        for (int index = 0; index < LatticeTurns.Count; index++)
+        for (int index = 0; index < L.Turn.Count; index++)
         {
-            CubeRotation rotation = LatticeTurns.RotationOf(index)!;
-            Assert.Equal(Turns[index][0], rotation.Forward.Name);
-            Assert.Equal(Turns[index][1], rotation.Up.Name);
-            Assert.Equal(index, LatticeTurns.IndexOf(rotation));
-            (double x, double y, double z, double w) = rotation.ToQuaternion();
-            Assert.Equal(index, LatticeTurns.IndexOf(x, y, z, w));
+            L.Turn turn = L.Turn.Create(index).ToOption().Reduce(default(L.Turn));
+            CubeRotation rotation = LatticeGhosts.RotationOf(turn);
+
+            Assert.Equal(turn, LatticeGhosts.TurnOf(rotation));
             Assert.True(seen.Add(rotation));
         }
 
-        for (int yaw = 0; yaw < 4; yaw++)
-        {
-            Assert.Equal(CubeRotation.FromEuler(0, yaw, 0), LatticeTurns.RotationOf(yaw));
-        }
-
-        Assert.Null(LatticeTurns.RotationOf(24));
+        // Lattice's +Z is +X cross +Y, as the game's (CubeRotation's) forward is right cross up.
+        L.TurnAxes axes = LatticeGhosts.TurnOf(CubeRotation.FromEuler(0, 1, 0))!.Value.Axes;
+        Assert.Equal(L.SignedAxis.ZMinus, axes.X);
+        Assert.Equal(L.SignedAxis.YPlus, axes.Y);
+        Assert.Equal(L.SignedAxis.XPlus, axes.Z);
     }
 
     [Fact]
@@ -68,7 +53,7 @@ public sealed class LatticeGhostsTests
         Assert.Empty(notes);
         L.Intent.Build build = Assert.IsType<L.Intent.Build>(draft!.Intent);
         Assert.Equal(new L.Cell(7165, 2033, -6688), build.Target.At);
-        Assert.Equal(1, build.Target.Turn.Index);
+        Assert.Equal(CubeRotation.FromEuler(0, 1, 0), LatticeGhosts.RotationOf(build.Target.Turn));
         Assert.Equal(new L.Tint(255, 153, 51, 102), draft.Tint.Reduce(default(L.Tint)));
         Assert.Equal("1", draft.Attached[LatticeNames.BuildState].Value);
 
