@@ -16,6 +16,8 @@
     <Compile Include="..\..\src\StationGodMCP.Mod\Pure\**\*.cs" Link="Mod\Pure\%(RecursiveDir)%(Filename)%(Extension)" />
     <Compile Include="..\..\src\StationGodMCP.Mod\Api\Shared\*.cs" Link="Mod\Api\Shared\%(Filename)%(Extension)" />
     <Compile Include="..\..\src\StationGodMCP.Mod\Api\Views\**\*.cs" Link="Mod\Api\Views\%(RecursiveDir)%(Filename)%(Extension)" />
+    <!-- StationGod's side of Lattice that needs no game: conversions between Lattice's values and the board's. -->
+    <Compile Include="..\..\src\StationGodMCP.Mod\LatticeLink\Model\**\*.cs" Link="Mod\LatticeLink\Model\%(RecursiveDir)%(Filename)%(Extension)" />
     <!-- The connection layer (pipes, framing, calls in flight): no game types, so the pipe tests run it here. -->
     <Compile Include="..\..\src\StationGodMCP.Mod\Protocol\**\*.cs" Link="Mod\Protocol\%(RecursiveDir)%(Filename)%(Extension)" />
     <!-- The verb model the tests' copy of the mod code loads (assembly resources the mod, the Client and
@@ -27,6 +29,15 @@
     <!-- Synthetic replies (no game data) the mod's shaping is compared against the sidecar's on. -->
     <None Include="Fixtures\Shaping\*.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="Fixtures\Lint\*.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <LatticeApiDir Condition="'$(LatticeApiDir)' == '' And '$(LATTICE_API_DIR)' != ''">$(LATTICE_API_DIR)</LatticeApiDir>
+    <LatticeApiDir Condition="'$(LatticeApiDir)' == ''">$(MSBuildThisFileDirectory)..\..\..\Lattice\artifacts\Release\Lattice</LatticeApiDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="Lattice.Api" HintPath="$(LatticeApiDir)\Lattice.Api.dll" />
   </ItemGroup>
 
   <ItemGroup>

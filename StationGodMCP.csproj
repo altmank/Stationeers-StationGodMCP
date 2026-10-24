@@ -3,7 +3,7 @@
     <TargetFramework>netstandard2.1</TargetFramework>
     <AssemblyName>StationGodMCP</AssemblyName>
     <RootNamespace>StationGodMCP</RootNamespace>
-    <Version>2.9.4</Version>
+    <Version>2.10.0</Version>
     <Authors>XCeled</Authors>
     <Description>Lets an AI agent read and operate a running Stationeers game through the Model Context Protocol.</Description>
     <LangVersion>12.0</LangVersion>
@@ -25,6 +25,10 @@
     <ManagedPath>$(StationeersPath)\rocketstation_Data\Managed</ManagedPath>
     <BepInExCorePath>$(StationeersPath)\BepInEx\core</BepInExCorePath>
     <LaunchPadPath>$(StationeersPath)\BepInEx\plugins\StationeersLaunchPad</LaunchPadPath>
+    <!-- Lattice's contract (Lattice.Api.dll, never shipped): -p:LatticeApiDir=..., the LATTICE_API_DIR environment
+         variable, else the Lattice repo's build beside this one. -->
+    <LatticeApiDir Condition="'$(LatticeApiDir)' == '' And '$(LATTICE_API_DIR)' != ''">$(LATTICE_API_DIR)</LatticeApiDir>
+    <LatticeApiDir Condition="'$(LatticeApiDir)' == ''">$(MSBuildThisFileDirectory)..\Lattice\artifacts\Release\Lattice</LatticeApiDir>
   </PropertyGroup>
 
   <ItemGroup>
@@ -51,6 +55,8 @@
     <Reference Include="StationeersMods.Interface" HintPath="$(LaunchPadPath)\StationeersMods.Interface.dll" Private="false" />
     <!-- Multiplayer messages (Net/): only touched once StationGodNet.Register found it, never shipped with the mod. -->
     <Reference Include="LaunchPadBooster" HintPath="$(LaunchPadPath)\LaunchPadBooster.dll" Private="false" />
+    <!-- Lattice (optional at run time): only touched once LatticePresence found it loaded (LatticeLink/). -->
+    <Reference Include="Lattice.Api" HintPath="$(LatticeApiDir)\Lattice.Api.dll" Private="false" />
     <Reference Include="Newtonsoft.Json" HintPath="$(ManagedPath)\Newtonsoft.Json.dll" Private="false" />
     <Reference Include="UnityEngine" HintPath="$(ManagedPath)\UnityEngine.dll" Private="false" />
     <Reference Include="UnityEngine.CoreModule" HintPath="$(ManagedPath)\UnityEngine.CoreModule.dll" Private="false" />

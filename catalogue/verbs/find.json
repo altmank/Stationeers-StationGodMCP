@@ -683,11 +683,18 @@
           "description": "Only ghosts players placed, or agents.",
           "x-script": "same"
         },
+        "check": {
+          "schema": {"type": "boolean"},
+          "description": "With Lattice: each listed ghost's check by Lattice's validation (passes, waits for other ghosts, fails or warns, and why), in build order with the ghosts before it assumed built.",
+          "default": "false",
+          "x-script": "same"
+        },
         "limit": {"use": "limit", "default": "50"},
         "offset": {"use": "offset"}
       },
       "text": [
-        "Each ghost carries build_arguments for build structure; the reply's build_arguments place every listed ghost (up to 64) in one build. from_plan takes a find ghost ref: \"r5\" builds the listed ghosts, \"r5.ghosts.2\" one. A ghost goes off the board by itself once a structure of its prefab is built where it stands in its turn; show ghost {remove} takes ghosts off."
+        "Each ghost carries build_arguments for build structure; the reply's build_arguments place every listed ghost (up to 64) in one build. from_plan takes a find ghost ref: \"r5\" builds the listed ghosts, \"r5.ghosts.2\" one. A ghost goes off the board by itself once a structure of its prefab is built where it stands in its turn; show ghost {remove} takes ghosts off.",
+        "board says who keeps the ghosts: lattice (Lattice is installed: its build ghosts, from every mod and player, Loom's included, saved and synced by Lattice; ids are Lattice's) or stationgod (StationGod's own board, saved beside the save). Lattice's remove, swap and finish ghosts are not listed. check needs Lattice; while Lattice is still working a check out, check_note says so: ask again."
       ],
       "example": {"near": "player", "radius": 20},
       "x-cost": {"class": "instant", "growth": "index"},
@@ -696,13 +703,15 @@
         "variants": [
           {
             "keys": {
-              "ghosts": "list[{id: int, prefab_name: str, display_name: str | None, position: Vec3, rotation_deg: Vec3, build_state: int, owner: str, source: str, label: str | None, tint: list[float], placed_at: str, distance_m: float | None, build_arguments: {what: str, prefab: str, at: list[float], rotation: list[float], build_state: int}}]",
+              "ghosts": "list[{id: int, prefab_name: str, display_name: str | None, position: Vec3, rotation_deg: Vec3, build_state: int, owner: str, source: str, label: str | None, tint: list[float], placed_at: str, distance_m: float | None, check: {verdict: str, why: str | None, waits_for: list[int] | None} | None, build_arguments: {what: str, prefab: str, at: list[float], rotation: list[float], build_state: int}}]",
               "count": "int",
               "total": "int",
               "offset": "int",
               "limit": "int | None",
               "has_more": "bool",
-              "build_arguments": "{what: str, placements: list[{prefab: str, at: list[float], rotation: list[float], build_state: int}]} | None"
+              "build_arguments": "{what: str, placements: list[{prefab: str, at: list[float], rotation: list[float], build_state: int}]} | None",
+              "board": "str",
+              "check_note": "str | None"
             }
           }
         ],

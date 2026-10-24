@@ -263,7 +263,7 @@
         "allow": {"use": "allow", "schema": {"type": "array", "items": {"type": "string", "enum": ["door_keepout"]}}}
       },
       "text": [
-        "A ghost lasts until it is taken off or a structure of its prefab is built where it stands, kept with the save; players see it, move around it, take it off (RemoveGhostKey) and place their own (ghost mode, the ghost menu). The placements are planned as build structure plans them (nothing built, materials not checked) and each goes on the board where the plan put it, problems or not; the reply's plan says why one would not build. find ghost lists the board."
+        "A ghost lasts until it is taken off or a structure of its prefab is built where it stands, kept with the save; players see it, move around it, take it off (RemoveGhostKey) and place their own (ghost mode, the ghost menu). The placements are planned as build structure plans them (nothing built, materials not checked) and each goes on the board where the plan put it, problems or not; the reply's plan says why one would not build. find ghost lists the board. With Lattice installed the ghosts are Lattice's: the agent's go into a Lattice plan of their own (StationGod agent), Lattice saves and syncs them and Loom shows them; board says which."
       ],
       "example": {
         "prefab": "StructureVolumePump",
@@ -280,6 +280,7 @@
               "placed": "list[{id: int, prefab_name: str, position: Vec3}]",
               "removed": "list[int]",
               "total": "int",
+              "board": "str",
               "plan": "{ready: bool, problems: list[{code: str, message: str, index: int | None, reference_id: str | None}], warnings: list[{code: str, message: str, index: int | None, reference_id: str | None}]} | None",
               "notes": "list[str]"
             }

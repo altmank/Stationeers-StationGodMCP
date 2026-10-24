@@ -112,6 +112,10 @@ if ($existing -and -not $existing.isDraft -and -not $Clobber) {
 
 # 2. Build and test the tagged commit in a worktree.
 $work = Join-Path ([System.IO.Path]::GetTempPath()) "StationGodMCP-release-$tag"
+# Lattice's contract is found beside this repo, not beside the worktree.
+if (-not $env:LATTICE_API_DIR) {
+    $env:LATTICE_API_DIR = Join-Path (Split-Path -Parent $root) 'Lattice\artifacts\Release\Lattice'
+}
 $out = Join-Path $root "release\$tag"
 $ErrorActionPreference = 'Continue'
 & git.exe -C $root worktree remove --force $work 2>&1 | Out-Null

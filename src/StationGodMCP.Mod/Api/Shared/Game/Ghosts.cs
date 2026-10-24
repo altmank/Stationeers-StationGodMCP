@@ -48,6 +48,12 @@ internal static class Ghosts
     /// <summary>Whether the board's ghosts are drawn (a player's toggle; previews always are).</summary>
     internal static bool BoardVisible { get; set; } = true;
 
+    /// <summary>
+    /// Whether Lattice draws the board's ghosts (its render module runs): this game then keeps them for hover and
+    /// picking only, and draws previews alone.
+    /// </summary>
+    internal static bool BoardDrawnElsewhere { get; set; }
+
     /// <summary>The board ghost drawn brighter (the one under the crosshair in ghost mode); 0 for none.</summary>
     internal static long Picked { get; set; }
 
@@ -159,12 +165,14 @@ internal static class Ghosts
     /// <summary>Drops previews whose time is up and draws every ghost; every frame.</summary>
     internal static void Tick()
     {
-        if (Shown.Count == 0 && (Board.Count == 0 || !BoardVisible))
+        bool drawsBoard = BoardVisible && !BoardDrawnElsewhere;
+        if (Shown.Count == 0 && (Board.Count == 0 || !drawsBoard))
         {
             return;
         }
 
-        if (Expiry.RemoveExpired(Shown, Time.realtimeSinceStartup) > 0 && Shown.Count == 0 && Board.Count == 0)
+        if (Expiry.RemoveExpired(Shown, Time.realtimeSinceStartup) > 0 && Shown.Count == 0 &&
+            (Board.Count == 0 || !drawsBoard))
         {
             Idle();
             return;
@@ -185,7 +193,7 @@ internal static class Ghosts
             anySeeThrough |= Draw(mark, seeThrough, picked: false);
         }
 
-        if (BoardVisible)
+        if (drawsBoard)
         {
             foreach (KeyValuePair<long, GhostMark> entry in Board)
             {

@@ -134,6 +134,14 @@ internal sealed class CubeRotation : IEquatable<CubeRotation>
         return (xTurns * 90, yTurns * 90, zTurns * 90);
     }
 
+    /// <summary>The rotation that takes local x to xTo and local y to yTo (unit axis vectors, square to each other).</summary>
+    internal static CubeRotation FromAxes((int X, int Y, int Z) xTo, (int X, int Y, int Z) yTo)
+    {
+        (int X, int Y, int Z) z = (xTo.Y * yTo.Z - xTo.Z * yTo.Y, xTo.Z * yTo.X - xTo.X * yTo.Z,
+            xTo.X * yTo.Y - xTo.Y * yTo.X);
+        return new CubeRotation(new[] { xTo.X, yTo.X, z.X, xTo.Y, yTo.Y, z.Y, xTo.Z, yTo.Z, z.Z });
+    }
+
     /// <summary>The rotation whose forward and up are these directions; null when they are on one axis.</summary>
     internal static CubeRotation? FromFacing(GridStep forward, GridStep up)
     {

@@ -20,6 +20,7 @@ internal sealed class FindGhostOptions
         new OptionSpec("prefab", "{\"type\":[\"string\",\"integer\",\"array\"],\"items\":{\"type\":[\"string\",\"integer\"]}}"),
         new OptionSpec("owner", "{\"type\":\"string\"}"),
         new OptionSpec("source", "{\"type\":\"string\",\"enum\":[\"player\",\"agent\"]}"),
+        new OptionSpec("check", "{\"type\":\"boolean\"}", false, "false"),
         new OptionSpec("limit", "{\"type\":\"integer\",\"minimum\":0}", false, "50"),
         new OptionSpec("offset", "{\"type\":\"integer\",\"minimum\":0}", false, "0"));
 
@@ -35,6 +36,8 @@ internal sealed class FindGhostOptions
 
     internal string? Source { get; private set; }
 
+    internal bool? Check { get; private set; }
+
     internal static FindGhostOptions Bind(OptionReader options) => new FindGhostOptions
     {
         Selector = Selector.Bind(options),
@@ -43,5 +46,6 @@ internal sealed class FindGhostOptions
         Ids = options.Raw("ids"),
         Owner = options.Text("owner"),
         Source = options.Text("source"),
+        Check = options.Flag("check") ?? options.DefaultFlag("check"),
     };
 }

@@ -1,5 +1,23 @@
 # Changelog
 
+## 2.10.0
+
+- **Ghosts on Lattice.** With Lattice (the ghost core library) installed, the world's ghosts are Lattice's: StationGod
+  places and takes off ghosts only through Lattice commands, and Lattice saves them, syncs them to its clients, takes a
+  ghost off when it is built, and shows them to Loom and every other mod. The agent's ghosts (show ghost) go into a
+  Lattice plan of their own, `StationGod agent`; a player's (ghost mode, the ghost menu) into Lattice's default plan as
+  that player. find ghost lists Lattice's build ghosts, whoever placed them (ids are Lattice's), and StationGod clients
+  without Lattice are still sent them. A save's old `stationgod-ghosts.json` is moved into Lattice once and renamed
+  `.moved-to-lattice`. Without Lattice nothing changes: StationGod keeps its own board.
+- **find ghost `check`**: Lattice's validation of each listed ghost, in build order with the ghosts before it assumed
+  built: `passes`, `waits` (with `waits_for`), `fails` or `warns` with `why`. While Lattice is still working it out,
+  `check_note` says to ask again.
+- **`board`** on find ghost and show ghost: `lattice` or `stationgod`, who keeps the ghosts.
+- Once Lattice draws ghosts itself (its `render` module), StationGod stops drawing the board's and keeps them only for
+  hover labels and picking. show preview's boxes, ghosts and runs are still StationGod's own.
+- Building needs Lattice's contract: `LATTICE_API_DIR`, else the Lattice repo's build beside this one. `Lattice.Api.dll`
+  is never shipped with StationGod.
+
 ## 2.9.4
 
 - **The save's own files are found again.** A world loaded from `saves\Venus_2` read no `lint-rules.json` there

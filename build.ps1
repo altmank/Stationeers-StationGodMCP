@@ -58,6 +58,15 @@ if ($pageLength -ge 8000) { throw "About.xml Description is $pageLength characte
 $changeLength = $about.ModMetadata.ChangeLog.Length
 if ($changeLength -ge 8000) { throw "About.xml ChangeLog is $changeLength characters; the limit is under 8000." }
 
+# Lattice's contract (Lattice.Api.dll) is referenced, never shipped: LATTICE_API_DIR, else the Lattice repo's build
+# beside this one (Lattice's build.ps1 makes it).
+$latticeDir = if ($env:LATTICE_API_DIR) { $env:LATTICE_API_DIR } else {
+    Join-Path (Split-Path -Parent $root) 'Lattice\artifacts\Release\Lattice'
+}
+if (-not (Test-Path (Join-Path $latticeDir 'Lattice.Api.dll'))) {
+    throw "No Lattice.Api.dll in $latticeDir. Build Lattice (its build.ps1) or set LATTICE_API_DIR."
+}
+
 # Every test, the verb catalogue's checks (VerbCatalogueTests) included: a verb, what or option that skips a rule, a
 # generated/verbs or mod option file that is not current, or any failing test stops the build before anything is staged.
 Write-Host "Testing $version"

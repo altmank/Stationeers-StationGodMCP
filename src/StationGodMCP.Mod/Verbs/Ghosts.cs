@@ -6,6 +6,8 @@ using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Shared.Game.Build;
 using StationGodMCP.Api.Views;
+using StationGodMCP.LatticeLink;
+using StationGodMCP.LatticeLink.Model;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.RemoteView;
@@ -17,7 +19,8 @@ namespace StationGodMCP.Verbs;
 /// <summary>
 /// find ghost (catalogue find.json): the world's ghost board (GhostBoardStore), filtered by ids, prefab, owner, source
 /// and near with radius, nearest first around near, else by id; each ghost with its build structure options, and the
-/// page's as one build. Read only.
+/// page's as one build. With Lattice the board is the mirror of Lattice's build ghosts, and check asks Lattice's
+/// validation about the page's ghosts. Read only.
 /// </summary>
 [ReplyFact(FactRule.Live, "the ghost board")]
 internal static class FindGhost
@@ -61,15 +64,42 @@ internal static class FindGhost
             options.Selector.Radius);
         Page<(BoardGhost Ghost, double? Distance)> page = options.Paging.Of(kept);
         List<BoardGhost> shown = new List<BoardGhost>(page.Entries.Count);
+        List<long> shownIds = new List<long>(page.Entries.Count);
         foreach ((BoardGhost ghost, double? _) in page.Entries)
         {
             shown.Add(ghost);
+            shownIds.Add(ghost.Id);
+        }
+
+        Dictionary<long, GhostCheck>? checks = null;
+        string? checkNote = null;
+        if (options.Check == true)
+        {
+            if (!LatticePresence.Running)
+            {
+                checkNote = "check needs Lattice: the ghosts are StationGod's own board here.";
+            }
+            else if (shownIds.Count > 0)
+            {
+                checks = LatticePresence.Check(shownIds, out checkNote);
+            }
         }
 
         return new VerbOutcome.Answered(ListReply.OfPage("ghosts", page,
-            static entry => new GhostView(entry.Ghost, DisplayName(entry.Ghost), entry.Distance))
-            .Add("build_arguments", GhostFilter.BuildArguments(shown)));
+                entry => new GhostView(entry.Ghost, DisplayName(entry.Ghost), entry.Distance, CheckOf(checks,
+                    entry.Ghost.Id)))
+            .Add("build_arguments", GhostFilter.BuildArguments(shown))
+            .Add("board", BoardKeeper)
+            .Add("check_note", checkNote));
     }
+
+    /// <summary>Who keeps the ghosts, as find ghost and show ghost say: lattice or stationgod.</summary>
+    internal static string BoardKeeper => LatticePresence.Running ? "lattice" : "stationgod";
+
+    private static GhostCheckView? CheckOf(Dictionary<long, GhostCheck>? checks, long id) =>
+        checks != null && checks.TryGetValue(id, out GhostCheck? check)
+            ? new GhostCheckView(check.Verdict, check.Why, check.WaitsFor)
+            : null;
 
     private static string? DisplayName(BoardGhost ghost) =>
         Prefab.Find(ghost.PrefabHash) is Thing prefab && prefab != null ? prefab.DisplayName : null;
@@ -147,6 +177,7 @@ internal static class ShowGhost
             notes.AddRange(refused);
         }
 
-        return new VerbOutcome.Answered(new ShowGhostView(placed, removed, GhostBoardStore.Board.Count, plan, notes));
+        return new VerbOutcome.Answered(new ShowGhostView(placed, removed, GhostBoardStore.Board.Count,
+            FindGhost.BoardKeeper, plan, notes));
     }
 }

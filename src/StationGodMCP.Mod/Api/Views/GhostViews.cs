@@ -14,7 +14,7 @@ namespace StationGodMCP.Api.Views;
 /// <summary>One ghost of the board, as find ghost lists it, with the build structure options that build it.</summary>
 internal sealed class GhostView
 {
-    internal GhostView(BoardGhost ghost, string? displayName, double? distance)
+    internal GhostView(BoardGhost ghost, string? displayName, double? distance, GhostCheckView? check = null)
     {
         Id = ghost.Id;
         PrefabName = ghost.PrefabName;
@@ -33,6 +33,7 @@ internal sealed class GhostView
         PlacedAt = DateTimeOffset.FromUnixTimeMilliseconds((long)(ghost.PlacedAt * 1000.0)).UtcDateTime
             .ToString("yyyy-MM-ddTHH:mm:ssZ", System.Globalization.CultureInfo.InvariantCulture);
         DistanceM = distance.HasValue ? Math.Round(distance.Value, 1) : (double?)null;
+        Check = check;
         BuildArguments = GhostFilter.BuildArguments(ghost);
     }
 
@@ -61,7 +62,31 @@ internal sealed class GhostView
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public double? DistanceM { get; }
 
+    /// <summary>Lattice's validation of the ghost, when find ghost was asked to check.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public GhostCheckView? Check { get; }
+
     public JObject BuildArguments { get; }
+}
+
+/// <summary>
+/// Lattice's check of one ghost: passes, waits (for the ghosts in waits_for), fails or warns (why), or unknown (a
+/// finding of a newer Lattice).
+/// </summary>
+internal sealed class GhostCheckView
+{
+    internal GhostCheckView(string verdict, string? why, IReadOnlyList<long>? waitsFor)
+    {
+        Verdict = verdict;
+        Why = why;
+        WaitsFor = waitsFor != null ? new List<long>(waitsFor) : null;
+    }
+
+    public string Verdict { get; }
+
+    public string? Why { get; }
+
+    public List<long>? WaitsFor { get; }
 }
 
 /// <summary>One ghost show ghost put on the board.</summary>
@@ -101,12 +126,13 @@ internal sealed class GhostPlanView
 /// <summary>show ghost: the ghosts it placed, the ids it took off, the board's size after, the plan, notes.</summary>
 internal sealed class ShowGhostView
 {
-    internal ShowGhostView(List<PlacedGhostView> placed, List<long> removed, int total, GhostPlanView? plan,
-        List<string> notes)
+    internal ShowGhostView(List<PlacedGhostView> placed, List<long> removed, int total, string board,
+        GhostPlanView? plan, List<string> notes)
     {
         Placed = placed;
         Removed = removed;
         Total = total;
+        Board = board;
         Plan = plan;
         Notes = notes;
     }
@@ -116,6 +142,9 @@ internal sealed class ShowGhostView
     public List<long> Removed { get; }
 
     public int Total { get; }
+
+    /// <summary>Who keeps the ghosts: lattice, or stationgod (its own board).</summary>
+    public string Board { get; }
 
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public GhostPlanView? Plan { get; }

@@ -11,6 +11,7 @@ using Assets.Scripts.Objects.Entities;
 using Assets.Scripts.Serialization;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.LatticeLink;
 using StationGodMCP.Net;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.RemoteView;
@@ -26,6 +27,9 @@ namespace StationGodMCP.Api.Shared.Game;
 /// (DrawWire's board: the whole board when a client's first view arrives, then each change). A client's player asks
 /// the host to place or take off ghosts (GhostWire); a client's board is only the host's, mirrored. A structure built
 /// where a ghost of its prefab and turn stands takes that ghost off. The board goes with the world (WorldStores).
+/// With Lattice installed the ghosts are Lattice's (LatticeBoard): every change is a Lattice command, Lattice saves,
+/// syncs and matches builds, and the board here is the mirror of Lattice's build ghosts (ids are Lattice's ghost ids),
+/// still sent to StationGod clients without Lattice. The file is then only read once, to move its ghosts into Lattice.
 /// </summary>
 internal static class GhostBoardStore
 {
@@ -52,7 +56,13 @@ internal static class GhostBoardStore
     /// <summary>Every frame: on the host, reads the board once the world runs and writes it after changes.</summary>
     internal static void Tick()
     {
-        if (!Keeps || GameManager.GameState != GameState.Running)
+        if (GameManager.GameState == GameState.Running)
+        {
+            LatticePresence.Tick();
+        }
+
+        // With Lattice loaded its board is the world's, even before Lattice publishes the world's system.
+        if (!Keeps || GameManager.GameState != GameState.Running || LatticePresence.ApiLoaded)
         {
             return;
         }
@@ -76,8 +86,13 @@ internal static class GhostBoardStore
     /// order (a ghost on the spot of one of the same prefab and turn replaces it).
     /// </summary>
     internal static List<BoardGhost> Place(IReadOnlyList<GhostPlacement> placements, GhostSource source, string owner,
-        List<string> refused)
+        List<string> refused, ulong? client = null)
     {
+        if (LatticePresence.Running)
+        {
+            return LatticePresence.Place(placements, source, client, refused, refused);
+        }
+
         List<BoardGhost> added = new List<BoardGhost>();
         List<long> removed = new List<long>();
         double now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000.0;
@@ -115,8 +130,21 @@ internal static class GhostBoardStore
     }
 
     /// <summary>The host takes ghosts off by id; the ids it took off (an unknown id is skipped).</summary>
-    internal static List<long> Remove(IEnumerable<long> ids)
+    internal static List<long> Remove(IEnumerable<long> ids, GhostSource source = GhostSource.Agent,
+        ulong? client = null)
     {
+        if (LatticePresence.Running)
+        {
+            List<string> refused = new List<string>();
+            List<long> gone = LatticePresence.Remove(ids, source, client, refused);
+            foreach (string refusal in refused)
+            {
+                StationGodMod.LogWarning($"Ghosts were not taken off: {refusal}.");
+            }
+
+            return gone;
+        }
+
         List<long> removed = new List<long>();
         foreach (long id in ids)
         {
@@ -133,6 +161,20 @@ internal static class GhostBoardStore
     /// <summary>The host takes off every ghost the rule picks; their ids.</summary>
     internal static List<long> RemoveWhere(Predicate<BoardGhost> rule)
     {
+        if (LatticePresence.Running)
+        {
+            List<long> picked = new List<long>();
+            foreach (BoardGhost ghost in _board.All)
+            {
+                if (rule(ghost))
+                {
+                    picked.Add(ghost.Id);
+                }
+            }
+
+            return Remove(picked);
+        }
+
         List<long> removed = _board.RemoveWhere(rule);
         Changed(new List<BoardGhost>(), removed);
         return removed;
@@ -144,7 +186,7 @@ internal static class GhostBoardStore
     /// </summary>
     internal static void Arrived(Thing thing)
     {
-        if (!_loaded || _board.Count == 0 || !(thing is Structure structure) || !_board.Holds(structure.PrefabHash))
+        if (!_loaded || LatticePresence.ApiLoaded || _board.Count == 0 || !(thing is Structure structure) || !_board.Holds(structure.PrefabHash))
         {
             return;
         }
@@ -161,6 +203,13 @@ internal static class GhostBoardStore
     /// <summary>This game's player places a ghost: on the host at once, from a client by asking the host.</summary>
     internal static string? RequestPlace(GhostPlacement placement)
     {
+        if (LatticePresence.Running)
+        {
+            List<string> refused = new List<string>();
+            LatticePresence.Place(new[] { placement }, GhostSource.Player, null, refused, new List<string>());
+            return refused.Count > 0 ? refused[0] : null;
+        }
+
         if (Keeps)
         {
             List<string> refused = new List<string>();
@@ -181,6 +230,13 @@ internal static class GhostBoardStore
     /// <summary>This game's player takes a ghost off.</summary>
     internal static string? RequestRemove(long id)
     {
+        if (LatticePresence.Running)
+        {
+            List<string> refused = new List<string>();
+            List<long> gone = LatticePresence.Remove(new[] { id }, GhostSource.Player, null, refused);
+            return refused.Count > 0 ? refused[0] : Keeps && gone.Count == 0 ? $"no ghost {id}" : null;
+        }
+
         if (Keeps)
         {
             return Remove(new[] { id }).Count > 0 ? null : $"no ghost {id}";
@@ -203,11 +259,13 @@ internal static class GhostBoardStore
         {
             case WireRead<GhostRequest>.Read read:
                 string owner = OwnerOf(connectionId);
+                Client? sender = Client.Find(connectionId);
+                ulong? client = sender != null ? sender.ClientId : (ulong?)null;
                 switch (read.Value)
                 {
                     case GhostRequest.Place place:
                         List<string> refused = new List<string>();
-                        Place(place.Ghosts, GhostSource.Player, owner, refused);
+                        Place(place.Ghosts, GhostSource.Player, owner, refused, client);
                         foreach (string refusal in refused)
                         {
                             StationGodMod.LogWarning($"{owner}'s ghost was not placed: {refusal}.");
@@ -215,7 +273,7 @@ internal static class GhostBoardStore
 
                         return;
                     case GhostRequest.Remove remove:
-                        Remove(remove.Ids);
+                        Remove(remove.Ids, GhostSource.Player, client);
                         return;
                 }
 
@@ -261,6 +319,12 @@ internal static class GhostBoardStore
     /// <summary>A client's side: the host's board, or a change to it.</summary>
     internal static void Mirror(DrawCommand.Board command)
     {
+        if (LatticePresence.ApiLoaded)
+        {
+            // This client's Lattice brings the host's ghosts itself.
+            return;
+        }
+
         _board.Apply(command.Replace, command.Added, command.Removed);
         if (command.Replace)
         {
@@ -281,6 +345,7 @@ internal static class GhostBoardStore
     /// <summary>The world changed: the board and its drawing go; the next world's is read when it runs.</summary>
     internal static void Forget()
     {
+        LatticePresence.Forget();
         if (_loaded && _saveAt < float.PositiveInfinity)
         {
             Save();
@@ -293,7 +358,36 @@ internal static class GhostBoardStore
         Ghosts.ClearBoard();
     }
 
-    // A change: drawn in this game, sent to every StationGod client, saved a second later.
+    /// <summary>
+    /// Lattice's change, mirrored: the ghosts it added or changed (by Lattice's id), the ids it took off; reset first
+    /// empties the board (Lattice attached for a world, or its board was replaced). Drawn here and sent to StationGod
+    /// clients; Lattice saves it.
+    /// </summary>
+    internal static void FromLattice(bool reset, List<BoardGhost> added, List<long> removed)
+    {
+        _board.Apply(reset, added, removed);
+        if (!reset)
+        {
+            Changed(added, removed);
+            return;
+        }
+
+        Ghosts.ClearBoard();
+        foreach (BoardGhost ghost in _board.All)
+        {
+            Ghosts.ShowBoard(ghost);
+        }
+
+        if (Keeps)
+        {
+            foreach (long connection in RemoteViews.Connections())
+            {
+                SyncTo(connection);
+            }
+        }
+    }
+
+    // A change: drawn in this game, sent to every StationGod client, saved a second later (by Lattice when it runs).
     private static void Changed(List<BoardGhost> added, List<long> removed)
     {
         if (added.Count == 0 && removed.Count == 0)
@@ -323,7 +417,10 @@ internal static class GhostBoardStore
             }
         }
 
-        _saveAt = Time.realtimeSinceStartup + SaveAfterS;
+        if (!LatticePresence.ApiLoaded)
+        {
+            _saveAt = Time.realtimeSinceStartup + SaveAfterS;
+        }
     }
 
     private static void Load()
