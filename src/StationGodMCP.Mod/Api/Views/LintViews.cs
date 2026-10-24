@@ -11,10 +11,12 @@ namespace StationGodMCP.Api.Views;
 /// <summary>Which rule files a lint used: the mod's, the save's (null when none), what was turned off, what failed.</summary>
 internal sealed class LintRuleSourceView
 {
-    internal LintRuleSourceView(LintRuleSet set)
+    internal LintRuleSourceView(LintRuleSet set, string? savePath = null, string saveFolderHow = "none")
     {
         ModFile = set.Files.Count > 0 ? set.Files[0] : null;
         SaveFile = set.Files.Count > 1 ? set.Files[1] : null;
+        SavePath = savePath;
+        SaveFolderHow = saveFolderHow;
         Rules = set.Rules.Count;
         FromSave = new List<string>();
         foreach (LintRule rule in set.Rules)
@@ -37,6 +39,12 @@ internal sealed class LintRuleSourceView
 
     /// <summary>The save's lint-rules.json, when one was found; it takes priority.</summary>
     public string? SaveFile { get; }
+
+    /// <summary>Where the save's lint-rules.json is looked for, found or not; null with no world's save folder.</summary>
+    public string? SavePath { get; }
+
+    /// <summary>How the save folder was found: loaded save, new save, station name, or none.</summary>
+    public string SaveFolderHow { get; }
 
     /// <summary>Rules in effect.</summary>
     public int Rules { get; }

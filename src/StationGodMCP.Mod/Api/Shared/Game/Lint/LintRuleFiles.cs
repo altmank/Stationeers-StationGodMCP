@@ -29,18 +29,11 @@ internal static class LintRuleFiles
     private static string? _builtIn;
     private static int _lookedFrame = -1;
 
-    /// <summary>The save's rule file path (it may not exist); null with no save loaded.</summary>
-    internal static string? SaveFile
-    {
-        get
-        {
-            XmlSaveLoad? saves = XmlSaveLoad.Instance;
-            string? station = saves != null ? saves.CurrentStationName : null;
-            return string.IsNullOrEmpty(station)
-                ? null
-                : Path.Combine(StationSaveUtils.GetSavePathSavesSubDir().FullName, station, FileName);
-        }
-    }
+    /// <summary>
+    /// The save's rule file path (it may not exist), in the loaded world's save folder (SaveFolders: the folder of
+    /// the save file the game loaded); null with no save loaded.
+    /// </summary>
+    internal static string? SaveFile => SaveFolders.FileIn(FileName);
 
     /// <summary>
     /// The effective rule set, compiled once per change of the save's file; the file is looked at once per frame at

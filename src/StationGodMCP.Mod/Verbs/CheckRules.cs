@@ -43,7 +43,7 @@ internal static class CheckRules
         }
 
         LintRuleSet set = check.RulesText != null ? LintRuleFiles.With(check.RulesText, "rules_text") : LintRuleFiles.Current();
-        LintRulesView view = new LintRulesView(check.Action, new LintRuleSourceView(set));
+        LintRulesView view = new LintRulesView(check.Action, new LintRuleSourceView(set, LintRuleFiles.SaveFile, SaveFolders.How));
         string? id = check.Rule;
         switch (check.Action)
         {

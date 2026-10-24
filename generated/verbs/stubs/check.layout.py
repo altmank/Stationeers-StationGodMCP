@@ -22,8 +22,9 @@ def check(what: Literal['layout'], *,
       total: int
       filtered_out: int | None
       has_more: bool
-      rule_source: {mod_file: str | None, save_file: str | None, rules: int, from_save: list[str], disabled: list[str], errors: list[{file: str,
-          rule_id: str | None, field: str | None, line: int, column: int, position: int | None, message: str}]}
+      rule_source: {mod_file: str | None, save_file: str | None, save_path: str | None, save_folder_how: str, rules: int, from_save: list[str],
+          disabled: list[str], errors: list[{file: str, rule_id: str | None, field: str | None, line: int, column: int, position: int | None, message:
+          str}]}
       elapsed_ms: float
     Example: sg.check('layout', room='17')
     One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.

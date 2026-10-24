@@ -12,8 +12,9 @@ def check(what: Literal['rules'], *,
     """The lint rule set: list, validate a file, fields, functions, run examples, explain a finding.
     Reply:
       action: str
-      rule_source: {mod_file: str | None, save_file: str | None, rules: int, from_save: list[str], disabled: list[str], errors: list[{file: str,
-          rule_id: str | None, field: str | None, line: int, column: int, position: int | None, message: str}]}
+      rule_source: {mod_file: str | None, save_file: str | None, save_path: str | None, save_folder_how: str, rules: int, from_save: list[str],
+          disabled: list[str], errors: list[{file: str, rule_id: str | None, field: str | None, line: int, column: int, position: int | None, message:
+          str}]}
       rules: list[{id: str, level: str, level_when: str | None, on: list[str], source: str, file: str | None, description: str | None, select: str |
           None, let: dict[str, str] | None, assert: str | None, message: str | None, other: str | None, examples: int}] | None
       types: list[{name: str, doc: str, fields: list[{name: str, type: str, doc: str}]}] | None

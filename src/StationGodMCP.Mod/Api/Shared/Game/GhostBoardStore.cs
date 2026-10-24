@@ -46,18 +46,8 @@ internal static class GhostBoardStore
     /// <summary>Whether this game keeps the board (the host, single player included) rather than mirroring it.</summary>
     internal static bool Keeps => NetworkManager.IsServer;
 
-    /// <summary>The save's board file (it may not exist); null with no save loaded.</summary>
-    internal static string? SaveFile
-    {
-        get
-        {
-            XmlSaveLoad? saves = XmlSaveLoad.Instance;
-            string? station = saves != null ? saves.CurrentStationName : null;
-            return string.IsNullOrEmpty(station)
-                ? null
-                : Path.Combine(StationSaveUtils.GetSavePathSavesSubDir().FullName, station, FileName);
-        }
-    }
+    /// <summary>The save's board file (it may not exist), in the loaded world's save folder; null with none.</summary>
+    internal static string? SaveFile => SaveFolders.FileIn(FileName);
 
     /// <summary>Every frame: on the host, reads the board once the world runs and writes it after changes.</summary>
     internal static void Tick()

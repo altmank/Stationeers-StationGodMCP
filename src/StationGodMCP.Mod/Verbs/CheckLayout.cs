@@ -72,7 +72,7 @@ internal static class CheckLayout
         Truncations.Capped("findings", views.Count, ordered.Count, "limit", MaximumLimit);
         answer.Value = Answer.Of(new LintLayoutView(described, region.Count, world.Subjects("pieces").Count,
             world.Subjects("devices").Count, world.Subjects("structures").Count, world.Doors,
-            Pure.LintReport.Counts(run.Findings), views, ordered.Count, new LintRuleSourceView(rules), run.Milliseconds,
+            Pure.LintReport.Counts(run.Findings), views, ordered.Count, new LintRuleSourceView(rules, LintRuleFiles.SaveFile, SaveFolders.How), run.Milliseconds,
             check.Codes.Narrows || check.Things.Narrows ? run.Findings.Count - ordered.Count : null));
     }
 

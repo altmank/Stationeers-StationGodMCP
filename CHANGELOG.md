@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.9.4
+
+- **The save's own files are found again.** A world loaded from `saves\Venus_2` read no `lint-rules.json` there
+  (`rule_source.save_file` null): StationGod took the folder from the game's station name, which the game's world reset
+  clears partway through a load (and which comes from the save's metadata, not its folder). The folder is now taken
+  from the save file the game loads (menu, console `load` and `loadlatest`, workshop saves; `autosave`, `quicksave`,
+  `manualsave` and backup subfolders count as their station's folder) and, for a new world, from the folder its first
+  save creates; the station name is the fallback. The same folder now serves the ghost board
+  (`stationgod-ghosts.json`) and flight log CSVs.
+- **`rule_source.save_path`** says where the save's `lint-rules.json` is looked for, found or not, and
+  **`save_folder_how`** how that folder was found (`loaded save`, `new save`, `station name`, `none`).
+
 ## 2.9.3
 
 - **survey network's open ends say what each one is.** With `open_ends: true` a device with a free port (a logic

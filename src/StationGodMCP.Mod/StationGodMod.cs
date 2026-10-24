@@ -35,7 +35,7 @@ public sealed class StationGodMod : ModBehaviour
 {
     public const string ModId = "net.xceled.stationeers.stationgodmcp";
     public const string DisplayName = "StationGod MCP";
-    public const string Version = "2.9.3";
+    public const string Version = "2.9.4";
 
     private static readonly DeadlineWatch Deadlines = new DeadlineWatch();
 
@@ -276,6 +276,7 @@ public sealed class StationGodMod : ModBehaviour
             using (Prof.Scope(ProfId.Previews))
             {
                 Previews.Tick();
+                SaveFolders.Tick();
                 GhostBoardStore.Tick();
                 Ghosts.Tick();
                 GhostControls.Tick();

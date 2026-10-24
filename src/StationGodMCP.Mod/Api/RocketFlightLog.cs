@@ -60,14 +60,7 @@ internal static class FlightLogWrites
         return view;
     }
 
-    private static string? SaveFolder()
-    {
-        XmlSaveLoad? saves = XmlSaveLoad.Instance;
-        string? station = saves != null ? saves.CurrentStationName : null;
-        return string.IsNullOrEmpty(station)
-            ? null
-            : Path.Combine(StationSaveUtils.GetSavePathSavesSubDir().FullName, station);
-    }
+    private static string? SaveFolder() => StationGodMCP.Api.Shared.Game.SaveFolders.Current;
 }
 
 /// <summary>
