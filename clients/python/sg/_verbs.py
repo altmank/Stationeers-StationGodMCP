@@ -12,7 +12,7 @@ def find(what, *, fields=None, as_player=None, name=None, prefab=None, exclude_p
         within=None, group_by=None, holders=None, exclude_in_use=None, gateway=None, include=None, min_mol=None,
         ores=None, separation=None, step=None, id=None, verbose=None, min_damage=None, broken_only=None,
         structures_only=None, min_cells=None, text=None, ids=None, owner=None, source=None, check=None, bill=None,
-        **options):
+        explain=None, ask=None, args=None, **options):
     """List things in the world or an area, filtered, nearest first. sg.help('find', what) gives a what in full."""
     return verb_call('find', what, {'fields': fields, 'as_player': as_player, 'name': name, 'prefab': prefab,
                      'exclude_prefab': exclude_prefab, 'category': category, 'labelled': labelled, 'runtime_type':
@@ -23,7 +23,8 @@ def find(what, *, fields=None, as_player=None, name=None, prefab=None, exclude_p
                      gateway, 'include': include, 'min_mol': min_mol, 'ores': ores, 'separation': separation,
                      'step': step, 'id': id, 'verbose': verbose, 'min_damage': min_damage, 'broken_only':
                      broken_only, 'structures_only': structures_only, 'min_cells': min_cells, 'text': text, 'ids':
-                     ids, 'owner': owner, 'source': source, 'check': check, 'bill': bill}, options)
+                     ids, 'owner': owner, 'source': source, 'check': check, 'bill': bill, 'explain': explain, 'ask':
+                     ask, 'args': args}, options)
 
 
 def inspect(what, *, fields=None, as_player=None, id=None, gateway=None, include=None, prefab=None, slot=None,
@@ -67,7 +68,7 @@ def write(what, *, fields=None, as_player=None, id=None, logic=None, value=None,
         surface=None, element=None, pixel=None, event=None, text=None, label=None, labels=None, network=None,
         kind=None, color=None, items=None, action=None, interval_s=None, capacity=None, csv=None, downlink=None,
         rocket=None, within=None, ratio=None, joules=None, unit=None, genes=None, player=None, name=None,
-        description=None, scope=None, **options):
+        description=None, scope=None, command=None, **options):
     """Set values and states. sg.help('write', what) gives a what in full."""
     return verb_call('write', what, {'fields': fields, 'as_player': as_player, 'id': id, 'logic': logic, 'value':
                      value, 'writes': writes, 'gateway': gateway, 'allow': allow, 'start': start, 'values': values,
@@ -76,7 +77,8 @@ def write(what, *, fields=None, as_player=None, id=None, logic=None, value=None,
                      'labels': labels, 'network': network, 'kind': kind, 'color': color, 'items': items, 'action':
                      action, 'interval_s': interval_s, 'capacity': capacity, 'csv': csv, 'downlink': downlink,
                      'rocket': rocket, 'within': within, 'ratio': ratio, 'joules': joules, 'unit': unit, 'genes':
-                     genes, 'player': player, 'name': name, 'description': description, 'scope': scope}, options)
+                     genes, 'player': player, 'name': name, 'description': description, 'scope': scope, 'command':
+                     command}, options)
 
 
 def plan(what, *, fields=None, as_player=None, kind=None, start=None, end=None, reroute=None, trunk=None,
@@ -188,14 +190,18 @@ def trade(what, *, fields=None, as_player=None, id=None, card=None, items=None, 
 def show(what=None, *, fields=None, as_player=None, placements=None, prefab=None, at=None, rotation=None,
         facing=None, up=None, face=None, orient=None, above_floor=None, build_state=None, label=None, run=None,
         from_plan=None, style=None, tint=None, allow=None, cells=None, boxes=None, seconds=None, keep=None,
-        clear=None, xray=None, verbose=None, targets=None, look=None, remove=None, **options):
+        clear=None, xray=None, verbose=None, targets=None, look=None, xray_strength=None, xray_range=None,
+        markers=None, remove=None, restyle=None, layer=None, set=None, drafts=None, clip=None, highlight=None,
+        **options):
     """Draw on the player's screen only, for a while: a build preview (wire boxes or ghosts of the structures), or highlights through walls. sg.help('show', what) gives a what in full."""
     return verb_call('show', what, {'fields': fields, 'as_player': as_player, 'placements': placements, 'prefab':
                      prefab, 'at': at, 'rotation': rotation, 'facing': facing, 'up': up, 'face': face, 'orient':
                      orient, 'above_floor': above_floor, 'build_state': build_state, 'label': label, 'run': run,
                      'from_plan': from_plan, 'style': style, 'tint': tint, 'allow': allow, 'cells': cells, 'boxes':
                      boxes, 'seconds': seconds, 'keep': keep, 'clear': clear, 'xray': xray, 'verbose': verbose,
-                     'targets': targets, 'look': look, 'remove': remove}, options)
+                     'targets': targets, 'look': look, 'xray_strength': xray_strength, 'xray_range': xray_range,
+                     'markers': markers, 'remove': remove, 'restyle': restyle, 'layer': layer, 'set': set, 'drafts':
+                     drafts, 'clip': clip, 'highlight': highlight}, options)
 
 
 def undo(*, fields=None, as_player=None, id=None, **options):

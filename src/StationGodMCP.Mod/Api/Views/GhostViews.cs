@@ -15,7 +15,7 @@ namespace StationGodMCP.Api.Views;
 internal sealed class GhostView
 {
     internal GhostView(BoardGhost ghost, string? displayName, double? distance, GhostSpotView spot,
-        GhostCheckView? check = null)
+        GhostCheckView? check = null, JObject? look = null, JObject? drawn = null)
     {
         Id = ghost.Id;
         PrefabName = ghost.PrefabName;
@@ -38,6 +38,8 @@ internal sealed class GhostView
         Ports = spot.Ports;
         Layout = spot.PortChecks != null ? new PortChecksView(spot.PortChecks) : null;
         Check = check;
+        Look = look;
+        Drawn = drawn;
         BuildArguments = GhostFilter.BuildArguments(ghost);
     }
 
@@ -78,6 +80,14 @@ internal sealed class GhostView
     public PortChecksView? Layout { get; }
 
     /// <summary>Lattice's validation of the ghost, when find ghost was asked to check.</summary>
+    /// <summary>With Lattice: the look the ghost keeps (GhostLook.Report).</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public JObject? Look { get; }
+
+    /// <summary>With explain: the style Lattice resolved for it, and which layer set each property.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public JObject? Drawn { get; }
+
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public GhostCheckView? Check { get; }
 
@@ -191,9 +201,10 @@ internal sealed class GhostPlanView
 internal sealed class ShowGhostView
 {
     internal ShowGhostView(List<PlacedGhostView> placed, List<long> removed, int total, string board,
-        GhostPlanView? plan, List<string> notes, RunPreviewView? run = null)
+        GhostPlanView? plan, List<string> notes, RunPreviewView? run = null, List<long>? restyled = null)
     {
         Run = run;
+        Restyled = restyled ?? new List<long>();
         Placed = placed;
         Removed = removed;
         Total = total;
@@ -205,6 +216,9 @@ internal sealed class ShowGhostView
     public List<PlacedGhostView> Placed { get; }
 
     public List<long> Removed { get; }
+
+    /// <summary>The ghosts restyle changed.</summary>
+    public List<long> Restyled { get; }
 
     public int Total { get; }
 

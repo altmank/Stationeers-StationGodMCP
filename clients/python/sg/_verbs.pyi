@@ -428,18 +428,21 @@ def find(what: Literal['ghost'], *,
     source: Literal['player', 'agent'] = None,  # Only ghosts players placed, or agents.
     check: bool = False,  # With Lattice: each listed ghost's check by Lattice's validation (passes, waits for other ghosts, fails or warns, and why), in build order with the ghosts before it assumed built.
     bill: bool = False,  # With Lattice: what the listed ghosts take to build (items needed, given back, tools).
+    explain: bool = False,  # With Lattice: each ghost's look as drawn (style, and which layer set each property).
     limit: int = 50,  # The first n in order (entries); left out, every one.
 ) -> dict:  # main list: r['ghosts']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Ghosts: structures players (ghost mode, the ghost menu) or agents (show ghost) planned in the world but did not build, with build_arguments to build them.
-    Each ghost carries its orientation, a device's ports and layout.port_checks (what stands in each joining cell now; other ghosts are not seen there) and build_arguments for build structure; the reply's build_arguments place every listed ghost (up to 64) in one build. from_plan takes a find ghost ref: "r5" builds the listed ghosts, "r5.ghosts.2" one. A ghost goes off the board by itself once a structure of its prefab is built where it stands in its turn; show ghost {remove} takes ghosts off.
+    Each ghost carries its orientation, a device's ports and layout.port_checks (what stands in each joining cell now; other ghosts are not seen there) and build_arguments for build structure; the reply's build_arguments place every listed ghost (up to 64) in one build. from_plan takes a find ghost ref: "r5" builds the listed ghosts, "r5.ghosts.2" one. A ghost goes off the board by itself once a structure of its prefab is built where it stands in its turn; show ghost {remove} takes ghosts off. With Lattice each ghost has its look as it keeps it (look, xray, strength, range, markers, problem, style); show ghost {restyle} changes it in place.
     board says who keeps the ghosts: lattice (Lattice is installed: its build ghosts, from every mod and player, Loom's included, saved and synced by Lattice; ids are Lattice's) or stationgod (StationGod's own board, saved beside the save). Lattice's remove, swap and finish ghosts are not listed. check needs Lattice; while Lattice is still working a check out, check_note says so: ask again.
     Reply:
       ghosts: list[{id: int, prefab_name: str, display_name: str | None, position: Vec3, rotation_deg: Vec3, build_state: int, owner: str, source:
           str, label: str | None, tint: list[float], placed_at: str, distance_m: float | None, orientation: {facing: str | None, up: str | None,
           euler: Vec3}, ports: list[{index: int, at: Vec3, toward: str, type: str, role: str, network_id: str | None}] | None, layout: {port_checks:
           list[{index: int, at: Vec3, toward: str, type: str, role: str, flow: str | None, occupant: Thing | None, joins: bool, would_join_network:
-          str | None, blocked: str | None, in_door_keep_out: bool}]} | None, check: {verdict: str, why: str | None, waits_for: list[int] | None} |
-          None, build_arguments: {what: str, prefab: str, at: list[float], rotation: list[float], build_state: int}}]
+          str | None, blocked: str | None, in_door_keep_out: bool}]} | None, look: {look: str, xray: bool, xray_strength: float | None, xray_range:
+          float | None, markers: {ports: bool, open_ends: bool, flow: bool, waits: bool}, problem: bool, style: Any | None} | None, drawn: {style:
+          Any, sources: Any} | None, check: {verdict: str, why: str | None, waits_for: list[int] | None} | None, build_arguments: {what: str, prefab:
+          str, at: list[float], rotation: list[float], build_state: int}}]
       count: int
       total: int
       offset: int
@@ -452,6 +455,22 @@ def find(what: Literal['ghost'], *,
       check_note: str | None
     Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}; Vec3 = {x: float, y: float, z: float}
     Example: sg.find('ghost', near='player', radius=20)
+    """
+
+@overload
+def find(what: Literal['lattice'], *,
+    fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
+    ask: Literal['ghosts', 'plans', 'plan', 'load', 'template', 'validation', 'steps', 'bill', 'swaps', 'analysis', 'preview', 'executors', 'story', 'export', 'catalogue', 'ports', 'facing', 'families', 'groups', 'modules', 'world', 'explain', 'matches', 'pick', 'clip', 'events'],  # What to ask; help topic lattice gives each ask's args.
+    args: dict = None,  # The ask's arguments.
+) -> dict:
+    """Anything Lattice answers: every ghost (any intent), plans and their facts, validation, steps, bills, swaps, analysis, previews, executors, stories, the catalogue, ports, the world, styles, picks and events.
+    Answers are Lattice's own values as JSON (help topic lattice): cells in metres, turns as rotation degrees, pieces by prefab name. An answer Lattice is still working out is pending: true; ask again. Needs Lattice.
+    Reply:
+      ask: str
+      answer: Any
+      pending: bool
+      notes: list[str]
+    Example: sg.find('lattice', ask='plan', args={'plan': 3})
     """
 
 @overload
@@ -1823,6 +1842,23 @@ def write(what: Literal['script'], *,
       parameters: list[str] (each line as the signature reads: 'who: str', '*extra')
       file: str
     Example: sg.write('script', name='greet', code='def main(who: str) -> str: return \'hi \' + who', description='greet a player by name', scope='shared')
+    """
+
+@overload
+def write(what: Literal['lattice'], *,
+    fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
+    command: dict,  # One command, as help topic lattice writes it ({place: [...]}, {batch: [...]}).
+) -> dict:
+    """Any Lattice command: place, remove, change, move ghosts; plans; runs and routes; swaps, removals, finishes, splits, transforms, templates; repair, take down, reopen, revert, batch; executors.
+    Reports Lattice's preview (what it would change, findings, bill, effects, a run's pieces) until confirm; confirm submits it and answers the change set. Ghosts are the agent's (StationGod agent) unless made_by says otherwise. Undo with {revert: change_set}.
+    Reports in a report run; acts in a confirmed run.
+    Reply:
+      outcome: str
+      change_set: Any | None
+      preview: Any | None
+      refusals: list[str]
+      notes: list[str]
+    Example: sg.write('lattice', command={'plan_route': {'kit': 'ItemPipe', 'from': [10.25, 1.25, 4.25], 'to': [14.25, 1.25, 4.25], 'to_port': {'ghost': 812, 'port': 0}}})
     """
 
 @overload
@@ -3787,10 +3823,15 @@ def show(what: Literal['ghost'], *,
     from_plan: str = None,  # A plan spot reply (p = sg.plan('spot', ...)) or one spot (p['spots'][2]): put it on the board.
     tint: str | list = None,  # The ghosts' colour, yours to choose: a name (cyan, magenta, yellow, green, orange, blue, red, white, purple, pink, khaki, brown, black, gray), [r, g, b] or [r, g, b, a] each 0 to 1.
     label: str = None,  # What the ghosts are, shown as a tooltip when the crosshair is on one, and in find ghost; a placement's own label wins.
-    look: Literal['plan', 'solid', 'wire', 'pulse', 'quiet'] = 'plan',  # With Lattice: plan (default: see-through, ports and open ends shown), solid, wire, pulse, or quiet (no see-through, ports or open ends). A ghost whose plan has problems pulses red.
-    xray: bool = True,  # Shows through walls, frames and terrain.
+    look: Literal['plan', 'solid', 'wire', 'pulse', 'quiet'] = None,  # With Lattice: plan (the default), solid, wire, pulse, or quiet (no markers). A ghost whose plan has problems pulses red.
+    xray: bool = None,  # Shows through walls, frames and terrain; on unless false.
+    xray_strength: float = None,  # X-ray strength, 0 to 1 (1 unless given).
+    xray_range: float = None,  # How far x-ray reaches, metres (120 unless given).
+    markers: bool | dict = None,  # Ports, open ends, flow arrows, waits links: true, false or {ports, open_ends, flow, waits}; shown but on quiet.
+    style: dict = None,  # Lattice style properties on top (help topic lattice); {} clears.
     run: dict = None,  # A cable, pipe or chute run to put on the board: build cable, pipe or chute's options with what ({what: "pipe", grade, waypoints, branches, pieces, ...}), planned as build plans it (elbows, tees); each new piece becomes a ghost.
     remove: list = None,  # Ghost ids to take off the board (find ghost lists them).
+    restyle: list = None,  # Ghost ids to restyle in place: look, xray, markers, style, tint, label; unnamed settings kept.
     clear: Literal['agent', 'all'] = None,  # Take off every ghost agents placed, or every ghost.
     allow: list[Literal['door_keepout']] = None,  # Guards to lift, by name.
 ) -> dict:
@@ -3799,6 +3840,7 @@ def show(what: Literal['ghost'], *,
     Reply:
       placed: list[{id: int, prefab_name: str, position: Vec3}]
       removed: list[int]
+      restyled: list[int]
       total: int
       board: str
       run: {what: str, ready: bool, pieces: int, problems: list[{code: str, message: str}], warnings: list[{code: str, message: str}]} | None
@@ -3811,6 +3853,24 @@ def show(what: Literal['ghost'], *,
       notes: list[str]
     Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}; Vec3 = {x: float, y: float, z: float}
     Example: sg.show('ghost', prefab='StructureVolumePump', at=[716, 203, 668], facing='+x', tint='orange', label='second pump')
+    """
+
+@overload
+def show(what: Literal['lattice'], *,
+    fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
+    layer: dict = None,  # {add: layer} | {enable|disable|remove: name} | {library: name, enabled}; help topic lattice.
+    set: dict = None,  # {id, put|replace|add|remove: ghost ids} or {id, clear: true}; structures: true for a structure set.
+    drafts: dict = None,  # {id, show: [drafts]} | {id, preview: command} | {id, clear: true}.
+    clip: dict = None,  # {plane: {point, normal}} | {box: [corner, opposite]} | {move: shape} | {clear: true}.
+    highlight: dict = None,  # {targets, style, seconds}: targets {ghosts|picked|structures}.
+) -> dict:
+    """Lattice's view on this seat (never synced): style layers, ghost and structure sets, drafts, the clip, highlights.
+    One of layer, set, drafts, clip or highlight per call. Everything here is this seat's drawing only: it never syncs, saves or changes what others see (ghost data does: write lattice). Layers are StationGod's own (agent-<name>); library layers: blueprint, step_numbers, bill_counts, reasons, plan_names. Forms: help topic lattice.
+    Reply:
+      done: str
+      layers: list[str]
+      notes: list[str]
+    Example: sg.show('lattice', highlight={'targets': {'picked': {'plan': 3}}, 'style': {'glow': {'lit': {'paint': 'select', 'strength': 0.9}}}, 'seconds': 10})
     """
 
 @overload

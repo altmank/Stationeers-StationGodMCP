@@ -176,6 +176,10 @@
     "description": "Too many atmospheres are joined to the one named. Pass joined: false to move gas from the named one only.",
     "see": {"verb": "inspect", "what": "job"}
   },
+  "lattice_not_running": {
+    "description": "Lattice is not installed, or runs no world yet: find, write and show lattice need it. Load a world with Lattice enabled.",
+    "see": {"topic": "lattice"}
+  },
   "lint_refused": {
     "description": "The write would open a vent, valve or pump onto a network where a lint rule finds a problem, such as oxidiser vented outdoors. Nothing is written; data.rules lists each rule, its message and the thing. Fix the network first, or pass allow: [\"lint\"]."
   },

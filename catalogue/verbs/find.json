@@ -1,87 +1,170 @@
 {
   "verb": "find",
   "description": "List things in the world or an area, filtered, nearest first. Read only.",
-  "text": ["Pages: limit, offset, has_more; order nearest (default) or id."],
+  "text": [
+    "Pages: limit, offset, has_more; order nearest (default) or id."
+  ],
   "read_only": true,
-  "tool": {"options": {"prefab": "Whole name, hash, or parts with * ('*Tank*Insulated*'); or a list.", "text": "find script: text a saved script's name or description holds."}},
+  "tool": {
+    "options": {
+      "prefab": "Whole name, hash, or parts with * ('*Tank*Insulated*'); or a list.",
+      "text": "find script: text a saved script's name or description holds."
+    }
+  },
   "whats": {
     "thing": {
       "summary": "any object: structures, devices, tanks, loose items, players, animals",
       "options": {
-        "name": {"use": "name", "description": "Part of the shown or game name, any case."},
-        "prefab": {"use": "prefab"},
+        "name": {
+          "use": "name",
+          "description": "Part of the shown or game name, any case."
+        },
+        "prefab": {
+          "use": "prefab"
+        },
         "exclude_prefab": {
-          "schema": {"type": ["string", "integer", "array"]},
+          "schema": {
+            "type": [
+              "string",
+              "integer",
+              "array"
+            ]
+          },
           "description": "Leave these prefabs out, as prefab names them ('*Frame*', '*Wall*'); or a list.",
           "x-script": "same"
         },
         "category": {
-          "schema": {"type": "string", "enum": ["any", "item", "dynamic", "structure", "entity", "other"]},
+          "schema": {
+            "type": "string",
+            "enum": [
+              "any",
+              "item",
+              "dynamic",
+              "structure",
+              "entity",
+              "other"
+            ]
+          },
           "description": "Only this kind of thing.",
           "default": "any",
           "x-script": "same"
         },
         "labelled": {
-          "schema": {"type": "boolean"},
+          "schema": {
+            "type": "boolean"
+          },
           "description": "Only things with a Labeller name.",
           "default": "false",
           "x-script": "same"
         },
         "runtime_type": {
-          "schema": {"type": "string"},
+          "schema": {
+            "type": "string"
+          },
           "description": "Only things of this game class or one built on it ('Device', 'Pipe').",
           "x-script": "same"
         },
         "broken": {
-          "schema": {"type": "boolean"},
+          "schema": {
+            "type": "boolean"
+          },
           "description": "true: only broken things; false: only whole ones.",
           "x-script": "True: only broken things; False: only whole ones."
         },
         "color": {
-          "schema": {"type": "string"},
+          "schema": {
+            "type": "string"
+          },
           "description": "Only things showing this colour: a name or an index, as write paint takes it.",
           "x-script": "same"
         },
         "painted": {
-          "schema": {"type": "boolean"},
+          "schema": {
+            "type": "boolean"
+          },
           "description": "true: only paintable things painted off their own colour; false: only those still in it.",
           "x-script": "True: only paintable things painted off their own colour; False: only those still in it."
         },
         "has_atmosphere": {
-          "schema": {"type": "boolean"},
+          "schema": {
+            "type": "boolean"
+          },
           "description": "true: only things holding gas or liquid; false: only without.",
           "x-script": "True: only things holding gas or liquid; False: only without."
         },
         "made_by": {
-          "schema": {"type": "string"},
+          "schema": {
+            "type": "string"
+          },
           "description": "Only items the print log has from this maker (id, or part of its name).",
           "x-script": "same"
         },
         "made_since": {
-          "schema": {"type": "number"},
+          "schema": {
+            "type": "number"
+          },
           "description": "Only items made at or after this game time (s); negative: that many seconds back.",
           "x-script": "same"
         },
         "location": {
-          "schema": {"type": "string", "enum": ["any", "ground", "player", "stored", "built", "world"]},
+          "schema": {
+            "type": "string",
+            "enum": [
+              "any",
+              "ground",
+              "player",
+              "stored",
+              "built",
+              "world"
+            ]
+          },
           "description": "ground, player, stored, built or world (players, animals).",
           "default": "any",
           "x-script": "same"
         },
-        "near": {"use": "near"},
+        "near": {
+          "use": "near"
+        },
         "radius": {
           "use": "radius",
-          "schema": {"type": "number", "minimum": 0},
+          "schema": {
+            "type": "number",
+            "minimum": 0
+          },
           "description": "Metres around near; at most 1000 around a point, no limit around \"player\"."
         },
-        "box": {"use": "box"},
-        "limit": {"use": "limit", "schema": {"type": "integer", "minimum": 1, "maximum": 500}, "default": "8"},
-        "offset": {"use": "offset", "x-script": "Entries to skip: the page starts there; walk() and all() go on from it."},
-        "cursor": {"use": "cursor"},
-        "order": {"use": "order"}
+        "box": {
+          "use": "box"
+        },
+        "limit": {
+          "use": "limit",
+          "schema": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 500
+          },
+          "default": "8"
+        },
+        "offset": {
+          "use": "offset",
+          "x-script": "Entries to skip: the page starts there; walk() and all() go on from it."
+        },
+        "cursor": {
+          "use": "cursor"
+        },
+        "order": {
+          "use": "order"
+        }
       },
-      "example": {"prefab": "*Battery*", "near": "player", "radius": 30},
-      "x-cost": {"class": "world", "growth": "index"},
+      "example": {
+        "prefab": "*Battery*",
+        "near": "player",
+        "radius": 30
+      },
+      "x-cost": {
+        "class": "world",
+        "growth": "index"
+      },
       "reply": {
         "list": "things",
         "variants": [
@@ -98,18 +181,37 @@
             }
           }
         ],
-        "types": ["Color", "Vec3"],
-        "x-wire": {"cursor_id": "str | None"}
+        "types": [
+          "Color",
+          "Vec3"
+        ],
+        "x-wire": {
+          "cursor_id": "str | None"
+        }
       },
       "brief": "any object: structures, devices, items, players"
     },
     "item": {
       "summary": "stackable items and kits with quantity and holders, anywhere: ground, carried, stored, machine stock, silos; a kit such as Kit (Battery Large) is an item to find and move, a built structure is not; group_by sums them",
       "options": {
-        "name": {"use": "name"},
-        "prefab": {"use": "prefab"},
+        "name": {
+          "use": "name"
+        },
+        "prefab": {
+          "use": "prefab"
+        },
         "location": {
-          "schema": {"type": "string", "enum": ["any", "ground", "player", "stored", "machine_stock", "silo"]},
+          "schema": {
+            "type": "string",
+            "enum": [
+              "any",
+              "ground",
+              "player",
+              "stored",
+              "machine_stock",
+              "silo"
+            ]
+          },
           "description": "Where the item is.",
           "default": "any",
           "x-script": "same"
@@ -119,46 +221,93 @@
           "description": "Only items inside this holder at any depth (and its machine stock or silo store).",
           "x-script": "same"
         },
-        "near": {"use": "near"},
+        "near": {
+          "use": "near"
+        },
         "radius": {
           "use": "radius",
-          "schema": {"type": "number", "minimum": 0},
+          "schema": {
+            "type": "number",
+            "minimum": 0
+          },
           "description": "Metres around near; at most 1000 around a point, no limit around \"player\"."
         },
-        "box": {"use": "box"},
+        "box": {
+          "use": "box"
+        },
         "group_by": {
-          "schema": {"type": "string", "enum": ["holder", "prefab", "place"]},
+          "schema": {
+            "type": "string",
+            "enum": [
+              "holder",
+              "prefab",
+              "place"
+            ]
+          },
           "description": "holder: sum per holder and prefab; prefab: sum per prefab; place: per prefab split into ground, carried, stored, machine stock and silo, with top holders.",
           "x-script": "same"
         },
         "holders": {
-          "schema": {"type": "integer", "minimum": 0, "maximum": 100},
+          "schema": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
           "description": "group_by place: holders listed per prefab, most first.",
           "default": "1",
           "x-script": "same"
         },
         "exclude_in_use": {
-          "schema": {"type": "boolean"},
+          "schema": {
+            "type": "boolean"
+          },
           "description": "Leave out parts a device is using (chips in holders, a running filter's filters).",
           "default": "false",
           "x-script": "same"
         },
         "limit": {
           "use": "limit",
-          "schema": {"type": "integer", "minimum": 1, "maximum": 500},
+          "schema": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 500
+          },
           "description": "Items (or groups) per page.",
           "default": "10",
-          "x-default-when": [{"when": {"group_by": "place"}, "default": "12"}],
+          "x-default-when": [
+            {
+              "when": {
+                "group_by": "place"
+              },
+              "default": "12"
+            }
+          ],
           "x-script": "The first n in order (items (or groups)); left out, every one."
         },
-        "offset": {"use": "offset"},
-        "cursor": {"use": "cursor"},
-        "order": {"use": "order"}
+        "offset": {
+          "use": "offset"
+        },
+        "cursor": {
+          "use": "cursor"
+        },
+        "order": {
+          "use": "order"
+        }
       },
-      "text": ["group_by place takes no offset, order or exclude_in_use (the totals are not paged)."],
-      "x-script-text": ["group_by place takes no order or exclude_in_use (the totals are not paged)."],
-      "example": {"prefab": "ItemIronIngot", "group_by": "place"},
-      "x-cost": {"class": "world", "growth": "index"},
+      "text": [
+        "group_by place takes no offset, order or exclude_in_use (the totals are not paged)."
+      ],
+      "x-script-text": [
+        "group_by place takes no order or exclude_in_use (the totals are not paged)."
+      ],
+      "example": {
+        "prefab": "ItemIronIngot",
+        "group_by": "place"
+      },
+      "x-cost": {
+        "class": "world",
+        "growth": "index"
+      },
       "reply": {
         "list": "items",
         "variants": [
@@ -188,30 +337,78 @@
             }
           }
         ],
-        "types": ["Thing", "Vec3"],
-        "x-wire": {"cursor_id": "str | None"}
+        "types": [
+          "Thing",
+          "Vec3"
+        ],
+        "x-wire": {
+          "cursor_id": "str | None"
+        }
       },
       "brief": "stackable items and kits anywhere; group_by sums"
     },
     "device": {
       "summary": "devices with logic, in the world or on one gateway's data networks",
       "options": {
-        "gateway": {"use": "gateway"},
-        "prefab": {"use": "prefab"},
-        "name": {"use": "name"},
-        "near": {"use": "near"},
-        "radius": {"use": "radius", "schema": {"type": "number", "minimum": 0}, "description": "Metres around near; at most 1000 around a point, no limit around \"player\"."},
-        "box": {"use": "box"},
-        "limit": {"use": "limit", "schema": {"type": "integer", "minimum": 1, "maximum": 4096}, "default": "25"},
-        "offset": {"use": "offset"},
-        "cursor": {"use": "cursor"}
+        "gateway": {
+          "use": "gateway"
+        },
+        "prefab": {
+          "use": "prefab"
+        },
+        "name": {
+          "use": "name"
+        },
+        "near": {
+          "use": "near"
+        },
+        "radius": {
+          "use": "radius",
+          "schema": {
+            "type": "number",
+            "minimum": 0
+          },
+          "description": "Metres around near; at most 1000 around a point, no limit around \"player\"."
+        },
+        "box": {
+          "use": "box"
+        },
+        "limit": {
+          "use": "limit",
+          "schema": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "default": "25"
+        },
+        "offset": {
+          "use": "offset"
+        },
+        "cursor": {
+          "use": "cursor"
+        }
       },
       "text": [
         "Paging and prefab parts are applied by the verb layer to the handler's whole list (it walks every device either way)."
       ],
-      "example": {"prefab": "*GasSensor*"},
-      "x-cost": {"class": "world", "growth": "index"},
-      "x-cost-when": [{"given": "prefab", "class": "bounded"}, {"given": "name", "class": "bounded"}],
+      "example": {
+        "prefab": "*GasSensor*"
+      },
+      "x-cost": {
+        "class": "world",
+        "growth": "index"
+      },
+      "x-cost-when": [
+        {
+          "given": "prefab",
+          "class": "bounded"
+        },
+        {
+          "given": "name",
+          "class": "bounded"
+        }
+      ],
       "reply": {
         "list": "devices",
         "variants": [
@@ -227,24 +424,56 @@
             }
           }
         ],
-        "x-wire": {"cursor_id": "str | None"}
+        "x-wire": {
+          "cursor_id": "str | None"
+        }
       },
       "brief": "devices with logic"
     },
     "container": {
       "summary": "outermost holders with at least one item: lockers, crates, machines, a backpack on the floor",
       "options": {
-        "prefab": {"use": "prefab"},
-        "name": {"use": "name"},
-        "near": {"use": "near", "description": "\"player\" only."},
-        "radius": {"use": "radius"},
-        "limit": {"use": "limit", "schema": {"type": "integer", "minimum": 1, "maximum": 500}, "default": "12"},
-        "offset": {"use": "offset"},
-        "cursor": {"use": "cursor"},
-        "order": {"use": "order"}
+        "prefab": {
+          "use": "prefab"
+        },
+        "name": {
+          "use": "name"
+        },
+        "near": {
+          "use": "near",
+          "description": "\"player\" only."
+        },
+        "radius": {
+          "use": "radius"
+        },
+        "limit": {
+          "use": "limit",
+          "schema": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 500
+          },
+          "default": "12"
+        },
+        "offset": {
+          "use": "offset"
+        },
+        "cursor": {
+          "use": "cursor"
+        },
+        "order": {
+          "use": "order"
+        }
       },
-      "example": {"prefab": "*Locker*", "near": "player", "radius": 15},
-      "x-cost": {"class": "world", "growth": "index"},
+      "example": {
+        "prefab": "*Locker*",
+        "near": "player",
+        "radius": 15
+      },
+      "x-cost": {
+        "class": "world",
+        "growth": "index"
+      },
       "reply": {
         "list": "containers",
         "variants": [
@@ -260,28 +489,65 @@
             }
           }
         ],
-        "types": ["Vec3"],
-        "x-wire": {"cursor_id": "str | None"}
+        "types": [
+          "Vec3"
+        ],
+        "x-wire": {
+          "cursor_id": "str | None"
+        }
       },
       "brief": "holders with items"
     },
     "frame": {
       "summary": "outer frames (a face on outside air), with exposed faces and airtightness",
       "options": {
-        "near": {"use": "near", "description": "\"player\" only."},
-        "radius": {"use": "radius"},
+        "near": {
+          "use": "near",
+          "description": "\"player\" only."
+        },
+        "radius": {
+          "use": "radius"
+        },
         "include": {
           "use": "include",
-          "schema": {"type": "array", "items": {"type": "string", "enum": ["inner"]}},
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "inner"
+              ]
+            }
+          },
           "description": "inner: list inner frames too."
         },
-        "limit": {"use": "limit", "schema": {"type": "integer", "minimum": 1, "maximum": 1000}, "default": "20"},
-        "offset": {"use": "offset"},
-        "cursor": {"use": "cursor"},
-        "order": {"use": "order"}
+        "limit": {
+          "use": "limit",
+          "schema": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000
+          },
+          "default": "20"
+        },
+        "offset": {
+          "use": "offset"
+        },
+        "cursor": {
+          "use": "cursor"
+        },
+        "order": {
+          "use": "order"
+        }
       },
-      "example": {"near": "player", "radius": 20},
-      "x-cost": {"class": "world", "growth": "index"},
+      "example": {
+        "near": "player",
+        "radius": 20
+      },
+      "x-cost": {
+        "class": "world",
+        "growth": "index"
+      },
       "reply": {
         "list": "frames",
         "variants": [
@@ -300,17 +566,26 @@
             }
           }
         ],
-        "types": ["Vec3"],
-        "x-wire": {"cursor_id": "str | None"}
+        "types": [
+          "Vec3"
+        ],
+        "x-wire": {
+          "cursor_id": "str | None"
+        }
       },
       "brief": "outer frames"
     },
     "pad": {
       "summary": "landing pads for traders and rockets (not power or teleport pads), by the game's checks: size, runway, which ships fit",
       "options": {},
-      "text": ["No options."],
+      "text": [
+        "No options."
+      ],
       "example": {},
-      "x-cost": {"class": "instant", "growth": "index"},
+      "x-cost": {
+        "class": "instant",
+        "growth": "index"
+      },
       "reply": {
         "list": "pads",
         "variants": [
@@ -324,7 +599,9 @@
             }
           }
         ],
-        "types": ["Vec3"]
+        "types": [
+          "Vec3"
+        ]
       },
       "brief": "landing pads"
     },
@@ -332,15 +609,24 @@
       "summary": "canisters, tanks, devices and pipe networks holding water or steam, largest first",
       "options": {
         "min_mol": {
-          "schema": {"type": "number"},
+          "schema": {
+            "type": "number"
+          },
           "description": "Skip sources holding less water, polluted water and steam together.",
           "default": "1",
           "x-script": "same"
         }
       },
-      "example": {"min_mol": 50},
-      "x-cost": {"class": "world", "growth": "index"},
-      "x-default-limits": {"sources": 15},
+      "example": {
+        "min_mol": 50
+      },
+      "x-cost": {
+        "class": "world",
+        "growth": "index"
+      },
+      "x-default-limits": {
+        "sources": 15
+      },
       "reply": {
         "list": "sources",
         "variants": [
@@ -358,7 +644,9 @@
             }
           }
         ],
-        "types": ["Vec3"]
+        "types": [
+          "Vec3"
+        ]
       },
       "brief": "water and steam sources"
     },
@@ -367,41 +655,72 @@
       "options": {
         "near": {
           "use": "near",
-          "schema": {"type": "array"},
+          "schema": {
+            "type": "array"
+          },
           "description": "The point to report and search from; default the player's position."
         },
         "ores": {
-          "schema": {"type": "array", "items": {"type": "string"}, "maxItems": 4},
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 4
+          },
           "description": "Reagents a spot must all hold ([\"Cobalt\"]).",
           "x-script": "same"
         },
         "radius": {
           "use": "radius",
-          "schema": {"type": "number", "minimum": 1, "maximum": 3000},
+          "schema": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 3000
+          },
           "description": "Search radius.",
           "default": "500"
         },
         "separation": {
-          "schema": {"type": "number", "minimum": 0, "maximum": 3000},
+          "schema": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 3000
+          },
           "description": "Least distance between two spots.",
           "default": "100",
           "x-script": "same"
         },
         "step": {
-          "schema": {"type": "number", "minimum": 0.5, "maximum": 500},
+          "schema": {
+            "type": "number",
+            "minimum": 0.5,
+            "maximum": 500
+          },
           "description": "Sample spacing; default the finest within the budget.",
           "x-script": "same"
         },
         "limit": {
           "use": "limit",
-          "schema": {"type": "integer", "minimum": 1, "maximum": 20},
+          "schema": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20
+          },
           "description": "Spots returned, nearest first.",
           "default": "5",
           "x-script": "The first n in order (spots returned, nearest first); left out, every one."
         }
       },
-      "example": {"ores": ["Cobalt"]},
-      "x-cost": {"class": "world", "growth": "area"},
+      "example": {
+        "ores": [
+          "Cobalt"
+        ]
+      },
+      "x-cost": {
+        "class": "world",
+        "growth": "area"
+      },
       "reply": {
         "list": "spots",
         "variants": [
@@ -415,17 +734,29 @@
             }
           }
         ],
-        "types": ["Vec3"]
+        "types": [
+          "Vec3"
+        ]
       },
       "brief": "deep miner ore spots"
     },
     "food": {
       "summary": "every food and drink: nutrition, hydration, decay, totals",
       "options": {},
-      "text": ["No options."],
+      "text": [
+        "No options."
+      ],
       "example": {},
-      "x-cost": {"class": "world", "growth": "index"},
-      "x-default-limits": {"food": 3, "drinks": 3, "packages": 3, "not_counted": 5},
+      "x-cost": {
+        "class": "world",
+        "growth": "index"
+      },
+      "x-default-limits": {
+        "food": 3,
+        "drinks": 3,
+        "packages": 3,
+        "not_counted": 5
+      },
       "reply": {
         "list": "food",
         "variants": [
@@ -444,24 +775,44 @@
             }
           }
         ],
-        "types": ["Vec3"]
+        "types": [
+          "Vec3"
+        ]
       },
       "brief": "food and drink"
     },
     "plant": {
       "summary": "plants in trays, planters and stations: stage, health, problems, time to harvest",
       "options": {
-        "id": {"use": "id", "description": "One plant, in full."},
+        "id": {
+          "use": "id",
+          "description": "One plant, in full."
+        },
         "include": {
           "use": "include",
-          "schema": {"type": "array", "items": {"type": "string", "enum": ["unplanted"]}},
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "unplanted"
+              ]
+            }
+          },
           "description": "unplanted: crops and seeds not planted."
         },
-        "verbose": {"use": "verbose"}
+        "verbose": {
+          "use": "verbose"
+        }
       },
       "example": {},
-      "x-cost": {"class": "world", "growth": "index"},
-      "x-default-limits": {"plants": 15},
+      "x-cost": {
+        "class": "world",
+        "growth": "index"
+      },
+      "x-default-limits": {
+        "plants": 15
+      },
       "reply": {
         "list": "plants",
         "variants": [
@@ -484,22 +835,52 @@
     "room": {
       "summary": "closed rooms measured cell by cell: volume, pressure, temperature, gases; or the room one thing is in",
       "options": {
-        "id": {"use": "id", "description": "A thing: only the room it is in."},
-        "near": {"use": "near", "description": "Only rooms near this: [x, y, z], \"player\", \"looking_at\" or a thing's id; nearest first."},
-        "radius": {"use": "radius", "description": "Metres from near to a room's bounds; left out, 0: the rooms whose bounds hold the point."},
+        "id": {
+          "use": "id",
+          "description": "A thing: only the room it is in."
+        },
+        "near": {
+          "use": "near",
+          "description": "Only rooms near this: [x, y, z], \"player\", \"looking_at\" or a thing's id; nearest first."
+        },
+        "radius": {
+          "use": "radius",
+          "description": "Metres from near to a room's bounds; left out, 0: the rooms whose bounds hold the point."
+        },
         "include": {
           "use": "include",
-          "schema": {"type": "array", "items": {"type": "string", "enum": ["cells", "devices"]}},
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "cells",
+                "devices"
+              ]
+            }
+          },
           "description": "cells: every cell centre; devices: the devices in each room."
         }
       },
       "text": [
         "One id answers the wrapper below; a list of ids answers one row per id, {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count, local_player_room_id}, each row's payload the room itself (the rooms item's keys) - not the wrapper - or the error for a thing in no room."
       ],
-      "example": {"id": "4820585"},
-      "x-cost": {"class": "world", "growth": "index"},
-      "x-cost-when": [{"given": "id", "class": "bounded"}],
-      "x-default-limits": {"rooms": 10},
+      "example": {
+        "id": "4820585"
+      },
+      "x-cost": {
+        "class": "world",
+        "growth": "index"
+      },
+      "x-cost-when": [
+        {
+          "given": "id",
+          "class": "bounded"
+        }
+      ],
+      "x-default-limits": {
+        "rooms": 10
+      },
       "reply": {
         "list": "rooms",
         "variants": [
@@ -514,16 +895,24 @@
             }
           }
         ],
-        "types": ["Thing", "Vec3"]
+        "types": [
+          "Thing",
+          "Vec3"
+        ]
       },
       "brief": "closed rooms: pressure, gases"
     },
     "gateway": {
       "summary": "the device scopes: 'world' and each StationGod Gateway with its status",
       "options": {},
-      "text": ["No options."],
+      "text": [
+        "No options."
+      ],
       "example": {},
-      "x-cost": {"class": "instant", "growth": "index"},
+      "x-cost": {
+        "class": "instant",
+        "growth": "index"
+      },
       "reply": {
         "list": "gateways",
         "variants": [
@@ -544,26 +933,61 @@
       "summary": "damaged and broken things in the world, worst first",
       "options": {
         "min_damage": {
-          "schema": {"type": "number", "minimum": 0},
+          "schema": {
+            "type": "number",
+            "minimum": 0
+          },
           "description": "Only damage ratio above this (0.25 yellow, 0.75 red).",
           "default": "0",
           "x-script": "same"
         },
         "broken_only": {
-          "schema": {"type": "boolean"},
+          "schema": {
+            "type": "boolean"
+          },
           "description": "Only things in the game's broken state.",
           "default": "false",
           "x-script": "same"
         },
-        "structures_only": {"schema": {"type": "boolean"}, "description": "Leave items out.", "default": "false", "x-script": "same"},
-        "near": {"use": "near", "description": "With radius: only things this close to a point [x, y, z], \"player\", \"looking_at\" or a thing's id."},
-        "radius": {"use": "radius"},
-        "limit": {"use": "limit", "schema": {"type": "integer", "minimum": 1, "maximum": 500}, "default": "8"},
-        "offset": {"use": "offset"},
-        "cursor": {"use": "cursor"}
+        "structures_only": {
+          "schema": {
+            "type": "boolean"
+          },
+          "description": "Leave items out.",
+          "default": "false",
+          "x-script": "same"
+        },
+        "near": {
+          "use": "near",
+          "description": "With radius: only things this close to a point [x, y, z], \"player\", \"looking_at\" or a thing's id."
+        },
+        "radius": {
+          "use": "radius"
+        },
+        "limit": {
+          "use": "limit",
+          "schema": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 500
+          },
+          "default": "8"
+        },
+        "offset": {
+          "use": "offset"
+        },
+        "cursor": {
+          "use": "cursor"
+        }
       },
-      "example": {"min_damage": 0.25, "structures_only": true},
-      "x-cost": {"class": "world", "growth": "index"},
+      "example": {
+        "min_damage": 0.25,
+        "structures_only": true
+      },
+      "x-cost": {
+        "class": "world",
+        "growth": "index"
+      },
       "reply": {
         "list": "things",
         "variants": [
@@ -585,8 +1009,13 @@
             }
           }
         ],
-        "types": ["Error", "Vec3"],
-        "x-wire": {"cursor_id": "str | None"}
+        "types": [
+          "Error",
+          "Vec3"
+        ],
+        "x-wire": {
+          "cursor_id": "str | None"
+        }
       },
       "brief": "damaged and broken things"
     },
@@ -599,7 +1028,10 @@
           "required": true
         },
         "min_cells": {
-          "schema": {"type": "integer", "minimum": 1},
+          "schema": {
+            "type": "integer",
+            "minimum": 1
+          },
           "description": "Leave out pockets of fewer voxels.",
           "default": "8",
           "x-script": "same"
@@ -608,9 +1040,27 @@
       "text": [
         "A pocket is a set of joined empty voxels (under half density, joined face to face) that reaches neither the box's outer layer nor any cell holding a structure: empty space that reaches the edge may go on to the surface or a dug hallway (open_to_edge counts it: search a bigger box), and space joined to a frame, wall, pipe or device is part of the base (touching_structures). Each pocket gives its voxels, bounds, a voxel inside it, the players inside it, and fill_box, the box to give build terrain with mode voids. Read only: nothing changes."
       ],
-      "example": {"box": [[-885, 145, -570], [-860, 175, -552]]},
-      "x-cost": {"class": "world", "growth": "area"},
-      "x-default-limits": {"voids": 20},
+      "example": {
+        "box": [
+          [
+            -885,
+            145,
+            -570
+          ],
+          [
+            -860,
+            175,
+            -552
+          ]
+        ]
+      },
+      "x-cost": {
+        "class": "world",
+        "growth": "area"
+      },
+      "x-default-limits": {
+        "voids": 20
+      },
       "reply": {
         "list": "voids",
         "variants": [
@@ -627,7 +1077,10 @@
             }
           }
         ],
-        "types": ["Thing", "Vec3"]
+        "types": [
+          "Thing",
+          "Vec3"
+        ]
       },
       "brief": "underground pockets to fill"
     },
@@ -636,7 +1089,9 @@
       "summary": "the saved scripts a run in this world can see: name, description, parameters and version",
       "options": {
         "text": {
-          "schema": {"type": "string"},
+          "schema": {
+            "type": "string"
+          },
           "description": "Keep scripts whose name or description holds this text, any case.",
           "x-script": "same"
         }
@@ -644,7 +1099,9 @@
       "text": [
         "A run sees the shared scripts and the scripts of the world it runs in (inspect script shows one in full; write script saves them). The parameters are main(...)'s, one line each as its signature reads; run_script {name, args} checks its arguments against them."
       ],
-      "example": {"text": "greet"},
+      "example": {
+        "text": "greet"
+      },
       "reply": {
         "list": "scripts",
         "variants": [
@@ -663,7 +1120,13 @@
       "brief": "planned structures (ghosts)",
       "options": {
         "ids": {
-          "schema": {"type": "array", "items": {"type": "integer"}, "maxItems": 256},
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "maxItems": 256
+          },
           "description": "Only these ghosts, by id.",
           "x-script": "same"
         },
@@ -671,45 +1134,81 @@
           "use": "near",
           "description": "Only ghosts near this: [x, y, z], \"player\", \"looking_at\" or a thing's id; nearest first."
         },
-        "radius": {"use": "radius", "description": "Metres from near; left out, every ghost, nearest first."},
-        "prefab": {"use": "prefab"},
+        "radius": {
+          "use": "radius",
+          "description": "Metres from near; left out, every ghost, nearest first."
+        },
+        "prefab": {
+          "use": "prefab"
+        },
         "owner": {
-          "schema": {"type": "string"},
+          "schema": {
+            "type": "string"
+          },
           "description": "Only ghosts this player placed (their name, any case), or \"agent\".",
           "x-script": "same"
         },
         "source": {
-          "schema": {"type": "string", "enum": ["player", "agent"]},
+          "schema": {
+            "type": "string",
+            "enum": [
+              "player",
+              "agent"
+            ]
+          },
           "description": "Only ghosts players placed, or agents.",
           "x-script": "same"
         },
         "check": {
-          "schema": {"type": "boolean"},
+          "schema": {
+            "type": "boolean"
+          },
           "description": "With Lattice: each listed ghost's check by Lattice's validation (passes, waits for other ghosts, fails or warns, and why), in build order with the ghosts before it assumed built.",
           "default": "false",
           "x-script": "same"
         },
         "bill": {
-          "schema": {"type": "boolean"},
+          "schema": {
+            "type": "boolean"
+          },
           "description": "With Lattice: what the listed ghosts take to build (items needed, given back, tools).",
           "default": "false",
           "x-script": "same"
         },
-        "limit": {"use": "limit", "default": "50"},
-        "offset": {"use": "offset"}
+        "explain": {
+          "schema": {
+            "type": "boolean"
+          },
+          "description": "With Lattice: each ghost's look as drawn (style, and which layer set each property).",
+          "default": "false",
+          "x-script": "same"
+        },
+        "limit": {
+          "use": "limit",
+          "default": "50"
+        },
+        "offset": {
+          "use": "offset"
+        }
       },
       "text": [
-        "Each ghost carries its orientation, a device's ports and layout.port_checks (what stands in each joining cell now; other ghosts are not seen there) and build_arguments for build structure; the reply's build_arguments place every listed ghost (up to 64) in one build. from_plan takes a find ghost ref: \"r5\" builds the listed ghosts, \"r5.ghosts.2\" one. A ghost goes off the board by itself once a structure of its prefab is built where it stands in its turn; show ghost {remove} takes ghosts off.",
+        "Each ghost carries its orientation, a device's ports and layout.port_checks (what stands in each joining cell now; other ghosts are not seen there) and build_arguments for build structure; the reply's build_arguments place every listed ghost (up to 64) in one build. from_plan takes a find ghost ref: \"r5\" builds the listed ghosts, \"r5.ghosts.2\" one. A ghost goes off the board by itself once a structure of its prefab is built where it stands in its turn; show ghost {remove} takes ghosts off. With Lattice each ghost has its look as it keeps it (look, xray, strength, range, markers, problem, style); show ghost {restyle} changes it in place.",
         "board says who keeps the ghosts: lattice (Lattice is installed: its build ghosts, from every mod and player, Loom's included, saved and synced by Lattice; ids are Lattice's) or stationgod (StationGod's own board, saved beside the save). Lattice's remove, swap and finish ghosts are not listed. check needs Lattice; while Lattice is still working a check out, check_note says so: ask again."
       ],
-      "example": {"near": "player", "radius": 20},
-      "x-cost": {"class": "instant", "growth": "index"},
+      "example": {
+        "near": "player",
+        "radius": 20
+      },
+      "x-cost": {
+        "class": "instant",
+        "growth": "index"
+      },
       "reply": {
         "list": "ghosts",
         "variants": [
           {
             "keys": {
-              "ghosts": "list[{id: int, prefab_name: str, display_name: str | None, position: Vec3, rotation_deg: Vec3, build_state: int, owner: str, source: str, label: str | None, tint: list[float], placed_at: str, distance_m: float | None, orientation: {facing: str | None, up: str | None, euler: Vec3}, ports: list[{index: int, at: Vec3, toward: str, type: str, role: str, network_id: str | None}] | None, layout: {port_checks: list[{index: int, at: Vec3, toward: str, type: str, role: str, flow: str | None, occupant: Thing | None, joins: bool, would_join_network: str | None, blocked: str | None, in_door_keep_out: bool}]} | None, check: {verdict: str, why: str | None, waits_for: list[int] | None} | None, build_arguments: {what: str, prefab: str, at: list[float], rotation: list[float], build_state: int}}]",
+              "ghosts": "list[{id: int, prefab_name: str, display_name: str | None, position: Vec3, rotation_deg: Vec3, build_state: int, owner: str, source: str, label: str | None, tint: list[float], placed_at: str, distance_m: float | None, orientation: {facing: str | None, up: str | None, euler: Vec3}, ports: list[{index: int, at: Vec3, toward: str, type: str, role: str, network_id: str | None}] | None, layout: {port_checks: list[{index: int, at: Vec3, toward: str, type: str, role: str, flow: str | None, occupant: Thing | None, joins: bool, would_join_network: str | None, blocked: str | None, in_door_keep_out: bool}]} | None, look: {look: str, xray: bool, xray_strength: float | None, xray_range: float | None, markers: {ports: bool, open_ends: bool, flow: bool, waits: bool}, problem: bool, style: Any | None} | None, drawn: {style: Any, sources: Any} | None, check: {verdict: str, why: str | None, waits_for: list[int] | None} | None, build_arguments: {what: str, prefab: str, at: list[float], rotation: list[float], build_state: int}}]",
               "count": "int",
               "total": "int",
               "offset": "int",
@@ -722,7 +1221,84 @@
             }
           }
         ],
-        "types": ["Thing", "Vec3"]
+        "types": [
+          "Thing",
+          "Vec3"
+        ]
+      }
+    },
+    "lattice": {
+      "summary": "anything Lattice answers: every ghost (any intent), plans and their facts, validation, steps, bills, swaps, analysis, previews, executors, stories, the catalogue, ports, the world, styles, picks and events",
+      "brief": "ask Lattice",
+      "options": {
+        "ask": {
+          "schema": {
+            "type": "string",
+            "enum": [
+              "ghosts",
+              "plans",
+              "plan",
+              "load",
+              "template",
+              "validation",
+              "steps",
+              "bill",
+              "swaps",
+              "analysis",
+              "preview",
+              "executors",
+              "story",
+              "export",
+              "catalogue",
+              "ports",
+              "facing",
+              "families",
+              "groups",
+              "modules",
+              "world",
+              "explain",
+              "matches",
+              "pick",
+              "clip",
+              "events"
+            ]
+          },
+          "description": "What to ask; help topic lattice gives each ask's args.",
+          "required": true,
+          "x-script": "same"
+        },
+        "args": {
+          "schema": {
+            "type": "object"
+          },
+          "description": "The ask's arguments.",
+          "x-script": "same"
+        }
+      },
+      "text": [
+        "Answers are Lattice's own values as JSON (help topic lattice): cells in metres, turns as rotation degrees, pieces by prefab name. An answer Lattice is still working out is pending: true; ask again. Needs Lattice."
+      ],
+      "example": {
+        "ask": "plan",
+        "args": {
+          "plan": 3
+        }
+      },
+      "x-cost": {
+        "class": "bounded",
+        "growth": "index"
+      },
+      "reply": {
+        "variants": [
+          {
+            "keys": {
+              "ask": "str",
+              "answer": "Any",
+              "pending": "bool",
+              "notes": "list[str]"
+            }
+          }
+        ]
       }
     }
   }

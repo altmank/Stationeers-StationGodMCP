@@ -2,6 +2,7 @@
 
 using System.Collections.Generic;
 using Assets.Scripts.Objects;
+using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Shared.Game.Build;
@@ -107,9 +108,22 @@ internal static class FindGhost
             }
         }
 
+        Dictionary<long, (JObject Look, JObject? Drawn)>? looks = null;
+        if (LatticePresence.Running && shownIds.Count > 0)
+        {
+            looks = LatticePresence.Looks(shownIds, options.Explain == true);
+        }
+        else if (options.Explain == true)
+        {
+            checkNote = (checkNote != null ? checkNote + " " : "") +
+                        "explain needs Lattice: the ghosts are StationGod's own board here.";
+        }
+
         return new VerbOutcome.Answered(ListReply.OfPage("ghosts", page,
                 entry => new GhostView(entry.Ghost, DisplayName(entry.Ghost), entry.Distance, SpotOf(entry.Ghost),
-                    CheckOf(checks, entry.Ghost.Id)))
+                    CheckOf(checks, entry.Ghost.Id),
+                    looks != null && looks.TryGetValue(entry.Ghost.Id, out var look) ? look.Look : null,
+                    looks != null && looks.TryGetValue(entry.Ghost.Id, out var drawn) ? drawn.Drawn : null))
             .Add("build_arguments", GhostFilter.BuildArguments(shown))
             .Add("board", BoardKeeper)
             .Add("bill", bill)
@@ -218,6 +232,28 @@ internal static class ShowGhost
             removed.AddRange(GhostBoardStore.RemoveWhere(static ghost => ghost.Source == GhostSource.Agent));
         }
 
+        List<long> restyled = new List<long>();
+        if (order.Restyle.Count > 0)
+        {
+            if (!LatticePresence.Running)
+            {
+                notes.Add("restyle needs Lattice: nothing was restyled (StationGod's own board keeps no looks).");
+            }
+            else
+            {
+                List<OptionProblem> problems = new List<OptionProblem>();
+                List<string> refused = new List<string>();
+                restyled = LatticePresence.Restyle(order.Restyle, order.LookChange, order.RestyleTint, order.Label,
+                    problems, refused, notes);
+                if (problems.Count > 0)
+                {
+                    return new VerbOutcome.Refused(OptionProblem.Refusal(ShowGhostOptions.Spec.Label, problems));
+                }
+
+                notes.AddRange(refused);
+            }
+        }
+
         List<PlacedGhostView> placed = new List<PlacedGhostView>();
         GhostPlanView? plan = null;
         if (order.HasPlacements)
@@ -270,7 +306,7 @@ internal static class ShowGhost
         }
 
         return new VerbOutcome.Answered(new ShowGhostView(placed, removed, GhostBoardStore.Board.Count,
-            FindGhost.BoardKeeper, plan, notes, runView));
+            FindGhost.BoardKeeper, plan, notes, runView, restyled));
     }
 
     // A run's new pieces as ghosts, each finished, in the turn the run lays it, in the call's tint and label; a piece

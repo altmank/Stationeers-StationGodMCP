@@ -18,6 +18,7 @@
     <Compile Include="..\..\src\StationGodMCP.Mod\Api\Views\**\*.cs" Link="Mod\Api\Views\%(RecursiveDir)%(Filename)%(Extension)" />
     <!-- StationGod's side of Lattice that needs no game: conversions between Lattice's values and the board's. -->
     <Compile Include="..\..\src\StationGodMCP.Mod\LatticeLink\Model\**\*.cs" Link="Mod\LatticeLink\Model\%(RecursiveDir)%(Filename)%(Extension)" />
+    <Compile Include="..\..\src\StationGodMCP.Mod\LatticeLink\Json\**\*.cs" Link="Mod\LatticeLink\Json\%(RecursiveDir)%(Filename)%(Extension)" />
     <!-- The connection layer (pipes, framing, calls in flight): no game types, so the pipe tests run it here. -->
     <Compile Include="..\..\src\StationGodMCP.Mod\Protocol\**\*.cs" Link="Mod\Protocol\%(RecursiveDir)%(Filename)%(Extension)" />
     <!-- The verb model the tests' copy of the mod code loads (assembly resources the mod, the Client and

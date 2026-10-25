@@ -1,5 +1,39 @@
 # Changelog
 
+## 2.12.0
+
+LU: support everything Lattice offers, not only build ghosts (Lattice 0.10.5); and the Workspace's ghost entries of
+2026-10-25 (version skew, restyle in place, x-ray strength and markers):
+
+- **find lattice, write lattice, show lattice: Lattice's whole contract as JSON** (help topic lattice). find lattice
+  asks any of Lattice's answers: every ghost of every intent (build, remove, swap, finish) with its look, plans with
+  their facts and state, the last load, templates as Lattice's text, validation, steps, bills, swaps a structure can
+  take, analysis, a command's preview, executors' claims and status, ghost and plan stories, plan export, the
+  catalogue (pieces, kits, families), ports and facing of any placement, groups, modules, the world (structures,
+  rooms, networks, the ghosts on a structure), a ghost's resolved style, style matches, picks, the clip, and the last
+  300 events. write lattice takes every Lattice command (place, remove, change, move, create/edit/finish/reopen/catch
+  up plans, move to plan, revert, batch, mark removal, plan swap, plan finish, plan split, plan run and plan route
+  with ports, branches and toggles, transform with copies, place template, place template in, repair, take down)
+  plus the agent's executor work (claim, renew, release, report status) and the plan size limit; it reports
+  Lattice's preview until confirm. show lattice draws on this seat only: the agent's own style layers and Lattice's
+  library layers, ghost and structure sets, drafts (raw or a command's preview), the clip, highlights.
+- **Restyle in place**: show ghost `restyle` (ghost ids) changes look, x-ray, markers, style, tint and label as one
+  Lattice batch of edits; the settings not named are kept. find ghost reports each ghost's look (look, xray,
+  strength, range, markers, problem, style), and `explain` gives the style Lattice resolved and which layer set each
+  property.
+- **X-ray and markers are the caller's.** show ghost `xray_strength` (0 to 1, default 1) and `xray_range` (metres,
+  default 120: the strongest Lattice draws today; was 0.5 and 60), `markers` (ports, open ends, flow arrows, waits
+  links: each on or off), and `style` (any Lattice style property on top). quiet now only hides the markers: x-ray
+  works with every look. An option that would be dropped is refused (x-ray strength with x-ray off, look options with
+  nothing placed or restyled).
+- **A ghost's look is one attachment** (stationgod/style), drawn by a style layer per distinct look that every
+  StationGod seat adds when it first sees one; looks placed by 2.11 keep drawing.
+- **Help and refusals follow the game's mod.** The MCP server reads the connected mod's catalogue: help names what
+  the game's mod lacks, an option the mod lacks is refused `needs_newer_mod` (naming both versions) before it is sent,
+  and one only the mod has is `needs_newer_server` (LIVE: help listed show ghost look and xray, the game ran 2.10.3
+  and refused them as "not an option").
+- write lattice and every other confirm-route write report until confirm on the direct face too.
+
 ## 2.11.0
 
 LU: StationGod must support Lattice ghosts properly (Workspace umbrella entry, 2026-10-25), with Lattice 0.8:

@@ -339,8 +339,9 @@ internal sealed class DirectWriteGate(VerbCatalogue catalogue) : IWriteGate
     /// <summary>True when the rule makes this write report until confirm: true.</summary>
     internal static bool ReportsUntilConfirm(WhatEntry what, JsonObject args, WriteTargets targets)
     {
-        if (Array.IndexOf(ReportingVerbs, what.Verb) >= 0 || IsCheat(what, args))
+        if (Array.IndexOf(ReportingVerbs, what.Verb) >= 0 || IsCheat(what, args) || what.Write?.Route == "confirm")
         {
+            // A confirm-route what (write lattice among them) reports until confirm: true on every face.
             return true;
         }
 

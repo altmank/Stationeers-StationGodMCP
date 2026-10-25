@@ -15,6 +15,7 @@ whats:
 - genes: edit plant genes as the Gene Splicer does (cheat)
 - health: heal a player: every kind of damage to the body and its organs (brain and lungs) set to none (cheat)
 - script: save a Python script under a name: the next version, every older one kept
+- lattice: any Lattice command: place, remove, change, move ghosts; plans; runs and routes; swaps, removals, finishes, splits, transforms, templates; repair, take down, reopen, revert, batch; executors
 
 On every call: fields, omit, list_limits, output_file, whole, repeat, as_player (help {topic: "shaping"}).
 help {verb: "write", what} gives a what's options, reply keys and an example.

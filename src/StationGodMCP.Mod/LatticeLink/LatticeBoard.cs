@@ -44,6 +44,9 @@ internal static class LatticeBoard
 
     internal static bool IsAttached => _system != null;
 
+    /// <summary>The world's Lattice while attached: the Lattice verbs (LatticeVerbs) read and command it.</summary>
+    internal static L.IGhostSystem? Current => _system;
+
     // show highlight's lit ghosts, ended by the next call without keep or by clear.
     private static readonly List<System.IDisposable> Lit = new List<System.IDisposable>();
 
@@ -226,6 +229,11 @@ internal static class LatticeBoard
             }
 
             GhostLook look = looks != null && index < looks.Count ? looks[index] : GhostLook.Plain;
+            if (look.Encoded() is { } encoded)
+            {
+                LatticeLooks.Ensure(system, encoded, notes);
+            }
+
             L.GhostDraft? draft = LatticeGhosts.ToDraft(placement, maker, plan, LastState(prefab), notes,
                 out string? why, look);
             if (draft == null)
@@ -300,6 +308,162 @@ internal static class LatticeBoard
     }
 
     /// <summary>
+    /// Restyles ghosts in place as the agent: each ghost's own look with the change applied (the rest kept), its tint and
+    /// label when given; one Lattice batch of edits (attach or detach stationgod/style, set tint, set label), so the
+    /// change syncs and undoes as one. The ids changed; Lattice's refusals in refused, ghosts not found in notes.
+    /// </summary>
+    internal static List<long> Restyle(IReadOnlyList<long> ids, GhostLookChange change, Rgba? tint, string? label,
+        List<OptionProblem> problems, List<string> refused, List<string> notes)
+    {
+        List<long> restyled = new List<long>();
+        if (_system is not { } system)
+        {
+            refused.Add("Lattice runs no world");
+            return restyled;
+        }
+
+        Dictionary<string, List<L.GhostId>> byLook = new Dictionary<string, List<L.GhostId>>(StringComparer.Ordinal);
+        List<L.GhostId> plain = new List<L.GhostId>();
+        List<L.GhostId> all = new List<L.GhostId>();
+        List<long> missing = new List<long>();
+        foreach (long id in ids)
+        {
+            if (!system.Board.As(LatticeNames.Agent).Find(new L.GhostId(id)).TryGet(out L.Ghost ghost))
+            {
+                missing.Add(id);
+                continue;
+            }
+
+            all.Add(ghost.Id);
+            if (!change.Any)
+            {
+                continue;
+            }
+
+            GhostLook? look = LatticeLooks.LookOf(ghost).Change(change, problems);
+            if (look == null)
+            {
+                return restyled;
+            }
+
+            if (look.Encoded() is { } encoded)
+            {
+                if (!byLook.TryGetValue(encoded, out List<L.GhostId>? same))
+                {
+                    byLook[encoded] = same = new List<L.GhostId>();
+                }
+
+                same.Add(ghost.Id);
+            }
+            else
+            {
+                plain.Add(ghost.Id);
+            }
+        }
+
+        if (missing.Count > 0)
+        {
+            notes.Add($"No ghost {string.Join(", ", missing)} on the board: not restyled.");
+        }
+
+        if (all.Count == 0)
+        {
+            return restyled;
+        }
+
+        List<L.Command> edits = new List<L.Command>();
+        foreach (KeyValuePair<string, List<L.GhostId>> look in byLook)
+        {
+            LatticeLooks.Ensure(system, look.Key, notes);
+            edits.Add(new L.Command.Change(new L.Selector.Ids(L.ValueList.From(look.Value)),
+                new L.GhostEdit.Attach(LatticeNames.Style, LatticeNames.Must(L.Attachment.Create(look.Key))),
+                L.Option<L.Revision>.None));
+        }
+
+        if (plain.Count > 0)
+        {
+            L.Selector plainOnes = new L.Selector.Ids(L.ValueList.From(plain));
+            foreach (L.AttachmentKey old in new[] { LatticeNames.Style, LatticeNames.Look, LatticeNames.XRay, LatticeNames.PlanState })
+            {
+                edits.Add(new L.Command.Change(plainOnes, new L.GhostEdit.Detach(old), L.Option<L.Revision>.None));
+            }
+        }
+
+        L.Selector every = new L.Selector.Ids(L.ValueList.From(all));
+        if (tint is { } colour)
+        {
+            edits.Add(new L.Command.Change(every, new L.GhostEdit.SetTint(L.Option.Some(LatticeGhosts.TintOf(colour))),
+                L.Option<L.Revision>.None));
+        }
+
+        if (label != null)
+        {
+            L.Result<L.Label, L.Reason> named = L.Label.Create(label);
+            if (!named.TryGet(out L.Label text))
+            {
+                named.TryGetError(out L.Reason why);
+                problems.Add(new OptionProblem("label", $"Lattice refused it ({LatticeText.Of(why)})"));
+                return restyled;
+            }
+
+            edits.Add(new L.Command.Change(every, new L.GhostEdit.SetLabel(L.Option.Some(text)), L.Option<L.Revision>.None));
+        }
+
+        if (Submit(system, new L.Command.Batch(L.ValueList.From(edits)), LatticeNames.Agent, refused) is { } changes)
+        {
+            HashSet<long> changed = new HashSet<long>();
+            foreach (L.GhostChange edited in changes.Changed)
+            {
+                changed.Add(edited.After.Id.Value);
+            }
+
+            foreach (L.GhostId id in all)
+            {
+                if (changed.Contains(id.Value))
+                {
+                    restyled.Add(id.Value);
+                }
+            }
+        }
+
+        return restyled;
+    }
+
+    /// <summary>
+    /// Each ghost's look as it keeps it (GhostLook.Report), and with explain the style Lattice resolved for it on this
+    /// seat with each property's source; ghosts Lattice does not hold are left out.
+    /// </summary>
+    internal static Dictionary<long, (JObject Look, JObject? Drawn)> Looks(IReadOnlyList<long> ids, bool explain)
+    {
+        Dictionary<long, (JObject Look, JObject? Drawn)> looks = new Dictionary<long, (JObject Look, JObject? Drawn)>();
+        if (_system is not { } system)
+        {
+            return looks;
+        }
+
+        foreach (long id in ids)
+        {
+            if (!system.Board.As(LatticeNames.Agent).Find(new L.GhostId(id)).TryGet(out L.Ghost ghost))
+            {
+                continue;
+            }
+
+            JObject? drawn = null;
+            if (explain)
+            {
+                L.Result<L.StyleStory, L.Reason> story = system.Styles.Explain(ghost.Id);
+                drawn = story.TryGet(out L.StyleStory told)
+                    ? Json.LatticeOut.Story(told)
+                    : new JObject { ["not_drawn"] = story.TryGetError(out L.Reason why) ? LatticeText.Of(why) : "refused" };
+            }
+
+            looks[id] = (LatticeLooks.LookOf(ghost).Report(), drawn);
+        }
+
+        return looks;
+    }
+
+    /// <summary>
     /// Lattice's validation of ghosts, one check per ghost; null with the reason in note while Lattice is still
     /// working it out (ask again) or when it refuses.
     /// </summary>
@@ -355,6 +519,7 @@ internal static class LatticeBoard
             _heard = system;
             system.Events.Changed += OnChanged;
             system.Events.BoardReset += OnBoardReset;
+            LatticeEvents.Listen(system);
             if (system.Styles.Add(LatticeLooks.Layer).TryGetError(out L.Reason why))
             {
                 OnceLog.Warning("lattice_look", $"Lattice refused StationGod's ghost look ({LatticeText.Of(why)}): " +
@@ -372,6 +537,11 @@ internal static class LatticeBoard
         }
 
         Ghosts.BoardDrawnElsewhere = Draws;
+        if (system.Board.Select(new L.Selector.Everything()).TryGet(out L.ValueList<L.Ghost> seen))
+        {
+            LatticeLooks.Ensure(system, seen, null);
+        }
+
         GhostBoardStore.FromLattice(true, AllBuildGhosts(system), new List<long>());
         StationGodMod.Log($"Ghosts are Lattice's (contract {system.Version.Major}.{system.Version.Minor}" +
                           $"{(Draws ? ", Lattice draws them" : ", StationGod draws them")}): " +
@@ -405,6 +575,22 @@ internal static class LatticeBoard
         GhostBoardStore.FromLattice(true, new List<BoardGhost>(), new List<long>());
     }
 
+    /// <summary>
+    /// Submits any command for an actor (write lattice): an applied change set is mirrored at once, as StationGod's own
+    /// commands are; one sent to the host, or worked out over frames, comes later as an event.
+    /// </summary>
+    internal static L.Submission SubmitAny(L.IGhostSystem system, L.Command command, L.Actor actor)
+    {
+        L.Submission submission = system.Commands.Submit(L.CommandId.New(), command, actor);
+        if (submission is L.Submission.Answered { Outcome: L.Outcome.Applied applied })
+        {
+            Answered.Add(applied.Changes.Id.Value);
+            Mirror(applied.Changes);
+        }
+
+        return submission;
+    }
+
     private static L.ChangeSet? Submit(L.IGhostSystem system, L.Command command, L.Actor actor, List<string> refused)
     {
         switch (system.Commands.Submit(L.CommandId.New(), command, actor))
@@ -423,6 +609,16 @@ internal static class LatticeBoard
 
     private static void Mirror(L.ChangeSet changes)
     {
+        if (_system is { } system)
+        {
+            // Looks placed or restyled elsewhere (another seat, another mod) get their layers on this seat too.
+            LatticeLooks.Ensure(system, changes.Added, null);
+            foreach (L.GhostChange change in changes.Changed)
+            {
+                LatticeLooks.Ensure(system, new[] { change.After }, null);
+            }
+        }
+
         List<BoardGhost> added = new List<BoardGhost>();
         List<long> removed = new List<long>();
         foreach (L.Ghost ghost in changes.Added)
