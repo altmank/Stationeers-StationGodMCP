@@ -88,11 +88,31 @@ internal static class FindGhost
             }
         }
 
+        GhostBillView? bill = null;
+        if (options.Bill == true)
+        {
+            if (!LatticePresence.Running)
+            {
+                checkNote = (checkNote != null ? checkNote + " " : "") +
+                            "bill needs Lattice: the ghosts are StationGod's own board here.";
+            }
+            else if (shownIds.Count > 0)
+            {
+                GhostBill? asked = LatticePresence.Bill(shownIds, out string? why);
+                bill = asked != null ? GhostBillView.Of(asked, PrefabName) : null;
+                if (why != null)
+                {
+                    checkNote = (checkNote != null ? checkNote + " " : "") + $"Lattice gave no bill: {why}.";
+                }
+            }
+        }
+
         return new VerbOutcome.Answered(ListReply.OfPage("ghosts", page,
                 entry => new GhostView(entry.Ghost, DisplayName(entry.Ghost), entry.Distance, SpotOf(entry.Ghost),
                     CheckOf(checks, entry.Ghost.Id)))
             .Add("build_arguments", GhostFilter.BuildArguments(shown))
             .Add("board", BoardKeeper)
+            .Add("bill", bill)
             .Add("check_note", checkNote));
     }
 
@@ -103,6 +123,9 @@ internal static class FindGhost
         checks != null && checks.TryGetValue(id, out GhostCheck? check)
             ? new GhostCheckView(check.Verdict, check.Why, check.WaitsFor)
             : null;
+
+    private static string? PrefabName(int hash) =>
+        Prefab.Find(hash) is Thing prefab && prefab != null ? prefab.PrefabName : null;
 
     private static string? DisplayName(BoardGhost ghost) =>
         Prefab.Find(ghost.PrefabHash) is Thing prefab && prefab != null ? prefab.DisplayName : null;

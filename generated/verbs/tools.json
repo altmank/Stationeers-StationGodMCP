@@ -73,6 +73,7 @@
           "owner": {"type": "string"},
           "source": {"enum": ["player", "agent"]},
           "check": {"type": "boolean"},
+          "bill": {"type": "boolean"},
           "fields": {"type": "array", "items": {"type": "string"}},
           "omit": {"type": "array", "items": {"type": "string"}},
           "list_limits": {"type": "object"},

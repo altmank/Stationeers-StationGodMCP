@@ -7,6 +7,7 @@ def find(what: Literal['ghost'], *,
     owner: str = None,  # Only ghosts this player placed (their name, any case), or "agent".
     source: Literal['player', 'agent'] = None,  # Only ghosts players placed, or agents.
     check: bool = False,  # With Lattice: each listed ghost's check by Lattice's validation (passes, waits for other ghosts, fails or warns, and why), in build order with the ghosts before it assumed built.
+    bill: bool = False,  # With Lattice: what the listed ghosts take to build (items needed, given back, tools).
     limit: int = 50,  # The first n in order (entries); left out, every one.
 ) -> dict:  # main list: r['ghosts']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Ghosts: structures players (ghost mode, the ghost menu) or agents (show ghost) planned in the world but did not build, with build_arguments to build them.
@@ -26,6 +27,8 @@ def find(what: Literal['ghost'], *,
       has_more: bool
       build_arguments: {what: str, placements: list[{prefab: str, at: list[float], rotation: list[float], build_state: int}]} | None
       board: str
+      bill: {needed: list[{prefab_name: str | None, quantity: int}], given_back: list[{prefab_name: str | None, quantity: int}], tools: list[str |
+          None]} | None
       check_note: str | None
     Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}; Vec3 = {x: float, y: float, z: float}
     Example: sg.find('ghost', near='player', radius=20)

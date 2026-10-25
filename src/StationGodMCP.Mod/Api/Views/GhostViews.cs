@@ -84,6 +84,31 @@ internal sealed class GhostView
     public JObject BuildArguments { get; }
 }
 
+/// <summary>
+/// find ghost's bill for the listed ghosts, as Lattice reads it: the items used, the items take-apart steps give back,
+/// and the tools used, by prefab name.
+/// </summary>
+internal sealed class GhostBillView
+{
+    private GhostBillView(List<UpgradeAmountView> needed, List<UpgradeAmountView> givenBack, List<string?> tools)
+    {
+        Needed = needed;
+        GivenBack = givenBack;
+        Tools = tools;
+    }
+
+    public List<UpgradeAmountView> Needed { get; }
+
+    public List<UpgradeAmountView> GivenBack { get; }
+
+    public List<string?> Tools { get; }
+
+    internal static GhostBillView Of(GhostBill bill, Func<int, string?> nameOf) => new GhostBillView(
+        bill.Needed.ConvertAll(item => new UpgradeAmountView(nameOf(item.Hash), item.Count)),
+        bill.GivenBack.ConvertAll(item => new UpgradeAmountView(nameOf(item.Hash), item.Count)),
+        bill.Tools.ConvertAll(tool => nameOf(tool)));
+}
+
 /// <summary>Where a ghost's piece would stand: its orientation, and a device's ports and their checks.</summary>
 internal sealed class GhostSpotView
 {

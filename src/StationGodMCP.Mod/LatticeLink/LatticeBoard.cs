@@ -113,6 +113,50 @@ internal static class LatticeBoard
         return read;
     }
 
+    /// <summary>What the ghosts take to build, as Lattice's bills read it; null with why when Lattice will not say.</summary>
+    internal static GhostBill? Bill(List<long> ids, out string? why)
+    {
+        why = null;
+        if (_system is not { } system)
+        {
+            why = "Lattice runs no world";
+            return null;
+        }
+
+        List<L.GhostId> which = new List<L.GhostId>(ids.Count);
+        foreach (long id in ids)
+        {
+            which.Add(new L.GhostId(id));
+        }
+
+        L.Result<L.Bill, L.Reason> asked = system.Bills.For(new L.Selector.Ids(L.ValueList.From(which)));
+        if (!asked.TryGet(out L.Bill bill))
+        {
+            why = asked.TryGetError(out L.Reason reason) ? LatticeText.Of(reason) : "refused";
+            return null;
+        }
+
+        List<(int Hash, int Count)> needed = new List<(int Hash, int Count)>(bill.Needed.Count);
+        foreach (L.ItemQuantity item in bill.Needed)
+        {
+            needed.Add((item.Item.Hash, item.Count));
+        }
+
+        List<(int Hash, int Count)> back = new List<(int Hash, int Count)>(bill.GivenBack.Count);
+        foreach (L.ItemQuantity item in bill.GivenBack)
+        {
+            back.Add((item.Item.Hash, item.Count));
+        }
+
+        List<int> tools = new List<int>();
+        foreach (L.ItemKey tool in bill.Tools)
+        {
+            tools.Add(tool.Hash);
+        }
+
+        return new GhostBill(needed, back, tools);
+    }
+
     // The contract minor that reads a placed piece's ports (IPieceCatalogue.PortsAt).
     private const int PortsMinor = 8;
 

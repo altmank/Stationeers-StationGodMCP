@@ -7,9 +7,10 @@ Options:
 - owner (string): Only ghosts this player placed (their name, any case), or "agent".
 - source (player | agent): Only ghosts players placed, or agents.
 - check (boolean, default false): With Lattice: each listed ghost's check by Lattice's validation (passes, waits for other ghosts, fails or warns, and why), in build order with the ghosts before it assumed built.
+- bill (boolean, default false): With Lattice: what the listed ghosts take to build (items needed, given back, tools).
 - limit (integer, default 50): Entries per page.
 - offset (integer, default 0): Entries to skip.
 Each ghost carries its orientation, a device's ports and layout.port_checks (what stands in each joining cell now; other ghosts are not seen there) and build_arguments for build structure; the reply's build_arguments place every listed ghost (up to 64) in one build. from_plan takes a find ghost ref: "r5" builds the listed ghosts, "r5.ghosts.2" one. A ghost goes off the board by itself once a structure of its prefab is built where it stands in its turn; show ghost {remove} takes ghosts off.
 board says who keeps the ghosts: lattice (Lattice is installed: its build ghosts, from every mod and player, Loom's included, saved and synced by Lattice; ids are Lattice's) or stationgod (StationGod's own board, saved beside the save). Lattice's remove, swap and finish ghosts are not listed. check needs Lattice; while Lattice is still working a check out, check_note says so: ask again.
-Reply: ghosts [{id, prefab_name, display_name, position, rotation_deg, build_state, owner, source, label, tint, placed_at, distance_m, orientation, ports, layout, check, build_arguments}], count, total, offset, limit, has_more, build_arguments {what, placements}, board, check_note
+Reply: ghosts [{id, prefab_name, display_name, position, rotation_deg, build_state, owner, source, label, tint, placed_at, distance_m, orientation, ports, layout, check, build_arguments}], count, total, offset, limit, has_more, build_arguments {what, placements}, board, bill {needed, given_back, tools}, check_note
 Example: find {what: "ghost", near: "player", radius: 20}
