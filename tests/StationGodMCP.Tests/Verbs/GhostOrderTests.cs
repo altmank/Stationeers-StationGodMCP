@@ -43,6 +43,30 @@ public sealed class GhostOrderTests
         Assert.Equal("pump", order.LabelOf(0));
     }
 
+    // show ghost {run}: a run's pieces go on the board, as build would lay them (agents copied each piece by hand).
+    [Fact]
+    public void ARunNeedsNoPlacementAndIsReadAsBuildReadsIt()
+    {
+        List<OptionProblem> problems = new List<OptionProblem>();
+        GhostOrder order = Order("""
+            {"label": "header", "run": {"what": "pipe", "grade": "insulated_gas", "waypoints": [[0, 0, 0], [2, 0, 0]]}}
+            """, problems)!;
+
+        Assert.Empty(problems);
+        Assert.False(order.HasPlacements);
+        Assert.Equal("pipe", order.Run!.Kind);
+        Assert.Equal("header", order.Label);
+    }
+
+    [Fact]
+    public void ARunOfAnotherWhatIsRefusedUnderRun()
+    {
+        List<OptionProblem> problems = new List<OptionProblem>();
+
+        Assert.Null(Order("""{"run": {"what": "wall", "waypoints": [[0, 0, 0]]}}""", problems));
+        Assert.Contains(problems, problem => problem.Path == "run.what");
+    }
+
     [Fact]
     public void RemoveAndClearNeedNoPlacement()
     {
