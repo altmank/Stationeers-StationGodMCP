@@ -60,6 +60,11 @@ internal sealed class FakeGameLink : IGameLink
 
     public string? WorldId => "world-1";
 
+    /// <summary>The mod's verb model and version, as a link that fetched its catalogue has them; unset: unknown.</summary>
+    public GameCatalogue? GameModel { get; set; }
+
+    public string? ModVersion { get; set; }
+
     public event Action<string?>? WorldChanged;
 
     public void ChangeWorld(string? world) => WorldChanged?.Invoke(world);

@@ -57,6 +57,7 @@ public sealed partial class VerbPipeline
     private readonly Dictionary<long, string> _worlds = new();
     private readonly Dictionary<long, Dictionary<object, DateTime>> _unsettled = new();
     private int _inFlight;
+    private volatile SkewOf? _skew;
 
     /// <summary>
     /// gate, when given, decides every write that does not carry its own (VerbCall.Gate); otherwise the direct and
@@ -77,6 +78,26 @@ public sealed partial class VerbPipeline
     }
 
     internal VerbCatalogue Catalogue => _catalogue;
+
+    /// <summary>How the game's mod differs from this server's model, for the mod the link last spoke to; null when alike
+    /// or unknown. Worked out again when the link's model or the mod's version changes.</summary>
+    internal ModSkew? Skew()
+    {
+        if (_link.GameModel is not { } model)
+        {
+            return null;
+        }
+
+        string? version = _link.ModVersion;
+        SkewOf? known = _skew;
+        if (known == null || !ReferenceEquals(known.Model, model) || known.Version != version)
+        {
+            known = new SkewOf(model, version, ModSkew.Of(_catalogue, model.Document, version, Program.ServerVersion));
+            _skew = known;
+        }
+
+        return known.Skew;
+    }
 
     internal RefStore Refs => _refs;
 
@@ -214,14 +235,20 @@ public sealed partial class VerbPipeline
         }
 
         call = WithPlayer(fromPlan);
+        ModSkew? skew = Skew();
         if (OptionCheck.Check(_catalogue, call, out VerbEntry? verb, out WhatEntry? what) is { } refused)
         {
-            return refused;
+            return skew?.ServerBehind(call.Verb, call.What, what, call.Args) ?? refused;
         }
 
         if (verb!.Name == "help")
         {
-            return HelpPages.Answer(_catalogue, call.Args);
+            return HelpPages.Answer(_catalogue, call.Args, skew);
+        }
+
+        if (skew?.Refusal(what!, call.Args) is { } behind)
+        {
+            return behind;
         }
 
         List<RefUse> refs = [];
@@ -876,3 +903,6 @@ public sealed partial class VerbPipeline
     /// <summary>How long a call's late reply is waited for before it is taken as never coming.</summary>
     internal TimeSpan SettleBound { get; init; } = TimeSpan.FromMinutes(2);
 }
+
+/// <summary>The skew worked out for one model and mod version.</summary>
+internal sealed record SkewOf(GameCatalogue Model, string? Version, ModSkew? Skew);

@@ -211,6 +211,14 @@
     "see": {"verb": "build", "what": "blueprint"}
   },
   "move_failed": {"description": "The game refused the move; the message says why. Check the code and destination, then try again."},
+  "needs_newer_mod": {
+    "description": "The game's StationGod mod is older than this MCP server and lacks the what or the options the message names; nothing ran. Leave them out, or update the mod in the game; help names what the game's mod lacks.",
+    "see": {"verb": "help"}
+  },
+  "needs_newer_server": {
+    "description": "The game's StationGod mod is newer than this MCP server and has the what or the options the message names, which this server does not know; nothing ran. Update the MCP server.",
+    "see": {"verb": "help"}
+  },
   "network_empty": {"description": "The network has no piece of that category. Name another network, or a piece on it."},
   "network_gone": {"description": "No network has that id any more: the world moved on. Read the id again."},
   "network_not_found": {

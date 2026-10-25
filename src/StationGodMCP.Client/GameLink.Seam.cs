@@ -42,6 +42,15 @@ public interface IGameLink
 
     /// <summary>The job's job_ended facts from the jobs topic, or null when the timeout passes first.</summary>
     Task<JsonElement?> WaitJobAsync(string jobId, TimeSpan timeout, CancellationToken cancellation);
+
+    /// <summary>
+    /// The verb model of the mod the link last spoke to (its catalogue answer, or the built-in one when its hash
+    /// matched); null when the link cannot tell.
+    /// </summary>
+    GameCatalogue? GameModel => null;
+
+    /// <summary>welcome.server.mod_version of the mod the link last spoke to; null before any welcome.</summary>
+    string? ModVersion => null;
 }
 
 /// <summary>
