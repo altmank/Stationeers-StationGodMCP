@@ -508,7 +508,9 @@ internal sealed class ReportReply : IReplyForm
     public object Form(JsonSerializer serializer, Shaping.ShapeRequest? shape)
     {
         ReplyObject whole = Whole();
-        if (ReplyLength.Utf8Bytes(whole, serializer, shape) <= Report.SummaryBytes)
+        // A caller that names its reply budget (the hub's script and program faces: code, not a client's context)
+        // takes the whole report up to it; others get the summary past SummaryBytes.
+        if (ReplyLength.Utf8Bytes(whole, serializer, shape) <= (shape?.MaxBytes ?? Report.SummaryBytes))
         {
             return whole;
         }

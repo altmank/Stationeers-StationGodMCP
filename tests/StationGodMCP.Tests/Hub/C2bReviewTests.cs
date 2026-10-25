@@ -382,7 +382,7 @@ public sealed class C2bReviewTests
         (await pipeline.MoreAsync(0, cursor, null, CancellationToken.None)).Done();
         JsonNode pads = pipeline.Call("find", "pad", "{}", Face.Script).Done()!;
 
-        Assert.Equal("""{"fields":["reference_id"]}""", game.CallsTo("find")[1].Shape!.Value.GetRawText());
+        Assert.Equal("""{"fields":["reference_id"],"max_bytes":16777216}""", game.CallsTo("find")[1].Shape!.Value.GetRawText());
         Assert.Contains("keeps no walk", (string)pads["rest_unreachable"]!);
         Assert.Null(pads["cursor"]);
     }

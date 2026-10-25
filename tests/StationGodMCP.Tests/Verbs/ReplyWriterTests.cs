@@ -158,6 +158,31 @@ public sealed class ReplyWriterTests
             (string)small["targets"]![0]!["text"]!);
     }
 
+    // The hub's script and program faces send max_bytes: code takes the whole report, its lists kept (LIVE 2026-10-25: a
+    // script's build pipe report had no cells, only the summary's targets).
+    [Fact]
+    public void AReportToACallerNamingItsBudgetStaysWhole()
+    {
+        List<ReportTarget> targets = new();
+        JArray cells = new();
+        for (int index = 0; index < 200; index++)
+        {
+            targets.Add(new ReportTarget(null, new JArray(index, 2, 3), "StructurePipeStraight", JValue.CreateNull(),
+                new JValue("StructurePipeStraight"), "[undo]"));
+            cells.Add(new JObject { ["at"] = new JArray(index, 2, 3), ["rotation_deg"] = new JArray(0, 90, 0) });
+        }
+
+        StationGodMCP.Pure.Shaping.ShapeRequest code = new(null, new Dictionary<string, int>(), 16777216);
+        object form = Report.Of(targets, new JObject { ["cells"] = cells })
+            .Form(StationGodMCP.Api.Shared.ApiJson.Serializer, code);
+        JObject whole = JObject.Parse(Text(form));
+
+        Assert.Equal(200, ((JArray)whole["cells"]!).Count);
+        Assert.Equal(new JArray(0, 90, 0), whole["cells"]![0]!["rotation_deg"]);
+        Assert.IsType<JObject>(whole["targets"]![0]);
+        Assert.Null(Replies.Tree(Report.Of(targets, new JObject { ["cells"] = cells }))["cells"]);
+    }
+
     [Fact]
     public void AReportTooLargeEvenAsASummaryIsReportTooLarge()
     {

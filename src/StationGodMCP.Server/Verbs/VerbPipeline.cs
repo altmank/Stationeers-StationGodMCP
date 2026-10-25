@@ -718,16 +718,22 @@ public sealed partial class VerbPipeline
 
     // fields, omit and list_limits go to the mod as the call's shape; selectors that cannot parse are reported unmatched.
     // On the script and program faces a reply is never cut for size (D4), so the mod's default list caps
-    // (x-default-limits) are lifted there: each list the call does not limit itself is sent with the largest limit.
+    // (x-default-limits) are lifted there: each list the call does not limit itself is sent with the largest limit; and
+    // max_bytes says code takes whole replies, so a large report keeps its lists (cells, placements) rather than the
+    // summary form a client's context gets (LIVE 2026-10-25: a script's build pipe report had no cells).
     private static (JsonElement? Shape, Unparsed Unparsed) Shape(Face face, WhatEntry what, JsonObject options)
     {
         JsonElement? fields = Given(options, SidecarArguments.FieldsArgument);
         JsonElement? omit = Given(options, SidecarArguments.OmitArgument);
         JsonElement? limits = face == Face.Direct ? Given(options, SidecarArguments.LimitsArgument) : Lifted(what, options);
-        return fields == null && omit == null && limits == null
+        int? maxBytes = face == Face.Direct ? null : WholeReplyBytes;
+        return fields == null && omit == null && limits == null && maxBytes == null
             ? (null, new Unparsed([], []))
-            : new SidecarArguments(default, fields, new OutputChoice.Inline(), omit, limits).Shape();
+            : new SidecarArguments(default, fields, new OutputChoice.Inline(), omit, limits, maxBytes).Shape();
     }
+
+    /// <summary>The largest reply the mod takes a max_bytes for (its ShapeRequest.MaximumMaxBytes).</summary>
+    internal const int WholeReplyBytes = 16777216;
 
     private static JsonElement? Given(JsonObject options, string name) =>
         options[name] is { } value ? JsonNodes.ToElement(value) : null;
