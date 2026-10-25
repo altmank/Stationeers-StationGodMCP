@@ -1,5 +1,26 @@
 # Changelog
 
+## 2.11.0
+
+LU: StationGod must support Lattice ghosts properly (Workspace umbrella entry, 2026-10-25), with Lattice 0.8:
+
+- **Runs end at ports no built device holds yet.** plan route's start and end take `{ghost, port}` (a board ghost's
+  device port; ports from Lattice's `Catalogue.PortsAt` with Lattice 0.8, else read from the ghost's prefab) and
+  `{at, toward}` (toward: the way the port points, as ghost replies give it), and the last piece turns into the port
+  (an elbow, not a straight with its far end open).
+- **show ghost takes `run`**: a cable, pipe or chute run (build's options: waypoints, branches, pieces, extra ends)
+  planned as build plans it, elbows and tees included; each new piece goes on the board.
+- **Looks.** show ghost `look` (plan, the default: see-through, ports and open ends shown; solid; wire; pulse; quiet)
+  and `xray` (default true) are kept on Lattice ghosts as attachments, so every StationGod viewer draws them; a
+  placement whose plan has problems, or a run piece left with an open end, pulses red. Agent ghosts glow violet.
+- **show highlight `{ghost: id}`**: a beacon where the ghost stands; with Lattice the ghost itself lit (Styles.Highlight).
+- **find ghost `bill`** (Lattice): what the listed ghosts take to build: items needed, given back, tools.
+- **A build that completes a board ghost** warns `completes_ghost`; undo of that build puts the ghost back once the
+  removal takes the structure down (a Condenser Intake ghost was lost to a build and its undo).
+- **show preview** draws run pieces left with an open end red and names them.
+- **Scripts get whole reports.** Script and program calls tell the mod they take whole replies (max_bytes), so a
+  large report keeps its lists: a script's build pipe report had no `cells` (the summary form a client gets).
+
 ## 2.10.4
 
 From the Workspace agent's 2026-10-25 note (LU's Venus world: two Active Vents built on the roof by "check" builds in a

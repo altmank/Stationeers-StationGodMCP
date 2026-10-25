@@ -2268,6 +2268,7 @@ def build(what: Literal['structure'], *,
     """Any structure a kit builds (light, device, frame, wall, tank, rocket part) by prefab, at a point with a turn; several placements are one job.
     A build that pays from the player's inventory (materials left out, or "player") carries the warning materials_from_player. With from_plan, what may be left out: it comes from the plan.
     The report gives each placement's position as the game's cursor snaps it (the row's cell and placements[].position). A placement checks against the run's earlier placements as standing: a clash with one (overlaps_placement), the frame it needs (supported_by_placement), and with above_floor, a frame or floor plate an earlier placement puts down as its floor.
+    A placement on a board ghost's spot in its turn completes that ghost (completes_ghost warning): the build takes it off the board, and undo of the build puts it back.
     Reports in a report run; acts in a confirmed run.
     Cheat when free: true: ask the user first.
     placed: list[str] on a job reply, the new ids (a run's log.placed, a structure job's result.placed; a brief poll counts them in log.placed_count); int on a run report, the cells it would build.
