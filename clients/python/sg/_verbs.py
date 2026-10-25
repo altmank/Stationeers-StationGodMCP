@@ -187,14 +187,14 @@ def trade(what, *, fields=None, as_player=None, id=None, card=None, items=None, 
 def show(what=None, *, fields=None, as_player=None, placements=None, prefab=None, at=None, rotation=None,
         facing=None, up=None, face=None, orient=None, above_floor=None, build_state=None, label=None, run=None,
         from_plan=None, style=None, tint=None, allow=None, cells=None, boxes=None, seconds=None, keep=None,
-        clear=None, xray=None, verbose=None, targets=None, remove=None, **options):
+        clear=None, xray=None, verbose=None, targets=None, look=None, remove=None, **options):
     """Draw on the player's screen only, for a while: a build preview (wire boxes or ghosts of the structures), or highlights through walls. sg.help('show', what) gives a what in full."""
     return verb_call('show', what, {'fields': fields, 'as_player': as_player, 'placements': placements, 'prefab':
                      prefab, 'at': at, 'rotation': rotation, 'facing': facing, 'up': up, 'face': face, 'orient':
                      orient, 'above_floor': above_floor, 'build_state': build_state, 'label': label, 'run': run,
                      'from_plan': from_plan, 'style': style, 'tint': tint, 'allow': allow, 'cells': cells, 'boxes':
                      boxes, 'seconds': seconds, 'keep': keep, 'clear': clear, 'xray': xray, 'verbose': verbose,
-                     'targets': targets, 'remove': remove}, options)
+                     'targets': targets, 'look': look, 'remove': remove}, options)
 
 
 def undo(*, fields=None, as_player=None, id=None, **options):

@@ -81,7 +81,8 @@ internal static class LatticePresence
     /// <summary>LatticeBoard.Place; only while Running.</summary>
     [MethodImpl(MethodImplOptions.NoInlining)]
     internal static List<BoardGhost> Place(IReadOnlyList<GhostPlacement> placements, GhostSource source, ulong? client,
-        List<string> refused, List<string> notes) => LatticeBoard.Place(placements, source, client, refused, notes);
+        List<string> refused, List<string> notes, IReadOnlyList<GhostLook>? looks = null) =>
+        LatticeBoard.Place(placements, source, client, refused, notes, looks);
 
     /// <summary>LatticeBoard.Remove; only while Running.</summary>
     [MethodImpl(MethodImplOptions.NoInlining)]

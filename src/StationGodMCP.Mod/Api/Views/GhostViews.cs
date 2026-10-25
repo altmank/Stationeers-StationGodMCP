@@ -166,8 +166,9 @@ internal sealed class GhostPlanView
 internal sealed class ShowGhostView
 {
     internal ShowGhostView(List<PlacedGhostView> placed, List<long> removed, int total, string board,
-        GhostPlanView? plan, List<string> notes)
+        GhostPlanView? plan, List<string> notes, RunPreviewView? run = null)
     {
+        Run = run;
         Placed = placed;
         Removed = removed;
         Total = total;
@@ -190,7 +191,7 @@ internal sealed class ShowGhostView
 
     /// <summary>The run's plan in short, when the call gave a run.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-    public RunPreviewView? Run { get; init; }
+    public RunPreviewView? Run { get; }
 
     public List<string> Notes { get; }
 }

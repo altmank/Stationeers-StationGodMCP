@@ -68,6 +68,20 @@ public sealed class GhostOrderTests
     }
 
     [Fact]
+    public void LookAndXrayAreReadAndAnUnknownLookIsRefused()
+    {
+        GhostOrder order = Order("""{"prefab": "A", "at": [0, 0, 0], "look": "Wire", "xray": false}""",
+            new List<OptionProblem>())!;
+        GhostOrder plain = Order("""{"prefab": "A", "at": [0, 0, 0]}""", new List<OptionProblem>())!;
+        List<OptionProblem> problems = new List<OptionProblem>();
+
+        Assert.Equal(("wire", false, false), (order.Look.Preset, order.Look.XRay, order.Look.Problem));
+        Assert.Equal(("plan", true), (plain.Look.Preset, plain.Look.XRay));
+        Assert.Null(Order("""{"prefab": "A", "at": [0, 0, 0], "look": "glass"}""", problems));
+        Assert.Contains(problems, problem => problem.Path == "look");
+    }
+
+    [Fact]
     public void RemoveAndClearNeedNoPlacement()
     {
         GhostOrder order = Order("""{"remove": [3, 4], "clear": "agent"}""", new List<OptionProblem>())!;

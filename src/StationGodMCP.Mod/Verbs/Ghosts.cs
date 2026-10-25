@@ -7,6 +7,7 @@ using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Shared.Game.Build;
 using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Api.Shared.Game.Show;
+using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.LatticeLink;
 using StationGodMCP.LatticeLink.Model;
@@ -195,6 +196,7 @@ internal static class ShowGhost
             PlacePlan planned = PlacePlanner.Plan(order.Arguments, lint: false);
             plan = new GhostPlanView(planned.Ready, planned.Problems, planned.Warnings, PreviewScreen.Spots(planned));
             List<GhostPlacement> ghosts = new List<GhostPlacement>();
+            List<GhostLook> looks = new List<GhostLook>();
             foreach (PlannedPlacement placement in planned.Placements)
             {
                 if (placement.Prefab == null || !placement.Position.HasValue)
@@ -210,10 +212,12 @@ internal static class ShowGhost
                 int state = placement.State ?? placement.Prefab.BuildStates.Count - 1;
                 ghosts.Add(new GhostPlacement(placement.Prefab.PrefabHash, state, Bodies.V(placement.Position.Value),
                     euler, order.TintOf(placement.Index), order.LabelOf(placement.Index)));
+                looks.Add(order.Look.WithProblem(planned.Problems.Exists(issue => issue.Index == placement.Index)));
             }
 
             List<string> refused = new List<string>();
-            foreach (BoardGhost ghost in GhostBoardStore.Place(ghosts, GhostSource.Agent, "agent", refused))
+            foreach (BoardGhost ghost in GhostBoardStore.Place(ghosts, GhostSource.Agent, "agent", refused,
+                         looks: looks))
             {
                 placed.Add(new PlacedGhostView(ghost));
             }
@@ -226,8 +230,9 @@ internal static class ShowGhost
         {
             runView = new RunPreviewView(order.Run.Kind, run.Ready, run.Cells.Count, run.Problems, run.Warnings);
             List<string> refused = new List<string>();
-            foreach (BoardGhost ghost in GhostBoardStore.Place(RunGhosts(run, order, notes), GhostSource.Agent, "agent",
-                         refused))
+            List<GhostLook> looks = new List<GhostLook>();
+            foreach (BoardGhost ghost in GhostBoardStore.Place(RunGhosts(run, order, notes, looks), GhostSource.Agent,
+                         "agent", refused, looks: looks))
             {
                 placed.Add(new PlacedGhostView(ghost));
             }
@@ -236,12 +241,13 @@ internal static class ShowGhost
         }
 
         return new VerbOutcome.Answered(new ShowGhostView(placed, removed, GhostBoardStore.Board.Count,
-            FindGhost.BoardKeeper, plan, notes) { Run = runView });
+            FindGhost.BoardKeeper, plan, notes, runView));
     }
 
     // A run's new pieces as ghosts, each finished, in the turn the run lays it, in the call's tint and label; a piece
     // the run changes to join (one standing) is left as it stands, and a piece left with an open end is named.
-    private static List<GhostPlacement> RunGhosts(RunPlan run, GhostOrder order, List<string> notes)
+    private static List<GhostPlacement> RunGhosts(RunPlan run, GhostOrder order, List<string> notes,
+        List<GhostLook> looks)
     {
         List<GhostPlacement> ghosts = new List<GhostPlacement>();
         int changed = 0;
@@ -267,6 +273,7 @@ internal static class ShowGhost
                 : Bodies.V(rotation.eulerAngles);
             ghosts.Add(new GhostPlacement(prefab.PrefabHash, prefab.BuildStates.Count - 1, Bodies.V(centre), euler,
                 order.Tint, order.Label));
+            looks.Add(order.Look.WithProblem(cell.Layout.OpenEnd.HasValue));
         }
 
         if (changed > 0)

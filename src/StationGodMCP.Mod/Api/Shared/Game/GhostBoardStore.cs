@@ -178,11 +178,11 @@ internal static class GhostBoardStore
     /// order (a ghost on the spot of one of the same prefab and turn replaces it).
     /// </summary>
     internal static List<BoardGhost> Place(IReadOnlyList<GhostPlacement> placements, GhostSource source, string owner,
-        List<string> refused, ulong? client = null)
+        List<string> refused, ulong? client = null, IReadOnlyList<GhostLook>? looks = null)
     {
         if (LatticePresence.Running)
         {
-            return LatticePresence.Place(placements, source, client, refused, refused);
+            return LatticePresence.Place(placements, source, client, refused, refused, looks);
         }
 
         List<BoardGhost> added = new List<BoardGhost>();

@@ -13,6 +13,8 @@ Options:
 - from_plan (string): A plan spot ref ("r9"; one spot: "r9.spots.2", default the first): put its placement on the board.
 - tint (string or array): The ghosts' colour, yours to choose: a name (cyan, magenta, yellow, green, orange, blue, red, white, purple, pink, khaki, brown, black, gray), [r, g, b] or [r, g, b, a] each 0 to 1.
 - label (string): What the ghosts are, shown as a tooltip when the crosshair is on one, and in find ghost; a placement's own label wins.
+- look (plan | solid | wire | pulse | quiet, default plan): With Lattice: plan (default: see-through, ports and open ends shown), solid, wire, pulse, or quiet (no see-through, ports or open ends). A ghost whose plan has problems pulses red.
+- xray (boolean, default true): Shows through walls, frames and terrain.
 - run (object): A cable, pipe or chute run to put on the board: build cable, pipe or chute's options with what ({what: "pipe", grade, waypoints, branches, pieces, ...}), planned as build plans it (elbows, tees); each new piece becomes a ghost.
 - remove (list): Ghost ids to take off the board (find ghost lists them).
 - clear (agent | all): Take off every ghost agents placed, or every ghost.

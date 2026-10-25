@@ -827,6 +827,7 @@
             "type": "array",
             "description": "Up to 64, each one of {id (one or a list), network, at} with color, label, pulse."
           },
+          "look": {"enum": ["plan", "solid", "wire", "pulse", "quiet"]},
           "remove": {"type": "array", "items": {"type": "integer"}},
           "fields": {"type": "array", "items": {"type": "string"}, "description": "Keys to keep."},
           "omit": {"type": "array", "items": {"type": "string"}, "description": "Key paths to leave out."},

@@ -73,7 +73,7 @@ internal static class LatticeBoard
     /// the command to the host, and its changes arrive as events). Each placement refused names its index.
     /// </summary>
     internal static List<BoardGhost> Place(IReadOnlyList<GhostPlacement> placements, GhostSource source, ulong? client,
-        List<string> refused, List<string> notes)
+        List<string> refused, List<string> notes, IReadOnlyList<GhostLook>? looks = null)
     {
         List<BoardGhost> added = new List<BoardGhost>();
         if (_system is not { } system)
@@ -95,8 +95,9 @@ internal static class LatticeBoard
                 continue;
             }
 
+            GhostLook look = looks != null && index < looks.Count ? looks[index] : GhostLook.Plain;
             L.GhostDraft? draft = LatticeGhosts.ToDraft(placement, maker, plan, LastState(prefab), notes,
-                out string? why);
+                out string? why, look);
             if (draft == null)
             {
                 refused.Add($"{index}: {why}");

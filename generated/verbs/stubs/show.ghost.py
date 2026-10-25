@@ -13,6 +13,8 @@ def show(what: Literal['ghost'], *,
     from_plan: str = None,  # A plan spot reply (p = sg.plan('spot', ...)) or one spot (p['spots'][2]): put it on the board.
     tint: str | list = None,  # The ghosts' colour, yours to choose: a name (cyan, magenta, yellow, green, orange, blue, red, white, purple, pink, khaki, brown, black, gray), [r, g, b] or [r, g, b, a] each 0 to 1.
     label: str = None,  # What the ghosts are, shown as a tooltip when the crosshair is on one, and in find ghost; a placement's own label wins.
+    look: Literal['plan', 'solid', 'wire', 'pulse', 'quiet'] = 'plan',  # With Lattice: plan (default: see-through, ports and open ends shown), solid, wire, pulse, or quiet (no see-through, ports or open ends). A ghost whose plan has problems pulses red.
+    xray: bool = True,  # Shows through walls, frames and terrain.
     run: dict = None,  # A cable, pipe or chute run to put on the board: build cable, pipe or chute's options with what ({what: "pipe", grade, waypoints, branches, pieces, ...}), planned as build plans it (elbows, tees); each new piece becomes a ghost.
     remove: list = None,  # Ghost ids to take off the board (find ghost lists them).
     clear: Literal['agent', 'all'] = None,  # Take off every ghost agents placed, or every ghost.
