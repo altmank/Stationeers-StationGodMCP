@@ -305,7 +305,7 @@
       "brief": "damage of things or a network"
     },
     "connections": {
-      "summary": "one pipe, cable, chute or device: its ends and what each joins",
+      "summary": "one pipe, cable, chute or device: its ends and what each joins; any other structure (a wall, a frame): its pose, no ends",
       "options": {
         "id": {
           "use": "id",

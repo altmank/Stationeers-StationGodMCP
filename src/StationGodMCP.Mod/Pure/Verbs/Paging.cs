@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using Newtonsoft.Json.Linq;
 
 namespace StationGodMCP.Pure.Verbs;
 
@@ -43,10 +44,27 @@ internal sealed class Paging
 
     internal static Paging Bind(OptionReader options)
     {
-        long? limit = options.Integer("limit") ?? options.DefaultInteger("limit");
+        long? limit = options.Integer("limit") ?? ListLimit(options) ?? options.DefaultInteger("limit");
         long offset = options.Integer("offset") ?? 0;
         return new Paging(limit is { } most ? (int)Math.Min(most, int.MaxValue) : null,
             (int)Math.Min(offset, int.MaxValue), OrderOf(options.Text("order")), CursorOf(options.Text("cursor")));
+    }
+
+    // list_limits naming the what's own paged list ({cells: 60} on survey area) sets the page when limit is not given:
+    // the list is cut by its page, not by the writer (LIVE 2026-10-24: list_limits {cells: 60} still gave 8 cells). At
+    // most the limit option's own maximum.
+    private static long? ListLimit(OptionReader options)
+    {
+        if (!options.What.Takes("limit") || options.What.MainList is not { } list || options.Shape is not { } shape ||
+            !shape.Limits.TryGetValue(list, out int asked))
+        {
+            return null;
+        }
+
+        long most = options.What.Option("limit")?.Schema["maximum"] is { Type: JTokenType.Integer } maximum
+            ? (long)maximum
+            : long.MaxValue;
+        return Math.Min(asked, most);
     }
 
     /// <summary>The page of entries, in the order given: offset skipped, at most limit kept.</summary>

@@ -55,11 +55,34 @@ internal static class PlayerVitals
             warnings);
     }
 
+    // Worn: Human.Suit, or a suit in any suit-class slot. Human.SuitSlot is only the last suit-class slot Awake found,
+    // so a second one (another mod's) leaves it empty with the suit on (LIVE 2026-10-24: suit_worn false in a hardsuit).
+    private static bool SuitWorn(Human human)
+    {
+        if (human.Suit != null || (human.SuitSlot != null && human.SuitSlot.Contains<ISuit>()))
+        {
+            return true;
+        }
+
+        if (human.Slots != null)
+        {
+            foreach (Slot slot in human.Slots)
+            {
+                if (slot != null && slot.Type == Slot.Class.Suit && slot.Contains<ISuit>())
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     private static BodyState StateOf(Human human)
     {
         bool brainOnline = human.OrganBrain != null && human.OrganBrain.IsOnline;
         bool suspended = human.RootParent is ILifeSuspender suspender && suspender.IsSuspendingLife;
-        bool suitWorn = human.SuitSlot != null && human.SuitSlot.Contains<ISuit>();
+        bool suitWorn = SuitWorn(human);
         bool? helmetClosed = human.HelmetSlot != null && human.HelmetSlot.Contains<GasMask>(out GasMask helmet)
             ? !helmet.IsOpen
             : null;

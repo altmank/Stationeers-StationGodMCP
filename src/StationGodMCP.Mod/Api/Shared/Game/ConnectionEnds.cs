@@ -34,6 +34,15 @@ internal static class EndsReader
 {
     internal static ConnectionsView Read(Thing thing)
     {
+        if (thing is Structure && !(thing is SmallGrid))
+        {
+            // A wall, frame or other structure has no ends; its pose still answers (rotation for a wall or frame was
+            // only in find thing before, LIVE 2026-10-24).
+            return new ConnectionsView(GameLookup.ViewOf(thing), GameLookup.ViewOf(thing.Position), null,
+                new List<ConnectionEndView>(), Orientations.Of(thing), ThingColors.ShownColorOf(thing,
+                    ThingColors.Swatches()), Orientations.ControlsFacing(thing));
+        }
+
         if (!(thing is SmallGrid grid))
         {
             throw ApiErrors.Refused(

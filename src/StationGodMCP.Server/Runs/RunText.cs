@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Text.Json.Nodes;
 using StationGodMCP.Client;
 
@@ -16,7 +17,11 @@ internal static class RunText
     internal const int CutBytes = 4096;
 
     private const int CompactItems = 8;
-    private const int ReportedRows = 60;
+    private const int ReportedRows = 10;
+    private const int ShownWarnings = 10;
+
+    // A warning's shape: its numbers (ids, cells, pressures) masked, so warnings alike but for those are told once.
+    private static readonly Regex Numbers = new(@"-?\d+(?:\.\d+)?", RegexOptions.CultureInvariant);
 
     /// <summary>
     /// The whole reply of a finished run, adding what it shows to the seen set; whole lifts the 4 KB cut of its returned
@@ -74,7 +79,7 @@ internal static class RunText
                 text.Append(error.TrimEnd('\n')).Append('\n');
             }
 
-            Footer(run, seen, text);
+            Footer(run, seen, text, whole);
         }
 
         return text.ToString();
@@ -114,7 +119,7 @@ internal static class RunText
     };
 
     // Under the run's lock.
-    private static void Footer(RunRecord run, SeenSet? seen, StringBuilder text)
+    private static void Footer(RunRecord run, SeenSet? seen, StringBuilder text, bool whole)
     {
         if (run.StopRows is { Count: > 0 } stopRows)
         {
@@ -132,9 +137,9 @@ internal static class RunText
         }
 
         WriteGroups(run, text);
-        ReportedGroups(run, seen, text);
+        ReportedGroups(run, seen, text, whole);
         RefusedGroups(run, text);
-        Joined(text, "WARNINGS", run.Warnings);
+        Warnings(text, run.Warnings, whole);
         Joined(text, "PASSED", run.Passed);
         Joined(text, "CONTESTED", run.Contested);
         if (run.State is RunState.Stopped or RunState.Killed && run.Left.Count > 0)
@@ -218,8 +223,9 @@ internal static class RunText
         }
     }
 
-    // REPORTED verb what xN [mark]: every row, up to 60, then "... N more". The rows shown become seen.
-    private static void ReportedGroups(RunRecord run, SeenSet? seen, StringBuilder text)
+    // REPORTED verb what xN [mark]: the first 10 rows (every row when whole), then "... N more". Every row becomes
+    // seen, shown or not: a report run lists its targets so the same code can act on them with confirm.
+    private static void ReportedGroups(RunRecord run, SeenSet? seen, StringBuilder text, bool whole)
     {
         List<string> keys = [];
         Dictionary<string, List<JsonObject>> groups = new(StringComparer.Ordinal);
@@ -241,15 +247,20 @@ internal static class RunText
             List<JsonObject> rows = groups[key];
             int cut = key.IndexOf('\n');
             text.Append($"REPORTED {key[..cut]} x{rows.Count} {key[(cut + 1)..]}:\n".Replace(" :\n", ":\n"));
-            for (int index = 0; index < rows.Count && index < ReportedRows; index++)
+            int shown = whole ? rows.Count : Math.Min(rows.Count, ReportedRows);
+            for (int index = 0; index < rows.Count; index++)
             {
                 Shown(rows[index], seen);
-                text.Append("  ").Append(JsonNodes.Text(rows[index]["text"]) ?? rows[index].ToJsonString()).Append('\n');
+                if (index < shown)
+                {
+                    text.Append("  ").Append(JsonNodes.Text(rows[index]["text"]) ?? rows[index].ToJsonString())
+                        .Append('\n');
+                }
             }
 
-            if (rows.Count > ReportedRows)
+            if (rows.Count > shown)
             {
-                text.Append($"  ... {rows.Count - ReportedRows} more\n");
+                text.Append($"  ... {rows.Count - shown} more (seen too; every row: {Every(run)})\n");
             }
         }
     }
@@ -285,6 +296,47 @@ internal static class RunText
         }
     }
 
+    // WARNINGS: one per shape (numbers masked) with how many there were, the first 10 shapes (all when whole).
+    private static void Warnings(StringBuilder text, List<string> warnings, bool whole)
+    {
+        if (warnings.Count == 0)
+        {
+            return;
+        }
+
+        List<string> shapes = [];
+        Dictionary<string, (string First, int Count)> alike = new(StringComparer.Ordinal);
+        foreach (string warning in warnings)
+        {
+            string shape = Numbers.Replace(warning, "#");
+            if (alike.TryGetValue(shape, out (string First, int Count) standing))
+            {
+                alike[shape] = (standing.First, standing.Count + 1);
+            }
+            else
+            {
+                alike[shape] = (warning, 1);
+                shapes.Add(shape);
+            }
+        }
+
+        int shown = whole ? shapes.Count : Math.Min(shapes.Count, ShownWarnings);
+        List<string> items = new(shown);
+        for (int index = 0; index < shown; index++)
+        {
+            (string first, int count) = alike[shapes[index]];
+            items.Add(count > 1 ? $"{first} (x{count} alike)" : first);
+        }
+
+        text.Append("WARNINGS: ").Append(string.Join("; ", items));
+        if (shapes.Count > shown)
+        {
+            text.Append($"; ... {shapes.Count - shown} more kinds");
+        }
+
+        text.Append('\n');
+    }
+
     private static void Joined(StringBuilder text, string title, List<string> items)
     {
         if (items.Count > 0)
@@ -308,6 +360,8 @@ internal static class RunText
         WriteGroup.Cleanup => "CLEANUP",
         _ => "DONE"
     };
+
+    private static string Every(RunRecord run) => $"inspect {{what: \"job\", id: \"{run.Id}\", whole: true}}";
 
     private static string AllOfIt(RunRecord run) =>
         $"all of it: inspect {{what: \"job\", id: \"{run.Id}\", whole: true}} or with output_file; in a script " +

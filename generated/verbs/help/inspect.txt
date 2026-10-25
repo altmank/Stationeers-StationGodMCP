@@ -6,7 +6,7 @@ whats:
 - slots: a device's slots: occupants, what each takes, slot logic values
 - contents: any holder's slots and what is in them, nested (a locker, machine, suit; 'player' for the player)
 - health: damage state of things, or of every piece of a network, worst first
-- connections: one pipe, cable, chute or device: its ends and what each joins
+- connections: one pipe, cable, chute or device: its ends and what each joins; any other structure (a wall, a frame): its pose, no ends
 - atmosphere: the gas or liquid one thing holds: canister, tank, a rocket's tanks (rocket id or name), suit, pipe or pad network, a device's networks
 - reagents: the reagents a furnace, centrifuge, mixer or microwave holds
 - genes: the genes of plants, seeds and produce

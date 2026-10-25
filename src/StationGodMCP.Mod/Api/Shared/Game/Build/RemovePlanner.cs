@@ -872,13 +872,16 @@ internal static class RemovePlanner
         return FaceSeal.Sealed(onFace, cellA, cellB, gone);
     }
 
-    // The structure filling a 2 m cell (its Center slot), as air sees it; null for an empty cell.
+    // The structure filling a 2 m cell (its Center slot), as air sees it; null for an empty cell. A blocked cell
+    // (Cell.IsBlocked: its structure's collision blocks the grid, as a finished Iron Frame's does though its build
+    // state lets air pass) gets no atmosphere of its own: air never moves into it, so it seals its faces too
+    // (LIVE 2026-10-24: a wall beside an Iron Frame read the frame's cell as outdoors, 274 kPa).
     private static AirBlocker? CellBlocker(GridController grid, GridPoint point)
     {
         Cell? cell = grid.GetCell(StructureSlots.GridOf(point));
         Structure? centre = cell?.Lookup[StructureElement.Center];
         return centre != null && !centre.IsBeingDestroyed
-            ? new AirBlocker(centre.ReferenceId, !centre.CanAirPass)
+            ? new AirBlocker(centre.ReferenceId, !centre.CanAirPass || cell!.IsBlocked)
             : (AirBlocker?)null;
     }
 

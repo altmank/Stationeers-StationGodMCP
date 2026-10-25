@@ -83,8 +83,11 @@ internal static class BuildReports
         {
             // refund_to none gives nothing back, so nothing is listed as given (structures-26).
             List<ItemAmount> refund = refunds ? takedown.Refund : new List<ItemAmount>();
+            // A piece's own refund only with verbose: 81 walls repeated one refund 81 times (LIVE 2026-10-24); the
+            // report's refund sums them.
             removals.Add(new RemovalView(takedown.Index, GameLookup.ViewOf(takedown.Piece),
-                GameLookup.ViewOf(takedown.Position), takedown.BuildState, takedown.KindName, Amounts(refund)));
+                GameLookup.ViewOf(takedown.Position), takedown.BuildState, takedown.KindName,
+                plan.Arguments.SplitDetail ? Amounts(refund) : null));
             all.AddRange(refund);
         }
 

@@ -1,5 +1,26 @@
 # Changelog
 
+## 2.10.2
+
+From the Workspace agent's 2026-10-24 list (LU's Venus world):
+
+- **run_script footers stay short.** A report run listed up to 60 rows per write and every warning: 84 report-only
+  build probes made a 12 KB reply. Now 10 rows per write, then `... N more (seen too; every row: inspect job whole)`:
+  every row still counts as seen, so the same code runs with confirm as before. Warnings that differ only in their
+  numbers (ids, cells, pressures) are told once with `(xN alike)`, at most 10 kinds. `inspect job whole` lists all.
+- **remove structure** lists a removal's own refund only with `verbose`: 81 walls repeated one refund 81 times. The
+  report's `refund` still sums every piece's.
+- **would_breach** no longer reads a solid frame cell as outdoors. An Iron Frame lets air through its build state, but
+  its cell is blocked (BlockGrid), so the game gives it no atmosphere and the check sampled the planet (274 kPa on
+  Venus). A blocked cell now seals its faces, as it does in the game.
+- **inspect connections** answers any structure: a wall or a frame gives its position and rotation with no ends,
+  instead of refusing.
+- **list_limits** naming a what's own paged list (survey area's `cells`) sets the page when `limit` is not given, up to
+  the limit's maximum: `list_limits {cells: 60}` gave 8 cells.
+- **inspect player** `suit_worn`: true for a suit in any suit slot (`Human.Suit` first). The game's `SuitSlot` is only
+  the last suit-class slot, so a suit worn could read as not worn.
+- **find damaged** `near` takes a point, `looking_at` or a thing's id with radius, not only `player`.
+
 ## 2.10.1
 
 - **Lattice's turns from the contract.** A ghost's turn is read and written through Lattice's own `Turn.Axes` and

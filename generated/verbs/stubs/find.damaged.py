@@ -3,7 +3,7 @@ def find(what: Literal['damaged'], *,
     min_damage: float = 0,  # Only damage ratio above this (0.25 yellow, 0.75 red).
     broken_only: bool = False,  # Only things in the game's broken state.
     structures_only: bool = False,  # Leave items out.
-    near: str | list = None,  # "player" only.
+    near: str | list = None,  # With radius: only things this close to a point [x, y, z], "player", "looking_at" or a thing's id.
     radius: float = None,  # Metres around near.
     limit: int = 8,  # The first n in order (entries); left out, every one.
 ) -> dict:  # main list: r['things']: the page answered; .walk() goes through every entry, .all() pages in the rest

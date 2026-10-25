@@ -3,7 +3,7 @@ Options:
 - min_damage (number, default 0): Only damage ratio above this (0.25 yellow, 0.75 red).
 - broken_only (boolean, default false): Only things in the game's broken state.
 - structures_only (boolean, default false): Leave items out.
-- near (string or array): "player" only.
+- near (string or array): With radius: only things this close to a point [x, y, z], "player", "looking_at" or a thing's id.
 - radius (number): Metres around near.
 - limit (integer, default 8): Entries per page.
 - offset (integer, default 0): Entries to skip.

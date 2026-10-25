@@ -8,7 +8,7 @@ def remove(what: Literal['structure'], *,
     materials: str = None,  # The one holder for source and storage refunds: an id or "player". Default the player.
     gas_to: str = None,  # Keep a removed device's gas: connected, or a pipe network id.
     include: list[Literal['notes']] = None,  # Parts to add to the reply.
-    verbose: bool = False,  # Dry run: each port a split cuts; real run: the whole job.
+    verbose: bool = False,  # Dry run: each port a split cuts and each removal's own refund; real run: the whole job.
     acknowledge_gas_lost: str = None,  # The job id whose gas loss you accept (with the user's agreement); lifts the gas hold.
 ) -> dict:  # main list: r['removals']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Built structures by id or every one in a box (up to 256, one job), taken apart; every build state is refunded down to the kit.
@@ -24,7 +24,7 @@ def remove(what: Literal['structure'], *,
       problems: list[{code: str, message: str, index: int | None, reference_id: str | None}]
       warnings: list[{code: str, message: str, index: int | None, reference_id: str | None}]
       removals: list[{index: int, reference_id: str, prefab_name: str | None, display_name: str | None, position: Vec3, build_state: int, kind: str,
-          refund: list[{prefab_name: str | None, quantity: int}]}]
+          refund: list[{prefab_name: str | None, quantity: int}] | None}]
       refund: list[{prefab_name: str | None, quantity: int}]
       refund_to: Any
       refund_plan: RefundPlan | None

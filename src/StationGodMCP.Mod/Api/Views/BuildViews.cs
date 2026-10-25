@@ -311,11 +311,11 @@ internal sealed class BuildHeader
     internal List<string>? Notes { get; }
 }
 
-/// <summary>One piece to remove: what it is, where, and what deconstructing it gives back.</summary>
+/// <summary>One piece to remove: what it is, where, and (with verbose) what deconstructing it gives back.</summary>
 internal sealed class RemovalView
 {
     internal RemovalView(int index, ThingView piece, PositionView position, int buildState, string kind,
-        List<UpgradeAmountView> refund)
+        List<UpgradeAmountView>? refund)
     {
         Index = index;
         ReferenceId = piece.ReferenceId;
@@ -342,7 +342,9 @@ internal sealed class RemovalView
     /// <summary>structure, or cable, pipe or chute for a network piece (removed as remove cable etc. would).</summary>
     public string Kind { get; }
 
-    public List<UpgradeAmountView> Refund { get; }
+    /// <summary>This piece's refund, with verbose; the report's refund is every piece's.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<UpgradeAmountView>? Refund { get; }
 }
 
 /// <summary>remove structure before anything is removed: each piece, the refund, every problem and warning.</summary>

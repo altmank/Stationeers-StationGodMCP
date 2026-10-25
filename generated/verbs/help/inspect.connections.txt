@@ -1,4 +1,4 @@
-One pipe, cable, chute or device: its ends and what each joins.
+One pipe, cable, chute or device: its ends and what each joins; any other structure (a wall, a frame): its pose, no ends.
 Options:
 - id (string or array, required): Target: an id, a list of ids, a ref ("r3": the ids that reply showed; "r3.rockets.parts"), or "looking_at" (the thing the crosshair is on); "player" where the what says.
 id may be a list or a ref: the reply is {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload one reply; fields name its keys.

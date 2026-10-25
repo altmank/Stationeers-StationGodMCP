@@ -46,7 +46,7 @@
           "x-script": "same"
         },
         "include": {"use": "include", "schema": {"type": "array", "items": {"type": "string", "enum": ["notes"]}}},
-        "verbose": {"use": "verbose", "description": "Dry run: each port a split cuts; real run: the whole job."},
+        "verbose": {"use": "verbose", "description": "Dry run: each port a split cuts and each removal's own refund; real run: the whole job."},
         "acknowledge_gas_lost": {"use": "acknowledge_gas_lost"},
         "confirm": {"use": "confirm"},
         "queue": {"use": "queue"},
@@ -70,7 +70,7 @@
               "ready": "bool",
               "problems": "list[{code: str, message: str, index: int | None, reference_id: str | None}]",
               "warnings": "list[{code: str, message: str, index: int | None, reference_id: str | None}]",
-              "removals": "list[{index: int, reference_id: str, prefab_name: str | None, display_name: str | None, position: Vec3, build_state: int, kind: str, refund: list[{prefab_name: str | None, quantity: int}]}]",
+              "removals": "list[{index: int, reference_id: str, prefab_name: str | None, display_name: str | None, position: Vec3, build_state: int, kind: str, refund: list[{prefab_name: str | None, quantity: int}] | None}]",
               "refund": "list[{prefab_name: str | None, quantity: int}]",
               "refund_to": "Any",
               "refund_plan": "RefundPlan | None",

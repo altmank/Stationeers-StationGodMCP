@@ -116,17 +116,19 @@ internal static class HealthReader
 }
 
 /// <summary>
-/// What a damage scan keeps: damage ratio above minDamageRatio, only broken things, only structures, and within metres
-/// of the player.
+/// What a damage scan keeps: damage ratio above minDamageRatio, only broken things, only structures, within metres
+/// of the player, and inside an area (a sphere around another near point).
 /// </summary>
 internal sealed class HealthScanFilter
 {
-    internal HealthScanFilter(double minDamageRatio, bool structuresOnly, bool brokenOnly, double? nearPlayerM)
+    internal HealthScanFilter(double minDamageRatio, bool structuresOnly, bool brokenOnly, double? nearPlayerM,
+        PointArea? area = null)
     {
         MinDamageRatio = minDamageRatio;
         StructuresOnly = structuresOnly;
         BrokenOnly = brokenOnly;
         NearPlayerM = nearPlayerM;
+        Area = area ?? PointArea.Anywhere;
     }
 
     public double MinDamageRatio { get; }
@@ -136,6 +138,8 @@ internal sealed class HealthScanFilter
     public bool BrokenOnly { get; }
 
     public double? NearPlayerM { get; }
+
+    public PointArea Area { get; }
 }
 
 /// <summary>
@@ -261,8 +265,10 @@ internal sealed class HealthScanner
         }
 
         // A stored item or planted plant keeps no position of its own: its outermost holder places it.
-        double? distance = origin.ExactDistanceTo(HolderChain.PlaceOf(thing).Position);
-        if (scan.NearPlayerM.HasValue && !(distance <= scan.NearPlayerM.Value))
+        Vector3 place = HolderChain.PlaceOf(thing).Position;
+        double? distance = origin.ExactDistanceTo(place);
+        if ((scan.NearPlayerM.HasValue && !(distance <= scan.NearPlayerM.Value)) ||
+            !scan.Area.Contains(new Vec3(place.x, place.y, place.z)))
         {
             return null;
         }

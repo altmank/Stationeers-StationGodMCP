@@ -556,7 +556,7 @@
           "x-script": "same"
         },
         "structures_only": {"schema": {"type": "boolean"}, "description": "Leave items out.", "default": "false", "x-script": "same"},
-        "near": {"use": "near", "description": "\"player\" only."},
+        "near": {"use": "near", "description": "With radius: only things this close to a point [x, y, z], \"player\", \"looking_at\" or a thing's id."},
         "radius": {"use": "radius"},
         "limit": {"use": "limit", "schema": {"type": "integer", "minimum": 1, "maximum": 500}, "default": "8"},
         "offset": {"use": "offset"},

@@ -15,7 +15,7 @@ namespace StationGodMCP.Verbs;
 
 /// <summary>
 /// find damaged (catalogue find.json): every damaged or broken thing in the world (HealthScanner), broken first, then
-/// worst first, kept by min_damage (a ratio below 1), broken_only, structures_only and near "player" with radius, paged,
+/// worst first, kept by min_damage (a ratio below 1), broken_only, structures_only and near with radius, paged,
 /// with the scan's counts (structures, broken, scanned); with the wire cursor a walk (ThingListPage), whose later pages
 /// read each thing's damage again and answer the first page's scan counts. A thing's
 /// networks are read only when the call's fields keep things' networks. Read only.
@@ -41,7 +41,17 @@ internal static class FindDamaged
                 id => Thing.Find(id) is { IsBeingDestroyed: false } thing ? HealthReader.Read(thing, now, withNetworks) : null, (page, cursorId, counts) => Reply(page, cursorId, counts ?? DamageCounts.None, minimum, now));
         }
 
-        List<OptionProblem> problems = selector.PlayerRadiusProblems();
+        List<OptionProblem> problems = new List<OptionProblem>();
+        if (selector.Near != null && selector.Radius == null)
+        {
+            problems.Add(new OptionProblem("near", "needs radius, in metres"));
+        }
+
+        if (selector.Radius != null && selector.Near == null)
+        {
+            problems.Add(new OptionProblem("radius", "needs near"));
+        }
+
         if (minimum >= 1.0)
         {
             problems.Add(new OptionProblem("min_damage", "is a damage ratio, below 1"));
@@ -52,9 +62,10 @@ internal static class FindDamaged
             return new VerbOutcome.Refused(OptionProblem.Refusal(FindDamagedOptions.Spec.Label, problems));
         }
 
-        PlayerOrigin origin = PlayerOrigin.Current().RequireIf(selector.AroundPlayerM.HasValue);
+        SelectorPlace place = NearCentres.Place(selector, FindDamagedOptions.Spec.Label);
+        PlayerOrigin origin = PlayerOrigin.Current().RequireIf(place.AroundPlayerM.HasValue);
         HealthScanner scanner = new HealthScanner(new HealthScanFilter(minimum, options.StructuresOnly == true,
-            options.BrokenOnly == true, selector.AroundPlayerM), origin);
+            options.BrokenOnly == true, place.AroundPlayerM, place.Area), origin);
         return ThingListPage<HealthView, DamageCounts>.Scan(walk, paging, new ScanBuild(scanner.Scan, scanner.WorstFirst),
             () => new DamageCounts(scanner.Structures, scanner.Broken, scanner.Scanned),
             id => scanner.Listed(id) is { IsBeingDestroyed: false } thing
