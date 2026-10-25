@@ -488,6 +488,15 @@
           "description": "How far x-ray reaches, metres (120 unless given).",
           "x-script": "same"
         },
+        "xray_opacity": {
+          "schema": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "description": "With Lattice 0.11: the hidden part's own opacity, 0 to 1; left out, the fill's.",
+          "x-script": "same"
+        },
         "markers": {
           "schema": {
             "type": [
@@ -531,7 +540,7 @@
             },
             "maxItems": 256
           },
-          "description": "Ghost ids to restyle in place: look, xray, markers, style, tint, label; unnamed settings kept.",
+          "description": "Ghost ids to restyle in place: the look options, tint and label given; the rest kept.",
           "x-script": "same"
         },
         "clear": {

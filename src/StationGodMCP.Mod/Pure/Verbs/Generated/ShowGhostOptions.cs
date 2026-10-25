@@ -31,6 +31,7 @@ internal sealed class ShowGhostOptions
         new OptionSpec("xray", "{\"type\":\"boolean\"}"),
         new OptionSpec("xray_strength", "{\"type\":\"number\",\"minimum\":0,\"maximum\":1}"),
         new OptionSpec("xray_range", "{\"type\":\"number\",\"exclusiveMinimum\":0,\"maximum\":1000}"),
+        new OptionSpec("xray_opacity", "{\"type\":\"number\",\"minimum\":0,\"maximum\":1}"),
         new OptionSpec("markers", "{\"type\":[\"boolean\",\"object\"]}"),
         new OptionSpec("style", "{\"type\":\"object\"}"),
         new OptionSpec("run", "{\"type\":\"object\"}"),
@@ -75,6 +76,8 @@ internal sealed class ShowGhostOptions
 
     internal double? XrayRange { get; private set; }
 
+    internal double? XrayOpacity { get; private set; }
+
     internal JToken? Markers { get; private set; }
 
     internal JToken? Style { get; private set; }
@@ -109,6 +112,7 @@ internal sealed class ShowGhostOptions
         Xray = options.Flag("xray"),
         XrayStrength = options.Number("xray_strength"),
         XrayRange = options.Number("xray_range"),
+        XrayOpacity = options.Number("xray_opacity"),
         Markers = options.Raw("markers"),
         Style = options.Raw("style"),
         Run = options.Raw("run"),

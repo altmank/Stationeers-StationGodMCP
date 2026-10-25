@@ -30,6 +30,9 @@ internal sealed partial class LatticeIn
 
     internal List<string> Problems { get; } = new List<string>();
 
+    /// <summary>The running contract's minor: what a value may use (SeeThroughLook.Through.Opacity from 0.11).</summary>
+    internal int Minor => _system.Version.Minor;
+
     internal bool Failed => Problems.Count > 0;
 
     internal void Problem(string path, string text) => Problems.Add($"{path}: {text}");

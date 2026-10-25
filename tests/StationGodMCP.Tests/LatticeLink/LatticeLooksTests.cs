@@ -138,6 +138,26 @@ public sealed class LatticeLooksTests
         Assert.Equal(Source(look, L.StyleProperty.Edge), Source(Story(system, second), L.StyleProperty.Edge));
     }
 
+    // Lattice 0.11: the hidden part's own opacity, so a no-fill look (quiet) still shows through at the strength asked.
+    [Fact]
+    public void XRayOpacityGoesOnTheSeeThrough()
+    {
+        using TestWorld world = Start();
+        L.IGhostSystem system = world.System;
+        Assert.True(system.Styles.Add(LatticeLooks.Layer).TryGet(out L.IStyleLayer _));
+
+        L.GhostId ghost = Place(world, LatticeNames.Agent, LatticeNames.AgentMaker, new Vec3(1, 1, 1),
+            Look(new GhostLookChange("quiet", null, null, null, null, null, 0.9)));
+        Assert.True(world.Settle().TryGet(out int _));
+
+        L.SeeThroughLook.Through through = Assert.IsType<L.SeeThroughLook.Through>(
+            Story(system, ghost).Resolved.SeeThrough.Reduce(new L.SeeThroughLook.None()));
+        Assert.Equal(0.9f, through.Opacity.Reduce(default(L.Fraction)).Value, 3);
+        Assert.Equal(1f, through.Strength.Value);
+        Assert.Equal(0.9, GhostLook.Decode(Look(new GhostLookChange("quiet", null, null, null, null, null, 0.9)).Encoded())
+            .Report()["xray_opacity"]!.Value<double>());
+    }
+
     [Fact]
     public void XRayStrengthWithXRayOffIsRefusedNotIgnored()
     {

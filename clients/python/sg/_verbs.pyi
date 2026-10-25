@@ -440,9 +440,9 @@ def find(what: Literal['ghost'], *,
           euler: Vec3}, ports: list[{index: int, at: Vec3, toward: str, type: str, role: str, network_id: str | None}] | None, layout: {port_checks:
           list[{index: int, at: Vec3, toward: str, type: str, role: str, flow: str | None, occupant: Thing | None, joins: bool, would_join_network:
           str | None, blocked: str | None, in_door_keep_out: bool}]} | None, look: {look: str, xray: bool, xray_strength: float | None, xray_range:
-          float | None, markers: {ports: bool, open_ends: bool, flow: bool, waits: bool}, problem: bool, style: Any | None} | None, drawn: {style:
-          Any, sources: Any} | None, check: {verdict: str, why: str | None, waits_for: list[int] | None} | None, build_arguments: {what: str, prefab:
-          str, at: list[float], rotation: list[float], build_state: int}}]
+          float | None, xray_opacity: float | None, markers: {ports: bool, open_ends: bool, flow: bool, waits: bool}, problem: bool, style: Any |
+          None} | None, drawn: {style: Any, sources: Any} | None, check: {verdict: str, why: str | None, waits_for: list[int] | None} | None,
+          build_arguments: {what: str, prefab: str, at: list[float], rotation: list[float], build_state: int}}]
       count: int
       total: int
       offset: int
@@ -3827,11 +3827,12 @@ def show(what: Literal['ghost'], *,
     xray: bool = None,  # Shows through walls, frames and terrain; on unless false.
     xray_strength: float = None,  # X-ray strength, 0 to 1 (1 unless given).
     xray_range: float = None,  # How far x-ray reaches, metres (120 unless given).
+    xray_opacity: float = None,  # With Lattice 0.11: the hidden part's own opacity, 0 to 1; left out, the fill's.
     markers: bool | dict = None,  # Ports, open ends, flow arrows, waits links: true, false or {ports, open_ends, flow, waits}; shown but on quiet.
     style: dict = None,  # Lattice style properties on top (help topic lattice); {} clears.
     run: dict = None,  # A cable, pipe or chute run to put on the board: build cable, pipe or chute's options with what ({what: "pipe", grade, waypoints, branches, pieces, ...}), planned as build plans it (elbows, tees); each new piece becomes a ghost.
     remove: list = None,  # Ghost ids to take off the board (find ghost lists them).
-    restyle: list = None,  # Ghost ids to restyle in place: look, xray, markers, style, tint, label; unnamed settings kept.
+    restyle: list = None,  # Ghost ids to restyle in place: the look options, tint and label given; the rest kept.
     clear: Literal['agent', 'all'] = None,  # Take off every ghost agents placed, or every ghost.
     allow: list[Literal['door_keepout']] = None,  # Guards to lift, by name.
 ) -> dict:

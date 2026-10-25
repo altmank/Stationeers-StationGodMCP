@@ -17,11 +17,12 @@ Options:
 - xray (boolean): Shows through walls, frames and terrain; on unless false.
 - xray_strength (number): X-ray strength, 0 to 1 (1 unless given).
 - xray_range (number): How far x-ray reaches, metres (120 unless given).
+- xray_opacity (number): With Lattice 0.11: the hidden part's own opacity, 0 to 1; left out, the fill's.
 - markers (boolean or object): Ports, open ends, flow arrows, waits links: true, false or {ports, open_ends, flow, waits}; shown but on quiet.
 - style (object): Lattice style properties on top (help topic lattice); {} clears.
 - run (object): A cable, pipe or chute run to put on the board: build cable, pipe or chute's options with what ({what: "pipe", grade, waypoints, branches, pieces, ...}), planned as build plans it (elbows, tees); each new piece becomes a ghost.
 - remove (list): Ghost ids to take off the board (find ghost lists them).
-- restyle (list): Ghost ids to restyle in place: look, xray, markers, style, tint, label; unnamed settings kept.
+- restyle (list): Ghost ids to restyle in place: the look options, tint and label given; the rest kept.
 - clear (agent | all): Take off every ghost agents placed, or every ghost.
 - allow (list of door_keepout): Guards to lift, by name.
 A ghost lasts until it is taken off or a structure of its prefab is built where it stands, kept with the save; players see it, move around it, take it off (RemoveGhostKey) and place their own (ghost mode, the ghost menu). The placements are planned as build structure plans them (nothing built, materials not checked) and each goes on the board where the plan put it, problems or not; the reply's plan says why one would not build, and gives each placement's position, orientation, and a device's ports and layout.port_checks as build structure's report does (no build call needed to plan runs to them). find ghost lists the board. With Lattice installed the ghosts are Lattice's: the agent's go into a Lattice plan of their own (StationGod agent), Lattice saves and syncs them and Loom shows them; board says which.

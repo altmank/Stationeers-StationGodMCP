@@ -12,7 +12,7 @@ namespace StationGodMCP.Pure;
 /// <summary>
 /// How an agent's ghost looks in Lattice's drawing beyond its tint: a preset (plan, the default; solid; wire; pulse;
 /// quiet: no markers), x-ray (see-through walls, frames and terrain: on by default at full strength out to 120 m, its
-/// strength and range the caller's), each marker on or off (ports, open ends, flow arrows, waits links; all shown but
+/// strength, range and, with Lattice 0.11, the hidden part's own opacity the caller's), each marker on or off (ports, open ends, flow arrows, waits links; all shown but
 /// on quiet), whether its plan had problems (a red pulse), and any Lattice style on top (style, the whole Lattice
 /// Style as JSON). Kept on the ghost as one attachment (Encoded), so every StationGod viewer draws it so; StationGod's
 /// own board drawing shows tint and see-through only. Options never combine silently: x-ray strength or range with
@@ -35,18 +35,19 @@ internal sealed class GhostLook
 
     internal const double MaximumRange = 1000.0;
 
-    internal static readonly GhostLook Plain = new GhostLook(Plan, true, DefaultStrength, DefaultRange,
+    internal static readonly GhostLook Plain = new GhostLook(Plan, true, DefaultStrength, DefaultRange, null,
         new Dictionary<string, bool>(), false, null);
 
     private readonly Dictionary<string, bool> _markers;
 
-    private GhostLook(string preset, bool xray, double strength, double range, Dictionary<string, bool> markers,
-        bool problem, JObject? style)
+    private GhostLook(string preset, bool xray, double strength, double range, double? opacity,
+        Dictionary<string, bool> markers, bool problem, JObject? style)
     {
         Preset = preset;
         XRay = xray;
         Strength = strength;
         Range = range;
+        Opacity = opacity;
         _markers = markers;
         Problem = problem;
         Style = style;
@@ -64,6 +65,9 @@ internal sealed class GhostLook
     /// <summary>How far x-ray reaches, in metres.</summary>
     internal double Range { get; }
 
+    /// <summary>The hidden part's own opacity, 0 to 1 (Lattice 0.11); null draws it from the fill as Lattice does.</summary>
+    internal double? Opacity { get; }
+
     /// <summary>Its plan had problems (it would not build as placed): drawn with a red pulse.</summary>
     internal bool Problem { get; }
 
@@ -75,7 +79,8 @@ internal sealed class GhostLook
 
     internal bool IsPlain => Encoded() == null;
 
-    internal GhostLook WithProblem(bool problem) => new GhostLook(Preset, XRay, Strength, Range, _markers, problem, Style);
+    internal GhostLook WithProblem(bool problem) => new GhostLook(Preset, XRay, Strength, Range, Opacity, _markers, problem,
+        Style);
 
     /// <summary>A preset by name, any case; null for a name that is none.</summary>
     internal static string? PresetOf(string? given)
@@ -106,10 +111,17 @@ internal sealed class GhostLook
         }
 
         bool xray = change.XRay ?? XRay;
-        if (change.XRay == false && (change.Strength != null || change.Range != null))
+        if (change.XRay == false && (change.Strength != null || change.Range != null || change.Opacity != null))
         {
-            problems.Add(new OptionProblem(change.Strength != null ? "xray_strength" : "xray_range",
+            problems.Add(new OptionProblem(
+                change.Strength != null ? "xray_strength" : change.Range != null ? "xray_range" : "xray_opacity",
                 "sets x-ray, which xray false turns off: leave one out"));
+        }
+
+        double? opacity = change.Opacity ?? Opacity;
+        if (change.Opacity is { } o && (double.IsNaN(o) || o < 0 || o > 1))
+        {
+            problems.Add(new OptionProblem("xray_opacity", "is from 0 to 1"));
         }
 
         double strength = change.Strength ?? Strength;
@@ -152,7 +164,8 @@ internal sealed class GhostLook
         }
 
         return problems.Count == before
-            ? new GhostLook(preset, xray, Math.Round(strength, 2), Math.Round(range, 1), markers, Problem, style)
+            ? new GhostLook(preset, xray, Math.Round(strength, 2), Math.Round(range, 1),
+                opacity is { } own ? Math.Round(own, 2) : (double?)null, markers, Problem, style)
             : null;
     }
 
@@ -209,9 +222,15 @@ internal sealed class GhostLook
         {
             encoded["xray"] = false;
         }
-        else if (Strength != DefaultStrength || Range != DefaultRange)
+        else if (Strength != DefaultStrength || Range != DefaultRange || Opacity != null)
         {
-            encoded["xray"] = new JObject { ["strength"] = Strength, ["range"] = Range };
+            JObject xray = new JObject { ["strength"] = Strength, ["range"] = Range };
+            if (Opacity is { } opacity)
+            {
+                xray["opacity"] = opacity;
+            }
+
+            encoded["xray"] = xray;
         }
 
         JObject markers = new JObject();
@@ -263,6 +282,7 @@ internal sealed class GhostLook
         bool xray = read["xray"]?.Type != JTokenType.Boolean || (bool)read["xray"]!;
         double strength = read["xray"] is JObject x && x["strength"] is JValue sv ? (double)sv : DefaultStrength;
         double range = read["xray"] is JObject y && y["range"] is JValue rv ? (double)rv : DefaultRange;
+        double? opacity = read["xray"] is JObject z && z["opacity"] is JValue ov ? (double)ov : (double?)null;
         Dictionary<string, bool> markers = new Dictionary<string, bool>(StringComparer.Ordinal);
         if (read["markers"] is JObject listed)
         {
@@ -275,14 +295,14 @@ internal sealed class GhostLook
             }
         }
 
-        return new GhostLook(preset, xray, strength, range, markers, read["problem"]?.Type == JTokenType.Boolean &&
+        return new GhostLook(preset, xray, strength, range, opacity, markers, read["problem"]?.Type == JTokenType.Boolean &&
             (bool)read["problem"]!, read["style"] as JObject);
     }
 
     /// <summary>The look of a ghost placed before 2.12 (attachments look, xray "off" and plan "problem").</summary>
     internal static GhostLook Legacy(string? preset, bool xrayOff, bool problem) =>
-        new GhostLook(PresetOf(preset) ?? Plan, !xrayOff, DefaultStrength, DefaultRange, new Dictionary<string, bool>(),
-            problem, null);
+        new GhostLook(PresetOf(preset) ?? Plan, !xrayOff, DefaultStrength, DefaultRange, null,
+            new Dictionary<string, bool>(), problem, null);
 
     /// <summary>The look as find ghost reports it: every setting, defaults included.</summary>
     internal JObject Report()
@@ -302,6 +322,7 @@ internal sealed class GhostLook
         {
             report["xray_strength"] = Strength;
             report["xray_range"] = Range;
+            report["xray_opacity"] = Opacity;
         }
 
         report["markers"] = markers;
@@ -336,8 +357,10 @@ internal sealed class GhostLook
 /// <summary>What a call asks of a ghost's look: each null when not given.</summary>
 internal sealed class GhostLookChange
 {
-    internal GhostLookChange(string? look, bool? xray, double? strength, double? range, JToken? markers, JToken? style)
+    internal GhostLookChange(string? look, bool? xray, double? strength, double? range, JToken? markers, JToken? style,
+        double? opacity = null)
     {
+        Opacity = opacity;
         Look = look;
         XRay = xray;
         Strength = strength;
@@ -354,9 +377,12 @@ internal sealed class GhostLookChange
 
     internal double? Range { get; }
 
+    internal double? Opacity { get; }
+
     internal JToken? Markers { get; }
 
     internal JToken? Style { get; }
 
-    internal bool Any => Look != null || XRay != null || Strength != null || Range != null || Markers != null || Style != null;
+    internal bool Any => Look != null || XRay != null || Strength != null || Range != null || Opacity != null || Markers != null ||
+                         Style != null;
 }

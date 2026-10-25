@@ -117,7 +117,7 @@ public sealed class LatticeJsonTests
         JObject given = JObject.Parse("""
             {"fill": "wire", "fill_paint": [0.0, 1.0, 0.0, 1.0], "edge": {"line": {"style": "dashed", "width": 2.0, "paint": "fail"}},
              "pattern": "cross_hatch", "glow": {"lit": {"paint": "owner", "strength": 0.5}},
-             "effect": {"blink": {"period": 1.0, "duty": 0.25}}, "see_through": {"through": {"strength": 1.0, "range": 200.0}},
+             "effect": {"blink": {"period": 1.0, "duty": 0.25}}, "see_through": {"through": {"strength": 1.0, "range": 200.0, "opacity": 0.75}},
              "beyond_clip": {"dim": 0.5}, "distance_fade": [10.0, 40.0], "label": {"shown": {"says": {"literal": "here"}, "anchor": "below"}},
              "icon": "swap", "open_ends": false, "ports": true, "flow_arrows": true, "waits_links": false, "pickable": false}
             """);

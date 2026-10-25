@@ -2,7 +2,7 @@
 
 ## 2.12.0
 
-LU: support everything Lattice offers, not only build ghosts (Lattice 0.10.5); and the Workspace's ghost entries of
+LU: support everything Lattice offers, not only build ghosts (Lattice 0.11); and the Workspace's ghost entries of
 2026-10-25 (version skew, restyle in place, x-ray strength and markers):
 
 - **find lattice, write lattice, show lattice: Lattice's whole contract as JSON** (help topic lattice). find lattice
@@ -22,7 +22,8 @@ LU: support everything Lattice offers, not only build ghosts (Lattice 0.10.5); a
   strength, range, markers, problem, style), and `explain` gives the style Lattice resolved and which layer set each
   property.
 - **X-ray and markers are the caller's.** show ghost `xray_strength` (0 to 1, default 1) and `xray_range` (metres,
-  default 120: the strongest Lattice draws today; was 0.5 and 60), `markers` (ports, open ends, flow arrows, waits
+  default 120; was 0.5 and 60), `xray_opacity` (Lattice 0.11: the hidden part's own opacity, so a no-fill look
+  still shows through), `markers` (ports, open ends, flow arrows, waits
   links: each on or off), and `style` (any Lattice style property on top). quiet now only hides the markers: x-ray
   works with every look. An option that would be dropped is refused (x-ray strength with x-ray off, look options with
   nothing placed or restyled).
