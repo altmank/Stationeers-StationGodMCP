@@ -18,8 +18,8 @@ public sealed class LatticeWorldCollection
 }
 
 /// <summary>
-/// StationGod's look through Lattice's own style cascade (Lattice.Testing, nothing drawn): its ghosts fill with their
-/// tint, the agent's are hatched as well, a player's are not, and the edge stays Lattice's.
+/// StationGod's look through Lattice's own style cascade (Lattice.Testing, nothing drawn): the agent's ghosts glow, a
+/// player's do not, and fill, pattern and edge stay the library's.
 /// </summary>
 [Collection(LatticeWorldCollection.Name)]
 public sealed class LatticeLooksTests
@@ -27,7 +27,7 @@ public sealed class LatticeLooksTests
     private static readonly Rgba Orange = new Rgba(1f, 0.6f, 0.2f, 0.4f);
 
     [Fact]
-    public void AgentGhostsTakeTheirTintAndAHatch()
+    public void AgentGhostsGlowAndKeepTheLibrarysFillPatternAndEdge()
     {
         using TestWorld world = Start();
         L.IGhostSystem system = world.System;
@@ -39,14 +39,15 @@ public sealed class LatticeLooksTests
 
         L.StyleStory agentLook = Story(system, agent);
         L.StyleStory playerLook = Story(system, player);
+        L.StyleSource ours = new L.StyleSource.Layer(L.StyleBand.Meaning, LatticeLooks.Id, 0);
+        Assert.Equal(ours, Source(agentLook, L.StyleProperty.Glow));
+        Assert.NotEqual(ours, Source(playerLook, L.StyleProperty.Glow));
+        foreach (L.StyleProperty library in new[] { L.StyleProperty.FillPaint, L.StyleProperty.Pattern, L.StyleProperty.Edge })
+        {
+            Assert.IsNotType<L.StyleSource.Layer>(Source(agentLook, library));
+        }
+
         Assert.Equal(L.Option.Some<L.Paint>(new L.Paint.GhostTint(L.LibraryPalette.Planned)), agentLook.Resolved.FillPaint);
-        Assert.Equal(L.Option.Some<L.Paint>(new L.Paint.GhostTint(L.LibraryPalette.Planned)), playerLook.Resolved.FillPaint);
-        Assert.Equal(L.Option.Some(L.Pattern.Hatch), agentLook.Resolved.Pattern);
-        Assert.NotEqual(L.Option.Some(L.Pattern.Hatch), playerLook.Resolved.Pattern);
-        Assert.True(agentLook.Sources.TryGetValue(L.StyleProperty.FillPaint, out L.StyleSource fill));
-        Assert.Equal(new L.StyleSource.Layer(L.StyleBand.Meaning, LatticeLooks.Id, 0), fill);
-        Assert.True(agentLook.Sources.TryGetValue(L.StyleProperty.Edge, out L.StyleSource edge));
-        Assert.IsNotType<L.StyleSource.Layer>(edge);
     }
 
     [Fact]
@@ -73,6 +74,9 @@ public sealed class LatticeLooksTests
         L.Outcome.Applied applied = Assert.IsType<L.Outcome.Applied>(answered.Outcome);
         return Assert.Single(applied.Changes.Added).Id;
     }
+
+    private static L.StyleSource Source(L.StyleStory story, L.StyleProperty property) =>
+        story.Sources.TryGetValue(property, out L.StyleSource source) ? source : new L.StyleSource.Default();
 
     private static L.StyleStory Story(L.IGhostSystem system, L.GhostId ghost) =>
         system.Styles.Explain(ghost).Match(static story => story,

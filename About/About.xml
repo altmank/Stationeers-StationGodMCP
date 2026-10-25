@@ -70,7 +70,7 @@ Developed with the use of generative AI, and tokens aren't free. Buy me a coffee
   </Description>
   <ChangeLog>
 v2.10.3
-- Under Lattice's drawing, ghosts keep their tint; the agent's are hatched.
+- Under Lattice's drawing, the agent's ghosts glow violet.
 
 v2.10.2
 - Shorter script and removal reports; breach, suit and survey fixes.

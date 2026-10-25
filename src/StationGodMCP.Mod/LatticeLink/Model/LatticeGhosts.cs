@@ -218,32 +218,34 @@ internal static class LatticeGhosts
 }
 
 /// <summary>
-/// StationGod's look in Lattice's drawing (Meaning band, so a viewer's theme still wins): its ghosts fill with their
-/// own tint (the agent's or the player's [Ghosts] colour; Lattice's default fill ignores tints), and the agent's are
-/// hatched, so a player tells them from their own. Edges stay Lattice's: they carry the findings.
+/// StationGod's look in Lattice's drawing (Meaning band, so a viewer's theme still wins): the agent's ghosts glow in
+/// StationGod's agent colour, a token a theme can recolour. Fill (the ghost's tint), patterns (fails, removes, warns)
+/// and edges (findings, the owner's colour) stay the library's: patterns mean something there.
 /// </summary>
 internal static class LatticeLooks
 {
     internal static readonly L.StyleLayerId Id = LatticeNames.Must(L.StyleLayerId.Create(LatticeNames.Mod, "look"));
 
+    internal static readonly L.PaletteKey AgentColour = LatticeNames.Must(L.PaletteKey.Create(LatticeNames.Mod, "agent"));
+
+    internal static readonly L.Rgba Violet = new L.Rgba(170, 110, 255, 255);
+
     internal static L.StyleLayerDescriptor Layer
     {
         get
         {
-            L.StyleMatch ours = new L.StyleMatch.Picks(new L.Selector.Any(L.ValueList.From(new L.Selector[]
-            {
-                new L.Selector.MadeBy(LatticeNames.AgentMaker), new L.Selector.MadeBy(LatticeNames.PlayerMaker),
-                new L.Selector.MadeBy(LatticeNames.MovedMaker),
-            })));
             L.StyleMatch agents = new L.StyleMatch.Picks(new L.Selector.Owner(LatticeNames.Agent));
-            return new L.StyleLayerDescriptor(Id, L.StyleBand.Meaning, 0, L.ValueList.From(new[]
+            L.Style glow = new L.Style
             {
-                new L.StyleRule(ours, new L.Style
-                {
-                    FillPaint = L.Option.Some<L.Paint>(new L.Paint.GhostTint(L.LibraryPalette.Planned)),
-                }),
-                new L.StyleRule(agents, new L.Style { Pattern = L.Option.Some(L.Pattern.Hatch) }),
-            }));
+                Glow = L.Option.Some<L.GlowLook>(new L.GlowLook.Lit(new L.Paint.Token(AgentColour),
+                    LatticeNames.Must(L.Fraction.Create(0.35f)))),
+            };
+            return new L.StyleLayerDescriptor(Id, L.StyleBand.Meaning, 0, L.ValueList.Of(new L.StyleRule(agents, glow)))
+            {
+                Palette = L.Option.Some(new L.Palette(
+                    LatticeNames.Must(L.PaletteId.Create(LatticeNames.Mod, "look")),
+                    L.ValueMap<L.PaletteKey, L.Rgba>.Empty.With(AgentColour, Violet))),
+            };
         }
     }
 }

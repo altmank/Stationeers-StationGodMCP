@@ -5,9 +5,9 @@
 For Lattice's renderer (package 63):
 
 - **StationGod's look in Lattice's drawing.** A style layer `stationgod/look` in the Meaning band (a viewer's theme still
-  wins): StationGod's ghosts fill with their own tint (the agent's choice or the player's [Ghosts] colour), which
-  Lattice's default look ignores, and the agent's ghosts are hatched so a player tells them from their own. Edges stay
-  Lattice's: they show the findings. Added once per world; a refusal is logged once and ghosts keep Lattice's look.
+  wins): the agent's ghosts glow in StationGod's agent colour (violet, palette token `stationgod/agent`). Fill (the
+  ghost's tint), patterns (Lattice's library means fails, removes and warns by them) and edges (findings, the owner's
+  colour) stay Lattice's. Added once per world; a refusal is logged once and ghosts keep Lattice's look.
 - Tests run the layer through Lattice's own style cascade (Lattice.Testing, test project only).
 
 ## 2.10.2
