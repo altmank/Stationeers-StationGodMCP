@@ -113,9 +113,16 @@ internal static class PreviewScreen
             label: order.LabelOf(placement.Index));
     }
 
-    // The plan in short (verbose has build structure's whole report): ready, the problems and warnings, and where
-    // each placement went.
-    private static PreviewPlanView Brief(PlacePlan plan)
+    // The plan in short (verbose has build structure's whole report): ready, the problems and warnings, and each
+    // placement's spot.
+    private static PreviewPlanView Brief(PlacePlan plan) =>
+        new PreviewPlanView(plan.Ready, plan.Problems, plan.Warnings, Spots(plan));
+
+    /// <summary>
+    /// Where each placement went, as build structure's report says it: position, orientation, build state, and a
+    /// device's ports with the layout's port checks, so planning ports needs no build call. show ghost's plan too.
+    /// </summary>
+    internal static List<PreviewPlacementView> Spots(PlacePlan plan)
     {
         List<PreviewPlacementView> placements = new List<PreviewPlacementView>(plan.Placements.Count);
         foreach (PlannedPlacement placement in plan.Placements)
@@ -123,10 +130,11 @@ internal static class PreviewScreen
             placements.Add(new PreviewPlacementView(placement.Index,
                 placement.Prefab != null ? placement.Prefab.PrefabName : placement.Args.Prefab.ToString(),
                 placement.Position.HasValue ? GameLookup.ViewOf(placement.Position.Value) : null,
-                placement.Turn != null ? OrientationView.Of(placement.Turn) : null, placement.State));
+                placement.Turn != null ? OrientationView.Of(placement.Turn) : null, placement.State,
+                placement.Ports, placement.Layout?.View.PortChecks));
         }
 
-        return new PreviewPlanView(plan.Ready, plan.Problems, plan.Warnings, placements);
+        return placements;
     }
 
     // A run's new and changed pieces: each one's cell as a box (red where no piece could be chosen), and each piece's

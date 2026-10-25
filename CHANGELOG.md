@@ -1,5 +1,20 @@
 # Changelog
 
+## 2.10.4
+
+From the Workspace agent's 2026-10-25 note (LU's Venus world: two Active Vents built on the roof by "check" builds in a
+confirmed script, both undone):
+
+- **show ghost, show preview and find ghost give ports.** Each placement in show ghost's plan and show preview's brief
+  plan, and each ghost find ghost lists, carries its orientation, a device's `ports` (index, at, toward, type, role) and
+  `layout.port_checks` (what stands in each joining cell now, whether it joins), at build structure's key paths, so
+  planning runs to a ghost needs no build call. Other ghosts are not seen in those cells.
+- **build structure `check_only`.** Only the report, never a build: confirm is ignored, and in a confirmed run_script
+  the gate reports it (its rows are REPORTED rows) instead of acting.
+- **StationGod's ghosts show through walls under Lattice's drawing** (LU: board ghosts x-ray by default), the agent's
+  and ghost mode's alike, as StationGod's own board drawing already did: the `stationgod/look` layer sets SeeThrough
+  (half strength, 60 m).
+
 ## 2.10.3
 
 For Lattice's renderer (package 63):

@@ -560,7 +560,7 @@ public sealed class VerbCatalogueTests
     private static readonly HashSet<string> NotTargets = new(StringComparer.Ordinal)
     {
         // run and reply shaping
-        "confirm", "queue", "max_wait", "include", "verbose", "rows", "action", "csv", "slow_frame_ms", "lines",
+        "confirm", "check_only", "queue", "max_wait", "include", "verbose", "rows", "action", "csv", "slow_frame_ms", "lines",
         "interval_s", "capacity",
         // guards, consent and routing
         "allow", "acknowledge_gas_lost", "allow_bridge", "assume_removed", "gateway", "skip_unmatched", "free", "force",

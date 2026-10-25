@@ -48,8 +48,10 @@ internal sealed partial class Run
 
                 entry = Open(call, what, targets, context, WriteGroup.Cleanup);
             }
-            else if (!Record.Confirm)
+            else if (!Record.Confirm || CheckOnly(call))
             {
+                // check_only: a report even in a confirmed run, so a script can read a build's ports and layout
+                // beside the writes it confirms (LIVE 2026-10-25: two vents built as port "checks").
                 return new WriteDecision.Report();
             }
             else if (Untargeted(what) is { } fix)
@@ -79,6 +81,9 @@ internal sealed partial class Run
         _journal.Before(Record, entry!);
         return new WriteDecision.Act();
     }
+
+    // A call that asks only for the report (build structure's check_only), whatever the run's confirm.
+    private static bool CheckOnly(VerbCall call) => JsonNodes.IsTrue(call.Args["check_only"]);
 
     // Under Sync: a write-rule stop is the run's stop from the moment it is decided, so a write on another thread of the
     // run that the gate decides next meets the stop rule, not the route.

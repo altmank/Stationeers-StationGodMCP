@@ -398,6 +398,26 @@ public sealed class RunRouteTests
         Assert.Contains(bench.World.Log, entry => entry == "build.structure");
     }
 
+    // check_only in a confirmed run: the build is asked for its report and never acts (LIVE 2026-10-25: two Active Vents
+    // built on LU's roof by "check" builds in a confirmed script), and its rows are the run's REPORTED rows.
+    [PythonFact]
+    public async Task ACheckOnlyBuildInAConfirmedRunOnlyReports()
+    {
+        await using RunBench bench = new();
+        bench.World.Override = call => RunWorld.KeyOf(call) == "build.structure"
+            ? FakeGameLink.Ok("""{"ready":true,"problems":[],"report_only":true,"placements":[{"index":0,"ports":[{"index":0,"at":{"x":1,"y":2,"z":3.5},"toward":"-z","type":"Pipe","role":"Input","network_id":null}]}],"targets":[{"cell":[1,2,3],"text":"[[1, 2, 3], StructureVolumePump, null -> StructureVolumePump] [undo]","undo":"[undo]"}]}""")
+            : null;
+
+        string text = await bench.RunAsync(
+            "r = sg.build('structure', prefab='StructureVolumePump', at=[1, 2, 3], check_only=True)\n" +
+            "print('port', r['placements'][0]['ports'][0]['toward'])\n", confirm: true);
+
+        Assert.Contains("port -z", text);
+        Assert.Contains("REPORTED", text);
+        Assert.Contains(bench.World.Log, entry => entry == "report:build.structure");
+        Assert.DoesNotContain(bench.World.Log, entry => entry == "build.structure");
+    }
+
     [PythonFact]
     public async Task AFinishedRunsPrintedIdsAreSeen()
     {

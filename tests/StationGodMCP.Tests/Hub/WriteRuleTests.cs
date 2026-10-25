@@ -47,6 +47,16 @@ public sealed class WriteRuleTests
     }
 
     [Fact]
+    public void CheckOnlyReportsEvenWithConfirm()
+    {
+        DirectWriteGate gate = new(VerbCatalogue.Embedded);
+        WhatEntry build = VerbExampleTests.WhatOf("build.structure");
+        JsonObject options = Options("""{"prefab":"StructureVolumePump","at":[1,2,3],"check_only":true,"confirm":true}""");
+
+        Assert.IsType<WriteDecision.Report>(gate.Decide(Call(build, options), WriteTargetPaths.Resolve(build, options)));
+    }
+
+    [Fact]
     public void RefsSpreadsCheatsAndConfirmFalseReport()
     {
         DirectWriteGate gate = new(VerbCatalogue.Embedded);

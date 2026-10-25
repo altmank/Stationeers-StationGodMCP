@@ -574,6 +574,15 @@ internal static class PlacementLayout
 
     private static int Along(GridCell cell, int axis) => axis == 0 ? cell.X : axis == 1 ? cell.Y : cell.Z;
 
+    /// <summary>
+    /// The port checks of a device standing at a point in a turn, as the layout preview makes them (what stands in each
+    /// port's joining cell and whether it joins), for a thing that is planned but not placed (a ghost); null for network
+    /// pieces and things without ends.
+    /// </summary>
+    internal static List<PortCheckView>? PortChecksAt(Structure prefab, Vector3 position, Quaternion rotation) =>
+        PortChecks(prefab, position, rotation, new HashSet<GridCell>(Bodies.SmallCells(prefab, position, rotation)),
+            AreaSurvey.Facts(), new HashSet<long>());
+
     private static List<PortCheckView>? PortChecks(Structure prefab, Vector3 position, Quaternion rotation,
         HashSet<GridCell> own, GridFacts facts, HashSet<long> ignore)
     {

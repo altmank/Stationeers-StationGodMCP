@@ -72,7 +72,7 @@ internal sealed class StructureBuildOrder
     /// <summary>include notes (the what's fixed explanations) and verbose, as the call gives them.</summary>
     public Fields Fields { get; private set; } = Fields.None;
 
-    /// <summary>confirm: whether this call acts, and how many rows a report lists.</summary>
+    /// <summary>confirm: whether this call acts (never with check_only), and how many rows a report lists.</summary>
     public ReportConfirm Report { get; private set; } = ReportConfirm.Acting;
 
     /// <summary>queue: start behind a job already running, instead of answering busy while one is.</summary>
@@ -93,7 +93,7 @@ internal sealed class StructureBuildOrder
         order.Free = options.Free ?? false;
         order.Fields = options.Fields;
         order.FootprintCells = options.Fields.Includes("footprint_cells");
-        order.Report = options.Report;
+        order.Report = options.CheckOnly == true ? options.Report.ReportOnly() : options.Report;
         order.Queue = options.Queue ?? true;
         order.AcknowledgeGasLost = options.AcknowledgeGasLost;
         order.AllowDoorKeepOut = Allow.Lifts(options.Allow, "door_keepout");

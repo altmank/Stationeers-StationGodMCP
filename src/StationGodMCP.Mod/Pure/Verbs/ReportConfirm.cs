@@ -50,4 +50,9 @@ internal sealed class ReportConfirm
 
     /// <summary>True when the call acts; false when it only reports (left out or an explicit false).</summary>
     internal bool Acts => !TakesConfirm || Confirm;
+
+    /// <summary>
+    /// The same decision as a report the call asked for, whatever its confirm said: a check_only call never acts.
+    /// </summary>
+    internal ReportConfirm ReportOnly() => new ReportConfirm(takesConfirm: true, confirm: false, asked: true, Rows);
 }

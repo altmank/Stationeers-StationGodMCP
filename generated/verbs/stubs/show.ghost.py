@@ -18,15 +18,19 @@ def show(what: Literal['ghost'], *,
     allow: list[Literal['door_keepout']] = None,  # Guards to lift, by name.
 ) -> dict:
     """Put planned structures on the world's ghost board, where every player sees them until they are built or taken off; or take ghosts off.
-    A ghost lasts until it is taken off or a structure of its prefab is built where it stands, kept with the save; players see it, move around it, take it off (RemoveGhostKey) and place their own (ghost mode, the ghost menu). The placements are planned as build structure plans them (nothing built, materials not checked) and each goes on the board where the plan put it, problems or not; the reply's plan says why one would not build. find ghost lists the board. With Lattice installed the ghosts are Lattice's: the agent's go into a Lattice plan of their own (StationGod agent), Lattice saves and syncs them and Loom shows them; board says which.
+    A ghost lasts until it is taken off or a structure of its prefab is built where it stands, kept with the save; players see it, move around it, take it off (RemoveGhostKey) and place their own (ghost mode, the ghost menu). The placements are planned as build structure plans them (nothing built, materials not checked) and each goes on the board where the plan put it, problems or not; the reply's plan says why one would not build, and gives each placement's position, orientation, and a device's ports and layout.port_checks as build structure's report does (no build call needed to plan runs to them). find ghost lists the board. With Lattice installed the ghosts are Lattice's: the agent's go into a Lattice plan of their own (StationGod agent), Lattice saves and syncs them and Loom shows them; board says which.
     Reply:
       placed: list[{id: int, prefab_name: str, position: Vec3}]
       removed: list[int]
       total: int
       board: str
       plan: {ready: bool, problems: list[{code: str, message: str, index: int | None, reference_id: str | None}], warnings: list[{code: str, message:
-          str, index: int | None, reference_id: str | None}]} | None
+          str, index: int | None, reference_id: str | None}], placements: list[{index: int, prefab_name: str | None, position: Vec3 | None,
+          orientation: {facing: str | None, up: str | None, euler: Vec3} | None, build_state: int | None, ports: list[{index: int, at: Vec3, toward:
+          str, type: str, role: str, network_id: str | None}] | None, layout: {port_checks: list[{index: int, at: Vec3, toward: str, type: str, role:
+          str, flow: str | None, occupant: Thing | None, joins: bool, would_join_network: str | None, blocked: str | None, in_door_keep_out: bool}]} |
+          None}]} | None
       notes: list[str]
-    Types: Vec3 = {x: float, y: float, z: float}
+    Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}; Vec3 = {x: float, y: float, z: float}
     Example: sg.show('ghost', prefab='StructureVolumePump', at=[716, 203, 668], facing='+x', tint='orange', label='second pump')
     """

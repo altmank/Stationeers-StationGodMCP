@@ -1003,13 +1003,15 @@ internal sealed class PreviewPlanView
 internal sealed class PreviewPlacementView
 {
     internal PreviewPlacementView(int index, string? prefabName, PositionView? position, OrientationView? orientation,
-        int? buildState)
+        int? buildState, List<SurveyPortView>? ports, List<PortCheckView>? portChecks)
     {
         Index = index;
         PrefabName = prefabName;
         Position = position;
         Orientation = orientation;
         BuildState = buildState;
+        Ports = ports;
+        Layout = portChecks != null ? new PortChecksView(portChecks) : null;
     }
 
     public int Index { get; }
@@ -1021,6 +1023,28 @@ internal sealed class PreviewPlacementView
     public OrientationView? Orientation { get; }
 
     public int? BuildState { get; }
+
+    /// <summary>A device's cable, pipe and chute ports where it would stand, as build structure's report has them.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<SurveyPortView>? Ports { get; }
+
+    /// <summary>The layout's port_checks, at build structure's key path (layout.port_checks).</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public PortChecksView? Layout { get; }
+}
+
+/// <summary>
+/// Of a placement's layout, the port checks alone: what stands in each port's joining cell, and whether it joins.
+/// Planned ghosts are not seen in those cells: only what stands in the world.
+/// </summary>
+internal sealed class PortChecksView
+{
+    internal PortChecksView(List<PortCheckView> portChecks)
+    {
+        PortChecks = portChecks;
+    }
+
+    public List<PortCheckView> PortChecks { get; }
 }
 
 /// <summary>

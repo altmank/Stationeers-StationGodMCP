@@ -19,7 +19,7 @@ public sealed class LatticeWorldCollection
 
 /// <summary>
 /// StationGod's look through Lattice's own style cascade (Lattice.Testing, nothing drawn): the agent's ghosts glow, a
-/// player's do not, and fill, pattern and edge stay the library's.
+/// player's do not, both show through walls, and fill, pattern and edge stay the library's.
 /// </summary>
 [Collection(LatticeWorldCollection.Name)]
 public sealed class LatticeLooksTests
@@ -27,7 +27,7 @@ public sealed class LatticeLooksTests
     private static readonly Rgba Orange = new Rgba(1f, 0.6f, 0.2f, 0.4f);
 
     [Fact]
-    public void AgentGhostsGlowAndKeepTheLibrarysFillPatternAndEdge()
+    public void AgentGhostsGlowAllShowThroughAndTheLibraryKeepsFillPatternAndEdge()
     {
         using TestWorld world = Start();
         L.IGhostSystem system = world.System;
@@ -42,6 +42,10 @@ public sealed class LatticeLooksTests
         L.StyleSource ours = new L.StyleSource.Layer(L.StyleBand.Meaning, LatticeLooks.Id, 0);
         Assert.Equal(ours, Source(agentLook, L.StyleProperty.Glow));
         Assert.NotEqual(ours, Source(playerLook, L.StyleProperty.Glow));
+        L.StyleSource seeThrough = new L.StyleSource.Layer(L.StyleBand.Meaning, LatticeLooks.Id, 1);
+        Assert.Equal(seeThrough, Source(agentLook, L.StyleProperty.SeeThrough));
+        Assert.Equal(seeThrough, Source(playerLook, L.StyleProperty.SeeThrough));
+        Assert.IsType<L.SeeThroughLook.Through>(playerLook.Resolved.SeeThrough.Reduce(new L.SeeThroughLook.None()));
         foreach (L.StyleProperty library in new[] { L.StyleProperty.FillPaint, L.StyleProperty.Pattern, L.StyleProperty.Edge })
         {
             Assert.IsNotType<L.StyleSource.Layer>(Source(agentLook, library));

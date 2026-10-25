@@ -14,7 +14,8 @@ namespace StationGodMCP.Api.Views;
 /// <summary>One ghost of the board, as find ghost lists it, with the build structure options that build it.</summary>
 internal sealed class GhostView
 {
-    internal GhostView(BoardGhost ghost, string? displayName, double? distance, GhostCheckView? check = null)
+    internal GhostView(BoardGhost ghost, string? displayName, double? distance, GhostSpotView spot,
+        GhostCheckView? check = null)
     {
         Id = ghost.Id;
         PrefabName = ghost.PrefabName;
@@ -33,6 +34,9 @@ internal sealed class GhostView
         PlacedAt = DateTimeOffset.FromUnixTimeMilliseconds((long)(ghost.PlacedAt * 1000.0)).UtcDateTime
             .ToString("yyyy-MM-ddTHH:mm:ssZ", System.Globalization.CultureInfo.InvariantCulture);
         DistanceM = distance.HasValue ? Math.Round(distance.Value, 1) : (double?)null;
+        Orientation = spot.Orientation;
+        Ports = spot.Ports;
+        Layout = spot.PortChecks != null ? new PortChecksView(spot.PortChecks) : null;
         Check = check;
         BuildArguments = GhostFilter.BuildArguments(ghost);
     }
@@ -62,11 +66,39 @@ internal sealed class GhostView
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public double? DistanceM { get; }
 
+    /// <summary>Its turn as facing and up (euler only for a turn off the grid's quarter turns).</summary>
+    public OrientationView Orientation { get; }
+
+    /// <summary>A device's cable, pipe and chute ports where the ghost stands, as build structure's report has them.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<SurveyPortView>? Ports { get; }
+
+    /// <summary>What stands in each port's joining cell now (layout.port_checks, as build structure's report).</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public PortChecksView? Layout { get; }
+
     /// <summary>Lattice's validation of the ghost, when find ghost was asked to check.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public GhostCheckView? Check { get; }
 
     public JObject BuildArguments { get; }
+}
+
+/// <summary>Where a ghost's piece would stand: its orientation, and a device's ports and their checks.</summary>
+internal sealed class GhostSpotView
+{
+    internal GhostSpotView(OrientationView orientation, List<SurveyPortView>? ports, List<PortCheckView>? portChecks)
+    {
+        Orientation = orientation;
+        Ports = ports;
+        PortChecks = portChecks;
+    }
+
+    internal OrientationView Orientation { get; }
+
+    internal List<SurveyPortView>? Ports { get; }
+
+    internal List<PortCheckView>? PortChecks { get; }
 }
 
 /// <summary>
@@ -106,14 +138,19 @@ internal sealed class PlacedGhostView
     public PositionView Position { get; }
 }
 
-/// <summary>show ghost's plan in short: ready, and the problems and warnings of the placements.</summary>
+/// <summary>
+/// show ghost's plan in short: ready, the problems and warnings, and each placement's spot (as show preview's brief
+/// plan: position, orientation, a device's ports and port checks).
+/// </summary>
 internal sealed class GhostPlanView
 {
-    internal GhostPlanView(bool ready, List<BuildIssueView> problems, List<BuildIssueView> warnings)
+    internal GhostPlanView(bool ready, List<BuildIssueView> problems, List<BuildIssueView> warnings,
+        List<PreviewPlacementView> placements)
     {
         Ready = ready;
         Problems = problems;
         Warnings = warnings;
+        Placements = placements;
     }
 
     public bool Ready { get; }
@@ -121,6 +158,8 @@ internal sealed class GhostPlanView
     public List<BuildIssueView> Problems { get; }
 
     public List<BuildIssueView> Warnings { get; }
+
+    public List<PreviewPlacementView> Placements { get; }
 }
 
 /// <summary>show ghost: the ghosts it placed, the ids it took off, the board's size after, the plan, notes.</summary>

@@ -98,6 +98,12 @@
           "use": "from_plan",
           "x-script": "A plan route or plan spot reply (p = sg.plan('route', ...)), or one spot (p['spots'][2]): build its build_arguments. With from_plan, what may be left out: sg.build(from_plan=p)."
         },
+        "check_only": {
+          "schema": {"type": "boolean"},
+          "description": "Report only, never builds, even confirmed or in a confirmed run.",
+          "default": "false",
+          "x-script": "same"
+        },
         "confirm": {"use": "confirm"},
         "queue": {"use": "queue"},
         "max_wait": {"use": "max_wait"}
@@ -316,7 +322,7 @@
           {"path": "root", "role": "acts-on"}
         ]
       },
-      "brief": "a cable run or pieces"
+      "brief": "a run or pieces"
     },
     "pipe": {
       "summary": "a pipe run or pieces from the grade's kit, with the pipe guards and a gas check",
@@ -492,7 +498,7 @@
           {"path": "root", "role": "acts-on"}
         ]
       },
-      "brief": "a pipe run or pieces"
+      "brief": "a run or pieces"
     },
     "chute": {
       "summary": "a chute run or pieces from Kit (Chute), source to sink, with flow guards",
@@ -667,7 +673,7 @@
           {"path": "root", "role": "acts-on"}
         ]
       },
-      "brief": "a chute run or pieces"
+      "brief": "a run or pieces"
     },
     "blueprint": {
       "summary": "paste a BlueprintMod blueprint at an anchor and turn, skipping placement checks",
@@ -828,7 +834,7 @@
         "x-undo-mark": "[cannot undo: terrain fill]",
         "x-target": [{"path": "box", "role": "spread"}]
       },
-      "brief": "fill or level a box of terrain"
+      "brief": "fill or level terrain"
     },
     "item": {
       "summary": "make items out of nothing (chips, boards, kits, ingots): by prefab and quantity, into a holder's slots or on the ground at a point",
@@ -955,7 +961,7 @@
         "x-undo-mark": "[cannot undo: change job]",
         "x-target": [{"path": "id", "role": "acts-on"}, {"path": "materials", "role": "pays-from"}]
       },
-      "brief": "a placed structure on to a later build state"
+      "brief": "a placed structure to a later state"
     }
   },
   "reply_top": {"placed": "list[str]"}
