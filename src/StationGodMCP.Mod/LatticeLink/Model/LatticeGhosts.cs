@@ -217,6 +217,37 @@ internal static class LatticeGhosts
     private static int Key(double metres) => (int)Math.Round(metres * 10.0, MidpointRounding.AwayFromZero);
 }
 
+/// <summary>
+/// StationGod's look in Lattice's drawing (Meaning band, so a viewer's theme still wins): its ghosts fill with their
+/// own tint (the agent's or the player's [Ghosts] colour; Lattice's default fill ignores tints), and the agent's are
+/// hatched, so a player tells them from their own. Edges stay Lattice's: they carry the findings.
+/// </summary>
+internal static class LatticeLooks
+{
+    internal static readonly L.StyleLayerId Id = LatticeNames.Must(L.StyleLayerId.Create(LatticeNames.Mod, "look"));
+
+    internal static L.StyleLayerDescriptor Layer
+    {
+        get
+        {
+            L.StyleMatch ours = new L.StyleMatch.Picks(new L.Selector.Any(L.ValueList.From(new L.Selector[]
+            {
+                new L.Selector.MadeBy(LatticeNames.AgentMaker), new L.Selector.MadeBy(LatticeNames.PlayerMaker),
+                new L.Selector.MadeBy(LatticeNames.MovedMaker),
+            })));
+            L.StyleMatch agents = new L.StyleMatch.Picks(new L.Selector.Owner(LatticeNames.Agent));
+            return new L.StyleLayerDescriptor(Id, L.StyleBand.Meaning, 0, L.ValueList.From(new[]
+            {
+                new L.StyleRule(ours, new L.Style
+                {
+                    FillPaint = L.Option.Some<L.Paint>(new L.Paint.GhostTint(L.LibraryPalette.Planned)),
+                }),
+                new L.StyleRule(agents, new L.Style { Pattern = L.Option.Some(L.Pattern.Hatch) }),
+            }));
+        }
+    }
+}
+
 /// <summary>What Lattice's validation says about one ghost, as find ghost's check reports it.</summary>
 internal sealed class GhostCheck
 {

@@ -34,10 +34,14 @@
   <PropertyGroup>
     <LatticeApiDir Condition="'$(LatticeApiDir)' == '' And '$(LATTICE_API_DIR)' != ''">$(LATTICE_API_DIR)</LatticeApiDir>
     <LatticeApiDir Condition="'$(LatticeApiDir)' == ''">$(MSBuildThisFileDirectory)..\..\..\Lattice\artifacts\Release\Lattice</LatticeApiDir>
+    <!-- Lattice's test host (its real Core, no Unity), beside the contract in the same build: test project only. -->
+    <LatticeTestingDir Condition="'$(LatticeTestingDir)' == ''">$(LatticeApiDir)\..\Lattice.Testing</LatticeTestingDir>
   </PropertyGroup>
 
   <ItemGroup>
-    <Reference Include="Lattice.Api" HintPath="$(LatticeApiDir)\Lattice.Api.dll" />
+    <Reference Include="Lattice.Api" HintPath="$(LatticeTestingDir)\Lattice.Api.dll" Private="true" />
+    <Reference Include="Lattice.Testing" HintPath="$(LatticeTestingDir)\Lattice.Testing.dll" Private="true" />
+    <None Include="$(LatticeTestingDir)\Lattice.Core.dll;$(LatticeTestingDir)\Lattice.TestKit.dll" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

@@ -224,6 +224,11 @@ internal static class LatticeBoard
             _heard = system;
             system.Events.Changed += OnChanged;
             system.Events.BoardReset += OnBoardReset;
+            if (system.Styles.Add(LatticeLooks.Layer).TryGetError(out L.Reason why))
+            {
+                OnceLog.Warning("lattice_look", $"Lattice refused StationGod's ghost look ({LatticeText.Of(why)}): " +
+                                                "its ghosts draw in Lattice's default look.");
+            }
         }
 
         Draws = false;
