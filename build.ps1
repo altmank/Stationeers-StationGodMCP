@@ -59,13 +59,22 @@ $changeLength = $about.ModMetadata.ChangeLog.Length
 if ($changeLength -ge 8000) { throw "About.xml ChangeLog is $changeLength characters; the limit is under 8000." }
 
 # Lattice's contract (Lattice.Api.dll) is referenced, never shipped: LATTICE_API_DIR, else the Lattice repo's build
-# beside this one (Lattice's build.ps1 makes it).
+# beside this one (Lattice's build.ps1 makes it). A worktree elsewhere (the deploy queue's under %TEMP%) looks beside
+# the repo it belongs to.
 $latticeDir = if ($env:LATTICE_API_DIR) { $env:LATTICE_API_DIR } else {
     Join-Path (Split-Path -Parent $root) 'Lattice\artifacts\Release\Lattice'
+}
+if (-not $env:LATTICE_API_DIR -and -not (Test-Path (Join-Path $latticeDir 'Lattice.Api.dll'))) {
+    $common = & git -C $root rev-parse --path-format=absolute --git-common-dir 2>$null
+    if ($common) {
+        $latticeDir = Join-Path (Split-Path -Parent (Split-Path -Parent $common)) 'Lattice\artifacts\Release\Lattice'
+    }
 }
 if (-not (Test-Path (Join-Path $latticeDir 'Lattice.Api.dll'))) {
     throw "No Lattice.Api.dll in $latticeDir. Build Lattice (its build.ps1) or set LATTICE_API_DIR."
 }
+# The projects read the same folder.
+$env:LATTICE_API_DIR = $latticeDir
 
 # Every test, the verb catalogue's checks (VerbCatalogueTests) included: a verb, what or option that skips a rule, a
 # generated/verbs or mod option file that is not current, or any failing test stops the build before anything is staged.
