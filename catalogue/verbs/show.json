@@ -153,7 +153,7 @@
       "options": {
         "targets": {
           "schema": {"type": "array", "items": {"type": "object"}, "maxItems": 64},
-          "description": "Up to 64, each one of {id (one or a list), network, at} with color, label, pulse.",
+          "description": "Up to 64, each one of {id (one or a list), network, at, ghost (a ghost id: a beacon there; with Lattice the ghost lit too)} with color, label, pulse.",
           "x-script": "same"
         },
         "seconds": {

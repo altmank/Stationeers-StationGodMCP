@@ -246,6 +246,16 @@ internal static class LatticeLooks
 
     internal static readonly L.Rgba Violet = new L.Rgba(170, 110, 255, 255);
 
+    /// <summary>show highlight's "look here" on a ghost: Lattice's selection glow, pulsing, shown through walls.</summary>
+    internal static L.Style LookHere => new L.Style
+    {
+        Glow = L.Option.Some<L.GlowLook>(new L.GlowLook.Lit(new L.Paint.Token(L.LibraryPalette.Select),
+            LatticeNames.Must(L.Fraction.Create(0.9f)))),
+        Effect = Pulse(0.6f, 0.4f),
+        SeeThrough = L.Option.Some<L.SeeThroughLook>(new L.SeeThroughLook.Through(
+            LatticeNames.Must(L.Fraction.Create(0.8f)), LatticeNames.Must(L.Metres.Create(200f)))),
+    };
+
     /// <summary>The look's marks on a ghost's attachments: the preset (not plan), xray off, a plan with problems.</summary>
     internal static L.ValueMap<L.AttachmentKey, L.Attachment> Marks(GhostLook look,
         L.ValueMap<L.AttachmentKey, L.Attachment> attached)

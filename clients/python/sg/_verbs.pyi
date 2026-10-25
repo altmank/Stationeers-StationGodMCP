@@ -3747,7 +3747,7 @@ def show(what: Literal['preview'], *,
 @overload
 def show(what: Literal['highlight'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
-    targets: list = None,  # Up to 64, each one of {id (one or a list), network, at} with color, label, pulse.
+    targets: list = None,  # Up to 64, each one of {id (one or a list), network, at, ghost (a ghost id: a beacon there; with Lattice the ghost lit too)} with color, label, pulse.
     seconds: float = 60,  # How long.
     keep: bool = False,  # Keep what earlier calls drew.
     clear: bool = None,  # Only remove what is drawn.

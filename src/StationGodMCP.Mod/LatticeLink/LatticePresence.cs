@@ -84,6 +84,14 @@ internal static class LatticePresence
         List<string> refused, List<string> notes, IReadOnlyList<GhostLook>? looks = null) =>
         LatticeBoard.Place(placements, source, client, refused, notes, looks);
 
+    /// <summary>LatticeBoard.Highlight; only while Running. Null when lit, else why not.</summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    internal static string? Highlight(List<long> ids, double seconds) => LatticeBoard.Highlight(ids, seconds);
+
+    /// <summary>LatticeBoard.EndHighlights; only while Running.</summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    internal static void EndHighlights() => LatticeBoard.EndHighlights();
+
     /// <summary>LatticeBoard.Remove; only while Running.</summary>
     [MethodImpl(MethodImplOptions.NoInlining)]
     internal static List<long> Remove(IEnumerable<long> ids, GhostSource source, ulong? client, List<string> refused) =>

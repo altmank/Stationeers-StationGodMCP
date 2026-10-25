@@ -26,6 +26,20 @@ public sealed class HighlightOrderTests
 
     private static HighlightOrder Drawn(string json) => Order(json, new List<OptionProblem>())!;
 
+    // "look here" on a planned ghost: its id from find ghost (a beacon there; with Lattice the ghost itself lit).
+    [Fact]
+    public void AGhostTargetIsReadByItsIdAndABadOneIsRefused()
+    {
+        HighlightOrder order = Drawn("""{"targets": [{"ghost": 42, "label": "this pump", "pulse": true}]}""");
+        List<OptionProblem> problems = new List<OptionProblem>();
+
+        HighlightTarget.Ghost ghost = Assert.IsType<HighlightTarget.Ghost>(Assert.Single(order.Request!.Targets));
+        Assert.Equal((42L, "this pump", true), (ghost.Id, ghost.Label, ghost.Pulse));
+        Assert.Null(Order("""{"targets": [{"ghost": "pump"}]}""", problems));
+        Assert.Contains(problems, problem => problem.Path == "targets[0].ghost");
+        Assert.Null(Order("""{"targets": [{"ghost": 42, "at": [0, 0, 0]}]}""", problems));
+    }
+
     [Fact]
     public void EveryTargetFormIsReadWithThePaletteInTurn()
     {
@@ -88,7 +102,7 @@ public sealed class HighlightOrderTests
 
         OptionProblem problem = Assert.Single(problems);
         Assert.Equal("targets[0]", problem.Path);
-        Assert.Equal("takes exactly one of id, network, at", problem.Problem);
+        Assert.Equal("takes exactly one of id, network, at, ghost", problem.Problem);
     }
 
     [Theory]

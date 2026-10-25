@@ -1,6 +1,6 @@
 Show the player where things, a network or far points are, tinted and labelled.
 Options:
-- targets (list): Up to 64, each one of {id (one or a list), network, at} with color, label, pulse.
+- targets (list): Up to 64, each one of {id (one or a list), network, at, ghost (a ghost id: a beacon there; with Lattice the ghost lit too)} with color, label, pulse.
 - seconds (number, default 60): How long.
 - keep (boolean, default false): Keep what earlier calls drew.
 - clear (boolean): Only remove what is drawn.

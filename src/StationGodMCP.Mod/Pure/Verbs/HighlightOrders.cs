@@ -33,10 +33,10 @@ internal sealed class HighlightOrder
     internal const double MaximumSeconds = 600.0;
 
     /// <summary>The three ways a target names what to highlight; a target takes exactly one of them.</summary>
-    private static readonly string[] Forms = { "id", "network", "at" };
+    private static readonly string[] Forms = { "id", "network", "at", "ghost" };
 
     /// <summary>The keys a target takes, as an unknown key is answered with the nearest of them.</summary>
-    private static readonly string[] Keys = { "id", "network", "at", "color", "label", "pulse" };
+    private static readonly string[] Keys = { "id", "network", "at", "ghost", "color", "label", "pulse" };
 
     /// <summary>The options clear only removes what is drawn against.</summary>
     private static readonly string[] WithClear = { "targets", "seconds", "keep" };
@@ -134,6 +134,7 @@ internal sealed class HighlightOrder
         bool isNetwork = false;
         Vec3 at = default;
         bool isAt = false;
+        long? ghost = null;
         (Tint Tint, string Name)? colour = null;
         bool coloured = false;
         string? label = null;
@@ -167,6 +168,18 @@ internal sealed class HighlightOrder
                     if (isAt)
                     {
                         at = new Vec3(point.X, point.Y, point.Z);
+                    }
+
+                    break;
+                case "ghost":
+                    forms++;
+                    if (key.Value.Type == JTokenType.Integer && (long)key.Value > 0)
+                    {
+                        ghost = (long)key.Value;
+                    }
+                    else
+                    {
+                        problems.Add(new OptionProblem(path + ".ghost", "is a ghost id (find ghost lists them)"));
                     }
 
                     break;
@@ -215,6 +228,11 @@ internal sealed class HighlightOrder
         if (isNetwork)
         {
             return new HighlightTarget.Network(network, tint, name, label, pulse);
+        }
+
+        if (ghost.HasValue)
+        {
+            return new HighlightTarget.Ghost(ghost.Value, tint, name, label, pulse);
         }
 
         // The one form given that could not be read is no target: its problem is listed.

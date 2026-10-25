@@ -7,6 +7,7 @@ using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Electrical;
 using Assets.Scripts.Objects.Pipes;
 using StationGodMCP.Api.Views;
+using StationGodMCP.LatticeLink;
 using StationGodMCP.Pure;
 using UnityEngine;
 
@@ -32,6 +33,11 @@ internal static class HighlightScreen
     {
         ShowAudience audience = ShowAudience.ToClear();
         int cleared = audience.Each(static screen => screen.ClearHighlights());
+        if (LatticePresence.Running)
+        {
+            LatticePresence.EndHighlights();
+        }
+
         audience.Notes.Insert(0, "Cleared.");
         return new HighlightView(new List<HighlightTargetView>(), cleared, 0.0, audience.Renderer, audience.Notes,
             audience.DrawnOn, audience.Source);
@@ -51,6 +57,7 @@ internal static class HighlightScreen
         }
 
         List<string> notes = audience.Notes;
+        LightGhosts(request, notes);
         int cleared = audience.Each(screen => screen.Highlight(!request.Keep, marks, request.Seconds, notes));
         return new HighlightView(views, cleared, request.Seconds, audience.Renderer, notes, audience.DrawnOn,
             audience.Source);
@@ -64,6 +71,14 @@ internal static class HighlightScreen
             case HighlightTarget.Point point:
                 marks.Add(new ScreenMark(point, new List<Thing>()));
                 return HighlightTargetView.OfPoint(index, point, eye.HasValue ? Heading.From(eye.Value, point.At) : null);
+            case HighlightTarget.Ghost ghost:
+                BoardGhost standing = GhostBoardStore.Board.Find(ghost.Id) ?? throw ApiErrors.Refused("ghost_not_found",
+                    $"targets[{index}].ghost: no ghost {ghost.Id} on the board (find ghost lists them).");
+                HighlightTarget.Point beacon = new HighlightTarget.Point(standing.Position, ghost.Tint, ghost.ColorName,
+                    ghost.Label ?? $"ghost {ghost.Id} ({standing.PrefabName})", ghost.Pulse);
+                marks.Add(new ScreenMark(beacon, new List<Thing>()));
+                return HighlightTargetView.OfPoint(index, beacon,
+                    eye.HasValue ? Heading.From(eye.Value, beacon.At) : null);
             case HighlightTarget.Network network:
                 List<Thing> pieces = NetworkPieces(network.Id, $"targets[{index}].network", out ThingId resolved,
                     out bool truncated);
@@ -90,6 +105,35 @@ internal static class HighlightScreen
                     Nearest(eye, found), false);
             default:
                 throw new System.InvalidOperationException("Unknown highlight target.");
+        }
+    }
+
+    // With Lattice, the ghost targets themselves are lit for the call's seconds (Lattice's timed highlight), beside the
+    // beacons every screen draws; a new call without keep ends the last call's.
+    private static void LightGhosts(HighlightRequest request, List<string> notes)
+    {
+        if (!LatticePresence.Running)
+        {
+            return;
+        }
+
+        if (!request.Keep)
+        {
+            LatticePresence.EndHighlights();
+        }
+
+        List<long> ids = new List<long>();
+        foreach (HighlightTarget target in request.Targets)
+        {
+            if (target is HighlightTarget.Ghost ghost)
+            {
+                ids.Add(ghost.Id);
+            }
+        }
+
+        if (ids.Count > 0 && LatticePresence.Highlight(ids, request.Seconds) is { } refused)
+        {
+            notes.Add($"Lattice did not light the ghosts: {refused}; their beacons show where they are.");
         }
     }
 

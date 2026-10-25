@@ -41,6 +41,51 @@ internal static class LatticeBoard
 
     internal static bool IsAttached => _system != null;
 
+    // show highlight's lit ghosts, ended by the next call without keep or by clear.
+    private static readonly List<System.IDisposable> Lit = new List<System.IDisposable>();
+
+    /// <summary>Lights the ghosts for the seconds in Lattice's highlight band; null when lit, else Lattice's reason.</summary>
+    internal static string? Highlight(List<long> ids, double seconds)
+    {
+        if (_system is not { } system)
+        {
+            return "Lattice runs no world";
+        }
+
+        List<L.GhostId> which = new List<L.GhostId>(ids.Count);
+        foreach (long id in ids)
+        {
+            which.Add(new L.GhostId(id));
+        }
+
+        L.Result<L.Duration, L.Reason> duration = L.Duration.Create((float)System.Math.Max(seconds, 0.1));
+        if (!duration.TryGet(out L.Duration lasting))
+        {
+            return "the seconds are not a duration";
+        }
+
+        L.Result<System.IDisposable, L.Reason> lit = system.Styles.Highlight(new L.HighlightRequest(
+            new L.HighlightTargets.Ghosts(L.ValueList.From(which)), LatticeLooks.LookHere, lasting));
+        if (lit.TryGet(out System.IDisposable handle))
+        {
+            Lit.Add(handle);
+            return null;
+        }
+
+        return lit.TryGetError(out L.Reason why) ? LatticeText.Of(why) : "refused";
+    }
+
+    /// <summary>Ends every highlight show highlight lit.</summary>
+    internal static void EndHighlights()
+    {
+        foreach (System.IDisposable handle in Lit)
+        {
+            handle.Dispose();
+        }
+
+        Lit.Clear();
+    }
+
     /// <summary>Whether Lattice draws its ghosts itself (its render module runs): StationGod then only picks them.</summary>
     internal static bool Draws { get; private set; }
 

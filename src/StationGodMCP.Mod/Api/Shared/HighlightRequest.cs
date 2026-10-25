@@ -81,6 +81,18 @@ internal abstract class HighlightTarget
 
         internal Vec3 At { get; }
     }
+
+    /// <summary>A board ghost (find ghost's id): a beacon where it stands, and with Lattice the ghost itself lit.</summary>
+    internal sealed class Ghost : HighlightTarget
+    {
+        internal Ghost(long id, Tint tint, string colorName, string? label, bool pulse)
+            : base(tint, colorName, label, pulse)
+        {
+            Id = id;
+        }
+
+        internal long Id { get; }
+    }
 }
 
 /// <summary>
