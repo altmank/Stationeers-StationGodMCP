@@ -166,6 +166,7 @@ internal static class RoutePlanning
             yield break;
         }
 
+        TurnIntoPorts(tree, starts, end);
         ReleasedNote(openings, tree, notes);
         string? blocked = BlockedCell(NewCells(tree, facts), kind, mask, ignore);
         if (blocked != null)
@@ -511,6 +512,24 @@ internal static class RoutePlanning
 
     // The route's own end cells in a door's keep-out, which the search did not block: only those on or beside the
     // route, since an end network's cells far from it say nothing about this route.
+    // Ends at a port no built device holds yet ({at, toward}, {ghost, port}): the piece in that cell is given its end
+    // into the port, so the run's last piece turns into it (an elbow, not a straight with its far end open).
+    private static void TurnIntoPorts(RouteTree tree, List<RouteEndpoint> starts, RouteEndpoint? end)
+    {
+        foreach (RouteEndpoint start in starts)
+        {
+            if (start.TurnedEnd(tree) is { } turned)
+            {
+                tree.AddExtra(turned);
+            }
+        }
+
+        if (end?.TurnedEnd(tree) is { } last)
+        {
+            tree.AddExtra(last);
+        }
+    }
+
     private static void ReleasedNote(OpeningGuard openings, RouteTree tree, List<string> notes)
     {
         List<GridCell> released = openings.ReleasedInKeepOutBeside(tree.Cells);

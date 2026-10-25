@@ -1,8 +1,8 @@
 A cable, pipe or chute route between ends, ports or networks, reported as build would report it; answers build_arguments.
 Options:
 - kind (cable | pipe | chute, required): The run's kind.
-- start (object or array): (route) {at}, {id} of a piece, {id, port} or {id, ports: [...]} of a device, or a list.
-- end (object): (route) One end: {at}, {id} of a piece, {id, port} of a device, or {network}.
+- start (object or array): (route) {at} (toward: the way its port points), {id} of a piece, {id, port} or {id, ports: [...]} of a device, {ghost, port} of a board ghost, or a list.
+- end (object): (route) One end: {at} (toward), {id} of a piece, {id, port} of a device, {ghost, port}, or {network}.
 - reroute (object): {id: [...]} or {between: [end, end]}: replace an old run; leave out start and end.
 - trunk (object): Bus mode instead of end: {waypoints} or {cells} every start branches from.
 - grade (normal | heavy | super_heavy | gas | liquid | insulated_gas | insulated_liquid | chute): cable: normal, heavy (default), super_heavy; pipe (required): gas, liquid, insulated_gas, insulated_liquid; chute: chute.

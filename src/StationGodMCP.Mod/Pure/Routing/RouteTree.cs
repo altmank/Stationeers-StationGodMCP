@@ -13,17 +13,29 @@ namespace StationGodMCP.Pure;
 /// </summary>
 internal sealed class RouteEndpoint
 {
-    internal RouteEndpoint(List<RouteEnd> ends, List<long> networks, GridStep? intoDevice = null)
+    internal RouteEndpoint(List<RouteEnd> ends, List<long> networks, GridStep? intoDevice = null,
+        bool turnsInto = false)
     {
         Ends = ends;
         Networks = networks;
         IntoDevice = intoDevice;
+        TurnsInto = turnsInto && intoDevice.HasValue;
     }
 
-    internal RouteEndpoint(RouteEnd end, List<long> networks, GridStep? intoDevice = null)
-        : this(new List<RouteEnd> { end }, networks, intoDevice)
+    internal RouteEndpoint(RouteEnd end, List<long> networks, GridStep? intoDevice = null, bool turnsInto = false)
+        : this(new List<RouteEnd> { end }, networks, intoDevice, turnsInto)
     {
     }
+
+    /// <summary>
+    /// A port no built device holds yet ({at, toward}, or a ghost's): the end piece is given an end along IntoDevice
+    /// itself, where a built device's port would make the join.
+    /// </summary>
+    internal bool TurnsInto { get; }
+
+    /// <summary>The end the run's piece in this endpoint's cell is given when it turns into a port no device holds yet.</summary>
+    internal ExtraEnd? TurnedEnd(RouteTree tree) =>
+        TurnsInto && tree.Contains(End.Cell) ? new ExtraEnd(End.Cell, IntoDevice!.Value) : null;
 
     internal List<RouteEnd> Ends { get; }
 

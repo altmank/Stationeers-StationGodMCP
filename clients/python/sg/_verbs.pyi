@@ -1826,8 +1826,8 @@ def write(what: Literal['script'], *,
 def plan(what: Literal['route'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
     kind: Literal['cable', 'pipe', 'chute'],  # The run's kind.
-    start: dict | list = None,  # (route) {at}, {id} of a piece, {id, port} or {id, ports: [...]} of a device, or a list.
-    end: dict = None,  # (route) One end: {at}, {id} of a piece, {id, port} of a device, or {network}.
+    start: dict | list = None,  # (route) {at} (toward: the way its port points), {id} of a piece, {id, port} or {id, ports: [...]} of a device, {ghost, port} of a board ghost, or a list.
+    end: dict = None,  # (route) One end: {at} (toward), {id} of a piece, {id, port} of a device, {ghost, port}, or {network}.
     reroute: dict = None,  # {id: [...]} or {between: [end, end]}: replace an old run; leave out start and end.
     trunk: dict = None,  # Bus mode instead of end: {waypoints} or {cells} every start branches from.
     grade: Literal['normal', 'heavy', 'super_heavy', 'gas', 'liquid', 'insulated_gas', 'insulated_liquid', 'chute'] = None,  # cable: normal, heavy (default), super_heavy; pipe (required): gas, liquid, insulated_gas, insulated_liquid; chute: chute.
