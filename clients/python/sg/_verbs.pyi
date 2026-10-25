@@ -427,6 +427,7 @@ def find(what: Literal['ghost'], *,
     owner: str = None,  # Only ghosts this player placed (their name, any case), or "agent".
     source: Literal['player', 'agent'] = None,  # Only ghosts players placed, or agents.
     check: bool = False,  # With Lattice: each listed ghost's check by Lattice's validation (passes, waits for other ghosts, fails or warns, and why), in build order with the ghosts before it assumed built.
+    bill: bool = False,  # With Lattice: what the listed ghosts take to build (items needed, given back, tools).
     limit: int = 50,  # The first n in order (entries); left out, every one.
 ) -> dict:  # main list: r['ghosts']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Ghosts: structures players (ghost mode, the ghost menu) or agents (show ghost) planned in the world but did not build, with build_arguments to build them.
@@ -446,6 +447,8 @@ def find(what: Literal['ghost'], *,
       has_more: bool
       build_arguments: {what: str, placements: list[{prefab: str, at: list[float], rotation: list[float], build_state: int}]} | None
       board: str
+      bill: {needed: list[{prefab_name: str | None, quantity: int}], given_back: list[{prefab_name: str | None, quantity: int}], tools: list[str |
+          None]} | None
       check_note: str | None
     Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}; Vec3 = {x: float, y: float, z: float}
     Example: sg.find('ghost', near='player', radius=20)
@@ -1826,8 +1829,8 @@ def write(what: Literal['script'], *,
 def plan(what: Literal['route'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
     kind: Literal['cable', 'pipe', 'chute'],  # The run's kind.
-    start: dict | list = None,  # (route) {at}, {id} of a piece, {id, port} or {id, ports: [...]} of a device, or a list.
-    end: dict = None,  # (route) One end: {at}, {id} of a piece, {id, port} of a device, or {network}.
+    start: dict | list = None,  # (route) {at} (toward: the way its port points), {id} of a piece, {id, port} or {id, ports: [...]} of a device, {ghost, port} of a board ghost, or a list.
+    end: dict = None,  # (route) One end: {at} (toward), {id} of a piece, {id, port} of a device, {ghost, port}, or {network}.
     reroute: dict = None,  # {id: [...]} or {between: [end, end]}: replace an old run; leave out start and end.
     trunk: dict = None,  # Bus mode instead of end: {waypoints} or {cells} every start branches from.
     grade: Literal['normal', 'heavy', 'super_heavy', 'gas', 'liquid', 'insulated_gas', 'insulated_liquid', 'chute'] = None,  # cable: normal, heavy (default), super_heavy; pipe (required): gas, liquid, insulated_gas, insulated_liquid; chute: chute.
@@ -2265,6 +2268,7 @@ def build(what: Literal['structure'], *,
     """Any structure a kit builds (light, device, frame, wall, tank, rocket part) by prefab, at a point with a turn; several placements are one job.
     A build that pays from the player's inventory (materials left out, or "player") carries the warning materials_from_player. With from_plan, what may be left out: it comes from the plan.
     The report gives each placement's position as the game's cursor snaps it (the row's cell and placements[].position). A placement checks against the run's earlier placements as standing: a clash with one (overlaps_placement), the frame it needs (supported_by_placement), and with above_floor, a frame or floor plate an earlier placement puts down as its floor.
+    A placement on a board ghost's spot in its turn completes that ghost (completes_ghost warning): the build takes it off the board, and undo of the build puts it back.
     Reports in a report run; acts in a confirmed run.
     Cheat when free: true: ask the user first.
     placed: list[str] on a job reply, the new ids (a run's log.placed, a structure job's result.placed; a brief poll counts them in log.placed_count); int on a run report, the cells it would build.
@@ -3747,7 +3751,7 @@ def show(what: Literal['preview'], *,
 @overload
 def show(what: Literal['highlight'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
-    targets: list = None,  # Up to 64, each one of {id (one or a list), network, at} with color, label, pulse.
+    targets: list = None,  # Up to 64, each one of {id (one or a list), network, at, ghost (a ghost id: a beacon there; with Lattice the ghost lit too)} with color, label, pulse.
     seconds: float = 60,  # How long.
     keep: bool = False,  # Keep what earlier calls drew.
     clear: bool = None,  # Only remove what is drawn.
@@ -3783,6 +3787,9 @@ def show(what: Literal['ghost'], *,
     from_plan: str = None,  # A plan spot reply (p = sg.plan('spot', ...)) or one spot (p['spots'][2]): put it on the board.
     tint: str | list = None,  # The ghosts' colour, yours to choose: a name (cyan, magenta, yellow, green, orange, blue, red, white, purple, pink, khaki, brown, black, gray), [r, g, b] or [r, g, b, a] each 0 to 1.
     label: str = None,  # What the ghosts are, shown as a tooltip when the crosshair is on one, and in find ghost; a placement's own label wins.
+    look: Literal['plan', 'solid', 'wire', 'pulse', 'quiet'] = 'plan',  # With Lattice: plan (default: see-through, ports and open ends shown), solid, wire, pulse, or quiet (no see-through, ports or open ends). A ghost whose plan has problems pulses red.
+    xray: bool = True,  # Shows through walls, frames and terrain.
+    run: dict = None,  # A cable, pipe or chute run to put on the board: build cable, pipe or chute's options with what ({what: "pipe", grade, waypoints, branches, pieces, ...}), planned as build plans it (elbows, tees); each new piece becomes a ghost.
     remove: list = None,  # Ghost ids to take off the board (find ghost lists them).
     clear: Literal['agent', 'all'] = None,  # Take off every ghost agents placed, or every ghost.
     allow: list[Literal['door_keepout']] = None,  # Guards to lift, by name.
@@ -3794,6 +3801,7 @@ def show(what: Literal['ghost'], *,
       removed: list[int]
       total: int
       board: str
+      run: {what: str, ready: bool, pieces: int, problems: list[{code: str, message: str}], warnings: list[{code: str, message: str}]} | None
       plan: {ready: bool, problems: list[{code: str, message: str, index: int | None, reference_id: str | None}], warnings: list[{code: str, message:
           str, index: int | None, reference_id: str | None}], placements: list[{index: int, prefab_name: str | None, position: Vec3 | None,
           orientation: {facing: str | None, up: str | None, euler: Vec3} | None, build_state: int | None, ports: list[{index: int, at: Vec3, toward:

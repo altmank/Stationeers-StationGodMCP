@@ -110,7 +110,8 @@
       },
       "text": [
         "A build that pays from the player's inventory (materials left out, or \"player\") carries the warning materials_from_player. With from_plan, what may be left out: it comes from the plan.",
-        "The report gives each placement's position as the game's cursor snaps it (the row's cell and placements[].position). A placement checks against the run's earlier placements as standing: a clash with one (overlaps_placement), the frame it needs (supported_by_placement), and with above_floor, a frame or floor plate an earlier placement puts down as its floor."
+        "The report gives each placement's position as the game's cursor snaps it (the row's cell and placements[].position). A placement checks against the run's earlier placements as standing: a clash with one (overlaps_placement), the frame it needs (supported_by_placement), and with above_floor, a frame or floor plate an earlier placement puts down as its floor.",
+        "A placement on a board ghost's spot in its turn completes that ghost (completes_ghost warning): the build takes it off the board, and undo of the build puts it back."
       ],
       "example": {"prefab": "StructureWallLight", "at": [716, 203, 668], "facing": "-x", "confirm": true},
       "x-cost": {"class": "job", "growth": "plan"},

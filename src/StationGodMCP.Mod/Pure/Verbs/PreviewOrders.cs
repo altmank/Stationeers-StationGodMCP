@@ -401,7 +401,7 @@ internal sealed class PreviewOrder
 
     // run: build cable, pipe or chute's options with what, read as that what reads them (its own option names only;
     // confirm and the like are read and never acted on: a preview builds nothing). Problems keep their path under run.
-    private static RunBuildOrder? RunOf(JToken? given, List<OptionProblem> problems)
+    internal static RunBuildOrder? RunOf(JToken? given, List<OptionProblem> problems)
     {
         if (given == null)
         {

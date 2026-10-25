@@ -689,6 +689,12 @@
           "default": "false",
           "x-script": "same"
         },
+        "bill": {
+          "schema": {"type": "boolean"},
+          "description": "With Lattice: what the listed ghosts take to build (items needed, given back, tools).",
+          "default": "false",
+          "x-script": "same"
+        },
         "limit": {"use": "limit", "default": "50"},
         "offset": {"use": "offset"}
       },
@@ -711,6 +717,7 @@
               "has_more": "bool",
               "build_arguments": "{what: str, placements: list[{prefab: str, at: list[float], rotation: list[float], build_state: int}]} | None",
               "board": "str",
+              "bill": "{needed: list[{prefab_name: str | None, quantity: int}], given_back: list[{prefab_name: str | None, quantity: int}], tools: list[str | None]} | None",
               "check_note": "str | None"
             }
           }

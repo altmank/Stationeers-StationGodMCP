@@ -138,15 +138,25 @@ internal static class PreviewScreen
     }
 
     // A run's new and changed pieces: each one's cell as a box (red where no piece could be chosen), and each piece's
-    // ghost, finished, in the turn the run lays it; at most DrawWire.MaximumGhosts ghosts.
+    // ghost, finished, in the turn the run lays it; at most DrawWire.MaximumGhosts ghosts. A piece left with an open end
+    // (a dead end, or a port the run was meant to turn into) is drawn red, box and ghost, never as finished (LIVE
+    // 2026-10-25: header pipes to ghost pumps drawn as normal pieces, ends open).
     private static void Draw(RunPlan run, PreviewOrder order, float seconds, List<PreviewBox> boxes,
         List<GhostSpec> ghosts, List<string> notes)
     {
+        List<string> open = new List<string>();
         foreach (PlannedCell cell in run.Cells)
         {
+            bool dead = cell.Layout.OpenEnd.HasValue;
+            if (dead)
+            {
+                open.Add($"{Bodies.V(PieceShapes.CentreOf(cell.Cell))} {cell.Layout.OpenEnd!.Value.Name}");
+            }
+
             if (order.DrawsBoxes)
             {
-                boxes.Add(CellBox(cell.Cell, PreviewColours.Footprint, seconds, order.Xray));
+                boxes.Add(CellBox(cell.Cell, dead ? PreviewColours.Problem : PreviewColours.Footprint, seconds,
+                    order.Xray));
             }
 
             if (!order.DrawsGhosts)
@@ -162,9 +172,20 @@ internal static class PreviewScreen
 
             Structure prefab = cell.Choice.Prefab;
             // Pieces lie inside floors and frames: without the see-through pass a floor's run cannot be seen.
+            Rgba tint = dead
+                ? new Rgba(PreviewColours.Problem.Red, PreviewColours.Problem.Green, PreviewColours.Problem.Blue,
+                    order.Tint.Alpha)
+                : order.Tint;
             ghosts.Add(new GhostSpec(prefab.PrefabHash, prefab.BuildStates.Count - 1,
-                Bodies.V(PieceShapes.CentreOf(cell.Cell)), Bodies.V(cell.Choice.Rotation.eulerAngles), order.Tint,
+                Bodies.V(PieceShapes.CentreOf(cell.Cell)), Bodies.V(cell.Choice.Rotation.eulerAngles), tint,
                 seconds, xray: true));
+        }
+
+        if (open.Count > 0)
+        {
+            notes.Add($"{open.Count} piece(s) end open, drawn red: {string.Join("; ", open.GetRange(0, System.Math.Min(open.Count, 5)))}" +
+                      $"{(open.Count > 5 ? "; ..." : "")}. An end meant for a port: plan the route to {{id, port}}, " +
+                      "{ghost, port} or {at, toward}.");
         }
 
         if (order.DrawsBoxes)

@@ -54,6 +54,32 @@ public sealed class LatticeLooksTests
         Assert.Equal(L.Option.Some<L.Paint>(new L.Paint.GhostTint(L.LibraryPalette.Planned)), agentLook.Resolved.FillPaint);
     }
 
+    // show ghost's look and xray, kept on the ghost: a preset's fill, see-through off, and a placement whose plan had
+    // problems pulsing red over the agent's violet.
+    [Fact]
+    public void ALooksMarksOnTheGhostPickItsRules()
+    {
+        using TestWorld world = Start();
+        L.IGhostSystem system = world.System;
+        Assert.True(system.Styles.Add(LatticeLooks.Layer).TryGet(out L.IStyleLayer _));
+
+        L.GhostId marked = Place(world, LatticeNames.Agent, LatticeNames.AgentMaker, new Vec3(1, 1, 1),
+            new GhostLook("solid", xray: false, problem: true));
+        L.GhostId plain = Place(world, LatticeNames.Agent, LatticeNames.AgentMaker, new Vec3(3, 1, 1));
+        Assert.True(world.Settle().TryGet(out int _));
+
+        L.StyleStory look = Story(system, marked);
+        Assert.Equal(L.Option.Some(L.FillMode.Solid), look.Resolved.Fill);
+        Assert.IsType<L.SeeThroughLook.None>(look.Resolved.SeeThrough.Reduce(new L.SeeThroughLook.Through(default, default)));
+        Assert.Equal(new L.StyleSource.Layer(L.StyleBand.Meaning, LatticeLooks.Id, 7), Source(look, L.StyleProperty.Glow));
+        Assert.IsType<L.EffectLook.Pulse>(look.Resolved.Effect.Reduce(new L.EffectLook.Steady()));
+
+        L.StyleStory standard = Story(system, plain);
+        Assert.Equal(L.Option.Some(L.ShowMode.Shown), standard.Resolved.Ports);
+        Assert.Equal(L.Option.Some(L.ShowMode.Shown), standard.Resolved.OpenEnds);
+        Assert.Equal(new L.StyleSource.Layer(L.StyleBand.Meaning, LatticeLooks.Id, 0), Source(standard, L.StyleProperty.Glow));
+    }
+
     [Fact]
     public void TheLayerIsAddedOncePerWorld()
     {
@@ -66,11 +92,12 @@ public sealed class LatticeLooksTests
         TestWorld.Start(TestScenario.Empty).Match(static world => world,
             static why => throw new InvalidOperationException(LatticeText.Of(why)));
 
-    private static L.GhostId Place(TestWorld world, L.Actor actor, L.Maker maker, Vec3 at)
+    private static L.GhostId Place(TestWorld world, L.Actor actor, L.Maker maker, Vec3 at, GhostLook? look = null)
     {
         L.PrefabKey frame = TestCatalogue.Hand.Key("StructureFrame").Reduce(default(L.PrefabKey));
         GhostPlacement placement = new GhostPlacement(frame.Hash, 0, at, new Vec3(0, 0, 0), Orange, null);
-        L.GhostDraft draft = LatticeGhosts.ToDraft(placement, maker, L.Option<L.PlanId>.None, 0, new(), out string? refusal)
+        L.GhostDraft draft = LatticeGhosts.ToDraft(placement, maker, L.Option<L.PlanId>.None, 0, new(), out string? refusal,
+                                 look)
                              ?? throw new InvalidOperationException(refusal);
         L.Submission sent = world.System.Commands.Submit(L.CommandId.New(),
             new L.Command.Place(L.ValueList.Of(draft)), actor);

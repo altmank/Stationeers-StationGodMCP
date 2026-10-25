@@ -27,6 +27,9 @@ internal sealed class ShowGhostOptions
         new OptionSpec("from_plan", "{\"type\":\"string\"}"),
         new OptionSpec("tint", "{\"type\":[\"string\",\"array\"]}"),
         new OptionSpec("label", "{\"type\":\"string\"}"),
+        new OptionSpec("look", "{\"type\":\"string\",\"enum\":[\"plan\",\"solid\",\"wire\",\"pulse\",\"quiet\"]}", false, "plan"),
+        new OptionSpec("xray", "{\"type\":\"boolean\"}", false, "true"),
+        new OptionSpec("run", "{\"type\":\"object\"}"),
         new OptionSpec("remove", "{\"type\":\"array\",\"items\":{\"type\":\"integer\"},\"maxItems\":256}"),
         new OptionSpec("clear", "{\"type\":\"string\",\"enum\":[\"agent\",\"all\"]}"),
         new OptionSpec("allow", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"door_keepout\"]}}"));
@@ -59,6 +62,12 @@ internal sealed class ShowGhostOptions
 
     internal string? Label { get; private set; }
 
+    internal string? Look { get; private set; }
+
+    internal bool? Xray { get; private set; }
+
+    internal JToken? Run { get; private set; }
+
     internal JToken? Remove { get; private set; }
 
     internal string? Clear { get; private set; }
@@ -81,6 +90,9 @@ internal sealed class ShowGhostOptions
         FromPlan = options.Text("from_plan"),
         Tint = options.Raw("tint"),
         Label = options.Text("label"),
+        Look = options.Text("look") ?? options.DefaultText("look"),
+        Xray = options.Flag("xray") ?? options.DefaultFlag("xray"),
+        Run = options.Raw("run"),
         Remove = options.Raw("remove"),
         Clear = options.Text("clear"),
         Allow = options.Words("allow"),

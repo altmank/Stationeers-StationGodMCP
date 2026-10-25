@@ -47,6 +47,31 @@ internal static class GhostBoardStore
     /// <summary>The board: the host's own, or on a client the host's as last sent.</summary>
     internal static GhostBoard Board => _board;
 
+    /// <summary>How long an undone build's ghost waits for its structure to go before it is given up.</summary>
+    private const float RestoreSeconds = 600f;
+
+    private const float RestoreCheckSeconds = 0.5f;
+
+    private static readonly List<GhostRestore> Restoring = new List<GhostRestore>();
+
+    private static float _restoreCheckAt;
+
+    private sealed class GhostRestore
+    {
+        internal GhostRestore(BoardGhost ghost, List<long> waitsFor, float until)
+        {
+            Ghost = ghost;
+            WaitsFor = waitsFor;
+            Until = until;
+        }
+
+        internal BoardGhost Ghost { get; }
+
+        internal List<long> WaitsFor { get; }
+
+        internal float Until { get; }
+    }
+
     /// <summary>Whether this game keeps the board (the host, single player included) rather than mirroring it.</summary>
     internal static bool Keeps => NetworkManager.IsServer;
 
@@ -59,6 +84,10 @@ internal static class GhostBoardStore
         if (GameManager.GameState == GameState.Running)
         {
             LatticePresence.Tick();
+            if (Keeps)
+            {
+                Restore();
+            }
         }
 
         // With Lattice loaded its board is the world's, even before Lattice publishes the world's system.
@@ -82,15 +111,78 @@ internal static class GhostBoardStore
     }
 
     /// <summary>
+    /// An undo is taking a build down: each ghost the build completed goes back on the board once the structure that
+    /// completed it is gone (one of the ids the removal takes, of the ghost's prefab on its spot in its turn; else once
+    /// all of them are), within RestoreSeconds. Host only.
+    /// </summary>
+    internal static void RestoreWhenGone(IReadOnlyList<BoardGhost> ghosts, IReadOnlyList<long> removing)
+    {
+        float until = Time.realtimeSinceStartup + RestoreSeconds;
+        foreach (BoardGhost ghost in ghosts)
+        {
+            List<long> waitsFor = new List<long>();
+            foreach (long id in removing)
+            {
+                if (Thing.Find(id) is Structure standing && standing != null && GhostBoard.StandsFor(ghost,
+                        standing.PrefabHash, Bodies.V(standing.ThingTransformPosition),
+                        Bodies.V(standing.ThingTransformRotation.eulerAngles)))
+                {
+                    waitsFor.Add(id);
+                    break;
+                }
+            }
+
+            Restoring.Add(new GhostRestore(ghost, waitsFor.Count > 0 ? waitsFor : new List<long>(removing), until));
+        }
+    }
+
+    // The ghosts waiting to go back: each placed as its owner placed it once what it waits for is gone; given up
+    // (with a warning) past its time.
+    private static void Restore()
+    {
+        if (Restoring.Count == 0 || Time.realtimeSinceStartup < _restoreCheckAt)
+        {
+            return;
+        }
+
+        _restoreCheckAt = Time.realtimeSinceStartup + RestoreCheckSeconds;
+        for (int index = Restoring.Count - 1; index >= 0; index--)
+        {
+            GhostRestore waiting = Restoring[index];
+            if (waiting.WaitsFor.Exists(static id => Thing.Find(id) is Thing thing && thing != null && !thing.IsBeingDestroyed))
+            {
+                if (Time.realtimeSinceStartup > waiting.Until)
+                {
+                    Restoring.RemoveAt(index);
+                    StationGodMod.LogWarning($"Ghost {waiting.Ghost.Id} ({waiting.Ghost.PrefabName}) was not put back: " +
+                                             "the structure its undone build made still stands.");
+                }
+
+                continue;
+            }
+
+            Restoring.RemoveAt(index);
+            BoardGhost ghost = waiting.Ghost;
+            List<string> refused = new List<string>();
+            Place(new[] { new GhostPlacement(ghost.PrefabHash, ghost.BuildState, ghost.Position, ghost.Euler,
+                ghost.Tint, ghost.Label) }, ghost.Source, ghost.Owner, refused);
+            foreach (string refusal in refused)
+            {
+                StationGodMod.LogWarning($"Ghost {ghost.Id} ({ghost.PrefabName}) could not be put back: {refusal}");
+            }
+        }
+    }
+
+    /// <summary>
     /// The host places ghosts: each prefab must be a structure; refusals name the placement. The ghosts added, in
     /// order (a ghost on the spot of one of the same prefab and turn replaces it).
     /// </summary>
     internal static List<BoardGhost> Place(IReadOnlyList<GhostPlacement> placements, GhostSource source, string owner,
-        List<string> refused, ulong? client = null)
+        List<string> refused, ulong? client = null, IReadOnlyList<GhostLook>? looks = null)
     {
         if (LatticePresence.Running)
         {
-            return LatticePresence.Place(placements, source, client, refused, refused);
+            return LatticePresence.Place(placements, source, client, refused, refused, looks);
         }
 
         List<BoardGhost> added = new List<BoardGhost>();
@@ -346,6 +438,7 @@ internal static class GhostBoardStore
     internal static void Forget()
     {
         LatticePresence.Forget();
+        Restoring.Clear();
         if (_loaded && _saveAt < float.PositiveInfinity)
         {
             Save();

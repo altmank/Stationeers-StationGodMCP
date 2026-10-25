@@ -160,7 +160,7 @@ internal static class Undo
         UndoSource source = UndoSource.Of(recorded?.Source ?? JobSource.Unknown, holder, call.HolderGiven,
             call.RefundTo);
         plan.Notes.AddRange(source.Notes);
-        Work work = new Work(id, facts.Tool, plan, source);
+        Work work = new Work(id, facts.Tool, plan, source, recorded?.Completes);
         JObject body = UndoReplies.Plan(id, facts.Tool,
             work.Removals.Structures.Count > 0
                 ? UndoReplies.RemoveCall(work.Removals.Structures, source.RefundTo, source.FromId,
@@ -266,6 +266,7 @@ internal static class Undo
             }
 
             Started(jobs, started, work.Id, reply.Value);
+            GhostBoardStore.RestoreWhenGone(work.Completes, work.Removals.Structures);
         }
 
         if (work.Restore.Count > 0)
@@ -519,12 +520,19 @@ internal static class Undo
     /// </summary>
     private sealed class Work
     {
-        internal Work(string id, string tool, UndoPlan plan, UndoSource source)
+        internal Work(string id, string tool, UndoPlan plan, UndoSource source, IReadOnlyList<BoardGhost>? completes)
         {
             Id = id;
             Tool = tool;
             Plan = plan;
             Source = source;
+            Completes = completes ?? new List<BoardGhost>();
+            if (Completes.Count > 0)
+            {
+                plan.Notes.Add($"The build completed {Completes.Count} board ghost(s); each goes back on the board once " +
+                               "the removal takes its structure down.");
+            }
+
             Groups = plan.RestorePieces;
             Removals = UndoRemovals.Of(plan.Remove, Groups, JobSnapshots.PieceToolOf);
             Restore = plan.RestoreStructures;
@@ -544,6 +552,9 @@ internal static class Undo
         internal string Tool { get; }
 
         internal UndoPlan Plan { get; }
+
+        /// <summary>The board ghosts the undone build completed, put back as the removal takes their structures down.</summary>
+        internal IReadOnlyList<BoardGhost> Completes { get; }
 
         internal UndoSource Source { get; }
 

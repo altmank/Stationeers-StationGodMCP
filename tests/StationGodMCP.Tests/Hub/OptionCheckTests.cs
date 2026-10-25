@@ -161,7 +161,7 @@ public sealed class OptionCheckTests
     {
         GameCall sent = Verbs.Sent("find", "thing", """{"list_limits":{"things":5}}""", Face.Program);
 
-        Assert.Equal("""{"limit":{"things":5}}""", sent.Shape!.Value.GetRawText());
+        Assert.Equal("""{"limit":{"things":5},"max_bytes":16777216}""", sent.Shape!.Value.GetRawText());
         Assert.DoesNotContain("list_limits", sent.Params().ToJsonString());
     }
 

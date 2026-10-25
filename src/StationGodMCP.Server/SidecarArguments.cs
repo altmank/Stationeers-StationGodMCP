@@ -12,7 +12,7 @@ namespace StationGodMCP.Server;
 /// output_file never reaches the game: the reply is written on this machine.
 /// </summary>
 internal sealed partial record SidecarArguments(JsonElement Forwarded, JsonElement? Fields, OutputChoice Output,
-    JsonElement? Omit = null, JsonElement? Limits = null)
+    JsonElement? Omit = null, JsonElement? Limits = null, int? MaxBytes = null)
 {
     internal const string FieldsArgument = "fields";
     internal const string OmitArgument = "omit";
@@ -46,7 +46,7 @@ internal sealed partial record SidecarArguments(JsonElement Forwarded, JsonEleme
     /// </summary>
     internal (JsonElement? Shape, Unparsed Unparsed) Shape()
     {
-        if (Fields is null && Omit is null && Limits is null)
+        if (Fields is null && Omit is null && Limits is null && MaxBytes is null)
         {
             return (null, new Unparsed([], []));
         }
@@ -57,6 +57,11 @@ internal sealed partial record SidecarArguments(JsonElement Forwarded, JsonEleme
         if (Limits is { } limits)
         {
             shape["limit"] = limits;
+        }
+
+        if (MaxBytes is { } most)
+        {
+            shape["max_bytes"] = most;
         }
 
         return (shape.Count > 0 ? JsonSerializer.SerializeToElement(shape) : null,

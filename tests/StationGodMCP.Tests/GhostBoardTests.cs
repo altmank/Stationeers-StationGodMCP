@@ -60,6 +60,21 @@ public sealed class GhostBoardTests
         Assert.Equal(3, board.Count);
     }
 
+    // A build's plan names the ghost it would complete (completes_ghost) and leaves it on the board; undo matches the
+    // structure that completed it the same way (LIVE 2026-10-25: a Condenser Intake ghost lost to a build and its undo).
+    [Fact]
+    public void TheGhostABuildWouldCompleteIsNamedAndLeftOnTheBoard()
+    {
+        GhostBoard board = new GhostBoard();
+        BoardGhost ghost = board.Add(Ghost(7, 0, yTurn: 90), out _)!;
+
+        Assert.Same(ghost, board.StandingFor(7, new Vec3(0.05, 96.25, 898.5), new Vec3(0, 90, 0)));
+        Assert.Null(board.StandingFor(7, new Vec3(0, 96.25, 898.5), new Vec3(0, 0, 0)));
+        Assert.Single(board.All);
+        Assert.True(GhostBoard.StandsFor(ghost, 7, new Vec3(0, 96.25, 898.5), new Vec3(0, 90, 0)));
+        Assert.False(GhostBoard.StandsFor(ghost, 8, new Vec3(0, 96.25, 898.5), new Vec3(0, 90, 0)));
+    }
+
     [Fact]
     public void ABuildOfThePrefabInTheTurnTakesItsGhostOff()
     {

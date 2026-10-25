@@ -29,6 +29,19 @@ internal static class LatticeNames
     /// <summary>A ghost's build state when it is not the last (show ghost's state): Lattice's build means built.</summary>
     internal static readonly L.AttachmentKey BuildState = Must(L.AttachmentKey.Create(Mod, "build-state"));
 
+    /// <summary>An agent ghost's look preset when it is not plan (GhostLook), kept on the ghost for every viewer.</summary>
+    internal static readonly L.AttachmentKey Look = Must(L.AttachmentKey.Create(Mod, "look"));
+
+    /// <summary>"off" on a ghost drawn without see-through (show ghost xray false).</summary>
+    internal static readonly L.AttachmentKey XRay = Must(L.AttachmentKey.Create(Mod, "xray"));
+
+    /// <summary>"problem" on a ghost whose plan had problems when it was placed.</summary>
+    internal static readonly L.AttachmentKey PlanState = Must(L.AttachmentKey.Create(Mod, "plan"));
+
+    internal static readonly L.Attachment Off = Must(L.Attachment.Create("off"));
+
+    internal static readonly L.Attachment ProblemMark = Must(L.Attachment.Create("problem"));
+
     internal static readonly L.PlanName AgentPlan = Must(L.PlanName.Create("StationGod agent"));
 
     internal static readonly L.ModuleName Render = Must(L.ModuleName.Create("render"));
@@ -127,7 +140,7 @@ internal static class LatticeGhosts
     /// A label Lattice refuses (too long, blank) is left off, and said in notes.
     /// </summary>
     internal static L.GhostDraft? ToDraft(GhostPlacement placement, L.Maker madeBy, L.Option<L.PlanId> plan,
-        int lastState, List<string> notes, out string? refusal)
+        int lastState, List<string> notes, out string? refusal, GhostLook? look = null)
     {
         refusal = null;
         if (TurnOf(placement.Euler) is not { } turn)
@@ -157,11 +170,31 @@ internal static class LatticeGhosts
                 L.Attachment.Create(placement.BuildState.ToString(CultureInfo.InvariantCulture))));
         }
 
+        attached = LatticeLooks.Marks(look ?? GhostLook.Plain, attached);
+
         L.Placement target = new L.Placement(new L.PrefabKey(placement.PrefabHash), CellOf(placement.Position), turn);
         return new L.GhostDraft(new L.Intent.Build(target, L.Option<L.Finish>.None), plan, madeBy,
             new L.Visibility.Everyone(), label, L.Option.Some(TintOf(placement.Tint)), L.ValueSet<L.GroupName>.Empty,
             attached);
     }
+
+    /// <summary>
+    /// The way a piece joining a port needs its end: back into the port, the opposite of Lattice's Port.Toward (out of
+    /// the piece), as StationGod's ports say it.
+    /// </summary>
+    internal static string IntoPort(L.Face outOfPiece) => outOfPiece switch
+    {
+        L.Face.PlusX => "-x",
+        L.Face.MinusX => "+x",
+        L.Face.PlusY => "-y",
+        L.Face.MinusY => "+y",
+        L.Face.PlusZ => "-z",
+        _ => "+z"
+    };
+
+    /// <summary>A port role as the game names it (ConnectionRole); null for a plain run end.</summary>
+    internal static string? RoleOf(L.Option<L.PortRole> role) =>
+        role.TryGet(out L.PortRole given) ? given.ToString() : null;
 
     /// <summary>The cell of a position in metres: the game's Grid3 key, as Lattice reads a structure's.</summary>
     internal static L.Cell CellOf(Vec3 position) => new L.Cell(Key(position.X), Key(position.Y), Key(position.Z));
@@ -231,6 +264,40 @@ internal static class LatticeLooks
 
     internal static readonly L.Rgba Violet = new L.Rgba(170, 110, 255, 255);
 
+    /// <summary>show highlight's "look here" on a ghost: Lattice's selection glow, pulsing, shown through walls.</summary>
+    internal static L.Style LookHere => new L.Style
+    {
+        Glow = L.Option.Some<L.GlowLook>(new L.GlowLook.Lit(new L.Paint.Token(L.LibraryPalette.Select),
+            LatticeNames.Must(L.Fraction.Create(0.9f)))),
+        Effect = Pulse(0.6f, 0.4f),
+        SeeThrough = L.Option.Some<L.SeeThroughLook>(new L.SeeThroughLook.Through(
+            LatticeNames.Must(L.Fraction.Create(0.8f)), LatticeNames.Must(L.Metres.Create(200f)))),
+    };
+
+    /// <summary>The look's marks on a ghost's attachments: the preset (not plan), xray off, a plan with problems.</summary>
+    internal static L.ValueMap<L.AttachmentKey, L.Attachment> Marks(GhostLook look,
+        L.ValueMap<L.AttachmentKey, L.Attachment> attached)
+    {
+        if (look.Preset != GhostLook.Plan)
+        {
+            attached = attached.With(LatticeNames.Look, LatticeNames.Must(L.Attachment.Create(look.Preset)));
+        }
+
+        if (!look.XRay)
+        {
+            attached = attached.With(LatticeNames.XRay, LatticeNames.Off);
+        }
+
+        return look.Problem ? attached.With(LatticeNames.PlanState, LatticeNames.ProblemMark) : attached;
+    }
+
+    private static L.StyleMatch Tagged(L.AttachmentKey key, string value) =>
+        new L.StyleMatch.Picks(new L.Selector.Tagged(key, L.Option.Some(LatticeNames.Must(L.Attachment.Create(value)))));
+
+    private static L.Option<L.EffectLook> Pulse(float seconds, float low) =>
+        L.Option.Some<L.EffectLook>(new L.EffectLook.Pulse(LatticeNames.Must(L.Period.Create(seconds)),
+            LatticeNames.Must(L.Fraction.Create(low))));
+
     // As StationGod's own see-through pass: half the ghost's strength, through anything within a long room's reach.
     private const float SeeThroughStrength = 0.5f;
 
@@ -257,10 +324,34 @@ internal static class LatticeLooks
                     LatticeNames.Must(L.Fraction.Create(SeeThroughStrength)),
                     LatticeNames.Must(L.Metres.Create(SeeThroughRangeM)))),
             };
+            L.Style plain = seeThrough with
+            {
+                Ports = L.Option.Some(L.ShowMode.Shown),
+                OpenEnds = L.Option.Some(L.ShowMode.Shown),
+            };
             return new L.StyleLayerDescriptor(Id, L.StyleBand.Meaning, 0, L.ValueList.From(new[]
             {
                 new L.StyleRule(agents, glow),
-                new L.StyleRule(ours, seeThrough),
+                new L.StyleRule(ours, plain),
+                new L.StyleRule(Tagged(LatticeNames.Look, "solid"), new L.Style { Fill = L.Option.Some(L.FillMode.Solid) }),
+                new L.StyleRule(Tagged(LatticeNames.Look, "wire"), new L.Style { Fill = L.Option.Some(L.FillMode.Wire) }),
+                new L.StyleRule(Tagged(LatticeNames.Look, "pulse"), new L.Style { Effect = Pulse(1.2f, 0.35f) }),
+                new L.StyleRule(Tagged(LatticeNames.Look, "quiet"), new L.Style
+                {
+                    SeeThrough = L.Option.Some<L.SeeThroughLook>(new L.SeeThroughLook.None()),
+                    Ports = L.Option.Some(L.ShowMode.None),
+                    OpenEnds = L.Option.Some(L.ShowMode.None),
+                }),
+                new L.StyleRule(Tagged(LatticeNames.XRay, "off"), new L.Style
+                {
+                    SeeThrough = L.Option.Some<L.SeeThroughLook>(new L.SeeThroughLook.None()),
+                }),
+                new L.StyleRule(Tagged(LatticeNames.PlanState, "problem"), new L.Style
+                {
+                    Glow = L.Option.Some<L.GlowLook>(new L.GlowLook.Lit(new L.Paint.Token(L.LibraryPalette.Fail),
+                        LatticeNames.Must(L.Fraction.Create(0.6f)))),
+                    Effect = Pulse(0.8f, 0.3f),
+                }),
             }))
             {
                 Palette = L.Option.Some(new L.Palette(

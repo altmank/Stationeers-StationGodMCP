@@ -7,6 +7,7 @@ using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Pipes;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared.Game.Upgrades;
+using StationGodMCP.LatticeLink;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Verbs;
@@ -95,17 +96,28 @@ internal static class RouteEnds
     {
         if (!(token is JObject item))
         {
-            throw ApiErrors.InvalidArgument($"{name} must be {{at: [x, y, z]}}, {{id}} or {{id, port}}.");
+            throw ApiErrors.InvalidArgument($"{name} must be {{at: [x, y, z]}}, {{id}}, {{id, port}} or {{ghost, port}}.");
+        }
+
+        if (item["ghost"] != null && item["ghost"]!.Type != JTokenType.Null)
+        {
+            return OfGhost(kind, item, type, name, ignore);
         }
 
         if (item["at"] != null && item["at"]!.Type != JTokenType.Null)
         {
             GridCell cell = RunArgs.CellOf(RunArgs.PositionOf(item["at"]!, $"{name}.at"));
+            GridStep? toward = TowardOf(item, name);
             SmallCell? small = GridController.World.GetSmallCell(PieceShapes.Grid(cell));
             SmallGrid? piece = small != null ? kind.SlotOf(small) : null;
-            return piece != null && !piece.IsBeingDestroyed && !ignore.Contains(piece.ReferenceId)
-                ? OfCells(kind, piece, new List<GridCell> { cell }, LeavesOnlyOpen(kind, target), name)
-                : new RouteEndpoint(RouteEnd.Open(cell), new List<long>());
+            if (piece != null && !piece.IsBeingDestroyed && !ignore.Contains(piece.ReferenceId))
+            {
+                RouteEndpoint joined = OfCells(kind, piece, new List<GridCell> { cell }, LeavesOnlyOpen(kind, target),
+                    name);
+                return toward.HasValue ? new RouteEndpoint(joined.Ends, joined.Networks, toward) : joined;
+            }
+
+            return new RouteEndpoint(RouteEnd.Open(cell), new List<long>(), toward, turnsInto: true);
         }
 
         if (!ThingId.TryRead(item["id"], out ThingId id))
@@ -155,6 +167,97 @@ internal static class RouteEnds
         throw ApiErrors.InvalidArgument(
             $"{name}: {Names.Of(thing)} ({thing.PrefabName}) is neither a {kind.Noun} piece, a " +
             $"device, nor a {kind.Noun} thing with ends (an in-line tank, a passive vent).");
+    }
+
+    // {at}'s toward: the way the end piece's end points from that cell, as a port's toward (a ghost's or a planned
+    // device's, from show ghost or find ghost), so the run's last piece turns into it; null when left out.
+    private static GridStep? TowardOf(JObject item, string name)
+    {
+        JToken? given = item["toward"];
+        if (given == null || given.Type == JTokenType.Null)
+        {
+            return null;
+        }
+
+        return given.Type == JTokenType.String && GridStep.TryParse(given.Value<string>(), out GridStep step)
+            ? step
+            : throw ApiErrors.InvalidArgument($"{name}.toward must be an axis: +x, -x, +y, -y, +z or -z.");
+    }
+
+    // {ghost, port}: a board ghost's device port (find ghost lists them), as {id, port} of a built device would be: the
+    // cell a piece joining it stands in and the end it needs into the device. Ports are read from the ghost's prefab
+    // where it stands; a piece already in that cell is joined as at {at} does.
+    private static RouteEndpoint OfGhost(RunKind kind, JObject item, int type, string name, HashSet<long> ignore)
+    {
+        JToken given = item["ghost"]!;
+        if (given.Type != JTokenType.Integer)
+        {
+            throw ApiErrors.InvalidArgument($"{name}.ghost must be a ghost id (find ghost lists them).");
+        }
+
+        long id = given.Value<long>();
+        BoardGhost ghost = GhostBoardStore.Board.Find(id) ?? throw ApiErrors.Refused("ghost_not_found",
+            $"{name}: no ghost {id} on the board (find ghost lists them).");
+        if (!(Prefab.Find(ghost.PrefabHash) is Structure prefab) || prefab == null)
+        {
+            throw ApiErrors.Refused("ghost_not_found",
+                $"{name}: ghost {id}'s prefab {ghost.PrefabName} is not one this game holds.");
+        }
+
+        List<PortCell> ports = GhostPorts(ghost, prefab, type);
+        int? port = PortOf(item, name);
+        List<int> indexes = ports.ConvertAll(static one => one.Index);
+        int found = port.HasValue
+            ? ports.FindIndex(one => one.Index == port.Value)
+            : ports.Count == 1 ? 0 : -1;
+        if (found < 0)
+        {
+            throw ApiErrors.InvalidArgument(port.HasValue
+                ? $"{name}.port {port.Value} is not a {kind.Noun} port of ghost {id} ({ghost.PrefabName}); its ports " +
+                  $"of that kind are [{string.Join(", ", indexes)}] (find ghost lists them)."
+                : $"Ghost {id} ({ghost.PrefabName}) has {ports.Count} {kind.Noun} ports [{string.Join(", ", indexes)}]; " +
+                  $"name one with {name}.port (find ghost lists them).");
+        }
+
+        PortCell chosen = ports[found];
+        SmallCell? small = GridController.World.GetSmallCell(PieceShapes.Grid(chosen.Cell));
+        SmallGrid? piece = small != null ? kind.SlotOf(small) : null;
+        if (piece != null && !piece.IsBeingDestroyed && !ignore.Contains(piece.ReferenceId))
+        {
+            RouteEndpoint joined = OfCells(kind, piece, new List<GridCell> { chosen.Cell });
+            return new RouteEndpoint(joined.Ends, joined.Networks, chosen.Toward);
+        }
+
+        return new RouteEndpoint(RouteEnd.Open(chosen.Cell), new List<long>(), chosen.Toward, turnsInto: true);
+    }
+
+    // A ghost's ports of the kind: Lattice's (PortsAt, contract 0.8) while it runs, else read from the prefab where the
+    // ghost stands; both in the game's OpenEnds order.
+    private static List<PortCell> GhostPorts(BoardGhost ghost, Structure prefab, int type)
+    {
+        if (LatticePresence.Running && LatticePresence.Ports(ghost.Id) is { } lattice)
+        {
+            List<PortCell> read = new List<PortCell>();
+            foreach (GhostPort port in lattice)
+            {
+                if (System.Enum.TryParse(port.Type, out NetworkType kind) && ((int)kind & type) != 0 &&
+                    GridStep.TryParse(port.Toward, out GridStep toward))
+                {
+                    GridCell joins = RunArgs.CellOf(new UnityEngine.Vector3((float)port.Joins.X, (float)port.Joins.Y,
+                        (float)port.Joins.Z));
+                    read.Add(new PortCell(port.Index, joins, toward, (int)kind, 0));
+                }
+            }
+
+            return read;
+        }
+
+        UnityEngine.Quaternion rotation =
+            UnityEngine.Quaternion.Euler((float)ghost.Euler.X, (float)ghost.Euler.Y, (float)ghost.Euler.Z);
+        UnityEngine.Vector3 position =
+            new UnityEngine.Vector3((float)ghost.Position.X, (float)ghost.Position.Y, (float)ghost.Position.Z);
+        PieceModel? model = PieceShapes.Placed(prefab, position, rotation, 0);
+        return model != null ? PortCells.Of(model.Ends, type) : new List<PortCell>();
     }
 
     // An end's port, an index 0 to 64; null when left out.

@@ -120,6 +120,7 @@
     "description": "This thing keeps its colour as an animation state; the spray can does not write paint it. Nothing to do: it cannot be painted.",
     "see": {"verb": "write", "what": "paint"}
   },
+  "ghost_not_found": {"description": "No ghost with that id is on the board, or its prefab is not one this game holds. find ghost lists the board."},
   "help_not_found": {
     "description": "No help node has that name. The message lists the names it knows or the nearest ones; help {} lists the shared topics.",
     "see": {"verb": "help"}
