@@ -756,9 +756,20 @@ internal sealed class LatticeOut
         if (style.Vanish.TryGet(out L.Duration vanish)) written["vanish"] = Round(vanish.Seconds);
         if (style.SeeThrough.TryGet(out L.SeeThroughLook seeThrough))
         {
-            written["see_through"] = seeThrough is L.SeeThroughLook.Through through
-                ? new JObject { ["through"] = new JObject { ["strength"] = Round(through.Strength.Value), ["range"] = Round(through.Range.Value) } }
-                : new JValue("none");
+            if (seeThrough is L.SeeThroughLook.Through through)
+            {
+                JObject shows = new JObject { ["strength"] = Round(through.Strength.Value), ["range"] = Round(through.Range.Value) };
+                if (through.Opacity.TryGet(out L.Fraction hidden))
+                {
+                    shows["opacity"] = Round(hidden.Value);
+                }
+
+                written["see_through"] = new JObject { ["through"] = shows };
+            }
+            else
+            {
+                written["see_through"] = "none";
+            }
         }
 
         if (style.BeyondClip.TryGet(out L.BeyondClipLook beyond))

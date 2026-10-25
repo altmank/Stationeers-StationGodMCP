@@ -136,11 +136,22 @@ internal static class LatticeLooks
     /// <summary>A look as one Lattice Style: x-ray, the four markers, the preset, problems, then its own style on top.</summary>
     internal static L.Style? StyleOf(GhostLook look, LatticeIn read)
     {
+        if (look.Opacity != null && read.Minor < OpacityMinor)
+        {
+            read.Problem("xray_opacity", $"needs Lattice 0.{OpacityMinor} or later (this one is 0.{read.Minor})");
+            return null;
+        }
+
         L.Style style = new L.Style
         {
             SeeThrough = L.Option.Some<L.SeeThroughLook>(look.XRay
                 ? new L.SeeThroughLook.Through(LatticeNames.Must(L.Fraction.Create((float)look.Strength)),
                     LatticeNames.Must(L.Metres.Create((float)look.Range)))
+                {
+                    Opacity = look.Opacity is { } opacity
+                        ? L.Option.Some(LatticeNames.Must(L.Fraction.Create((float)opacity)))
+                        : L.Option<L.Fraction>.None
+                }
                 : new L.SeeThroughLook.None()),
             Ports = Shown(look.Shows("ports")),
             OpenEnds = Shown(look.Shows("open_ends")),
@@ -268,6 +279,9 @@ internal static class LatticeLooks
         L.Option.Some<L.EffectLook>(new L.EffectLook.Pulse(LatticeNames.Must(L.Period.Create(seconds)),
             LatticeNames.Must(L.Fraction.Create(low))));
 
+    // The contract minor that sets the hidden part's own opacity (SeeThroughLook.Through.Opacity).
+    internal const int OpacityMinor = 11;
+
     // FNV-1a over the look's text: the same look names the same layer on every seat.
     internal static string Hash(string text)
     {
@@ -323,12 +337,13 @@ internal sealed class LatticeLookIn
             LatticeIn.Given(given, "xray_strength") ? Read.Number(given["xray_strength"], path + ".xray_strength") : null,
             LatticeIn.Given(given, "xray_range") ? Read.Number(given["xray_range"], path + ".xray_range") : null,
             LatticeIn.Given(given, "markers") ? given["markers"] : null,
-            LatticeIn.Given(given, "style") ? given["style"] : null);
+            LatticeIn.Given(given, "style") ? given["style"] : null,
+            LatticeIn.Given(given, "xray_opacity") ? Read.Number(given["xray_opacity"], path + ".xray_opacity") : null);
         foreach (KeyValuePair<string, JToken?> key in given)
         {
-            if (Array.IndexOf(new[] { "look", "xray", "xray_strength", "xray_range", "markers", "style" }, key.Key) < 0)
+            if (Array.IndexOf(new[] { "look", "xray", "xray_strength", "xray_range", "xray_opacity", "markers", "style" }, key.Key) < 0)
             {
-                Read.Problem($"{path}.{key.Key}", "is not a look option: look, xray, xray_strength, xray_range, markers, style");
+                Read.Problem($"{path}.{key.Key}", "is not a look option: look, xray, xray_strength, xray_range, xray_opacity, markers, style");
             }
         }
 

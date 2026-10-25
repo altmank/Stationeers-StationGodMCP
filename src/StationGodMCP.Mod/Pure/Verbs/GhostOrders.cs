@@ -94,7 +94,7 @@ internal sealed class GhostOrder
         List<long> restyle = Ids(options.Restyle, "restyle", problems);
         RunBuildOrder? run = PreviewOrder.RunOf(options.Run, problems);
         GhostLookChange change = new GhostLookChange(options.Look, options.Xray, options.XrayStrength, options.XrayRange,
-            options.Markers, options.Style);
+            options.Markers, options.Style, options.XrayOpacity);
         GhostLook? look = GhostLook.Plain.Change(change, problems);
         if (change.Any && placements.Count == 0 && options.Run == null && restyle.Count == 0)
         {
@@ -104,7 +104,7 @@ internal sealed class GhostOrder
 
         if (restyle.Count > 0 && !change.Any && options.Tint == null && options.Label == null)
         {
-            problems.Add(new OptionProblem("restyle", "changes look, xray, xray_strength, xray_range, markers, style, " +
+            problems.Add(new OptionProblem("restyle", "changes look, xray, xray_strength, xray_range, xray_opacity, markers, style, " +
                 "tint or label: give at least one"));
         }
 

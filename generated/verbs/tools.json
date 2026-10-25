@@ -866,6 +866,7 @@
           "look": {"enum": ["plan", "solid", "wire", "pulse", "quiet"]},
           "xray_strength": {"type": "number"},
           "xray_range": {"type": "number"},
+          "xray_opacity": {"type": "number"},
           "markers": {"type": ["boolean", "object"]},
           "remove": {"type": "array", "items": {"type": "integer"}},
           "restyle": {"type": "array", "items": {"type": "integer"}},

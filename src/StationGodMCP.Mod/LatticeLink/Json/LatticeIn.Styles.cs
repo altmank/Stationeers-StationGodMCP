@@ -506,7 +506,20 @@ internal sealed partial class LatticeIn
 
         L.Fraction? strength = Fraction(through["strength"], at + ".strength");
         L.Metres? range = Metres(through["range"], at + ".range");
-        return strength is { } s && range is { } r ? new L.SeeThroughLook.Through(s, r) : null;
+        L.Option<L.Fraction> opacity = L.Option<L.Fraction>.None;
+        if (Given(through, "opacity"))
+        {
+            if (Minor < LatticeLooks.OpacityMinor)
+            {
+                Problem(at + ".opacity", $"needs Lattice 0.{LatticeLooks.OpacityMinor} or later (this one is 0.{Minor})");
+            }
+            else if (Fraction(through["opacity"], at + ".opacity") is { } own)
+            {
+                opacity = L.Option.Some(own);
+            }
+        }
+
+        return strength is { } s && range is { } r ? new L.SeeThroughLook.Through(s, r) { Opacity = opacity } : null;
     }
 
     private L.BeyondClipLook? BeyondClip(JToken? token, string path)
