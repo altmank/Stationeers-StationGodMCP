@@ -29,13 +29,16 @@ internal static class LatticeNames
     /// <summary>A ghost's build state when it is not the last (show ghost's state): Lattice's build means built.</summary>
     internal static readonly L.AttachmentKey BuildState = Must(L.AttachmentKey.Create(Mod, "build-state"));
 
-    /// <summary>An agent ghost's look preset when it is not plan (GhostLook), kept on the ghost for every viewer.</summary>
+    /// <summary>An agent ghost's look preset when it is not plan (before 2.12, now in Style).</summary>
     internal static readonly L.AttachmentKey Look = Must(L.AttachmentKey.Create(Mod, "look"));
 
-    /// <summary>"off" on a ghost drawn without see-through (show ghost xray false).</summary>
+    /// <summary>A ghost's whole look (GhostLook.Encoded) when it is not Plain: one style layer per distinct look.</summary>
+    internal static readonly L.AttachmentKey Style = Must(L.AttachmentKey.Create(Mod, "style"));
+
+    /// <summary>"off" on a ghost drawn without see-through (before 2.12: show ghost xray false).</summary>
     internal static readonly L.AttachmentKey XRay = Must(L.AttachmentKey.Create(Mod, "xray"));
 
-    /// <summary>"problem" on a ghost whose plan had problems when it was placed.</summary>
+    /// <summary>"problem" on a ghost whose plan had problems when it was placed (before 2.12, now in Style).</summary>
     internal static readonly L.AttachmentKey PlanState = Must(L.AttachmentKey.Create(Mod, "plan"));
 
     internal static readonly L.Attachment Off = Must(L.Attachment.Create("off"));
@@ -248,118 +251,6 @@ internal static class LatticeGhosts
     private static byte Byte(float channel) => (byte)Math.Round(Math.Max(0f, Math.Min(1f, channel)) * 255f);
 
     private static int Key(double metres) => (int)Math.Round(metres * 10.0, MidpointRounding.AwayFromZero);
-}
-
-/// <summary>
-/// StationGod's look in Lattice's drawing (Meaning band, so a viewer's theme still wins): the agent's ghosts glow in
-/// StationGod's agent colour, a token a theme can recolour, and every StationGod ghost (the agent's and ghost mode's)
-/// shows through walls, frames and terrain as StationGod's own board drawing does. Fill (the ghost's tint), patterns
-/// (fails, removes, warns) and edges (findings, the owner's colour) stay the library's: patterns mean something there.
-/// </summary>
-internal static class LatticeLooks
-{
-    internal static readonly L.StyleLayerId Id = LatticeNames.Must(L.StyleLayerId.Create(LatticeNames.Mod, "look"));
-
-    internal static readonly L.PaletteKey AgentColour = LatticeNames.Must(L.PaletteKey.Create(LatticeNames.Mod, "agent"));
-
-    internal static readonly L.Rgba Violet = new L.Rgba(170, 110, 255, 255);
-
-    /// <summary>show highlight's "look here" on a ghost: Lattice's selection glow, pulsing, shown through walls.</summary>
-    internal static L.Style LookHere => new L.Style
-    {
-        Glow = L.Option.Some<L.GlowLook>(new L.GlowLook.Lit(new L.Paint.Token(L.LibraryPalette.Select),
-            LatticeNames.Must(L.Fraction.Create(0.9f)))),
-        Effect = Pulse(0.6f, 0.4f),
-        SeeThrough = L.Option.Some<L.SeeThroughLook>(new L.SeeThroughLook.Through(
-            LatticeNames.Must(L.Fraction.Create(0.8f)), LatticeNames.Must(L.Metres.Create(200f)))),
-    };
-
-    /// <summary>The look's marks on a ghost's attachments: the preset (not plan), xray off, a plan with problems.</summary>
-    internal static L.ValueMap<L.AttachmentKey, L.Attachment> Marks(GhostLook look,
-        L.ValueMap<L.AttachmentKey, L.Attachment> attached)
-    {
-        if (look.Preset != GhostLook.Plan)
-        {
-            attached = attached.With(LatticeNames.Look, LatticeNames.Must(L.Attachment.Create(look.Preset)));
-        }
-
-        if (!look.XRay)
-        {
-            attached = attached.With(LatticeNames.XRay, LatticeNames.Off);
-        }
-
-        return look.Problem ? attached.With(LatticeNames.PlanState, LatticeNames.ProblemMark) : attached;
-    }
-
-    private static L.StyleMatch Tagged(L.AttachmentKey key, string value) =>
-        new L.StyleMatch.Picks(new L.Selector.Tagged(key, L.Option.Some(LatticeNames.Must(L.Attachment.Create(value)))));
-
-    private static L.Option<L.EffectLook> Pulse(float seconds, float low) =>
-        L.Option.Some<L.EffectLook>(new L.EffectLook.Pulse(LatticeNames.Must(L.Period.Create(seconds)),
-            LatticeNames.Must(L.Fraction.Create(low))));
-
-    // As StationGod's own see-through pass: half the ghost's strength, through anything within a long room's reach.
-    private const float SeeThroughStrength = 0.5f;
-
-    private const float SeeThroughRangeM = 60f;
-
-    internal static L.StyleLayerDescriptor Layer
-    {
-        get
-        {
-            L.StyleMatch agents = new L.StyleMatch.Picks(new L.Selector.Owner(LatticeNames.Agent));
-            L.Style glow = new L.Style
-            {
-                Glow = L.Option.Some<L.GlowLook>(new L.GlowLook.Lit(new L.Paint.Token(AgentColour),
-                    LatticeNames.Must(L.Fraction.Create(0.35f)))),
-            };
-            L.StyleMatch ours = new L.StyleMatch.Picks(new L.Selector.Any(L.ValueList.From(new L.Selector[]
-            {
-                new L.Selector.MadeBy(LatticeNames.AgentMaker), new L.Selector.MadeBy(LatticeNames.PlayerMaker),
-                new L.Selector.MadeBy(LatticeNames.MovedMaker),
-            })));
-            L.Style seeThrough = new L.Style
-            {
-                SeeThrough = L.Option.Some<L.SeeThroughLook>(new L.SeeThroughLook.Through(
-                    LatticeNames.Must(L.Fraction.Create(SeeThroughStrength)),
-                    LatticeNames.Must(L.Metres.Create(SeeThroughRangeM)))),
-            };
-            L.Style plain = seeThrough with
-            {
-                Ports = L.Option.Some(L.ShowMode.Shown),
-                OpenEnds = L.Option.Some(L.ShowMode.Shown),
-            };
-            return new L.StyleLayerDescriptor(Id, L.StyleBand.Meaning, 0, L.ValueList.From(new[]
-            {
-                new L.StyleRule(agents, glow),
-                new L.StyleRule(ours, plain),
-                new L.StyleRule(Tagged(LatticeNames.Look, "solid"), new L.Style { Fill = L.Option.Some(L.FillMode.Solid) }),
-                new L.StyleRule(Tagged(LatticeNames.Look, "wire"), new L.Style { Fill = L.Option.Some(L.FillMode.Wire) }),
-                new L.StyleRule(Tagged(LatticeNames.Look, "pulse"), new L.Style { Effect = Pulse(1.2f, 0.35f) }),
-                new L.StyleRule(Tagged(LatticeNames.Look, "quiet"), new L.Style
-                {
-                    SeeThrough = L.Option.Some<L.SeeThroughLook>(new L.SeeThroughLook.None()),
-                    Ports = L.Option.Some(L.ShowMode.None),
-                    OpenEnds = L.Option.Some(L.ShowMode.None),
-                }),
-                new L.StyleRule(Tagged(LatticeNames.XRay, "off"), new L.Style
-                {
-                    SeeThrough = L.Option.Some<L.SeeThroughLook>(new L.SeeThroughLook.None()),
-                }),
-                new L.StyleRule(Tagged(LatticeNames.PlanState, "problem"), new L.Style
-                {
-                    Glow = L.Option.Some<L.GlowLook>(new L.GlowLook.Lit(new L.Paint.Token(L.LibraryPalette.Fail),
-                        LatticeNames.Must(L.Fraction.Create(0.6f)))),
-                    Effect = Pulse(0.8f, 0.3f),
-                }),
-            }))
-            {
-                Palette = L.Option.Some(new L.Palette(
-                    LatticeNames.Must(L.PaletteId.Create(LatticeNames.Mod, "look")),
-                    L.ValueMap<L.PaletteKey, L.Rgba>.Empty.With(AgentColour, Violet))),
-            };
-        }
-    }
 }
 
 /// <summary>What Lattice's validation says about one ghost, as find ghost's check reports it.</summary>

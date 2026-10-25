@@ -3,6 +3,7 @@
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
+using StationGodMCP.Pure;
 using StationGodMCP.Pure.RemoteView;
 using StationGodMCP.Pure.Verbs;
 using Xunit;
@@ -80,6 +81,57 @@ public sealed class GhostOrderTests
         Assert.Null(Order("""{"prefab": "A", "at": [0, 0, 0], "look": "glass"}""", problems));
         Assert.Contains(problems, problem => problem.Path == "look");
     }
+
+    // LIVE 2026-10-25: x-ray strength and range were constants, markers could not go off alone.
+    [Fact]
+    public void XRayStrengthRangeAndMarkersAreTheCallers()
+    {
+        GhostOrder order = Order("""
+            {"prefab": "A", "at": [0, 0, 0], "look": "quiet", "xray_strength": 0.7, "xray_range": 250,
+             "markers": {"ports": true, "waits": false}, "style": {"fill": "wire"}}
+            """, new List<OptionProblem>())!;
+
+        Assert.Equal((0.7, 250.0, true), (order.Look.Strength, order.Look.Range, order.Look.XRay));
+        Assert.True(order.Look.Shows("ports"));
+        Assert.False(order.Look.Shows("open_ends"));
+        Assert.False(order.Look.Shows("waits"));
+        Assert.Equal("wire", (string?)order.Look.Style!["fill"]);
+        Assert.Equal("""{"look":"quiet","xray":{"strength":0.7,"range":250.0},"markers":{"ports":true},"style":{"fill":"wire"}}""",
+            order.Look.Encoded());
+        Assert.Null(GhostOrderOfPlain().Look.Encoded());
+    }
+
+    // Never dropped: look options with nothing to draw, a restyle that changes nothing, strength with x-ray off.
+    [Theory]
+    [InlineData("""{"remove": [3], "look": "wire"}""", "look")]
+    [InlineData("""{"restyle": [3]}""", "restyle")]
+    [InlineData("""{"prefab": "A", "at": [0, 0, 0], "xray": false, "xray_range": 40}""", "xray_range")]
+    [InlineData("""{"prefab": "A", "at": [0, 0, 0], "markers": {"pipes": false}}""", "markers.pipes")]
+    [InlineData("""{"restyle": ["x"], "look": "wire"}""", "restyle[0]")]
+    public void ALookOptionThatWouldBeIgnoredIsRefused(string json, string path)
+    {
+        List<OptionProblem> problems = new List<OptionProblem>();
+
+        Assert.Null(Order(json, problems));
+        Assert.Contains(problems, problem => problem.Path == path);
+    }
+
+    [Fact]
+    public void RestyleNeedsNoPlacementAndKeepsWhatItDoesNotName()
+    {
+        GhostOrder order = Order("""{"restyle": [7, 8], "xray_strength": 0.4}""", new List<OptionProblem>())!;
+        GhostLook old = GhostLook.Plain.Change(new GhostLookChange("wire", null, null, 300, null, null),
+            new List<OptionProblem>())!;
+
+        GhostLook restyled = old.Change(order.LookChange, new List<OptionProblem>())!;
+
+        Assert.Equal(new long[] { 7, 8 }, order.Restyle);
+        Assert.Equal(("wire", 0.4, 300.0), (restyled.Preset, restyled.Strength, restyled.Range));
+        Assert.Null(order.RestyleTint);
+    }
+
+    private static GhostOrder GhostOrderOfPlain() =>
+        Order("""{"prefab": "A", "at": [0, 0, 0]}""", new List<OptionProblem>())!;
 
     [Fact]
     public void RemoveAndClearNeedNoPlacement()

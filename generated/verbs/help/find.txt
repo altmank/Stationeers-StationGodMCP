@@ -18,6 +18,7 @@ whats:
 - void: enclosed empty pockets underground in a box: dug or natural cavities no structure reaches
 - script: the saved scripts a run in this world can see: name, description, parameters and version
 - ghost: ghosts: structures players (ghost mode, the ghost menu) or agents (show ghost) planned in the world but did not build, with build_arguments to build them
+- lattice: anything Lattice answers: every ghost (any intent), plans and their facts, validation, steps, bills, swaps, analysis, previews, executors, stories, the catalogue, ports, the world, styles, picks and events
 
 On every call: fields, omit, list_limits, output_file, whole, repeat, as_player (help {topic: "shaping"}).
 help {verb: "find", what} gives a what's options, reply keys and an example.

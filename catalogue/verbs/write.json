@@ -23,20 +23,53 @@
           "description": "Device(s) or a ref; every one gets logic = value.",
           "x-script": "Device(s); every one gets logic = value."
         },
-        "logic": {"schema": {"type": ["string", "integer"]}, "description": "Logic type name or number.", "x-script": "same"},
-        "value": {"schema": {"type": "number"}, "description": "A finite number.", "x-script": "same"},
+        "logic": {
+          "schema": {
+            "type": [
+              "string",
+              "integer"
+            ]
+          },
+          "description": "Logic type name or number.",
+          "x-script": "same"
+        },
+        "value": {
+          "schema": {
+            "type": "number"
+          },
+          "description": "A finite number.",
+          "x-script": "same"
+        },
         "writes": {
-          "schema": {"type": "array", "items": {"type": "object"}, "maxItems": 256},
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            },
+            "maxItems": 256
+          },
           "description": "Separate writes, each {id, logic, value}, applied in order.",
           "x-script": "same"
         },
-        "gateway": {"use": "gateway"},
+        "gateway": {
+          "use": "gateway"
+        },
         "allow": {
           "use": "allow",
-          "schema": {"type": "array", "items": {"type": "string", "enum": ["lint"]}},
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "lint"
+              ]
+            }
+          },
           "description": "lint: a write that turns on or opens a vent, valve or pump runs the network lint rules (no oxidiser vented outdoors, fuel mix temperature) on the network it opens to, and is refused on a problem unless lint is allowed (passed lists it)."
         },
-        "confirm": {"use": "confirm"}
+        "confirm": {
+          "use": "confirm"
+        }
       },
       "text": [
         "id or writes is required (missing_target names them); gateway only narrows where ids are looked up. A ref reports each target's current value until confirm: true. To write every device of a kind, find them with a limit above their count (has_more false), then pass the ref."
@@ -44,8 +77,19 @@
       "x-script-text": [
         "id or writes is required (missing_target names them); gateway only narrows where ids are looked up. To write every device of a kind, find them and pass their ids as a list (in a confirmed run an id you have not seen stops the run: run it as a report first, then again with confirm: true)."
       ],
-      "example": {"id": "4820585", "logic": "On", "value": 1},
-      "x-cost": {"class": "bounded", "per": ["id", "writes"], "growth": "by-id"},
+      "example": {
+        "id": "4820585",
+        "logic": "On",
+        "value": 1
+      },
+      "x-cost": {
+        "class": "bounded",
+        "per": [
+          "id",
+          "writes"
+        ],
+        "growth": "by-id"
+      },
       "reply": {
         "list": "results",
         "variants": [
@@ -73,13 +117,25 @@
             }
           }
         ],
-        "types": ["Error", "LogicType"]
+        "types": [
+          "Error",
+          "LogicType"
+        ]
       },
       "write": {
         "route": "acts",
         "x-undo": "mixed",
         "x-undo-mark": "[undo] held settings; [cannot undo: action] pulse and action types",
-        "x-target": [{"path": "id", "role": "acts-on"}, {"path": "writes[].id", "role": "acts-on"}]
+        "x-target": [
+          {
+            "path": "id",
+            "role": "acts-on"
+          },
+          {
+            "path": "writes[].id",
+            "role": "acts-on"
+          }
+        ]
       },
       "brief": "logic values on devices"
     },
@@ -88,28 +144,57 @@
       "options": {
         "id": {
           "use": "id",
-          "schema": {"type": "string"},
+          "schema": {
+            "type": "string"
+          },
           "description": "One id, or \"looking_at\" (the thing the crosshair is on).",
           "required": true
         },
-        "gateway": {"use": "gateway"},
+        "gateway": {
+          "use": "gateway"
+        },
         "start": {
-          "schema": {"type": "integer", "minimum": 0},
+          "schema": {
+            "type": "integer",
+            "minimum": 0
+          },
           "description": "First address.",
           "required": true,
           "x-script": "same"
         },
         "values": {
-          "schema": {"type": "array", "items": {"type": "number"}, "maxItems": 512},
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "maxItems": 512
+          },
           "description": "Values written from start.",
           "required": true,
           "x-script": "same"
         },
-        "confirm": {"use": "confirm"}
+        "confirm": {
+          "use": "confirm"
+        }
       },
-      "example": {"id": "4820585", "start": 10, "values": [1, 0, 2], "confirm": true},
-      "x-cost": {"class": "instant", "growth": "by-id"},
-      "x-cost-report": {"class": "instant"},
+      "example": {
+        "id": "4820585",
+        "start": 10,
+        "values": [
+          1,
+          0,
+          2
+        ],
+        "confirm": true
+      },
+      "x-cost": {
+        "class": "instant",
+        "growth": "by-id"
+      },
+      "x-cost-report": {
+        "class": "instant"
+      },
       "reply": {
         "variants": [
           {
@@ -131,7 +216,12 @@
         "cheat": "always",
         "x-undo": "undo",
         "x-undo-mark": "[undo]",
-        "x-target": [{"path": "id", "role": "acts-on"}]
+        "x-target": [
+          {
+            "path": "id",
+            "role": "acts-on"
+          }
+        ]
       },
       "brief": "device memory"
     },
@@ -140,39 +230,73 @@
       "options": {
         "id": {
           "use": "id",
-          "schema": {"type": "string"},
+          "schema": {
+            "type": "string"
+          },
           "description": "One id, or \"looking_at\" (the thing the crosshair is on).",
           "required": true
         },
-        "gateway": {"use": "gateway"},
+        "gateway": {
+          "use": "gateway"
+        },
         "code": {
-          "schema": {"type": "string"},
+          "schema": {
+            "type": "string"
+          },
           "description": "The complete program: IC10, or Lua for a Lua chip.",
           "x-script": "same"
         },
         "code_file": {
-          "schema": {"type": "string"},
+          "schema": {
+            "type": "string"
+          },
           "description": "A file path on the MCP server's machine whose text is sent as code.",
           "x-script": "same"
         },
         "pins": {
-          "schema": {"type": "object"},
+          "schema": {
+            "type": "object"
+          },
           "description": "{d0..d5: device id or null}; pins left out keep their device.",
           "x-script": "{d0..d5: device id or None}; pins left out keep their device."
         },
         "allow": {
           "use": "allow",
-          "schema": {"type": "array", "items": {"type": "string", "enum": ["off_network"]}},
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "off_network"
+              ]
+            }
+          },
           "description": "off_network: a pin device not on the housing's data network."
         },
         "run": {
-          "schema": {"type": "string", "enum": ["pause", "step", "resume", "restart"]},
+          "schema": {
+            "type": "string",
+            "enum": [
+              "pause",
+              "step",
+              "resume",
+              "restart"
+            ]
+          },
           "description": "pause, step, resume (IC10) or restart (Lua).",
           "x-script": "same"
         },
         "include": {
           "use": "include",
-          "schema": {"type": "array", "items": {"type": "string", "enum": ["code"]}},
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "code"
+              ]
+            }
+          },
           "description": "code: echo the program as stored."
         }
       },
@@ -184,8 +308,14 @@
         "Given together, they apply in this order: code, pins, run. The reply is {code, pins, run} with the parts given; the first failure stops the rest, named in not_run.",
         "One id only: a list is refused (this write cannot be undone)."
       ],
-      "example": {"id": "4820585", "code_file": "C:/work/ctl.ic10"},
-      "x-cost": {"class": "instant", "growth": "by-id"},
+      "example": {
+        "id": "4820585",
+        "code_file": "C:/work/ctl.ic10"
+      },
+      "x-cost": {
+        "class": "instant",
+        "growth": "by-id"
+      },
       "reply": {
         "variants": [
           {
@@ -244,20 +374,43 @@
             }
           }
         ],
-        "types": ["Thing"]
+        "types": [
+          "Thing"
+        ]
       },
       "write": {
         "route": "acts",
         "x-undo": "mixed",
         "x-undo-mark": "source [cannot undo: chip source]; pins [undo]; run [cannot undo: run control]",
         "x-target": [
-          {"path": "id", "role": "acts-on"},
-          {"path": "pins.d0", "role": "acts-on"},
-          {"path": "pins.d1", "role": "acts-on"},
-          {"path": "pins.d2", "role": "acts-on"},
-          {"path": "pins.d3", "role": "acts-on"},
-          {"path": "pins.d4", "role": "acts-on"},
-          {"path": "pins.d5", "role": "acts-on"}
+          {
+            "path": "id",
+            "role": "acts-on"
+          },
+          {
+            "path": "pins.d0",
+            "role": "acts-on"
+          },
+          {
+            "path": "pins.d1",
+            "role": "acts-on"
+          },
+          {
+            "path": "pins.d2",
+            "role": "acts-on"
+          },
+          {
+            "path": "pins.d3",
+            "role": "acts-on"
+          },
+          {
+            "path": "pins.d4",
+            "role": "acts-on"
+          },
+          {
+            "path": "pins.d5",
+            "role": "acts-on"
+          }
         ]
       },
       "brief": "chip source, pins, run state"
@@ -267,39 +420,82 @@
       "options": {
         "id": {
           "use": "id",
-          "schema": {"type": "string"},
+          "schema": {
+            "type": "string"
+          },
           "description": "One id, or \"looking_at\" (the thing the crosshair is on).",
           "required": true
         },
-        "gateway": {"use": "gateway"},
-        "surface": {"schema": {"type": "string"}, "description": "The surface; default the main screen's.", "x-script": "same"},
+        "gateway": {
+          "use": "gateway"
+        },
+        "surface": {
+          "schema": {
+            "type": "string"
+          },
+          "description": "The surface; default the main screen's.",
+          "x-script": "same"
+        },
         "element": {
-          "schema": {"type": "string"},
+          "schema": {
+            "type": "string"
+          },
           "description": "The element to touch (inspect screen lists them).",
           "x-script": "same"
         },
         "pixel": {
-          "schema": {"type": "array", "items": {"type": "number"}, "maxItems": 2},
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "maxItems": 2
+          },
           "description": "Or a point [x, y] in pixels from the top left.",
           "x-script": "same"
         },
         "event": {
-          "schema": {"type": "string", "enum": ["click", "change", "toggle"]},
+          "schema": {
+            "type": "string",
+            "enum": [
+              "click",
+              "change",
+              "toggle"
+            ]
+          },
           "description": "The touch: click, change (a slider or field) or toggle.",
           "default": "click",
           "x-script": "same"
         },
-        "text": {"schema": {"type": "string"}, "description": "With change: the new value as text.", "x-script": "same"},
+        "text": {
+          "schema": {
+            "type": "string"
+          },
+          "description": "With change: the new value as text.",
+          "x-script": "same"
+        },
         "as_player": {
-          "schema": {"type": "string"},
+          "schema": {
+            "type": "string"
+          },
           "description": "The name the handler receives; default the player's.",
           "x-script": "same"
         }
       },
-      "text": ["One id only: a list is refused, naming run_script (this write cannot be undone)."],
-      "x-script-text": ["One id only: a list is refused (this write cannot be undone)."],
-      "example": {"id": "4860097", "element": "start"},
-      "x-cost": {"class": "instant", "growth": "by-id"},
+      "text": [
+        "One id only: a list is refused, naming run_script (this write cannot be undone)."
+      ],
+      "x-script-text": [
+        "One id only: a list is refused (this write cannot be undone)."
+      ],
+      "example": {
+        "id": "4860097",
+        "element": "start"
+      },
+      "x-cost": {
+        "class": "instant",
+        "growth": "by-id"
+      },
       "reply": {
         "variants": [
           {
@@ -314,13 +510,20 @@
             }
           }
         ],
-        "types": ["Thing"]
+        "types": [
+          "Thing"
+        ]
       },
       "write": {
         "route": "acts",
         "x-undo": "cannot",
         "x-undo-mark": "[cannot undo: screen press]",
-        "x-target": [{"path": "id", "role": "acts-on"}]
+        "x-target": [
+          {
+            "path": "id",
+            "role": "acts-on"
+          }
+        ]
       },
       "brief": "press a screen control"
     },
@@ -333,20 +536,38 @@
           "x-script": "One id; a list names each '<label> 1', '<label> 2' in id order."
         },
         "label": {
-          "schema": {"type": "string"},
+          "schema": {
+            "type": "string"
+          },
           "description": "The new name; empty gives back the game's name.",
           "x-script": "same"
         },
         "labels": {
-          "schema": {"type": "array", "items": {"type": "object"}, "maxItems": 64},
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            },
+            "maxItems": 64
+          },
           "description": "Several renames, each {id, label}, in order.",
           "x-script": "same"
         },
-        "confirm": {"use": "confirm"}
+        "confirm": {
+          "use": "confirm"
+        }
       },
-      "text": ["Pipe, cable and chute pieces cannot be renamed (not_labelable, per entry)."],
-      "example": {"id": "1199811", "label": "O2 Tank 1"},
-      "x-cost": {"class": "instant", "growth": "by-id"},
+      "text": [
+        "Pipe, cable and chute pieces cannot be renamed (not_labelable, per entry)."
+      ],
+      "example": {
+        "id": "1199811",
+        "label": "O2 Tank 1"
+      },
+      "x-cost": {
+        "class": "instant",
+        "growth": "by-id"
+      },
       "reply": {
         "list": "results",
         "variants": [
@@ -375,13 +596,24 @@
             }
           }
         ],
-        "types": ["Error"]
+        "types": [
+          "Error"
+        ]
       },
       "write": {
         "route": "acts",
         "x-undo": "undo",
         "x-undo-mark": "[undo]",
-        "x-target": [{"path": "id", "role": "acts-on"}, {"path": "labels[].id", "role": "acts-on"}]
+        "x-target": [
+          {
+            "path": "id",
+            "role": "acts-on"
+          },
+          {
+            "path": "labels[].id",
+            "role": "acts-on"
+          }
+        ]
       },
       "brief": "rename things"
     },
@@ -398,32 +630,71 @@
           "description": "A pipe, cable or chute network (its id, a piece on it, or a device with kind): paints its pieces."
         },
         "kind": {
-          "schema": {"type": "string", "enum": ["pipe", "cable", "chute"]},
+          "schema": {
+            "type": "string",
+            "enum": [
+              "pipe",
+              "cable",
+              "chute"
+            ]
+          },
           "description": "With network given as a device: which of its networks.",
           "x-script": "same"
         },
         "include": {
           "use": "include",
-          "schema": {"type": "array", "items": {"type": "string", "enum": ["devices"]}},
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "devices"
+              ]
+            }
+          },
           "description": "devices: also paint the network's devices."
         },
-        "color": {"schema": {"type": "string"}, "description": "A colour name, an index, or 'default'.", "x-script": "same"},
+        "color": {
+          "schema": {
+            "type": "string"
+          },
+          "description": "A colour name, an index, or 'default'.",
+          "x-script": "same"
+        },
         "items": {
-          "schema": {"type": "array", "items": {"type": "object"}, "maxItems": 256},
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            },
+            "maxItems": 256
+          },
           "description": "{id, color} pairs, a colour each.",
           "x-script": "same"
         },
-        "confirm": {"use": "confirm"}
+        "confirm": {
+          "use": "confirm"
+        }
       },
-      "example": {"network": "4639870", "kind": "pipe", "color": "Red"},
-      "x-cost": {"class": "instant", "growth": "index"},
+      "example": {
+        "network": "4639870",
+        "kind": "pipe",
+        "color": "Red"
+      },
+      "x-cost": {
+        "class": "instant",
+        "growth": "index"
+      },
       "reply": {
         "list": "colors",
         "variants": [
           {
             "label": "PaintColors",
             "view": "PaintColors",
-            "keys": {"colors": "list[{index: int, name: str | None, paint_only: bool}]", "count": "int"}
+            "keys": {
+              "colors": "list[{index: int, name: str | None, paint_only: bool}]",
+              "count": "int"
+            }
           },
           {
             "label": "BatchResult",
@@ -436,17 +707,32 @@
             }
           }
         ],
-        "types": ["Color", "Error"]
+        "types": [
+          "Color",
+          "Error"
+        ]
       },
       "write": {
         "route": "acts",
         "x-undo": "undo",
         "x-undo-mark": "[undo]",
         "x-target": [
-          {"path": "id", "role": "acts-on"},
-          {"path": "items[].id", "role": "acts-on"},
-          {"path": "network", "role": "spread"},
-          {"path": "kind", "role": "spread"}
+          {
+            "path": "id",
+            "role": "acts-on"
+          },
+          {
+            "path": "items[].id",
+            "role": "acts-on"
+          },
+          {
+            "path": "network",
+            "role": "spread"
+          },
+          {
+            "path": "kind",
+            "role": "spread"
+          }
         ]
       },
       "brief": "paint things or a network"
@@ -455,39 +741,68 @@
       "summary": "start, stop or clear a rocket flight recorder (server state; never the world); read it with read flight_log",
       "options": {
         "action": {
-          "schema": {"type": "string", "enum": ["start", "stop", "clear"]},
+          "schema": {
+            "type": "string",
+            "enum": [
+              "start",
+              "stop",
+              "clear"
+            ]
+          },
           "description": "start, stop or clear the recorder.",
           "required": true,
           "x-script": "same"
         },
         "id": {
           "use": "id",
-          "schema": {"type": "string"},
+          "schema": {
+            "type": "string"
+          },
           "description": "A rocket's id, name, network or any part; left out when there is one rocket."
         },
         "interval_s": {
-          "schema": {"type": "number", "minimum": 0.1, "maximum": 600},
+          "schema": {
+            "type": "number",
+            "minimum": 0.1,
+            "maximum": 600
+          },
           "description": "start: game seconds between samples.",
           "default": "1",
           "x-script": "same"
         },
         "capacity": {
-          "schema": {"type": "integer", "minimum": 10, "maximum": 100000},
+          "schema": {
+            "type": "integer",
+            "minimum": 10,
+            "maximum": 100000
+          },
           "description": "start: samples kept.",
           "default": "3600",
           "x-script": "same"
         },
         "csv": {
-          "schema": {"type": "boolean"},
+          "schema": {
+            "type": "boolean"
+          },
           "description": "start: also write a CSV next to the save.",
           "default": "false",
           "x-script": "same"
         }
       },
-      "text": ["One id only: a list is refused, naming run_script (this write cannot be undone)."],
-      "x-script-text": ["One id only: a list is refused (this write cannot be undone)."],
-      "example": {"action": "start", "id": "Tanker"},
-      "x-cost": {"class": "instant", "growth": "by-id"},
+      "text": [
+        "One id only: a list is refused, naming run_script (this write cannot be undone)."
+      ],
+      "x-script-text": [
+        "One id only: a list is refused (this write cannot be undone)."
+      ],
+      "example": {
+        "action": "start",
+        "id": "Tanker"
+      },
+      "x-cost": {
+        "class": "instant",
+        "growth": "by-id"
+      },
       "reply": {
         "list": "events",
         "variants": [
@@ -520,7 +835,13 @@
               "has_more": "bool"
             }
           },
-          {"label": "FlightLogCleared", "view": "FlightLogCleared", "keys": {"cleared": "bool"}},
+          {
+            "label": "FlightLogCleared",
+            "view": "FlightLogCleared",
+            "keys": {
+              "cleared": "bool"
+            }
+          },
           {
             "label": "FlightLogList",
             "view": "FlightLogList",
@@ -535,21 +856,52 @@
         "route": "acts",
         "x-undo": "cannot",
         "x-undo-mark": "[cannot undo: flight log]",
-        "x-target": [{"path": "id", "role": "acts-on"}]
+        "x-target": [
+          {
+            "path": "id",
+            "role": "acts-on"
+          }
+        ]
       },
       "brief": "start, stop, clear a recorder"
     },
     "uplink": {
       "summary": "point a Logic Rocket Uplink at a Logic Rocket Downlink",
       "options": {
-        "id": {"use": "id", "schema": {"type": "string"}, "description": "The uplink.", "required": true},
-        "downlink": {"schema": {"type": "string"}, "description": "The downlink to follow.", "required": true, "x-script": "same"},
-        "gateway": {"use": "gateway"}
+        "id": {
+          "use": "id",
+          "schema": {
+            "type": "string"
+          },
+          "description": "The uplink.",
+          "required": true
+        },
+        "downlink": {
+          "schema": {
+            "type": "string"
+          },
+          "description": "The downlink to follow.",
+          "required": true,
+          "x-script": "same"
+        },
+        "gateway": {
+          "use": "gateway"
+        }
       },
-      "text": ["One id only: a list is refused, naming run_script (this write cannot be undone)."],
-      "x-script-text": ["One id only: a list is refused (this write cannot be undone)."],
-      "example": {"id": "5100200", "downlink": "5100377"},
-      "x-cost": {"class": "instant", "growth": "by-id"},
+      "text": [
+        "One id only: a list is refused, naming run_script (this write cannot be undone)."
+      ],
+      "x-script-text": [
+        "One id only: a list is refused (this write cannot be undone)."
+      ],
+      "example": {
+        "id": "5100200",
+        "downlink": "5100377"
+      },
+      "x-cost": {
+        "class": "instant",
+        "growth": "by-id"
+      },
       "reply": {
         "variants": [
           {
@@ -560,43 +912,80 @@
             }
           }
         ],
-        "types": ["Thing"]
+        "types": [
+          "Thing"
+        ]
       },
       "write": {
         "route": "acts",
         "x-undo": "cannot",
         "x-undo-mark": "[cannot undo: uplink]",
-        "x-target": [{"path": "id", "role": "acts-on"}, {"path": "downlink", "role": "acts-on"}]
+        "x-target": [
+          {
+            "path": "id",
+            "role": "acts-on"
+          },
+          {
+            "path": "downlink",
+            "role": "acts-on"
+          }
+        ]
       },
       "brief": "point an uplink"
     },
     "battery": {
       "summary": "set the charge of batteries and cells: full by default, or a ratio or joules",
       "options": {
-        "id": {"use": "id", "description": "Batteries or cells (up to 256)."},
-        "rocket": {"schema": {"type": "string"}, "description": "Every battery of this rocket.", "x-script": "same"},
+        "id": {
+          "use": "id",
+          "description": "Batteries or cells (up to 256)."
+        },
+        "rocket": {
+          "schema": {
+            "type": "string"
+          },
+          "description": "Every battery of this rocket.",
+          "x-script": "same"
+        },
         "within": {
           "use": "within",
           "description": "Every cell in this holder's slots, nested; \"player\" for the player.",
           "x-script": "same"
         },
         "ratio": {
-          "schema": {"type": "number", "minimum": 0, "maximum": 1},
+          "schema": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
           "description": "Charge as a share of capacity.",
           "default": "full",
           "x-script": "Charge as a share of capacity. (default full)"
         },
         "joules": {
-          "schema": {"type": "number", "minimum": 0},
+          "schema": {
+            "type": "number",
+            "minimum": 0
+          },
           "description": "Charge in joules, clamped.",
           "default": "full",
           "x-script": "Charge in joules, clamped. (default full)"
         },
-        "confirm": {"use": "confirm"}
+        "confirm": {
+          "use": "confirm"
+        }
       },
-      "example": {"within": "player", "confirm": true},
-      "x-cost": {"class": "instant", "growth": "by-id"},
-      "x-cost-report": {"class": "instant"},
+      "example": {
+        "within": "player",
+        "confirm": true
+      },
+      "x-cost": {
+        "class": "instant",
+        "growth": "by-id"
+      },
+      "x-cost-report": {
+        "class": "instant"
+      },
       "reply": {
         "list": "results",
         "variants": [
@@ -612,14 +1001,30 @@
             }
           }
         ],
-        "types": ["Error", "Thing"]
+        "types": [
+          "Error",
+          "Thing"
+        ]
       },
       "write": {
         "route": "confirm",
         "cheat": "always",
         "x-undo": "undo",
         "x-undo-mark": "[undo: restores the value, not what happened since]",
-        "x-target": [{"path": "id", "role": "acts-on"}, {"path": "rocket", "role": "spread"}, {"path": "within", "role": "spread"}]
+        "x-target": [
+          {
+            "path": "id",
+            "role": "acts-on"
+          },
+          {
+            "path": "rocket",
+            "role": "spread"
+          },
+          {
+            "path": "within",
+            "role": "spread"
+          }
+        ]
       },
       "brief": "set charge"
     },
@@ -628,31 +1033,59 @@
       "options": {
         "id": {
           "use": "id",
-          "schema": {"type": "string"},
+          "schema": {
+            "type": "string"
+          },
           "description": "One id, or \"looking_at\" (the thing the crosshair is on).",
           "required": true
         },
         "unit": {
-          "schema": {"type": "integer", "minimum": 0},
+          "schema": {
+            "type": "integer",
+            "minimum": 0
+          },
           "description": "Which gene set; default the top.",
           "x-script": "same"
         },
         "genes": {
-          "schema": {"type": "object"},
+          "schema": {
+            "type": "object"
+          },
           "description": "Gene name to new value, -1 to 1 ({\"GrowthSpeedMultiplier\": 1}).",
           "required": true,
           "x-script": "same"
         },
         "allow": {
           "use": "allow",
-          "schema": {"type": "array", "items": {"type": "string", "enum": ["out_of_range"]}},
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "out_of_range"
+              ]
+            }
+          },
           "description": "out_of_range: write values outside -1..1 too."
         },
-        "confirm": {"use": "confirm"}
+        "confirm": {
+          "use": "confirm"
+        }
       },
-      "example": {"id": "3311223", "genes": {"GrowthSpeedMultiplier": 1}, "confirm": true},
-      "x-cost": {"class": "bounded", "growth": "by-id"},
-      "x-cost-report": {"class": "bounded"},
+      "example": {
+        "id": "3311223",
+        "genes": {
+          "GrowthSpeedMultiplier": 1
+        },
+        "confirm": true
+      },
+      "x-cost": {
+        "class": "bounded",
+        "growth": "by-id"
+      },
+      "x-cost-report": {
+        "class": "bounded"
+      },
       "reply": {
         "list": "results",
         "variants": [
@@ -681,14 +1114,22 @@
             }
           }
         ],
-        "types": ["Error", "Thing"]
+        "types": [
+          "Error",
+          "Thing"
+        ]
       },
       "write": {
         "route": "confirm",
         "cheat": "always",
         "x-undo": "undo",
         "x-undo-mark": "[undo]",
-        "x-target": [{"path": "id", "role": "acts-on"}]
+        "x-target": [
+          {
+            "path": "id",
+            "role": "acts-on"
+          }
+        ]
       },
       "brief": "edit plant genes"
     },
@@ -696,18 +1137,30 @@
       "summary": "heal a player: every kind of damage to the body and its organs (brain and lungs) set to none",
       "options": {
         "player": {
-          "schema": {"type": "string"},
+          "schema": {
+            "type": "string"
+          },
           "description": "The player to heal, by name or id, in the game or not; default the player.",
           "x-script": "same"
         },
-        "confirm": {"use": "confirm"}
+        "confirm": {
+          "use": "confirm"
+        }
       },
       "text": [
         "A cheat: no item or machine heals all of it at once. Heals as the game's own healers do (a cryo tube, a medical effect): the body's and each organ's damage set to none, so the brain's damage goes too. The report gives each part's damage now. A dead player is refused: a heal does not revive. Hunger and thirst are not damage and stay as they are (inspect player)."
       ],
-      "example": {"player": "xceled", "confirm": true},
-      "x-cost": {"class": "instant", "growth": "by-id"},
-      "x-cost-report": {"class": "instant"},
+      "example": {
+        "player": "xceled",
+        "confirm": true
+      },
+      "x-cost": {
+        "class": "instant",
+        "growth": "by-id"
+      },
+      "x-cost-report": {
+        "class": "instant"
+      },
       "reply": {
         "list": "parts",
         "variants": [
@@ -721,14 +1174,21 @@
             }
           }
         ],
-        "types": ["Thing"]
+        "types": [
+          "Thing"
+        ]
       },
       "write": {
         "route": "confirm",
         "cheat": "always",
         "x-undo": "cannot",
         "x-undo-mark": "[cannot undo: heal]",
-        "x-target": [{"path": "player", "role": "acts-on"}]
+        "x-target": [
+          {
+            "path": "player",
+            "role": "acts-on"
+          }
+        ]
       },
       "brief": "heal a player"
     },
@@ -737,29 +1197,43 @@
       "summary": "save a Python script under a name: the next version, every older one kept",
       "options": {
         "name": {
-          "schema": {"type": "string"},
+          "schema": {
+            "type": "string"
+          },
           "description": "The script's name: letters, digits and underscores (it names a file and an sg module).",
           "required": true,
           "x-script": "same"
         },
         "code": {
-          "schema": {"type": "string"},
+          "schema": {
+            "type": "string"
+          },
           "description": "The Python source; it must define main(...), with type hints on the parameters run_script checks.",
           "x-script": "same"
         },
         "code_file": {
-          "schema": {"type": "string"},
+          "schema": {
+            "type": "string"
+          },
           "description": "A file path on the MCP server's machine whose text is saved as code; give code or code_file.",
           "x-script": "same"
         },
         "description": {
-          "schema": {"type": "string"},
+          "schema": {
+            "type": "string"
+          },
           "description": "One line saying what the script does (find script shows it).",
           "required": true,
           "x-script": "same"
         },
         "scope": {
-          "schema": {"type": "string", "enum": ["shared", "world"]},
+          "schema": {
+            "type": "string",
+            "enum": [
+              "shared",
+              "world"
+            ]
+          },
           "description": "shared: runs in any world, and may hard-code no ids; world: bound to the world it is saved in.",
           "required": true,
           "x-script": "same"
@@ -768,7 +1242,12 @@
       "text": [
         "The hub saves it, not the game: under the server's --scripts-dir, in shared/ or world/<world id>/. Saving a name again writes the next version as <name>/v<N>.py and makes <name>.py it; every older version stays. The code is parsed once here: a script that does not parse, has no def main(...), or has positional-only parameters is refused. A shared script may not hard-code ids: a constant written as an id, an integer of 100000 and up, or digits that big written as a string are all refused. Not caught: an id built at run time, one below 100000 reached through a variable, and composite ids like '5-1234'. A world script belongs to the world it was saved in. The saved file may be edited where it lies: the next find, inspect or run of it reads main(...) again, rebuilds the header and saves the next version. A name is a Python module name, and may not collide with a script of the other scope a run can see, or with either in the same scope however it is cased."
       ],
-      "example": {"name": "greet", "code": "def main(who: str) -> str: return 'hi ' + who", "description": "greet a player by name", "scope": "shared"},
+      "example": {
+        "name": "greet",
+        "code": "def main(who: str) -> str: return 'hi ' + who",
+        "description": "greet a player by name",
+        "scope": "shared"
+      },
       "reply": {
         "variants": [
           {
@@ -784,6 +1263,74 @@
         ]
       },
       "brief": "save a script"
+    },
+    "lattice": {
+      "summary": "any Lattice command: place, remove, change, move ghosts; plans; runs and routes; swaps, removals, finishes, splits, transforms, templates; repair, take down, reopen, revert, batch; executors",
+      "brief": "Lattice commands",
+      "options": {
+        "command": {
+          "schema": {
+            "type": "object"
+          },
+          "description": "One command, as help topic lattice writes it ({place: [...]}, {batch: [...]}).",
+          "required": true,
+          "x-script": "same"
+        },
+        "confirm": {
+          "use": "confirm"
+        }
+      },
+      "text": [
+        "Reports Lattice's preview (what it would change, findings, bill, effects, a run's pieces) until confirm; confirm submits it and answers the change set. Ghosts are the agent's (StationGod agent) unless made_by says otherwise. Undo with {revert: change_set}."
+      ],
+      "example": {
+        "command": {
+          "plan_route": {
+            "kit": "ItemPipe",
+            "from": [
+              10.25,
+              1.25,
+              4.25
+            ],
+            "to": [
+              14.25,
+              1.25,
+              4.25
+            ],
+            "to_port": {
+              "ghost": 812,
+              "port": 0
+            }
+          }
+        },
+        "confirm": true
+      },
+      "x-cost": {
+        "class": "bounded",
+        "growth": "plan"
+      },
+      "x-cost-report": {
+        "class": "bounded"
+      },
+      "reply": {
+        "variants": [
+          {
+            "keys": {
+              "outcome": "str",
+              "change_set": "Any | None",
+              "preview": "Any | None",
+              "refusals": "list[str]",
+              "notes": "list[str]"
+            }
+          }
+        ]
+      },
+      "write": {
+        "route": "confirm",
+        "x-undo": "cannot",
+        "x-undo-mark": "[undo: write lattice {command: {revert: change_set}}]",
+        "x-target": []
+      }
     }
   }
 }

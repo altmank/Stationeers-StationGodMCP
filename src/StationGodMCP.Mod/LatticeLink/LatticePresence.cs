@@ -110,6 +110,29 @@ internal static class LatticePresence
     internal static Dictionary<long, GhostCheck>? Check(IReadOnlyList<long> ids, out string? note) =>
         LatticeBoard.Check(ids, out note);
 
+    /// <summary>LatticeBoard.Restyle; only while Running.</summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    internal static List<long> Restyle(IReadOnlyList<long> ids, GhostLookChange change, Rgba? tint, string? label,
+        List<Pure.Verbs.OptionProblem> problems, List<string> refused, List<string> notes) =>
+        LatticeBoard.Restyle(ids, change, tint, label, problems, refused, notes);
+
+    /// <summary>LatticeBoard.Looks; only while Running.</summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    internal static Dictionary<long, (Newtonsoft.Json.Linq.JObject Look, Newtonsoft.Json.Linq.JObject? Drawn)> Looks(
+        IReadOnlyList<long> ids, bool explain) => LatticeBoard.Looks(ids, explain);
+
+    /// <summary>LatticeVerbs.Ask (find lattice); only while Running.</summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    internal static LatticeAnswer Ask(string ask, Newtonsoft.Json.Linq.JObject args) => LatticeVerbs.Ask(ask, args);
+
+    /// <summary>LatticeVerbs.Command (write lattice); only while Running.</summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    internal static LatticeAnswer Command(Newtonsoft.Json.Linq.JToken command, bool acts) => LatticeVerbs.Command(command, acts);
+
+    /// <summary>LatticeVerbs.View (show lattice); only while Running.</summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    internal static LatticeAnswer View(string part, Newtonsoft.Json.Linq.JObject given) => LatticeVerbs.View(part, given);
+
     /// <summary>Whether Lattice draws the ghosts; false while not Running.</summary>
     internal static bool Draws => Running && DrawsBoard();
 

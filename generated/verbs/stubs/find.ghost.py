@@ -8,18 +8,21 @@ def find(what: Literal['ghost'], *,
     source: Literal['player', 'agent'] = None,  # Only ghosts players placed, or agents.
     check: bool = False,  # With Lattice: each listed ghost's check by Lattice's validation (passes, waits for other ghosts, fails or warns, and why), in build order with the ghosts before it assumed built.
     bill: bool = False,  # With Lattice: what the listed ghosts take to build (items needed, given back, tools).
+    explain: bool = False,  # With Lattice: each ghost's look as drawn (style, and which layer set each property).
     limit: int = 50,  # The first n in order (entries); left out, every one.
 ) -> dict:  # main list: r['ghosts']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Ghosts: structures players (ghost mode, the ghost menu) or agents (show ghost) planned in the world but did not build, with build_arguments to build them.
-    Each ghost carries its orientation, a device's ports and layout.port_checks (what stands in each joining cell now; other ghosts are not seen there) and build_arguments for build structure; the reply's build_arguments place every listed ghost (up to 64) in one build. from_plan takes a find ghost ref: "r5" builds the listed ghosts, "r5.ghosts.2" one. A ghost goes off the board by itself once a structure of its prefab is built where it stands in its turn; show ghost {remove} takes ghosts off.
+    Each ghost carries its orientation, a device's ports and layout.port_checks (what stands in each joining cell now; other ghosts are not seen there) and build_arguments for build structure; the reply's build_arguments place every listed ghost (up to 64) in one build. from_plan takes a find ghost ref: "r5" builds the listed ghosts, "r5.ghosts.2" one. A ghost goes off the board by itself once a structure of its prefab is built where it stands in its turn; show ghost {remove} takes ghosts off. With Lattice each ghost has its look as it keeps it (look, xray, strength, range, markers, problem, style); show ghost {restyle} changes it in place.
     board says who keeps the ghosts: lattice (Lattice is installed: its build ghosts, from every mod and player, Loom's included, saved and synced by Lattice; ids are Lattice's) or stationgod (StationGod's own board, saved beside the save). Lattice's remove, swap and finish ghosts are not listed. check needs Lattice; while Lattice is still working a check out, check_note says so: ask again.
     Reply:
       ghosts: list[{id: int, prefab_name: str, display_name: str | None, position: Vec3, rotation_deg: Vec3, build_state: int, owner: str, source:
           str, label: str | None, tint: list[float], placed_at: str, distance_m: float | None, orientation: {facing: str | None, up: str | None,
           euler: Vec3}, ports: list[{index: int, at: Vec3, toward: str, type: str, role: str, network_id: str | None}] | None, layout: {port_checks:
           list[{index: int, at: Vec3, toward: str, type: str, role: str, flow: str | None, occupant: Thing | None, joins: bool, would_join_network:
-          str | None, blocked: str | None, in_door_keep_out: bool}]} | None, check: {verdict: str, why: str | None, waits_for: list[int] | None} |
-          None, build_arguments: {what: str, prefab: str, at: list[float], rotation: list[float], build_state: int}}]
+          str | None, blocked: str | None, in_door_keep_out: bool}]} | None, look: {look: str, xray: bool, xray_strength: float | None, xray_range:
+          float | None, markers: {ports: bool, open_ends: bool, flow: bool, waits: bool}, problem: bool, style: Any | None} | None, drawn: {style:
+          Any, sources: Any} | None, check: {verdict: str, why: str | None, waits_for: list[int] | None} | None, build_arguments: {what: str, prefab:
+          str, at: list[float], rotation: list[float], build_state: int}}]
       count: int
       total: int
       offset: int

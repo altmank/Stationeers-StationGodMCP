@@ -89,6 +89,11 @@ public sealed class GameLink : IHubLink, IAsyncDisposable
 
     public GameCatalogue Catalogue => _catalogue;
 
+    public GameCatalogue? GameModel => _catalogue;
+
+    public string? ModVersion =>
+        Welcome is { } welcome && Wire.Child(welcome, "server") is { } server ? Wire.Text(server, "mod_version") : null;
+
     /// <summary>The world as the last welcome or world_changed gave it ({id, save, epoch}); null before any.</summary>
     public JsonElement? World
     {

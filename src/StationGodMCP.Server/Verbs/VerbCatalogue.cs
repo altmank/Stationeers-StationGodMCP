@@ -233,6 +233,9 @@ internal sealed class WhatEntry
     /// script or program face may ask for the mod's walk with cursor: "open".</summary>
     internal bool WireCursor { get; }
 
+    /// <summary>Its wire options (x-wire): the hub's and sg's to send, in the catalogue but never an agent's.</summary>
+    internal IReadOnlySet<string> WireOptions { get; private init; } = new HashSet<string>();
+
     internal WriteRules? Write { get; }
 
     /// <summary>The list option whose entries an id list becomes (move item's moves); null where it answers rows.</summary>
@@ -260,6 +263,7 @@ internal sealed class WhatEntry
         Dictionary<string, OptionEntry> options = new(StringComparer.Ordinal);
         List<string> optionNames = [];
         bool wireCursor = false;
+        HashSet<string> wire = new(StringComparer.Ordinal);
         foreach ((string optionName, JsonNode? node) in source["options"] as JsonObject ?? [])
         {
             JsonObject resolved = Resolve(node!.AsObject(), sharedOptions);
@@ -268,6 +272,7 @@ internal sealed class WhatEntry
                 // A wire option (x-wire) is for the hub and sg to send to the game; an agent never gives it. The one
                 // the hub sends itself: cursor, to ask for the mod's walk on a first page.
                 wireCursor |= optionName == "cursor";
+                wire.Add(optionName);
                 continue;
             }
 
@@ -284,7 +289,7 @@ internal sealed class WhatEntry
 
         return new WhatEntry(verb, name, options, optionNames, wireCursor, write, (string?)source["id_list"],
             (string?)source["reply"]?["list"], source["example"] as JsonObject, (bool?)source["hub"] ?? false,
-            defaultLimited);
+            defaultLimited) { WireOptions = wire };
     }
 
     // A shared definition with the what's own keys replacing its keys.

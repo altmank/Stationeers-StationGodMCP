@@ -25,9 +25,10 @@
               "damaged",
               "void",
               "script",
-              "ghost"
+              "ghost",
+              "lattice"
             ],
-            "description": "thing: any object: structures, devices, items, players; item: stackable items and kits anywhere; group_by sums; device: devices with logic; container: holders with items; frame: outer frames; pad: landing pads; water: water and steam sources; ore: deep miner ore spots; food: food and drink; plant: plants: stage, health, harvest; room: closed rooms: pressure, gases; gateway: device scopes (gateways); damaged: damaged and broken things; void: underground pockets to fill; script: saved scripts; ghost: planned structures (ghosts)"
+            "description": "thing: any object: structures, devices, items, players; item: stackable items and kits anywhere; group_by sums; device: devices with logic; container: holders with items; frame: outer frames; pad: landing pads; water: water and steam sources; ore: deep miner ore spots; food: food and drink; plant: plants: stage, health, harvest; room: closed rooms: pressure, gases; gateway: device scopes (gateways); damaged: damaged and broken things; void: underground pockets to fill; script: saved scripts; ghost: planned structures (ghosts); lattice: ask Lattice"
           },
           "name": {"type": "string"},
           "prefab": {
@@ -74,6 +75,38 @@
           "source": {"enum": ["player", "agent"]},
           "check": {"type": "boolean"},
           "bill": {"type": "boolean"},
+          "explain": {"type": "boolean"},
+          "ask": {
+            "enum": [
+              "ghosts",
+              "plans",
+              "plan",
+              "load",
+              "template",
+              "validation",
+              "steps",
+              "bill",
+              "swaps",
+              "analysis",
+              "preview",
+              "executors",
+              "story",
+              "export",
+              "catalogue",
+              "ports",
+              "facing",
+              "families",
+              "groups",
+              "modules",
+              "world",
+              "explain",
+              "matches",
+              "pick",
+              "clip",
+              "events"
+            ]
+          },
+          "args": {"type": "object"},
           "fields": {"type": "array", "items": {"type": "string"}},
           "omit": {"type": "array", "items": {"type": "string"}},
           "list_limits": {"type": "object"},
@@ -302,9 +335,10 @@
               "battery",
               "genes",
               "health",
-              "script"
+              "script",
+              "lattice"
             ],
-            "description": "logic: logic values on devices; memory: device memory; chip: chip source, pins, run state; screen: press a screen control; label: rename things; paint: paint things or a network; flight_log: start, stop, clear a recorder; uplink: point an uplink; battery: set charge; genes: edit plant genes; health: heal a player; script: save a script"
+            "description": "logic: logic values on devices; memory: device memory; chip: chip source, pins, run state; screen: press a screen control; label: rename things; paint: paint things or a network; flight_log: start, stop, clear a recorder; uplink: point an uplink; battery: set charge; genes: edit plant genes; health: heal a player; script: save a script; lattice: Lattice commands"
           },
           "id": {"type": ["string", "array"]},
           "logic": {"type": ["string", "integer"]},
@@ -357,6 +391,7 @@
             "enum": ["shared", "world"],
             "description": "write script: shared (any world, no hard-coded ids), or world (bound to this world)."
           },
+          "command": {"type": "object"},
           "fields": {"type": "array", "items": {"type": "string"}},
           "omit": {"type": "array", "items": {"type": "string"}},
           "list_limits": {"type": "object"},
@@ -792,8 +827,8 @@
         "properties": {
           "what": {
             "type": "string",
-            "enum": ["preview", "highlight", "ghost"],
-            "description": "preview: a planned structure layout or cable, pipe or chute run (build's dry run) as wire boxes or see-through ghosts, plus cells and boxes; highlight: show the player where things, a network or far points are, tinted and labelled; ghost: persistent ghosts on the board"
+            "enum": ["preview", "highlight", "ghost", "lattice"],
+            "description": "preview: a planned structure layout or cable, pipe or chute run (build's dry run) as wire boxes or see-through ghosts, plus cells and boxes; highlight: show the player where things, a network or far points are, tinted and labelled; ghost: persistent ghosts on the board; lattice: Lattice's local view"
           },
           "placements": {"type": "array", "description": "As build structure's placements."},
           "prefab": {
@@ -812,7 +847,7 @@
           "run": {"type": "object", "description": "A cable, pipe or chute run to plan and draw: build's options with what."},
           "from_plan": {"type": "string", "description": "A plan route or spot ref ('r9'): preview its build_arguments."},
           "style": {
-            "enum": ["boxes", "ghost", "both"],
+            "type": ["string", "object"],
             "description": "boxes (default), ghost (the structures' own meshes, see-through) or both."
           },
           "tint": {"type": ["string", "array"]},
@@ -829,7 +864,16 @@
             "description": "Up to 64, each one of {id (one or a list), network, at} with color, label, pulse."
           },
           "look": {"enum": ["plan", "solid", "wire", "pulse", "quiet"]},
+          "xray_strength": {"type": "number"},
+          "xray_range": {"type": "number"},
+          "markers": {"type": ["boolean", "object"]},
           "remove": {"type": "array", "items": {"type": "integer"}},
+          "restyle": {"type": "array", "items": {"type": "integer"}},
+          "layer": {"type": "object"},
+          "set": {"type": "object"},
+          "drafts": {"type": "object"},
+          "clip": {"type": "object"},
+          "highlight": {"type": "object"},
           "fields": {"type": "array", "items": {"type": "string"}, "description": "Keys to keep."},
           "omit": {"type": "array", "items": {"type": "string"}, "description": "Key paths to leave out."},
           "list_limits": {"type": "object"},

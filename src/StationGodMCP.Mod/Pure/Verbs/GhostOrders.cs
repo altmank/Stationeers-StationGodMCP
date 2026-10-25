@@ -11,7 +11,9 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>
 /// show ghost's call, checked without the game: placements (as show preview reads them: the list, or one at the top
 /// level; a top-level label goes to every placement without its own), the tint, ghost ids to take off (remove) and
-/// clear (agent: every ghost agents placed; all: every ghost). The request the game plans is free, as a preview's.
+/// clear (agent: every ghost agents placed; all: every ghost), and ghost ids to restyle in place (restyle: the look
+/// options, tint and label given change, the rest of each ghost's look is kept). The request the game plans is free, as
+/// a preview's. Look options with nothing placed or restyled are refused, never dropped.
 /// </summary>
 internal sealed class GhostOrder
 {
@@ -20,9 +22,13 @@ internal sealed class GhostOrder
     private static readonly string[] ClearWords = { "agent", "all" };
 
     private GhostOrder(PlaceRequest arguments, Dictionary<int, Rgba> tints, Rgba tint, List<long> remove, string? clear,
-        string? label, Dictionary<int, string> labels, RunBuildOrder? run, GhostLook look)
+        string? label, Dictionary<int, string> labels, RunBuildOrder? run, GhostLook look, GhostLookChange change,
+        List<long> restyle, Rgba? restyleTint)
     {
         Look = look;
+        LookChange = change;
+        Restyle = restyle;
+        RestyleTint = restyleTint;
         Run = run;
         Labels = labels;
         Arguments = arguments;
@@ -52,8 +58,17 @@ internal sealed class GhostOrder
     /// <summary>run: build cable, pipe or chute's options (as show preview reads them), its new pieces the ghosts.</summary>
     internal RunBuildOrder? Run { get; }
 
-    /// <summary>look and xray: how the ghosts are drawn in Lattice (a placement with problems is marked as it goes on).</summary>
+    /// <summary>The look options: how placed ghosts are drawn in Lattice (a placement with problems is marked as it goes on).</summary>
     internal GhostLook Look { get; }
+
+    /// <summary>The look options as given, for restyle: each ghost's own look with these changed.</summary>
+    internal GhostLookChange LookChange { get; }
+
+    /// <summary>Ghost ids to restyle in place.</summary>
+    internal List<long> Restyle { get; }
+
+    /// <summary>The tint restyled ghosts take; null keeps each one's.</summary>
+    internal Rgba? RestyleTint { get; }
 
     internal Rgba TintOf(int index) => Tints.TryGetValue(index, out Rgba own) ? own : Tint;
 
@@ -75,17 +90,22 @@ internal sealed class GhostOrder
             tint = given;
         }
 
-        List<long> remove = Ids(options.Remove, problems);
+        List<long> remove = Ids(options.Remove, "remove", problems);
+        List<long> restyle = Ids(options.Restyle, "restyle", problems);
         RunBuildOrder? run = PreviewOrder.RunOf(options.Run, problems);
-        string preset = GhostLook.Plan;
-        if (options.Look != null)
+        GhostLookChange change = new GhostLookChange(options.Look, options.Xray, options.XrayStrength, options.XrayRange,
+            options.Markers, options.Style);
+        GhostLook? look = GhostLook.Plain.Change(change, problems);
+        if (change.Any && placements.Count == 0 && options.Run == null && restyle.Count == 0)
         {
-            preset = GhostLook.PresetOf(options.Look) ?? GhostLook.Plan;
-            if (GhostLook.PresetOf(options.Look) == null)
-            {
-                problems.Add(new OptionProblem("look", "is plan, solid, wire, pulse or quiet",
-                    NearestNames.Of(options.Look, GhostLook.Presets)));
-            }
+            problems.Add(new OptionProblem("look", "and the other look options draw placed or restyled ghosts: give " +
+                "placements, run or restyle (ghost ids)"));
+        }
+
+        if (restyle.Count > 0 && !change.Any && options.Tint == null && options.Label == null)
+        {
+            problems.Add(new OptionProblem("restyle", "changes look, xray, xray_strength, xray_range, markers, style, " +
+                "tint or label: give at least one"));
         }
 
         string? clear = options.Clear?.Trim().ToLowerInvariant();
@@ -95,21 +115,21 @@ internal sealed class GhostOrder
         }
 
         if (problems.Count == before && placements.Count == 0 && remove.Count == 0 && clear == null &&
-            options.Run == null)
+            options.Run == null && restyle.Count == 0)
         {
             problems.Add(new OptionProblem("placements",
-                "is required unless run, remove or clear is given: placements, or prefab and at"));
+                "is required unless run, remove, restyle or clear is given: placements, or prefab and at"));
         }
 
         return problems.Count == before
             ? new GhostOrder(new PlaceRequest(placements, null, true, Allow.Lifts(options.Allow, "door_keepout"),
                 detail: new ReportDetail(false, true)), tints, tint, remove, clear, options.Label, labels, run,
-                new GhostLook(preset, options.Xray ?? true, problem: false))
+                look!, change, restyle, options.Tint != null ? tint : (Rgba?)null)
             : null;
     }
 
-    // remove: ghost ids, whole numbers above 0.
-    private static List<long> Ids(JToken? given, List<OptionProblem> problems)
+    // remove, restyle: ghost ids, whole numbers above 0.
+    private static List<long> Ids(JToken? given, string name, List<OptionProblem> problems)
     {
         List<long> ids = new List<long>();
         if (given == null)
@@ -119,7 +139,7 @@ internal sealed class GhostOrder
 
         if (!(given is JArray items) || items.Count > MaximumIds)
         {
-            problems.Add(new OptionProblem("remove", $"is a list of up to {MaximumIds} ghost ids"));
+            problems.Add(new OptionProblem(name, $"is a list of up to {MaximumIds} ghost ids"));
             return ids;
         }
 
@@ -131,7 +151,7 @@ internal sealed class GhostOrder
                 continue;
             }
 
-            problems.Add(new OptionProblem($"remove[{index}]", "is a ghost id (find ghost lists them)"));
+            problems.Add(new OptionProblem($"{name}[{index}]", "is a ghost id (find ghost lists them)"));
         }
 
         return ids;

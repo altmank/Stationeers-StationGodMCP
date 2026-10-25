@@ -4,7 +4,7 @@ whats:
 - preview: a planned structure layout or cable, pipe or chute run (build's dry run) as wire boxes or see-through ghosts, plus cells and boxes
 - highlight: show the player where things, a network or far points are, tinted and labelled
 - ghost: put planned structures on the world's ghost board, where every player sees them until they are built or taken off; or take ghosts off
+- lattice: Lattice's view on this seat (never synced): style layers, ghost and structure sets, drafts, the clip, highlights
 
-Every what here takes: clear.
 On every call: fields, omit, list_limits, output_file, whole, repeat, as_player (help {topic: "shaping"}).
 help {verb: "show", what} gives a what's options, reply keys and an example.

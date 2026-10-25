@@ -5,13 +5,14 @@ namespace StationGodMCP.Server;
 /// <summary>
 /// The help verb, answered from the generated pages: help {} the index, {verb} a verb's whats, {verb, what} one what in
 /// full, {topic} and {topic, subtopic} a shared topic (types takes a type name); lang: "python" answers the what's stub
-/// for a script instead.
+/// for a script instead. When the game's mod differs from this server (skew), the index, verb and what pages end with
+/// what of them the mod lacks.
 /// </summary>
 internal static class HelpPages
 {
     internal const string NotFound = "help_not_found";
 
-    internal static VerbReply Answer(VerbCatalogue catalogue, JsonObject options)
+    internal static VerbReply Answer(VerbCatalogue catalogue, JsonObject options, ModSkew? skew = null)
     {
         string? verbName = Word(options, "verb");
         string? whatName = Word(options, "what");
@@ -46,7 +47,7 @@ internal static class HelpPages
                 return Missing("Name a verb: help {verb, what}", null);
             }
 
-            reply["text"] = catalogue.HelpPage("_index");
+            reply["text"] = WithNote(catalogue.HelpPage("_index"), skew?.IndexNote());
             return new VerbReply.Done(reply);
         }
 
@@ -58,6 +59,7 @@ internal static class HelpPages
 
         reply["verb"] = verb.Name;
         string pageKey = verb.Name;
+        WhatEntry? shown = verb.HasWhats ? null : verb.What(null);
         if (whatName != null && verb.HasWhats)
         {
             if (verb.What(whatName) is not { } what)
@@ -67,6 +69,7 @@ internal static class HelpPages
 
             reply["what"] = what.Name;
             pageKey = what.Key;
+            shown = what;
         }
 
         if (python)
@@ -84,9 +87,12 @@ internal static class HelpPages
                 : new VerbReply.Done(reply);
         }
 
-        reply["text"] = catalogue.HelpPage(pageKey);
+        reply["text"] = WithNote(catalogue.HelpPage(pageKey), skew?.Note(verb, shown));
         return new VerbReply.Done(reply);
     }
+
+    private static string? WithNote(string? page, string? note) =>
+        string.IsNullOrEmpty(note) ? page : (page ?? string.Empty).TrimEnd('\n') + "\n\n" + note + "\n";
 
     private static string? Word(JsonObject options, string name) => JsonNodes.Text(options[name])?.Trim() is { Length: > 0 } word
         ? word

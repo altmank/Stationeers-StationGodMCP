@@ -13,10 +13,15 @@ def show(what: Literal['ghost'], *,
     from_plan: str = None,  # A plan spot reply (p = sg.plan('spot', ...)) or one spot (p['spots'][2]): put it on the board.
     tint: str | list = None,  # The ghosts' colour, yours to choose: a name (cyan, magenta, yellow, green, orange, blue, red, white, purple, pink, khaki, brown, black, gray), [r, g, b] or [r, g, b, a] each 0 to 1.
     label: str = None,  # What the ghosts are, shown as a tooltip when the crosshair is on one, and in find ghost; a placement's own label wins.
-    look: Literal['plan', 'solid', 'wire', 'pulse', 'quiet'] = 'plan',  # With Lattice: plan (default: see-through, ports and open ends shown), solid, wire, pulse, or quiet (no see-through, ports or open ends). A ghost whose plan has problems pulses red.
-    xray: bool = True,  # Shows through walls, frames and terrain.
+    look: Literal['plan', 'solid', 'wire', 'pulse', 'quiet'] = None,  # With Lattice: plan (the default), solid, wire, pulse, or quiet (no markers). A ghost whose plan has problems pulses red.
+    xray: bool = None,  # Shows through walls, frames and terrain; on unless false.
+    xray_strength: float = None,  # X-ray strength, 0 to 1 (1 unless given).
+    xray_range: float = None,  # How far x-ray reaches, metres (120 unless given).
+    markers: bool | dict = None,  # Ports, open ends, flow arrows, waits links: true, false or {ports, open_ends, flow, waits}; shown but on quiet.
+    style: dict = None,  # Lattice style properties on top (help topic lattice); {} clears.
     run: dict = None,  # A cable, pipe or chute run to put on the board: build cable, pipe or chute's options with what ({what: "pipe", grade, waypoints, branches, pieces, ...}), planned as build plans it (elbows, tees); each new piece becomes a ghost.
     remove: list = None,  # Ghost ids to take off the board (find ghost lists them).
+    restyle: list = None,  # Ghost ids to restyle in place: look, xray, markers, style, tint, label; unnamed settings kept.
     clear: Literal['agent', 'all'] = None,  # Take off every ghost agents placed, or every ghost.
     allow: list[Literal['door_keepout']] = None,  # Guards to lift, by name.
 ) -> dict:
@@ -25,6 +30,7 @@ def show(what: Literal['ghost'], *,
     Reply:
       placed: list[{id: int, prefab_name: str, position: Vec3}]
       removed: list[int]
+      restyled: list[int]
       total: int
       board: str
       run: {what: str, ready: bool, pieces: int, problems: list[{code: str, message: str}], warnings: list[{code: str, message: str}]} | None

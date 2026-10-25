@@ -1,0 +1,10 @@
+Lattice's view on this seat (never synced): style layers, ghost and structure sets, drafts, the clip, highlights.
+Options:
+- layer (object): {add: layer} | {enable|disable|remove: name} | {library: name, enabled}; help topic lattice.
+- set (object): {id, put|replace|add|remove: ghost ids} or {id, clear: true}; structures: true for a structure set.
+- drafts (object): {id, show: [drafts]} | {id, preview: command} | {id, clear: true}.
+- clip (object): {plane: {point, normal}} | {box: [corner, opposite]} | {move: shape} | {clear: true}.
+- highlight (object): {targets, style, seconds}: targets {ghosts|picked|structures}.
+One of layer, set, drafts, clip or highlight per call. Everything here is this seat's drawing only: it never syncs, saves or changes what others see (ghost data does: write lattice). Layers are StationGod's own (agent-<name>); library layers: blueprint, step_numbers, bill_counts, reasons, plan_names. Forms: help topic lattice.
+Reply: done, layers, notes
+Example: show {what: "lattice", highlight: {targets: {picked: {plan: 3}}, style: {glow: {lit: {paint: "select", strength: 0.9}}}, seconds: 10}}

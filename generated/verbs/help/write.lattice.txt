@@ -1,0 +1,8 @@
+Any Lattice command: place, remove, change, move ghosts; plans; runs and routes; swaps, removals, finishes, splits, transforms, templates; repair, take down, reopen, revert, batch; executors.
+Reports first; confirm: true does it.
+Options:
+- command (object, required): One command, as help topic lattice writes it ({place: [...]}, {batch: [...]}).
+- confirm (boolean, default false): true acts; false only reports, whatever the call names (typed ids included). Left out, the write rule decides: typed ids act at once where the verb acts on them; a ref, network or spread reports.
+Reports Lattice's preview (what it would change, findings, bill, effects, a run's pieces) until confirm; confirm submits it and answers the change set. Ghosts are the agent's (StationGod agent) unless made_by says otherwise. Undo with {revert: change_set}.
+Reply: outcome, change_set, preview, refusals, notes
+Example: write {what: "lattice", command: {plan_route: {kit: "ItemPipe", from: [10.25, 1.25, 4.25], to: [14.25, 1.25, 4.25], to_port: {ghost: 812, port: 0}}}, confirm: true}

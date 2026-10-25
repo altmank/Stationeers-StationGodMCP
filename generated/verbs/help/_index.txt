@@ -17,5 +17,5 @@ Verbs (each a tool; most take what):
 - help: StationGod's help, from the MCP server: help {} lists verbs and topics; {verb} a verb's whats and options; {verb, what} one what in full; {topic} a shared topic.
 - run_script: Run Python 3.10 against the game: one call made of verb calls.
 
-Topics: errors, paging, positions, refs, shaping, targets, writes, scripts, types, cheats
+Topics: errors, paging, positions, refs, shaping, targets, writes, scripts, types, lattice, cheats
 help {verb} lists a verb's whats; help {verb, what} gives one in full; help {topic} gives a topic.

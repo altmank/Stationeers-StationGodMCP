@@ -27,10 +27,15 @@ internal sealed class ShowGhostOptions
         new OptionSpec("from_plan", "{\"type\":\"string\"}"),
         new OptionSpec("tint", "{\"type\":[\"string\",\"array\"]}"),
         new OptionSpec("label", "{\"type\":\"string\"}"),
-        new OptionSpec("look", "{\"type\":\"string\",\"enum\":[\"plan\",\"solid\",\"wire\",\"pulse\",\"quiet\"]}", false, "plan"),
-        new OptionSpec("xray", "{\"type\":\"boolean\"}", false, "true"),
+        new OptionSpec("look", "{\"type\":\"string\",\"enum\":[\"plan\",\"solid\",\"wire\",\"pulse\",\"quiet\"]}"),
+        new OptionSpec("xray", "{\"type\":\"boolean\"}"),
+        new OptionSpec("xray_strength", "{\"type\":\"number\",\"minimum\":0,\"maximum\":1}"),
+        new OptionSpec("xray_range", "{\"type\":\"number\",\"exclusiveMinimum\":0,\"maximum\":1000}"),
+        new OptionSpec("markers", "{\"type\":[\"boolean\",\"object\"]}"),
+        new OptionSpec("style", "{\"type\":\"object\"}"),
         new OptionSpec("run", "{\"type\":\"object\"}"),
         new OptionSpec("remove", "{\"type\":\"array\",\"items\":{\"type\":\"integer\"},\"maxItems\":256}"),
+        new OptionSpec("restyle", "{\"type\":\"array\",\"items\":{\"type\":\"integer\"},\"maxItems\":256}"),
         new OptionSpec("clear", "{\"type\":\"string\",\"enum\":[\"agent\",\"all\"]}"),
         new OptionSpec("allow", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"door_keepout\"]}}"));
 
@@ -66,9 +71,19 @@ internal sealed class ShowGhostOptions
 
     internal bool? Xray { get; private set; }
 
+    internal double? XrayStrength { get; private set; }
+
+    internal double? XrayRange { get; private set; }
+
+    internal JToken? Markers { get; private set; }
+
+    internal JToken? Style { get; private set; }
+
     internal JToken? Run { get; private set; }
 
     internal JToken? Remove { get; private set; }
+
+    internal JToken? Restyle { get; private set; }
 
     internal string? Clear { get; private set; }
 
@@ -90,10 +105,15 @@ internal sealed class ShowGhostOptions
         FromPlan = options.Text("from_plan"),
         Tint = options.Raw("tint"),
         Label = options.Text("label"),
-        Look = options.Text("look") ?? options.DefaultText("look"),
-        Xray = options.Flag("xray") ?? options.DefaultFlag("xray"),
+        Look = options.Text("look"),
+        Xray = options.Flag("xray"),
+        XrayStrength = options.Number("xray_strength"),
+        XrayRange = options.Number("xray_range"),
+        Markers = options.Raw("markers"),
+        Style = options.Raw("style"),
         Run = options.Raw("run"),
         Remove = options.Raw("remove"),
+        Restyle = options.Raw("restyle"),
         Clear = options.Text("clear"),
         Allow = options.Words("allow"),
     };

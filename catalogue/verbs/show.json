@@ -20,54 +20,103 @@
       "summary": "a planned structure layout or cable, pipe or chute run (build's dry run) as wire boxes or see-through ghosts, plus cells and boxes",
       "options": {
         "placements": {
-          "schema": {"type": "array", "items": {"type": "object"}, "maxItems": 512},
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            },
+            "maxItems": 512
+          },
           "description": "As build structure's placements; each may give its own tint, and its label shows as the ghost's tooltip.",
           "x-script": "same"
         },
-        "prefab": {"use": "prefab", "schema": {"type": ["string", "integer"]}},
+        "prefab": {
+          "use": "prefab",
+          "schema": {
+            "type": [
+              "string",
+              "integer"
+            ]
+          }
+        },
         "at": {
-          "schema": {"type": ["array", "object", "string"]},
+          "schema": {
+            "type": [
+              "array",
+              "object",
+              "string"
+            ]
+          },
           "description": "A point, \"looking_at\", or a relative or look-face form (help positions).",
           "x-script": "same"
         },
         "rotation": {
-          "schema": {"type": "array", "items": {"type": "number"}, "maxItems": 3},
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "maxItems": 3
+          },
           "description": "[x, y, z] degrees, multiples of 90.",
           "x-script": "same"
         },
         "facing": {
-          "schema": {"type": "string"},
+          "schema": {
+            "type": "string"
+          },
           "description": "Where the front points (as build structure).",
           "x-script": "same"
         },
-        "up": {"schema": {"type": "string"}, "description": "Where the top points (as build structure).", "x-script": "same"},
+        "up": {
+          "schema": {
+            "type": "string"
+          },
+          "description": "Where the top points (as build structure).",
+          "x-script": "same"
+        },
         "face": {
-          "schema": {"type": "string"},
+          "schema": {
+            "type": "string"
+          },
           "description": "Face-placed pieces: the cell face it sits on.",
           "x-script": "same"
         },
         "orient": {
-          "schema": {"type": "object"},
+          "schema": {
+            "type": "object"
+          },
           "description": "{mount, upright, controls_toward, ports: [{role, index, type, toward}], flow: {from, to}}: choose the turn by intent. mount: wall, floor, ceiling or an axis; a target (controls_toward, toward, from, to): an axis, room, player, a point or a thing's id.",
           "x-script": "same"
         },
         "above_floor": {
-          "schema": {"type": "number"},
+          "schema": {
+            "type": "number"
+          },
           "description": "Bottom this many metres above the floor below at.",
           "x-script": "same"
         },
         "build_state": {
-          "schema": {"type": ["string", "integer"]},
+          "schema": {
+            "type": [
+              "string",
+              "integer"
+            ]
+          },
           "description": "finished (default), first, or a state index.",
           "x-script": "same"
         },
         "label": {
-          "schema": {"type": "string"},
+          "schema": {
+            "type": "string"
+          },
           "description": "What the placement is, shown as a tooltip when the crosshair is on its ghost (as build structure's label).",
           "x-script": "same"
         },
         "run": {
-          "schema": {"type": "object"},
+          "schema": {
+            "type": "object"
+          },
           "description": "A cable, pipe or chute run to plan and draw: build cable, pipe or chute's options with what ({what: \"pipe\", grade, waypoints, ...}); nothing is built.",
           "x-script": "same"
         },
@@ -77,42 +126,91 @@
           "x-script": "A plan route or plan spot reply (p = sg.plan('route', ...)), or one spot (p['spots'][2]): preview its build_arguments."
         },
         "style": {
-          "schema": {"type": "string", "enum": ["boxes", "ghost", "both"]},
+          "schema": {
+            "type": "string",
+            "enum": [
+              "boxes",
+              "ghost",
+              "both"
+            ]
+          },
           "description": "boxes: footprint, body and port wire boxes; ghost: the structures' own meshes at the build state, see-through and tinted; both.",
           "default": "boxes",
           "x-script": "same"
         },
         "tint": {
-          "schema": {"type": ["string", "array"]},
+          "schema": {
+            "type": [
+              "string",
+              "array"
+            ]
+          },
           "description": "The ghosts' colour, yours to choose (no meaning of its own): a palette name (show highlight's), [r, g, b] or [r, g, b, a] each 0 to 1; alpha 0.4 when left out.",
           "x-script": "same"
         },
-        "allow": {"use": "allow", "schema": {"type": "array", "items": {"type": "string", "enum": ["door_keepout"]}}},
+        "allow": {
+          "use": "allow",
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "door_keepout"
+              ]
+            }
+          }
+        },
         "cells": {
-          "schema": {"type": "array", "items": {"type": "array"}, "maxItems": 512},
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "array"
+            },
+            "maxItems": 512
+          },
           "description": "Yellow 0.5 m cubes at these points.",
           "x-script": "same"
         },
         "boxes": {
-          "schema": {"type": "array", "items": {"type": "object"}, "maxItems": 64},
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            },
+            "maxItems": 64
+          },
           "description": "{min, max, color} boxes; color: red, green, white, cyan, yellow, any tint name, or [r, g, b] / [r, g, b, a].",
           "x-script": "same"
         },
         "seconds": {
-          "schema": {"type": "number", "minimum": 0, "maximum": 3600},
+          "schema": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 3600
+          },
           "description": "How long to show.",
           "default": "30",
           "x-script": "same"
         },
         "keep": {
-          "schema": {"type": "boolean"},
+          "schema": {
+            "type": "boolean"
+          },
           "description": "Keep what earlier calls drew.",
           "default": "false",
           "x-script": "same"
         },
-        "clear": {"schema": {"type": "boolean"}, "description": "Only remove what is drawn.", "x-script": "same"},
+        "clear": {
+          "schema": {
+            "type": "boolean"
+          },
+          "description": "Only remove what is drawn.",
+          "x-script": "same"
+        },
         "xray": {
-          "schema": {"type": "boolean"},
+          "schema": {
+            "type": "boolean"
+          },
           "description": "Draw everything through walls, frames and terrain: boxes and cells whole, ghosts fainter where hidden. A run's ghosts always get the see-through pass (pieces sit inside floors and frames).",
           "default": "false",
           "x-script": "same"
@@ -122,8 +220,19 @@
           "description": "plan: build structure's whole report of each placement (orient alternatives, port checks, layout, cost) in place of the brief one."
         }
       },
-      "example": {"prefab": "StructureWallLight", "at": [716, 203, 668], "facing": "-x"},
-      "x-cost": {"class": "instant", "growth": "by-id"},
+      "example": {
+        "prefab": "StructureWallLight",
+        "at": [
+          716,
+          203,
+          668
+        ],
+        "facing": "-x"
+      },
+      "x-cost": {
+        "class": "instant",
+        "growth": "by-id"
+      },
       "reply": {
         "variants": [
           {
@@ -141,9 +250,17 @@
             }
           }
         ],
-        "types": ["Thing", "Vec3"]
+        "types": [
+          "Thing",
+          "Vec3"
+        ]
       },
-      "x-cost-when": [{"given": "run", "class": "plan"}],
+      "x-cost-when": [
+        {
+          "given": "run",
+          "class": "plan"
+        }
+      ],
       "text": [
         "Materials are not checked: ready means build would place it. A new call replaces what the last drew (keep: true adds); ghosts counts this call's ghosts, ghosts_total every preview ghost on screen."
       ]
@@ -152,26 +269,54 @@
       "summary": "show the player where things, a network or far points are, tinted and labelled",
       "options": {
         "targets": {
-          "schema": {"type": "array", "items": {"type": "object"}, "maxItems": 64},
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            },
+            "maxItems": 64
+          },
           "description": "Up to 64, each one of {id (one or a list), network, at, ghost (a ghost id: a beacon there; with Lattice the ghost lit too)} with color, label, pulse.",
           "x-script": "same"
         },
         "seconds": {
-          "schema": {"type": "number", "minimum": 0, "maximum": 600},
+          "schema": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 600
+          },
           "description": "How long.",
           "default": "60",
           "x-script": "same"
         },
         "keep": {
-          "schema": {"type": "boolean"},
+          "schema": {
+            "type": "boolean"
+          },
           "description": "Keep what earlier calls drew.",
           "default": "false",
           "x-script": "same"
         },
-        "clear": {"schema": {"type": "boolean"}, "description": "Only remove what is drawn.", "x-script": "same"}
+        "clear": {
+          "schema": {
+            "type": "boolean"
+          },
+          "description": "Only remove what is drawn.",
+          "x-script": "same"
+        }
       },
-      "example": {"targets": [{"id": "1199811", "label": "this one"}]},
-      "x-cost": {"class": "instant", "growth": "by-id"},
+      "example": {
+        "targets": [
+          {
+            "id": "1199811",
+            "label": "this one"
+          }
+        ]
+      },
+      "x-cost": {
+        "class": "instant",
+        "growth": "by-id"
+      },
       "reply": {
         "variants": [
           {
@@ -186,7 +331,9 @@
             }
           }
         ],
-        "types": ["Vec3"]
+        "types": [
+          "Vec3"
+        ]
       }
     },
     "ghost": {
@@ -194,44 +341,89 @@
       "brief": "persistent ghosts on the board",
       "options": {
         "placements": {
-          "schema": {"type": "array", "items": {"type": "object"}, "maxItems": 512},
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            },
+            "maxItems": 512
+          },
           "description": "As build structure's placements; each may give its own tint and label.",
           "x-script": "same"
         },
-        "prefab": {"use": "prefab", "schema": {"type": ["string", "integer"]}},
+        "prefab": {
+          "use": "prefab",
+          "schema": {
+            "type": [
+              "string",
+              "integer"
+            ]
+          }
+        },
         "at": {
-          "schema": {"type": ["array", "object", "string"]},
+          "schema": {
+            "type": [
+              "array",
+              "object",
+              "string"
+            ]
+          },
           "description": "A point, \"looking_at\", or a relative or look-face form (help positions).",
           "x-script": "same"
         },
         "rotation": {
-          "schema": {"type": "array", "items": {"type": "number"}, "maxItems": 3},
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "maxItems": 3
+          },
           "description": "[x, y, z] degrees, multiples of 90.",
           "x-script": "same"
         },
         "facing": {
-          "schema": {"type": "string"},
+          "schema": {
+            "type": "string"
+          },
           "description": "Where the front points (as build structure).",
           "x-script": "same"
         },
-        "up": {"schema": {"type": "string"}, "description": "Where the top points (as build structure).", "x-script": "same"},
+        "up": {
+          "schema": {
+            "type": "string"
+          },
+          "description": "Where the top points (as build structure).",
+          "x-script": "same"
+        },
         "face": {
-          "schema": {"type": "string"},
+          "schema": {
+            "type": "string"
+          },
           "description": "Face-placed pieces: the cell face it sits on.",
           "x-script": "same"
         },
         "orient": {
-          "schema": {"type": "object"},
+          "schema": {
+            "type": "object"
+          },
           "description": "{mount, upright, controls_toward, ports: [{role, index, type, toward}], flow: {from, to}}: choose the turn by intent. mount: wall, floor, ceiling or an axis; a target (controls_toward, toward, from, to): an axis, room, player, a point or a thing's id.",
           "x-script": "same"
         },
         "above_floor": {
-          "schema": {"type": "number"},
+          "schema": {
+            "type": "number"
+          },
           "description": "Bottom this many metres above the floor below at.",
           "x-script": "same"
         },
         "build_state": {
-          "schema": {"type": ["string", "integer"]},
+          "schema": {
+            "type": [
+              "string",
+              "integer"
+            ]
+          },
           "description": "finished (default), first, or a state index.",
           "x-script": "same"
         },
@@ -241,61 +433,156 @@
           "x-script": "A plan spot reply (p = sg.plan('spot', ...)) or one spot (p['spots'][2]): put it on the board."
         },
         "tint": {
-          "schema": {"type": ["string", "array"]},
+          "schema": {
+            "type": [
+              "string",
+              "array"
+            ]
+          },
           "description": "The ghosts' colour, yours to choose: a name (cyan, magenta, yellow, green, orange, blue, red, white, purple, pink, khaki, brown, black, gray), [r, g, b] or [r, g, b, a] each 0 to 1.",
           "x-script": "same"
         },
         "label": {
-          "schema": {"type": "string"},
+          "schema": {
+            "type": "string"
+          },
           "description": "What the ghosts are, shown as a tooltip when the crosshair is on one, and in find ghost; a placement's own label wins.",
           "x-script": "same"
         },
         "look": {
-          "schema": {"type": "string", "enum": ["plan", "solid", "wire", "pulse", "quiet"]},
-          "description": "With Lattice: plan (default: see-through, ports and open ends shown), solid, wire, pulse, or quiet (no see-through, ports or open ends). A ghost whose plan has problems pulses red.",
-          "default": "plan",
+          "schema": {
+            "type": "string",
+            "enum": [
+              "plan",
+              "solid",
+              "wire",
+              "pulse",
+              "quiet"
+            ]
+          },
+          "description": "With Lattice: plan (the default), solid, wire, pulse, or quiet (no markers). A ghost whose plan has problems pulses red.",
           "x-script": "same"
         },
         "xray": {
-          "schema": {"type": "boolean"},
-          "description": "Shows through walls, frames and terrain.",
-          "default": "true",
+          "schema": {
+            "type": "boolean"
+          },
+          "description": "Shows through walls, frames and terrain; on unless false.",
+          "x-script": "same"
+        },
+        "xray_strength": {
+          "schema": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "description": "X-ray strength, 0 to 1 (1 unless given).",
+          "x-script": "same"
+        },
+        "xray_range": {
+          "schema": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "maximum": 1000
+          },
+          "description": "How far x-ray reaches, metres (120 unless given).",
+          "x-script": "same"
+        },
+        "markers": {
+          "schema": {
+            "type": [
+              "boolean",
+              "object"
+            ]
+          },
+          "description": "Ports, open ends, flow arrows, waits links: true, false or {ports, open_ends, flow, waits}; shown but on quiet.",
+          "x-script": "same"
+        },
+        "style": {
+          "schema": {
+            "type": "object"
+          },
+          "description": "Lattice style properties on top (help topic lattice); {} clears.",
           "x-script": "same"
         },
         "run": {
-          "schema": {"type": "object"},
+          "schema": {
+            "type": "object"
+          },
           "description": "A cable, pipe or chute run to put on the board: build cable, pipe or chute's options with what ({what: \"pipe\", grade, waypoints, branches, pieces, ...}), planned as build plans it (elbows, tees); each new piece becomes a ghost.",
           "x-script": "same"
         },
         "remove": {
-          "schema": {"type": "array", "items": {"type": "integer"}, "maxItems": 256},
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "maxItems": 256
+          },
           "description": "Ghost ids to take off the board (find ghost lists them).",
           "x-script": "same"
         },
+        "restyle": {
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "maxItems": 256
+          },
+          "description": "Ghost ids to restyle in place: look, xray, markers, style, tint, label; unnamed settings kept.",
+          "x-script": "same"
+        },
         "clear": {
-          "schema": {"type": "string", "enum": ["agent", "all"]},
+          "schema": {
+            "type": "string",
+            "enum": [
+              "agent",
+              "all"
+            ]
+          },
           "description": "Take off every ghost agents placed, or every ghost.",
           "x-script": "same"
         },
-        "allow": {"use": "allow", "schema": {"type": "array", "items": {"type": "string", "enum": ["door_keepout"]}}}
+        "allow": {
+          "use": "allow",
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "door_keepout"
+              ]
+            }
+          }
+        }
       },
       "text": [
         "A ghost lasts until it is taken off or a structure of its prefab is built where it stands, kept with the save; players see it, move around it, take it off (RemoveGhostKey) and place their own (ghost mode, the ghost menu). The placements are planned as build structure plans them (nothing built, materials not checked) and each goes on the board where the plan put it, problems or not; the reply's plan says why one would not build, and gives each placement's position, orientation, and a device's ports and layout.port_checks as build structure's report does (no build call needed to plan runs to them). find ghost lists the board. With Lattice installed the ghosts are Lattice's: the agent's go into a Lattice plan of their own (StationGod agent), Lattice saves and syncs them and Loom shows them; board says which."
       ],
       "example": {
         "prefab": "StructureVolumePump",
-        "at": [716, 203, 668],
+        "at": [
+          716,
+          203,
+          668
+        ],
         "facing": "+x",
         "tint": "orange",
         "label": "second pump"
       },
-      "x-cost": {"class": "instant", "growth": "by-id"},
+      "x-cost": {
+        "class": "instant",
+        "growth": "by-id"
+      },
       "reply": {
         "variants": [
           {
             "keys": {
               "placed": "list[{id: int, prefab_name: str, position: Vec3}]",
               "removed": "list[int]",
+              "restyled": "list[int]",
               "total": "int",
               "board": "str",
               "run": "{what: str, ready: bool, pieces: int, problems: list[{code: str, message: str}], warnings: list[{code: str, message: str}]} | None",
@@ -304,7 +591,87 @@
             }
           }
         ],
-        "types": ["Thing", "Vec3"]
+        "types": [
+          "Thing",
+          "Vec3"
+        ]
+      }
+    },
+    "lattice": {
+      "summary": "Lattice's view on this seat (never synced): style layers, ghost and structure sets, drafts, the clip, highlights",
+      "brief": "Lattice's local view",
+      "options": {
+        "layer": {
+          "schema": {
+            "type": "object"
+          },
+          "description": "{add: layer} | {enable|disable|remove: name} | {library: name, enabled}; help topic lattice.",
+          "x-script": "same"
+        },
+        "set": {
+          "schema": {
+            "type": "object"
+          },
+          "description": "{id, put|replace|add|remove: ghost ids} or {id, clear: true}; structures: true for a structure set.",
+          "x-script": "same"
+        },
+        "drafts": {
+          "schema": {
+            "type": "object"
+          },
+          "description": "{id, show: [drafts]} | {id, preview: command} | {id, clear: true}.",
+          "x-script": "same"
+        },
+        "clip": {
+          "schema": {
+            "type": "object"
+          },
+          "description": "{plane: {point, normal}} | {box: [corner, opposite]} | {move: shape} | {clear: true}.",
+          "x-script": "same"
+        },
+        "highlight": {
+          "schema": {
+            "type": "object"
+          },
+          "description": "{targets, style, seconds}: targets {ghosts|picked|structures}.",
+          "x-script": "same"
+        }
+      },
+      "text": [
+        "One of layer, set, drafts, clip or highlight per call. Everything here is this seat's drawing only: it never syncs, saves or changes what others see (ghost data does: write lattice). Layers are StationGod's own (agent-<name>); library layers: blueprint, step_numbers, bill_counts, reasons, plan_names. Forms: help topic lattice."
+      ],
+      "example": {
+        "highlight": {
+          "targets": {
+            "picked": {
+              "plan": 3
+            }
+          },
+          "style": {
+            "glow": {
+              "lit": {
+                "paint": "select",
+                "strength": 0.9
+              }
+            }
+          },
+          "seconds": 10
+        }
+      },
+      "x-cost": {
+        "class": "instant",
+        "growth": "by-id"
+      },
+      "reply": {
+        "variants": [
+          {
+            "keys": {
+              "done": "str",
+              "layers": "list[str]",
+              "notes": "list[str]"
+            }
+          }
+        ]
       }
     }
   }

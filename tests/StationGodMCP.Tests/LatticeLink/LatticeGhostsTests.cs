@@ -155,8 +155,9 @@ public sealed class LatticeGhostsTests
 
 /// <summary>
 /// Lattice is optional at run time: on Mono a method that names a type of a missing assembly fails when it is
-/// compiled. So Lattice's types appear only in LatticeLink, and LatticeBoard (whose members name them) is called only
-/// from LatticePresence's non-inlined forwarders.
+/// compiled. So Lattice's types appear only in LatticeLink, and its classes whose members name them (LatticeBoard,
+/// LatticeVerbs, LatticeEvents) are called from outside LatticeLink only through LatticePresence's non-inlined
+/// forwarders.
 /// </summary>
 public sealed class LatticeIsolationTests
 {
@@ -181,10 +182,12 @@ public sealed class LatticeIsolationTests
                 wrong.Add($"{file} names Lattice.Api");
             }
 
-            if (text.Contains("LatticeBoard.") && !file.EndsWith("LatticePresence.cs", StringComparison.Ordinal) &&
-                !file.EndsWith("LatticeBoard.cs", StringComparison.Ordinal))
+            foreach (string typed in new[] { "LatticeBoard.", "LatticeVerbs.", "LatticeEvents." })
             {
-                wrong.Add($"{file} calls LatticeBoard");
+                if (!inLink && text.Contains(typed))
+                {
+                    wrong.Add($"{file} calls {typed.TrimEnd('.')}");
+                }
             }
         }
 
