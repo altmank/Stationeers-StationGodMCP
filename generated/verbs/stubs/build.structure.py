@@ -21,6 +21,7 @@ def build(what: Literal['structure'], *,
     verbose: bool = False,  # Report: layouts a refused report leaves out; real run: the whole preflight.
     acknowledge_gas_lost: str = None,  # The job id whose gas loss you accept (with the user's agreement); lifts the gas hold.
     from_plan: str = None,  # A plan route or plan spot reply (p = sg.plan('route', ...)), or one spot (p['spots'][2]): build its build_arguments. With from_plan, what may be left out: sg.build(from_plan=p).
+    check_only: bool = False,  # Report only, never builds, even confirmed or in a confirmed run.
 ) -> dict:  # main list: r['placements']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Any structure a kit builds (light, device, frame, wall, tank, rocket part) by prefab, at a point with a turn; several placements are one job.
     A build that pays from the player's inventory (materials left out, or "player") carries the warning materials_from_player. With from_plan, what may be left out: it comes from the plan.

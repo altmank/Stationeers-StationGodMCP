@@ -1008,7 +1008,7 @@ internal static class PlacePlanner
     // The cable, pipe and chute ports of a device, or of another thing with ends that is not a network piece (an in-line
     // tank, a passive vent), as they would stand there: the ends of the prefab turned and moved there (PieceShapes.Placed,
     // Connection.SetGrids' way), in survey area's shape. Null for network pieces and things without ends.
-    private static List<SurveyPortView>? PortPreview(Structure prefab, Vector3 position, Quaternion rotation)
+    internal static List<SurveyPortView>? PortPreview(Structure prefab, Vector3 position, Quaternion rotation)
     {
         if (!(prefab is SmallGrid) || NetworkToolOf(prefab) != null)
         {

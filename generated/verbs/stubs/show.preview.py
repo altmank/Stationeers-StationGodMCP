@@ -34,7 +34,10 @@ def show(what: Literal['preview'], *,
       seconds: float
       plan: {ready: bool, problems: list[{code: str, message: str, index: int | None, reference_id: str | None}], warnings: list[{code: str, message:
           str, index: int | None, reference_id: str | None}], placements: list[{index: int, prefab_name: str | None, position: Vec3 | None,
-          orientation: {facing: str | None, up: str | None, euler: Vec3} | None, build_state: int | None}]} | None
+          orientation: {facing: str | None, up: str | None, euler: Vec3} | None, build_state: int | None, ports: list[{index: int, at: Vec3, toward:
+          str, type: str, role: str, network_id: str | None}] | None, layout: {port_checks: list[{index: int, at: Vec3, toward: str, type: str, role:
+          str, flow: str | None, occupant: Thing | None, joins: bool, would_join_network: str | None, blocked: str | None, in_door_keep_out: bool}]} |
+          None}]} | None
       run: {what: str, ready: bool, pieces: int, problems: list[{code: str, message: str}], warnings: list[{code: str, message: str}]} | None
       notes: list[str]
       drawn_on: list[str] | None

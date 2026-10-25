@@ -315,6 +315,12 @@ internal sealed class DirectWriteGate(VerbCatalogue catalogue) : IWriteGate
 
     public WriteDecision Decide(VerbCall call, WriteTargets targets)
     {
+        if (JsonNodes.IsTrue(call.Args["check_only"]))
+        {
+            // build structure's check_only asks for the report, whatever confirm says.
+            return Reports;
+        }
+
         if (JsonNodes.IsTrue(call.Args["confirm"]))
         {
             return Acts;

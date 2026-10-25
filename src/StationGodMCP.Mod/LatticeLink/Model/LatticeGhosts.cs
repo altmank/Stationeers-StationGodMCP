@@ -219,8 +219,9 @@ internal static class LatticeGhosts
 
 /// <summary>
 /// StationGod's look in Lattice's drawing (Meaning band, so a viewer's theme still wins): the agent's ghosts glow in
-/// StationGod's agent colour, a token a theme can recolour. Fill (the ghost's tint), patterns (fails, removes, warns)
-/// and edges (findings, the owner's colour) stay the library's: patterns mean something there.
+/// StationGod's agent colour, a token a theme can recolour, and every StationGod ghost (the agent's and ghost mode's)
+/// shows through walls, frames and terrain as StationGod's own board drawing does. Fill (the ghost's tint), patterns
+/// (fails, removes, warns) and edges (findings, the owner's colour) stay the library's: patterns mean something there.
 /// </summary>
 internal static class LatticeLooks
 {
@@ -229,6 +230,11 @@ internal static class LatticeLooks
     internal static readonly L.PaletteKey AgentColour = LatticeNames.Must(L.PaletteKey.Create(LatticeNames.Mod, "agent"));
 
     internal static readonly L.Rgba Violet = new L.Rgba(170, 110, 255, 255);
+
+    // As StationGod's own see-through pass: half the ghost's strength, through anything within a long room's reach.
+    private const float SeeThroughStrength = 0.5f;
+
+    private const float SeeThroughRangeM = 60f;
 
     internal static L.StyleLayerDescriptor Layer
     {
@@ -240,7 +246,22 @@ internal static class LatticeLooks
                 Glow = L.Option.Some<L.GlowLook>(new L.GlowLook.Lit(new L.Paint.Token(AgentColour),
                     LatticeNames.Must(L.Fraction.Create(0.35f)))),
             };
-            return new L.StyleLayerDescriptor(Id, L.StyleBand.Meaning, 0, L.ValueList.Of(new L.StyleRule(agents, glow)))
+            L.StyleMatch ours = new L.StyleMatch.Picks(new L.Selector.Any(L.ValueList.From(new L.Selector[]
+            {
+                new L.Selector.MadeBy(LatticeNames.AgentMaker), new L.Selector.MadeBy(LatticeNames.PlayerMaker),
+                new L.Selector.MadeBy(LatticeNames.MovedMaker),
+            })));
+            L.Style seeThrough = new L.Style
+            {
+                SeeThrough = L.Option.Some<L.SeeThroughLook>(new L.SeeThroughLook.Through(
+                    LatticeNames.Must(L.Fraction.Create(SeeThroughStrength)),
+                    LatticeNames.Must(L.Metres.Create(SeeThroughRangeM)))),
+            };
+            return new L.StyleLayerDescriptor(Id, L.StyleBand.Meaning, 0, L.ValueList.From(new[]
+            {
+                new L.StyleRule(agents, glow),
+                new L.StyleRule(ours, seeThrough),
+            }))
             {
                 Palette = L.Option.Some(new L.Palette(
                     LatticeNames.Must(L.PaletteId.Create(LatticeNames.Mod, "look")),

@@ -35,6 +35,7 @@ internal sealed class BuildStructureOptions
         new OptionSpec("verbose", "{\"type\":\"boolean\"}", false, "false"),
         new OptionSpec("acknowledge_gas_lost", "{\"type\":\"string\"}"),
         new OptionSpec("from_plan", "{\"type\":\"string\"}"),
+        new OptionSpec("check_only", "{\"type\":\"boolean\"}", false, "false"),
         new OptionSpec("confirm", "{\"type\":\"boolean\"}", false, "false"),
         new OptionSpec("queue", "{\"type\":\"boolean\"}", false, "true"),
         new OptionSpec("max_wait", "{\"type\":\"number\",\"minimum\":0}", false, "30"));
@@ -81,6 +82,8 @@ internal sealed class BuildStructureOptions
 
     internal string? FromPlan { get; private set; }
 
+    internal bool? CheckOnly { get; private set; }
+
     internal bool? Queue { get; private set; }
 
     internal static BuildStructureOptions Bind(OptionReader options) => new BuildStructureOptions
@@ -106,6 +109,7 @@ internal sealed class BuildStructureOptions
         Allow = options.Words("allow"),
         AcknowledgeGasLost = options.Text("acknowledge_gas_lost"),
         FromPlan = options.Text("from_plan"),
+        CheckOnly = options.Flag("check_only") ?? options.DefaultFlag("check_only"),
         Queue = options.Flag("queue") ?? options.DefaultFlag("queue"),
     };
 }

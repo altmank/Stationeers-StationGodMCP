@@ -121,24 +121,24 @@ def check(what, *, fields=None, as_player=None, room=None, box=None, codes=None,
 def build(what=None, *, fields=None, as_player=None, placements=None, prefab=None, at=None, rotation=None,
         spread=None, facing=None, up=None, face=None, orient=None, above_floor=None, build_state=None, label=None,
         color=None, logic=None, materials=None, free=None, allow=None, include=None, verbose=None,
-        acknowledge_gas_lost=None, from_plan=None, grade=None, waypoints=None, cells=None, piece=None, pieces=None,
-        branches=None, extra_ends=None, join=None, split_long=None, remove_ids=None, assume_removed=None,
-        allow_bridge=None, root=None, join_to=None, join_trunk=None, refund_to=None, rows=None, blueprint=None,
-        turn=None, box=None, mode=None, level=None, ores=None, into_frames=None, quantity=None, to=None, slot=None,
-        id=None, state=None, **options):
+        acknowledge_gas_lost=None, from_plan=None, check_only=None, grade=None, waypoints=None, cells=None,
+        piece=None, pieces=None, branches=None, extra_ends=None, join=None, split_long=None, remove_ids=None,
+        assume_removed=None, allow_bridge=None, root=None, join_to=None, join_trunk=None, refund_to=None, rows=None,
+        blueprint=None, turn=None, box=None, mode=None, level=None, ores=None, into_frames=None, quantity=None,
+        to=None, slot=None, id=None, state=None, **options):
     """Build new things as a player would, paying materials. sg.help('build', what) gives a what in full."""
     return verb_call('build', what, {'fields': fields, 'as_player': as_player, 'placements': placements, 'prefab':
                      prefab, 'at': at, 'rotation': rotation, 'spread': spread, 'facing': facing, 'up': up, 'face':
                      face, 'orient': orient, 'above_floor': above_floor, 'build_state': build_state, 'label': label,
                      'color': color, 'logic': logic, 'materials': materials, 'free': free, 'allow': allow,
                      'include': include, 'verbose': verbose, 'acknowledge_gas_lost': acknowledge_gas_lost,
-                     'from_plan': from_plan, 'grade': grade, 'waypoints': waypoints, 'cells': cells, 'piece': piece,
-                     'pieces': pieces, 'branches': branches, 'extra_ends': extra_ends, 'join': join, 'split_long':
-                     split_long, 'remove_ids': remove_ids, 'assume_removed': assume_removed, 'allow_bridge':
-                     allow_bridge, 'root': root, 'join_to': join_to, 'join_trunk': join_trunk, 'refund_to':
-                     refund_to, 'rows': rows, 'blueprint': blueprint, 'turn': turn, 'box': box, 'mode': mode,
-                     'level': level, 'ores': ores, 'into_frames': into_frames, 'quantity': quantity, 'to': to,
-                     'slot': slot, 'id': id, 'state': state}, options)
+                     'from_plan': from_plan, 'check_only': check_only, 'grade': grade, 'waypoints': waypoints,
+                     'cells': cells, 'piece': piece, 'pieces': pieces, 'branches': branches, 'extra_ends':
+                     extra_ends, 'join': join, 'split_long': split_long, 'remove_ids': remove_ids, 'assume_removed':
+                     assume_removed, 'allow_bridge': allow_bridge, 'root': root, 'join_to': join_to, 'join_trunk':
+                     join_trunk, 'refund_to': refund_to, 'rows': rows, 'blueprint': blueprint, 'turn': turn, 'box':
+                     box, 'mode': mode, 'level': level, 'ores': ores, 'into_frames': into_frames, 'quantity':
+                     quantity, 'to': to, 'slot': slot, 'id': id, 'state': state}, options)
 
 
 def swap(what, *, fields=None, as_player=None, id=None, room=None, into=None, prefab=None, materials=None,

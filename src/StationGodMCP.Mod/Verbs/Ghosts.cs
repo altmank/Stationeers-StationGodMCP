@@ -5,6 +5,7 @@ using Assets.Scripts.Objects;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Shared.Game.Build;
+using StationGodMCP.Api.Shared.Game.Show;
 using StationGodMCP.Api.Views;
 using StationGodMCP.LatticeLink;
 using StationGodMCP.LatticeLink.Model;
@@ -86,8 +87,8 @@ internal static class FindGhost
         }
 
         return new VerbOutcome.Answered(ListReply.OfPage("ghosts", page,
-                entry => new GhostView(entry.Ghost, DisplayName(entry.Ghost), entry.Distance, CheckOf(checks,
-                    entry.Ghost.Id)))
+                entry => new GhostView(entry.Ghost, DisplayName(entry.Ghost), entry.Distance, SpotOf(entry.Ghost),
+                    CheckOf(checks, entry.Ghost.Id)))
             .Add("build_arguments", GhostFilter.BuildArguments(shown))
             .Add("board", BoardKeeper)
             .Add("check_note", checkNote));
@@ -103,6 +104,25 @@ internal static class FindGhost
 
     private static string? DisplayName(BoardGhost ghost) =>
         Prefab.Find(ghost.PrefabHash) is Thing prefab && prefab != null ? prefab.DisplayName : null;
+
+    // The ghost's turn, and a device's ports and port checks where it stands, as build structure's report gives them
+    // (a prefab this game does not hold has no ports to read).
+    private static GhostSpotView SpotOf(BoardGhost ghost)
+    {
+        Quaternion rotation = Quaternion.Euler((float)ghost.Euler.X, (float)ghost.Euler.Y, (float)ghost.Euler.Z);
+        OrientationView orientation =
+            CubeRotation.FromQuaternion(rotation.x, rotation.y, rotation.z, rotation.w) is { } turn
+                ? OrientationView.Of(turn)
+                : OrientationView.OffGrid(new RotationView(ghost.Euler.X, ghost.Euler.Y, ghost.Euler.Z));
+        if (!(Prefab.Find(ghost.PrefabHash) is Structure prefab) || prefab == null)
+        {
+            return new GhostSpotView(orientation, null, null);
+        }
+
+        Vector3 position = new Vector3((float)ghost.Position.X, (float)ghost.Position.Y, (float)ghost.Position.Z);
+        return new GhostSpotView(orientation, PlacePlanner.PortPreview(prefab, position, rotation),
+            PlacementLayout.PortChecksAt(prefab, position, rotation));
+    }
 }
 
 /// <summary>
@@ -149,7 +169,7 @@ internal static class ShowGhost
         if (order.HasPlacements)
         {
             PlacePlan planned = PlacePlanner.Plan(order.Arguments, lint: false);
-            plan = new GhostPlanView(planned.Ready, planned.Problems, planned.Warnings);
+            plan = new GhostPlanView(planned.Ready, planned.Problems, planned.Warnings, PreviewScreen.Spots(planned));
             List<GhostPlacement> ghosts = new List<GhostPlacement>();
             foreach (PlannedPlacement placement in planned.Placements)
             {

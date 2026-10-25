@@ -498,7 +498,7 @@
           "what": {
             "type": "string",
             "enum": ["structure", "cable", "pipe", "chute", "blueprint", "terrain", "item", "finish"],
-            "description": "structure: any structure a kit builds, at a point; cable: a cable run or pieces; pipe: a pipe run or pieces; chute: a chute run or pieces; blueprint: paste a blueprint; terrain: fill or level a box of terrain; item: make items by prefab (a cheat); finish: a placed structure on to a later build state"
+            "description": "structure: any structure a kit builds, at a point; cable: a run or pieces; pipe: a run or pieces; chute: a run or pieces; blueprint: paste a blueprint; terrain: fill or level terrain; item: make items by prefab (a cheat); finish: a placed structure to a later state"
           },
           "placements": {"type": "array"},
           "prefab": {"type": ["string", "integer"]},
@@ -526,6 +526,7 @@
             "type": "string",
             "description": "A plan route or spot ref ('r9'): build its build_arguments; options given win, what may be left out."
           },
+          "check_only": {"type": "boolean"},
           "confirm": {"type": "boolean"},
           "queue": {"type": "boolean"},
           "max_wait": {"type": "number"},
