@@ -11,6 +11,7 @@ using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Facts;
 using StationGodMCP.Pure.Verbs;
+using UnityEngine;
 
 namespace StationGodMCP.Verbs;
 
@@ -58,9 +59,43 @@ internal static class StructureBuild
             plan => Act(plan, arguments, order, source), plan => Described(plan, order));
     }
 
+    /// <summary>
+    /// The board ghosts the placements complete (a structure of the ghost's prefab built on its spot in its turn takes
+    /// it off), each a completes_ghost warning: an accidental build is seen before it acts, and undo puts them back
+    /// (LIVE 2026-10-25: a Condenser Intake ghost lost to a build and its undo).
+    /// </summary>
+    private static List<BoardGhost> Completes(PlacePlan plan)
+    {
+        List<BoardGhost> completes = new List<BoardGhost>();
+        foreach (PlannedPlacement placement in plan.Placements)
+        {
+            if (placement.Prefab == null || !placement.Position.HasValue)
+            {
+                continue;
+            }
+
+            Quaternion rotation = placement.Rotation;
+            Vec3 euler = CubeRotation.EulerDegreesOf(rotation.x, rotation.y, rotation.z, rotation.w) is { } turns
+                ? new Vec3(turns.X, turns.Y, turns.Z)
+                : Bodies.V(rotation.eulerAngles);
+            if (GhostBoardStore.Board.StandingFor(placement.Prefab.PrefabHash, Bodies.V(placement.Position.Value),
+                    euler) is { } ghost)
+            {
+                completes.Add(ghost);
+                plan.Warn("completes_ghost",
+                    $"Placement {placement.Index} completes ghost {ghost.Id} ({ghost.PrefabName}, placed by " +
+                    $"{ghost.Owner}): building it takes the ghost off the board; undo of this build puts it back.",
+                    placement.Index);
+            }
+        }
+
+        return completes;
+    }
+
     private static VerbOutcome Act(PlacePlan plan, PlaceRequest arguments, StructureBuildOrder order,
         JobSource source)
     {
+        List<BoardGhost> completes = Completes(plan);
         if (!plan.Ready)
         {
             return new VerbOutcome.Answered(Described(plan, order));
@@ -69,7 +104,7 @@ internal static class StructureBuild
         PlaceReportView preflight = BuildReports.Of(plan, BuildReports.Scheduled, null);
         PlaceWork placing = new PlaceWork(arguments, preflight, plan.TouchesPipes);
         object started = JobSnapshots.Record(BuildJobs.Start("place", placing, order.Queue, order.AcknowledgeGasLost),
-            JobTool, Replaced(plan), source);
+            JobTool, Replaced(plan), source, completes: completes);
         object reply = order.Fields.Verbose
             ? started
             : JobStartReplies.Brief(started, JobPreflightSummaryView.Of(preflight));
@@ -78,6 +113,7 @@ internal static class StructureBuild
 
     private static ReportReply Described(PlacePlan plan, StructureBuildOrder order)
     {
+        Completes(plan);
         List<ReportProblem> problems = new List<ReportProblem>(plan.Problems.Count);
         foreach (BuildIssueView issue in plan.Problems)
         {

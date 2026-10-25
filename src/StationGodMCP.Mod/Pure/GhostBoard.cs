@@ -149,6 +149,17 @@ internal sealed class GhostBoard
         return built;
     }
 
+    /// <summary>The ghost a structure of the prefab built at the point in the turn would complete; left on the board.</summary>
+    internal BoardGhost? StandingFor(int prefabHash, Vec3 position, Vec3 euler)
+    {
+        int index = IndexOfSame(prefabHash, position, euler);
+        return index < 0 ? null : _ghosts[index];
+    }
+
+    /// <summary>Whether a structure of the prefab at the point in the turn is what the ghost stands for.</summary>
+    internal static bool StandsFor(BoardGhost ghost, int prefabHash, Vec3 position, Vec3 euler) =>
+        ghost.PrefabHash == prefabHash && Distance(ghost.Position, position) <= SameSpotM && SameTurn(ghost.Euler, euler);
+
     /// <summary>Whether any ghost is of the prefab (a cheap check before Built).</summary>
     internal bool Holds(int prefabHash) => _ghosts.Exists(ghost => ghost.PrefabHash == prefabHash);
 
@@ -271,9 +282,7 @@ internal sealed class GhostBoard
     {
         for (int index = 0; index < _ghosts.Count; index++)
         {
-            BoardGhost ghost = _ghosts[index];
-            if (ghost.PrefabHash == prefabHash && Distance(ghost.Position, position) <= SameSpotM &&
-                SameTurn(ghost.Euler, euler))
+            if (StandsFor(_ghosts[index], prefabHash, position, euler))
             {
                 return index;
             }

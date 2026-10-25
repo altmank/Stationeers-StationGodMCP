@@ -7,11 +7,13 @@ namespace StationGodMCP.Pure.Jobs;
 /// <summary>What JobSnapshots keeps of one job: the tool, the snapshots of what it removes, and its source.</summary>
 internal sealed class RecordedJob
 {
-    internal RecordedJob(string tool, Dictionary<long, ThingSnapshot> removed, JobSource source)
+    internal RecordedJob(string tool, Dictionary<long, ThingSnapshot> removed, JobSource source,
+        IReadOnlyList<BoardGhost>? completes = null)
     {
         Tool = tool;
         Removed = removed;
         Source = source;
+        Completes = completes ?? new List<BoardGhost>();
     }
 
     internal string Tool { get; }
@@ -19,6 +21,9 @@ internal sealed class RecordedJob
     internal Dictionary<long, ThingSnapshot> Removed { get; }
 
     internal JobSource Source { get; }
+
+    /// <summary>The board ghosts the job's builds complete (taken off as built): undo puts them back.</summary>
+    internal IReadOnlyList<BoardGhost> Completes { get; }
 }
 
 /// <summary>

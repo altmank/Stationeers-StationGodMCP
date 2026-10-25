@@ -37,7 +37,7 @@ internal static class JobSnapshots
     /// unchanged.
     /// </summary>
     internal static object Record(object reply, string tool, IEnumerable<Structure> removed, JobSource source,
-        IEnumerable<Structure>? burnt = null)
+        IEnumerable<Structure>? burnt = null, IReadOnlyList<BoardGhost>? completes = null)
     {
         string? jobId = JobIdIn(reply);
         if (jobId == null)
@@ -62,7 +62,7 @@ internal static class JobSnapshots
             }
         }
 
-        RecordedJob job = new RecordedJob(tool, snapshots, source);
+        RecordedJob job = new RecordedJob(tool, snapshots, source, completes);
         ByJob.Put(jobId, job, KeptJobSizes.Snapshot(job));
         return reply;
     }
