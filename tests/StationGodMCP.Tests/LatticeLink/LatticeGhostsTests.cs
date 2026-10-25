@@ -190,4 +190,16 @@ public sealed class LatticeIsolationTests
 
         Assert.Empty(wrong);
     }
+
+    // Lattice's Port.Toward points out of the piece; StationGod's ports (find ghost, {ghost, port}) say the end a joining
+    // piece needs, back into the port.
+    [Fact]
+    public void APortsTowardIsTurnedIntoThePort()
+    {
+        Assert.Equal("-y", LatticeGhosts.IntoPort(L.Face.PlusY));
+        Assert.Equal("+x", LatticeGhosts.IntoPort(L.Face.MinusX));
+        Assert.Equal("+z", LatticeGhosts.IntoPort(L.Face.MinusZ));
+        Assert.Equal("Output", LatticeGhosts.RoleOf(L.Option.Some(L.PortRole.Output)));
+        Assert.Null(LatticeGhosts.RoleOf(L.Option<L.PortRole>.None));
+    }
 }

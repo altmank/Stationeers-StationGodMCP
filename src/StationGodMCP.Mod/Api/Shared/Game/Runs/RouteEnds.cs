@@ -7,6 +7,7 @@ using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Pipes;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared.Game.Upgrades;
+using StationGodMCP.LatticeLink;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Protocol;
 using StationGodMCP.Pure.Verbs;
@@ -203,12 +204,7 @@ internal static class RouteEnds
                 $"{name}: ghost {id}'s prefab {ghost.PrefabName} is not one this game holds.");
         }
 
-        UnityEngine.Quaternion rotation =
-            UnityEngine.Quaternion.Euler((float)ghost.Euler.X, (float)ghost.Euler.Y, (float)ghost.Euler.Z);
-        UnityEngine.Vector3 position =
-            new UnityEngine.Vector3((float)ghost.Position.X, (float)ghost.Position.Y, (float)ghost.Position.Z);
-        PieceModel? model = PieceShapes.Placed(prefab, position, rotation, 0);
-        List<PortCell> ports = model != null ? PortCells.Of(model.Ends, type) : new List<PortCell>();
+        List<PortCell> ports = GhostPorts(ghost, prefab, type);
         int? port = PortOf(item, name);
         List<int> indexes = ports.ConvertAll(static one => one.Index);
         int found = port.HasValue
@@ -233,6 +229,35 @@ internal static class RouteEnds
         }
 
         return new RouteEndpoint(RouteEnd.Open(chosen.Cell), new List<long>(), chosen.Toward, turnsInto: true);
+    }
+
+    // A ghost's ports of the kind: Lattice's (PortsAt, contract 0.8) while it runs, else read from the prefab where the
+    // ghost stands; both in the game's OpenEnds order.
+    private static List<PortCell> GhostPorts(BoardGhost ghost, Structure prefab, int type)
+    {
+        if (LatticePresence.Running && LatticePresence.Ports(ghost.Id) is { } lattice)
+        {
+            List<PortCell> read = new List<PortCell>();
+            foreach (GhostPort port in lattice)
+            {
+                if (System.Enum.TryParse(port.Type, out NetworkType kind) && ((int)kind & type) != 0 &&
+                    GridStep.TryParse(port.Toward, out GridStep toward))
+                {
+                    GridCell joins = RunArgs.CellOf(new UnityEngine.Vector3((float)port.Joins.X, (float)port.Joins.Y,
+                        (float)port.Joins.Z));
+                    read.Add(new PortCell(port.Index, joins, toward, (int)kind, 0));
+                }
+            }
+
+            return read;
+        }
+
+        UnityEngine.Quaternion rotation =
+            UnityEngine.Quaternion.Euler((float)ghost.Euler.X, (float)ghost.Euler.Y, (float)ghost.Euler.Z);
+        UnityEngine.Vector3 position =
+            new UnityEngine.Vector3((float)ghost.Position.X, (float)ghost.Position.Y, (float)ghost.Position.Z);
+        PieceModel? model = PieceShapes.Placed(prefab, position, rotation, 0);
+        return model != null ? PortCells.Of(model.Ends, type) : new List<PortCell>();
     }
 
     // An end's port, an index 0 to 64; null when left out.

@@ -84,6 +84,10 @@ internal static class LatticePresence
         List<string> refused, List<string> notes, IReadOnlyList<GhostLook>? looks = null) =>
         LatticeBoard.Place(placements, source, client, refused, notes, looks);
 
+    /// <summary>LatticeBoard.Ports; only while Running.</summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    internal static List<GhostPort>? Ports(long id) => LatticeBoard.Ports(id);
+
     /// <summary>LatticeBoard.Highlight; only while Running. Null when lit, else why not.</summary>
     [MethodImpl(MethodImplOptions.NoInlining)]
     internal static string? Highlight(List<long> ids, double seconds) => LatticeBoard.Highlight(ids, seconds);

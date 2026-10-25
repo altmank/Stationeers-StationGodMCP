@@ -122,8 +122,14 @@ internal static class FindGhost
         }
 
         Vector3 position = new Vector3((float)ghost.Position.X, (float)ghost.Position.Y, (float)ghost.Position.Z);
-        return new GhostSpotView(orientation, PlacePlanner.PortPreview(prefab, position, rotation),
-            PlacementLayout.PortChecksAt(prefab, position, rotation));
+        List<SurveyPortView>? ports = LatticePresence.Running && LatticePresence.Ports(ghost.Id) is { } lattice
+            ? lattice.Count > 0
+                ? lattice.ConvertAll(port => new SurveyPortView(port.Index,
+                    new PositionView(port.Joins.X, port.Joins.Y, port.Joins.Z), port.Toward, port.Type,
+                    port.Role ?? "None", null))
+                : null
+            : PlacePlanner.PortPreview(prefab, position, rotation);
+        return new GhostSpotView(orientation, ports, PlacementLayout.PortChecksAt(prefab, position, rotation));
     }
 }
 

@@ -4,16 +4,19 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using Assets.Scripts;
+using Assets.Scripts.GridSystem;
 using Assets.Scripts.Networking;
 using Assets.Scripts.Objects;
 using Assets.Scripts.Objects.Entities;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared.Game;
+using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.LatticeLink.Model;
 using StationGodMCP.Net;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.RemoteView;
 using StationGodMCP.Pure.Verbs;
+using UnityEngine;
 using L = Lattice.Api;
 
 namespace StationGodMCP.LatticeLink;
@@ -74,6 +77,44 @@ internal static class LatticeBoard
 
         return lit.TryGetError(out L.Reason why) ? LatticeText.Of(why) : "refused";
     }
+
+    /// <summary>
+    /// A board ghost's ports where it stands, as Lattice reads them (Catalogue.PortsAt, contract 0.8): null below 0.8,
+    /// for a ghost Lattice does not hold, or one with no new piece; the caller reads the prefab itself then.
+    /// </summary>
+    internal static List<GhostPort>? Ports(long id)
+    {
+        if (_system is not { } system || system.Version.Minor < PortsMinor ||
+            !system.Board.As(LatticeNames.Agent).Select(new L.Selector.Ids(L.ValueList.Of(new L.GhostId(id))))
+                .TryGet(out L.ValueList<L.Ghost> found) || found.Count == 0)
+        {
+            return null;
+        }
+
+        L.Placement? placement = found[0].Intent switch
+        {
+            L.Intent.Build build => build.Target,
+            L.Intent.Swap swap => swap.New,
+            _ => null
+        };
+        if (placement == null || !system.Catalogue.PortsAt(placement).TryGet(out L.ValueList<L.Port> ports))
+        {
+            return null;
+        }
+
+        List<GhostPort> read = new List<GhostPort>(ports.Count);
+        foreach (L.Port port in ports)
+        {
+            Vector3 joins = PieceShapes.CentreOf(PieceShapes.Cell(new Grid3(port.Joins.X, port.Joins.Y, port.Joins.Z)));
+            read.Add(new GhostPort(port.Index.Value, Bodies.V(joins), LatticeGhosts.IntoPort(port.Toward), port.GameName,
+                LatticeGhosts.RoleOf(port.Role)));
+        }
+
+        return read;
+    }
+
+    // The contract minor that reads a placed piece's ports (IPieceCatalogue.PortsAt).
+    private const int PortsMinor = 8;
 
     /// <summary>Ends every highlight show highlight lit.</summary>
     internal static void EndHighlights()

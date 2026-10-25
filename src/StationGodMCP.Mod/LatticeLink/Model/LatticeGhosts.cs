@@ -178,6 +178,24 @@ internal static class LatticeGhosts
             attached);
     }
 
+    /// <summary>
+    /// The way a piece joining a port needs its end: back into the port, the opposite of Lattice's Port.Toward (out of
+    /// the piece), as StationGod's ports say it.
+    /// </summary>
+    internal static string IntoPort(L.Face outOfPiece) => outOfPiece switch
+    {
+        L.Face.PlusX => "-x",
+        L.Face.MinusX => "+x",
+        L.Face.PlusY => "-y",
+        L.Face.MinusY => "+y",
+        L.Face.PlusZ => "-z",
+        _ => "+z"
+    };
+
+    /// <summary>A port role as the game names it (ConnectionRole); null for a plain run end.</summary>
+    internal static string? RoleOf(L.Option<L.PortRole> role) =>
+        role.TryGet(out L.PortRole given) ? given.ToString() : null;
+
     /// <summary>The cell of a position in metres: the game's Grid3 key, as Lattice reads a structure's.</summary>
     internal static L.Cell CellOf(Vec3 position) => new L.Cell(Key(position.X), Key(position.Y), Key(position.Z));
 
