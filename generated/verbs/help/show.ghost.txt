@@ -13,9 +13,10 @@ Options:
 - from_plan (string): A plan spot ref ("r9"; one spot: "r9.spots.2", default the first): put its placement on the board.
 - tint (string or array): The ghosts' colour, yours to choose: a name (cyan, magenta, yellow, green, orange, blue, red, white, purple, pink, khaki, brown, black, gray), [r, g, b] or [r, g, b, a] each 0 to 1.
 - label (string): What the ghosts are, shown as a tooltip when the crosshair is on one, and in find ghost; a placement's own label wins.
+- run (object): A cable, pipe or chute run to put on the board: build cable, pipe or chute's options with what ({what: "pipe", grade, waypoints, branches, pieces, ...}), planned as build plans it (elbows, tees); each new piece becomes a ghost.
 - remove (list): Ghost ids to take off the board (find ghost lists them).
 - clear (agent | all): Take off every ghost agents placed, or every ghost.
 - allow (list of door_keepout): Guards to lift, by name.
 A ghost lasts until it is taken off or a structure of its prefab is built where it stands, kept with the save; players see it, move around it, take it off (RemoveGhostKey) and place their own (ghost mode, the ghost menu). The placements are planned as build structure plans them (nothing built, materials not checked) and each goes on the board where the plan put it, problems or not; the reply's plan says why one would not build, and gives each placement's position, orientation, and a device's ports and layout.port_checks as build structure's report does (no build call needed to plan runs to them). find ghost lists the board. With Lattice installed the ghosts are Lattice's: the agent's go into a Lattice plan of their own (StationGod agent), Lattice saves and syncs them and Loom shows them; board says which.
-Reply: placed [{id, prefab_name, position}], removed, total, board, plan {ready, problems, warnings, placements}, notes
+Reply: placed [{id, prefab_name, position}], removed, total, board, run {what, ready, pieces, problems, warnings}, plan {ready, problems, warnings, placements}, notes
 Example: show {what: "ghost", prefab: "StructureVolumePump", at: [716, 203, 668], facing: "+x", tint: "orange", label: "second pump"}

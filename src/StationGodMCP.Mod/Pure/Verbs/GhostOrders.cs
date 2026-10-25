@@ -20,8 +20,9 @@ internal sealed class GhostOrder
     private static readonly string[] ClearWords = { "agent", "all" };
 
     private GhostOrder(PlaceRequest arguments, Dictionary<int, Rgba> tints, Rgba tint, List<long> remove, string? clear,
-        string? label, Dictionary<int, string> labels)
+        string? label, Dictionary<int, string> labels, RunBuildOrder? run)
     {
+        Run = run;
         Labels = labels;
         Arguments = arguments;
         Tints = tints;
@@ -47,6 +48,9 @@ internal sealed class GhostOrder
 
     internal bool HasPlacements => Arguments.Placements.Count > 0;
 
+    /// <summary>run: build cable, pipe or chute's options (as show preview reads them), its new pieces the ghosts.</summary>
+    internal RunBuildOrder? Run { get; }
+
     internal Rgba TintOf(int index) => Tints.TryGetValue(index, out Rgba own) ? own : Tint;
 
     /// <summary>The placements' labels by index (the call's label already in each placement without its own).</summary>
@@ -68,21 +72,23 @@ internal sealed class GhostOrder
         }
 
         List<long> remove = Ids(options.Remove, problems);
+        RunBuildOrder? run = PreviewOrder.RunOf(options.Run, problems);
         string? clear = options.Clear?.Trim().ToLowerInvariant();
         if (clear != null && Array.IndexOf(ClearWords, clear) < 0)
         {
             problems.Add(new OptionProblem("clear", "is agent or all", NearestNames.Of(clear, ClearWords)));
         }
 
-        if (problems.Count == before && placements.Count == 0 && remove.Count == 0 && clear == null)
+        if (problems.Count == before && placements.Count == 0 && remove.Count == 0 && clear == null &&
+            options.Run == null)
         {
             problems.Add(new OptionProblem("placements",
-                "is required unless remove or clear is given: placements, or prefab and at"));
+                "is required unless run, remove or clear is given: placements, or prefab and at"));
         }
 
         return problems.Count == before
             ? new GhostOrder(new PlaceRequest(placements, null, true, Allow.Lifts(options.Allow, "door_keepout"),
-                detail: new ReportDetail(false, true)), tints, tint, remove, clear, options.Label, labels)
+                detail: new ReportDetail(false, true)), tints, tint, remove, clear, options.Label, labels, run)
             : null;
     }
 

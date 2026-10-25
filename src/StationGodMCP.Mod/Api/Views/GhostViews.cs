@@ -188,5 +188,9 @@ internal sealed class ShowGhostView
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public GhostPlanView? Plan { get; }
 
+    /// <summary>The run's plan in short, when the call gave a run.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public RunPreviewView? Run { get; init; }
+
     public List<string> Notes { get; }
 }

@@ -250,6 +250,11 @@
           "description": "What the ghosts are, shown as a tooltip when the crosshair is on one, and in find ghost; a placement's own label wins.",
           "x-script": "same"
         },
+        "run": {
+          "schema": {"type": "object"},
+          "description": "A cable, pipe or chute run to put on the board: build cable, pipe or chute's options with what ({what: \"pipe\", grade, waypoints, branches, pieces, ...}), planned as build plans it (elbows, tees); each new piece becomes a ghost.",
+          "x-script": "same"
+        },
         "remove": {
           "schema": {"type": "array", "items": {"type": "integer"}, "maxItems": 256},
           "description": "Ghost ids to take off the board (find ghost lists them).",
@@ -281,6 +286,7 @@
               "removed": "list[int]",
               "total": "int",
               "board": "str",
+              "run": "{what: str, ready: bool, pieces: int, problems: list[{code: str, message: str}], warnings: list[{code: str, message: str}]} | None",
               "plan": "{ready: bool, problems: list[{code: str, message: str, index: int | None, reference_id: str | None}], warnings: list[{code: str, message: str, index: int | None, reference_id: str | None}], placements: list[{index: int, prefab_name: str | None, position: Vec3 | None, orientation: {facing: str | None, up: str | None, euler: Vec3} | None, build_state: int | None, ports: list[{index: int, at: Vec3, toward: str, type: str, role: str, network_id: str | None}] | None, layout: {port_checks: list[{index: int, at: Vec3, toward: str, type: str, role: str, flow: str | None, occupant: Thing | None, joins: bool, would_join_network: str | None, blocked: str | None, in_door_keep_out: bool}]} | None}]} | None",
               "notes": "list[str]"
             }

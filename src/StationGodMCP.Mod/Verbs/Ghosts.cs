@@ -5,6 +5,7 @@ using Assets.Scripts.Objects;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Shared.Game;
 using StationGodMCP.Api.Shared.Game.Build;
+using StationGodMCP.Api.Shared.Game.Runs;
 using StationGodMCP.Api.Shared.Game.Show;
 using StationGodMCP.Api.Views;
 using StationGodMCP.LatticeLink;
@@ -129,20 +130,43 @@ internal static class FindGhost
 /// show ghost (catalogue show.json): puts planned structures on the world's ghost board, where every player sees them
 /// until they are built or taken off, or takes ghosts off. The placements are planned as build structure plans them
 /// (free, no lint; nothing built) and each goes on the board where the plan put it, problems or not; the reply's plan
-/// says why one would not build. Nothing in the world changes.
+/// says why one would not build. A run (build cable, pipe or chute's options) is planned as build plans it, over frames
+/// and without the lint, and each new piece (elbows and tees as build would choose them) goes on the board; pieces it
+/// would change to join stay as they stand. Nothing in the world changes.
 /// </summary>
 [ReplyFact(FactRule.Live, "the ghost board")]
 internal static class ShowGhost
 {
     internal static VerbOutcome Run(ShowGhostOptions options)
     {
+        string label = ShowGhostOptions.Spec.Label;
         List<OptionProblem> problems = new List<OptionProblem>();
         GhostOrder? order = GhostOrder.Of(options, problems);
         if (order == null)
         {
-            return new VerbOutcome.Refused(OptionProblem.Refusal(ShowGhostOptions.Spec.Label, problems));
+            return new VerbOutcome.Refused(OptionProblem.Refusal(label, problems));
         }
 
+        if (!(order.Run is { } run))
+        {
+            return Placed(order, null);
+        }
+
+        RunRequest? request = BuildRuns.RequestOf(BuildRuns.KindOf(run.Kind), run, new List<ThingId?>(),
+            new List<ReportProblem>(), out ThingId? _, out OptionProblem? problem);
+        if (request == null)
+        {
+            return new VerbOutcome.Refused(OptionProblem.Refusal(label,
+                new[] { new OptionProblem($"{PreviewOrder.ByRun}.{problem!.Path}", problem.Problem, problem.Nearest) }));
+        }
+
+        return WorkResult<RunPlan>.Of(answer => RunPlanner.Planning(request, false, answer),
+            plan => Placed(order, plan));
+    }
+
+    // The board's changes: ids taken off, then the placements' and the run's ghosts put on.
+    private static VerbOutcome Placed(GhostOrder order, RunPlan? run)
+    {
         List<string> notes = new List<string>();
         List<long> removed = new List<long>();
         if (order.Remove.Count > 0)
@@ -197,7 +221,66 @@ internal static class ShowGhost
             notes.AddRange(refused);
         }
 
+        RunPreviewView? runView = null;
+        if (run != null && order.Run != null)
+        {
+            runView = new RunPreviewView(order.Run.Kind, run.Ready, run.Cells.Count, run.Problems, run.Warnings);
+            List<string> refused = new List<string>();
+            foreach (BoardGhost ghost in GhostBoardStore.Place(RunGhosts(run, order, notes), GhostSource.Agent, "agent",
+                         refused))
+            {
+                placed.Add(new PlacedGhostView(ghost));
+            }
+
+            notes.AddRange(refused);
+        }
+
         return new VerbOutcome.Answered(new ShowGhostView(placed, removed, GhostBoardStore.Board.Count,
-            FindGhost.BoardKeeper, plan, notes));
+            FindGhost.BoardKeeper, plan, notes) { Run = runView });
+    }
+
+    // A run's new pieces as ghosts, each finished, in the turn the run lays it, in the call's tint and label; a piece
+    // the run changes to join (one standing) is left as it stands, and a piece left with an open end is named.
+    private static List<GhostPlacement> RunGhosts(RunPlan run, GhostOrder order, List<string> notes)
+    {
+        List<GhostPlacement> ghosts = new List<GhostPlacement>();
+        int changed = 0;
+        List<string> open = new List<string>();
+        foreach (PlannedCell cell in run.Cells)
+        {
+            if (cell.Layout.Existing != null)
+            {
+                changed++;
+                continue;
+            }
+
+            Vector3 centre = PieceShapes.CentreOf(cell.Cell);
+            if (cell.Layout.OpenEnd is { } end)
+            {
+                open.Add($"{Bodies.V(centre)} {end.Name}");
+            }
+
+            Structure prefab = cell.Choice.Prefab;
+            Quaternion rotation = cell.Choice.Rotation;
+            Vec3 euler = CubeRotation.EulerDegreesOf(rotation.x, rotation.y, rotation.z, rotation.w) is { } turns
+                ? new Vec3(turns.X, turns.Y, turns.Z)
+                : Bodies.V(rotation.eulerAngles);
+            ghosts.Add(new GhostPlacement(prefab.PrefabHash, prefab.BuildStates.Count - 1, Bodies.V(centre), euler,
+                order.Tint, order.Label));
+        }
+
+        if (changed > 0)
+        {
+            notes.Add($"{changed} standing piece(s) the run changes to join are left as they stand: build does that.");
+        }
+
+        if (open.Count > 0)
+        {
+            notes.Add($"{open.Count} piece(s) end open: {string.Join("; ", open.GetRange(0, System.Math.Min(open.Count, 5)))}" +
+                      $"{(open.Count > 5 ? "; ..." : "")}. An end meant for a port: plan the route to {{id, port}}, " +
+                      "{ghost, port} or {at, toward}.");
+        }
+
+        return ghosts;
     }
 }
