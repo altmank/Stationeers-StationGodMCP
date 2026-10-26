@@ -3,7 +3,7 @@ def move(what: Literal['item'], *,
     id: str | list[str] = None,  # The item(s); for a vault or silo deposit, whole things by id.
     quantity: float = None,  # Slot move: how many off the stack, default the whole item. Out of a vault: grams of ingot or a count of ore or ice; out of a silo: an item count; required for both.
     to: str = None,  # The holder that gets them: a container, belt, suit, "player", a vault or a silo.
-    slot: int | str = 'auto',  # A slot index of to, or "auto" (the default: matching stacks topped up to their most, the rest into an empty slot). Given, the move is a slot move even into a vault's or silo's own slots; force needs an index.
+    slot: int | str = 'auto',  # A slot index of to, or "auto" (the default: matching stacks topped up to their most, the rest into an empty slot; to a player, the slots of what it wears (belt, backpack), then a free hand). Given, the move is a slot move even into a vault's or silo's own slots; force needs an index.
     merge: bool = True,  # Join a matching stack in the slot.
     force: bool = False,  # Into an empty slot by index even when hidden. Cheat.
     allow: list[Literal['in_use', 'ground']] = None,  # in_use: take a part its device is using; ground: what does not fit goes on the ground.

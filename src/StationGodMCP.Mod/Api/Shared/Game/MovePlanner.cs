@@ -6,6 +6,7 @@ using Assets.Scripts;
 using Assets.Scripts.Genetics;
 using Assets.Scripts.Networking;
 using Assets.Scripts.Objects;
+using Assets.Scripts.Objects.Entities;
 using Assets.Scripts.Objects.Items;
 using Assets.Scripts.Objects.Pipes;
 using Objects.Electrical;
@@ -403,28 +404,24 @@ internal static class MovePlanner
     }
 
     // Matching stacks topped up first (when merging is allowed), then the first empty slot that takes the item for the
-    // rest (SlotOccupancy.FillAuto); any other occupied slot is passed over.
+    // rest (SlotOccupancy.FillAuto); any other occupied slot is passed over. A player's slots are those of what it
+    // wears, then its hands (Pure/PlayerSlotRule); any other target's are its own. Nothing found: each slot whose
+    // class fits says why it did not take the item.
     private static ApiException? AutoSlot(ItemMove move, DynamicThing item, Thing target, int quantity,
         List<MovePart> parts, out Slot? staging)
     {
-        int usable = IsVaultDisplaySlot(target, VaultDisplaySlotsStart)
-            ? System.Math.Min(VaultDisplaySlotsStart, target.Slots.Count)
-            : target.Slots.Count;
-        List<AutoSlotCandidate> candidates = new List<AutoSlotCandidate>(target.Slots.Count);
-        for (int index = 0; index < target.Slots.Count; index++)
+        List<(Slot Slot, bool Swappable)> slots = target is Human body ? PlayerSlots(body, item) : OwnSlots(target, item);
+        List<AutoSlotCandidate> candidates = new List<AutoSlotCandidate>(slots.Count);
+        for (int index = 0; index < slots.Count; index++)
         {
-            Slot candidate = target.Slots[index];
-            if (candidate == null || candidate == item.ParentSlot)
-            {
-                continue;
-            }
-
+            (Slot candidate, bool swappable) = slots[index];
             SlotOccupant? occupant = SlotOccupants.Of(candidate, item);
-            // A vault's display slots only show its store; a stack merged there would go with the slot.
-            bool usableSlot = index < usable;
-            bool merges = usableSlot && occupant.HasValue && SlotAccess.AutoPicks(candidate) &&
-                          GrowerSlotRule.AutoMerges(GrowerSlots.KindOf(target, candidate));
-            bool takesNew = usableSlot && !occupant.HasValue && AutoTakesNew(item, target, candidate);
+            bool picks = swappable ? SlotAccess.AutoPicks(candidate) : SlotAccess.Reaches(candidate);
+            bool merges = occupant.HasValue && picks && !candidate.IsLocked &&
+                          GrowerSlotRule.AutoMerges(GrowerSlots.KindOf(candidate.Parent, candidate));
+            bool takesNew = !occupant.HasValue && !candidate.IsLocked && (swappable
+                ? AutoTakesNew(item, candidate.Parent, candidate)
+                : SlotAccess.TakesNew(item, candidate));
             candidates.Add(new AutoSlotCandidate(index, occupant, merges, takesNew));
         }
 
@@ -432,15 +429,132 @@ internal static class MovePlanner
         AutoFill fill = SlotOccupancy.FillAuto(candidates, quantity, quantity >= whole, move.Merge);
         foreach (AutoFillPart part in fill.Parts)
         {
-            Slot slot = target.Slots[part.Index];
+            Slot slot = slots[part.Index].Slot;
             parts.Add(new MovePart(slot, part.Quantity, part.Merges ? (Stackable)slot.Get() : null));
         }
 
-        staging = fill.Staging is int staged ? target.Slots[staged] : null;
+        staging = fill.Staging is int staged ? slots[staged].Slot : null;
         return fill.Found
             ? null
-            : ApiErrors.Refused("no_free_slot", $"{Names.Of(target)} has no slot that takes {Names.Of(item)}" +
-                (move.Merge ? "; its matching stacks have no room for all of it." : "."));
+            : ApiErrors.Refused("no_free_slot",
+                PlayerSlotRule.NoSlot(Names.Of(target), Names.Of(item), move.Merge, Reasons(move, item, quantity, slots)));
+    }
+
+    // A target's own slots, less the slot the item is in and a vault's display slots (they only show its store; a
+    // stack merged there would go with the slot).
+    private static List<(Slot Slot, bool Swappable)> OwnSlots(Thing target, DynamicThing item)
+    {
+        int usable = IsVaultDisplaySlot(target, VaultDisplaySlotsStart)
+            ? System.Math.Min(VaultDisplaySlotsStart, target.Slots.Count)
+            : target.Slots.Count;
+        List<(Slot Slot, bool Swappable)> slots = new List<(Slot Slot, bool Swappable)>(usable);
+        for (int index = 0; index < usable; index++)
+        {
+            Slot slot = target.Slots[index];
+            if (slot != null && slot != item.ParentSlot)
+            {
+                slots.Add((slot, true));
+            }
+        }
+
+        return slots;
+    }
+
+    // A player's slots as a player puts an item away (Pure/PlayerSlotRule): those of what it wears and of what is
+    // stored in them (Refunds.InventorySlots, level by level), then the hands, right first. The item's own slots and
+    // the slot it is in are left out.
+    private static List<(Slot Slot, bool Swappable)> PlayerSlots(Human body, DynamicThing item)
+    {
+        List<(Slot Slot, bool Swappable)> slots = new List<(Slot Slot, bool Swappable)>();
+        foreach (Slot worn in body.Slots)
+        {
+            if (worn == null || IsHand(body, worn) || !(worn.Get() is { } wearing) || wearing.IsBeingDestroyed ||
+                wearing == item)
+            {
+                continue;
+            }
+
+            foreach (Slot inside in Refunds.InventorySlots(wearing, null))
+            {
+                if (inside != item.ParentSlot && inside.Parent != item && !IsInside(inside.Parent, item))
+                {
+                    slots.Add((inside, PlayerSlotRule.NeedsSwappable(PlayerSlotPlace.Worn)));
+                }
+            }
+        }
+
+        foreach (Slot hand in new[] { body.RightHandSlot, body.LeftHandSlot })
+        {
+            if (hand != null && hand != item.ParentSlot)
+            {
+                slots.Add((hand, PlayerSlotRule.NeedsSwappable(PlayerSlotPlace.Hand)));
+            }
+        }
+
+        return slots;
+    }
+
+    private static bool IsHand(Human body, Slot slot) =>
+        ReferenceEquals(slot, body.LeftHandSlot) || ReferenceEquals(slot, body.RightHandSlot);
+
+    // Whether a thing is held (at any depth) by the item: a move never puts the item inside itself.
+    private static bool IsInside(Thing thing, DynamicThing item)
+    {
+        for (Thing? holder = thing; holder != null; holder = HolderOf(holder))
+        {
+            if (holder == item)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    // What each slot whose class fits the item said (a hand takes any class): locked, hidden, skipped, held, refused.
+    private static List<string> Reasons(ItemMove move, DynamicThing item, int quantity,
+        List<(Slot Slot, bool Swappable)> slots)
+    {
+        List<string> reasons = new List<string>();
+        int whole = item is Stackable stack ? stack.Quantity : 1;
+        foreach ((Slot slot, bool swappable) in slots)
+        {
+            if (slot.Type != Slot.Class.None && slot.Type != item.SlotType)
+            {
+                continue;
+            }
+
+            string label = SlotAccess.Label(slot);
+            if (slot.IsLocked)
+            {
+                reasons.Add($"{label} is locked");
+            }
+            else if (!SlotAccess.Reaches(slot))
+            {
+                reasons.Add(SlotAccess.HiddenReason(slot).TrimEnd('.'));
+            }
+            else if (slot.Get() is { } held)
+            {
+                SlotOccupant occupant = SlotOccupants.Of(slot, item)!.Value;
+                reasons.Add(SlotOccupancy.JoinRefusal(occupant, quantity, quantity >= whole, move.Merge) switch
+                {
+                    OccupantRefusal.StackFull => $"{label} holds {Names.Of(held)}, {occupant.Quantity} of {occupant.MaxQuantity}",
+                    OccupantRefusal.PartialMerge => $"{label} holds {Names.Of(held)} (part of a stack only goes into an empty slot)",
+                    OccupantRefusal.MergeOff => $"{label} holds {Names.Of(held)} (merge is false)",
+                    _ => $"{label} holds {Names.Of(held)}"
+                });
+            }
+            else if (!Slot.AllowMove(item, slot))
+            {
+                reasons.Add($"{label} does not take it: {SlotAccess.WhyRefused(item, slot)}");
+            }
+            else if (swappable && !slot.IsSwappable)
+            {
+                reasons.Add($"{label} is one the game's quick moves skip: name it with slot");
+            }
+        }
+
+        return reasons;
     }
 
     // A grower's plant or fertiliser slot is taken by the grower rules, hidden or not (a plant into a plant slot,
@@ -538,7 +652,7 @@ internal sealed class MovePlan
             List<SlotShareView> shares = new List<SlotShareView>(Parts.Count);
             foreach (MovePart part in Parts)
             {
-                shares.Add(new SlotShareView(new SlotRefView(new ThingId(Target.ReferenceId), part.Slot.SlotIndex),
+                shares.Add(new SlotShareView(new SlotRefView(new ThingId(part.Slot.Parent.ReferenceId), part.Slot.SlotIndex),
                     part.Quantity));
             }
 
@@ -584,7 +698,7 @@ internal sealed class MovePlan
             MovePart part = Parts[at];
             DynamicThing? now = part.Slot.Get();
             moved += part.Quantity;
-            filled.Add(new SlotFilledView(new SlotRefView(new ThingId(Target.ReferenceId), part.Slot.SlotIndex),
+            filled.Add(new SlotFilledView(new SlotRefView(new ThingId(part.Slot.Parent.ReferenceId), part.Slot.SlotIndex),
                 new ThingId(landed[at].ReferenceId), part.Quantity, part.Into != null,
                 now is Stackable stack && stack == landed[at] ? stack.Quantity : (int?)null));
         }
@@ -675,7 +789,7 @@ internal sealed class MovePlan
         ? null
         : new SlotRefView(new ThingId(Item.ParentSlot.Parent.ReferenceId), Item.ParentSlot.SlotIndex);
 
-    private SlotRefView To() => new SlotRefView(new ThingId(Target.ReferenceId), Slot.SlotIndex);
+    private SlotRefView To() => new SlotRefView(new ThingId(Slot.Parent.ReferenceId), Slot.SlotIndex);
 
     private ThingId? Merged() => MergeInto != null ? new ThingId(MergeInto.ReferenceId) : (ThingId?)null;
 
@@ -749,7 +863,7 @@ internal sealed class MovePlan
     private ApiException Failed(Exception? thrown = null, Slot? slot = null) =>
         ApiErrors.Refused(
             "move_failed",
-            $"The game did not put {Names.Of(Item)} into slot {(slot ?? Slot).SlotIndex} of {Names.Of(Target)}"
+            $"The game did not put {Names.Of(Item)} into slot {(slot ?? Slot).SlotIndex} of {Names.Of((slot ?? Slot).Parent)}"
             + (thrown == null ? "" : $" (it threw {thrown.GetType().Name}: {thrown.Message})")
             + "; read the slots before retrying.");
 }

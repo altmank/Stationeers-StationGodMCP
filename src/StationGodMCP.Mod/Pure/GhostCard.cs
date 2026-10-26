@@ -38,7 +38,7 @@ internal enum GhostStanding
 /// What the ghost tooltip shows of the ghost under the crosshair: its title (the label, else the piece), the piece, what
 /// it asks for (build, remove, swap, finish), where it stands and why, its plan and who placed it, the next build steps,
 /// the materials and tools still needed, its ports and Lattice's warnings. Made from Lattice's facts when Lattice keeps
-/// the board (LatticeBoard.Card), else from StationGod's own board record alone. Lists are kept short for the panel.
+/// the board (LatticeCards, through LatticePresence), else from StationGod's own board record alone. Lists are kept short for the panel.
 /// </summary>
 internal sealed class GhostCard
 {
