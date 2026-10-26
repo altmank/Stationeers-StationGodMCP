@@ -1,5 +1,25 @@
 # Changelog
 
+## 2.13.0
+
+LU: the ghost tooltip renders small and hard to read; make it pretty, informative and readable. And a live move
+item bug (Mimas, 2026-10-25).
+
+- **The ghost tooltip is a panel**: a dark card edged in the ghost's tint, with the title (the label, else the
+  piece), a badge for where the ghost stands (planned, ready, started, waiting, warning, blocked, stale) and why,
+  what it asks for (build, remove, swap, finish) and its id, then its plan, who placed it, the next build steps, the
+  materials and tools still needed, its ports by type, and Lattice's warnings. The facts come from Lattice (board
+  record, findings, steps from the world as it is, ports) twice a second for the ghost shown; on StationGod's own
+  board the panel shows the board record. Sized for the screen's height, kept on screen (above the crosshair when
+  there is no room below), with a one-pixel text shadow; [Ghosts] `TooltipScale` (0.5 to 3) makes it larger or
+  smaller.
+- **move item to: "player" finds the player's free slots**: slot auto now tries the slots of what the player wears
+  (a mining belt's Tool slots, a backpack) and then a free hand, before refusing. Three Mining Charges were refused
+  `no_free_slot` with a hand and two belt Tool slots free: auto looked only at the body's own slots, by the game's
+  quick-move rule, which skips the hands. A slot filled this way is reported as the belt's or backpack's slot.
+- **no_free_slot says why**: each slot whose class fits names what stopped it (holds something, a full stack, locked,
+  hidden, the game's own refusal), for every target, not only a player.
+
 ## 2.12.0
 
 LU: support everything Lattice offers, not only build ghosts (Lattice 0.11); and the Workspace's ghost entries of

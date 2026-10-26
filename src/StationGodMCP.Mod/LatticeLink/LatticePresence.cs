@@ -133,6 +133,10 @@ internal static class LatticePresence
     [MethodImpl(MethodImplOptions.NoInlining)]
     internal static LatticeAnswer View(string part, Newtonsoft.Json.Linq.JObject given) => LatticeVerbs.View(part, given);
 
+    /// <summary>LatticeCards.Card (the ghost tooltip's facts); only while Running.</summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    internal static GhostCard? Card(long id, string piece, string? label) => LatticeCards.Card(id, piece, label);
+
     /// <summary>Whether Lattice draws the ghosts; false while not Running.</summary>
     internal static bool Draws => Running && DrawsBoard();
 
