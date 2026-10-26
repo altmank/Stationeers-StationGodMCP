@@ -39,6 +39,9 @@ internal static class GhostSettings
 
     internal static string Tint { get; private set; } = "cyan";
 
+    /// <summary>The ghost tooltip's size over the screen's own (1 = sized for the screen's height).</summary>
+    internal static float TooltipScale { get; private set; } = 1f;
+
     internal static void Load(ConfigFile configuration)
     {
         Enabled = configuration.Bind(Section, "Enabled", true,
@@ -56,6 +59,8 @@ internal static class GhostSettings
             "In ghost mode or while placing from the menu: takes off the ghost under the crosshair.").Value;
         Tint = configuration.Bind(Section, "Tint", Tint,
             "The colour new ghosts take: " + string.Join(", ", GhostTints.Names) + ".").Value;
+        TooltipScale = Mathf.Clamp(configuration.Bind(Section, "TooltipScale", TooltipScale,
+            "The ghost tooltip's size: 1 fits the screen's height, 1.5 half again as large (0.5 to 3).").Value, 0.5f, 3f);
     }
 }
 
@@ -345,7 +350,7 @@ internal sealed class GhostOverlay : MonoBehaviour
     private string _search = string.Empty;
     private Vector2 _scroll;
     private GUIStyle? _line;
-    private GUIStyle? _tip;
+    private readonly GhostTooltip _tooltip = new GhostTooltip();
 
     /// <summary>Whether the menu's search field has the keyboard.</summary>
     internal static bool SearchFocused { get; private set; }
@@ -514,25 +519,8 @@ internal sealed class GhostOverlay : MonoBehaviour
         return structures;
     }
 
-    // The hovered ghost's label (or its structure when it has none) under the crosshair, then what it is and whose.
-    private void Tooltip(GhostMark ghost)
-    {
-        _tip ??= new GUIStyle(GUI.skin.box) { fontSize = 14, alignment = TextAnchor.MiddleCenter, wordWrap = true };
-        string first = string.IsNullOrEmpty(ghost.Label) ? ghost.Title : ghost.Label!;
-        string second = string.IsNullOrEmpty(ghost.Label) ? string.Empty : ghost.Title;
-        string whose = ghost.BoardId != 0
-            ? $"ghost {ghost.BoardId}" + (string.IsNullOrEmpty(ghost.Owner) ? string.Empty : $", placed by {ghost.Owner}")
-            : "preview";
-        string text = second.Length > 0 ? $"{first}\n{second} ({whose})" : $"{first}\n({whose})";
-        Vector2 size = _tip.CalcSize(new GUIContent(text));
-        float width = Mathf.Min(Mathf.Max(size.x + 24f, 160f), 460f);
-        float height = _tip.CalcHeight(new GUIContent(text), width) + 10f;
-        Rect rect = new Rect(Screen.width / 2f - width / 2f, Screen.height / 2f + 36f, width, height);
-        Color before = GUI.color;
-        GUI.color = new Color(1f, 1f, 1f, 0.92f);
-        GUI.Box(rect, text, _tip);
-        GUI.color = before;
-    }
+    // The hovered ghost's panel under the crosshair (GhostTooltip).
+    private void Tooltip(GhostMark ghost) => _tooltip.Draw(ghost);
 
     private void Shadowed(Rect rect, string text, Color color)
     {
