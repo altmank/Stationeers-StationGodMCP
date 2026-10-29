@@ -383,7 +383,9 @@ internal sealed class GhostOverlay : MonoBehaviour
             Shadowed(new Rect(0f, 66f, Screen.width, 26f), note, Color.white);
         }
 
-        if (GhostControls.Hovered is { } hovered)
+        // Not while the game's UI is hidden (InventoryManager.ShowUi): the player's hide-UI key, or Loom's planning,
+        // which owns the screen and turns the game's UI off through SetUiState.
+        if (InventoryManager.ShowUi && GhostControls.Hovered is { } hovered)
         {
             Tooltip(hovered);
         }

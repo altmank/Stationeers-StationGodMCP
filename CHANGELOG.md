@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.13.1
+
+LU (through Loom): the ghost tooltip covers the screen while planning in Loom, and over Loom's build menu.
+
+- **The ghost tooltip hides while the game's UI is hidden** (`InventoryManager.ShowUi` false): while Loom plans (it
+  turns the game's UI off) and when the player hides the UI with the game's key.
+
 ## 2.13.0
 
 LU: the ghost tooltip renders small and hard to read; make it pretty, informative and readable. And a live move
