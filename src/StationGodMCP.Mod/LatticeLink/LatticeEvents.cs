@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.LatticeLink.Json;
 using StationGodMCP.LatticeLink.Model;
@@ -13,7 +14,7 @@ namespace StationGodMCP.LatticeLink;
 /// <summary>
 /// The last of Lattice's events in this world, numbered, for find lattice {ask: events, args: {since}}: change sets (in
 /// short), completions, executor status, a sent command's answer, plan states, blocked ghosts, moved structures, answers
-/// ready, loads and board resets. Heard once per system (LatticeBoard.Attach); the newest Kept are kept.
+/// ready, loads, board resets and builders (0.22). Heard once per system (LatticeBoard.Attach); the newest Kept are kept.
 /// </summary>
 internal static class LatticeEvents
 {
@@ -87,7 +88,16 @@ internal static class LatticeEvents
             ["plans_ahead"] = load.Ahead.Count,
         });
         events.BoardReset += () => Add("board_reset", new JObject());
+        if (system.Version.Major == L.ApiVersion.ContractMajor && system.Version.Minor >= LatticeOut.BuildersMinor)
+        {
+            ListenToBuilders(events);
+        }
     }
+
+    // Contract 0.22: a builder registered, went, or changed what it says.
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void ListenToBuilders(L.IGhostEvents events) =>
+        events.BuilderChanged += builder => Add("builder_changed", new JObject { ["builder"] = builder.Value });
 
     /// <summary>The events numbered after since, oldest first, and the number to ask from next.</summary>
     internal static JObject Since(long since)

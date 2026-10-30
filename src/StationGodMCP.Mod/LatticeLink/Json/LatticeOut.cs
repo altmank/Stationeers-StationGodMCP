@@ -260,7 +260,23 @@ internal sealed class LatticeOut
             written["data"] = Attached(plan.HigherLayerData);
         }
 
+        if (Has(BuildersMinor))
+        {
+            PlanBuilders(written, plan);
+        }
+
         return written;
+    }
+
+    // Contract 0.22: the builders asked to build the plan, and its colour when it has one.
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void PlanBuilders(JObject written, L.Plan plan)
+    {
+        written["build_by"] = Each(plan.BuildBy, builder => new JValue(builder.Value));
+        if (plan.Colour.TryGet(out L.Tint colour))
+        {
+            written["colour"] = Rgba(colour.R, colour.G, colour.B, colour.A);
+        }
     }
 
     internal JObject Finished(L.FinishedPlan plan) => new JObject
@@ -375,8 +391,110 @@ internal sealed class LatticeOut
             written["built"] = Structure(built);
         }
 
+        if (Has(BuildersMinor))
+        {
+            CompletedBy(written, completion);
+        }
+
         return written;
     }
+
+    // Contract 0.22: the executor that held the ghost's claim when it completed; none for an unclaimed ghost (a player).
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void CompletedBy(JObject written, L.Completion completion)
+    {
+        if (completion.By.TryGet(out L.ExecutorId by))
+        {
+            written["by"] = by.Value;
+        }
+    }
+
+    // ---- builders (contract 0.22; ask only from BuildersMinor) --------------------------------------------------
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    internal JObject Builder(L.Builder builder)
+    {
+        JObject written = new JObject
+        {
+            ["id"] = builder.Info.Id.Value,
+            ["name"] = builder.Info.Name.Value,
+            ["owner"] = builder.Info.Owner.TryGet(out L.Actor owner) ? Actor(owner) : null,
+            ["builds"] = builder.Info.Builds switch
+            {
+                L.BuildScope.Any => new JValue("any"),
+                L.BuildScope.Kits kits => new JObject { ["kits"] = Each(kits.Of, kit => Kit(kit)) },
+                L.BuildScope.Families families => new JObject { ["families"] = Each(families.Of, family => new JValue(family.Value)) },
+                _ => new JValue(builder.Info.Builds.GetType().Name)
+            },
+            ["area"] = builder.Area.TryGet(out L.BuilderArea area) ? Area(area) : null,
+            ["state"] = builder.State switch
+            {
+                L.BuilderState.Idle => new JValue("idle"),
+                L.BuilderState.Working => new JValue("working"),
+                L.BuilderState.Stuck stuck => new JObject { ["stuck"] = Reason(stuck.Why) },
+                _ => new JValue(builder.State.GetType().Name)
+            },
+        };
+        if (builder.Supply.TryGet(out L.Supply supply))
+        {
+            written["supply"] = new JObject
+            {
+                ["reaches"] = Each(supply.Report.Reaches, Quantity),
+                ["toward"] = Toward(supply.Report.Toward),
+                ["at_s"] = Round(supply.At.Seconds),
+            };
+        }
+
+        return written;
+    }
+
+    private JArray Toward(L.ValueMap<L.PlanId, L.ValueList<L.ItemQuantity>> toward)
+    {
+        JArray written = new JArray();
+        foreach (KeyValuePair<L.PlanId, L.ValueList<L.ItemQuantity>> plan in toward)
+        {
+            written.Add(new JObject { ["plan"] = plan.Key.Value, ["items"] = Each(plan.Value, Quantity) });
+        }
+
+        return written;
+    }
+
+    private static JToken Area(L.BuilderArea area) => area switch
+    {
+        L.BuilderArea.Sphere sphere => new JObject
+        {
+            ["sphere"] = new JObject
+            {
+                ["at"] = Point(sphere.At),
+                ["build_reach"] = Round(sphere.BuildReach.Value),
+                ["source_range"] = sphere.SourceRange.TryGet(out L.Metres range) ? Round(range.Value) : null,
+            }
+        },
+        _ => new JValue(area.GetType().Name)
+    };
+
+    /// <summary>One builder on a plan: "asked", "accepted", {"refused": reason} or "absent" (not registered now).</summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    internal static JObject Assignment(L.Assignment assignment) => assignment switch
+    {
+        L.Assignment.Asked asked => new JObject { ["builder"] = asked.By.Value, ["answer"] = "asked" },
+        L.Assignment.Accepted accepted => new JObject { ["builder"] = accepted.By.Value, ["answer"] = "accepted" },
+        L.Assignment.Refused refused => new JObject
+        {
+            ["builder"] = refused.By.Value, ["answer"] = new JObject { ["refused"] = Reason(refused.Why) }
+        },
+        L.Assignment.Absent absent => new JObject { ["builder"] = absent.By.Value, ["answer"] = "absent" },
+        _ => new JObject { ["answer"] = assignment.GetType().Name }
+    };
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    internal static JObject Progress(L.BuilderProgress progress) => new JObject
+    {
+        ["built"] = progress.Built, ["working"] = progress.Working, ["waiting"] = progress.Waiting,
+    };
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    internal JArray Quantities(L.ValueList<L.ItemQuantity> items) => Each(items, Quantity);
 
     internal JArray Refusals(L.ValueList<L.Refusal> refusals) => Each(refusals, refusal => new JObject
     {
@@ -610,7 +728,17 @@ internal sealed class LatticeOut
     // The contract minor of PieceEntry.AllowedTurns.
     internal const int TurnsMinor = 21;
 
-    private bool Has(int minor) => _system.Version.Major == L.ApiVersion.ContractMajor && _system.Version.Minor >= minor;
+    // The contract minor of builders (Executors.All and the rest, Plan.BuildBy and Colour, Completion.By).
+    internal const int BuildersMinor = 22;
+
+    // The patch of 0.22 that added PieceEntry.Placing.
+    internal const int PlacingPatch = 1;
+
+    internal bool Has(int minor) => _system.Version.Major == L.ApiVersion.ContractMajor && _system.Version.Minor >= minor;
+
+    // A member a patch added: a later minor has it, the same minor from that patch on.
+    internal bool Has(int minor, int patch) =>
+        Has(minor) && (_system.Version.Minor > minor || LatticePatch.Running >= patch);
 
     private JObject Held(JObject written, L.Step.Merge merge)
     {
@@ -747,7 +875,18 @@ internal sealed class LatticeOut
         ["grid"] = piece.Grid == L.PieceGrid.Small ? "small" : "large",
         ["kits"] = Each(piece.Kits, kit => new JObject { ["kit"] = Kit(kit.Kit), ["option"] = kit.Option.Index }),
         ["allowed_turns"] = Has(TurnsMinor) ? AllowedTurns(piece) : null,
+        ["placing"] = Has(BuildersMinor, PlacingPatch) ? Placing(piece) : null,
     };
+
+    // How the game's builder places it: "grid" in a cell, "face" on a cell face, "face_mount" on a structure's face.
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static JToken Placing(L.PieceEntry piece) => new JValue(piece.Placing switch
+    {
+        L.PiecePlacing.Face => "face",
+        L.PiecePlacing.FaceMount => "face_mount",
+        L.PiecePlacing.Grid => "grid",
+        _ => piece.Placing.GetType().Name
+    });
 
     // "all", else each turn the game's builder can give the piece as rotation degrees; placing it in another fails
     // turn-not-allowed.

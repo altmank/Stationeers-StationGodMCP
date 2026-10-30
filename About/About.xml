@@ -3,7 +3,7 @@
   <Name>StationGod MCP</Name>
   <ModID>net.xceled.stationeers.stationgodmcp</ModID>
   <Author>XCeled</Author>
-  <Version>2.13.3</Version>
+  <Version>2.14.0</Version>
   <Description>[h1]Let an AI agent read and run your Stationeers base[/h1]
 StationGod MCP connects an AI agent such as Claude Code or Codex to your running game through the Model Context Protocol (MCP), the standard way these agents call outside tools. The agent can then read every device, chip, room, network and planet value you could look up yourself, and act on them: write logic, program chips, move gas and items, and build or rebuild cables, pipes, chutes, walls and frames with the checks the game itself applies.
 
@@ -69,6 +69,9 @@ Developed with the use of generative AI, and tokens aren't free. Buy me a coffee
 [url=https://ko-fi.com/xceled]ko-fi.com/xceled[/url]
   </Description>
   <ChangeLog>
+v2.14.0
+- find/write lattice: Lattice 0.22 builders; the agent as a builder.
+
 v2.13.3
 - find lattice: what steps hold, allowed turns (Lattice 0.21).
 
@@ -205,13 +208,13 @@ v1.27.1
 - Building tools find printer mods and other build parts that do not stack in from_id containers.
 
 v1.27.0
-- find_things, find_items, list_containers, outer_frames: order reference_id gives pages that hold while you move.
+- List tools: order reference_id gives pages that hold while you move.
 
 v1.26.0
 - New set_battery_charge: set the charge of single batteries (a cheat).
 
 v1.25.0
-- Broken pieces touching a network are reported; refused rocket and broken pipe swaps name the place_pipes call.
+- Broken pieces touching a network are reported.
 
 v1.24.0
 - Shorter default replies: rocket explanations, full logic type lists and looking_at extras on request.
