@@ -38,6 +38,9 @@ internal static class LatticeBoard
 
     private static L.PlanId? _agentPlan;
 
+    // The agent's plan may have emptied (its ghosts built, or the agent took them off): the next Tick closes it if so.
+    private static bool _closeEmpty;
+
     // Change sets StationGod mirrored from a command's answer, so their events (raised later in the frame) are skipped.
     // Another mod's change of the same frame still comes as an event: only these ids are skipped.
     private static readonly HashSet<long> Answered = new HashSet<long>();
@@ -182,12 +185,24 @@ internal static class LatticeBoard
 
     internal static void Tick()
     {
-        if (_system != null || !L.LatticeSystem.Current.TryGet(out L.IGhostSystem system))
+        if (_system is { } attached)
         {
+            if (_closeEmpty)
+            {
+                _closeEmpty = false;
+                if (NetworkManager.IsServer)
+                {
+                    CloseEmptyAgentPlans(attached);
+                }
+            }
+
             return;
         }
 
-        Attach(system);
+        if (L.LatticeSystem.Current.TryGet(out L.IGhostSystem system))
+        {
+            Attach(system);
+        }
     }
 
     internal static void Detach()
@@ -195,6 +210,7 @@ internal static class LatticeBoard
         _system = null;
         _heard = null;
         _agentPlan = null;
+        _closeEmpty = false;
         Answered.Clear();
         Draws = false;
         Ghosts.BoardDrawnElsewhere = false;
@@ -302,6 +318,8 @@ internal static class LatticeBoard
             {
                 removed.Add(removal.Ghost.Id.Value);
             }
+
+            _closeEmpty |= source == GhostSource.Agent && removed.Count > 0;
         }
 
         return removed;
@@ -549,6 +567,7 @@ internal static class LatticeBoard
         if (NetworkManager.IsServer)
         {
             MoveBoardFile(system);
+            CloseEmptyAgentPlans(system);
         }
     }
 
@@ -570,6 +589,7 @@ internal static class LatticeBoard
         // The world ended (Current is cleared) or its board was replaced: the next Tick attaches again if one runs.
         _system = null;
         _agentPlan = null;
+        _closeEmpty = false;
         Draws = false;
         Ghosts.BoardDrawnElsewhere = false;
         GhostBoardStore.FromLattice(true, new List<BoardGhost>(), new List<long>());
@@ -644,6 +664,9 @@ internal static class LatticeBoard
         foreach (L.GhostRemoval removal in changes.Removed)
         {
             removed.Add(removal.Ghost.Id.Value);
+            // A built ghost leaves nothing to undo: its plan may close once empty. A ghost a player or another mod took
+            // off is left until the next load, so their undo can still put it back into the plan.
+            _closeEmpty |= removal.Cause is L.RemovalCause.Done;
         }
 
         if (_agentPlan is { } plan)
@@ -681,6 +704,19 @@ internal static class LatticeBoard
         }
 
         return all;
+    }
+
+    // The agent plans with no ghost left are finished (LatticeAgentPlans): on load, after the agent takes ghosts off,
+    // and after ghosts are built. Host only. Not mirrored: no ghost changes, and the event clears _agentPlan in Mirror.
+    private static void CloseEmptyAgentPlans(L.IGhostSystem system)
+    {
+        List<string> refused = new List<string>();
+        LatticeAgentPlans.CloseEmpty(system, refused);
+        if (refused.Count > 0)
+        {
+            OnceLog.Warning("lattice_agent_plan",
+                $"Lattice refused to close StationGod's empty agent plan ({string.Join("; ", refused)}).");
+        }
     }
 
     private static L.PlanId? AgentPlan(L.IGhostSystem system)
