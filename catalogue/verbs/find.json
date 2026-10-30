@@ -1228,7 +1228,7 @@
       }
     },
     "lattice": {
-      "summary": "anything Lattice answers: every ghost (any intent), plans and their facts, validation, steps, bills, swaps, analysis, previews, executors, stories, the catalogue, ports, the world, styles, picks and events",
+      "summary": "anything Lattice answers: every ghost (any intent), plans and their facts, validation, steps, bills, swaps, analysis, previews, executors and builders, stories, the catalogue, ports, the world, styles, picks and events",
       "brief": "ask Lattice",
       "options": {
         "ask": {
@@ -1260,7 +1260,8 @@
               "matches",
               "pick",
               "clip",
-              "events"
+              "events",
+              "builders"
             ]
           },
           "description": "What to ask; help topic lattice gives each ask's args.",

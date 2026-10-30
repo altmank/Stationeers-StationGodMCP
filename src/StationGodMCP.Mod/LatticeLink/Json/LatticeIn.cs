@@ -1148,14 +1148,23 @@ internal sealed partial class LatticeIn
             ? Visibility(draft["visibility"], path + ".visibility")
             : new L.Visibility.Everyone();
         L.ValueMap<L.AttachmentKey, L.Attachment>? data = Attached(draft["data"], path + ".data");
-        return name is { } n && maker is { } m && visibility != null && data != null
-            ? new L.PlanDraft(n, m, visibility, data)
-            : null;
+        if (name is not { } n || maker is not { } m || visibility == null || data == null)
+        {
+            return null;
+        }
+
+        L.PlanDraft made = new L.PlanDraft(n, m, visibility, data);
+        if (!Given(draft, "colour"))
+        {
+            return made;
+        }
+
+        return Needs(LatticeOut.BuildersMinor, path + ".colour") ? Coloured(made, draft["colour"], path + ".colour") : null;
     }
 
     internal L.PlanEdit? PlanEdit(JToken? token, string path)
     {
-        if (Case(token, path, "rename", "owner", "visibility", "set_data", "clear_data") is not { } edit)
+        if (Case(token, path, "rename", "owner", "visibility", "set_data", "clear_data", "recolour", "assign", "unassign") is not { } edit)
         {
             return null;
         }
@@ -1163,6 +1172,8 @@ internal sealed partial class LatticeIn
         string at = path + "." + edit.Kind;
         switch (edit.Kind)
         {
+            case "recolour" or "assign" or "unassign":
+                return Needs(LatticeOut.BuildersMinor, at) ? BuildersEdit(edit.Kind, edit.Payload, at) : null;
             case "rename":
                 return Text(edit.Payload, at) is { } name && Made(L.PlanName.Create(name), at) is { } planName
                     ? new L.PlanEdit.Rename(planName)

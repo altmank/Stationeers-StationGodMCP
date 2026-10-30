@@ -1,5 +1,22 @@
 # Changelog
 
+## 2.14.0
+
+Lattice 0.22.4 is in LU's game (contract 0.22, the builders contract).
+
+- **find lattice builders**: every registered builder (id, name, owner, what it builds, area, state idle, working or
+  stuck, latest supply), one builder and its plans with progress, or one plan's builders (each one's answer: asked,
+  accepted, refused or absent, and progress), the plan's progress, its unclaimed ghosts and what its builders set
+  aside for it.
+- **Plans have builders and a colour**: plan answers carry `build_by` and `colour`; `create_plan` takes `colour`;
+  `edit_plan` takes `recolour`, `assign` and `unassign` (a builder as `owner/name`).
+- **The agent as a builder**: write lattice `locate`, `say`, `offer` and `answer` as StationGod's agent executor,
+  which now registers as building for the agent.
+- A completion names the builder that held its claim (`by`); a catalogue piece says how the game places it
+  (`placing`: grid, face or face_mount, from Lattice 0.22.1); events add `builder_changed`.
+- Each only when the running Lattice has it; older ones answer as before. The running patch is read from
+  `ApiVersion.CurrentPatch` (0.22.4), and a Lattice without it counts as patch 0.
+
 ## 2.13.3
 
 Lattice 0.21.1 is in LU's game (contract 0.21).

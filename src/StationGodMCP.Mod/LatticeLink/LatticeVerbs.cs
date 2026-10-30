@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using Assets.Scripts.Objects;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.LatticeLink.Json;
@@ -26,10 +27,16 @@ internal static class LatticeVerbs
     {
         "ghosts", "plans", "plan", "load", "template", "validation", "steps", "bill", "swaps", "analysis", "preview",
         "executors", "story", "export", "catalogue", "ports", "facing", "families", "groups", "modules", "world",
-        "explain", "matches", "pick", "clip", "events"
+        "explain", "matches", "pick", "clip", "events", "builders"
     };
 
-    private static readonly string[] AgentCommands = { "claim", "renew", "release", "report_status", "limit_plan_size" };
+    private static readonly string[] AgentCommands =
+    {
+        "claim", "renew", "release", "report_status", "limit_plan_size", "locate", "say", "offer", "answer"
+    };
+
+    // The agent's word on itself as a builder (contract 0.22): no ghost named.
+    private static readonly string[] BuilderCommands = { "locate", "say", "offer", "answer" };
 
     private const int MaximumListed = 500;
 
@@ -103,6 +110,7 @@ internal static class LatticeVerbs
             "pick" => Pick(system, read, args),
             "clip" => system.Styles.InForce.TryGet(out L.ClipShape clip) ? Clip(clip) : JValue.CreateNull(),
             "events" => LatticeEvents.Since(args["since"] is JValue { Type: JTokenType.Integer } since ? (long)since : 0),
+            "builders" => read.Needs(LatticeOut.BuildersMinor, "ask") ? Builders(system, read, write, args) : null,
             _ => null
         };
 
@@ -275,6 +283,68 @@ internal static class LatticeVerbs
         });
         return answer;
     }
+
+    // Contract 0.22. No args: every registered builder. builder: that one and its plans. plan: its builders and where
+    // each stands, progress, ghosts no claim holds, and what its builders set aside for it.
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static JToken? Builders(L.IGhostSystem system, LatticeIn read, LatticeOut write, JObject args)
+    {
+        L.IExecutors executors = system.Executors;
+        if (LatticeIn.Given(args, "plan"))
+        {
+            if (read.Plan(args["plan"], "args.plan") is not { } plan)
+            {
+                return null;
+            }
+
+            return new JObject
+            {
+                ["plan"] = plan.Value,
+                ["builders"] = LatticeOut.Each(executors.AssignedTo(plan), assignment =>
+                {
+                    JObject written = LatticeOut.Assignment(assignment);
+                    if (BuilderOf(assignment) is { } by)
+                    {
+                        written["progress"] = LatticeOut.Progress(executors.ProgressOf(plan, by));
+                    }
+
+                    return written;
+                }),
+                ["progress"] = LatticeOut.Progress(executors.ProgressOf(plan)),
+                ["unclaimed"] = executors.UnclaimedIn(plan),
+                ["supply_toward"] = write.Quantities(executors.SupplyToward(plan)),
+            };
+        }
+
+        if (LatticeIn.Given(args, "builder"))
+        {
+            if (read.Builder(args["builder"], "args.builder") is not { } id)
+            {
+                return null;
+            }
+
+            return new JObject
+            {
+                ["builder"] = executors.Find(id).TryGet(out L.Builder found) ? write.Builder(found) : null,
+                ["plans"] = LatticeOut.Each(executors.PlansOf(id), plan => new JObject
+                {
+                    ["plan"] = plan.Value, ["progress"] = LatticeOut.Progress(executors.ProgressOf(plan, id))
+                }),
+            };
+        }
+
+        return LatticeOut.Each(executors.All, write.Builder);
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static L.ExecutorId? BuilderOf(L.Assignment assignment) => assignment switch
+    {
+        L.Assignment.Asked asked => asked.By,
+        L.Assignment.Accepted accepted => accepted.By,
+        L.Assignment.Refused refused => refused.By,
+        L.Assignment.Absent absent => absent.By,
+        _ => null
+    };
 
     private static JToken? Story(L.IGhostSystem system, LatticeIn read, LatticeOut write, JObject args)
     {
@@ -641,6 +711,13 @@ internal static class LatticeVerbs
             return new LatticeAnswer(reply);
         }
 
+        if (Array.IndexOf(BuilderCommands, kind) >= 0)
+        {
+            return read.Needs(LatticeOut.BuildersMinor, path)
+                ? BuilderCommand(system, read, kind, payload, acts)
+                : new LatticeAnswer(read.Problems);
+        }
+
         JObject? fields = read.Object(payload, path);
         L.GhostId? ghost = fields != null ? read.Ghost(fields["ghost"], path + ".ghost") : null;
         if (ghost is not { } id || read.Failed)
@@ -680,7 +757,7 @@ internal static class LatticeVerbs
         if (Executor(system, out string? why) is not { } executor)
         {
             reply["outcome"] = "refused";
-            reply["refusals"] = new JArray(why);
+            reply["refusals"] = new JArray(why ?? "");
             return new LatticeAnswer(reply);
         }
 
@@ -739,6 +816,96 @@ internal static class LatticeVerbs
         return new LatticeAnswer(reply);
     }
 
+    // Contract 0.22: the agent's word on itself as a builder. locate {sphere: {at, build_reach, source_range}} or null;
+    // say "ready" or {stuck: why}; offer {reaches, toward}; answer {plan, answer: "accepted" or {refused: why}}.
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static LatticeAnswer BuilderCommand(L.IGhostSystem system, LatticeIn read, string kind, JToken? payload, bool acts)
+    {
+        string path = "command." + kind;
+        L.Option<L.BuilderArea>? area = null;
+        L.BuilderWord? word = null;
+        L.SupplyReport? supply = null;
+        L.PlanId? plan = null;
+        L.AssignmentAnswer? answer = null;
+        switch (kind)
+        {
+            case "locate":
+                area = read.Area(payload, path);
+                break;
+            case "say":
+                if (read.Case(payload, path, "ready", "stuck") is { } said)
+                {
+                    word = said.Kind == "ready"
+                        ? new L.BuilderWord.Ready()
+                        : read.Text(said.Payload, path + ".stuck") is { } stuck ? new L.BuilderWord.Stuck(Code("stuck", null, stuck)) : null;
+                }
+
+                break;
+            case "offer":
+                supply = read.Supply(payload, path);
+                break;
+            default:
+                if (read.Object(payload, path) is { } answered)
+                {
+                    plan = read.Plan(answered["plan"], path + ".plan");
+                    if (read.Case(answered["answer"], path + ".answer", "accepted", "refused") is { } given)
+                    {
+                        answer = given.Kind == "accepted"
+                            ? new L.AssignmentAnswer.Accepted()
+                            : read.Text(given.Payload, path + ".answer.refused") is { } refused
+                                ? new L.AssignmentAnswer.Refused(Code("refused", null, refused))
+                                : null;
+                    }
+                }
+
+                break;
+        }
+
+        if (read.Failed)
+        {
+            return new LatticeAnswer(read.Problems);
+        }
+
+        JObject reply = new JObject { ["outcome"] = acts ? "applied" : "report" };
+        if (!acts)
+        {
+            reply["notes"] = new JArray($"{kind} as StationGod's agent builder: nothing done until confirm.");
+            return new LatticeAnswer(reply);
+        }
+
+        if (Executor(system, out string? why) is not { } executor)
+        {
+            reply["outcome"] = "refused";
+            reply["refusals"] = new JArray(why);
+            return new LatticeAnswer(reply);
+        }
+
+        L.Result<L.Unit, L.Reason>? done = null;
+        switch (kind)
+        {
+            case "locate":
+                executor.Locate(area!.Value);
+                break;
+            case "say":
+                executor.Say(word!);
+                break;
+            case "offer":
+                done = executor.Offer(supply!);
+                break;
+            default:
+                done = executor.Answer(plan!.Value, answer!);
+                break;
+        }
+
+        if (done is { } result && result.TryGetError(out L.Reason failed))
+        {
+            reply["outcome"] = "refused";
+            reply["refusals"] = new JArray(LatticeOut.Reason(failed));
+        }
+
+        return new LatticeAnswer(reply);
+    }
+
     private static L.IExecutorHandle? Executor(L.IGhostSystem system, out string? why)
     {
         why = null;
@@ -751,6 +918,10 @@ internal static class LatticeVerbs
         _executorFor = system;
         L.ExecutorInfo info = new L.ExecutorInfo(LatticeNames.Must(L.ExecutorId.Create(LatticeNames.Mod, "agent")),
             LatticeNames.Must(L.DisplayName.Create("StationGod agent")));
+        if (system.Version.Major == L.ApiVersion.ContractMajor && system.Version.Minor >= LatticeOut.BuildersMinor)
+        {
+            info = BuildsForTheAgent(info);
+        }
         L.Result<L.IExecutorHandle, L.Reason> registered = system.Executors.Register(info);
         if (registered.TryGet(out L.IExecutorHandle handle))
         {
@@ -763,6 +934,10 @@ internal static class LatticeVerbs
         _executor = null;
         return null;
     }
+
+    // Contract 0.22: the agent builds for itself (its own plans), any piece.
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static L.ExecutorInfo BuildsForTheAgent(L.ExecutorInfo info) => info with { Owner = L.Option.Some(LatticeNames.Agent) };
 
     private static L.ExecutorStatus? Status(LatticeIn read, JToken? token, string path)
     {

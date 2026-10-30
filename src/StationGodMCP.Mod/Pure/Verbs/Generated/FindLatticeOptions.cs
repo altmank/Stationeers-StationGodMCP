@@ -14,7 +14,7 @@ namespace StationGodMCP.Pure.Verbs;
 internal sealed class FindLatticeOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("find", "lattice", null, null, null, new WhatCost(CostClass.Bounded), null, null,
-        new OptionSpec("ask", "{\"type\":\"string\",\"enum\":[\"ghosts\",\"plans\",\"plan\",\"load\",\"template\",\"validation\",\"steps\",\"bill\",\"swaps\",\"analysis\",\"preview\",\"executors\",\"story\",\"export\",\"catalogue\",\"ports\",\"facing\",\"families\",\"groups\",\"modules\",\"world\",\"explain\",\"matches\",\"pick\",\"clip\",\"events\"]}", true),
+        new OptionSpec("ask", "{\"type\":\"string\",\"enum\":[\"ghosts\",\"plans\",\"plan\",\"load\",\"template\",\"validation\",\"steps\",\"bill\",\"swaps\",\"analysis\",\"preview\",\"executors\",\"story\",\"export\",\"catalogue\",\"ports\",\"facing\",\"families\",\"groups\",\"modules\",\"world\",\"explain\",\"matches\",\"pick\",\"clip\",\"events\",\"builders\"]}", true),
         new OptionSpec("args", "{\"type\":\"object\"}"));
 
     internal Fields Fields { get; private set; } = Fields.None;

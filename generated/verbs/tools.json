@@ -103,7 +103,8 @@
               "matches",
               "pick",
               "clip",
-              "events"
+              "events",
+              "builders"
             ]
           },
           "args": {"type": "object"},
