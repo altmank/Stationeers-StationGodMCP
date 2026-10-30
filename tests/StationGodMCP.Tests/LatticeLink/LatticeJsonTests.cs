@@ -203,6 +203,46 @@ public sealed class LatticeJsonTests
         Assert.Equal(LatticeIn.CommandKinds.Length - 1, commands.Length);
     }
 
+    // Contract 0.20 and 0.21: what a step holds or uses (merge held, paint can and acts per can, a labeller), a bill's
+    // held items, and a piece's allowed turns.
+    [Fact]
+    public void StepsBillsAndPiecesWriteWhatTheyHoldAndTheTurnsAllowed()
+    {
+        using TestWorld world = Start();
+        LatticeOut write = new LatticeOut(world.System);
+        L.ItemKey can = new L.ItemKey(11);
+        L.ItemKey labeller = new L.ItemKey(12);
+        L.StepTarget first = new L.StepTarget.PlacedBy(0);
+        L.PaintColour colour = Made(L.PaintColour.Create(3));
+        L.ThingName name = Made(L.ThingName.Create("north"));
+        L.StepPlan plan = new L.StepPlan(new L.GhostId(1), L.ValueList.From(new L.Step[]
+        {
+            new L.Step.Paint(first, colour, can, 4),
+            new L.Step.Paint(first, colour, can, int.MaxValue),
+            new L.Step.Rename(first, name, labeller)
+        }), L.ValueList<L.Constraint>.Empty);
+
+        JArray steps = (JArray)write.Steps(plan)["steps"]!;
+        Assert.Equal(11, (int)steps[0]["paint"]!["can"]!);
+        Assert.Equal(4, (int)steps[0]["paint"]!["acts_per_can"]!);
+        Assert.Equal(JTokenType.Null, steps[1]["paint"]!["acts_per_can"]!.Type);
+        Assert.Equal(12, (int)steps[2]["rename"]!["labeller"]!);
+
+        L.Bill bill = new L.Bill(L.ValueList<L.ItemQuantity>.Empty, L.ValueList<L.ItemQuantity>.Empty,
+            L.ValueList<L.ItemDelta>.Empty, L.ValueSet<L.ItemKey>.Empty)
+        {
+            Held = L.ValueList.Of(Made(L.ItemQuantity.Create(can, 2)))
+        };
+        Assert.Equal(2, (int)write.Bill(bill)["held"]![0]!["count"]!);
+
+        L.PrefabKey frame = TestCatalogue.Hand.Key("StructureFrame").Reduce(default(L.PrefabKey));
+        Assert.True(world.System.Catalogue.Piece(frame).TryGet(out L.PieceEntry entry));
+        Assert.NotNull(write.PieceEntry(entry)["allowed_turns"]);
+    }
+
+    private static T Made<T>(L.Result<T, L.Reason> made) =>
+        made.TryGet(out T value) ? value : throw new InvalidOperationException("not a value");
+
     private static TestWorld Start() =>
         TestWorld.Start(TestScenario.Empty).Match(static world => world,
             static why => throw new InvalidOperationException(LatticeText.Of(why)));

@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.LatticeLink.Model;
 using StationGodMCP.Pure;
@@ -328,10 +329,14 @@ internal sealed class LatticeOut
         {
             ["needed"] = Each(bill.Needed, Quantity),
             ["given_back"] = Each(bill.GivenBack, Quantity),
+            ["held"] = Has(HeldMinor) ? BillHeld(bill) : null,
             ["net"] = Each(bill.Net, delta => new JObject { ["item"] = Item(delta.Item), ["change"] = delta.Change }),
             ["tools"] = tools,
         };
     }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private JArray BillHeld(L.Bill bill) => Each(bill.Held, Quantity);
 
     private JObject Quantity(L.ItemQuantity quantity) => new JObject { ["item"] = Item(quantity.Item), ["count"] = quantity.Count };
 
@@ -578,17 +583,78 @@ internal sealed class LatticeOut
         },
         L.Step.Merge merge => new JObject
         {
-            ["merge"] = new JObject
+            ["merge"] = Held(new JObject
             {
                 ["into"] = Structure(merge.Into), ["becomes"] = Piece(merge.Becomes), ["offhand_tool"] = Item(merge.OffhandTool),
                 ["extra"] = merge.Extra.TryGet(out L.ItemQuantity extra) ? Quantity(extra) : null
-            }
+            }, merge)
         },
-        L.Step.Paint paint => new JObject { ["paint"] = new JObject { ["on"] = Target(paint.On), ["colour"] = paint.Colour.Index } },
-        L.Step.Rename rename => new JObject { ["rename"] = new JObject { ["on"] = Target(rename.On), ["to"] = rename.To.Value } },
-        L.Step.SetValue set => new JObject { ["set_value"] = new JObject { ["on"] = Target(set.On), ["to"] = set.To.Value } },
+        L.Step.Paint paint => new JObject
+        {
+            ["paint"] = Can(new JObject { ["on"] = Target(paint.On), ["colour"] = paint.Colour.Index }, paint)
+        },
+        L.Step.Rename rename => new JObject
+        {
+            ["rename"] = Labeller(new JObject { ["on"] = Target(rename.On), ["to"] = rename.To.Value }, rename)
+        },
+        L.Step.SetValue set => new JObject
+        {
+            ["set_value"] = Labeller(new JObject { ["on"] = Target(set.On), ["to"] = set.To.Value }, set)
+        },
         _ => new JObject { ["unknown"] = step.GetType().Name }
     };
+
+    // The contract minor of Merge.Held, Paint.Can and ActsPerCan, Rename and SetValue.Labeller, and Bill.Held.
+    internal const int HeldMinor = 20;
+
+    // The contract minor of PieceEntry.AllowedTurns.
+    internal const int TurnsMinor = 21;
+
+    private bool Has(int minor) => _system.Version.Major == L.ApiVersion.ContractMajor && _system.Version.Minor >= minor;
+
+    private JObject Held(JObject written, L.Step.Merge merge)
+    {
+        if (Has(HeldMinor))
+        {
+            written["held"] = MergeHeld(merge);
+        }
+
+        return written;
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private JObject MergeHeld(L.Step.Merge merge) => Quantity(merge.Held);
+
+    private JObject Can(JObject written, L.Step.Paint paint)
+    {
+        if (Has(HeldMinor))
+        {
+            PaintCan(written, paint);
+        }
+
+        return written;
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private void PaintCan(JObject written, L.Step.Paint paint)
+    {
+        written["can"] = Item(paint.Can);
+        // int.MaxValue: a can that never empties.
+        written["acts_per_can"] = paint.ActsPerCan == int.MaxValue ? null : paint.ActsPerCan;
+    }
+
+    private JObject Labeller(JObject written, L.Step step)
+    {
+        if (Has(HeldMinor))
+        {
+            written["labeller"] = Item(LabellerOf(step));
+        }
+
+        return written;
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static L.ItemKey LabellerOf(L.Step step) => step is L.Step.Rename rename ? rename.Labeller : ((L.Step.SetValue)step).Labeller;
 
     private JToken Target(L.StepTarget target) => target switch
     {
@@ -680,7 +746,27 @@ internal sealed class LatticeOut
         ["name"] = piece.Name,
         ["grid"] = piece.Grid == L.PieceGrid.Small ? "small" : "large",
         ["kits"] = Each(piece.Kits, kit => new JObject { ["kit"] = Kit(kit.Kit), ["option"] = kit.Option.Index }),
+        ["allowed_turns"] = Has(TurnsMinor) ? AllowedTurns(piece) : null,
     };
+
+    // "all", else each turn the game's builder can give the piece as rotation degrees; placing it in another fails
+    // turn-not-allowed.
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static JToken AllowedTurns(L.PieceEntry piece)
+    {
+        if (piece.AllowedTurns.IsAll)
+        {
+            return new JValue("all");
+        }
+
+        JArray turns = new JArray();
+        foreach (L.Turn turn in piece.AllowedTurns.ToList())
+        {
+            turns.Add(Turn(turn));
+        }
+
+        return turns;
+    }
 
     internal JObject KitEntry(L.KitEntry kit) => new JObject
     {
