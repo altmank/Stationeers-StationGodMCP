@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.13.2
+
+LU (through Loom): "StationGod agent" shows in Loom's plan menu every session, open and empty.
+
+- **The agent's plan closes once empty**: StationGod finishes a "StationGod agent" plan with no ghost left (Lattice
+  FinishPlan), on load, after the agent takes its ghosts off and after its ghosts are built. Ghosts a player or
+  another mod takes off leave it open until the next load, so their undo can put them back. The next agent ghost
+  opens a new plan.
+
 ## 2.13.1
 
 LU (through Loom): the ghost tooltip covers the screen while planning in Loom, and over Loom's build menu.
