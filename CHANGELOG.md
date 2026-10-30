@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.13.3
+
+Lattice 0.21.1 is in LU's game (contract 0.21).
+
+- **find lattice shows Lattice 0.20 and 0.21's new facts**: a merge step's `held` (the kit stack in hand), a paint
+  step's `can` and `acts_per_can` (null for a can that never empties), a rename or set value step's `labeller`, a
+  bill's `held`, and a piece's `allowed_turns` ("all", or each turn as rotation degrees; another turn fails
+  `turn-not-allowed`). Each only when the running Lattice has it; older ones answer as before.
+
 ## 2.13.2
 
 LU (through Loom): "StationGod agent" shows in Loom's plan menu every session, open and empty.
