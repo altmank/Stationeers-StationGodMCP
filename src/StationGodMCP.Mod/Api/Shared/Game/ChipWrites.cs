@@ -21,7 +21,7 @@ namespace StationGodMCP.Api.Shared.Game;
 internal static class ChipWrites
 {
     // The NetworkUpdateFlags bits the screwdriver raises for screws 0..5 (CircuitHousing.BuildUpdate).
-    private static readonly ushort[] PinUpdateFlags = { 1024, 2048, 4096, 8192, 16384, 32768 };
+    internal static readonly ushort[] PinUpdateFlags = { 1024, 2048, 4096, 8192, 16384, 32768 };
 
     /// <summary>
     /// Replaces the chip's source (ICircuitHolder.SetSourceCode). An IC10 chip compiles at once and restarts at line

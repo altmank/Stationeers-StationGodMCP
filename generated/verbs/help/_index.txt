@@ -7,7 +7,7 @@ Verbs (each a tool; most take what):
 - plan: Work out how, changing nothing: routes, removal prices, free spots, rocket flights, mining yields, aim angles.
 - check: Check against rules and risks: the layout lint of a room or box, the lint rule set, whether things are replaceable, the player's ignition risk.
 - build: Build new things as a player would, paying materials.
-- swap: Swap things already built, in place: walls or frames, upgrade or tidy cable, pipe and chute networks.
+- swap: Swap things already built, in place: walls, frames or doors, upgrade or tidy cable, pipe and chute networks.
 - remove: Take things away as a player would, with refunds and guards.
 - move: Move items, gas and players.
 - trade: Trade with traders: contacts in the sky, what each buys and sells, and buying or selling with the landed trader.

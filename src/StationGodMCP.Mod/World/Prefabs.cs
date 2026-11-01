@@ -32,6 +32,8 @@ internal static class Prefabs
     private static StructureTargets? _targets;
     private static Dictionary<string, Thing>? _byName;
     private static Dictionary<Reagent, Ingot>? _ingots;
+    private static RecipeIndex? _recipes;
+    private static List<Thing>? _sorted;
 
     /// <summary>Rebuilds so far: data derived from the prefabs is current while this is unchanged.</summary>
     internal static long Generation
@@ -66,6 +68,63 @@ internal static class Prefabs
             Fresh();
             return _targets ??= StructureTargets.Load(Prefab.AllPrefabs);
         }
+    }
+
+    /// <summary>
+    /// The game's recipes by the prefab they make (RecipeIndex over ElectronicReader.AllRecipes), built again when the
+    /// world changes or a mod adds recipes after the load.
+    /// </summary>
+    internal static RecipeIndex Recipes
+    {
+        get
+        {
+            Fresh();
+            List<RecipeReference> all = ElectronicReader.AllRecipes;
+            if (_recipes == null || _recipes.Count != all.Count)
+            {
+                _recipes = RecipeIndex.Load(all);
+            }
+
+            return _recipes;
+        }
+    }
+
+    /// <summary>
+    /// The loaded prefabs a prefab filter keeps, by name, once each, placement cursors left out: inspect prefab's
+    /// lists and patterns. The one lookup that reads every prefab's name, from a list sorted once per load.
+    /// </summary>
+    internal static List<Thing> Matching(Pure.Verbs.PrefabFilter filter)
+    {
+        Fresh();
+        _sorted ??= SortedPrefabs(Prefab.AllPrefabs);
+        List<Thing> matched = new List<Thing>();
+        foreach (Thing prefab in _sorted)
+        {
+            if (filter.Keeps(prefab.PrefabName, prefab.PrefabHash))
+            {
+                matched.Add(prefab);
+            }
+        }
+
+        return matched;
+    }
+
+    private static List<Thing> SortedPrefabs(IReadOnlyList<Thing> prefabs)
+    {
+        HashSet<int> seen = new HashSet<int>();
+        List<Thing> sorted = new List<Thing>(prefabs.Count);
+        for (int index = 0; index < prefabs.Count; index++)
+        {
+            Thing prefab = prefabs[index];
+            if (prefab != null && prefab.PrefabName != null && !(prefab is Structure { IsCursor: true }) &&
+                seen.Add(prefab.PrefabHash))
+            {
+                sorted.Add(prefab);
+            }
+        }
+
+        sorted.Sort(static (a, b) => string.CompareOrdinal(a.PrefabName, b.PrefabName));
+        return sorted;
     }
 
     /// <summary>The family's kits (KitCatalogue), one catalogue per family class.</summary>
@@ -187,6 +246,8 @@ internal static class Prefabs
         _targets = null;
         _byName = null;
         _ingots = null;
+        _recipes = null;
+        _sorted = null;
         Kits.Clear();
         _generation++;
     }

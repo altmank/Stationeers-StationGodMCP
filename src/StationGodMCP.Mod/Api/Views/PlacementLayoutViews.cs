@@ -408,6 +408,22 @@ internal sealed class DescribePrefabView
     /// <summary>A rocket engine's load-time performance and feed; left out for anything else.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public PrefabEngineView? Engine { get; }
+
+    /// <summary>The prefab's own game data (include data, PrefabData); left out otherwise.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public Newtonsoft.Json.Linq.JObject? Data { get; private set; }
+
+    /// <summary>What makes the prefab (include recipes, PrefabRecipes); left out otherwise.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<RecipeView>? Recipes { get; private set; }
+
+    /// <summary>The view with the data and recipes asked for added.</summary>
+    internal DescribePrefabView With(Newtonsoft.Json.Linq.JObject? data, List<RecipeView>? recipes)
+    {
+        Data = data;
+        Recipes = recipes;
+        return this;
+    }
 }
 
 /// <summary>

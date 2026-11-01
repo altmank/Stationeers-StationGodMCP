@@ -1,6 +1,6 @@
 {
   "verb": "swap",
-  "description": "Swap things already built, in place: walls or frames, upgrade or tidy cable, pipe and chute networks. Reports first; confirm: true does it.",
+  "description": "Swap things already built, in place: walls, frames or doors, upgrade or tidy cable, pipe and chute networks. Reports first; confirm: true does it.",
   "read_only": false,
   "tool": {
     "options": {
@@ -158,6 +158,92 @@
               "kept": "int",
               "unmatched": "int",
               "pieces": "list[{reference_id: str, prefab_name: str | None, position: Vec3, rotation_deg: Vec3, build_state: int, target_prefab_name: str | None, target_build_state: int, blocks_air_before: bool, blocks_air_after: bool, blocks_gravity_before: bool, blocks_gravity_after: bool, air_change: str, seals: bool, stressed: bool, faces: list[{position: Vec3, cells: list[Vec3], pressure_kpa_a: float, pressure_kpa_b: float, difference_kpa: float, max_pressure_delta_kpa_before: float, max_pressure_delta_kpa_after: float, verdict: str}] | None, room_ids: list[str], materials: list[{prefab_name: str | None, cost: int, refund: int, net: int}]}]",
+              "pieces_listed": "int",
+              "by_prefab": "list[{prefab_name: str | None, target_prefab_name: str | None, count: int}]",
+              "kept_pieces": "list[{reference_id: str, prefab_name: str | None, reason: str, message: str}]",
+              "unmatched_pieces": "list[{reference_id: str, prefab_name: str | None, reason: str, message: str}]",
+              "from": "Thing | None",
+              "materials": "list[{prefab_name: str | None, display_name: str | None, cost: int, refund: int, charge: int, give_back: int, available: int, paid_by: list[{reference_id: str, name: str | None, quantity: int, available: int}] | None, stacks: list[{reference_id: str, quantity: int, held_in: str | None, slot_index: int | None}]}]",
+              "refund_enabled": "bool",
+              "refund_plan": "RefundPlan | None",
+              "rooms": "list[{room_id: str, cell_count: int, total_mol: float, energy_j: float}]",
+              "notes": "list[str] | None"
+            }
+          },
+          {"label": "JobBusy", "view": "JobBusy", "job_view": "JobBusy"},
+          {"label": "SwapJob", "view": "SwapJob", "job_view": "SwapJob"},
+          {"label": "JobDropped", "view": "JobDropped", "job_view": "JobDropped"}
+        ],
+        "types": ["Thing", "Vec3"]
+      },
+      "write": {
+        "route": "confirm",
+        "x-undo": "cannot",
+        "x-undo-mark": "[cannot undo: change job]",
+        "x-target": [
+          {"path": "id", "role": "acts-on"},
+          {"path": "materials", "role": "pays-from"},
+          {"path": "refund_to", "role": "pays-from"},
+          {"path": "room", "role": "spread"},
+          {"path": "prefab", "role": "spread"},
+          {"path": "into", "role": "spread"}
+        ]
+      }
+    },
+    "door": {
+      "summary": "replace doors with another door prefab in place (glass door to airlock) without opening the doorway; keeps Open, Lock and the label, and repoints the boards, pins and logic units that pointed at the old door",
+      "options": {
+        "id": {"use": "id", "description": "The doors (up to 4096); or room."},
+        "room": {"use": "room", "description": "Every door in or around this room."},
+        "into": {"schema": {"type": "string"}, "description": "The new door prefab (StructureAirlock, StructureGlassDoor...): Door, Airlock or UnPoweredDoor.", "required": true, "x-script": "same"},
+        "prefab": {"use": "prefab", "description": "Only pieces of these prefabs; the others are kept."},
+        "materials": {"use": "materials"},
+        "skip_unmatched": {
+          "schema": {"type": "boolean"},
+          "description": "Leave pieces that cannot change as they are instead of refusing.",
+          "default": "false",
+          "x-script": "same"
+        },
+        "refund_to": {
+          "use": "refund_to",
+          "x-script": "Where removed materials go: a word (inventory, source, storage, ground, none), a container id, or a list tried in turn. (default [inventory, source, storage, ground])"
+        },
+        "include": {"use": "include", "schema": {"type": "array", "items": {"type": "string", "enum": ["notes"]}}},
+        "rows": {
+          "use": "rows",
+          "schema": {"type": "integer", "minimum": 0, "maximum": 4096},
+          "description": "Pieces listed per list.",
+          "default": "5"
+        },
+        "verbose": {"use": "verbose"},
+        "confirm": {"use": "confirm"},
+        "queue": {"use": "queue"},
+        "max_wait": {"use": "max_wait"}
+      },
+      "text": [
+        "A door is swapped as a wall is: the new door is built in place and raised to its last state while the game tick is held, and only then is the old door destroyed; a door on faces must bear each face's pressure difference. Docks, manual hatches and window shutters are never touched.",
+        "Before the old door goes, the swap hands over what points at it: boards linked to it (airlock and door control: their linked doors, exterior and interior), IC housing pins, and logic readers, writers and mirrors (their device); its label; Open and Lock. Each piece's handover lists them with action repoint or keep (report) and repointed, restored, still_points or failed (job). still_points is what the swap cannot move: a chip whose program names the old id, a batch write by the old prefab hash when the new door is another prefab, any other field that holds the old door; its note says what to change."
+      ],
+      "example": {"id": "4410", "into": "StructureAirlock"},
+      "x-cost": {"class": "job", "growth": "plan"},
+      "x-cost-report": {"class": "plan"},
+      "reply": {
+        "list": "pieces",
+        "variants": [
+          {"label": "JobQueued", "view": "JobQueued", "job_view": "JobQueued"},
+          {
+            "label": "StructureSwapReport",
+            "view": "StructureSwapReport",
+            "keys": {
+              "target": "str",
+              "ready": "bool",
+              "problems": "list[{code: str, message: str, reference_id: str | None}]",
+              "warnings": "list[{code: str, message: str, reference_id: str | None}] | None",
+              "pieces_total": "int",
+              "to_swap": "int",
+              "kept": "int",
+              "unmatched": "int",
+              "pieces": "list[{reference_id: str, prefab_name: str | None, position: Vec3, rotation_deg: Vec3, build_state: int, target_prefab_name: str | None, target_build_state: int, blocks_air_before: bool, blocks_air_after: bool, blocks_gravity_before: bool, blocks_gravity_after: bool, air_change: str, seals: bool, stressed: bool, faces: list[{position: Vec3, cells: list[Vec3], pressure_kpa_a: float, pressure_kpa_b: float, difference_kpa: float, max_pressure_delta_kpa_before: float, max_pressure_delta_kpa_after: float, verdict: str}] | None, room_ids: list[str], materials: list[{prefab_name: str | None, cost: int, refund: int, net: int}], handover: list[{reference_id: str, prefab_name: str | None, how: str, action: str, note: str | None}] | None}]",
               "pieces_listed": "int",
               "by_prefab": "list[{prefab_name: str | None, target_prefab_name: str | None, count: int}]",
               "kept_pieces": "list[{reference_id: str, prefab_name: str | None, reason: str, message: str}]",

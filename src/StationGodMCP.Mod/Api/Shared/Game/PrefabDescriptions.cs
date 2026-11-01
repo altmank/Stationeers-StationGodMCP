@@ -10,6 +10,7 @@ using StationGodMCP.Api.Shared.Game.Upgrades;
 using StationGodMCP.Api.Views;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.Rockets;
+using StationGodMCP.Pure.Verbs;
 using UnityEngine;
 
 namespace StationGodMCP.Api.Shared.Game;
@@ -27,6 +28,68 @@ internal static class PrefabDescriptions
 
     private const int PortTypes = (int)(NetworkType.PowerAndData | NetworkType.Pipe | NetworkType.PipeLiquid |
                                         NetworkType.Chute);
+
+    /// <summary>The most rows a list or a pattern answers (2.8.0): enough for any family of prefabs.</summary>
+    internal const int MaximumRows = 64;
+
+    /// <summary>
+    /// inspect prefab (2.8.0) in all its forms. One whole name or hash of a buildable structure gives its placement
+    /// view (Describe). One that is no buildable structure, such as an item or a kit, gives its facts. A list, or a
+    /// pattern with *, gives a row of facts per loaded prefab it names, by name, at most MaximumRows. Each form adds the
+    /// prefab's game data (PrefabData) and recipes (PrefabRecipes) when asked. invalid_prefab when nothing loaded
+    /// matches.
+    /// </summary>
+    internal static object Inspect(PrefabFilter filter, bool withCells, bool withData, bool withRecipes)
+    {
+        if (filter.Patterns.Count == 1 && OneOf(filter.Patterns[0]) is { } reference)
+        {
+            Thing? thing = reference switch
+            {
+                PrefabRef.Named named => WorldModel.Prefabs.NamedIgnoringCase(named.Name),
+                PrefabRef.Hashed hashed => Prefab.Find(hashed.Hash),
+                _ => null
+            };
+            if (thing == null)
+            {
+                throw ApiErrors.Refused("invalid_prefab", $"No loaded prefab is {reference}; prefab names are as " +
+                    "find thing and inspect looking_at report them (e.g. StructureWallLight), and a pattern with * " +
+                    "(\"*Door*\") lists a family.");
+            }
+
+            return WorldModel.Prefabs.Build.Find(reference, out _) is { } buildable
+                ? Describe(reference, withCells).With(withData ? PrefabData.Of(buildable) : null,
+                    withRecipes ? PrefabRecipes.Of(buildable) : null)
+                : Facts(thing, withData, withRecipes);
+        }
+
+        List<Thing> matched = WorldModel.Prefabs.Matching(filter);
+        if (matched.Count == 0)
+        {
+            throw ApiErrors.Refused("invalid_prefab",
+                "No loaded prefab matches prefab; names are as find thing reports them (StructureGlassDoor).");
+        }
+
+        List<PrefabFactsView> rows = new List<PrefabFactsView>(System.Math.Min(matched.Count, MaximumRows));
+        for (int index = 0; index < matched.Count && index < MaximumRows; index++)
+        {
+            rows.Add(Facts(matched[index], withData, withRecipes));
+        }
+
+        return new PrefabListView(rows, matched.Count);
+    }
+
+    private static PrefabRef? OneOf(PrefabPattern pattern) => pattern switch
+    {
+        PrefabPattern.Hash hash => new PrefabRef.Hashed(hash.Value),
+        PrefabPattern.Whole whole => new PrefabRef.Named(whole.Name),
+        _ => null
+    };
+
+    private static PrefabFactsView Facts(Thing prefab, bool withData, bool withRecipes) =>
+        new PrefabFactsView(prefab.PrefabName, prefab.PrefabHash, ThingName.Displayed(prefab.DisplayName,
+                prefab.PrefabName), prefab.GetType().Name,
+            prefab is Structure && WorldModel.Prefabs.Build.Find(new PrefabRef.Hashed(prefab.PrefabHash), out _) != null,
+            withData ? PrefabData.Of(prefab) : null, withRecipes ? PrefabRecipes.Of(prefab) : null);
 
     /// <summary>The prefab named, every small cell's offset with withCells; invalid_prefab when none is loaded.</summary>
     internal static DescribePrefabView Describe(PrefabRef reference, bool withCells)

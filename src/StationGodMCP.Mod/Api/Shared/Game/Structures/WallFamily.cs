@@ -83,7 +83,14 @@ internal sealed class WallFamily : StructureFamily
         return cells;
     }
 
-    internal override void Assess(PlannedStructureSwap swap, StructureSwapPlan plan)
+    internal override void Assess(PlannedStructureSwap swap, StructureSwapPlan plan) =>
+        AssessFaces(swap, plan, "wall");
+
+    /// <summary>
+    /// The stress check of a piece that sits on faces (a wall; a door placed on faces): each face's pressure difference
+    /// against what the new piece bears (WallStress), would_overstress refused, stressed noted; noun names the piece.
+    /// </summary>
+    internal static void AssessFaces(PlannedStructureSwap swap, StructureSwapPlan plan, string noun)
     {
         AtmosphericsController air = AtmosphericsController.World;
         GridController grid = GridController.World;
@@ -111,7 +118,7 @@ internal sealed class WallFamily : StructureFamily
                 plan.Problem("would_overstress",
                     $"{swap.Old.PrefabName} {swap.OldId}: the face at {slot.Point} holds a " +
                     $"{pressure.Difference:0.#} kPa difference; with {swap.Target.PrefabName} it bears " +
-                    $"{pressure.FaceSumAfter:0.#} kPa, so the game would damage the new wall until it breaks.",
+                    $"{pressure.FaceSumAfter:0.#} kPa, so the game would damage the new {noun} until it breaks.",
                     swap.Old);
             }
 

@@ -1,0 +1,21 @@
+Replace doors with another door prefab in place (glass door to airlock) without opening the doorway; keeps Open, Lock and the label, and repoints the boards, pins and logic units that pointed at the old door.
+Reports first; confirm: true does it.
+Options:
+- id (string or array): The doors (up to 4096); or room.
+- room (string): Every door in or around this room.
+- into (string, required): The new door prefab (StructureAirlock, StructureGlassDoor...): Door, Airlock or UnPoweredDoor.
+- prefab (string or integer or array): Only pieces of these prefabs; the others are kept.
+- materials (string or array): Holder(s) that pay materials and take source refunds, tried in order; ids or "player". Default the player.
+- skip_unmatched (boolean, default false): Leave pieces that cannot change as they are instead of refusing.
+- refund_to (string or integer or array, default [inventory, source, storage, ground]): Where removed materials go: a word (inventory, source, storage, ground, none), a container id, or a list tried in turn. Left out with no player and no materials: none.
+- include (list of notes): Parts to add to the reply.
+- rows (integer, default 5): Pieces listed per list.
+- verbose (boolean, default false): The long form of the reply.
+- confirm (boolean, default false): true acts; false only reports, whatever the call names (typed ids included). Left out, the write rule decides: typed ids act at once where the verb acts on them; a ref, network or spread reports.
+- queue (boolean, default true): Wait in line behind a running job (up to 8) instead of answering busy.
+- max_wait (number, default 30): Seconds to wait for a confirmed job to finish before answering; 0 answers with its job id at once.
+A door is swapped as a wall is: the new door is built in place and raised to its last state while the game tick is held, and only then is the old door destroyed; a door on faces must bear each face's pressure difference. Docks, manual hatches and window shutters are never touched.
+Before the old door goes, the swap hands over what points at it: boards linked to it (airlock and door control: their linked doors, exterior and interior), IC housing pins, and logic readers, writers and mirrors (their device); its label; Open and Lock. Each piece's handover lists them with action repoint or keep (report) and repointed, restored, still_points or failed (job). still_points is what the swap cannot move: a chip whose program names the old id, a batch write by the old prefab hash when the new door is another prefab, any other field that holds the old door; its note says what to change.
+Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the one-id reply; a bad id is a row with error.
+Reply: (JobQueued) a JobQueued (help {topic: "types", subtopic: "JobQueued"}) | (StructureSwapReport) target, ready, problems [{code, message, reference_id}], warnings [{code, message, reference_id}], pieces_total, to_swap, kept, unmatched, pieces [{reference_id, prefab_name, position, rotation_deg, build_state, target_prefab_name, target_build_state, blocks_air_before, blocks_air_after, blocks_gravity_before, blocks_gravity_after, air_change, seals, stressed, faces, room_ids, materials, handover}], pieces_listed, by_prefab [{prefab_name, target_prefab_name, count}], kept_pieces [{reference_id, prefab_name, reason, message}], unmatched_pieces [{reference_id, prefab_name, reason, message}], from {reference_id, prefab_name, display_name}, materials [{prefab_name, display_name, cost, refund, charge, give_back, available, paid_by, stacks}], refund_enabled, refund_plan, rooms [{room_id, cell_count, total_mol, energy_j}], notes | (JobBusy) a JobBusy (help {topic: "types", subtopic: "JobBusy"}) | (SwapJob) a SwapJob (help {topic: "types", subtopic: "SwapJob"}) | (JobDropped) a JobDropped (help {topic: "types", subtopic: "JobDropped"})
+Example: swap {what: "door", id: "4410", into: "StructureAirlock"}

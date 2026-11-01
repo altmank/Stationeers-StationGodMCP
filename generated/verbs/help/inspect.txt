@@ -2,7 +2,7 @@ Describe one thing, or a few by id, in detail. Read only.
 
 whats:
 - device: a device: logic types it reads and writes, writable ones by name, rocket, umbilical and uplink details
-- prefab: a buildable prefab before it stands anywhere: placement kind, turns, cells, ports
+- prefab: a prefab before it stands anywhere: placement kind, turns, cells, ports; its game data and recipes; a list or pattern compares a family
 - slots: a device's slots: occupants, what each takes, slot logic values
 - contents: any holder's slots and what is in them, nested (a locker, machine, suit; 'player' for the player)
 - health: damage state of things, or of every piece of a network, worst first

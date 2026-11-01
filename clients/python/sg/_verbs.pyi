@@ -505,11 +505,14 @@ def inspect(what: Literal['device'], *,
 @overload
 def inspect(what: Literal['prefab'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
-    prefab: str | int,  # Whole prefab name or hash.
-    include: list[Literal['small_cells']] = None,  # small_cells: each cell's offset.
+    prefab: str | int | list,  # A whole prefab name or hash; or a list, or parts with * ("*Door*"): a row per loaded prefab, by name, at most 64.
+    include: list[Literal['small_cells', 'data', 'recipes']] = None,  # small_cells: each cell's offset. data: the prefab's own game data, every field the game serializes on it (maxPressureDelta, -1 for no limit; flashpointTemperature, autoignitionTemperature; MaxQuantity; UsedPower; BuildStates with each state's tool and cost) and mass_kg; fields: ["data.maxPressureDelta"] narrows it, output_file takes it whole. recipes: what makes it: each machine, its inputs, time and energy.
 ) -> dict:  # main list: r['ports']: the page answered; .walk() goes through every entry, .all() pages in the rest
-    """A buildable prefab before it stands anywhere: placement kind, turns, cells, ports.
-    Reply:
+    """A prefab before it stands anywhere: placement kind, turns, cells, ports; its game data and recipes; a list or pattern compares a family.
+    One buildable prefab answers its placement view; any other prefab (an item, a kit) its facts; a list or a pattern a row of facts per prefab (prefabs, matched, listed).
+    recipes inputs are the game's Recipe amounts by name: grams of an ingot (Iron, Copper, Solder), units of a reagent; a furnace recipe adds its temperature_k and pressure_kpa range.
+    Reply, one of:
+    (DescribePrefabView)
       prefab_name: str | None
       prefab_hash: int | None
       display_name: str | None
@@ -533,8 +536,26 @@ def inspect(what: Literal['prefab'], *,
           float, efficiency_percent: float, mass_kg: float, chamber_volume_l: float, feed: str | None, inputs: list[{input: int, role: str, pipe: str
           | None, pipe_max_kpa: float | None}] | None, max_moles_per_tick: float | None, litres_per_tick: float | None, max_pressure_per_tick_kpa:
           float | None, flow_rate_min_l: float | None, flow_rate_max_l: float | None} | None
+      data: dict[str, Any] | None
+      recipes: list[{maker: str | None, maker_display_name: str | None, time_s: float, energy_j: float, inputs: dict[str, float], temperature_k:
+          {start: float, stop: float} | None, pressure_kpa: {start: float, stop: float} | None, source: str | None}] | None
+    (PrefabFactsView)
+      prefab_name: str | None
+      prefab_hash: int
+      display_name: str | None
+      runtime_type: str
+      buildable: bool
+      data: dict[str, Any] | None
+      recipes: list[{maker: str | None, maker_display_name: str | None, time_s: float, energy_j: float, inputs: dict[str, float], temperature_k:
+          {start: float, stop: float} | None, pressure_kpa: {start: float, stop: float} | None, source: str | None}] | None
+    (PrefabListView)
+      prefabs: list[{prefab_name: str | None, prefab_hash: int, display_name: str | None, runtime_type: str, buildable: bool, data: dict[str, Any] |
+          None, recipes: list[{maker: str | None, maker_display_name: str | None, time_s: float, energy_j: float, inputs: dict[str, float],
+          temperature_k: {start: float, stop: float} | None, pressure_kpa: {start: float, stop: float} | None, source: str | None}] | None}]
+      matched: int
+      listed: int
     Types: Vec3 = {x: float, y: float, z: float}
-    Example: sg.inspect('prefab', prefab='StructureWallLight')
+    Example: sg.inspect('prefab', prefab='ItemKitAirlock', include=['recipes'])
     """
 
 @overload
@@ -2863,6 +2884,66 @@ def swap(what: Literal['frame'], *,
     Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}; Vec3 = {x: float, y: float, z: float}
     Job views, one per help call (help {topic: "types", subtopic: "<name>"} or sg.help('types', '<name>')): JobBusy, JobDropped, JobQueued, SwapJob
     Example: sg.swap('frame', room='17')
+    One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
+    """
+
+@overload
+def swap(what: Literal['door'], *,
+    fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
+    id: str | list[str] = None,  # The doors (up to 4096); or room.
+    room: str = None,  # Every door in or around this room.
+    into: str,  # The new door prefab (StructureAirlock, StructureGlassDoor...): Door, Airlock or UnPoweredDoor.
+    prefab: str | int | list = None,  # Only pieces of these prefabs; the others are kept.
+    materials: str | list[str] = None,  # Holder(s) that pay materials and take source refunds, tried in order; ids or "player". Default the player.
+    skip_unmatched: bool = False,  # Leave pieces that cannot change as they are instead of refusing.
+    refund_to: str | int | list = None,  # Where removed materials go: a word (inventory, source, storage, ground, none), a container id, or a list tried in turn. (default [inventory, source, storage, ground]) (default [inventory, source, storage, ground])
+    include: list[Literal['notes']] = None,  # Parts to add to the reply.
+    rows: int = 5,  # Pieces listed per list.
+    verbose: bool = False,  # The long form of the reply.
+) -> dict:  # main list: r['pieces']: the page answered; .walk() goes through every entry, .all() pages in the rest
+    """Replace doors with another door prefab in place (glass door to airlock) without opening the doorway; keeps Open, Lock and the label, and repoints the boards, pins and logic units that pointed at the old door.
+    A door is swapped as a wall is: the new door is built in place and raised to its last state while the game tick is held, and only then is the old door destroyed; a door on faces must bear each face's pressure difference. Docks, manual hatches and window shutters are never touched.
+    Before the old door goes, the swap hands over what points at it: boards linked to it (airlock and door control: their linked doors, exterior and interior), IC housing pins, and logic readers, writers and mirrors (their device); its label; Open and Lock. Each piece's handover lists them with action repoint or keep (report) and repointed, restored, still_points or failed (job). still_points is what the swap cannot move: a chip whose program names the old id, a batch write by the old prefab hash when the new door is another prefab, any other field that holds the old door; its note says what to change.
+    Reports in a report run; acts in a confirmed run.
+    Reply, one of:
+    (JobQueued)
+      JobQueued
+    (StructureSwapReport)
+      target: str
+      ready: bool
+      problems: list[{code: str, message: str, reference_id: str | None}]
+      warnings: list[{code: str, message: str, reference_id: str | None}] | None
+      pieces_total: int
+      to_swap: int
+      kept: int
+      unmatched: int
+      pieces: list[{reference_id: str, prefab_name: str | None, position: Vec3, rotation_deg: Vec3, build_state: int, target_prefab_name: str | None,
+          target_build_state: int, blocks_air_before: bool, blocks_air_after: bool, blocks_gravity_before: bool, blocks_gravity_after: bool,
+          air_change: str, seals: bool, stressed: bool, faces: list[{position: Vec3, cells: list[Vec3], pressure_kpa_a: float, pressure_kpa_b: float,
+          difference_kpa: float, max_pressure_delta_kpa_before: float, max_pressure_delta_kpa_after: float, verdict: str}] | None, room_ids:
+          list[str], materials: list[{prefab_name: str | None, cost: int, refund: int, net: int}], handover: list[{reference_id: str, prefab_name: str
+          | None, how: str, action: str, note: str | None}] | None}]
+      pieces_listed: int
+      by_prefab: list[{prefab_name: str | None, target_prefab_name: str | None, count: int}]
+      kept_pieces: list[{reference_id: str, prefab_name: str | None, reason: str, message: str}]
+      unmatched_pieces: list[{reference_id: str, prefab_name: str | None, reason: str, message: str}]
+      from: Thing | None
+      materials: list[{prefab_name: str | None, display_name: str | None, cost: int, refund: int, charge: int, give_back: int, available: int,
+          paid_by: list[{reference_id: str, name: str | None, quantity: int, available: int}] | None, stacks: list[{reference_id: str, quantity: int,
+          held_in: str | None, slot_index: int | None}]}]
+      refund_enabled: bool
+      refund_plan: RefundPlan | None
+      rooms: list[{room_id: str, cell_count: int, total_mol: float, energy_j: float}]
+      notes: list[str] | None
+    (JobBusy)
+      JobBusy
+    (SwapJob)
+      SwapJob
+    (JobDropped)
+      JobDropped
+    Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}; Vec3 = {x: float, y: float, z: float}
+    Job views, one per help call (help {topic: "types", subtopic: "<name>"} or sg.help('types', '<name>')): JobBusy, JobDropped, JobQueued, SwapJob
+    Example: sg.swap('door', id='4410', into='StructureAirlock')
     One id answers the reply above; an id list answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply above.
     """
 

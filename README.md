@@ -18,8 +18,10 @@ itself applies.
 - **Solar, dishes and traders:** aim solar panels and satellite dishes, check landing pads, buy and sell with a
   landed trader.
 - **Building:** plan, lay, remove and reroute cable, pipe and chute runs; upgrade and tidy whole networks; swap walls,
-  windows and frames without opening a room; place and remove any structure a kit builds; paste BlueprintMod
+  windows, frames and doors without opening a room; place and remove any structure a kit builds; paste BlueprintMod
   blueprints.
+- **Game data:** a prefab's own game data (pressure limits, flashpoints, stack sizes, power use, build costs),
+  what makes it and from what, and a whole family compared in one call (`"*Door*"`).
 - **Console:** run any console command and read the console.
 
 ## Requirements

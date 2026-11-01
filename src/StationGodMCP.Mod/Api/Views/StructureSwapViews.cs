@@ -164,8 +164,9 @@ internal sealed class StructurePieceView
 {
     internal StructurePieceView(ThingView piece, PositionView position, RotationView rotationDeg,
         StructureTargetView target, StructureBlockingView blocking, List<StructureFaceView>? faces,
-        List<string> roomIds, List<StructureMaterialLineView> materials)
+        List<string> roomIds, List<StructureMaterialLineView> materials, List<DoorHandoverView>? handover = null)
     {
+        Handover = handover;
         ReferenceId = piece.ReferenceId;
         PrefabName = piece.PrefabName;
         Position = position;
@@ -225,6 +226,42 @@ internal sealed class StructurePieceView
     public List<string> RoomIds { get; }
 
     public List<StructureMaterialLineView> Materials { get; }
+
+    /// <summary>
+    /// swap door only: what the swap hands from the old door to the new one, or reports it cannot: every board, pin,
+    /// logic unit and chip that points at the door now, and its label, Open and Lock.
+    /// </summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<DoorHandoverView>? Handover { get; }
+}
+
+/// <summary>
+/// One thing a door swap hands over (or cannot): what points at the door (reference_id: the board, housing, logic
+/// unit or chip holder; how: board, airlock_exterior, airlock_interior, d0..d5, output, mirror, a field name, id, a
+/// batch), or the door's own label, open or lock (reference_id: the door). action: repoint or keep (planned),
+/// repointed or restored (done), still_points (the swap cannot move it: note says what to do), failed.
+/// </summary>
+internal sealed class DoorHandoverView
+{
+    internal DoorHandoverView(ThingId referenceId, string? prefabName, string how, string action, string? note)
+    {
+        ReferenceId = referenceId;
+        PrefabName = prefabName;
+        How = how;
+        Action = action;
+        Note = note;
+    }
+
+    public ThingId ReferenceId { get; }
+
+    public string? PrefabName { get; }
+
+    public string How { get; }
+
+    public string Action { get; }
+
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public string? Note { get; }
 }
 
 internal sealed class StructureTargetView
@@ -478,6 +515,7 @@ internal sealed class StructureSwapJobView : ITruncatingView
         HeldCheck = result?.HeldCheck;
         RoomCheck = result?.RoomCheck;
         Error = result?.Error;
+        Handover = result?.Handover;
     }
 
     public string JobId { get; }
@@ -521,6 +559,7 @@ internal sealed class StructureSwapJobView : ITruncatingView
         HeldCheck = full.HeldCheck;
         RoomCheck = full.RoomCheck;
         Error = full.Error;
+        Handover = full.Handover;
     }
 
     public List<UpgradeSwappedView> Swapped { get; }
@@ -546,6 +585,10 @@ internal sealed class StructureSwapJobView : ITruncatingView
 
     public ErrorView? Error { get; }
 
+    /// <summary>swap door only: what each swap handed from the old door to the new one, and what still points at it.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<DoorHandoverView>? Handover { get; }
+
     public void NoteTruncations(string path)
     {
         Preflight?.NoteTruncations(path + "preflight.");
@@ -568,9 +611,12 @@ internal sealed class StructureSwapJobResult
         HeldCheck = checks.Held;
         RoomCheck = checks.Rooms;
         Error = error;
+        Handover = log.Handover;
     }
 
     internal StructureSwapReportView? FinalCheck { get; }
+
+    internal List<DoorHandoverView>? Handover { get; }
 
     internal List<UpgradeSwappedView> Swapped { get; }
 
@@ -620,6 +666,9 @@ internal sealed class StructureSwapLogView
     internal List<UpgradeRefundView> Refunded { get; } = new List<UpgradeRefundView>();
 
     internal ErrorView? RefundError { get; set; }
+
+    /// <summary>swap door: what the swaps handed over; null for the other families.</summary>
+    internal List<DoorHandoverView>? Handover { get; set; }
 }
 
 /// <summary>

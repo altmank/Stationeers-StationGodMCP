@@ -148,7 +148,7 @@ def swap(what, *, fields=None, as_player=None, id=None, room=None, into=None, pr
         skip_unmatched=None, refund_to=None, include=None, rows=None, verbose=None, network=None, tidy=None,
         spare=None, only=None, older_than=None, root=None, acknowledge_gas_lost=None, box=None, riding=None,
         **options):
-    """Swap things already built, in place: walls or frames, upgrade or tidy cable, pipe and chute networks. sg.help('swap', what) gives a what in full."""
+    """Swap things already built, in place: walls, frames or doors, upgrade or tidy cable, pipe and chute networks. sg.help('swap', what) gives a what in full."""
     return verb_call('swap', what, {'fields': fields, 'as_player': as_player, 'id': id, 'room': room, 'into': into,
                      'prefab': prefab, 'materials': materials, 'skip_unmatched': skip_unmatched, 'refund_to':
                      refund_to, 'include': include, 'rows': rows, 'verbose': verbose, 'network': network, 'tidy':
