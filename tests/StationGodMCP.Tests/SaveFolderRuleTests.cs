@@ -8,7 +8,7 @@ namespace StationGodMCP.Tests;
 /// <summary>The save folder from the save file the game loaded: its folder, or the parent of a save subfolder.</summary>
 public sealed class SaveFolderRuleTests
 {
-    private const string Saves = @"C:\Users\LU\Documents\My Games\Stationeers\saves";
+    private const string Saves = @"C:\Users\Player\Documents\My Games\Stationeers\saves";
 
     [Theory]
     [InlineData(Saves + @"\Venus_2\Venus_2.save", Saves + @"\Venus_2")]
