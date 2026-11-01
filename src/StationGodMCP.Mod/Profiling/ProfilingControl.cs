@@ -8,6 +8,7 @@ using System.Reflection;
 using BepInEx;
 using HarmonyLib;
 using StationGodMCP.Api.Views;
+using StationGodMCP.Pure;
 using StationGodMCP.Pure.Profiling;
 using StationGodMCP.Pure.Verbs;
 
@@ -182,7 +183,9 @@ internal static class ProfilingControl
         Tagged.Clear();
         TaggedNames.Clear();
         Dictionary<MethodBase, int> slots = new Dictionary<MethodBase, int>();
-        foreach (Type type in AccessTools.GetTypesFromAssembly(assembly))
+        // Never LatticeLink's types (no [Profiled] method there): at mod load Lattice may not be loaded yet, and without
+        // it reading their members crashes the game's Mono (LoadableTypes).
+        foreach (Type type in LoadableTypes.Readable(assembly, latticeLoaded: false))
         {
             foreach (MethodInfo method in type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic |
                                                           BindingFlags.Static | BindingFlags.Instance |

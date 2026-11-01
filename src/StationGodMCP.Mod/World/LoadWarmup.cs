@@ -9,6 +9,7 @@ using Assets.Scripts;
 using Assets.Scripts.GridSystem;
 using StationGodMCP.Api.Shared.Game.Lint;
 using StationGodMCP.Api.Shared.Game.Upgrades;
+using StationGodMCP.Pure;
 using StationGodMCP.Pure.Profiling;
 
 namespace StationGodMCP.WorldModel;
@@ -51,6 +52,8 @@ internal static class LoadWarmup
     // The mod's types, compiled once while the mod runs (compiled code outlives a load): _type the next to compile,
     // _member the next of its methods.
     private static Type[]? _types;
+    // Whether Lattice was loaded when _types was read: without it no method of a type naming Lattice's is queued.
+    private static bool _lattice;
     private static int _type;
     private static MethodBase[]? _members;
     private static int _member;
@@ -110,7 +113,23 @@ internal static class LoadWarmup
             if (!Compiled)
             {
                 using ProfScope compiling = Prof.Scope(ProfId.LoadWarmup);
-                Compile();
+                try
+                {
+                    Compile();
+                }
+                catch (Exception exception)
+                {
+                    // Compiling ahead is only a head start: a failure here must never stop the frame (this runs before
+                    // the requests), so it is given up once, and every method left compiles in its first call.
+                    StationGodMod.LogWarning($"Compiling StationGod's code at load stopped: {exception.Message}");
+                    _types ??= Array.Empty<Type>();
+                    _type = _types.Length;
+                    Callees.Clear();
+                    CalleeDepths.Clear();
+                    CalleeLimits.Clear();
+                    Seen.Clear();
+                    SeenTypes.Clear();
+                }
             }
 
             return;
@@ -136,7 +155,14 @@ internal static class LoadWarmup
     private static void Compile()
     {
         long started = Stopwatch.GetTimestamp();
-        _types ??= typeof(LoadWarmup).Assembly.GetTypes();
+        // Without the optional Lattice, the types that name Lattice's are never read (LoadableTypes): GetTypes() throws
+        // for them, and their members crash the game's Mono when read. Lattice loads with the mods, before any world.
+        if (_types == null)
+        {
+            _lattice = LatticeLink.LatticePresence.ApiLoaded;
+            _types = LoadableTypes.Readable(typeof(LoadWarmup).Assembly, _lattice);
+        }
+
         while (true)
         {
             if (_queued < Callees.Count)
@@ -185,7 +211,7 @@ internal static class LoadWarmup
     {
         while (_type < _types!.Length)
         {
-            _members ??= MembersOf(_types[_type]);
+            _members ??= MembersOrNone(_types[_type]);
             if (_member < _members.Length)
             {
                 return _members[_member++];
@@ -233,6 +259,12 @@ internal static class LoadWarmup
 
         foreach (MethodBase callee in Called)
         {
+            if (!_lattice && callee.DeclaringType is { } declaring && LoadableTypes.NamesLattice(declaring))
+            {
+                // A forwarder's call into LatticeLink (LatticePresence's): never reached without Lattice.
+                continue;
+            }
+
             Add(callee, depth, limit);
             // A closed form of one of the mod's own generic types (a list page of frames, an iterator's state
             // machine): its methods are made for these type arguments only, so they are compiled with it.
@@ -291,6 +323,21 @@ internal static class LoadWarmup
         {
             // A method this game's build cannot compile (a member it lacks) fails in its first call as it would have.
             _failed++;
+        }
+    }
+
+    // A type whose members the runtime will not list (a signature naming a missing optional assembly, Lattice's):
+    // its methods compile in their first call, as any other that fails.
+    private static MethodBase[] MembersOrNone(Type type)
+    {
+        try
+        {
+            return MembersOf(type);
+        }
+        catch (Exception)
+        {
+            _failed++;
+            return Array.Empty<MethodBase>();
         }
     }
 

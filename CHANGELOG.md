@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.16.1
+
+- **Fix: StationGod answers calls again in games without the Lattice mod.** Lattice is optional, but since StationGod
+  started using it, a game without Lattice answered no StationGod calls at all: at load, StationGod read through its
+  own code, including the parts that use Lattice, and that failed every frame before any request was answered. It now
+  leaves out the parts that use Lattice when Lattice isn't installed, and a failure in that load-time step is logged
+  once instead of stopping requests.
+
 ## 2.16.0
 
 - **`inspect prefab` answers game-data questions.**
