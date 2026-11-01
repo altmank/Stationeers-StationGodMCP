@@ -15,7 +15,7 @@ If an Ingot Vault update renames something they use, they answer `ingot_vault_ch
 | --- | --- | --- |
 | `inspect vault` | What each vault stores, exactly: ingots in grams of their reagent, ores and ices as counts. Also every Remote Vault and the vault it reaches. | `id` (optional) |
 | `move item` (into a vault) | Put ingots, ores and ices into a vault's store from wherever they are: your inventory at any depth, a container, the ground. Whole items or part of a stack. | `to` (the vault); `items: [{id, quantity}]`, `id`, or a filter (`prefab`, `location`, `within`, `category`, ...) |
-| `move item` (out of a vault) | Take an amount out of a vault's store, made straight into your inventory or another holder's slots. | `source` (the vault), `prefab` or `reagent`, `quantity`, `to`, `slot` |
+| `move item` (out of a vault) | Take an amount out of a vault's store, made straight into your inventory or another holder's slots. | `source` (the vault), `prefab` or `reagent`, `quantity`, `to` (required) |
 | `move item` (vault to vault) | Move stored ingots, ores and ices from one vault's store straight into another's. No item is made. | `source`, `to`; `items: [{prefab or reagent, quantity}]` (default everything) |
 
 The `id` of `inspect vault`, and the `source` and `to` of a move, may be a Remote Vault: the calls then use the one vault
@@ -52,17 +52,17 @@ type the deposit touched with `before`, `change` and `after`.
 ## Withdraw
 
 ```json
-{ "source": "132000", "prefab": "ItemIronIngot", "quantity": 5 }
+{ "source": "132000", "prefab": "ItemIronIngot", "quantity": 5, "to": "player" }
 ```
 
 Five grams of iron ingot into your inventory. Name what to take with `prefab` (as `inspect vault` gives it),
 or `reagent` for ingots (`Iron`, `Steel`, ...). `quantity` is grams of ingot or a whole count of ore,
 at most what the vault holds.
 
-Where it goes: `to` (default you) and `slot`, a slot index or `auto` (the default). `auto` on a player tops up
+Where it goes: `to`, required (`"player"` for you; leaving it out is `missing_target`). On a player it tops up
 matching stacks anywhere in your inventory first, then makes new stacks in empty slots that take the item, never more
-than a full stack each; it never puts a new stack into your hands or suit slots unless you name one by index. On any
-other holder it uses that holder's own slots. What does not fit is refused (`no_room`, nothing changed) unless
+than a full stack each; it never puts a new stack into your hands or suit slots. A withdrawal takes no `slot`
+(`source` with `slot` is refused: a slot move takes ids). On any other holder it uses that holder's own slots. What does not fit is refused (`no_room`, nothing changed) unless
 `allow: ["ground"]`, which puts the rest on the ground a metre in front of the holder.
 
 The reply lists `placed` (`merged`, `slot` or `ground`, with the stack's id) and the `stock` line before and after.

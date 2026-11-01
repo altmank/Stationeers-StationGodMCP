@@ -13,7 +13,7 @@ import or export slot or door is involved, so nothing lands on the ground, rolls
 | --- | --- | --- |
 | `inspect contents` | On a silo, after its own two slots, its store: each entry with its prefab, quantity, contents and place in the store. | `id` (the silo), `limit` (default 10), `offset`, `prefab`, `name` |
 | `find item` | Count what silos store with everything else, at `location: silo`. | as for any item |
-| `move item` (out of a silo) | Take items of one prefab out of a silo, made straight into your inventory or another holder's slots. | `source` (the silo), `prefab`, `quantity`, `to`, `slot`, `allow: ["ground"]` |
+| `move item` (out of a silo) | Take items of one prefab out of a silo, made straight into your inventory or another holder's slots. | `source` (the silo), `prefab`, `quantity`, `to` (required), `allow: ["ground"]` |
 | `move item` (into a silo) | Put things into a silo from wherever they are: your inventory at any depth, a container, the ground. Whole things or part of a stack. | `to` (the silo); `items: [{id, quantity}]`, `id`, or a filter (`prefab`, `location`, `within`, ...) |
 
 ## Reading a silo
@@ -40,7 +40,7 @@ store.
 ## Withdraw
 
 ```json
-{ "source": "5001", "prefab": "ItemIronIngot", "quantity": 120 }
+{ "source": "5001", "prefab": "ItemIronIngot", "quantity": 120, "to": "player" }
 ```
 
 120 iron ingots into your inventory. `quantity` counts items: a stack counts its quantity, anything else 1. Entries
@@ -54,9 +54,10 @@ are taken front to back, the order the silo exports them.
   Such an entry is never split: a quantity ending inside one is refused, and the message gives the quantities that
   do not split it.
 
-Where it goes: `to` (default you) and `slot`, a slot index or `auto` (the default), as for a vault withdrawal:
-on a player, matching stacks anywhere in the inventory, then empty slots that take the item, never the hands or suit
-slots unless named by index. What does not fit is refused (`no_room`, nothing changed) unless `allow: ["ground"]`
+Where it goes: `to`, required (`"player"` for you; leaving it out is `missing_target`), as for a vault
+withdrawal: on a player, matching stacks anywhere in the inventory, then empty slots that take the item, never the
+hands or suit slots; on any other holder, its own slots. A withdrawal takes no `slot` (`source` with `slot` is
+refused: a slot move takes ids). What does not fit is refused (`no_room`, nothing changed) unless `allow: ["ground"]`
 puts the rest on the ground a metre in front of the holder.
 
 The reply lists `taken` (each entry, how much, what it keeps, `whole`), `placed` (`merged`, `slot` or `ground`, with
@@ -94,10 +95,11 @@ holding a player, and a thing named twice or inside another thing the deposit ta
   the silo whatever it did not make.
 - **Things come out at once.** The silo's export lets a thing's contents out one every 0.2 s; a `move item` withdrawal loads
   them in the same call, into the same slots.
-- Not yet tested in game: `inspect contents` on a silo, `find item` with `location: silo`,
-  a `move item` withdrawal (pooled stacks, a whole backpack with contents, stored food, `allow: ["ground"]`, a
-  DispenseSlot refusal), a `move item` deposit (whole things, part of a stack, a backpack with contents, `silo_full`),
-  and a client watching both.
+- Tested in game (2.16.1, a dedicated server with no player online; `tools/silo-rig`): `inspect contents` on a silo,
+  `find item` with `location: silo`, a `move item` withdrawal (pooled stacks, a whole backpack with contents,
+  `no_room` and `allow: ["ground"]`, a DispenseSlot refusal) and a deposit (whole things, part of a stack, a backpack
+  with contents, a growing plant refused, `silo_full`); the silo's logic `Quantity` followed each move. Not yet tested:
+  stored food that rots (a withdrawal of food that spoils), and a client watching either.
 
 ## Multiplayer
 
