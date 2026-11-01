@@ -42,6 +42,9 @@ internal static class GhostSettings
     /// <summary>The ghost tooltip's size over the screen's own (1 = sized for the screen's height).</summary>
     internal static float TooltipScale { get; private set; } = 1f;
 
+    /// <summary>Whether the ghost tooltip is drawn at all (GhostTooltipRule); off by default.</summary>
+    internal static bool ShowTooltip { get; private set; } = GhostTooltipRule.ShownByDefault;
+
     internal static void Load(ConfigFile configuration)
     {
         Enabled = configuration.Bind(Section, "Enabled", true,
@@ -61,6 +64,9 @@ internal static class GhostSettings
             "The colour new ghosts take: " + string.Join(", ", GhostTints.Names) + ".").Value;
         TooltipScale = Mathf.Clamp(configuration.Bind(Section, "TooltipScale", TooltipScale,
             "The ghost tooltip's size: 1 fits the screen's height, 1.5 half again as large (0.5 to 3).").Value, 0.5f, 3f);
+        ShowTooltip = configuration.Bind(Section, "ShowTooltip", ShowTooltip,
+            "Shows the ghost tooltip, the panel under the crosshair for the ghost there (its plan, steps, materials " +
+            "and ports). Off by default. It hides while the game's UI is hidden either way.").Value;
     }
 }
 
@@ -383,11 +389,12 @@ internal sealed class GhostOverlay : MonoBehaviour
             Shadowed(new Rect(0f, 66f, Screen.width, 26f), note, Color.white);
         }
 
-        // Not while the game's UI is hidden (InventoryManager.ShowUi): the player's hide-UI key, or Loom's planning,
-        // which owns the screen and turns the game's UI off through SetUiState.
-        if (InventoryManager.ShowUi && GhostControls.Hovered is { } hovered)
+        // Only with [Ghosts] ShowTooltip on, and not while the game's UI is hidden (InventoryManager.ShowUi): the
+        // player's hide-UI key, or Loom's planning, which owns the screen and turns the game's UI off through SetUiState.
+        GhostMark? hovered = GhostControls.Hovered;
+        if (GhostTooltipRule.Shows(GhostSettings.ShowTooltip, InventoryManager.ShowUi, hovered != null))
         {
-            Tooltip(hovered);
+            Tooltip(hovered!);
         }
 
         if (GhostControls.MenuOpen)

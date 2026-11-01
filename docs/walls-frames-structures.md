@@ -220,7 +220,8 @@ show {what: "preview", style: "both", placements: [
 
 A player whose game runs StationGod sees the ghosts too (`drawn_on`); both games need 2.9.0 or later.
 
-`label` (per placement, or at the top level for one) shows as a tooltip when your crosshair is on the ghost, with the
+`label` (per placement, or at the top level for one) shows as a tooltip when your crosshair is on the ghost (with
+`[Ghosts] ShowTooltip` on; it is off by default), with the
 structure's name, so a layout of tanks and machines says what each one is for. The reply's `plan` is short (ready,
 problems, warnings, where each placement went); `verbose: true` gives build structure's whole report. A preview
 plans free: missing materials never make it not ready. `ghosts` counts this call's ghosts, `ghosts_total` all the
