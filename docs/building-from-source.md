@@ -32,6 +32,7 @@ For maintainers and anyone who wants to build the mod themselves.
 .\build.ps1            # build, check versions and the Workshop page length, stage .\package
 .\build.ps1 -Deploy    # also install the mod into the local mods folder and the sidecar into
                        # %LOCALAPPDATA%\StationGodMCP\server (close the game first)
+.\build.ps1 -DeployOnly  # install the package already staged from HEAD; no tests, no build
 ```
 
 - The game folder comes from `-GameDir`, else `STATIONEERS_DIR`, else the Steam default.
@@ -39,6 +40,12 @@ For maintainers and anyone who wants to build the mod themselves.
   `-Deploy` sets it aside under a dated name and the client loads the new one when it restarts.
 - `-Deploy` refuses while the game runs, because a running game keeps the old DLL. `-Force` overrides that, only for a
   mod the game has never loaded.
+- `-DeployOnly` installs the `.\package` an earlier build staged, the same way `-Deploy` does, and does nothing else:
+  no tests, no build. Use it when a game lock or a closed game should cover only the copy, not a whole build. It
+  refuses unless the package was staged from the commit at HEAD with no uncommitted changes, and the tree is still
+  clean; `-Force` does not skip that check. The build records the commit in `package-build.txt` next to `.\package`.
+- `-Target` changes the mod folder `-Deploy` and `-DeployOnly` replace (default
+  `Documents\My Games\Stationeers\mods\StationGodMCP`).
 - The sidecar is deployed outside the source tree, by default to `%LOCALAPPDATA%\StationGodMCP\server`, because
   StationeersLaunchPad loads every DLL it finds in an enabled mod's folder.
 
