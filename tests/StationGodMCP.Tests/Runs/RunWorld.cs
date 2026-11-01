@@ -547,6 +547,7 @@ internal sealed class RunBench : IAsyncDisposable
             ProcessStartInfo start = new(OperatingSystem.IsWindows() ? "py" : "python3")
             {
                 UseShellExecute = false,
+                CreateNoWindow = true,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true
             };

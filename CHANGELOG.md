@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- **sg 0.4.17: the child hub starts with no console window on Windows.** From a host with no console of its own
+  (pythonw, a GUI app, a scheduled task), every `sg.connect` opened a new visible console that took the player's
+  focus. Nothing changes on other platforms.
+
 ## 2.16.1
 
 - **Fix: StationGod answers calls again in games without the Lattice mod.** Lattice is optional, but since StationGod
