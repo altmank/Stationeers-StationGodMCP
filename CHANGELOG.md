@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.15.0
+
+LU (through Loom's decision page): the ghost tooltip shown outside planning, "Disabled by default for now."
+
+- **The ghost tooltip is off by default.** The panel under the crosshair for a ghost (plan, steps, materials, ports)
+  no longer shows unless `[Ghosts] ShowTooltip` is `true`. Turned on, it still hides while the game's UI is hidden
+  (Loom planning, the hide-UI key). The ghost under the crosshair is still drawn brighter either way.
+
 ## 2.14.0
 
 Lattice 0.22.4 is in LU's game (contract 0.22, the builders contract).
