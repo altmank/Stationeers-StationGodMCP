@@ -70,6 +70,7 @@ public sealed class FirstRunTests : IDisposable
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
+            CreateNoWindow = true,
             StandardOutputEncoding = new UTF8Encoding(false)
         };
         start.ArgumentList.Add(typeof(HubSession).Assembly.Location);

@@ -20,7 +20,7 @@ import threading
 
 from ._errors import Error
 
-VERSION = "0.4.16"
+VERSION = "0.4.17"
 PROTOCOL = [2]
 FEATURES = ["pipeline"]
 HUB_ENVIRONMENT_VARIABLE = "STATIONGODMCP_HUB"
@@ -260,6 +260,10 @@ class Transport:
 
 # ----- the child hub -----
 
+# On Windows the hub starts with no console window. From a host with no console (pythonw, a GUI app, a scheduled
+# task) Windows would otherwise open a new visible console for every connect, and it takes the player's focus.
+NO_WINDOW_FLAGS = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+
 def find_hub(hub_path=None):
     """The hub program: the argument, else STATIONGODMCP_HUB, else StationGodMCP.Server on PATH."""
     for candidate in (hub_path, os.environ.get(HUB_ENVIRONMENT_VARIABLE)):
@@ -280,7 +284,8 @@ def connect(hub_path=None, *hub_args, client="sg-py"):
     command += ["--hub", *hub_args]
     job = _KillJob.create()  # made before the child starts, so assigning it right after leaves the shortest gap
     try:
-        process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, bufsize=0)
+        process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, bufsize=0,
+                                   creationflags=NO_WINDOW_FLAGS)
     except BaseException:
         if job is not None:
             job.close()

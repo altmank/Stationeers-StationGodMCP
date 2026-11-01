@@ -213,6 +213,7 @@ public sealed class HubModeTests
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
+            CreateNoWindow = true,
             StandardOutputEncoding = new UTF8Encoding(false)
         };
         start.ArgumentList.Add(typeof(HubSession).Assembly.Location);

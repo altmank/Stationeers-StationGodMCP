@@ -251,6 +251,19 @@ class ConnectLifecycleTests(unittest.TestCase):
         self.assertEqual("hub_timeout", raised.exception.code)
         self.assertIsNotNone(started[0].wait(10))
 
+    def test_the_hub_starts_with_no_console_window_on_windows(self):
+        seen = []
+
+        def popen(*args, **kwargs):
+            seen.append(kwargs)
+            raise OSError("stubbed: not started")
+
+        with mock.patch.object(_transport.subprocess, "Popen", popen):
+            with self.assertRaises(OSError):
+                sg.connect(os.path.join(tempfile.mkdtemp(), "hub.exe"))
+        expected = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+        self.assertEqual(expected, seen[0].get("creationflags"))
+
     def test_a_second_connect_closes_the_first(self):
         program = hub_program(tempfile.mkdtemp(), CHILD_HUB)
         first = sg.connect(program, "--pipe", "Test")
