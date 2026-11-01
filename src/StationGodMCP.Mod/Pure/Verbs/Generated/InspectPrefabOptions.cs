@@ -14,8 +14,8 @@ namespace StationGodMCP.Pure.Verbs;
 internal sealed class InspectPrefabOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("inspect", "prefab", "ports", null, null, new WhatCost(CostClass.Instant), null, null,
-        new OptionSpec("prefab", "{\"type\":[\"string\",\"integer\"]}", true),
-        new OptionSpec("include", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"small_cells\"]}}"));
+        new OptionSpec("prefab", "{\"type\":[\"string\",\"integer\",\"array\"],\"items\":{\"type\":[\"string\",\"integer\"]}}", true),
+        new OptionSpec("include", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"small_cells\",\"data\",\"recipes\"]}}"));
 
     internal Selector Selector { get; private set; } = Selector.None;
 

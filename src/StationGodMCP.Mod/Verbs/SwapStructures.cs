@@ -31,7 +31,20 @@ internal static class SwapFrame
             options.Queue ?? true));
 }
 
-/// <summary>What a swap wall or swap frame call gives, in verb names.</summary>
+/// <summary>
+/// swap door (catalogue swap.json): doors replaced in place without opening the doorway, with what pointed at the old
+/// door handed to the new one.
+/// </summary>
+[ReplyFact(FactRule.Live, "what it changes, read and checked when it acts")]
+internal static class SwapDoor
+{
+    internal static VerbOutcome Run(SwapDoorOptions options) =>
+        SwapStructures.Run(new DoorFamily(), SwapDoorOptions.Spec, new SwapStructureCall(options.Selector,
+            options.Into, options.Materials, options.SkipUnmatched ?? false, options.Fields, options.Report,
+            options.Queue ?? true));
+}
+
+/// <summary>What a swap wall, swap frame or swap door call gives, in verb names.</summary>
 internal sealed class SwapStructureCall
 {
     internal SwapStructureCall(Selector selector, string? into, MaterialsSource materials, bool skipUnmatched,
@@ -62,7 +75,7 @@ internal sealed class SwapStructureCall
 }
 
 /// <summary>
-/// swap wall and swap frame over StructureSwapPlanner and StructureJobs: the pieces by id (one job for a list) or by
+/// swap wall, swap frame and swap door over StructureSwapPlanner and StructureJobs: the pieces by id (one job for a list) or by
 /// room. Without confirm, a Report.Of report: every piece to swap a target [id, name, prefab -> new prefab] with the
 /// what's undo mark, the planned view the body, every problem listed. Confirmed and ready, one job starts and the reply
 /// is its start, in brief unless verbose; confirmed with a problem, the report answers and nothing starts. rows is how

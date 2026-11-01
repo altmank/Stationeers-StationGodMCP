@@ -17,7 +17,7 @@ using StationGodMCP.Pure.Scheduling;
 namespace StationGodMCP.Api.Shared.Game.Structures;
 
 /// <summary>
-/// The whole preflight of swap wall and swap frame: nothing here changes the game. It reads the pieces,
+/// The whole preflight of swap wall, swap frame and swap door: nothing here changes the game. It reads the pieces,
 /// resolves each one's target, compares their slots, judges what each would open or seal, runs the family's checks,
 /// counts the materials and records the rooms and air around the pieces. Every problem is listed; none stops the
 /// others from being looked for.
@@ -212,7 +212,7 @@ internal static class StructureSwapPlanner
         BuildState last = target.BuildStates[final];
         PlannedStructureSwap swap = new PlannedStructureSwap(member, target, slots,
             new PieceBlocking(!member.CanAirPass, !member.CanGravityPass),
-            new PieceBlocking(last.BlockAir, last.BlockGravity));
+            family.AfterBlocking(member, last));
         if (swap.Change == AirChange.WouldOpen)
         {
             string opened = swap.Before.Air && !swap.After.Air ? "air" : "gravity";

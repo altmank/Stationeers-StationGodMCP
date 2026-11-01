@@ -116,6 +116,9 @@ internal sealed class PlannedStructureSwap
 
     internal List<GuardedFace> GuardedFaces { get; } = new List<GuardedFace>();
 
+    /// <summary>swap door: what the swap would hand from the old door to the new one (DoorHandover.Plan).</summary>
+    internal List<DoorHandoverView>? Handover { get; set; }
+
     internal string ChangeName => Change switch
     {
         AirChange.Seals => "seals",

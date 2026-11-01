@@ -15,6 +15,7 @@ connections and guard against merging networks, which `build structure` does not
 | --- | --- | --- |
 | `swap wall` | Replace walls and windows with another wall or window prefab, in place. | `room` or `id`, `into` (required), `prefab`, `skip_unmatched` |
 | `swap frame` | Replace frames with another frame prefab, or finish unfinished frames, in place. | `room` or `id`, `into` (optional), `prefab`, `skip_unmatched` |
+| `swap door` | Replace doors with another door prefab, in place, keeping Open, Lock and the label and repointing what pointed at the old door (2.8.0+, see *Replacing doors*). | `room` or `id`, `into` (required), `prefab`, `skip_unmatched` |
 | `survey wall` | A text elevation of a wall (or floor) as seen from one side: seams, walls, windows, doors, devices, runs, free rectangles (1.4.3+). | `plane` + `at` + `side`, or `looking`; `half_width`, `free_rects` |
 | `plan spot` | Ranked places for a prefab near a point on a wall or a room's walls, checked as the cursor checks them (1.4.3+). | `prefab`, `near`, `plane`/`looking`/`room`, `require` |
 | `check layout` | Check a room or box against the layout rules: runs in doorways, floating or across windows, blocked ports, overlapping or out-facing devices, seams (1.4.3+); things a player could not place again where they stand (1.5.0+); rules from `lint-rules.json`, yours per save (1.7.0+, [lint-rules.md](lint-rules.md)). | `room` or `box`, `codes`, `exclude_codes`, `id`, `since`, `limit` |
@@ -22,7 +23,7 @@ connections and guard against merging networks, which `build structure` does not
 | `check replaceable` | For each thing, could a player place it again exactly where it stands, with its neighbours present (1.5.0+). | `id` |
 | `show preview` | Draw wire boxes or see-through ghosts in your game for planned placements or a cable, pipe or chute run, or any cells and boxes; timed, nothing built (1.4.3+; ghosts and runs 2.8.0+). | as `build structure`, or `run`, `from_plan`, `cells`, `boxes`; `style`, `tint`, `seconds`, `clear`, `xray` |
 | `show highlight` | Show things, whole networks or far points through walls, frames and terrain, tinted, with labels; timed, nothing changed (1.7.0+). | `targets` (`id`, `network` or `at`, with `color`, `label`, `pulse`); `seconds`, `keep`, `clear` |
-| `inspect prefab` | A prefab in its own frame: placement, allowed turns, footprint (`grid_box`, `small_cell_count`), ports, visual up (1.4.3+). | `prefab`, `include: ["small_cells"]` (each cell's offset) |
+| `inspect prefab` | A prefab in its own frame: placement, allowed turns, footprint (`grid_box`, `small_cell_count`), ports, visual up (1.4.3+); its game data and recipes, and a list or pattern to compare a family (2.8.0+, see *Prefab data and recipes*). | `prefab` (a name, hash, list or `"*Door*"`), `include: ["small_cells", "data", "recipes"]` |
 | `build structure` | Place any kit-built structure at a position and turn, at a build state, with a label and colour, and logic values set once it is built (`logic: {"On": 1}`). Up to 64 in one job. | `prefab`, `at`, `facing` / `rotation` / `face` / `orient`, `build_state`, `label`, `color`, `logic`; or `placements: [...]`, each with its own `label`, `color` and the rest |
 | `build finish` | Build a placed structure on to a later build state, paying each state's materials as a player's construction does. | `id`, `state` (default the next), `materials`, `free` (a cheat) |
 | `remove structure` | Remove structures as deconstructing them by hand would. Up to 256 in one job, by id or every one in a `box` (at most 32 m a side; `prefab` filters it). | `id` or `box` + `prefab`, `allow: ["contents", "breach", "broken", "burst"]`, `refund_to` |
@@ -53,6 +54,51 @@ connections and guard against merging networks, which `build structure` does not
 - Frames: iron to steel and back, and any frame to its own prefab, which finishes it. Rocket towers are never touched.
 - Scope: `id` (up to 4096) or `room`: for walls every wall on a face of the room's cells, for frames every
   frame next to the room. `prefab` narrows either.
+
+## Replacing doors (2.8.0+)
+
+`swap door` swaps doors the way `swap wall` swaps walls: a glass door for an airlock, and back.
+
+```json
+{ "what": "door", "id": "4410", "into": "StructureAirlock" }
+```
+
+- **What it swaps.** Plain doors, airlocks and unpowered doors (the game's `Door`, `Airlock` and `UnPoweredDoor`) to
+  any of those with the same footprint. Docks, manual hatches and window shutters are kept as `special_piece`. A door
+  whose footprint differs from the target's is listed as `footprint_mismatch`. `room` takes every door in or around
+  the room.
+- **Its state.** An open door is opened again on the new door, and a locked one locked again. Its label is kept, so
+  name-based batch writes (`sbn`) still find it.
+- **What pointed at it.** Each piece's `handover` lists everything that points at the old door, and the job's
+  `handover` says what was done with each:
+  - `repointed`: moved to the new door. That covers boards linked to the door (airlock and door control: their
+    linked doors, exterior and interior), IC housing pins, and logic readers, writers and mirrors.
+  - `still_points`: the swap cannot move it, and `note` says what to change. This covers a chip whose program names
+    the old door's id, a batch write by prefab hash when the new door is another prefab, and any other field that
+    still holds the old door.
+- **Materials.** It pays and refunds as `swap wall` does (`materials`, `refund_to`).
+
+## Prefab data and recipes (2.8.0+)
+
+`inspect prefab` answers game-data questions without opening the game's files:
+
+- **`include: ["data"]`** gives the prefab's own game data. That is every field the game serializes on it, for
+  example:
+  - `maxPressureDelta`: the pressure difference a wall, window or door bears, -1 for no limit;
+  - `flashpointTemperature` and `autoignitionTemperature`;
+  - `MaxQuantity`, the stack size;
+  - `UsedPower`;
+  - `BuildStates`, with each state's tool and cost.
+
+  It also gives `mass_kg`. Narrow it with `fields: ["data.maxPressureDelta"]`, or take it whole with `output_file`.
+- **`include: ["recipes"]`** gives what makes the prefab: each machine that makes it, its inputs (the game's recipe
+  amounts by name, grams of an ingot such as `Iron` or `Solder`), and its time and energy. A furnace recipe also has
+  its temperature and pressure range. For example, `{what: "prefab", prefab: "ItemKitAirlock", include:
+  ["recipes"]}` answers "what makes Kit (Airlock), and from what".
+- **A list or a pattern** gives a row per prefab, by name, at most 64. For example `prefab: "*Door*"` with
+  `include: ["data"]` and `fields: ["prefabs.prefab_name", "prefabs.data.maxPressureDelta"]` compares a whole family.
+  A prefab that is not a buildable structure (an item, a kit) answers its facts: `prefab_name`, `display_name`,
+  `runtime_type`, `buildable`, and `data` and `recipes` when asked.
 
 **How a swap never opens a room.** With the game tick held, each old piece is marked as being destroyed, which lets
 the game hand its place to the new piece. The new piece is built in the same place with the old one's owner and colour

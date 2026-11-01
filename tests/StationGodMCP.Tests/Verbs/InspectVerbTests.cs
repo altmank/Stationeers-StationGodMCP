@@ -64,7 +64,7 @@ public sealed class InspectVerbTests
     }
 
     [Fact]
-    public void PrefabIsAWholeNameOrAHash()
+    public void PrefabIsANameAHashAPatternOrAList()
     {
         PrefabFilter named = PrefabFilter.Bind(Reader(InspectPrefabOptions.Spec, """{"prefab": "StructureFrame"}"""))!;
         PrefabFilter hashed = PrefabFilter.Bind(Reader(InspectPrefabOptions.Spec, """{"prefab": -1234}"""))!;
@@ -73,7 +73,8 @@ public sealed class InspectVerbTests
         Assert.IsType<PrefabPattern.Whole>(named.Patterns[0]);
         Assert.Equal(-1234, Assert.IsType<PrefabPattern.Hash>(hashed.Patterns[0]).Value);
         Assert.IsType<PrefabPattern.Parts>(parts.Patterns[0]);
-        Assert.NotNull(Check("""{"what": "prefab", "prefab": ["StructureFrame"]}"""));
+        Assert.Null(Check("""{"what": "prefab", "prefab": ["StructureFrame", "StructureAirlock"]}"""));
+        Assert.Null(Check("""{"what": "prefab", "prefab": "*Door*", "include": ["data", "recipes"]}"""));
     }
 
     [Fact]

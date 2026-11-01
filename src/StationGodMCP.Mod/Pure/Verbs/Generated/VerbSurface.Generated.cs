@@ -117,6 +117,7 @@ internal static partial class VerbSurface
         new VerbSpec("swap", false,
             SwapWallOptions.Spec,
             SwapFrameOptions.Spec,
+            SwapDoorOptions.Spec,
             SwapCableOptions.Spec,
             SwapPipeOptions.Spec,
             SwapChuteOptions.Spec),

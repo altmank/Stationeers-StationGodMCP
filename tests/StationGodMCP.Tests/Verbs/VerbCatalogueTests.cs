@@ -382,7 +382,7 @@ public sealed class VerbCatalogueTests
               "move.gas": "instant", "move.player": "instant",
               "remove.structure": "plan", "remove.cable": "plan", "remove.pipe": "plan", "remove.chute": "plan",
               "server.command": "instant",
-              "swap.wall": "plan", "swap.frame": "plan", "swap.cable": "plan", "swap.pipe": "plan",
+              "swap.wall": "plan", "swap.frame": "plan", "swap.door": "plan", "swap.cable": "plan", "swap.pipe": "plan",
               "swap.chute": "plan",
               "trade.buy": "instant", "trade.sell": "instant",
               "undo": "plan",
@@ -435,7 +435,7 @@ public sealed class VerbCatalogueTests
 
         Assert.True(problems.Count == 0, string.Join("\n", problems));
         Assert.True(expected.Count == 0, "no x-cost-report for: " + string.Join(", ", expected.Select(pair => pair.Key)));
-        Assert.Equal(29, confirmRoute);
+        Assert.Equal(30, confirmRoute);
     }
 
     /// <summary>
@@ -466,7 +466,7 @@ public sealed class VerbCatalogueTests
             Assert.Equal(acting, spec.CostFor(JObject.Parse("""{"confirm": true}""")).Class);
         }
 
-        Assert.Equal(29, confirmRoute);
+        Assert.Equal(30, confirmRoute);
     }
 
     // The cost class a catalogue word names.

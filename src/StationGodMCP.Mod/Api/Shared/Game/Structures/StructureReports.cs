@@ -94,7 +94,7 @@ internal static class StructureReports
                 swap.Before.Gravity, swap.After.Gravity, swap.ChangeName, swap.Stressed);
             pieces.Add(new StructurePieceView(GameLookup.ViewOf(old), GameLookup.ViewOf(old.Position),
                 UpgradeReports.RotationOf(old.ThingTransformRotation), target, blocking, Faces(swap),
-                RoomIds(plan, swap), Lines(plan, swap)));
+                RoomIds(plan, swap), Lines(plan, swap), swap.Handover));
         }
     }
 

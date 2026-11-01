@@ -1,5 +1,24 @@
 # Changelog
 
+## 2.16.0
+
+- **`inspect prefab` answers game-data questions.**
+  - `include: ["data"]` gives the prefab's own game data, read generically from every field the game serializes on
+    it: `maxPressureDelta` (-1 for no limit), `flashpointTemperature`, `autoignitionTemperature`, `MaxQuantity`,
+    `UsedPower`, `BuildStates` with each state's tool and cost, and the rest. It adds `mass_kg`. `fields`
+    (`data.maxPressureDelta`) narrows it, and `output_file` takes it whole.
+  - `include: ["recipes"]` gives what makes it, from the game's own recipe list: each machine, its inputs, time and
+    energy, and a furnace's temperature and pressure range ("what makes Kit (Airlock), and from what").
+  - `prefab` takes a list or a pattern (`"*Door*"`): a row per prefab, by name, at most 64, to compare a family.
+  - A prefab that is not a buildable structure (an item, a kit) answers its facts instead of `invalid_prefab`.
+- **`swap door`.** Replaces doors with another door prefab in place, without opening the doorway, as `swap wall` does
+  for walls: glass door to airlock and back. It keeps Open, Lock and the label. Before the old door goes it repoints
+  what pointed at it: airlock and door control boards (their linked doors, exterior and interior), IC housing pins,
+  and logic readers, writers and mirrors. A chip program that names the old id, or a batch write by another prefab's
+  hash, is reported as `still_points` with what to change. Each piece's `handover` plans it, and the job's
+  `handover` says what was done. It pays and refunds like `swap wall`.
+- **sg 0.4.16** (`swap door` and the new help).
+
 ## 2.15.0
 
 LU (through Loom's decision page): the ghost tooltip shown outside planning, "Disabled by default for now."

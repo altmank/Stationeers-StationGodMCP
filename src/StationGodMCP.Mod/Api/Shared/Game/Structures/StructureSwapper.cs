@@ -18,7 +18,8 @@ namespace StationGodMCP.Api.Shared.Game.Structures;
 /// owner and colour), raised to its final build state as the authoring tool does (CurrentBuildStateIndex, which
 /// updates the air state and flags the change for clients, then UpdateStateVisualizer), and only when it holds every
 /// slot the old piece held and blocks what the old piece blocked is the old piece destroyed (OnServer.Destroy) and
-/// the materials taken. The first failure stops the loop; the log says which pieces were swapped and where it stopped.
+/// the materials taken; just before the old piece goes, its family hands over what it must (StructureFamily.Handover).
+/// The first failure stops the loop; the log says which pieces were swapped and where it stopped.
 /// </summary>
 internal static class StructureSwapper
 {
@@ -36,7 +37,7 @@ internal static class StructureSwapper
                 continue;
             }
 
-            OneStructureSwap one = new OneStructureSwap(swap);
+            OneStructureSwap one = new OneStructureSwap(swap, plan.Request.Family);
             one.Run(log);
             if (one.Built != null && one.OldGone)
             {
@@ -135,9 +136,12 @@ internal sealed class OneStructureSwap
 {
     private readonly PlannedStructureSwap _swap;
 
-    internal OneStructureSwap(PlannedStructureSwap swap)
+    private readonly StructureFamily _family;
+
+    internal OneStructureSwap(PlannedStructureSwap swap, StructureFamily family)
     {
         _swap = swap;
+        _family = family;
     }
 
     internal Structure? Built { get; private set; }
@@ -182,6 +186,7 @@ internal sealed class OneStructureSwap
 
     private void Finish(StructureSwapLogView log)
     {
+        _family.Handover(_swap, Built!, log);
         OnServer.Destroy(_swap.Old);
         OldGone = true;
         log.Swapped.Add(new UpgradeSwappedView(new ThingId(_swap.OldId), new ThingId(Built!.ReferenceId),
