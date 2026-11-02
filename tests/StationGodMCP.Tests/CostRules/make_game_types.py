@@ -2,7 +2,10 @@
 fourth source rule: a view holds copied values only, so the connection's writer thread can write it). Rerun on a game
 update:
 
-    py -3.12 -I tests/StationGodMCP.Tests/CostRules/make_game_types.py G:/Programming/Git/StationeersWorkspace/decompile
+    py -3.12 -I tests/StationGodMCP.Tests/CostRules/make_game_types.py <decompile>
+
+<decompile> is the Assembly-CSharp folder of a decompile with one .cs per type (for example a shared decompile,
+rebuilt after each game patch).
 
 Every class, struct, interface and enum the decompile declares, and the engine types the game's code passes around
 (UnityEngine's, which the decompile does not hold). One name per line, sorted.

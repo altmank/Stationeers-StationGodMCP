@@ -1,7 +1,10 @@
 """Writes GameCollections.txt: the game's global collections, which only the mod's World module may read (cost design A1,
 the cost gate's first source rule). Rerun on a game update:
 
-    py -3.12 -I tests/StationGodMCP.Tests/CostRules/make_game_collections.py G:/Programming/Git/StationeersWorkspace/decompile
+    py -3.12 -I tests/StationGodMCP.Tests/CostRules/make_game_collections.py <decompile>
+
+<decompile> is the Assembly-CSharp folder of a decompile with one .cs per type (for example a shared decompile,
+rebuilt after each game patch).
 
 A global collection is a static field or property of the game, named All* or of a DensePool type, whose type is a
 collection (a list, set, dictionary, pool, queue or array), plus the room lists reached through the RoomController.World
