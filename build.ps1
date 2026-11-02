@@ -31,6 +31,11 @@
   The caller already holds the game lock for its whole run (a rig run that deploys inside it): the deploy then neither
   takes nor releases it. The lock is not re-entrant, so without this such a caller would wait on itself.
 
+.PARAMETER Summary
+  Run as usual with the whole output going to obj\build.log, and print only each step and whether it passed, the
+  .NET and Python test totals, up to 20 failing test names, the warning and error counts, and a last line
+  `build PASS|FAIL log <path>`. The exit code is the same as without it.
+
 .EXAMPLE
   .\build.ps1 -Deploy
 .EXAMPLE
@@ -45,12 +50,29 @@ param(
     [string]$LockScript = $env:STATIONEERS_GAME_LOCK,
     [switch]$NoLock,
     [switch]$LockHeld,
+    [switch]$Summary,
     [string]$SidecarPath = (Join-Path $env:LOCALAPPDATA 'StationGodMCP\server'),
     [string]$Target = (Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'My Games\Stationeers\mods\StationGodMCP')
 )
 
 $ErrorActionPreference = 'Stop'
 $root = $PSScriptRoot
+
+if ($Summary) {
+    . (Join-Path $root 'tools\summary.ps1')
+    $log = Join-Path $root 'obj\build.log'
+    $code = Invoke-Logged $PSCommandPath (Get-ChildArguments $PSBoundParameters) $log
+    $steps = if ($DeployOnly) { @(@{ Name = 'deploy' }) } else {
+        @(@{ Name = 'checks' }, @{ Name = '.NET tests'; Start = '^Testing \S+$' },
+            @{ Name = 'sg client tests'; Start = '^\s*Passed!\s+-' },
+            @{ Name = 'build and stage'; Start = '^Building \S+ against ' })
+        if ($Deploy) { @{ Name = 'deploy'; Start = '^Staged ' } }
+    }
+    Write-Summary $log @($steps) $code
+    Write-Host "build $(if ($code -eq 0) { 'PASS' } else { 'FAIL' }) log $log"
+    exit $code
+}
+
 $package = Join-Path $root 'package'
 # Where a build records the commit it staged from: HEAD's hash, then 'clean' or 'dirty'.
 $stamp = Join-Path $root 'package-build.txt'

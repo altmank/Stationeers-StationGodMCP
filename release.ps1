@@ -27,6 +27,10 @@
   Never deletes or moves tags or releases and never force-pushes. Publishing a draft is a separate step:
   gh release edit vX.Y.Z --draft=false --latest
 
+  -Summary runs the same release with the whole output going to obj\release-vX.Y.Z.log, and prints only each step
+  and whether it passed, the test totals, up to 20 failing test names, the warning and error counts, and a last line
+  `release check PASS|FAIL <version> <commit> log <path>`. The exit code is the same as without it.
+
 .EXAMPLE
   .\release.ps1 -Draft
 #>
@@ -35,6 +39,7 @@ param(
     [string]$Version,
     [switch]$Draft,
     [switch]$Clobber,
+    [switch]$Summary,
     [string]$Remote = 'github',
     [string]$GameDir = $env:STATIONEERS_DIR
 )
@@ -63,6 +68,27 @@ function VersionAt([string]$rev) {
     ([regex]::Match(($csproj -join "`n"), '<Version>([^<]+)</Version>')).Groups[1].Value
 }
 function Sha256([string]$path) { (Get-FileHash -Algorithm SHA256 -LiteralPath $path).Hash.ToLowerInvariant() }
+
+if ($Summary) {
+    . (Join-Path $root 'tools\summary.ps1')
+    $v = if ($Version) { $Version } else { VersionAt 'HEAD' }
+    $log = Join-Path $root "obj\release-v$v.log"
+    $code = Invoke-Logged $PSCommandPath (Get-ChildArguments $PSBoundParameters) $log
+    Write-Summary $log @(
+        @{ Name = 'tag and remote checks' },
+        @{ Name = 'build (build.ps1)'; Start = '^Building v\S+ \(\w+\) in ' },
+        @{ Name = 'release tests'; Start = '^Staged ' },
+        @{ Name = 'assets, notes and upload'; Start = '^\s*Passed!\s+-' },
+        @{ Name = 'verify on GitHub'; Start = '^https://github\.com/\S+/releases/tag/\S+$|^\s+StationGodMCP\.zip\s+[\d,]+ bytes\s+ok$' }) $code
+    $text = if (Test-Path -LiteralPath $log) { Get-Content -LiteralPath $log -Raw -Encoding UTF8 } else { '' }
+    $built = [regex]::Match("$text", '(?m)^Building v\S+ \((\w+)\) in ')
+    $commit = if ($built.Success) { $built.Groups[1].Value } else {
+        $full = Get-GitOutput rev-parse --verify --quiet "refs/tags/v$v^{commit}"
+        if ($full) { "$full".Trim().Substring(0, 7) } else { 'unknown' }
+    }
+    Write-Host "release check $(if ($code -eq 0) { 'PASS' } else { 'FAIL' }) $v $commit log $log"
+    exit $code
+}
 
 # The GitHub repository behind the remote, for gh -R.
 $url = (Invoke-Git remote get-url $Remote) | Select-Object -First 1
