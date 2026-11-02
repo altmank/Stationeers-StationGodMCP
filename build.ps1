@@ -8,20 +8,112 @@
   .\package\: the About and GameData folders, the DLL, the LICENSE and the Sidecar folder with both sidecar ZIPs.
   With -Deploy it also replaces Documents\My Games\Stationeers\mods\StationGodMCP with the package and installs the
   portable sidecar the MCP client runs into %LOCALAPPDATA%\StationGodMCP\server.
+  A build records the commit it staged from, and whether the tree was clean, in package-build.txt beside .\package
+  (not inside it: the package is exactly what the Workshop gets).
+
+.PARAMETER DeployOnly
+  Install the already staged .\package exactly as -Deploy does, and do nothing else: no test, build or staging. It
+  refuses unless the package was staged from the commit at HEAD with a clean tree and the tree is still clean (run
+  build.ps1 first); -Force does not skip that check. A game lock held around the install then covers only the copy.
+
+.PARAMETER Target
+  The mod folder -Deploy and -DeployOnly replace (default Documents\My Games\Stationeers\mods\StationGodMCP).
 
 .EXAMPLE
   .\build.ps1 -Deploy
+.EXAMPLE
+  .\build.ps1; .\build.ps1 -DeployOnly
 #>
 [CmdletBinding()]
 param(
     [string]$GameDir = $env:STATIONEERS_DIR,
     [switch]$Deploy,
+    [switch]$DeployOnly,
     [switch]$Force,
-    [string]$SidecarPath = (Join-Path $env:LOCALAPPDATA 'StationGodMCP\server')
+    [string]$SidecarPath = (Join-Path $env:LOCALAPPDATA 'StationGodMCP\server'),
+    [string]$Target = (Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'My Games\Stationeers\mods\StationGodMCP')
 )
 
 $ErrorActionPreference = 'Stop'
 $root = $PSScriptRoot
+$package = Join-Path $root 'package'
+# Where a build records the commit it staged from: HEAD's hash, then 'clean' or 'dirty'.
+$stamp = Join-Path $root 'package-build.txt'
+
+# HEAD and whether the tree has changes, or $null outside a git checkout (a plain source copy still builds).
+function Get-TreeState {
+    try {
+        $head = & git -C $root rev-parse HEAD
+        if ($LASTEXITCODE -ne 0 -or -not $head) { return $null }
+        $changes = & git -C $root status --porcelain
+        if ($LASTEXITCODE -ne 0) { return $null }
+    }
+    catch { return $null }
+    [pscustomobject]@{ Head = "$head".Trim(); State = $(if ($changes) { 'dirty' } else { 'clean' }) }
+}
+
+# Replaces $Target with the package's mod folder and copies the portable sidecar in $portableDir to $SidecarPath.
+function Install-Package([string]$portableDir) {
+    # A running game holds the old DLL and keeps running it; the player may be in game.
+    # A brand-new mod the game has never loaded is the one safe exception: pass -Force.
+    if (-not $Force -and (Get-Process -Name 'rocketstation' -ErrorAction SilentlyContinue)) {
+        throw 'Stationeers is running: close the game before deploying (or -Force for a mod it has never loaded).'
+    }
+    if (Test-Path $Target) { Remove-Item $Target -Recurse -Force }
+    New-Item -ItemType Directory -Path $Target -Force | Out-Null
+    Copy-Item "$package\*" $Target -Recurse
+    Write-Host "Deployed to $Target"
+
+    # The tool list lives in the sidecar, so a new tool has to reach both halves.
+    New-Item -ItemType Directory -Path $SidecarPath -Force | Out-Null
+    # Recursively: the script workers' sg package ships in the sidecar's python\sg folder (run_script needs it).
+    $portableRoot = (Get-Item -LiteralPath $portableDir).FullName
+    foreach ($file in Get-ChildItem -LiteralPath $portableRoot -File -Recurse) {
+        $destination = Join-Path $SidecarPath $file.FullName.Substring($portableRoot.Length).TrimStart('\', '/')
+        New-Item -ItemType Directory -Path (Split-Path $destination -Parent) -Force | Out-Null
+        try {
+            Copy-Item -LiteralPath $file.FullName -Destination $destination -Force
+        }
+        catch {
+            # A running MCP client holds StationGodMCP.Server.dll open. Windows refuses the overwrite but allows a
+            # rename, and the client loads the new file when it next starts. The dated name keeps each set-aside
+            # copy, since an older client may still hold the one before.
+            Rename-Item -LiteralPath $destination -NewName "$($file.Name).previous-$(Get-Date -Format yyyyMMddHHmmss)" -Force
+            Copy-Item -LiteralPath $file.FullName -Destination $destination -Force
+        }
+    }
+    Write-Host "Deployed sidecar to $SidecarPath (restart the MCP client to load it)"
+}
+
+if ($DeployOnly) {
+    # Only a package staged from this exact commit, from a clean tree, may go in: anything else is not what HEAD says.
+    $now = Get-TreeState
+    if (-not $now) { throw "Deploy refused: $root is not a git checkout, so the package cannot be matched to a commit." }
+    $recorded = if (Test-Path -LiteralPath $stamp) { @(Get-Content -LiteralPath $stamp) } else { @() }
+    $zip = Join-Path $package 'Sidecar\StationGodMCP.Server-portable.zip'
+    if (-not (Test-Path (Join-Path $package 'StationGodMCP.dll')) -or -not (Test-Path $zip) -or $recorded.Count -lt 2) {
+        throw "Deploy refused: no staged package with a build record at $package. Run build.ps1 first."
+    }
+    if ($recorded[0] -ne $now.Head) {
+        throw "Deploy refused: the package was staged from $($recorded[0]), HEAD is $($now.Head). Run build.ps1 first."
+    }
+    if ($recorded[1] -ne 'clean') {
+        throw 'Deploy refused: the package was staged from a tree with uncommitted changes. Commit, then run build.ps1.'
+    }
+    if ($now.State -ne 'clean') {
+        throw 'Deploy refused: the tree has uncommitted changes since the package was staged. Commit, then run build.ps1.'
+    }
+    $unpacked = Join-Path ([System.IO.Path]::GetTempPath()) ('StationGodMCP-deploy-' + [guid]::NewGuid().ToString('N'))
+    try {
+        # The portable zip holds the same files -Deploy copies from its publish folder.
+        Expand-Archive -LiteralPath $zip -DestinationPath $unpacked
+        Install-Package $unpacked
+    }
+    finally {
+        if (Test-Path -LiteralPath $unpacked) { Remove-Item -LiteralPath $unpacked -Recurse -Force }
+    }
+    return
+}
 
 if (-not $GameDir) {
     $GameDir = 'C:\Program Files (x86)\Steam\steamapps\common\Stationeers'
@@ -78,6 +170,9 @@ $env:LATTICE_API_DIR = $latticeDir
 
 # Every test, the verb catalogue's checks (VerbCatalogueTests) included: a verb, what or option that skips a rule, a
 # generated/verbs or mod option file that is not current, or any failing test stops the build before anything is staged.
+# Read before the tests and the build, which may write files: the record is what the sources were.
+$tree = Get-TreeState
+if (-not $tree) { $tree = [pscustomobject]@{ Head = 'unknown'; State = 'not a git checkout' } }
 Write-Host "Testing $version"
 dotnet test (Join-Path $root 'tests\StationGodMCP.Tests\StationGodMCP.Tests.csproj') -nologo -v q
 if ($LASTEXITCODE -ne 0) { throw "Tests failed with exit code $LASTEXITCODE; nothing was built." }
@@ -95,7 +190,6 @@ if ($LASTEXITCODE -ne 0) { throw "Build failed with exit code $LASTEXITCODE." }
 $dll = Join-Path $root 'StationGodMCP.dll'
 if (-not (Test-Path $dll)) { throw "Build produced no DLL at $dll" }
 
-$package = Join-Path $root 'package'
 $staging = Join-Path ([System.IO.Path]::GetTempPath()) ('StationGodMCP-sidecar-' + [guid]::NewGuid().ToString('N'))
 $server = Join-Path $root 'src\StationGodMCP.Server\StationGodMCP.Server.csproj'
 $portable = Join-Path $staging 'portable'
@@ -112,6 +206,7 @@ try {
         -p:PublishDir="$native" -nologo -v q
     if ($LASTEXITCODE -ne 0) { throw "Self-contained sidecar publish failed with exit code $LASTEXITCODE." }
 
+    if (Test-Path $stamp) { Remove-Item $stamp -Force }
     if (Test-Path $package) { Remove-Item $package -Recurse -Force }
     New-Item -ItemType Directory -Path (Join-Path $package 'Sidecar') | Out-Null
     Copy-Item (Join-Path $root 'About') $package -Recurse
@@ -132,40 +227,10 @@ try {
     if ((Test-Path $thumb) -and (Get-Item $thumb).Length -gt 1MB) {
         Write-Warning 'About\thumb.png is over 1 MB. Steam caps previews at 1 MB and the upload falls back to a blank image.'
     }
-    Write-Host "Staged $package"
+    Set-Content -LiteralPath $stamp -Value @($tree.Head, $tree.State) -Encoding ascii
+    Write-Host "Staged $package from $($tree.Head) ($($tree.State) tree)"
 
-    if ($Deploy) {
-        # A running game holds the old DLL and keeps running it; the player may be in game.
-        # A brand-new mod the game has never loaded is the one safe exception: pass -Force.
-        if (-not $Force -and (Get-Process -Name 'rocketstation' -ErrorAction SilentlyContinue)) {
-            throw 'Stationeers is running: close the game before deploying (or -Force for a mod it has never loaded).'
-        }
-        $mods = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'My Games\Stationeers\mods\StationGodMCP'
-        if (Test-Path $mods) { Remove-Item $mods -Recurse -Force }
-        New-Item -ItemType Directory -Path $mods -Force | Out-Null
-        Copy-Item "$package\*" $mods -Recurse
-        Write-Host "Deployed to $mods"
-
-        # The tool list lives in the sidecar, so a new tool has to reach both halves.
-        New-Item -ItemType Directory -Path $SidecarPath -Force | Out-Null
-        # Recursively: the script workers' sg package ships in the sidecar's python\sg folder (run_script needs it).
-        $portableRoot = (Get-Item -LiteralPath $portable).FullName
-        foreach ($file in Get-ChildItem -LiteralPath $portableRoot -File -Recurse) {
-            $destination = Join-Path $SidecarPath $file.FullName.Substring($portableRoot.Length).TrimStart('\', '/')
-            New-Item -ItemType Directory -Path (Split-Path $destination -Parent) -Force | Out-Null
-            try {
-                Copy-Item -LiteralPath $file.FullName -Destination $destination -Force
-            }
-            catch {
-                # A running MCP client holds StationGodMCP.Server.dll open. Windows refuses the overwrite but allows a
-                # rename, and the client loads the new file when it next starts. The dated name keeps each set-aside
-                # copy, since an older client may still hold the one before.
-                Rename-Item -LiteralPath $destination -NewName "$($file.Name).previous-$(Get-Date -Format yyyyMMddHHmmss)" -Force
-                Copy-Item -LiteralPath $file.FullName -Destination $destination -Force
-            }
-        }
-        Write-Host "Deployed sidecar to $SidecarPath (restart the MCP client to load it)"
-    }
+    if ($Deploy) { Install-Package $portable }
 }
 finally {
     if (Test-Path -LiteralPath $staging) { Remove-Item -LiteralPath $staging -Recurse -Force }

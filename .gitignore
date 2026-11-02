@@ -10,3 +10,4 @@ Sidecar/*.zip
 .idea/
 release/
 __pycache__/
+package-build.txt
