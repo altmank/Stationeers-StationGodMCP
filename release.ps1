@@ -9,8 +9,10 @@
     1. Tag vX.Y.Z must exist, or HEAD must be the commit that bumped the csproj to X.Y.Z (the tag is then created
        as an annotated tag, which needs a clean working tree). The tag is pushed to the remote if missing there,
        and must point at the same commit on the remote and be contained in the remote's main.
-    2. The tagged commit is checked out in a temporary git worktree (never the working tree, which may hold
-       unfinished edits), built with its own build.ps1 and tested with dotnet test.
+    2. The tagged commit is checked out in a git worktree at <repo>\.worktrees\release-vX.Y.Z (never the working
+       tree, which may hold unfinished edits), built with its own build.ps1 and tested with dotnet test. The
+       worktree exists only while this script runs and is removed at the end, pass or fail; lane.ps1 sweep lists
+       it as a worktree with no lane while a release is running, which is expected.
     3. Assets go to release\vX.Y.Z\:
          StationGodMCP.zip                   the mod folder, extract into the Stationeers mods folder
          StationGodMCP.Server-win-x64.zip    self-contained sidecar
@@ -25,6 +27,10 @@
   Never deletes or moves tags or releases and never force-pushes. Publishing a draft is a separate step:
   gh release edit vX.Y.Z --draft=false --latest
 
+  -Summary runs the same release with the whole output going to obj\release-vX.Y.Z.log, and prints only each step
+  and whether it passed, the test totals, up to 20 failing test names, the warning and error counts, and a last line
+  `release check PASS|FAIL <version> <commit> log <path>`. The exit code is the same as without it.
+
 .EXAMPLE
   .\release.ps1 -Draft
 #>
@@ -33,6 +39,7 @@ param(
     [string]$Version,
     [switch]$Draft,
     [switch]$Clobber,
+    [switch]$Summary,
     [string]$Remote = 'github',
     [string]$GameDir = $env:STATIONEERS_DIR
 )
@@ -61,6 +68,27 @@ function VersionAt([string]$rev) {
     ([regex]::Match(($csproj -join "`n"), '<Version>([^<]+)</Version>')).Groups[1].Value
 }
 function Sha256([string]$path) { (Get-FileHash -Algorithm SHA256 -LiteralPath $path).Hash.ToLowerInvariant() }
+
+if ($Summary) {
+    . (Join-Path $root 'tools\summary.ps1')
+    $v = if ($Version) { $Version } else { VersionAt 'HEAD' }
+    $log = Join-Path $root "obj\release-v$v.log"
+    $code = Invoke-Logged $PSCommandPath (Get-ChildArguments $PSBoundParameters) $log
+    Write-Summary $log @(
+        @{ Name = 'tag and remote checks' },
+        @{ Name = 'build (build.ps1)'; Start = '^Building v\S+ \(\w+\) in ' },
+        @{ Name = 'release tests'; Start = '^Staged ' },
+        @{ Name = 'assets, notes and upload'; Start = '^\s*Passed!\s+-' },
+        @{ Name = 'verify on GitHub'; Start = '^https://github\.com/\S+/releases/tag/\S+$|^\s+StationGodMCP\.zip\s+[\d,]+ bytes\s+ok$' }) $code
+    $text = if (Test-Path -LiteralPath $log) { Get-Content -LiteralPath $log -Raw -Encoding UTF8 } else { '' }
+    $built = [regex]::Match("$text", '(?m)^Building v\S+ \((\w+)\) in ')
+    $commit = if ($built.Success) { $built.Groups[1].Value } else {
+        $full = Get-GitOutput rev-parse --verify --quiet "refs/tags/v$v^{commit}"
+        if ($full) { "$full".Trim().Substring(0, 7) } else { 'unknown' }
+    }
+    Write-Host "release check $(if ($code -eq 0) { 'PASS' } else { 'FAIL' }) $v $commit log $log"
+    exit $code
+}
 
 # The GitHub repository behind the remote, for gh -R.
 $url = (Invoke-Git remote get-url $Remote) | Select-Object -First 1
@@ -110,13 +138,17 @@ if ($existing -and -not $existing.isDraft -and -not $Clobber) {
     throw "Release $tag is published ($($existing.url)). Pass -Clobber to replace its assets."
 }
 
-# 2. Build and test the tagged commit in a worktree.
-$work = Join-Path ([System.IO.Path]::GetTempPath()) "StationGodMCP-release-$tag"
+# 2. Build and test the tagged commit in a worktree. Worktrees live only at <repo>\.worktrees\<name>, <repo> being the
+# main checkout (found from git's common dir, so a run from a lane's worktree does not nest one inside it).
+$common = (Invoke-Git rev-parse --path-format=absolute --git-common-dir) | Select-Object -First 1
+$mainCheckout = Split-Path -Parent ([System.IO.Path]::GetFullPath("$common".Trim()))
+$work = Join-Path $mainCheckout ".worktrees\release-$tag"
 # Lattice's contract is found beside this repo, not beside the worktree.
 if (-not $env:LATTICE_API_DIR) {
-    $env:LATTICE_API_DIR = Join-Path (Split-Path -Parent $root) 'Lattice\artifacts\Release\Lattice'
+    $env:LATTICE_API_DIR = Join-Path (Split-Path -Parent $mainCheckout) 'Lattice\artifacts\Release\Lattice'
 }
 $out = Join-Path $root "release\$tag"
+# A leftover from a crashed run is discarded whatever it holds, hence --force here only.
 $ErrorActionPreference = 'Continue'
 & git.exe -C $root worktree remove --force $work 2>&1 | Out-Null
 $ErrorActionPreference = 'Stop'
@@ -137,7 +169,7 @@ try {
     Copy-Item (Join-Path $package 'Sidecar\StationGodMCP.Server-win-x64.zip') $out
     Copy-Item (Join-Path $package 'Sidecar\StationGodMCP.Server-portable.zip') $out
     # The mod zip holds one StationGodMCP folder, so extracting it into the mods folder gives the right layout.
-    $modStage = Join-Path $work 'release-stage\StationGodMCP'
+    $modStage = Join-Path $work 'obj\release-stage\StationGodMCP'
     New-Item -ItemType Directory -Path $modStage -Force | Out-Null
     Copy-Item (Join-Path $package '*') $modStage -Recurse
     [System.IO.Compression.ZipFile]::CreateFromDirectory($modStage, (Join-Path $out 'StationGodMCP.zip'),
@@ -185,7 +217,7 @@ try {
 
     # 6. Verify what GitHub holds: every asset, its size, and its sha256 after a fresh download.
     $release = (& gh release view $tag -R $repo --json url,isDraft,assets) | ConvertFrom-Json
-    $check = Join-Path $work 'release-check'
+    $check = Join-Path $work 'obj\release-check'
     New-Item -ItemType Directory -Path $check -Force | Out-Null
     & gh release download $tag -R $repo -D $check
     if ($LASTEXITCODE -ne 0) { throw "gh release download failed with exit code $LASTEXITCODE." }
@@ -205,8 +237,12 @@ try {
     Write-Host "Release $tag ($state): $($release.url)"
 }
 finally {
+    # No --force: the build and the release write only ignored paths (bin\, obj\, package\; the staging and download
+    # folders sit under obj\), so a refusal means something changed a tracked file or left an unignored one. It is
+    # reported, then the folder is deleted anyway.
     $ErrorActionPreference = 'Continue'
-    & git.exe -C $root worktree remove --force $work 2>&1 | Out-Null
+    $removed = & git.exe -C $root worktree remove $work 2>&1
+    if ($LASTEXITCODE -ne 0) { Write-Warning "git worktree remove refused ($($removed -join ' ')); deleting $work." }
     & git.exe -C $root worktree prune 2>&1 | Out-Null
     if (Test-Path -LiteralPath $work) { Remove-Item -LiteralPath $work -Recurse -Force }
 }
