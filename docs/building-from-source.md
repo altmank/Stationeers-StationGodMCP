@@ -41,11 +41,22 @@ For maintainers and anyone who wants to build the mod themselves.
 - `-Deploy` refuses while the game runs, because a running game keeps the old DLL. `-Force` overrides that, only for a
   mod the game has never loaded.
 - `-DeployOnly` installs the `.\package` an earlier build staged, the same way `-Deploy` does, and does nothing else:
-  no tests, no build. Use it when a game lock or a closed game should cover only the copy, not a whole build. It
+  no tests, no build. Use it when a closed game should cover only the copy, not a whole build. It
   refuses unless the package was staged from the commit at HEAD with no uncommitted changes, and the tree is still
   clean; `-Force` does not skip that check. The build records the commit in `package-build.txt` next to `.\package`.
 - `-Target` changes the mod folder `-Deploy` and `-DeployOnly` replace (default
   `Documents\My Games\Stationeers\mods\StationGodMCP`).
+- Both deploys take a game lock themselves, only around removing and copying the mod folder, and release it even
+  when the copy fails. They do this for any `-Target`, a scratch folder included. The lock is a script called as
+  `<script> acquire|release -Owner <name>` (owner `stationgod-deploy <checkout> pid <pid>`); while another owner
+  holds the lock, `acquire` waits, and if it gives up the deploy fails without touching the target. Three switches
+  control it:
+  - `-LockScript <path>` names the lock script. It defaults to the `STATIONEERS_GAME_LOCK` environment variable. With
+    no lock script found, a deploy refuses before building anything, unless `-NoLock` or `-LockHeld` is passed.
+  - `-NoLock` deploys with no lock at all, for a machine that has none, such as a player building from source.
+  - `-LockHeld` is for a caller that already holds the lock for its whole run, such as a rig run that deploys inside
+    it: the deploy then neither takes nor releases the lock. The lock is not re-entrant, so without `-LockHeld` such a
+    caller would wait on itself.
 - The sidecar is deployed outside the source tree, by default to `%LOCALAPPDATA%\StationGodMCP\server`, because
   StationeersLaunchPad loads every DLL it finds in an enabled mod's folder.
 

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Build: deploys take the game lock themselves.** `build.ps1 -Deploy` and `-DeployOnly` take
+  the game lock (`-LockScript`, default `STATIONEERS_GAME_LOCK`), only around removing and copying the mod
+  folder, and release it even when the copy fails. `-NoLock` deploys without one; `-LockHeld` is for a caller that
+  already holds it.
+
 - **sg 0.4.17: the child hub starts with no console window on Windows.** From a host with no console of its own
   (pythonw, a GUI app, a scheduled task), every `sg.connect` opened a new visible console that took the player's
   focus. Nothing changes on other platforms.

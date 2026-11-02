@@ -14,10 +14,22 @@
 .PARAMETER DeployOnly
   Install the already staged .\package exactly as -Deploy does, and do nothing else: no test, build or staging. It
   refuses unless the package was staged from the commit at HEAD with a clean tree and the tree is still clean (run
-  build.ps1 first); -Force does not skip that check. A game lock held around the install then covers only the copy.
+  build.ps1 first); -Force does not skip that check.
 
 .PARAMETER Target
   The mod folder -Deploy and -DeployOnly replace (default Documents\My Games\Stationeers\mods\StationGodMCP).
+
+.PARAMETER LockScript
+  The game-lock script both deploys take around the remove and copy, and only there (default
+  $env:STATIONEERS_GAME_LOCK). It is called as <script> acquire|release -Owner <name>; acquire waits while another
+  owner holds the lock. With no lock script found, a deploy refuses unless -NoLock or -LockHeld is passed.
+
+.PARAMETER NoLock
+  Deploy without any game lock: for a machine that has none, such as a player building from source.
+
+.PARAMETER LockHeld
+  The caller already holds the game lock for its whole run (a rig run that deploys inside it): the deploy then neither
+  takes nor releases it. The lock is not re-entrant, so without this such a caller would wait on itself.
 
 .EXAMPLE
   .\build.ps1 -Deploy
@@ -30,6 +42,9 @@ param(
     [switch]$Deploy,
     [switch]$DeployOnly,
     [switch]$Force,
+    [string]$LockScript = $env:STATIONEERS_GAME_LOCK,
+    [switch]$NoLock,
+    [switch]$LockHeld,
     [string]$SidecarPath = (Join-Path $env:LOCALAPPDATA 'StationGodMCP\server'),
     [string]$Target = (Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'My Games\Stationeers\mods\StationGodMCP')
 )
@@ -39,6 +54,12 @@ $root = $PSScriptRoot
 $package = Join-Path $root 'package'
 # Where a build records the commit it staged from: HEAD's hash, then 'clean' or 'dirty'.
 $stamp = Join-Path $root 'package-build.txt'
+# Whether a deploy takes the game lock itself: not when the caller holds it already or there is none to take.
+$takeLock = -not ($LockHeld -or $NoLock)
+if (($Deploy -or $DeployOnly) -and $takeLock -and -not ($LockScript -and (Test-Path -LiteralPath $LockScript))) {
+    # Checked before any build, so a refused deploy wastes nothing and writes nothing.
+    throw "Deploy refused: no game-lock script at '$LockScript'. Set STATIONEERS_GAME_LOCK or pass -LockScript, or pass -NoLock on a machine with no game lock."
+}
 
 # HEAD and whether the tree has changes, or $null outside a git checkout (a plain source copy still builds).
 function Get-TreeState {
@@ -59,9 +80,21 @@ function Install-Package([string]$portableDir) {
     if (-not $Force -and (Get-Process -Name 'rocketstation' -ErrorAction SilentlyContinue)) {
         throw 'Stationeers is running: close the game before deploying (or -Force for a mod it has never loaded).'
     }
-    if (Test-Path $Target) { Remove-Item $Target -Recurse -Force }
-    New-Item -ItemType Directory -Path $Target -Force | Out-Null
-    Copy-Item "$package\*" $Target -Recurse
+    # The game lock is held while a game runs or for a deploy copy, never across a build: take it only around the
+    # remove and copy, whatever the target, and always give it back. acquire waits while another owner holds it.
+    $owner = "stationgod-deploy $(Split-Path $root -Leaf) pid $PID"
+    if ($takeLock) {
+        & $LockScript acquire -Owner $owner | ForEach-Object { Write-Host "   $_" }
+        if ($LASTEXITCODE -ne 0) { throw 'Deploy failed: could not take the game lock.' }
+    }
+    try {
+        if (Test-Path $Target) { Remove-Item $Target -Recurse -Force }
+        New-Item -ItemType Directory -Path $Target -Force | Out-Null
+        Copy-Item "$package\*" $Target -Recurse
+    }
+    finally {
+        if ($takeLock) { & $LockScript release -Owner $owner | ForEach-Object { Write-Host "   $_" } }
+    }
     Write-Host "Deployed to $Target"
 
     # The tool list lives in the sidecar, so a new tool has to reach both halves.
