@@ -11,3 +11,4 @@ Sidecar/*.zip
 release/
 __pycache__/
 package-build.txt
+*.stackdump
