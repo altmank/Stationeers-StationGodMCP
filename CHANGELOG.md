@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **Build: the same commit builds byte-identical dlls from any folder.** A root `Directory.Build.props` maps the repo
+  root to a fixed path (PathMap) for the mod, the sidecar and the client, so no folder name is baked into a build.
+
 - **Build: deploys take the game lock themselves.** `build.ps1 -Deploy` and `-DeployOnly` take
   the game lock (`-LockScript`, default `STATIONEERS_GAME_LOCK`), only around removing and copying the mod
   folder, and release it even when the copy fails. `-NoLock` deploys without one; `-LockHeld` is for a caller that
