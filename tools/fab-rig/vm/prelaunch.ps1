@@ -14,7 +14,7 @@ Measure-RigStep fabStage {
     Copy-Item $fabCtx.pythonZip "$fabStage\python.zip"
     Copy-Item -ToSession (Get-RigSession) -Path $fabStage -Destination $gRes -Recurse -Force
     Remove-Item -Recurse -Force (Split-Path $fabStage) -ErrorAction SilentlyContinue
-    $said = Invoke-Rig -ArgumentList "$gRes\sg" {
+    $said = Invoke-Rig -TimeoutSeconds 600 -ArgumentList "$gRes\sg" {
         param($sg)
         Get-ScheduledTask -TaskName 'SG-Fab-*' -ErrorAction SilentlyContinue | % {
             Stop-ScheduledTask -TaskName $_.TaskName -ErrorAction SilentlyContinue
