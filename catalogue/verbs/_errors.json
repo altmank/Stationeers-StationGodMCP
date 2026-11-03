@@ -88,6 +88,14 @@
     "see": {"verb": "write", "what": "screen"}
   },
   "engine_not_modelled": {"description": "The rocket has an engine the forecast has no model for. The forecast cannot run for this rocket."},
+  "fabricator_busy": {
+    "description": "The fabricator is making something, is open (ejecting its stock), or holds an item in its output slot; data.reason says which. Wait, close it, or take the item out.",
+    "see": {"verb": "write", "what": "fabricator"}
+  },
+  "fabricator_unpowered": {
+    "description": "The fabricator is off, unpowered, in error or not finished, so it makes nothing; data.reason says which. Nothing ran.",
+    "see": {"verb": "write", "what": "fabricator"}
+  },
   "final_check_failed": {
     "description": "The check run once the tick stopped found problems, so nothing ran. The report lists them; fix them and run again."
   },
@@ -209,6 +217,10 @@
     "description": "No such method on this game's StationGod. The game may run an older version; server info names it.",
     "see": {"topic": "errors"}
   },
+  "missing_reagents": {
+    "description": "The fabricator's stock, after load, lacks part of the recipe; data.missing lists it. Load more. Nothing was loaded or made.",
+    "see": {"verb": "write", "what": "fabricator"}
+  },
   "missing_target": {"description": "The call names nothing to act on; data.options lists what would."},
   "mod_missing": {
     "description": "BlueprintMod has not set up its Blueprints folder yet. Pass an absolute path.",
@@ -304,16 +316,28 @@
     "description": "The thing stores no power; the message names what it is, and when its slots hold battery cells, the within call that sets them.",
     "see": {"verb": "write", "what": "battery"}
   },
+  "not_a_fabricator": {
+    "description": "That thing is not a fabricator of the printer family (Autolathe, Tool Manufactory, Electronics Printer, Pipe Bender...). find device lists them.",
+    "see": {"verb": "write", "what": "fabricator"}
+  },
   "not_a_lua_chip": {"description": "restart is for Lua chips. An IC10 chip restarts at line 0 when write chip writes it."},
   "not_a_plant": {
     "description": "That thing is not a plant, seed or plant produce. find plant lists the find plant.",
     "see": {"verb": "inspect", "what": "genes"}
+  },
+  "not_a_recipe": {
+    "description": "The fabricator has no recipe for that item, or the item needs a DLC you lack. The message names the machines that make it.",
+    "see": {"verb": "write", "what": "fabricator"}
   },
   "not_a_segment": {
     "description": "The pieces meet the rest of the world at more or fewer than two cells. A reroute swaps out a run with one way in and one way out: name a segment without branches or dead ends."
   },
   "not_a_silo": {"description": "That thing is not an SDB Silo. find thing {prefab: \"Silo\"} lists them."},
   "not_a_vault": {"description": "That thing is not an Ingot Vault or a Remote Vault. find thing lists vaults."},
+  "not_accepted": {
+    "description": "A load entry is not an ingot this fabricator takes. load takes ingots only.",
+    "see": {"verb": "write", "what": "fabricator"}
+  },
   "not_aimable": {
     "description": "That thing is neither a solar panel nor a satellite dish, so there is nothing to aim. find thing lists them.",
     "see": {"verb": "plan", "what": "aim"}
@@ -612,5 +636,9 @@
   "would_burst": {
     "description": "The change would take a pipe, tank or network past its pressure limit; the message gives the numbers. Change less; inspect job also takes allow to do it anyway."
   },
-  "write_failed": {"description": "The game failed to write the text; the message says why."}
+  "write_failed": {"description": "The game failed to write the text; the message says why."},
+  "wrong_tier": {
+    "description": "The recipe needs a higher machine tier than the fabricator's build state gives. Build it on to its higher tier (build finish).",
+    "see": {"verb": "write", "what": "fabricator"}
+  }
 }

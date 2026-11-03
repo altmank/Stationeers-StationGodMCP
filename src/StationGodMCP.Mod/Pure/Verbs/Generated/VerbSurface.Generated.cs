@@ -90,6 +90,7 @@ internal static partial class VerbSurface
             WriteFlightLogOptions.Spec,
             WriteUplinkOptions.Spec,
             WriteBatteryOptions.Spec,
+            WriteFabricatorOptions.Spec,
             WriteGenesOptions.Spec,
             WriteHealthOptions.Spec,
             WriteLatticeOptions.Spec),

@@ -320,7 +320,7 @@
     },
     {
       "name": "write",
-      "description": "Set values and states. Typed ids act at once; a ref or network reports until confirm: true. memory, battery, genes and health are cheats: ask the user.",
+      "description": "Set values and states. Typed ids act at once; a ref or network reports until confirm: true. Cheats (ask the user): memory, battery, fabricator, genes, health.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -336,12 +336,13 @@
               "flight_log",
               "uplink",
               "battery",
+              "fabricator",
               "genes",
               "health",
               "script",
               "lattice"
             ],
-            "description": "logic: logic values on devices; memory: device memory; chip: chip source, pins, run state; screen: press a screen control; label: rename things; paint: paint things or a network; flight_log: start, stop, clear a recorder; uplink: point an uplink; battery: set charge; genes: edit plant genes; health: heal a player; script: save a script; lattice: Lattice commands"
+            "description": "logic: device logic values; memory: device memory; chip: chip source, pins, run state; screen: press a control; label: rename things; paint: paint things, networks; flight_log: start, stop, clear recorder; uplink: point uplink; battery: set charge; fabricator: make a recipe item; genes: edit genes; health: heal player; script: save script; lattice: Lattice commands"
           },
           "id": {"type": ["string", "array"]},
           "logic": {"type": ["string", "integer"]},
@@ -351,15 +352,12 @@
           "allow": {
             "type": "array",
             "items": {"enum": ["lint", "off_network", "out_of_range"]},
-            "description": "lint: pass a network lint problem."
+            "description": "lint: pass a lint problem."
           },
           "confirm": {"type": "boolean"},
           "start": {"type": "integer"},
           "values": {"type": "array", "items": {"type": "number"}},
-          "code": {
-            "type": "string",
-            "description": "write chip: the IC10 source; write script: the Python source, which must define main(...)."
-          },
+          "code": {"type": "string", "description": "write chip: IC10 source; write script: Python source defining main(...)."},
           "code_file": {"type": "string"},
           "pins": {"type": "object"},
           "run": {"enum": ["pause", "step", "resume", "restart"]},
@@ -385,14 +383,17 @@
           "within": {"type": "string"},
           "ratio": {"type": "number"},
           "joules": {"type": "number"},
+          "prefab": {"type": ["string", "integer"]},
+          "load": {"type": "array"},
+          "make": {"type": "boolean"},
           "unit": {"type": "integer"},
           "genes": {"type": "object"},
           "player": {"type": "string"},
-          "name": {"type": "string", "description": "write script: the script's name (letters, digits, underscores)."},
-          "description": {"type": "string", "description": "write script: one line saying what the script does."},
+          "name": {"type": "string", "description": "write script: name (letters, digits, underscores)."},
+          "description": {"type": "string", "description": "write script: what it does, one line."},
           "scope": {
             "enum": ["shared", "world"],
-            "description": "write script: shared (any world, no hard-coded ids), or world (bound to this world)."
+            "description": "write script: shared (any world, no hard-coded ids) or world (this world)."
           },
           "command": {"type": "object"},
           "fields": {"type": "array", "items": {"type": "string"}},

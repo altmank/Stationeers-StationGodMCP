@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **write fabricator: make a recipe's item on a fabricator at once.** A cheat that finishes one make on any Autolathe, Tool Manufactory, Electronics Printer or other printer-family machine in a single call, optionally loading ingots first, and replies with the item made, the stock before and after and what was consumed. It uses the fabricator's own recipes, tier and multipliers; the recipe's time and energy are skipped.
+
 - **Build: deploys take the game lock themselves.** `build.ps1 -Deploy` and `-DeployOnly` take
   the game lock (`-LockScript`, default `STATIONEERS_GAME_LOCK`), only around removing and copying the mod
   folder, and release it even when the copy fails. `-NoLock` deploys without one; `-LockHeld` is for a caller that
