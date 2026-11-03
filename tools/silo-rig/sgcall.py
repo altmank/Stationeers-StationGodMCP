@@ -1,6 +1,6 @@
 """One StationGod call against a TEST rig's pipe, through this worktree's sg client and a hub you name.
 
-    py -3.12 sgcall.py --pipe StationGodMCP-SGT5 --hub <dir or StationGodMCP.Server.dll> <verb> [what] ['<json options>']
+    py -3.12 sgcall.py --pipe <test pipe> --hub <dir or StationGodMCP.Server.dll> <verb> [what] ['<json options>']
 
 Refuses the live pipe name (StationGodMCP). Prints the reply, or the refusal (code, message, fix, data), as JSON.
 """
@@ -40,8 +40,9 @@ def call(verb, what=None, **options):
         return {"error": {"code": e.code, "message": e.message, "fix": e.fix, "data": e.data}}
 
 
-def wait_ready(timeout_s=600):
-    """Waits until the game answers server info and its clock runs (unpausing it); returns the clock."""
+def wait_ready(timeout_s=600, on_wait=None):
+    """Waits until the game answers server info and its clock runs (unpausing it); returns the clock. on_wait, when
+    given, is called with the last reply before each retry (a caller's progress line)."""
     import time
     end = time.monotonic() + timeout_s
     last = None
@@ -55,6 +56,8 @@ def wait_ready(timeout_s=600):
             last = clock
         else:
             last = info
+        if on_wait:
+            on_wait(last)
         time.sleep(3)
     raise SystemExit(f"not ready after {timeout_s} s: {last}")
 

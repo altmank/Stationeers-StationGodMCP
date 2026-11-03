@@ -95,11 +95,13 @@ holding a player, and a thing named twice or inside another thing the deposit ta
   the silo whatever it did not make.
 - **Things come out at once.** The silo's export lets a thing's contents out one every 0.2 s; a `move item` withdrawal loads
   them in the same call, into the same slots.
-- Tested in game (2.16.1, a dedicated server with no player online; `tools/silo-rig`): `inspect contents` on a silo,
-  `find item` with `location: silo`, a `move item` withdrawal (pooled stacks, a whole backpack with contents,
-  `no_room` and `allow: ["ground"]`, a DispenseSlot refusal) and a deposit (whole things, part of a stack, a backpack
-  with contents, a growing plant refused, `silo_full`); the silo's logic `Quantity` followed each move. Not yet tested:
-  stored food that rots (a withdrawal of food that spoils), and a client watching either.
+- Tested in game (2.16.1; a dedicated server with no player online, and a game hosted by a player's own client;
+  `tools/silo-rig`): `inspect contents` on a silo, `find item` with `location: silo`, a `move item` withdrawal
+  (pooled stacks, a whole backpack with contents, `no_room` and `allow: ["ground"]`, a DispenseSlot refusal) and a
+  deposit (whole things, part of a stack, a backpack with contents, a growing plant refused, `silo_full`); the silo's
+  logic `Quantity` followed each move. Stored food that rots: cooked pumpkin went in marked `rots_when_taken`, and a
+  withdrawal brought it out whole and spoiled (`DecayedFood`, or the fresh item damaged or broken), matching the silo's
+  own export of the same food in prefab, quantity and condition. Not yet tested: a client watching.
 
 ## Multiplayer
 
