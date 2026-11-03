@@ -66,7 +66,7 @@
 param(
     [string] $Owner = 'sg-silo checks',
     [string] $RigLib = $env:STATIONGOD_RIG_LIB,
-    [string] $RigVMCommit = 'fcbb38f',
+    [string] $RigVMCommit = '7cc64ca',
     [string] $Library = $env:STATIONGOD_TEST_WORLDS,
     [string] $SettingsTemplate = $env:SG_RIG_SETTINGS,
     [string] $Hub,
