@@ -11,7 +11,7 @@ if (-not $sgHost -or -not (Test-Path "$sgHost\tools\silo-rig\silo_checks.py")) {
 $gSg = "$gRes\sg"
 Measure-RigStep sgStage {
     Copy-Item -ToSession (Get-RigSession) -Path $sgHost -Destination $gSg -Recurse -Force
-    $tools = Invoke-Rig -ArgumentList $gSg, $env:SG_SILO_GUEST_PYTHON, $env:SG_SILO_HUB_FILE {
+    $tools = Invoke-Rig -TimeoutSeconds 600 -ArgumentList $gSg, $env:SG_SILO_GUEST_PYTHON, $env:SG_SILO_HUB_FILE {
         param($sg, $py, $hubFile)
         $said = @()
         foreach ($n in 'python', 'dotnet') {
