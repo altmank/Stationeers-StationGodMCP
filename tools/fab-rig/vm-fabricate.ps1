@@ -30,7 +30,7 @@ param(
     [string] $Pipe = 'StationGodMCP-VM',
     # P46: the run's expected length (a saved world loading, a floor of frames, two machines, the build states and
     # about 20 calls); every limit is that plus a margin, not a blanket one.
-    [double] $ExpectedMinutes = 6,
+    [double] $ExpectedMinutes = 8,
     [int] $TimeoutSeconds = 0,
     [int] $PhaseSeconds = 0
 )

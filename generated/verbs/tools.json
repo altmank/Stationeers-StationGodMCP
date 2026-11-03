@@ -342,7 +342,7 @@
               "script",
               "lattice"
             ],
-            "description": "logic: device logic values; memory: device memory; chip: chip source, pins, run state; screen: press a control; label: rename things; paint: paint things, networks; flight_log: start, stop, clear recorder; uplink: point uplink; battery: set charge; fabricator: make a recipe item; genes: edit genes; health: heal player; script: save script; lattice: Lattice commands"
+            "description": "logic: device logic values; memory: device memory; chip: chip source, pins, run state; screen: press a control; label: rename things; paint: paint things, networks; flight_log: start, stop, clear recorder; uplink: point uplink; battery: set charge; fabricator: make a recipe item; genes: edit plant genes; health: heal player; script: save script; lattice: Lattice commands"
           },
           "id": {"type": ["string", "array"]},
           "logic": {"type": ["string", "integer"]},

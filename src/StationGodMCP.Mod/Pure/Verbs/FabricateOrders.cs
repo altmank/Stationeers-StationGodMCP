@@ -66,9 +66,10 @@ internal sealed class FabricateOrder
         }
 
         List<LoadEntry> loads = ReadLoads(load, problems);
-        if (!making && load == null)
+        if (!making && loads.Count == 0 && problems.Count == before)
         {
-            problems.Add(new OptionProblem("load", "is needed when make is false: with no load and no make there is nothing to do"));
+            problems.Add(new OptionProblem("load",
+                "is needed when make is false: with no load and no make there is nothing to do"));
         }
 
         return problems.Count == before ? new FabricateOrder(making ? pattern : null, loads, making) : null;
@@ -123,25 +124,37 @@ internal sealed class FabricateOrder
                 continue;
             }
 
-            Merge(merged, pattern, quantity);
+            if (!Merge(merged, pattern, quantity))
+            {
+                problems.Add(new OptionProblem(path + ".quantity",
+                    $"adds up with the other entries of that ingot to more than {FabricateRule.MaximumLoadQuantity:0}"));
+            }
         }
 
         return merged;
     }
 
     // Entries of one ingot (the same name ignoring case, or the same hash) become one, quantities summed, first seen first.
-    private static void Merge(List<LoadEntry> merged, PrefabPattern pattern, double quantity)
+    // False when the merged total passes the cap.
+    private static bool Merge(List<LoadEntry> merged, PrefabPattern pattern, double quantity)
     {
         for (int index = 0; index < merged.Count; index++)
         {
             if (Same(merged[index].Prefab, pattern))
             {
-                merged[index] = new LoadEntry(merged[index].Prefab, merged[index].Quantity + quantity);
-                return;
+                double total = merged[index].Quantity + quantity;
+                if (total > FabricateRule.MaximumLoadQuantity)
+                {
+                    return false;
+                }
+
+                merged[index] = new LoadEntry(merged[index].Prefab, total);
+                return true;
             }
         }
 
         merged.Add(new LoadEntry(pattern, quantity));
+        return true;
     }
 
     private static bool Same(PrefabPattern a, PrefabPattern b) =>

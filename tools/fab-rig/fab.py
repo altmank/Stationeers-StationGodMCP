@@ -50,17 +50,28 @@ def odd(v):
     return n if n % 2 else n + 1
 
 
+def refusal(reply):
+    """The refusal a reply carries: an error (an acting call), or the first problem of a report (an answered
+    report with `problems` and no error); None for a reply that went through."""
+    if not isinstance(reply, dict):
+        return None
+    if reply.get("error"):
+        return reply["error"]
+    problems = reply.get("problems")
+    return problems[0] if isinstance(problems, list) and problems and isinstance(problems[0], dict) else None
+
+
 def code_of(reply):
-    return (reply.get("error") or {}).get("code") if isinstance(reply, dict) else None
+    return (refusal(reply) or {}).get("code")
 
 
 def data_of(reply):
-    return (reply.get("error") or {}).get("data") or {}
+    return (refusal(reply) or {}).get("data") or {}
 
 
 def must(reply, what):
     if code_of(reply):
-        raise Fail(f"{what} refused: {reply['error']}")
+        raise Fail(f"{what} refused: {refusal(reply)}")
     return reply
 
 
@@ -84,13 +95,15 @@ def expect(log, key, reply, code, **data):
     say(f"{key}: {code} {data_of(reply)}")
 
 
-def wait_player(timeout_s=900.0):
-    end = time.monotonic() + timeout_s
-    while time.monotonic() < end:
+def wait_player(timeout_s=240.0):
+    """The player of the loaded save; a progress line on every poll (P46: the watcher reads the log for life)."""
+    start = time.monotonic()
+    while time.monotonic() - start < timeout_s:
         reply = sgcall.call("find", "thing", runtime_type="Human", limit=1)
         things = reply.get("things") if isinstance(reply, dict) else None
         if things:
             return things[0]
+        say(f"waiting for the player ({time.monotonic() - start:.0f} s): {refusal(reply) or 'no player yet'}")
         time.sleep(5.0)
     raise Fail(f"no player within {timeout_s:.0f} s")
 
@@ -179,6 +192,7 @@ def wait_powered(thing_id, timeout_s=90.0):
 def stand_site(log):
     """The fabricator and the battery on a floor of frames beside the player (a 2 m cell grid, odd cell centres)."""
     player = wait_player()
+    say("player found: building the floor")
     p = player["position"]
     x0, floor_y, z0 = odd(p["x"] + 4), odd(p["y"] + LIFT), odd(p["z"] + 4)
     width, depth = 9, 5
@@ -186,6 +200,7 @@ def stand_site(log):
               for k in range(depth) for i in range(width)]
     for i in range(0, len(frames), 64):
         build_structures(frames[i:i + 64])
+        say(f"frames placed: {min(i + 64, len(frames))} of {len(frames)}")
     machines = [
         {"prefab": FAB, "at": [x0 + 2 * 2, floor_y + 2, z0 + 2 * 1], "label": "FAB machine"},
         {"prefab": BATTERY, "at": [x0 + 2 * 6, floor_y + 2, z0 + 2 * 1], "label": "FAB battery"},
@@ -193,10 +208,12 @@ def stand_site(log):
     build_structures(machines)
     ids = {"fab": label_id("FAB machine", FAB), "battery": label_id("FAB battery", BATTERY)}
     log["ids"] = ids
+    say(f"machines placed: {ids}")
     must(sgcall.call("write", "battery", id=[ids["battery"]], ratio=1.0, confirm=True), "battery full")
     switch_on(ids["battery"])
     cable({"id": ids["battery"], "port": power_port(ids["battery"], "output")},
           {"id": ids["fab"], "port": power_port(ids["fab"], "")})
+    say("powered: battery full and on, cabled to the fabricator")
     return ids
 
 
@@ -207,7 +224,8 @@ def fabricate(ids, **options):
 
 
 def tier_of(reply):
-    return reply.get("tier") if "error" not in reply else data_of(reply).get("fabricator_tier")
+    """The fabricator's tier: a report's own key, else the refusal's data (wrong_tier and fabricator_unpowered carry it)."""
+    return reply.get("tier") or data_of(reply).get("tier")
 
 
 def step_states(log, ids):
@@ -223,7 +241,7 @@ def step_states(log, ids):
         log[f"state_{n}"] = report
         say(f"state {n}: tier {tier}, report {code_of(report) or 'ready'}")
         last_tier = tier
-        if tier == "TierOne" and code_of(report) in (None, "fabricator_unpowered") and not tested_tier_one:
+        if tier == "TierOne" and code_of(report) == "wrong_tier" and not tested_tier_one:
             tested_tier_one = True
             confirm = fabricate(ids, confirm=True)
             log["tier_one_confirm"] = confirm
@@ -240,7 +258,7 @@ def step_states(log, ids):
         must(step, f"build finish {n}")
     log["states"] = states
     if not tested_tier_one:
-        say("no state read TierOne: the wrong_tier game check is skipped (the unit tests cover it)")
+        say("no state refused a report as wrong_tier at TierOne: the in-game wrong_tier check is skipped (the unit tests cover it)")
     if last_tier != "TierTwo":
         raise Fail(f"the last state's tier is {last_tier}, not TierTwo: states {states}")
     return states
@@ -249,11 +267,13 @@ def step_states(log, ids):
 def stock_of(thing_id):
     reply = must(sgcall.call("inspect", "reagents", id=thing_id), "inspect reagents")
     row = (reply.get("reagents") or [])
-    return {r["reagent"]: round(r["quantity"], 6) for r in row}
+    # inspect reagents names a reagent by its type name ("Reagents.Iron"); write fabricator says "Iron".
+    return {r["reagent"].replace("Reagents.", ""): round(r["quantity"], 6) for r in row}
 
 
 def run(log):
-    sgcall.wait_ready()
+    sgcall.wait_ready(timeout_s=240, on_wait=lambda last: say(f"waiting for the game: {last}"))
+    say("game ready")
     ids = stand_site(log)
     step_states(log, ids)
 
@@ -282,10 +302,21 @@ def run(log):
     if data_of(missing).get("missing") != NEED:
         raise Fail(f"missing is {data_of(missing).get('missing')}, expected {NEED}")
 
-    # 6. the make
+    # 6. the make. The same load reported twice must read the same twice (a load only copies the ingot's reagents).
+    first, second = fabricate(ids, load=LOAD), fabricate(ids, load=LOAD)
+    log["load_report_1"], log["load_report_2"] = first, second
+    must(first, "load report 1")
+    for key in ("loaded", "stock_after", "consumed"):
+        if first.get(key) != second.get(key):
+            raise Fail(f"two reports of one load differ in {key}: {first.get(key)} vs {second.get(key)}")
+    want_loaded = {"Iron": 5.0, "Electrum": 4.0}
+    if {r["reagent"]: r["quantity"] for r in first.get("loaded") or []} != want_loaded:
+        raise Fail(f"loaded is {first.get('loaded')}, expected {want_loaded}")
     made = fabricate(ids, load=LOAD, confirm=True)
     log["make"] = made
     must(made, "the make")
+    if made.get("loaded") != first.get("loaded"):
+        raise Fail(f"the make loaded {made.get('loaded')}, its report said {first.get('loaded')}")
     rows = made.get("made") or []
     if len(rows) != 1 or rows[0].get("prefab_name") != RECIPE or rows[0].get("slot") != 1:
         raise Fail(f"made is {rows}, expected one {RECIPE} in slot 1")
@@ -297,14 +328,18 @@ def run(log):
     log["stock_read_back"] = read_back
     if {k: round(v, 6) for k, v in made["stock_after"].items()} != read_back:
         raise Fail(f"stock_after {made['stock_after']} differs from inspect reagents {read_back}")
+    made_id = rows[0]["reference_id"]
     found = sgcall.call("find", "thing", made_by=ids["fab"], limit=8)
     log["found"] = found
-    ids_found = [str(t.get("reference_id")) for t in (found.get("things") or [])]
-    if rows[0]["reference_id"] not in ids_found:
-        contents = sgcall.call("inspect", "contents", id=ids["fab"], depth=1)
-        log["contents"] = contents
-        if rows[0]["reference_id"] not in json.dumps(contents):
-            raise Fail(f"the made item {rows[0]['reference_id']} was found neither by made_by nor in the contents")
+    row = next((t for t in (found.get("things") or []) if str(t.get("reference_id")) == made_id), None)
+    if row is None:
+        by_id = sgcall.call("find", "thing", id=made_id, limit=1)
+        log["found_by_id"] = by_id
+        row = next((t for t in (by_id.get("things") or []) if str(t.get("reference_id")) == made_id), None)
+    if row is None:
+        raise Fail(f"the made item {made_id} was not found in the game")
+    if row.get("prefab_name") != RECIPE:
+        raise Fail(f"the made item {made_id} reads back as {row.get('prefab_name')}, not {RECIPE}")
     say(f"made {rows[0]['reference_id']} {RECIPE}, consumed {made['consumed']}, multipliers {made['multipliers']}")
 
     # 7. refusals
@@ -338,8 +373,11 @@ def main(argv=None):
     finally:
         with open(os.path.join(a.done, "replies.json"), "w", encoding="utf-8") as f:
             json.dump(log, f, indent=1, default=str)
-        with open(os.path.join(a.done, "done-ok" if ok else "done-fail"), "w", encoding="utf-8") as f:
+        # Written under a name the runner's done-* glob does not match, then renamed: the runner never reads a part file.
+        part = os.path.join(a.done, "part-done")
+        with open(part, "w", encoding="utf-8", newline="\n") as f:
             f.write(reason)
+        os.replace(part, os.path.join(a.done, "done-ok" if ok else "done-fail"))
     say(("ok: " if ok else "fail: ") + reason)
     return 0 if ok else 1
 

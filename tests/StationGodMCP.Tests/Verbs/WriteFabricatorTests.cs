@@ -100,6 +100,26 @@ public sealed class WriteFabricatorTests
     }
 
     [Fact]
+    public void MergedLoadsStayWithinTheCapAndAnEmptyLoadIsNothingToDo()
+    {
+        double half = FabricateRule.MaximumLoadQuantity / 2;
+        Assert.NotNull(Order(out _, load: Load(("A", half), ("a", half))));
+        ProblemAt("load[1].quantity", Order(out List<OptionProblem> over, load: Load(("A", half), ("a", half + 1))), over);
+        ProblemAt("load", Order(out List<OptionProblem> empty, prefab: null, load: new JArray(), make: false), empty);
+        Assert.NotNull(Order(out _, load: new JArray()));
+    }
+
+    [Fact]
+    public void AnIngotsReagentsAreOnlyEverCopiedBeforeTheyAreScaled()
+    {
+        // ReagentMixture's * changes its left side in place, and an ingot's mixture is the shared prefab's.
+        string source = File.ReadAllText(Path.GetFullPath(Path.Combine(VerbCatalogue.SourceRoot, "..", "..", "src",
+            "StationGodMCP.Mod", "Api", "Shared", "Game", "Fabrication.cs")));
+        Assert.DoesNotContain("CreatedReagentMixture *", source);
+        Assert.Contains("new ReagentMixture(ingot.CreatedReagentMixture) * quantity", source);
+    }
+
+    [Fact]
     public void BusyReasonsAreCheckedInOrder()
     {
         Assert.Equal("making", FabricateRule.BusyReason(true, true, "1"));

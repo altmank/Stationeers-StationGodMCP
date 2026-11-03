@@ -1256,7 +1256,7 @@
           }
         ]
       },
-      "brief": "edit genes"
+      "brief": "edit plant genes"
     },
     "health": {
       "summary": "heal a player: every kind of damage to the body and its organs (brain and lungs) set to none",

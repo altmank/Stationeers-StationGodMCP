@@ -64,14 +64,15 @@ internal static class Fabrication
             if (power != null)
             {
                 throw ApiErrors.Refused("fabricator_unpowered",
-                    $"{Names.Of(fab)} cannot make now ({power}). Nothing ran.", new Dictionary<string, object?> { ["reason"] = power });
+                    $"{Names.Of(fab)} cannot make now ({power}). Nothing ran.",
+                    new Dictionary<string, object?> { ["reason"] = power, ["tier"] = fab.CurrentTier.ToString() });
             }
         }
 
         ReagentMixture stock = new ReagentMixture(fab.ReagentMixture);
         foreach (FabricationLoad load in loads)
         {
-            stock.Add(load.Ingot.CreatedReagentMixture * load.Quantity);
+            stock.Add(Scaled(load.Ingot, load.Quantity));
         }
 
         if (order.Make && !stock.Contains(recipe))
@@ -91,7 +92,7 @@ internal static class Fabrication
         Dictionary<string, double> before = Stock(fab.ReagentMixture);
         foreach (FabricationLoad load in plan.Loads)
         {
-            fab.ReagentMixture.Add(load.Ingot.CreatedReagentMixture * load.Quantity);
+            fab.ReagentMixture.Add(Scaled(load.Ingot, load.Quantity));
         }
 
         List<FabricateMadeView> made = new List<FabricateMadeView>();
@@ -120,7 +121,7 @@ internal static class Fabrication
         ReagentMixture stock = new ReagentMixture(fab.ReagentMixture);
         foreach (FabricationLoad load in plan.Loads)
         {
-            stock.Add(load.Ingot.CreatedReagentMixture * load.Quantity);
+            stock.Add(Scaled(load.Ingot, load.Quantity));
         }
 
         if (plan.Product != null)
@@ -185,6 +186,11 @@ internal static class Fabrication
         return made;
     }
 
+    // What loading `quantity` of an ingot adds to a stock, as a new mixture. ReagentMixture's * changes its left side
+    // in place, and the ingot's own mixture is the shared prefab's: it is only ever copied, never multiplied.
+    private static ReagentMixture Scaled(Ingot ingot, double quantity) =>
+        new ReagentMixture(ingot.CreatedReagentMixture) * quantity;
+
     private static List<FabricateLoadView> Loaded(FabricationPlan plan)
     {
         List<FabricateLoadView> loaded = new List<FabricateLoadView>(plan.Loads.Count);
@@ -195,7 +201,7 @@ internal static class Fabrication
                 double amount = part.Value * load.Quantity;
                 if (amount > FabricateRule.Trace)
                 {
-                    loaded.Add(new FabricateLoadView(load.Ingot.PrefabName, part.Key.TypeName,
+                    loaded.Add(new FabricateLoadView(load.Ingot.PrefabName, part.Key.TypeNameShort,
                         System.Math.Round(amount, 6)));
                 }
             }
@@ -218,7 +224,7 @@ internal static class Fabrication
             if (part.Value > 0.0 && !fab.CanProcess(part.Key))
             {
                 throw ApiErrors.Refused("not_accepted",
-                    $"{Names.Of(fab)} does not take {part.Key.TypeName} ({ingot.PrefabName}). " +
+                    $"{Names.Of(fab)} does not take {part.Key.TypeNameShort} ({ingot.PrefabName}). " +
                     "Nothing was loaded or made.");
             }
         }
@@ -279,7 +285,7 @@ internal static class Fabrication
             string machineTier = fab.CurrentTier.ToString();
             throw ApiErrors.Refused("wrong_tier",
                 FabricateRule.WrongTier(key.PrefabName, recipeTier, Names.Of(fab), machineTier),
-                new Dictionary<string, object?> { ["recipe_tier"] = recipeTier, ["fabricator_tier"] = machineTier });
+                new Dictionary<string, object?> { ["recipe_tier"] = recipeTier, ["fabricator_tier"] = machineTier, ["tier"] = machineTier });
         }
 
         if (!SharedDLCManager.CheckSharedAccess(key.DLCType))
@@ -321,9 +327,9 @@ internal static class Fabrication
         Dictionary<string, string> ingots = new Dictionary<string, string>();
         foreach (KeyValuePair<Reagent, Ingot> pair in WorldModel.Prefabs.IngotsByReagent)
         {
-            if (reagents.ContainsKey(pair.Key.TypeName))
+            if (reagents.ContainsKey(pair.Key.TypeNameShort))
             {
-                ingots[pair.Key.TypeName] = pair.Value.PrefabName;
+                ingots[pair.Key.TypeNameShort] = pair.Value.PrefabName;
             }
         }
 
@@ -336,7 +342,7 @@ internal static class Fabrication
         Dictionary<string, double> stock = new Dictionary<string, double>();
         foreach (KeyValuePair<Reagent, double> part in Amounts(mixture))
         {
-            stock[part.Key.TypeName] = part.Value;
+            stock[part.Key.TypeNameShort] = part.Value;
         }
 
         return stock;
