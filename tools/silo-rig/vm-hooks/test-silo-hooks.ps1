@@ -11,7 +11,7 @@ $hooks = $PSScriptRoot
 # ---- fakes ----
 $script:calls = @()
 $script:reply = $null
-function Invoke-Rig([scriptblock] $Block, [object[]] $ArgumentList = @()) {
+function Invoke-Rig([scriptblock] $Block, [object[]] $ArgumentList = @(), [int] $TimeoutSeconds = 0) {
     $script:calls += , [pscustomobject]@{ Block = "$Block"; Args = @($ArgumentList) }
     $script:reply
 }
