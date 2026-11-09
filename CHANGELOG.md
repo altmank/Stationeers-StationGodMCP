@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 2.17.0
 
 - **`show picture`: a PNG of a thing or the player from a placed camera.** `id` (default `"player"`), `yaw` (0 the
   thing's front, 90 its right side, 180 behind), `pitch`, `distance` (left out, the thing fills the picture), `fov`,
