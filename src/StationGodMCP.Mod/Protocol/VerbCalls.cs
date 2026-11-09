@@ -194,7 +194,7 @@ internal static class VerbCalls
 /// its reply's elapsed_ms, then its answer through VerbCalls.Write, the entry cost begun anew for that slice. A step
 /// that throws ends the work, and the call answers the failure as a handler's would.
 /// </summary>
-internal sealed class PendingVerbCall : IDeferredWork
+internal sealed class PendingVerbCall : IDeferredWork, IDisposable
 {
     private readonly VerbRunner _runner;
     private readonly CallRequest _request;
@@ -216,6 +216,9 @@ internal sealed class PendingVerbCall : IDeferredWork
         _spentMs = spentMs;
         _queueWaitMs = queueWaitMs;
     }
+
+    /// <summary>Dropped unanswered (DeferredCalls): a pending result that holds something lets it go.</summary>
+    public void Dispose() => (_pending as IDisposable)?.Dispose();
 
     // A result that goes on with more work (VerbOutcome.Pending: a report described over frames) is stepped on in
     // the same slice while the slice has time, and in later slices after.

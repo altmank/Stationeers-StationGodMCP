@@ -824,14 +824,14 @@
     },
     {
       "name": "show",
-      "description": "Draw on the player's screen only, for a while: a build preview (wire boxes or ghosts of the structures), or highlights through walls. Nothing in the world changes.",
+      "description": "Draw on the player's screen only, for a while: a build preview (wire boxes or ghosts of the structures), or highlights through walls; or save a picture of a thing to a PNG. Nothing in the world changes.",
       "inputSchema": {
         "type": "object",
         "properties": {
           "what": {
             "type": "string",
-            "enum": ["preview", "highlight", "ghost", "lattice"],
-            "description": "preview: a planned structure layout or cable, pipe or chute run (build's dry run) as wire boxes or see-through ghosts, plus cells and boxes; highlight: show the player where things, a network or far points are, tinted and labelled; ghost: persistent ghosts on the board; lattice: Lattice's local view"
+            "enum": ["preview", "highlight", "ghost", "lattice", "picture"],
+            "description": "preview: a planned structure layout or cable, pipe or chute run (build's dry run) as wire boxes or see-through ghosts, plus cells and boxes; highlight: show the player where things, a network or far points are, tinted and labelled; ghost: persistent ghosts on the board; lattice: Lattice's local view; picture: a PNG of a thing or the player from a placed camera"
           },
           "placements": {"type": "array", "description": "As build structure's placements."},
           "prefab": {
@@ -878,6 +878,20 @@
           "drafts": {"type": "object"},
           "clip": {"type": "object"},
           "highlight": {"type": "object"},
+          "id": {"type": "string"},
+          "yaw": {"type": "number"},
+          "pitch": {"type": "number"},
+          "distance": {"type": "number"},
+          "fov": {"type": "number"},
+          "width": {"type": "integer"},
+          "height": {"type": "integer"},
+          "file": {"type": "string"},
+          "folder": {"type": "string"},
+          "overwrite": {"type": "boolean"},
+          "lighting": {
+            "enum": ["scene", "neutral"],
+            "description": "scene (default) or neutral (a fixed light from the camera, for pictures that compare)."
+          },
           "fields": {"type": "array", "items": {"type": "string"}, "description": "Keys to keep."},
           "omit": {"type": "array", "items": {"type": "string"}, "description": "Key paths to leave out."},
           "list_limits": {"type": "object"},

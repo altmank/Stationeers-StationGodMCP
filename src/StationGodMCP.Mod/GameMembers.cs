@@ -207,6 +207,12 @@ internal static class GameMembers
         "CircuitHousing.IsOperable (getter)", () => AccessTools.PropertyGetter(typeof(CircuitHousing), "IsOperable")));
     internal static readonly GameField HousingDeviceLabels = Field(typeof(CircuitHousing), "_DeviceLabels");
 
+    // ---- Camera (show picture): the third-person culling mask, read so a picture shows the player's own body; optional,
+    // because a picture falls back to the layers it knows when a patch renames it ----
+    internal static readonly GameField CameraThirdPersonMask = Register(new GameField(
+        "CameraController._thirdPersonMask", () => typeof(CameraController).GetField("_thirdPersonMask", PrivateInstance),
+        optional: true));
+
     // ---- World and devices ----
     internal static readonly GameField DeviceDensePool = Field(typeof(Device), "_deviceDensePool");
 

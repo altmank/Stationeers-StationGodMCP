@@ -34,8 +34,12 @@
   "build_failed": {
     "description": "Building a piece failed part way; the message names the piece and why. The job stopped there; check what it built."
   },
+  "bad_path": {
+    "description": "show picture's name or folder is not a plain name inside the pictures folder ([Pictures] Folder): a .png name with no path in it, and a folder of plain names with no .. or drive.",
+    "see": {"verb": "show", "what": "picture"}
+  },
   "busy": {
-    "description": "Too many gas moves are already waiting for the next atmospherics tick (is the game paused?). Unpause, or queue and try again.",
+    "description": "Too much of this work is already waiting: gas moves for the next atmospherics tick (is the game paused? Unpause, or queue and try again), or a picture being taken (show picture: wait for its reply, then call again).",
     "see": {"verb": "inspect", "what": "job"}
   },
   "cancelled": {
@@ -88,6 +92,7 @@
     "see": {"verb": "write", "what": "screen"}
   },
   "engine_not_modelled": {"description": "The rocket has an engine the forecast has no model for. The forecast cannot run for this rocket."},
+  "file_exists": {"description": "show picture: a file of that name is already in the folder. Give another name, or overwrite: true.", "see": {"verb": "show", "what": "picture"}},
   "final_check_failed": {
     "description": "The check run once the tick stopped found problems, so nothing ran. The report lists them; fix them and run again."
   },
@@ -359,7 +364,7 @@
   "not_paintable": {"description": "The thing does not take write paint.", "see": {"verb": "write", "what": "paint"}},
   "not_ready": {"description": "The world is still loading. Try again in a moment.", "see": {"topic": "errors"}},
   "not_rendered": {
-    "description": "This game draws nothing (a dedicated server), so there is no picture of the screen. Read its elements instead.",
+    "description": "This game draws nothing (a dedicated server, -batchmode or -nographics), so there is no picture. inspect screen: read its elements instead; show picture: use a game with graphics.",
     "see": {"verb": "inspect", "what": "screen"}
   },
   "not_sold": {"description": "The trader does not trade that item. trade inventory lists what it buys and sells."},
@@ -443,6 +448,7 @@
   "remove_failed": {
     "description": "Removing a piece failed part way; the message names it and why. The job stopped there; check what it removed."
   },
+  "render_failed": {"description": "show picture could not render, read back or write the picture; the message says why.", "see": {"verb": "show", "what": "picture"}},
   "reply_too_large": {
     "description": "The reply is larger than allowed; the method ran. Narrow it with fields, limit or filters, or use output_file.",
     "see": {"topic": "shaping"}

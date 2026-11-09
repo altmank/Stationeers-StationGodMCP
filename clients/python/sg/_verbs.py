@@ -192,8 +192,9 @@ def show(what=None, *, fields=None, as_player=None, placements=None, prefab=None
         from_plan=None, style=None, tint=None, allow=None, cells=None, boxes=None, seconds=None, keep=None,
         clear=None, xray=None, verbose=None, targets=None, look=None, xray_strength=None, xray_range=None,
         xray_opacity=None, markers=None, remove=None, restyle=None, layer=None, set=None, drafts=None, clip=None,
-        highlight=None, **options):
-    """Draw on the player's screen only, for a while: a build preview (wire boxes or ghosts of the structures), or highlights through walls. sg.help('show', what) gives a what in full."""
+        highlight=None, id=None, yaw=None, pitch=None, distance=None, fov=None, width=None, height=None, file=None,
+        folder=None, overwrite=None, lighting=None, **options):
+    """Draw on the player's screen only, for a while: a build preview (wire boxes or ghosts of the structures), or highlights through walls; or save a picture of a thing to a PNG. sg.help('show', what) gives a what in full."""
     return verb_call('show', what, {'fields': fields, 'as_player': as_player, 'placements': placements, 'prefab':
                      prefab, 'at': at, 'rotation': rotation, 'facing': facing, 'up': up, 'face': face, 'orient':
                      orient, 'above_floor': above_floor, 'build_state': build_state, 'label': label, 'run': run,
@@ -201,7 +202,9 @@ def show(what=None, *, fields=None, as_player=None, placements=None, prefab=None
                      boxes, 'seconds': seconds, 'keep': keep, 'clear': clear, 'xray': xray, 'verbose': verbose,
                      'targets': targets, 'look': look, 'xray_strength': xray_strength, 'xray_range': xray_range,
                      'xray_opacity': xray_opacity, 'markers': markers, 'remove': remove, 'restyle': restyle,
-                     'layer': layer, 'set': set, 'drafts': drafts, 'clip': clip, 'highlight': highlight}, options)
+                     'layer': layer, 'set': set, 'drafts': drafts, 'clip': clip, 'highlight': highlight, 'id': id,
+                     'yaw': yaw, 'pitch': pitch, 'distance': distance, 'fov': fov, 'width': width, 'height': height,
+                     'file': file, 'folder': folder, 'overwrite': overwrite, 'lighting': lighting}, options)
 
 
 def undo(*, fields=None, as_player=None, id=None, **options):

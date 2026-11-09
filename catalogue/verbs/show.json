@@ -1,6 +1,6 @@
 {
   "verb": "show",
-  "description": "Draw on the player's screen only, for a while: a build preview (wire boxes or ghosts of the structures), or highlights through walls. Nothing in the world changes.",
+  "description": "Draw on the player's screen only, for a while: a build preview (wire boxes or ghosts of the structures), or highlights through walls; or save a picture of a thing to a PNG. Nothing in the world changes.",
   "read_only": true,
   "tool": {
     "options": {
@@ -12,7 +12,8 @@
       "omit": "Key paths to leave out.",
       "style": "boxes (default), ghost (the structures' own meshes, see-through) or both.",
       "run": "A cable, pipe or chute run to plan and draw: build's options with what.",
-      "from_plan": "A plan route or spot ref ('r9'): preview its build_arguments."
+      "from_plan": "A plan route or spot ref ('r9'): preview its build_arguments.",
+      "lighting": "scene (default) or neutral (a fixed light from the camera, for pictures that compare)."
     }
   },
   "whats": {
@@ -680,6 +681,152 @@
               "notes": "list[str]"
             }
           }
+        ]
+      }
+    },
+    "picture": {
+      "summary": "save a PNG of a thing or the player from a camera placed by yaw, pitch and distance (third person; the player's own view never moves)",
+      "brief": "a PNG of a thing or the player from a placed camera",
+      "options": {
+        "id": {
+          "schema": {
+            "type": "string"
+          },
+          "description": "The thing to picture: its id, \"looking_at\", or \"player\" (the local player).",
+          "default": "player",
+          "x-script": "same"
+        },
+        "yaw": {
+          "schema": {
+            "type": "number",
+            "minimum": -360,
+            "maximum": 360
+          },
+          "description": "Degrees around the thing from its front (a player's or other entity's body, whichever way it faces; the reply's target.front): 0 front, 90 its right side, 180 behind, 270 its left side.",
+          "default": "0",
+          "x-script": "same"
+        },
+        "pitch": {
+          "schema": {
+            "type": "number",
+            "minimum": -89,
+            "maximum": 89
+          },
+          "description": "Degrees above the thing's centre (looking down at it); negative is below.",
+          "default": "10",
+          "x-script": "same"
+        },
+        "distance": {
+          "schema": {
+            "type": "number",
+            "minimum": 0.2,
+            "maximum": 200
+          },
+          "description": "Metres from the thing's centre to the camera; left out, the thing's bounds fill the picture with a 10% margin.",
+          "x-script": "same"
+        },
+        "fov": {
+          "schema": {
+            "type": "number",
+            "minimum": 5,
+            "maximum": 120
+          },
+          "description": "Vertical field of view in degrees.",
+          "default": "40",
+          "x-script": "same"
+        },
+        "width": {
+          "schema": {
+            "type": "integer",
+            "minimum": 16,
+            "maximum": 4096
+          },
+          "description": "Picture width in pixels.",
+          "default": "1920",
+          "x-script": "same"
+        },
+        "height": {
+          "schema": {
+            "type": "integer",
+            "minimum": 16,
+            "maximum": 4096
+          },
+          "description": "Picture height in pixels.",
+          "default": "1080",
+          "x-script": "same"
+        },
+        "file": {
+          "schema": {
+            "type": "string"
+          },
+          "description": "The file's name: a plain name ending .png (letters, digits, space, - _ . only).",
+          "required": true,
+          "x-script": "same"
+        },
+        "folder": {
+          "schema": {
+            "type": "string"
+          },
+          "description": "A subfolder of the pictures folder ([Pictures] Folder in the mod's config), made when missing: plain names joined by /, no .. and no drive.",
+          "x-script": "same"
+        },
+        "overwrite": {
+          "schema": {
+            "type": "boolean"
+          },
+          "description": "Replace a file of that name; else the call is refused file_exists.",
+          "default": "false",
+          "x-script": "same"
+        },
+        "lighting": {
+          "schema": {
+            "type": "string",
+            "enum": [
+              "scene",
+              "neutral"
+            ]
+          },
+          "description": "scene: the world's own light as it is; neutral: for this picture only, the scene's directional lights off, a fixed white light from behind the camera and a flat grey ambient, so pictures taken at different times compare.",
+          "default": "scene",
+          "x-script": "same"
+        }
+      },
+      "text": [
+        "A temporary camera renders into a texture of width x height; the player's own camera and screen are never moved or changed, and the HUD is never in the picture.",
+        "The player's own body and worn things are drawn as in third person, whatever view the player is in.",
+        "The file is written after a few frames (the GPU's copy comes back without a stall); the reply comes once it is on disk. One picture at a time: a call while another is being taken is refused busy.",
+        "occluded_by names the first thing one ray from the camera to the thing's centre meets, when it is not the thing itself; a thing seen only through a gap can read null, so check the picture when it matters.",
+        "A game that draws nothing (-batchmode, -nographics, a dedicated server) is refused not_rendered."
+      ],
+      "example": {
+        "id": "player",
+        "yaw": 90,
+        "file": "suit-side.png",
+        "folder": "suits"
+      },
+      "x-cost": {
+        "class": "bounded",
+        "growth": "by-id"
+      },
+      "reply": {
+        "variants": [
+          {
+            "keys": {
+              "path": "str",
+              "width": "int",
+              "height": "int",
+              "bytes": "int",
+              "target": "{id: str, prefab: str, centre: Vec3, radius_m: float, front: {x: float, z: float}}",
+              "camera": "{position: Vec3, look_at: Vec3, yaw: float, pitch: float, fov: float, distance_m: float}",
+              "lighting": "str",
+              "occluded_by": "str | None",
+              "render_ms": "float",
+              "notes": "list[str]"
+            }
+          }
+        ],
+        "types": [
+          "Vec3"
         ]
       }
     }

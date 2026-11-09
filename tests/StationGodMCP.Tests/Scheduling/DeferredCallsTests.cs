@@ -81,6 +81,58 @@ public sealed class DeferredCallsTests
     }
 
     [Fact]
+    public void DroppedWorkThatHoldsSomethingIsDisposedOnEveryPathButItsAnswer()
+    {
+        LaneScheduler scheduler = Scheduler();
+        HeldWork cancelled = new HeldWork(new FakeWork(_clock, 0.5, 1000));
+        HeldWork timedOut = new HeldWork(new FakeWork(_clock, 0.5, 1000));
+        HeldWork otherWorld = new HeldWork(new FakeWork(_clock, 0.5, 1000));
+        HeldWork ended = new HeldWork(new FakeWork(_clock, 0.5, 1000));
+        HeldWork broken = new HeldWork(new FakeWork(_clock, 0.5, 1000));
+        HeldWork answered = new HeldWork(new FakeWork(_clock, 0.1, 3));
+        object closing = new object();
+        HeldWork closed = new HeldWork(new FakeWork(_clock, 0.5, 1000));
+        DeferredCall cancelCall = new DeferredCall(_connection, new CallContext("c1", 11), cancelled);
+        scheduler.Add(cancelCall);
+        DeferredCall late = new DeferredCall(_connection, new CallContext("c1", 12), timedOut, deadlineMs: 50);
+        scheduler.Add(late);
+        scheduler.Add(new DeferredCall(_connection, new CallContext("c1", 13), otherWorld));
+        scheduler.Add(new DeferredCall(_connection, new CallContext("c1", 14), ended));
+        scheduler.Add(new DeferredCall(_connection, new CallContext("c1", 15), broken));
+        scheduler.Add(new DeferredCall(_connection, new CallContext("c1", 16), answered));
+        scheduler.Add(new DeferredCall(closing, new CallContext("c2", 1), closed));
+        // One heavy call starts a frame: start all seven first.
+        for (int frame = 0; frame < 7; frame++)
+        {
+            scheduler.RunFrame(false, null, new NoRunner());
+        }
+
+        Assert.Equal(6, scheduler.Deferred.Count);
+
+        cancelCall.RequestCancel();
+        broken.Throws = true;
+        scheduler.EndStreams(_connection, StreamEnd.Of("c1", 14));
+        scheduler.Deferred.Closed(closing);
+        _clock.Advance(late.DeadlineAtMs);
+        for (int frame = 0; frame < 40 && (broken.Disposed == 0 || scheduler.Deferred.Count > 1); frame++)
+        {
+            scheduler.RunFrame(false, null, new NoRunner());
+        }
+
+        _world = "w2";
+        scheduler.RunFrame(false, null, new NoRunner());
+
+        Assert.Equal(0, scheduler.Deferred.Count);
+        Assert.Equal(1, cancelled.Disposed);
+        Assert.Equal(1, timedOut.Disposed);
+        Assert.Equal(1, otherWorld.Disposed);
+        Assert.Equal(1, ended.Disposed);
+        Assert.Equal(1, broken.Disposed);
+        Assert.Equal(1, closed.Disposed);
+        Assert.Equal(0, answered.Disposed);
+    }
+
+    [Fact]
     public void ACancelAfterTheStartStopsTheWork()
     {
         LaneScheduler scheduler = Scheduler();
@@ -238,6 +290,24 @@ public sealed class DeferredCallsTests
     private LaneScheduler Scheduler(int heavyMaxWaitFrames = 10) =>
         new LaneScheduler(new SchedulerSettings(BudgetMs, 0, 1, heavyMaxWaitFrames, 16), new StreamStores(), _clock,
             () => new WorldFacts(_world, null, 0));
+
+    /// <summary>Work that holds something (show picture's texture, gate and file): counts its Dispose calls.</summary>
+    private sealed class HeldWork : IDeferredWork, IDisposable
+    {
+        private readonly FakeWork _inner;
+
+        internal HeldWork(FakeWork inner) => _inner = inner;
+
+        internal int Disposed { get; private set; }
+
+        internal bool Throws { get; set; }
+
+        public bool Step(double untilMs) => Throws ? throw new InvalidOperationException("broken work") : _inner.Step(untilMs);
+
+        public ReplyLine Finish() => _inner.Finish();
+
+        public void Dispose() => Disposed++;
+    }
 
     /// <summary>Work that costs the clock stepMs a step and is ready after steps steps.</summary>
     private sealed class FakeWork : IDeferredWork

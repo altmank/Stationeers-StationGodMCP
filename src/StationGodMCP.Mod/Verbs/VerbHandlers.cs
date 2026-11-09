@@ -111,6 +111,7 @@ internal static class VerbHandlers
         VerbHandler.For(ShowGhostOptions.Spec, ShowGhostOptions.Bind, ShowGhost.Run),
         VerbHandler.For(ShowLatticeOptions.Spec, ShowLatticeOptions.Bind, ShowLattice.Run),
         VerbHandler.For(ShowHighlightOptions.Spec, ShowHighlight.Call.Bind, ShowHighlight.Run),
+        VerbHandler.For(ShowPictureOptions.Spec, ShowPicture.Call.Bind, ShowPicture.Run),
         VerbHandler.For(ServerCommandOptions.Spec, ServerCommandOptions.Bind, ServerCommand.Run),
         VerbHandler.For(ServerConsoleOptions.Spec, ServerConsoleOptions.Bind, ServerConsole.Run),
         VerbHandler.For(ServerInfoOptions.Spec, ServerInfoOptions.Bind, ServerInfo.Run),

@@ -1,0 +1,20 @@
+Save a PNG of a thing or the player from a camera placed by yaw, pitch and distance (third person; the player's own view never moves).
+Options:
+- id (string, default player): The thing to picture: its id, "looking_at", or "player" (the local player).
+- yaw (number, default 0): Degrees around the thing from its front (a player's or other entity's body, whichever way it faces; the reply's target.front): 0 front, 90 its right side, 180 behind, 270 its left side.
+- pitch (number, default 10): Degrees above the thing's centre (looking down at it); negative is below.
+- distance (number): Metres from the thing's centre to the camera; left out, the thing's bounds fill the picture with a 10% margin.
+- fov (number, default 40): Vertical field of view in degrees.
+- width (integer, default 1920): Picture width in pixels.
+- height (integer, default 1080): Picture height in pixels.
+- file (string, required): The file's name: a plain name ending .png (letters, digits, space, - _ . only).
+- folder (string): A subfolder of the pictures folder ([Pictures] Folder in the mod's config), made when missing: plain names joined by /, no .. and no drive.
+- overwrite (boolean, default false): Replace a file of that name; else the call is refused file_exists.
+- lighting (scene | neutral, default scene): scene: the world's own light as it is; neutral: for this picture only, the scene's directional lights off, a fixed white light from behind the camera and a flat grey ambient, so pictures taken at different times compare.
+A temporary camera renders into a texture of width x height; the player's own camera and screen are never moved or changed, and the HUD is never in the picture.
+The player's own body and worn things are drawn as in third person, whatever view the player is in.
+The file is written after a few frames (the GPU's copy comes back without a stall); the reply comes once it is on disk. One picture at a time: a call while another is being taken is refused busy.
+occluded_by names the first thing one ray from the camera to the thing's centre meets, when it is not the thing itself; a thing seen only through a gap can read null, so check the picture when it matters.
+A game that draws nothing (-batchmode, -nographics, a dedicated server) is refused not_rendered.
+Reply: path, width, height, bytes, target {id, prefab, centre, radius_m, front}, camera {position, look_at, yaw, pitch, fov, distance_m}, lighting, occluded_by, render_ms, notes
+Example: show {what: "picture", id: "player", yaw: 90, file: "suit-side.png", folder: "suits"}

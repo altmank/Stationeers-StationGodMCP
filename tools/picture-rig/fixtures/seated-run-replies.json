@@ -1,0 +1,363 @@
+{
+ "player": {
+  "reference_id": "38",
+  "prefab_name": "Character",
+  "display_name": "Recruit",
+  "custom_name": "Recruit",
+  "game_name": "Character",
+  "kind": "entity",
+  "runtime_type": "Human",
+  "labelable": false,
+  "location": "stored",
+  "carried_by": null,
+  "held_in": [
+   {
+    "reference_id": "39",
+    "prefab_name": "LanderCapsuleSmall",
+    "display_name": "Lander Capsule",
+    "slot_index": 1,
+    "slot_name": "Seat"
+   }
+  ],
+  "position": {
+   "x": -1294.3,
+   "y": 272.9,
+   "z": -718.2
+  },
+  "distance_m": 0.3,
+  "is_device": false,
+  "has_atmosphere": true,
+  "is_broken": false,
+  "condition": "intact"
+ },
+ "scene_front_before": {
+  "path": "scene-front-before.png",
+  "width": 1920,
+  "height": 1080,
+  "bytes": 191533,
+  "target": {
+   "id": "38",
+   "prefab": "Character",
+   "centre": {
+    "x": -1293.9,
+    "y": 204.7,
+    "z": -718.0
+   },
+   "radius_m": 0.82
+  },
+  "camera": {
+   "position": {
+    "x": -1291.6,
+    "y": 205.2,
+    "z": -716.8
+   },
+   "look_at": {
+    "x": -1293.9,
+    "y": 204.7,
+    "z": -718.0
+   },
+   "yaw": 0.0,
+   "pitch": 10.0,
+   "fov": 40.0,
+   "distance_m": 2.65
+  },
+  "lighting": "scene",
+  "occluded_by": null,
+  "render_ms": 105.66,
+  "notes": [],
+  "truncated": []
+ },
+ "neutral_front": {
+  "path": "neutral-front.png",
+  "width": 1920,
+  "height": 1080,
+  "bytes": 3530467,
+  "target": {
+   "id": "38",
+   "prefab": "Character",
+   "centre": {
+    "x": -1293.9,
+    "y": 204.7,
+    "z": -718.0
+   },
+   "radius_m": 0.82
+  },
+  "camera": {
+   "position": {
+    "x": -1291.7,
+    "y": 205.2,
+    "z": -716.8
+   },
+   "look_at": {
+    "x": -1293.9,
+    "y": 204.7,
+    "z": -718.0
+   },
+   "yaw": 0.0,
+   "pitch": 10.0,
+   "fov": 40.0,
+   "distance_m": 2.65
+  },
+  "lighting": "neutral",
+  "occluded_by": null,
+  "render_ms": 19.81,
+  "notes": [
+   "Neutral lighting: the scene's directional lights were off for this picture only; point and spot lights stayed."
+  ],
+  "truncated": []
+ },
+ "neutral_side": {
+  "path": "neutral-side.png",
+  "width": 1920,
+  "height": 1080,
+  "bytes": 3494633,
+  "target": {
+   "id": "38",
+   "prefab": "Character",
+   "centre": {
+    "x": -1293.9,
+    "y": 204.7,
+    "z": -718.0
+   },
+   "radius_m": 0.82
+  },
+  "camera": {
+   "position": {
+    "x": -1292.6,
+    "y": 205.2,
+    "z": -720.3
+   },
+   "look_at": {
+    "x": -1293.9,
+    "y": 204.7,
+    "z": -718.0
+   },
+   "yaw": 90.0,
+   "pitch": 10.0,
+   "fov": 40.0,
+   "distance_m": 2.65
+  },
+  "lighting": "neutral",
+  "occluded_by": "39",
+  "render_ms": 25.97,
+  "notes": [
+   "Neutral lighting: the scene's directional lights were off for this picture only; point and spot lights stayed."
+  ],
+  "truncated": []
+ },
+ "neutral_back": {
+  "path": "neutral-back.png",
+  "width": 1920,
+  "height": 1080,
+  "bytes": 3264203,
+  "target": {
+   "id": "38",
+   "prefab": "Character",
+   "centre": {
+    "x": -1293.9,
+    "y": 204.7,
+    "z": -718.1
+   },
+   "radius_m": 0.82
+  },
+  "camera": {
+   "position": {
+    "x": -1296.2,
+    "y": 205.2,
+    "z": -719.3
+   },
+   "look_at": {
+    "x": -1293.9,
+    "y": 204.7,
+    "z": -718.1
+   },
+   "yaw": 180.0,
+   "pitch": 10.0,
+   "fov": 40.0,
+   "distance_m": 2.65
+  },
+  "lighting": "neutral",
+  "occluded_by": "39",
+  "render_ms": 2.28,
+  "notes": [
+   "Neutral lighting: the scene's directional lights were off for this picture only; point and spot lights stayed."
+  ],
+  "truncated": []
+ },
+ "scene_front": {
+  "path": "scene-front.png",
+  "width": 1920,
+  "height": 1080,
+  "bytes": 891197,
+  "target": {
+   "id": "38",
+   "prefab": "Character",
+   "centre": {
+    "x": -1293.9,
+    "y": 204.7,
+    "z": -718.1
+   },
+   "radius_m": 0.82
+  },
+  "camera": {
+   "position": {
+    "x": -1291.7,
+    "y": 205.2,
+    "z": -716.8
+   },
+   "look_at": {
+    "x": -1293.9,
+    "y": 204.7,
+    "z": -718.1
+   },
+   "yaw": 0.0,
+   "pitch": 10.0,
+   "fov": 40.0,
+   "distance_m": 2.65
+  },
+  "lighting": "scene",
+  "occluded_by": "41",
+  "render_ms": 11.85,
+  "notes": [],
+  "truncated": []
+ },
+ "scene_side": {
+  "path": "scene-side.png",
+  "width": 1920,
+  "height": 1080,
+  "bytes": 872049,
+  "target": {
+   "id": "38",
+   "prefab": "Character",
+   "centre": {
+    "x": -1293.9,
+    "y": 204.7,
+    "z": -718.1
+   },
+   "radius_m": 0.82
+  },
+  "camera": {
+   "position": {
+    "x": -1292.6,
+    "y": 205.2,
+    "z": -720.3
+   },
+   "look_at": {
+    "x": -1293.9,
+    "y": 204.7,
+    "z": -718.1
+   },
+   "yaw": 90.0,
+   "pitch": 10.0,
+   "fov": 40.0,
+   "distance_m": 2.65
+  },
+  "lighting": "scene",
+  "occluded_by": "39",
+  "render_ms": 2.09,
+  "notes": [],
+  "truncated": []
+ },
+ "scene_back": {
+  "path": "scene-back.png",
+  "width": 1920,
+  "height": 1080,
+  "bytes": 1635519,
+  "target": {
+   "id": "38",
+   "prefab": "Character",
+   "centre": {
+    "x": -1293.9,
+    "y": 204.7,
+    "z": -718.1
+   },
+   "radius_m": 0.82
+  },
+  "camera": {
+   "position": {
+    "x": -1296.2,
+    "y": 205.2,
+    "z": -719.4
+   },
+   "look_at": {
+    "x": -1293.9,
+    "y": 204.7,
+    "z": -718.1
+   },
+   "yaw": 180.0,
+   "pitch": 10.0,
+   "fov": 40.0,
+   "distance_m": 2.65
+  },
+  "lighting": "scene",
+  "occluded_by": "39",
+  "render_ms": 2.3,
+  "notes": [],
+  "truncated": []
+ },
+ "neutral_4096": {
+  "path": "neutral-front-4096.png",
+  "width": 4096,
+  "height": 4096,
+  "bytes": 17318364,
+  "target": {
+   "id": "38",
+   "prefab": "Character",
+   "centre": {
+    "x": -1293.9,
+    "y": 204.7,
+    "z": -718.1
+   },
+   "radius_m": 0.82
+  },
+  "camera": {
+   "position": {
+    "x": -1291.7,
+    "y": 205.2,
+    "z": -716.8
+   },
+   "look_at": {
+    "x": -1293.9,
+    "y": 204.7,
+    "z": -718.1
+   },
+   "yaw": 0.0,
+   "pitch": 10.0,
+   "fov": 40.0,
+   "distance_m": 2.65
+  },
+  "lighting": "neutral",
+  "occluded_by": null,
+  "render_ms": 2.89,
+  "notes": [
+   "Neutral lighting: the scene's directional lights were off for this picture only; point and spot lights stayed."
+  ],
+  "truncated": []
+ },
+ "refusals": {
+  "escape": {
+   "error": {
+    "code": "bad_path",
+    "message": "show picture: folder '../..' is not plain names under the pictures folder (letters, digits, space, - _ . only; no .., no drive, no leading /).",
+    "fix": null,
+    "data": null
+   }
+  },
+  "device": {
+   "error": {
+    "code": "bad_path",
+    "message": "show picture: file 'con.png' is not a plain .png name (letters, digits, space, - _ . only, up to 100 characters, no folder in it).",
+    "fix": null,
+    "data": null
+   }
+  },
+  "exists": {
+   "error": {
+    "code": "file_exists",
+    "message": "scrubbed",
+    "fix": null,
+    "data": null
+   }
+  }
+ }
+}

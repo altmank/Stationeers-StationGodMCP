@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- **`show picture`: a PNG of a thing or the player from a placed camera.** `id` (default `"player"`), `yaw` (0 the
+  thing's front, 90 its right side, 180 behind), `pitch`, `distance` (left out, the thing fills the picture), `fov`,
+  `width` and `height` (1920x1080 by default, up to 4096 a side), and `file` and `folder` under the pictures folder.
+  A temporary camera renders into a texture, so the player's own view, camera and HUD never change, and the player's
+  body and worn suit show as in third person, whatever the view. `lighting: "neutral"` swaps the scene's sun for a
+  fixed light for that picture only, so pictures taken at different times compare. The reply gives the path, the
+  size, the pose used and `occluded_by`. One picture at a time (`busy`); a game without graphics refuses
+  `not_rendered`; `file_exists` unless `overwrite`. New setting `[Pictures] Folder`: every picture stays inside it
+  (`bad_path` otherwise: no `..`, drives, device names or links). A cancelled or timed-out call leaves no file. The
+  sg client has `sg.show('picture', ...)`. A player's front is its body's facing (the way it last looked while
+  standing), not the world's north, and the reply's `target.front` says which way that was.
+
 - **Build: deploys take the game lock themselves.** `build.ps1 -Deploy` and `-DeployOnly` take
   the game lock (`-LockScript`, default `STATIONEERS_GAME_LOCK`), only around removing and copying the mod
   folder, and release it even when the copy fails. `-NoLock` deploys without one; `-LockHeld` is for a caller that

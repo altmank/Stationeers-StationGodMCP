@@ -1,10 +1,11 @@
-Draw on the player's screen only, for a while: a build preview (wire boxes or ghosts of the structures), or highlights through walls. Nothing in the world changes.
+Draw on the player's screen only, for a while: a build preview (wire boxes or ghosts of the structures), or highlights through walls; or save a picture of a thing to a PNG. Nothing in the world changes.
 
 whats:
 - preview: a planned structure layout or cable, pipe or chute run (build's dry run) as wire boxes or see-through ghosts, plus cells and boxes
 - highlight: show the player where things, a network or far points are, tinted and labelled
 - ghost: put planned structures on the world's ghost board, where every player sees them until they are built or taken off; or take ghosts off
 - lattice: Lattice's view on this seat (never synced): style layers, ghost and structure sets, drafts, the clip, highlights
+- picture: save a PNG of a thing or the player from a camera placed by yaw, pitch and distance (third person; the player's own view never moves)
 
 On every call: fields, omit, list_limits, output_file, whole, repeat, as_player (help {topic: "shaping"}).
 help {verb: "show", what} gives a what's options, reply keys and an example.

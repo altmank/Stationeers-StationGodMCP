@@ -135,6 +135,7 @@ public sealed class StationGodMod : ModBehaviour
             Api.Shared.Game.GatewayMaps.Verify = PerformanceSettings.VerifyFacts;
             Net.StationGodNet.Register(MultiplayerSettings.ShareViews(configuration));
             GhostSettings.Load(configuration);
+            Api.Shared.Game.Show.PictureSettings.Load(configuration);
             GhostControls.LoadTint();
             LaneScheduler scheduler = new LaneScheduler(PerformanceSettings.Scheduler, world: CallWorld);
             _dispatcher = new StationGodRequestDispatcher(Deadlines, scheduler);

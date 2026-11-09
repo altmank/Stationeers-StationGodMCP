@@ -163,7 +163,7 @@ public sealed class VerbCatalogueTests
     [Fact]
     public void EveryOtherIdTakesAList()
     {
-        string[] oneId = { "write chip", "write screen", "write uplink", "write flight_log", "write memory", "write genes", "server stop" };
+        string[] oneId = { "write chip", "write screen", "write uplink", "write flight_log", "write memory", "write genes", "server stop", "show picture" };
         List<string> single = new();
         foreach ((string verb, string what, JsonObject source) in VerbCatalogue.Whats())
         {

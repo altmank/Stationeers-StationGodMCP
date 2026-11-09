@@ -16,7 +16,8 @@ namespace StationGodMCP.Protocol;
 /// passing game_timeout, another world loading world_changed; its stream's end (stream_end, a whole connection's end)
 /// answers it cancelled and its connection's close drops it; its owner's session_end answers it cancelled too, and a
 /// call a shutdown answered (shutting_down, from the connection's thread) is dropped. A stopped call's work is dropped
-/// and holds nothing.
+/// and holds nothing: work that holds something of its own (an IDisposable: show picture's render texture, its gate and
+/// its unwritten file) is disposed when it is dropped, on every path but its own answer.
 /// Each slice is timed on the clock, from its first step to its serialised reply when it answers, and handed to
 /// sliceRan with its call: a call's cost is its run and every slice.
 /// Main thread only; a frame allocates nothing here beyond what the work does.
@@ -158,12 +159,26 @@ internal sealed class DeferredCalls : ISliceLane
         entry.Call.Finish(entry.Call.RefusalReply(code, message, data), entry.Method);
     }
 
+    // Drops a call's work unanswered by it: work that holds something is disposed (a failure there is logged).
     private void RemoveAt(int index)
     {
+        IDeferredWork work = _entries[index].Work;
         _entries.RemoveAt(index);
         if (index < _next)
         {
             _next--;
+        }
+
+        if (work is IDisposable held)
+        {
+            try
+            {
+                held.Dispose();
+            }
+            catch (Exception exception)
+            {
+                ProtocolLog.Warning($"A dropped deferred call's work failed to let go: {exception}");
+            }
         }
     }
 

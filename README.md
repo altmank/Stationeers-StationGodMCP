@@ -96,7 +96,7 @@ topic that explains it.
 | `remove` | Take things away as a player would, with refunds and guards. |
 | `move` | Move items, gas and players. |
 | `trade` | Trade with traders: contacts in the sky, what each buys and sells, and buying or selling with the landed trader. |
-| `show` | Draw on the player's screen only, for a while: a build preview, or highlights through walls. |
+| `show` | Draw on the player's screen only, for a while: a build preview, or highlights through walls; or save a PNG of a thing or the player (`show picture`). |
 | `undo` | Undo a finished build or removal job, a bulk write (write-N), a script run (script-14: the whole run, newest first), or the newest blueprint paste. |
 | `server` | StationGod and the game server: mod version, health and costs, profiling, the in-game console. |
 | `help` | StationGod's help: `help {}` lists verbs and topics; `{verb}` a verb's whats and options; `{verb, what}` one what in full; `{topic}` a shared topic. |
@@ -209,6 +209,8 @@ finished run's writes can be taken back with `undo {id: "script-14"}`.
   wall or frame in a way that opens a room. Every job that changes pipe networks checks their contents before and
   after (`gas_check`) and stops further pipe jobs if anything went missing, until the world is reloaded or the user
   agrees to accept the loss (`acknowledge_gas_lost`).
+- **Pictures stay in one folder.** `show picture` writes PNGs only under `[Pictures] Folder` (default
+  `BepInEx\StationGodMCP\pictures`); a caller names a file and a subfolder, never a path elsewhere on the machine.
 - **Remote access is not encrypted.** Over TCP the shared secret keeps out anyone without it, but the secret and
   everything after it travel in plain text: use a private network or a VPN.
 - **After a game update** the mod checks at load every game member it relies on. A missing one turns off only the
@@ -229,6 +231,7 @@ finished run's writes can be taken back with `undo {id: "script-14"}`.
 - [Walls, frames and structures](docs/walls-frames-structures.md)
 - [Lint rules](docs/lint-rules.md): the rule file, your own rules per save, the rule language, fields and functions.
 - [Blueprints](docs/blueprints.md)
+- [Pictures](docs/pictures.md): `show picture`, a PNG of a thing or the player from a placed camera.
 - [Building from source](docs/building-from-source.md) (maintainers)
 - [Changes per version](CHANGELOG.md)
 
