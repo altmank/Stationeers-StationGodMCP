@@ -26,6 +26,8 @@ param(
     [string] $SettingFrom = $env:SG_RIG_SETTINGS,
     # StationGod's staged package folder (its leaf is the mod's folder name); the only mod.
     [string] $Mod,
+    # Other mods' package folders staged beside StationGod (a load check with an optional dependency, such as Lattice).
+    [string[]] $WithMods = @(),
     # The saved world's folder in the world library (default: loom-small there); its player is the client's.
     [string] $World = $(if ($env:STATIONGOD_TEST_WORLDS) { Join-Path $env:STATIONGOD_TEST_WORLDS 'loom-small' }),
     [string] $Hub,
@@ -65,7 +67,7 @@ $pipeRe = [regex]::Escape($Pipe) -replace '\\', '\\'
 $phases = '{"bepinex":"Chainloader startup complete","stationgod":"Pipe name: ' + $pipeRe + '"}'
 $bepCfg = '{"net.xceled.stationeers.stationgodmcp.cfg":"[Pipe]\r\n\r\nName = ' + $Pipe + '\r\n\r\n[Pictures]\r\n\r\nFolder = {out}\\shots\r\n"}'
 $runArgs = @{
-    Mod = 'sg-camera-shot'; Owner = $Owner; Mods = @($Mod); RigVMPin = $RigVMCommit; LockWaitMinutes = $LockWaitMinutes
+    Mod = 'sg-camera-shot'; Owner = $Owner; Mods = @(@($Mod) + $WithMods); RigVMPin = $RigVMCommit; LockWaitMinutes = $LockWaitMinutes
     Save = $World; GameArgs = '-load {savename}'
     PhasesJson = $phases; DoneGlob = '{out}\done-*'; Require = @('stationgod'); BepCfgJson = $bepCfg
     PreLaunch = "$here\vm\prelaunch.ps1"; OnPoll = "$here\vm\onpoll.ps1"; Judge = "$here\vm\judge.ps1"
