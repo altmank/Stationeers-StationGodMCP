@@ -40,7 +40,7 @@ internal static class PrefabRecipes
     }
 
     // The recipe's amounts: every double field of Recipe (Iron, Copper, Solder, Potato...) above zero.
-    private static Dictionary<string, double> Inputs(Recipe recipe)
+    internal static Dictionary<string, double> Inputs(Recipe recipe)
     {
         Dictionary<string, double> inputs = new Dictionary<string, double>();
         object boxed = recipe;

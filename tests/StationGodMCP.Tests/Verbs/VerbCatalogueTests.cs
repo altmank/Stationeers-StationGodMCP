@@ -163,7 +163,7 @@ public sealed class VerbCatalogueTests
     [Fact]
     public void EveryOtherIdTakesAList()
     {
-        string[] oneId = { "write chip", "write screen", "write uplink", "write flight_log", "write memory", "write genes", "server stop", "show picture" };
+        string[] oneId = { "write fabricator", "write chip", "write screen", "write uplink", "write flight_log", "write memory", "write genes", "server stop", "show picture" };
         List<string> single = new();
         foreach ((string verb, string what, JsonObject source) in VerbCatalogue.Whats())
         {
@@ -386,7 +386,7 @@ public sealed class VerbCatalogueTests
               "swap.chute": "plan",
               "trade.buy": "instant", "trade.sell": "instant",
               "undo": "plan",
-              "write.memory": "instant", "write.battery": "instant", "write.genes": "bounded",
+              "write.memory": "instant", "write.battery": "instant", "write.fabricator": "instant", "write.genes": "bounded",
               "remove.terrain": "world", "write.health": "instant", "build.terrain": "world", "build.item": "instant",
               "write.lattice": "bounded"
             }
@@ -435,7 +435,7 @@ public sealed class VerbCatalogueTests
 
         Assert.True(problems.Count == 0, string.Join("\n", problems));
         Assert.True(expected.Count == 0, "no x-cost-report for: " + string.Join(", ", expected.Select(pair => pair.Key)));
-        Assert.Equal(30, confirmRoute);
+        Assert.Equal(31, confirmRoute);
     }
 
     /// <summary>
@@ -466,7 +466,7 @@ public sealed class VerbCatalogueTests
             Assert.Equal(acting, spec.CostFor(JObject.Parse("""{"confirm": true}""")).Class);
         }
 
-        Assert.Equal(30, confirmRoute);
+        Assert.Equal(31, confirmRoute);
     }
 
     // The cost class a catalogue word names.
@@ -582,7 +582,9 @@ public sealed class VerbCatalogueTests
         // build terrain's mode, level and ores say how it fills, not where
         "build terrain.mode", "build terrain.level", "build terrain.ores", "build terrain.into_frames",
         // build item's prefab and quantity say what it makes, not which thing it acts on
-        "build item.prefab"
+        "build item.prefab",
+        // write fabricator's prefab, load and make say what it makes and loads, not which fabricator it acts on
+        "write fabricator.prefab", "write fabricator.load", "write fabricator.make"
     };
 
     [Fact]

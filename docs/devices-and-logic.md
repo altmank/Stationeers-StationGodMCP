@@ -39,6 +39,7 @@ memory, but for any device in the world at once and without a chip.
 | `read clock` | Game time, paused or not, time of day, days past. | none |
 | `server command` | Any console command, with the lines it printed. | `command`, `lines` |
 | `write battery` | A cheat: set the charge of single batteries, full or to a ratio or joules (see *Batteries*). | `id`, or `rocket`, or `within`; `ratio` or `joules`; `confirm` |
+| `write fabricator` | A cheat: make a recipe's item on a fabricator at once (see `docs/items.md`, *Making a recipe on a fabricator*). | `id`, `prefab`, `load`, `make`, `confirm` |
 | `server console` | The latest console lines, including Unity errors and stack traces. | `lines` |
 | `server info` | Mod version, pipe name, call statistics per method, and every game member the mod relies on. | none |
 | `server profiling` | Switch the runtime profiler on or off, clear it, or read its report: what StationGod costs the main thread per frame, per call and per job tick hold (see *Profiling a running server*). | `action`, `slow_frame_ms`, `csv` |

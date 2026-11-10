@@ -1,0 +1,14 @@
+Make a recipe's item on a fabricator at once (time and energy skipped), optionally loading ingots first: replies with the item made, the stock before and after, and what was consumed.
+Reports first; confirm: true does it.
+Cheat.
+Options:
+- id (string, required): One fabricator's reference id (Autolathe, Tool Manufactory, Electronics Printer, Pipe Bender...).
+- prefab (string or integer): The item to make: a whole prefab name or hash (ItemMKIIWrench). Needed unless make is false.
+- load (list): Ingots added to the fabricator's stock first, as its import would: [{prefab, quantity}], quantity in ingot units.
+- make (boolean, default true): false: only load; nothing is made.
+- confirm (boolean, default false): true acts; false only reports, whatever the call names (typed ids included). Left out, the write rule decides: typed ids act at once where the verb acts on them; a ref, network or spread reports.
+A cheat: the item is made at once; the recipe's time and energy are skipped, and no power is drawn. The reply's `skipped` says how much.
+Uses the fabricator's own recipes, tier and build-state multipliers, and the game's own make (stock subtracted, item created in the output slot). The game then exports the item as usual; find it later by id or `find thing {made_by}`.
+Refused, with nothing loaded or made, when: the fabricator has no such recipe or its tier is too low; it is busy (making, open, or its output slot taken); it is off, unpowered, in error or unfinished; or its stock (after load) lacks an ingredient.
+Reply: ready, fabricator {reference_id, prefab_name, display_name}, tier, recipe {prefab_name, display_name, tier, time_s, energy_j, inputs}, multipliers {time, energy, material, output}, loaded [{prefab_name, reagent, quantity}], stock_before, stock_after, consumed, missing, made [{reference_id, prefab_name, display_name, quantity, slot}], skipped {time_s, energy_j}
+Example: write {what: "fabricator", id: "5200100", prefab: "ItemMKIIWrench", load: [{prefab: "ItemIronIngot", quantity: 3}, {prefab: "ItemElectrumIngot", quantity: 3}], confirm: true}

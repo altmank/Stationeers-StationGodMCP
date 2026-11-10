@@ -6,6 +6,7 @@
 - **New: `[Rig] MaxFps`, an opt-in frame cap** (default 0 = off; `-sgfps N` overrides it for one run). The picture rig sets 30.
 - **Build: a deploy no longer keeps the version it replaces.** The backup step 2.17.1 added to `build.ps1 -Deploy` and`
   `-DeployOnly` is gone (source control is the backup); deploys still take the game lock and refuse while the game runs.
+- **write fabricator: make a recipe's item on a fabricator at once.** A cheat that finishes one make on any Autolathe, Tool Manufactory, Electronics Printer or other printer-family machine in a single call, optionally loading ingots first, and replies with the item made, the stock before and after and what was consumed. It uses the fabricator's own recipes, tier and multipliers; the recipe's time and energy are skipped.
 
 ## 2.17.1
 
