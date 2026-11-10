@@ -271,6 +271,17 @@ if ($LASTEXITCODE -ne 0) { throw "Build failed with exit code $LASTEXITCODE." }
 $dll = Join-Path $root 'StationGodMCP.dll'
 if (-not (Test-Path $dll)) { throw "Build produced no DLL at $dll" }
 
+# The built DLL laid out as a game without Lattice lays it out (LatticeFieldsTests): a field, closure or cached lambda
+# typed with Lattice's types logs a TypeLoadException for every reader of the mod's types there.
+Write-Host "Checking $version without Lattice"
+$env:SG_MOD_DLL = $dll
+try {
+    dotnet test (Join-Path $root 'tests\StationGodMCP.Tests\StationGodMCP.Tests.csproj') --no-build -nologo -v q `
+        --filter 'FullyQualifiedName~LatticeFieldsTests'
+}
+finally { Remove-Item Env:SG_MOD_DLL -ErrorAction SilentlyContinue }
+if ($LASTEXITCODE -ne 0) { throw "The built DLL names Lattice in a type's layout (LatticeFieldsTests); nothing was staged." }
+
 $staging = Join-Path ([System.IO.Path]::GetTempPath()) ('StationGodMCP-sidecar-' + [guid]::NewGuid().ToString('N'))
 $server = Join-Path $root 'src\StationGodMCP.Server\StationGodMCP.Server.csproj'
 $portable = Join-Path $staging 'portable'

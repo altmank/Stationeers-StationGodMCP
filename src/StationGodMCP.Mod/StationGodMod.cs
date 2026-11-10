@@ -169,10 +169,12 @@ public sealed class StationGodMod : ModBehaviour
     }
 
     // Each patch class on its own, so a missing target (already logged by GameMembers.CheckAll) costs only the patch
-    // that needs it; PatchAll would stop at the first failure and leave the rest unpatched.
+    // that needs it; PatchAll would stop at the first failure and leave the rest unpatched. The types come from
+    // LoadableTypes, not AccessTools.GetTypesFromAssembly: no patch class is under LatticeLink, so those are never read,
+    // and a type that cannot load is skipped quietly rather than logged as a HarmonyX warning (2.16.1, without Lattice).
     private static void PatchEachClass(Harmony harmony)
     {
-        foreach (Type type in AccessTools.GetTypesFromAssembly(typeof(StationGodMod).Assembly))
+        foreach (Type type in LoadableTypes.Readable(typeof(StationGodMod).Assembly, latticeLoaded: false))
         {
             if (!type.IsDefined(typeof(HarmonyPatch), false))
             {

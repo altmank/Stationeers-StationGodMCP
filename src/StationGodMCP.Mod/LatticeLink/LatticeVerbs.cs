@@ -62,7 +62,7 @@ internal static class LatticeVerbs
                 ? new JObject
                 {
                     ["record"] = load.Record is L.SaveRecord.Found ? "found" : "missing",
-                    ["ahead"] = LatticeOut.Each(load.Ahead, plan => new JObject { ["plan"] = plan.Plan.Value, ["changes"] = plan.Changes })
+                    ["ahead"] = LatticeOut.Each(load.Ahead, PlanAhead)
                 }
                 : JValue.CreateNull(),
             "template" => Template(system, read, args),
@@ -84,21 +84,19 @@ internal static class LatticeVerbs
             "executors" => read.Ghost(args["ghost"], "args.ghost") is { } claimed ? Executors(system, write, claimed) : null,
             "story" => Story(system, read, write, args),
             "export" => read.Plan(args["plan"], "args.plan") is { } exported
-                ? Result(system.Inspector.Export(exported), read, "args.plan", lines => LatticeOut.Each(lines, line => new JValue(line)))
+                ? Result(system.Inspector.Export(exported), read, "args.plan", ExportLines)
                 : null,
             "catalogue" => Catalogue(system, read, write, args, notes),
             "ports" => PlacementOf(system, read, args) is { } placed
                 ? Result(system.Catalogue.PortsAt(placed), read, "args", ports => LatticeOut.Each(ports, write.Port))
                 : null,
             "facing" => PlacementOf(system, read, args) is { } faced
-                ? Result(system.Catalogue.FacingOf(faced), read, "args",
-                    axis => axis.TryGet(out L.Axis normal) ? new JValue(LatticeOut.Axis(normal)) : JValue.CreateNull())
+                ? Result(system.Catalogue.FacingOf(faced), read, "args", Facing)
                 : null,
             "families" => read.Piece(args["piece"], "args.piece") is { } piece
-                ? Result(system.Catalogue.FamiliesOf(piece), read, "args.piece", families => LatticeOut.Each(families, family => new JValue(family.Value)))
+                ? Result(system.Catalogue.FamiliesOf(piece), read, "args.piece", Families)
                 : null,
-            "groups" => LatticeOut.Each(system.Board.As(LatticeNames.Agent).Groups,
-                group => new JObject { ["name"] = group.Name.Value, ["count"] = group.Count }),
+            "groups" => LatticeOut.Each(system.Board.As(LatticeNames.Agent).Groups, Group),
             "modules" => Modules(system),
             "world" => World(system, read, write, args),
             "explain" => read.Ghost(args["ghost"], "args.ghost") is { } explained
@@ -128,6 +126,23 @@ internal static class LatticeVerbs
         reply["notes"] = new JArray(notes.ToArray());
         return new LatticeAnswer(reply);
     }
+
+    // The mappings Ask hands on are static methods, never lambdas that capture nothing: such a lambda is cached in a
+    // field typed with Lattice's types, which a game without Lattice lays out and fails on (LatticeFieldsTests).
+    private static JToken PlanAhead(L.PlanAhead plan) => new JObject { ["plan"] = plan.Plan.Value, ["changes"] = plan.Changes };
+
+    private static JToken ExportLines(L.ValueList<string> lines) => LatticeOut.Each(lines, ExportLine);
+
+    private static JToken ExportLine(string line) => new JValue(line);
+
+    private static JToken Facing(L.Option<L.Axis> axis) =>
+        axis.TryGet(out L.Axis normal) ? new JValue(LatticeOut.Axis(normal)) : JValue.CreateNull();
+
+    private static JToken Families(L.ValueList<L.PieceFamily> families) => LatticeOut.Each(families, Family);
+
+    private static JToken Family(L.PieceFamily family) => new JValue(family.Value);
+
+    private static JToken Group(L.GroupCount group) => new JObject { ["name"] = group.Name.Value, ["count"] = group.Count };
 
     private static LatticeOut Out(L.IGhostSystem system) =>
         new LatticeOut(system, static hash => Prefab.Find(hash) is Thing prefab && prefab != null ? prefab.PrefabName : null);
@@ -219,10 +234,12 @@ internal static class LatticeVerbs
         }
 
         answer["facts"] = Pending(system.Plans.Facts(id), read, "args.plan", reply, write.Facts);
-        answer["state"] = Pending(system.Plans.State(id), read, "args.plan", reply, state => new JValue(LatticeOut.PlanState(state)));
+        answer["state"] = Pending(system.Plans.State(id), read, "args.plan", reply, PlanState);
         answer["ahead_of_save"] = Result(system.Plans.AheadOfSave(id), read, "args.plan", ahead => new JValue(ahead));
         return answer;
     }
+
+    private static JToken PlanState(L.PlanState state) => new JValue(LatticeOut.PlanState(state));
 
     private static JToken? Template(L.IGhostSystem system, LatticeIn read, JObject args)
     {
@@ -269,20 +286,22 @@ internal static class LatticeVerbs
             answer["claim"] = new JObject { ["by"] = claim.By.Value, ["until_s"] = claim.Until.Seconds };
         }
 
-        answer["status"] = LatticeOut.Each(system.Executors.StatusOf(ghost), report => new JObject
-        {
-            ["by"] = report.By.Id.Value,
-            ["name"] = report.By.Name.Value,
-            ["status"] = report.Status switch
-            {
-                L.ExecutorStatus.Waiting waiting => new JObject { ["waiting"] = LatticeOut.Reason(waiting.Why) },
-                L.ExecutorStatus.Working working => new JObject { ["working"] = new JObject { ["step"] = working.Step, ["of"] = working.Of } },
-                L.ExecutorStatus.Paused => new JValue("paused"),
-                _ => new JValue(report.Status.GetType().Name)
-            }
-        });
+        answer["status"] = LatticeOut.Each(system.Executors.StatusOf(ghost), ExecutorReport);
         return answer;
     }
+
+    private static JToken ExecutorReport(L.ExecutorReport report) => new JObject
+    {
+        ["by"] = report.By.Id.Value,
+        ["name"] = report.By.Name.Value,
+        ["status"] = report.Status switch
+        {
+            L.ExecutorStatus.Waiting waiting => new JObject { ["waiting"] = LatticeOut.Reason(waiting.Why) },
+            L.ExecutorStatus.Working working => new JObject { ["working"] = new JObject { ["step"] = working.Step, ["of"] = working.Of } },
+            L.ExecutorStatus.Paused => new JValue("paused"),
+            _ => new JValue(report.Status.GetType().Name)
+        }
+    };
 
     // Contract 0.22. No args: every registered builder. builder: that one and its plans. plan: its builders and where
     // each stands, progress, ghosts no claim holds, and what its builders set aside for it.
@@ -297,19 +316,24 @@ internal static class LatticeVerbs
                 return null;
             }
 
+            // Loops, not lambdas: a lambda here would capture executors and plan in fields typed with Lattice's
+            // types, which a game without Lattice lays out and fails on (LatticeFieldsTests).
+            JArray builders = new JArray();
+            foreach (L.Assignment assignment in executors.AssignedTo(plan))
+            {
+                JObject written = LatticeOut.Assignment(assignment);
+                if (BuilderOf(assignment) is { } by)
+                {
+                    written["progress"] = LatticeOut.Progress(executors.ProgressOf(plan, by));
+                }
+
+                builders.Add(written);
+            }
+
             return new JObject
             {
                 ["plan"] = plan.Value,
-                ["builders"] = LatticeOut.Each(executors.AssignedTo(plan), assignment =>
-                {
-                    JObject written = LatticeOut.Assignment(assignment);
-                    if (BuilderOf(assignment) is { } by)
-                    {
-                        written["progress"] = LatticeOut.Progress(executors.ProgressOf(plan, by));
-                    }
-
-                    return written;
-                }),
+                ["builders"] = builders,
                 ["progress"] = LatticeOut.Progress(executors.ProgressOf(plan)),
                 ["unclaimed"] = executors.UnclaimedIn(plan),
                 ["supply_toward"] = write.Quantities(executors.SupplyToward(plan)),
@@ -323,13 +347,16 @@ internal static class LatticeVerbs
                 return null;
             }
 
+            JArray plans = new JArray();
+            foreach (L.PlanId plan in executors.PlansOf(id))
+            {
+                plans.Add(new JObject { ["plan"] = plan.Value, ["progress"] = LatticeOut.Progress(executors.ProgressOf(plan, id)) });
+            }
+
             return new JObject
             {
                 ["builder"] = executors.Find(id).TryGet(out L.Builder found) ? write.Builder(found) : null,
-                ["plans"] = LatticeOut.Each(executors.PlansOf(id), plan => new JObject
-                {
-                    ["plan"] = plan.Value, ["progress"] = LatticeOut.Progress(executors.ProgressOf(plan, id))
-                }),
+                ["plans"] = plans,
             };
         }
 
@@ -364,14 +391,21 @@ internal static class LatticeVerbs
     {
         if (LatticeIn.Given(args, "piece"))
         {
-            return read.Piece(args["piece"], "args.piece") is { } piece
-                ? Result(system.Catalogue.Piece(piece), read, "args.piece", entry =>
-                {
-                    JObject written = write.PieceEntry(entry);
-                    written["family"] = system.Catalogue.FamilyOf(piece).TryGet(out L.PieceFamily family) ? family.Value : null;
-                    return written;
-                })
-                : null;
+            if (read.Piece(args["piece"], "args.piece") is not { } piece)
+            {
+                return null;
+            }
+
+            // No lambda: it would capture system and piece in fields typed with Lattice's types (LatticeFieldsTests).
+            L.Result<L.PieceEntry, L.Reason> asked = system.Catalogue.Piece(piece);
+            if (!asked.TryGet(out L.PieceEntry entry))
+            {
+                return Result(asked, read, "args.piece", write.PieceEntry);
+            }
+
+            JObject written = write.PieceEntry(entry);
+            written["family"] = system.Catalogue.FamilyOf(piece).TryGet(out L.PieceFamily family) ? family.Value : null;
+            return written;
         }
 
         if (LatticeIn.Given(args, "kit"))
@@ -460,14 +494,16 @@ internal static class LatticeVerbs
             ["contract"] = $"{system.Version.Major}.{system.Version.Minor}",
             ["built_against"] = $"{L.ApiVersion.ContractMajor}.{L.ApiVersion.ContractMinor}",
             ["intents"] = intents,
-            ["modules"] = LatticeOut.Each(system.Modules, module => new JObject
-            {
-                ["name"] = module.Name.Value,
-                ["on"] = module.State is L.ModuleState.On,
-                ["why_off"] = module.State is L.ModuleState.Off off ? LatticeOut.Reason(off.Why) : null
-            }),
+            ["modules"] = LatticeOut.Each(system.Modules, Module),
         };
     }
+
+    private static JToken Module(L.ModuleStatus module) => new JObject
+    {
+        ["name"] = module.Name.Value,
+        ["on"] = module.State is L.ModuleState.On,
+        ["why_off"] = module.State is L.ModuleState.Off off ? LatticeOut.Reason(off.Why) : null
+    };
 
     private static JToken? World(L.IGhostSystem system, LatticeIn read, LatticeOut write, JObject args)
     {
@@ -574,7 +610,8 @@ internal static class LatticeVerbs
         };
     }
 
-    // PickRay is a struct; MadeRef wants a class, so it travels boxed.
+    // PickRay is a struct; MadeRef wants a class, so it travels boxed. Held as object: a field typed PickRay is laid
+    // out, and fails, in a game without Lattice (LatticeFieldsTests).
     private static L.Result<RayBox, L.Reason> Box(L.Result<L.PickRay, L.Reason> made) =>
         made.TryGet(out L.PickRay ray)
             ? L.Result<RayBox, L.Reason>.Ok(new RayBox(ray))
@@ -584,9 +621,11 @@ internal static class LatticeVerbs
 
     private sealed class RayBox
     {
-        internal RayBox(L.PickRay ray) => Ray = ray;
+        private readonly object _ray;
 
-        internal L.PickRay Ray { get; }
+        internal RayBox(L.PickRay ray) => _ray = ray;
+
+        internal L.PickRay Ray => (L.PickRay)_ray;
     }
 
     private static JToken Clip(L.ClipShape clip) => clip switch

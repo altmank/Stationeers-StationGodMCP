@@ -14,49 +14,54 @@ namespace StationGodMCP.LatticeLink.Json;
 /// </summary>
 internal sealed partial class LatticeIn
 {
-    internal static readonly Dictionary<string, L.PaletteKey> LibraryColours = new Dictionary<string, L.PaletteKey>
+    // Lattice's own keys by name. In a static class of their own: LatticeIn is laid out when a game without Lattice
+    // reads its types, and a static field typed with Lattice's types fails then (LatticeFieldsTests).
+    internal static class Library
     {
-        ["planned"] = L.LibraryPalette.Planned, ["next"] = L.LibraryPalette.Next, ["waits"] = L.LibraryPalette.Waits,
-        ["fail"] = L.LibraryPalette.Fail, ["warn"] = L.LibraryPalette.Warn, ["remove"] = L.LibraryPalette.Remove,
-        ["stale"] = L.LibraryPalette.Stale, ["draft"] = L.LibraryPalette.Draft, ["select"] = L.LibraryPalette.Select,
-    };
+        internal static readonly Dictionary<string, L.PaletteKey> Colours = new Dictionary<string, L.PaletteKey>
+        {
+            ["planned"] = L.LibraryPalette.Planned, ["next"] = L.LibraryPalette.Next, ["waits"] = L.LibraryPalette.Waits,
+            ["fail"] = L.LibraryPalette.Fail, ["warn"] = L.LibraryPalette.Warn, ["remove"] = L.LibraryPalette.Remove,
+            ["stale"] = L.LibraryPalette.Stale, ["draft"] = L.LibraryPalette.Draft, ["select"] = L.LibraryPalette.Select,
+        };
 
-    internal static readonly Dictionary<string, L.PaletteId> LibraryPaletteIds = new Dictionary<string, L.PaletteId>
-    {
-        ["default"] = L.LibraryPalettes.Default, ["colour-safe"] = L.LibraryPalettes.ColourSafe,
-        ["high-contrast"] = L.LibraryPalettes.HighContrast,
-    };
+        internal static readonly Dictionary<string, L.PaletteId> PaletteIds = new Dictionary<string, L.PaletteId>
+        {
+            ["default"] = L.LibraryPalettes.Default, ["colour-safe"] = L.LibraryPalettes.ColourSafe,
+            ["high-contrast"] = L.LibraryPalettes.HighContrast,
+        };
 
-    internal static readonly Dictionary<string, L.IconKey> LibraryIconKeys = new Dictionary<string, L.IconKey>
-    {
-        ["fails"] = L.LibraryIcons.Fails, ["warns"] = L.LibraryIcons.Warns, ["remove"] = L.LibraryIcons.Remove,
-        ["swap"] = L.LibraryIcons.Swap, ["finish"] = L.LibraryIcons.Finish, ["stale"] = L.LibraryIcons.Stale,
-        ["waiting"] = L.LibraryIcons.Waiting, ["paused"] = L.LibraryIcons.Paused,
-    };
+        internal static readonly Dictionary<string, L.IconKey> IconKeys = new Dictionary<string, L.IconKey>
+        {
+            ["fails"] = L.LibraryIcons.Fails, ["warns"] = L.LibraryIcons.Warns, ["remove"] = L.LibraryIcons.Remove,
+            ["swap"] = L.LibraryIcons.Swap, ["finish"] = L.LibraryIcons.Finish, ["stale"] = L.LibraryIcons.Stale,
+            ["waiting"] = L.LibraryIcons.Waiting, ["paused"] = L.LibraryIcons.Paused,
+        };
 
-    internal static readonly Dictionary<string, L.MaterialKey> LibraryMaterials = new Dictionary<string, L.MaterialKey>
-    {
-        ["ghost"] = L.MaterialKeys.Ghost, ["solid"] = L.MaterialKeys.Solid, ["wire"] = L.MaterialKeys.Wire,
-        ["edge"] = L.MaterialKeys.Edge, ["see-through"] = L.MaterialKeys.SeeThrough, ["glow"] = L.MaterialKeys.Glow,
-        ["label"] = L.MaterialKeys.Label, ["faded"] = L.MaterialKeys.Faded,
-    };
+        internal static readonly Dictionary<string, L.MaterialKey> Materials = new Dictionary<string, L.MaterialKey>
+        {
+            ["ghost"] = L.MaterialKeys.Ghost, ["solid"] = L.MaterialKeys.Solid, ["wire"] = L.MaterialKeys.Wire,
+            ["edge"] = L.MaterialKeys.Edge, ["see-through"] = L.MaterialKeys.SeeThrough, ["glow"] = L.MaterialKeys.Glow,
+            ["label"] = L.MaterialKeys.Label, ["faded"] = L.MaterialKeys.Faded,
+        };
 
-    internal static readonly Dictionary<string, L.PieceFamily> LibraryFamilies = new Dictionary<string, L.PieceFamily>
-    {
-        ["cable"] = L.PieceFamilies.Cable, ["pipe"] = L.PieceFamilies.Pipe, ["chute"] = L.PieceFamilies.Chute,
-        ["frame"] = L.PieceFamilies.Frame, ["wall"] = L.PieceFamilies.Wall, ["window"] = L.PieceFamilies.Window,
-        ["device"] = L.PieceFamilies.Device, ["other"] = L.PieceFamilies.Other,
-    };
+        internal static readonly Dictionary<string, L.PieceFamily> Families = new Dictionary<string, L.PieceFamily>
+        {
+            ["cable"] = L.PieceFamilies.Cable, ["pipe"] = L.PieceFamilies.Pipe, ["chute"] = L.PieceFamilies.Chute,
+            ["frame"] = L.PieceFamilies.Frame, ["wall"] = L.PieceFamilies.Wall, ["window"] = L.PieceFamilies.Window,
+            ["device"] = L.PieceFamilies.Device, ["other"] = L.PieceFamilies.Other,
+        };
 
-    internal static readonly Dictionary<string, L.StyleSetId> LibrarySetIds = new Dictionary<string, L.StyleSetId>
-    {
-        ["selected"] = L.LibrarySets.Selected, ["hovered"] = L.LibrarySets.Hovered,
-    };
+        internal static readonly Dictionary<string, L.StyleSetId> SetIds = new Dictionary<string, L.StyleSetId>
+        {
+            ["selected"] = L.LibrarySets.Selected, ["hovered"] = L.LibrarySets.Hovered,
+        };
 
-    internal static readonly Dictionary<string, L.TextStyleKey> LibraryTextStyles = new Dictionary<string, L.TextStyleKey>
-    {
-        ["default"] = L.LibraryText.Default,
-    };
+        internal static readonly Dictionary<string, L.TextStyleKey> TextStyles = new Dictionary<string, L.TextStyleKey>
+        {
+            ["default"] = L.LibraryText.Default,
+        };
+    }
 
     /// <summary>A key: one of Lattice's own (bare), or a mod's "owner/name".</summary>
     internal T? Key<T>(JToken? token, string path, Dictionary<string, T> library, Func<L.ModId, string, L.Result<T, L.Reason>> create)
@@ -84,11 +89,11 @@ internal sealed partial class LatticeIn
             : null;
     }
 
-    internal L.PaletteKey? Colour(JToken? token, string path) => Key(token, path, LibraryColours, L.PaletteKey.Create);
+    internal L.PaletteKey? Colour(JToken? token, string path) => Key(token, path, Library.Colours, L.PaletteKey.Create);
 
-    internal L.StyleSetId? SetId(JToken? token, string path) => Key(token, path, LibrarySetIds, L.StyleSetId.Create);
+    internal L.StyleSetId? SetId(JToken? token, string path) => Key(token, path, Library.SetIds, L.StyleSetId.Create);
 
-    internal L.PieceFamily? Family(JToken? token, string path) => Key(token, path, LibraryFamilies, L.PieceFamily.Create);
+    internal L.PieceFamily? Family(JToken? token, string path) => Key(token, path, Library.Families, L.PieceFamily.Create);
 
     // ---- measures ----------------------------------------------------------------------------------------------
 
@@ -286,7 +291,7 @@ internal sealed partial class LatticeIn
                     {
                         style = style with { Icon = L.Option.Some<L.IconLook>(new L.IconLook.None()) };
                     }
-                    else if (Key(value, at, LibraryIconKeys, L.IconKey.Create) is { } icon)
+                    else if (Key(value, at, Library.IconKeys, L.IconKey.Create) is { } icon)
                     {
                         style = style with { Icon = L.Option.Some<L.IconLook>(new L.IconLook.Shown(icon)) };
                     }
@@ -332,7 +337,7 @@ internal sealed partial class LatticeIn
 
                     break;
                 case "material":
-                    if (Key(value, at, LibraryMaterials, L.MaterialKey.Create) is { } material)
+                    if (Key(value, at, Library.Materials, L.MaterialKey.Create) is { } material)
                     {
                         style = style with { Material = L.Option.Some(material) };
                     }
@@ -558,7 +563,7 @@ internal sealed partial class LatticeIn
 
         L.LabelText? says = LabelText(shown["says"], at + ".says");
         L.TextStyleKey? textStyle = Given(shown, "style")
-            ? Key(shown["style"], at + ".style", LibraryTextStyles, L.TextStyleKey.Create)
+            ? Key(shown["style"], at + ".style", Library.TextStyles, L.TextStyleKey.Create)
             : L.LibraryText.Default;
         L.LabelAnchor? anchor = L.LabelAnchor.Above;
         if (Given(shown, "anchor") && Case(shown["anchor"], at + ".anchor", "above", "centre", "below") is { } where)
@@ -805,7 +810,7 @@ internal sealed partial class LatticeIn
             ? EachValue(palette["owner_ramp"], path + ".owner_ramp", Rgba)
             : L.ValueList<L.Rgba>.Empty;
         L.Option<L.PaletteId> under = L.Option<L.PaletteId>.None;
-        if (Given(palette, "base") && Key(palette["base"], path + ".base", LibraryPaletteIds, L.PaletteId.Create) is { } baseId)
+        if (Given(palette, "base") && Key(palette["base"], path + ".base", Library.PaletteIds, L.PaletteId.Create) is { } baseId)
         {
             under = L.Option.Some(baseId);
         }
