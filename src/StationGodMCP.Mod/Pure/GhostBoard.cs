@@ -104,6 +104,49 @@ internal sealed class GhostBoard
         return added;
     }
 
+    /// <summary>
+    /// Adds ghosts that already hold ids, after what the board holds. A ghost keeps its id unless the board has that id
+    /// (then it takes the next, listed in remapped); one on the spot of another of the same prefab and turn replaces it.
+    /// Ghosts that do not fit a full board are counted in dropped.
+    /// </summary>
+    internal List<(long Old, long New)> Merge(IEnumerable<BoardGhost> ghosts, out int dropped)
+    {
+        List<(long Old, long New)> remapped = new List<(long Old, long New)>();
+        dropped = 0;
+        foreach (BoardGhost ghost in ghosts)
+        {
+            int same = IndexOfSame(ghost.PrefabHash, ghost.Position, ghost.Euler);
+            if (same >= 0)
+            {
+                _ghosts.RemoveAt(same);
+            }
+            else if (_ghosts.Count >= Maximum)
+            {
+                dropped++;
+                continue;
+            }
+
+            long id = ghost.Id;
+            if (id <= 0 || _ghosts.Exists(held => held.Id == id))
+            {
+                if (id > 0)
+                {
+                    remapped.Add((id, _next));
+                }
+
+                id = _next++;
+            }
+            else
+            {
+                _next = Math.Max(_next, id + 1);
+            }
+
+            _ghosts.Add(ghost.WithId(id));
+        }
+
+        return remapped;
+    }
+
     /// <summary>Takes the ghost off; false when there is none with that id.</summary>
     internal bool Remove(long id)
     {

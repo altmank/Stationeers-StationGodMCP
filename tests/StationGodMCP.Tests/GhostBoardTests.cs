@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.RemoteView;
@@ -38,6 +39,68 @@ public sealed class GhostBoardTests
         Assert.Equal(2, second.Id);
         Assert.Equal(3, third.Id);
         Assert.False(board.Remove(99));
+    }
+
+    [Fact]
+    public void GhostsPlacedBeforeTheFileWasReadAreKeptOnTopOfIt()
+    {
+        GhostBoard read = new GhostBoard();
+        read.Add(Ghost(1, 0), out _);
+        read.Add(Ghost(2, 5), out _);
+        GhostBoard early = new GhostBoard();
+        early.Add(Ghost(3, 10), out _);
+        early.Add(Ghost(1, 0, label: "placed"), out _);
+
+        List<(long Old, long New)> remapped = read.Merge(early.All, out int dropped);
+
+        Assert.Equal(0, dropped);
+        Assert.Equal(3, read.Count);
+        Assert.Equal(new[] { 2, 3, 1 }, read.All.Select(ghost => ghost.PrefabHash));
+        Assert.Equal("placed", read.All[2].Label);
+        // early ids 1 and 2 both collide with the file's ghosts (id 1 is still there when the first arrives)
+        Assert.Equal(new[] { (1L, 3L), (2L, 4L) }, remapped);
+        Assert.Equal(new[] { 2L, 3L, 4L }, read.All.Select(ghost => ghost.Id));
+    }
+
+    [Fact]
+    public void AnEarlyGhostKeepsItsIdUnlessTheFilesGhostHasIt()
+    {
+        GhostBoard read = new GhostBoard();
+        read.Add(Ghost(1, 0), out _);
+        GhostBoard early = new GhostBoard();
+        early.Add(Ghost(2, 5), out _);
+        early.Add(Ghost(3, 10), out _);
+        early.Remove(1);
+        early.Add(Ghost(4, 15), out _); // ids 2 and 3
+
+        List<(long Old, long New)> remapped = read.Merge(early.All, out _);
+
+        Assert.Equal(new[] { 1L, 2L, 3L }, read.All.Select(ghost => ghost.Id));
+        Assert.Empty(remapped);
+
+        GhostBoard clash = new GhostBoard();
+        clash.Add(Ghost(5, 20), out _); // id 1 collides
+        remapped = read.Merge(clash.All, out _);
+        Assert.Equal(new[] { (1L, 4L) }, remapped);
+        Assert.Equal(4L, read.All[3].Id);
+    }
+
+    [Fact]
+    public void MergeIntoAFullBoardCountsWhatItDrops()
+    {
+        GhostBoard read = new GhostBoard();
+        for (int index = 0; index < GhostBoard.Maximum; index++)
+        {
+            read.Add(Ghost(1, index * 5), out _);
+        }
+
+        GhostBoard early = new GhostBoard();
+        early.Add(Ghost(2, 0), out _);
+
+        read.Merge(early.All, out int dropped);
+
+        Assert.Equal(1, dropped);
+        Assert.Equal(GhostBoard.Maximum, read.Count);
     }
 
     [Fact]
