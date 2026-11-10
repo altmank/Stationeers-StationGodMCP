@@ -104,13 +104,13 @@ public sealed class SurvivalWireTests
     {
         PlayerGearView worn = new PlayerGearView(new ThingView(new ThingId(5), "ItemHardSuit", "Hardsuit"),
             new ThingView(new ThingId(6), "ItemHardsuitHelmet", "Helmet"),
-            new JetpackView(new ThingView(new ThingId(7), "ItemJetpackBasic", "Jetpack"), true),
+            new JetpackView(new ThingView(new ThingId(7), "ItemJetpackBasic", "Jetpack"), true, false),
             new SuitMovementView(0.8f, 1f, 9));
         WireCheck.Same(new
         {
             suit = new { reference_id = "5", prefab_name = "ItemHardSuit", display_name = "Hardsuit" },
             helmet = new { reference_id = "6", prefab_name = "ItemHardsuitHelmet", display_name = "Helmet" },
-            jetpack = new { reference_id = "7", prefab_name = "ItemJetpackBasic", display_name = "Jetpack", on = true },
+            jetpack = new { reference_id = "7", prefab_name = "ItemJetpackBasic", display_name = "Jetpack", stabilizer = true, active = false },
             suit_movement = new { speed_multiplier = 0.8f, storm_speed_multiplier = (float?)1f, slot_count = 9 }
         }, worn);
         WireCheck.Same(new

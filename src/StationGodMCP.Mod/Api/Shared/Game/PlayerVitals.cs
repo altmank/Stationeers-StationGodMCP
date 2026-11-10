@@ -10,6 +10,7 @@ using Assets.Scripts.Objects.Items;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Api.Views;
 using UnityEngine;
+using Weather;
 
 namespace StationGodMCP.Api.Shared.Game;
 
@@ -55,52 +56,77 @@ internal static class PlayerVitals
             warnings, GearOf(human));
     }
 
-    // Worn gear. The jetpack comes from Human.TryGetJetpack, the lookup MovementController uses; the speed multiplier is
-    // read off Human.Suit and the storm one off the SuitBase in the suit slot, as MovementController reads them.
+    // Worn gear. The suit is the one SuitWorn finds, so gear.suit agrees with suit_worn, and the speed comes from that
+    // suit. The jetpack comes from Human.TryGetJetpack, the lookup MovementController uses (Human.cs:4299), guarded
+    // against the slots it dereferences being absent. jetpack.active is MovementController.ControlMode == Mode.Jetpack,
+    // the mode that gates thrust (MovementController.cs:315, 389-402); the stabilizer is Jetpack.OnOff
+    // (Jetpack.cs:147, 685).
     private static PlayerGearView GearOf(Human human)
     {
-        Thing? suit = human.SuitSlot?.Get();
+        ISuit? suit = WornSuit(human);
         Thing? helmet = human.HelmetSlot?.Get();
         JetpackView? jetpack = null;
-        if (human.TryGetJetpack(out Jetpack found) && found != null)
+        if (human.SuitSlot != null && human.BackpackSlot != null && human.TryGetJetpack(out Jetpack found) &&
+            found != null)
         {
-            jetpack = new JetpackView(GameLookup.ViewOf(found), found.OnOff);
+            bool active = human.MovementController != null &&
+                          human.MovementController.ControlMode == MovementController.Mode.Jetpack;
+            jetpack = new JetpackView(GameLookup.ViewOf(found), found.OnOff, active);
         }
 
         SuitMovementView? movement = null;
-        if (suit != null)
+        Thing? suitThing = suit?.AsThing;
+        if (suit != null && suitThing != null)
         {
-            float speed = human.Suit != null ? human.Suit.MovementSpeedMultiplier : 1f;
-            float? storm = suit is SuitBase suitBase ? suitBase.StormMovementSpeedMultiplier : null;
-            movement = new SuitMovementView(speed, storm, suit.Slots != null ? suit.Slots.Count : 0);
+            movement = new SuitMovementView(suit.MovementSpeedMultiplier, StormSpeedOf(suit),
+                suitThing.Slots != null ? suitThing.Slots.Count : 0);
         }
 
-        return new PlayerGearView(suit != null ? GameLookup.ViewOf(suit) : null,
+        return new PlayerGearView(suitThing != null ? GameLookup.ViewOf(suitThing) : null,
             helmet != null ? GameLookup.ViewOf(helmet) : null, jetpack, movement);
+    }
+
+    // SuitBase.StormMovementSpeedMultiplier is 0 with no weather event (GetValueOrDefault, SuitBase.cs:355): not a
+    // speed, so null then, and null for a suit that is not a SuitBase.
+    private static float? StormSpeedOf(ISuit suit)
+    {
+        if (!(suit is SuitBase suitBase) || WeatherManager.CurrentWeatherEvent?.MovementSpeedMultiplier == null)
+        {
+            return null;
+        }
+
+        return suitBase.StormMovementSpeedMultiplier;
     }
 
     // Worn: Human.Suit, or a suit in any suit-class slot. Human.SuitSlot is only the last suit-class slot Awake found,
     // so a second one (another mod's) leaves it empty with the suit on (LIVE 2026-10-24: suit_worn false in a hardsuit).
-    private static bool SuitWorn(Human human)
+    private static ISuit? WornSuit(Human human)
     {
-        if (human.Suit != null || (human.SuitSlot != null && human.SuitSlot.Contains<ISuit>()))
+        if (human.Suit != null)
         {
-            return true;
+            return human.Suit;
+        }
+
+        if (human.SuitSlot != null && human.SuitSlot.Contains<ISuit>(out ISuit inSuitSlot))
+        {
+            return inSuitSlot;
         }
 
         if (human.Slots != null)
         {
             foreach (Slot slot in human.Slots)
             {
-                if (slot != null && slot.Type == Slot.Class.Suit && slot.Contains<ISuit>())
+                if (slot != null && slot.Type == Slot.Class.Suit && slot.Contains<ISuit>(out ISuit inSlot))
                 {
-                    return true;
+                    return inSlot;
                 }
             }
         }
 
-        return false;
+        return null;
     }
+
+    private static bool SuitWorn(Human human) => WornSuit(human) != null;
 
     private static BodyState StateOf(Human human)
     {

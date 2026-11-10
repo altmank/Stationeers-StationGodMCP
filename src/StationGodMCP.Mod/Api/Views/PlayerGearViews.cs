@@ -30,12 +30,13 @@ internal sealed class PlayerGearView
 
 internal sealed class JetpackView
 {
-    internal JetpackView(ThingView thing, bool on)
+    internal JetpackView(ThingView thing, bool stabilizer, bool active)
     {
         ReferenceId = thing.ReferenceId;
         PrefabName = thing.PrefabName;
         DisplayName = thing.DisplayName;
-        On = on;
+        Stabilizer = stabilizer;
+        Active = active;
     }
 
     public ThingId ReferenceId { get; }
@@ -44,12 +45,16 @@ internal sealed class JetpackView
 
     public string? DisplayName { get; }
 
-    public bool On { get; }
+    /// <summary>The stabilizer switch (Jetpack.OnOff), not thrust.</summary>
+    public bool Stabilizer { get; }
+
+    /// <summary>MovementController.ControlMode is Mode.Jetpack: the mode that gates thrust.</summary>
+    public bool Active { get; }
 }
 
 /// <summary>
-/// The suit's multipliers as the movement code reads them: MovementSpeedMultiplier from Human.Suit, the storm one from
-/// the SuitBase in the suit slot (null when that suit is not a SuitBase).
+/// The suit's multipliers as the movement code reads them: MovementSpeedMultiplier from the worn suit, the storm one from
+/// the suit when it is a SuitBase (null when it is not, or when no weather event is active).
 /// </summary>
 internal sealed class SuitMovementView
 {
