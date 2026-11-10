@@ -11,7 +11,7 @@ namespace StationGodMCP.Server;
 /// shape.limit; the mod applies them and marks the reply shaped, and the sidecar never shapes a reply the mod sent.
 /// output_file never reaches the game: the reply is written on this machine.
 /// </summary>
-internal sealed partial record SidecarArguments(JsonElement Forwarded, JsonElement? Fields, OutputChoice Output,
+internal sealed record SidecarArguments(JsonElement Forwarded, JsonElement? Fields, OutputChoice Output,
     JsonElement? Omit = null, JsonElement? Limits = null, int? MaxBytes = null)
 {
     internal const string FieldsArgument = "fields";
@@ -87,7 +87,7 @@ internal sealed partial record SidecarArguments(JsonElement Forwarded, JsonEleme
         foreach (JsonElement selector in selectors.EnumerateArray())
         {
             string text = selector.ValueKind == JsonValueKind.String ? selector.GetString()!.Trim() : selector.GetRawText();
-            List<string> into = selector.ValueKind == JsonValueKind.String && Selector().IsMatch(text) ? parsed : unparsed;
+            List<string> into = selector.ValueKind == JsonValueKind.String && Selector.IsMatch(text) ? parsed : unparsed;
             // Each once, without LINQ: the verb pipeline shapes every call through here.
             if (into.IndexOf(text) < 0)
             {
@@ -181,8 +181,8 @@ internal sealed partial record SidecarArguments(JsonElement Forwarded, JsonEleme
         arguments.TryGetProperty(name, out JsonElement value) && value.ValueKind != JsonValueKind.Null;
 
     // protocol.md, Field selectors: name *( "." name ), name = 1*( ALPHA / DIGIT / "_" ).
-    [GeneratedRegex("^[A-Za-z0-9_]+(\\.[A-Za-z0-9_]+)*$")]
-    private static partial Regex Selector();
+    // A plain Regex, not [GeneratedRegex]: the generator names its type from a hash of the source path, which made the sidecar differ between folders (P47).
+    private static readonly Regex Selector = new(@"^[A-Za-z0-9_]+(\.[A-Za-z0-9_]+)*$", RegexOptions.CultureInvariant);
 }
 
 /// <summary>The selectors the sidecar could not send, by argument: each is reported as unmatched in the reply.</summary>
