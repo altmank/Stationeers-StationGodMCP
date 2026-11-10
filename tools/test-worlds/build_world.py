@@ -17,8 +17,8 @@ tool's watcher waits for that file).
 smoke: the first run on a new rig. The same game as build, nothing built: it checks StationGod answers (its
 welcome's role and dedicated, server info, the clock, the player), saves as sg-smoke and waits for the saved file; --done as for build.
 
-store: a file step, no game. It copies the saved folder (named <world>) into <library>\<world>\<world>\ and writes
-README.md, md5.txt and fixtures.json beside it. The library is --library, else STATIONGOD_TEST_WORLDS; it writes
+store: a file step, no game. It copies the saved folder's <world>.save into <library>\<world>\ (flat) and writes
+world.txt, README.md and fixtures.json beside it. The library is --library, else STATIONGOD_TEST_WORLDS; it writes
 nothing outside it.
 
 The game run around `build` (start the server, join the client, hold bt-game-lock.ps1, stop it all) belongs to the

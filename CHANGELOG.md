@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **New: `inspect player` reports worn gear** (`gear`): the suit and helmet, the jetpack the game's own lookup finds
+  (its stabilizer switch, and whether the player is in jetpack mode), and the suit's live speed and storm-speed multipliers (null with no storm) and slot count.
+- **Fix: `show ghost` with Lattice no longer answers "named no ghost" for a ghost placed the same frame.** Every id is
+  sent to Lattice; one not yet answered is reported as pending.
+- **Fix: `show ghost` keeps the "not yet answered" note when some removals are refused**, and says "1 ghost removal" for one.
+- **Fix: two saves under new names in a row both get the ghost board** when the world is left right after.
+- **Fix: without Lattice, a ghost placed before the save's board is read is kept** (merged with the file's ghosts, keeping its id unless the file's ghost has it) instead of dropped.
 - **Tooling: the VM scripts find RigVM's `host\` folder by default** (the sibling RigVM repo, found relative to the script); `STATIONGOD_RIGVM` and `STATIONGOD_RIG_LIB` are gone. Pass `-RigVM` / `-RigLib` for a different folder.
 - **New: `[Rig] MaxFps`, an opt-in frame cap** (default 0 = off; `-sgfps N` overrides it for one run). The picture rig sets 30.
 - **Build: a deploy no longer keeps the version it replaces.** The backup step 2.17.1 added to `build.ps1 -Deploy` and`

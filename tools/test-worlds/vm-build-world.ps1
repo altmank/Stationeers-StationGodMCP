@@ -127,10 +127,10 @@ if (-not @($Mods | ? { (Test-Path "$_\About\About.xml") -and ((Get-Content -Raw 
 if ($World -eq 'sg-cost-large' -and -not $Check) { Refuse 'sg-cost-large is made from sg-silo by make_large_world.py; give -Check to load it' }
 $savedFolder = ''; $expect = 0
 if ($Check) {
-    $savedFolder = Join-Path $Library "$World\$World"
-    if (-not (Test-Path "$savedFolder\$World.save")) { Refuse "no $World.save in $savedFolder (store the world first)" }
-    $expect = [int](& (Get-Command py).Source -3.12 -c "import sys; sys.path.insert(0, sys.argv[1]); import twlib; print(twlib.counts(twlib.read_world_xml(sys.argv[2]))['findable'])" $here "$savedFolder\$World.save")
-    if (-not $expect) { Refuse "could not count the things in $savedFolder\$World.save" }
+    $libSave = Join-Path $Library "$World\$World.save"
+    if (-not (Test-Path $libSave)) { Refuse "no $World.save in $(Join-Path $Library $World) (store the world first)" }
+    $expect = [int](& (Get-Command py).Source -3.12 -c "import sys; sys.path.insert(0, sys.argv[1]); import twlib; print(twlib.counts(twlib.read_world_xml(sys.argv[2]))['findable'])" $here $libSave)
+    if (-not $expect) { Refuse "could not count the things in $libSave" }
 }
 $names = @($Mods | % { Split-Path $_ -Leaf })
 foreach ($need in @(if (-not $Check) { $NeedMods[$World] })) { if ($need -and $names -notcontains $need) { Refuse "$World needs the mod $need in -Mods" } }
@@ -164,8 +164,20 @@ $runArgs = @{
 if ($SettingFrom) { $runArgs.SettingFrom = $SettingFrom }
 # P51: only a world builder may start from -newgame; a -Check run loads a stored, landed world.
 if (-not $Check) { $runArgs.WorldBuild = $true }
-# A check loads the stored save by its folder name (vm-client-run: '-load {savename}', never a path).
-if ($Check) { $runArgs.Save = $savedFolder; $runArgs.GameArgs = '-load {savename}' }
 # vm-client-run ends with rig-lib's `exit <code>`, which ends that script only: pass its code on.
-try { & $clientRun @runArgs; $code = $LASTEXITCODE } finally { Remove-Item $ctxFile -Force -ErrorAction SilentlyContinue }
+try {
+    # A check loads the stored save by its folder name (vm-client-run: '-load {savename}', never a path). The library is
+    # flat; the game loads <saves>\<world>\<world>.save, so that folder shape is built here, at staging time, inside the
+    # try so that the finally removes it on every exit.
+    if ($Check) {
+        $savedFolder = Join-Path ([IO.Path]::GetTempPath()) ("sg-tw-stage-" + [guid]::NewGuid().ToString('N') + "\$World")
+        New-Item -ItemType Directory -Force $savedFolder | Out-Null
+        Copy-Item $libSave (Join-Path $savedFolder "$World.save")
+        $runArgs.Save = $savedFolder; $runArgs.GameArgs = '-load {savename}'
+    }
+    & $clientRun @runArgs; $code = $LASTEXITCODE
+} finally {
+    Remove-Item $ctxFile -Force -ErrorAction SilentlyContinue
+    if ($savedFolder) { Remove-Item (Split-Path $savedFolder) -Recurse -Force -ErrorAction SilentlyContinue }
+}
 exit $code

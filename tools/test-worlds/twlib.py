@@ -1,14 +1,14 @@
 """Test-world library helpers that need no game: path guards, reading a save, md5s, the structure count, the layout
-of a world's site, and the library entry (README.md, md5.txt, fixtures.json).
+of a world's site, and the library entry (<world>.save, world.txt, README.md, fixtures.json).
 
 The library root is --library, else the environment variable STATIONGOD_TEST_WORLDS; with neither the tools refuse.
 Every write stays inside that root (an allow-list: nothing outside it is ever written or replaced).
 
-A library entry is <library>\\<world>\\ holding:
-  <world>\\            the save folder as the game writes it (<world>.save and its side files), ready to copy into a
-                       server's saves folder and load with -load <world>;
+A library entry is the shared library's flat layout, <library>\\<world>\\ holding:
+  <world>.save         the save itself, nothing nested (a run that needs the game's <saves>\\<world>\\<world>.save
+                       folder shape builds it at staging time: stage_save_folder);
+  world.txt            'key value' lines other mods' tools read: md5, structures, things, world, landed, game-version;
   README.md            what the world holds and where, how it was built;
-  md5.txt              an md5 of each save file;
   fixtures.json        the role of each fixture and its reference id, for tests that look things up by id.
 """
 import hashlib
@@ -263,10 +263,10 @@ def verify_stored(world, library):
     entry = os.path.join(library, world)
     with open(os.path.join(entry, "fixtures.json"), encoding="utf-8") as f:
         stored = json.load(f)
-    return landed_problems(read_world_xml(os.path.join(entry, world, world + ".save")), stored.get("landed"))
+    return landed_problems(read_world_xml(save_path(library, world)), stored.get("landed"))
 
 
-def readme(world, spec_text, manifest, size, md5s):
+def readme(world, spec_text, manifest, size, md5):
     lines = [f"# Test world: {world}", "",
              spec_text.strip(), "",
              "## What it holds and where", ""]
@@ -293,12 +293,142 @@ def readme(world, spec_text, manifest, size, md5s):
     lines += ["", "## How it was built", ""]
     lines += [f"- {k}: {v}" for k, v in manifest.get("built", {}).items()]
     lines += ["", "Rebuild after a game patch: `tools/test-worlds/README.md` in the StationGodMCP repo.", "",
-              "## md5", "", "```"] + md5s + ["```", ""]
+              "## md5", "", "```", md5, "```", ""]
     return "\n".join(lines)
 
 
+def save_path(library, world):
+    """Where a library world's save is: <library>\\<world>\\<world>.save, flat."""
+    return os.path.join(library, world, world + ".save")
+
+
+def stage_save_folder(library, world, saves):
+    """Builds the game's <saves>\\<world>\\<world>.save folder shape from a library entry (for a run that loads the
+    world by its folder name). Returns the folder."""
+    import shutil
+    src = save_path(library, world)
+    if not os.path.isfile(src):
+        raise SystemExit(f"no {world}.save in {os.path.join(library, world)}")
+    folder = os.path.join(saves, world)
+    os.makedirs(folder, exist_ok=True)
+    shutil.copyfile(src, os.path.join(folder, world + ".save"))
+    return folder
+
+
+def world_meta(save_file):
+    """WorldName and GameVersion from the save's world_meta.xml; '' for a field it lacks."""
+    try:
+        with zipfile.ZipFile(save_file) as z:
+            xml = z.read("world_meta.xml").decode("utf-8", "replace")
+    except (KeyError, zipfile.BadZipFile):
+        xml = ""
+    out = {}
+    for key in ("WorldName", "GameVersion"):
+        m = re.search(rf"<{key}>([^<]*)</{key}>", xml)
+        out[key] = m.group(1).strip() if m else ""
+    return out
+
+
+WORLD_TXT_KEYS = ("md5", "structures", "things", "world", "landed", "game-version")
+
+
+def write_world_txt(entry, world, landed):
+    """world.txt for a flat entry whose <world>.save is in place: 'key value' lines. An existing world.txt is merged,
+    never replaced: its lines stay as they are (order, comments, keys of other tools) and only md5, structures, things,
+    world, landed and game-version are added or refreshed. Returns the six keys as a dict."""
+    save = os.path.join(entry, world + ".save")
+    size = counts(read_world_xml(save))
+    meta = world_meta(save)
+    fresh = {"md5": md5_of(save), "structures": str(size["structures"]), "things": str(size["things"]),
+             "world": meta["WorldName"] or world, "landed": "yes" if landed else "no",
+             "game-version": meta["GameVersion"]}
+    path = os.path.join(entry, "world.txt")
+    lines = []
+    if os.path.isfile(path):
+        with open(path, encoding="utf-8", newline="") as f:
+            lines = f.read().replace("\r\n", "\n").split("\n")
+        if lines and lines[-1] == "":
+            lines.pop()
+    seen = set()
+    for n, line in enumerate(lines):
+        key = line.split(None, 1)[0] if line.strip() else None
+        if key in fresh and key not in seen:
+            lines[n] = f"{key} {fresh[key]}"
+            seen.add(key)
+    lines += [f"{k} {fresh[k]}" for k in WORLD_TXT_KEYS if k not in seen]
+    with open(path, "w", encoding="utf-8", newline="\n") as f:
+        f.write("".join(line + "\n" for line in lines))
+    return fresh
+
+
+def _copy_verified(src, dst):
+    """Copies a file and checks the copy's md5 against the source's; refuses (removing a bad copy) when they differ."""
+    import shutil
+    shutil.copyfile(src, dst)
+    if md5_of(dst) != md5_of(src):
+        os.remove(dst)
+        raise SystemExit(f"copy of {src} to {dst} does not match its md5")
+
+
+def migrate_entry(library, world):
+    """One-shot: converts a nested entry (<world>\\<world>\\<world>.save, md5.txt) to flat and merges world.txt.
+    Returns 'migrated', or 'flat' when it was already flat (world.txt refreshed); raises SystemExit when unsure.
+    The save is copied and verified before the nested folder goes."""
+    import shutil
+    entry = check_write(os.path.join(library, world), library)
+    nested = os.path.join(entry, world)
+    flat = os.path.join(entry, world + ".save")
+    did = "flat"
+    if os.path.isdir(nested):
+        inner = os.path.join(nested, world + ".save")
+        if not os.path.isfile(inner):
+            raise SystemExit(f"{nested} has no {world}.save")
+        if os.path.isfile(flat) and md5_of(flat) != md5_of(inner):
+            raise SystemExit(f"{entry} holds two different saves (flat and nested): not touching it")
+        if not os.path.isfile(flat):
+            _copy_verified(inner, flat)
+        shutil.rmtree(nested)
+        did = "migrated"
+    if not os.path.isfile(flat):
+        raise SystemExit(f"no {world}.save in {entry}")
+    landed = None
+    fixtures = os.path.join(entry, "fixtures.json")
+    if os.path.isfile(fixtures):
+        with open(fixtures, encoding="utf-8") as f:
+            landed = json.load(f).get("landed")
+    write_world_txt(entry, world, bool(landed) and not landed_problems(read_world_xml(flat), landed))
+    md5_txt = os.path.join(entry, "md5.txt")
+    if os.path.isfile(md5_txt):
+        os.remove(md5_txt)
+    return did
+
+
+def migrate_library(library, worlds=None):
+    """Migrates StationGod's nested entries: the names in worlds, else every entry named sg-* that is nested (has
+    <name>\\<name>\\ or an md5.txt). Other mods' entries are never touched. Returns (done, skipped, refused): dicts of
+    world -> result, world -> reason and world -> reason; a refusal does not stop the others."""
+    done, skipped, refused = {}, {}, {}
+    names = list(worlds) if worlds else sorted(os.listdir(library))
+    for name in names:
+        entry = os.path.join(library, name)
+        if not os.path.isdir(entry):
+            refused[name] = "no such entry"
+            continue
+        if not worlds and not name.startswith("sg-"):
+            skipped[name] = "not a StationGod world (name does not start with sg-)"
+            continue
+        if not worlds and not (os.path.isdir(os.path.join(entry, name)) or os.path.isfile(os.path.join(entry, "md5.txt"))):
+            skipped[name] = "already flat"
+            continue
+        try:
+            done[name] = migrate_entry(library, name)
+        except SystemExit as e:
+            refused[name] = str(e)
+    return done, skipped, refused
+
+
 def store(world, save_folder, library, manifest, spec_text):
-    """Copies a saved world into the library and writes its README, md5.txt and fixtures.json. Returns the size."""
+    """Copies a saved world into the library, flat, and writes its world.txt, README.md and fixtures.json. Returns the size."""
     import shutil
     check_save_folder(save_folder, world)
     entry = check_write(os.path.join(library, world), library)
@@ -313,20 +443,35 @@ def store(world, save_folder, library, manifest, spec_text):
         if kept.get("facing") is None and players[0]["heading"] is not None:
             kept["facing"] = f"heading {players[0]['heading']} deg"
         manifest["landed"]["player"] = kept
-    dest = os.path.join(entry, world)
     if inside(save_folder, entry):
         raise SystemExit(f"refusing {save_folder}: it is inside the entry it would replace")
-    if os.path.isdir(dest):
-        shutil.rmtree(dest)
-    shutil.copytree(save_folder, dest)
-    size = counts(read_world_xml(os.path.join(dest, world + ".save")))
-    md5s = md5_lines(dest)
-    with open(os.path.join(entry, "md5.txt"), "w", encoding="utf-8", newline="\n") as f:
-        f.write("\n".join(md5s) + "\n")
+    os.makedirs(entry, exist_ok=True)
+    _copy_verified(os.path.join(save_folder, world + ".save"), os.path.join(entry, world + ".save"))
+    size = counts(read_world_xml(os.path.join(entry, world + ".save")))
+    info = write_world_txt(entry, world, True)
+    # The new copy has landed and verified: only now does an old nested layout (and its md5.txt) go.
+    nested = os.path.join(entry, world)
+    if os.path.isdir(nested):
+        shutil.rmtree(nested)
+    old_md5 = os.path.join(entry, "md5.txt")
+    if os.path.isfile(old_md5):
+        os.remove(old_md5)
     with open(os.path.join(entry, "fixtures.json"), "w", encoding="utf-8", newline="\n") as f:
         json.dump({"world": world, "fixtures": manifest.get("fixtures", {}), "landed": manifest.get("landed"), "size": {
             "things": size["things"], "structures": size["structures"]}}, f, indent=1)
         f.write("\n")
     with open(os.path.join(entry, "README.md"), "w", encoding="utf-8", newline="\n") as f:
-        f.write(readme(world, spec_text, manifest, size, md5s))
+        f.write(readme(world, spec_text, manifest, size, info["md5"]))
     return size
+
+
+if __name__ == "__main__":
+    import argparse
+    ap = argparse.ArgumentParser(description="Migrate a world library's nested StationGod entries to the flat layout.")
+    ap.add_argument("command", choices=["migrate"])
+    ap.add_argument("--library", help="the world library (default: STATIONGOD_TEST_WORLDS)")
+    ap.add_argument("--world", action="append", help="a world to migrate (repeat for several); default: every nested sg-* entry")
+    a = ap.parse_args()
+    done, skipped, refused = migrate_library(library_root(a.library), a.world)
+    print(json.dumps({"migrated": done, "skipped": skipped, "refused": refused}, indent=1))
+    raise SystemExit(1 if refused else 0)

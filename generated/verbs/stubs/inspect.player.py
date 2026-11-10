@@ -1,7 +1,7 @@
 def inspect(what: Literal['player'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
 ) -> dict:
-    """The player's hunger and thirst: nutrition, hydration, drain, time left.
+    """The player's hunger and thirst (nutrition, hydration, drain, time left) and worn gear (suit, helmet, jetpack, suit speed).
     No options.
     Reply:
       reference_id: str
@@ -27,6 +27,9 @@ def inspect(what: Literal['player'], *,
       thirst: {per_second: float, per_hour: float, awake_per_second: float, awake_per_hour: float, time_left_s: float | None, time_left_awake_s: float
           | None, factors: Any} | None
       warnings: {nutrition_warning: float, nutrition_critical: float, hydration_warning: float, hydration_critical: float}
+      gear: {suit: Thing | None, helmet: Thing | None, jetpack: {reference_id: str, prefab_name: str | None, display_name: str | None, stabilizer:
+          bool, active: bool} | None, suit_movement: {speed_multiplier: float, storm_speed_multiplier: float | None, slot_count: int} | None}
       game_tick_s: float
+    Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}
     Example: sg.inspect('player')
     """
