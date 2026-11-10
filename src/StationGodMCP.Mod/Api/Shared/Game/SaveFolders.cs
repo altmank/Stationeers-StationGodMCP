@@ -57,6 +57,7 @@ internal static class SaveFolders
         {
             _recorded = folder.FullName;
             _recordedHow = "new save";
+            GhostBoardStore.SaveFolderCreated(folder.FullName);
         }
     }
 

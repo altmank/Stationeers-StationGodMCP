@@ -12,7 +12,7 @@ Options:
 - build_state (string or integer): finished (default), first, or a state index.
 - from_plan (string): A plan spot ref ("r9"; one spot: "r9.spots.2", default the first): put its placement on the board.
 - tint (string or array): The ghosts' colour, yours to choose: a name (cyan, magenta, yellow, green, orange, blue, red, white, purple, pink, khaki, brown, black, gray), [r, g, b] or [r, g, b, a] each 0 to 1.
-- label (string): What the ghosts are, shown as a tooltip when the crosshair is on one, and in find ghost; a placement's own label wins.
+- label (string): What the ghosts are, shown as the ghost's tooltip when the crosshair is on one, with `[Ghosts] ShowTooltip` on (off by default), and in find ghost; a placement's own label wins.
 - look (plan | solid | wire | pulse | quiet): With Lattice: plan (the default), solid, wire, pulse, or quiet (no markers). A ghost whose plan has problems pulses red.
 - xray (boolean): Shows through walls, frames and terrain; on unless false.
 - xray_strength (number): X-ray strength, 0 to 1 (1 unless given).

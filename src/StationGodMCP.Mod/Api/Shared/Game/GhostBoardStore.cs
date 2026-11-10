@@ -44,6 +44,10 @@ internal static class GhostBoardStore
     private static string? _file;
     private static float _saveAt = float.PositiveInfinity;
 
+    // The board file in the folder a save created since the board was last written (a save under a new name): the live
+    // folder is gone by the time the world is left, so this is where the last write goes.
+    private static string? _savedAs;
+
     /// <summary>The board: the host's own, or on a client the host's as last sent.</summary>
     internal static GhostBoard Board => _board;
 
@@ -96,12 +100,7 @@ internal static class GhostBoardStore
             return;
         }
 
-        if (!_loaded)
-        {
-            _loaded = true;
-            _file = SaveFile;
-            Load();
-        }
+        EnsureLoaded();
 
         // The save folder moved (a new world's first save, a save under a new name): the whole board goes there too.
         if (_board.Count > 0 && GhostSaveTarget.Moved(_file, SaveFile))
@@ -112,8 +111,24 @@ internal static class GhostBoardStore
         if (Time.realtimeSinceStartup >= _saveAt)
         {
             _saveAt = float.PositiveInfinity;
-            Save(worldLeft: false);
+            Save();
         }
+    }
+
+    /// <summary>
+    /// Reads the save's board once, by the first of the tick and any change or sync on a running host, so a ghost placed
+    /// before the first tick is not dropped when the file replaces the board.
+    /// </summary>
+    private static void EnsureLoaded()
+    {
+        if (!GhostLoadRule.ShouldLoad(Keeps, GameManager.GameState == GameState.Running, LatticePresence.ApiLoaded, _loaded))
+        {
+            return;
+        }
+
+        _loaded = true;
+        _file = SaveFile;
+        Load();
     }
 
     /// <summary>
@@ -191,6 +206,7 @@ internal static class GhostBoardStore
             return LatticePresence.Place(placements, source, client, refused, refused, looks);
         }
 
+        EnsureLoaded();
         List<BoardGhost> added = new List<BoardGhost>();
         List<long> removed = new List<long>();
         double now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000.0;
@@ -227,22 +243,29 @@ internal static class GhostBoardStore
         return added;
     }
 
-    /// <summary>The host takes ghosts off by id; the ids it took off (an unknown id is skipped).</summary>
+    /// <summary>The host takes ghosts off by id; the ids it took off (an unknown id is skipped). Refusals are logged.</summary>
     internal static List<long> Remove(IEnumerable<long> ids, GhostSource source = GhostSource.Agent,
         ulong? client = null)
     {
-        if (LatticePresence.Running)
+        List<string> refused = new List<string>();
+        List<long> gone = Remove(ids, source, client, refused);
+        foreach (string refusal in refused)
         {
-            List<string> refused = new List<string>();
-            List<long> gone = LatticePresence.Remove(ids, source, client, refused);
-            foreach (string refusal in refused)
-            {
-                StationGodMod.LogWarning($"Ghosts were not taken off: {refusal}.");
-            }
-
-            return gone;
+            StationGodMod.LogWarning($"Ghosts were not taken off: {refusal}.");
         }
 
+        return gone;
+    }
+
+    /// <summary>As above, with Lattice's refusals handed to the caller instead of logged.</summary>
+    internal static List<long> Remove(IEnumerable<long> ids, GhostSource source, ulong? client, List<string> refused)
+    {
+        if (LatticePresence.Running)
+        {
+            return LatticePresence.Remove(ids, source, client, refused);
+        }
+
+        EnsureLoaded();
         List<long> removed = new List<long>();
         foreach (long id in ids)
         {
@@ -256,8 +279,21 @@ internal static class GhostBoardStore
         return removed;
     }
 
-    /// <summary>The host takes off every ghost the rule picks; their ids.</summary>
+    /// <summary>The host takes off every ghost the rule picks; their ids. Refusals are logged.</summary>
     internal static List<long> RemoveWhere(Predicate<BoardGhost> rule)
+    {
+        List<string> refused = new List<string>();
+        List<long> gone = RemoveWhere(rule, refused);
+        foreach (string refusal in refused)
+        {
+            StationGodMod.LogWarning($"Ghosts were not taken off: {refusal}.");
+        }
+
+        return gone;
+    }
+
+    /// <summary>As above, with Lattice's refusals handed to the caller instead of logged.</summary>
+    internal static List<long> RemoveWhere(Predicate<BoardGhost> rule, List<string> refused)
     {
         if (LatticePresence.Running)
         {
@@ -270,9 +306,10 @@ internal static class GhostBoardStore
                 }
             }
 
-            return Remove(picked);
+            return Remove(picked, GhostSource.Agent, null, refused);
         }
 
+        EnsureLoaded();
         List<long> removed = _board.RemoveWhere(rule);
         Changed(new List<BoardGhost>(), removed);
         return removed;
@@ -396,6 +433,7 @@ internal static class GhostBoardStore
             return;
         }
 
+        EnsureLoaded();
         IReadOnlyList<BoardGhost> all = _board.All;
         int sent = 0;
         do
@@ -445,14 +483,24 @@ internal static class GhostBoardStore
     {
         LatticePresence.Forget();
         Restoring.Clear();
-        if (_loaded && _saveAt < float.PositiveInfinity)
+        if (_loaded && (_saveAt < float.PositiveInfinity || _savedAs != null))
         {
-            Save(worldLeft: true);
+            string? last = GhostSaveTarget.OnLeaving(_file, _savedAs, _saveAt < float.PositiveInfinity, _board.Count,
+                out bool notKept);
+            if (last != null)
+            {
+                Write(last);
+            }
+            else if (notKept)
+            {
+                StationGodMod.LogWarning("The ghosts were not kept: the world was never saved.");
+            }
         }
 
         _board = new GhostBoard();
         _loaded = false;
         _file = null;
+        _savedAs = null;
         _saveAt = float.PositiveInfinity;
         Ghosts.ClearBoard();
     }
@@ -557,23 +605,35 @@ internal static class GhostBoardStore
         }
     }
 
-    // Written to the save folder as it is now, not as it was when the board was read; with no folder yet the write
-    // stays pending. After the world was left only the captured file is right.
-    private static void Save(bool worldLeft)
+    /// <summary>A save created a folder: the board file is owed there too (the folder is gone once the world is left).</summary>
+    internal static void SaveFolderCreated(string folder)
     {
-        string? file = GhostSaveTarget.Of(_file, worldLeft ? null : SaveFile, worldLeft);
+        string file = Path.Combine(folder, FileName);
+        if (_loaded && Keeps && !LatticePresence.ApiLoaded && GhostSaveTarget.Moved(_file, file))
+        {
+            _savedAs = file;
+        }
+    }
+
+    // Written to the save folder as it is now, not as it was when the board was read; with no folder yet the write
+    // stays pending.
+    private static void Save()
+    {
+        string? file = GhostSaveTarget.Of(_file, SaveFile);
         if (file == null)
         {
-            if (!worldLeft)
-            {
-                _saveAt = Time.realtimeSinceStartup + SaveAfterS;
-                OnceLog.Warning("ghost_no_folder",
-                    "The ghost board has no save folder yet: it is written once the world has one.");
-            }
-
+            _saveAt = Time.realtimeSinceStartup + SaveAfterS;
+            OnceLog.Warning("ghost_no_folder",
+                "The ghost board has no save folder yet: it is written once the world has one.");
             return;
         }
 
+        _savedAs = null;
+        Write(file);
+    }
+
+    private static void Write(string file)
+    {
         _file = file;
 
         try

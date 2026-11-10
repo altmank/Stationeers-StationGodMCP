@@ -12,7 +12,7 @@ def show(what: Literal['ghost'], *,
     build_state: str | int = None,  # finished (default), first, or a state index.
     from_plan: str = None,  # A plan spot reply (p = sg.plan('spot', ...)) or one spot (p['spots'][2]): put it on the board.
     tint: str | list = None,  # The ghosts' colour, yours to choose: a name (cyan, magenta, yellow, green, orange, blue, red, white, purple, pink, khaki, brown, black, gray), [r, g, b] or [r, g, b, a] each 0 to 1.
-    label: str = None,  # What the ghosts are, shown as a tooltip when the crosshair is on one, and in find ghost; a placement's own label wins.
+    label: str = None,  # What the ghosts are, shown as the ghost's tooltip when the crosshair is on one, with `[Ghosts] ShowTooltip` on (off by default), and in find ghost; a placement's own label wins.
     look: Literal['plan', 'solid', 'wire', 'pulse', 'quiet'] = None,  # With Lattice: plan (the default), solid, wire, pulse, or quiet (no markers). A ghost whose plan has problems pulses red.
     xray: bool = None,  # Shows through walls, frames and terrain; on unless false.
     xray_strength: float = None,  # X-ray strength, 0 to 1 (1 unless given).

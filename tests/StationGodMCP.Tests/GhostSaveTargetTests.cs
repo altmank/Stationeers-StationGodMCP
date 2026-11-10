@@ -51,9 +51,32 @@ public sealed class GhostSaveTargetTests
     }
 
     [Fact]
-    public void TheLastWriteAfterTheWorldWasLeftGoesToTheCapturedFile()
+    public void ASaveIntoANewFolderThenLeavingAtOnceWritesThereNotToTheOldFolder()
     {
-        Assert.Equal(A, GhostSaveTarget.Of(captured: A, current: B, worldLeft: true));
-        Assert.Null(GhostSaveTarget.Of(captured: null, current: B, worldLeft: true));
+        Assert.Equal(B, GhostSaveTarget.OnLeaving(captured: A, savedAs: B, pending: true, ghosts: 1, out bool notKept));
+        Assert.False(notKept);
+    }
+
+    [Fact]
+    public void LeavingWithAPendingWriteGoesToTheCapturedFile()
+    {
+        Assert.Equal(A, GhostSaveTarget.OnLeaving(captured: A, savedAs: null, pending: true, ghosts: 1, out bool notKept));
+        Assert.False(notKept);
+    }
+
+    [Fact]
+    public void LeavingANeverSavedWorldWritesNothingAndSaysSo()
+    {
+        Assert.Null(GhostSaveTarget.OnLeaving(captured: null, savedAs: null, pending: true, ghosts: 2, out bool notKept));
+        Assert.True(notKept);
+    }
+
+    [Fact]
+    public void LeavingWithNothingOwedWritesNothingAndSaysNothing()
+    {
+        Assert.Null(GhostSaveTarget.OnLeaving(captured: A, savedAs: null, pending: false, ghosts: 2, out bool notKept));
+        Assert.False(notKept);
+        Assert.Null(GhostSaveTarget.OnLeaving(captured: null, savedAs: null, pending: true, ghosts: 0, out notKept));
+        Assert.False(notKept);
     }
 }

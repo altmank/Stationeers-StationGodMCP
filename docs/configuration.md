@@ -8,8 +8,8 @@ name) and an agent on another machine (remote access over TCP).
 ## Mod settings
 
 Edit them in StationeersLaunchPad's config editor, or in `BepInEx\config\net.xceled.stationeers.stationgodmcp.cfg`.
-They are read once when the game starts: restart the game to apply a change. Each setting also reads an environment
-variable, which wins over the file (handy for Docker and dedicated servers).
+They are read once when the game starts: restart the game to apply a change. The pipe name and the Remote MCP
+settings also read an environment variable, which wins over the file (handy for Docker and dedicated servers).
 
 | Section | Setting | Default | Environment variable | What it does |
 | --- | --- | --- | --- | --- |
@@ -32,6 +32,13 @@ variable, which wins over the file (handy for Docker and dedicated servers).
 | `Multiplayer` | `ShareViews` | `true` | none | Share views between games: a client tells a server that runs StationGod where its player looks, so the server's camera tools work for that player, and the server's `show highlight` and `show preview` show on that player's screen. StationGod stays optional on every player's game. It uses StationeersLaunchPad's networking, which makes a game expect that networking on the other side of a join: on a server where no other mod uses it, `false` lets in players whose game runs no such mod. |
 | `Layout` | `DoorKeepOutBand` | `0.5` | none | Metres either side of a door's face, inside the door's rectangle, that the route planners keep free and the build tools refuse (`in_door_keepout`); 0 to 2 in 0.5 steps, 0 keeps only the face itself. Unlike the others it applies to the next request. |
 | `Pictures` | `Folder` | empty | none | The folder `show picture` writes its PNGs under; empty is `BepInEx\StationGodMCP\pictures`. Must be an absolute path (a relative one is logged and the default used). A caller names only a file and a subfolder inside it: a name or folder that would lead anywhere else is refused `bad_path`. |
+| `Ghosts` | `Enabled` | `true` | none | The player's ghost tools: ghost mode, the ghost menu and taking ghosts off. Ghosts an agent draws show either way. |
+| `Ghosts` | `GhostModeKey` | `Ctrl+G` | none | Turns ghost mode on and off: with a kit in hand, a click places a ghost of the structure instead of building it. A BepInEx keyboard shortcut; empty turns it off. |
+| `Ghosts` | `MenuKey` | `Ctrl+Shift+G` | none | Opens the ghost menu: pick any structure to place as a ghost without its kit, the tint, and the switches. |
+| `Ghosts` | `ShowGhostsKey` | `Ctrl+H` | none | Shows or hides the world's ghosts in this game. |
+| `Ghosts` | `RemoveGhostKey` | `Delete` | none | In ghost mode or while placing from the menu: takes off the ghost under the crosshair. |
+| `Ghosts` | `Tint` | `cyan` | none | The colour new ghosts take. The names are listed in the setting's description. |
+| `Ghosts` | `TooltipScale` | `1` | none | The ghost tooltip's size: 1 fits the screen's height, 1.5 half again as large. Clamped to 0.5 to 3. |
 | `Ghosts` | `ShowTooltip` | `false` | none | Show the ghost tooltip: the panel under the crosshair for the ghost there (its plan, next steps, materials and ports). It hides while the game's UI is hidden either way (Loom planning, the hide-UI key). The ghost under the crosshair is drawn brighter whether it is on or off. |
 
 Environment values: `true` or `false` for `Enabled`, a number for `Port`. An invalid value is logged and the file's

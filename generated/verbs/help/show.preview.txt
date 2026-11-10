@@ -1,6 +1,6 @@
 A planned structure layout or cable, pipe or chute run (build's dry run) as wire boxes or see-through ghosts, plus cells and boxes.
 Options:
-- placements (list): As build structure's placements; each may give its own tint, and its label shows as the ghost's tooltip.
+- placements (list): As build structure's placements; each may give its own tint, and its label shows as the ghost's tooltip (with `[Ghosts] ShowTooltip` on; off by default).
 - prefab (string or integer): Prefab: a whole name, a hash, or parts with * ('*Battery*', '*Tank*Insulated*': each part, any order); or a list of them.
 - at (array or object or string): A point, "looking_at", or a relative or look-face form (help positions).
 - rotation (list): [x, y, z] degrees, multiples of 90.
@@ -10,7 +10,7 @@ Options:
 - orient (object): {mount, upright, controls_toward, ports: [{role, index, type, toward}], flow: {from, to}}: choose the turn by intent. mount: wall, floor, ceiling or an axis; a target (controls_toward, toward, from, to): an axis, room, player, a point or a thing's id.
 - above_floor (number): Bottom this many metres above the floor below at.
 - build_state (string or integer): finished (default), first, or a state index.
-- label (string): What the placement is, shown as a tooltip when the crosshair is on its ghost (as build structure's label).
+- label (string): What the placement is, shown as the ghost's tooltip when the crosshair is on it, with `[Ghosts] ShowTooltip` on (off by default); as build structure's label.
 - run (object): A cable, pipe or chute run to plan and draw: build cable, pipe or chute's options with what ({what: "pipe", grade, waypoints, ...}); nothing is built.
 - from_plan (string): A ref of a plan route or plan spot reply ("r9"; one spot: "r9.spots.2", default the first): preview its build_arguments; a route becomes run, a spot the placement, and options given here replace the plan's.
 - style (boxes | ghost | both, default boxes): boxes: footprint, body and port wire boxes; ghost: the structures' own meshes at the build state, see-through and tinted; both.
