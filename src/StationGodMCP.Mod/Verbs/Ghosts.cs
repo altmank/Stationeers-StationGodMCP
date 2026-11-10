@@ -241,8 +241,11 @@ internal static class ShowGhost
         List<long> removed = new List<long>();
         if (order.Remove.Count > 0)
         {
-            removed.AddRange(GhostRemoveReport.Run(order.Remove, id => LatticePresence.Running || GhostBoardStore.Board.Find(id) != null,
-                (ids, refused) => GhostBoardStore.Remove(ids, GhostSource.Agent, null, refused), notes));
+            // With Lattice every id is sent (it skips the ones it does not know), except 0, which it refuses outright.
+            removed.AddRange(GhostRemoveReport.Run(order.Remove,
+                id => id != 0 && (LatticePresence.Running || GhostBoardStore.Board.Find(id) != null),
+                (ids, refused) => GhostBoardStore.Remove(ids, GhostSource.Agent, null, refused), notes,
+                immediate: LatticePresence.Running && GhostBoardStore.Keeps));
         }
 
         if (order.Clear == "all" || order.Clear == "agent")

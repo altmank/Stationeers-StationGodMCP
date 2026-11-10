@@ -590,7 +590,25 @@ internal static class GhostBoardStore
             // Ghosts placed before the file was read (not running yet) are kept on top of the file's.
             if (_board.Count > 0)
             {
-                read.AddAll(_board.All);
+                List<(long Old, long New)> remapped = read.Merge(_board.All, out int dropped);
+                if (remapped.Count > 0)
+                {
+                    List<string> changes = new List<string>();
+                    foreach ((long Old, long New) pair in remapped)
+                    {
+                        changes.Add($"{pair.Old} is now {pair.New}");
+                    }
+
+                    StationGodMod.LogWarning("Ghost ids changed when the save's board was read (an id may be held by " +
+                        "an agent): " + string.Join(", ", changes) + ".");
+                }
+
+                if (dropped > 0)
+                {
+                    OnceLog.Warning("ghost_merge_full",
+                        $"The ghost board is full: {dropped} ghosts placed before it was read were left out.");
+                }
+
                 Ghosts.ClearBoard();
                 _saveAt = 0f;
             }
@@ -638,6 +656,14 @@ internal static class GhostBoardStore
             OnceLog.Warning("ghost_no_folder",
                 "The ghost board has no save folder yet: it is written once the world has one.");
             return;
+        }
+
+        foreach (string folder in _savedAs)
+        {
+            if (!string.Equals(folder, file, StringComparison.OrdinalIgnoreCase))
+            {
+                Write(folder);
+            }
         }
 
         _savedAs.Clear();

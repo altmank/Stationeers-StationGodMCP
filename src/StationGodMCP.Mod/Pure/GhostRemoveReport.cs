@@ -15,7 +15,8 @@ internal static class GhostRemoveReport
     internal delegate List<long> Remover(IReadOnlyList<long> ids, List<string> refused);
 
     /// <summary>Removes the ids that are on the board and returns those gone, with the notes for the reply.</summary>
-    internal static List<long> Run(IEnumerable<long> ids, Func<long, bool> onBoard, Remover remove, List<string> notes)
+    internal static List<long> Run(IEnumerable<long> ids, Func<long, bool> onBoard, Remover remove, List<string> notes,
+        bool immediate = false)
     {
         List<long> present = new List<long>();
         HashSet<long> seen = new HashSet<long>();
@@ -39,13 +40,23 @@ internal static class GhostRemoveReport
 
         List<string> refused = new List<string>();
         List<long> gone = remove(present, refused);
-        notes.AddRange(Notes(absent, present.Count, gone.Count, refused));
+        notes.AddRange(Notes(absent, present.Count, gone.Count, refused, immediate));
         return gone;
     }
 
-    /// <summary>The notes for a removal: absent ids, each refusal, and the removals sent but not yet answered.</summary>
-    internal static List<string> Notes(int absent, int present, int gone, IReadOnlyList<string> refused)
+    /// <summary>
+    /// The notes for a removal: absent ids, each refusal, and the removals sent but not yet answered. With immediate
+    /// (the host: Lattice answers at once), an id sent and neither removed nor refused is unknown to Lattice.
+    /// </summary>
+    internal static List<string> Notes(int absent, int present, int gone, IReadOnlyList<string> refused,
+        bool immediate = false)
     {
+        if (immediate && refused.Count == 0)
+        {
+            absent += present - gone;
+            present = gone;
+        }
+
         List<string> notes = new List<string>();
         if (absent > 0)
         {
@@ -61,11 +72,11 @@ internal static class GhostRemoveReport
         int waiting = refused.Count == 0 ? present - gone : 0;
         if (waiting == 1)
         {
-            notes.Add("1 ghost removal was sent to Lattice and is not yet answered.");
+            notes.Add("1 ghost removal was sent to Lattice and is not yet answered (or its id is unknown).");
         }
         else if (waiting > 1)
         {
-            notes.Add($"{waiting} ghost removals were sent to Lattice and are not yet answered.");
+            notes.Add($"{waiting} ghost removals were sent to Lattice and are not yet answered (or their ids are unknown).");
         }
 
         return notes;

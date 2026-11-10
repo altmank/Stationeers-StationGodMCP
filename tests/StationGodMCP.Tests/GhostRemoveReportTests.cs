@@ -60,12 +60,12 @@ public sealed class GhostRemoveReportTests
     }
 
     [Fact]
-    public void ARefusedStepAndAnUnansweredStepEachKeepTheirNote()
+    public void TwoStepsWithARefusalAndAnUnansweredRemovalEachKeepTheirNote()
     {
         List<string> notes = new List<string>();
         notes.AddRange(GhostRemoveReport.Notes(0, 2, 0, new[] { "Lattice refused it: locked" }));
         notes.AddRange(GhostRemoveReport.Notes(0, 3, 0, new string[0]));
-        Assert.Equal(new[] { "Lattice refused it: locked", "3 ghost removals were sent to Lattice and are not yet answered." },
+        Assert.Equal(new[] { "Lattice refused it: locked", "3 ghost removals were sent to Lattice and are not yet answered (or their ids are unknown)." },
             notes);
     }
 
@@ -73,7 +73,15 @@ public sealed class GhostRemoveReportTests
     public void OneUnansweredRemovalReadsSingular()
     {
         List<string> notes = Run(new long[] { 1 }, new long[] { 1 }, (ids, refused) => new List<long>(), out _);
-        Assert.Equal(new[] { "1 ghost removal was sent to Lattice and is not yet answered." }, notes);
+        Assert.Equal(new[] { "1 ghost removal was sent to Lattice and is not yet answered (or its id is unknown)." }, notes);
+    }
+
+    [Fact]
+    public void OnTheHostAnIdLatticeNeitherRemovedNorRefusedNamedNoGhost()
+    {
+        List<string> notes = new List<string>();
+        GhostRemoveReport.Run(new long[] { 1, 99 }, _ => true, (ids, refused) => new List<long> { 1 }, notes, immediate: true);
+        Assert.Equal(new[] { "1 of the ids named no ghost on the board." }, notes);
     }
 
     [Fact]
