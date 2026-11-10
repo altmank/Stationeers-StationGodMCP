@@ -583,10 +583,25 @@ internal static class LatticeBoard
             return;
         }
 
+        try
+        {
+            ReplayEarlyInto(early);
+        }
+        catch (Exception exception)
+        {
+            StationGodMod.LogWarning($"The {early.Count} ghosts placed before Lattice attached could not be placed " +
+                                     $"into Lattice and are lost (ids {string.Join(", ", early.ConvertAll(ghost => ghost.Id))}): " +
+                                     exception.Message);
+        }
+    }
+
+    private static void ReplayEarlyInto(List<BoardGhost> early)
+    {
         List<BoardGhost> fresh = GhostBoard.NotHeldBy(early, GhostBoardStore.Board.All);
         int already = early.Count - fresh.Count;
         List<string> changes = new List<string>();
-        int lost = 0;
+        List<string> gone = new List<string>();
+        int replayedAsHost = 0;
         foreach (GhostSource source in new[] { GhostSource.Agent, GhostSource.Player })
         {
             List<BoardGhost> group = fresh.FindAll(ghost => ghost.Source == source);
@@ -604,25 +619,35 @@ internal static class LatticeBoard
 
             List<string> refused = new List<string>();
             List<BoardGhost> placed = Place(placements, source, null, refused, new List<string>());
-            if (refused.Count == 0 && placed.Count == group.Count)
+            GhostReplay result = GhostReplay.Of(group, placed.ConvertAll(ghost => ghost.Id), refused);
+            foreach ((long Old, long New) pair in result.Mapped)
             {
-                for (int index = 0; index < group.Count; index++)
-                {
-                    changes.Add($"{group[index].Id} is now {placed[index].Id}");
-                }
+                changes.Add($"{pair.Old} is now {pair.New}");
             }
-            else
+
+            gone.AddRange(result.RefusedLines);
+            if (source == GhostSource.Player)
             {
-                lost += Math.Max(group.Count - placed.Count, 0);
-                StationGodMod.LogWarning($"{refused.Count} early {source} ghosts were refused by Lattice: " +
-                                         string.Join("; ", refused) + ".");
+                replayedAsHost = result.Mapped.Count;
             }
         }
 
-        StationGodMod.Log($"Ghost board: {early.Count} ghosts placed before Lattice attached: {fresh.Count - lost} " +
-                          $"placed into Lattice, {already} already there{(lost > 0 ? $", {lost} not placed" : "")}." +
+        StationGodMod.Log($"Ghost board: {early.Count} ghosts placed before Lattice attached: " +
+                          $"{fresh.Count - gone.Count} placed into Lattice, {already} already there" +
+                          $"{(gone.Count > 0 ? $", {gone.Count} not placed" : "")}." +
                           (changes.Count > 0 ? " Ids changed (an id may be held by an agent): " +
                                                string.Join(", ", changes) + "." : ""));
+        if (replayedAsHost > 0)
+        {
+            StationGodMod.Log($"{replayedAsHost} early player ghosts were replayed as the host: their owner and look " +
+                              "are reset (tint and label kept).");
+        }
+
+        if (gone.Count > 0)
+        {
+            StationGodMod.LogWarning($"{gone.Count} early ghosts were refused by Lattice and are gone for good: " +
+                                     string.Join("; ", gone) + ".");
+        }
     }
 
     private static void OnChanged(L.ChangeSet changes)
