@@ -228,8 +228,13 @@ $env:LATTICE_API_DIR = $latticeDir
 # Read before the tests and the build, which may write files: the record is what the sources were.
 $tree = Get-TreeState
 if (-not $tree) { $tree = [pscustomobject]@{ Head = 'unknown'; State = 'not a git checkout' } }
+# P67: the SDK drops +<sha> from InformationalVersion once a gc packs the branch ref, so every dotnet call is given
+# HEAD's commit (Loom's build.ps1 does the same). Outside git it is left out.
+$revOut = @(& git -C $root rev-parse HEAD 2>$null)
+$revSha = if ($revOut.Count) { "$($revOut[0])".Trim() } else { '' }
+[string[]] $srcRev = @(if ($LASTEXITCODE -eq 0 -and $revSha -match '^[0-9a-f]{40}$') { "-p:SourceRevisionId=$revSha" })
 Write-Host "Testing $version"
-dotnet test (Join-Path $root 'tests\StationGodMCP.Tests\StationGodMCP.Tests.csproj') -nologo -v q
+dotnet test (Join-Path $root 'tests\StationGodMCP.Tests\StationGodMCP.Tests.csproj') -nologo -v q @srcRev
 if ($LASTEXITCODE -ne 0) { throw "Tests failed with exit code $LASTEXITCODE; nothing was built." }
 
 # The sg client's tests, test_generated among them: sg's verb layer stale against the catalogue (generate_catalogue.py
@@ -240,7 +245,7 @@ finally { Pop-Location }
 if ($LASTEXITCODE -ne 0) { throw "sg client tests failed with exit code $LASTEXITCODE; nothing was built." }
 
 Write-Host "Building $version against $GameDir (Workshop page $pageLength characters)"
-dotnet build (Join-Path $root 'StationGodMCP.csproj') -c Release -p:StationeersPath="$GameDir" -nologo -v q
+dotnet build (Join-Path $root 'StationGodMCP.csproj') -c Release -p:StationeersPath="$GameDir" -nologo -v q @srcRev
 if ($LASTEXITCODE -ne 0) { throw "Build failed with exit code $LASTEXITCODE." }
 $dll = Join-Path $root 'StationGodMCP.dll'
 if (-not (Test-Path $dll)) { throw "Build produced no DLL at $dll" }
@@ -251,7 +256,7 @@ Write-Host "Checking $version without Lattice"
 $env:SG_MOD_DLL = $dll
 try {
     dotnet test (Join-Path $root 'tests\StationGodMCP.Tests\StationGodMCP.Tests.csproj') --no-build -nologo -v q `
-        --filter 'FullyQualifiedName~LatticeFieldsTests'
+        --filter 'FullyQualifiedName~LatticeFieldsTests' @srcRev
 }
 finally { Remove-Item Env:SG_MOD_DLL -ErrorAction SilentlyContinue }
 if ($LASTEXITCODE -ne 0) { throw "The built DLL names Lattice in a type's layout (LatticeFieldsTests); nothing was staged." }
@@ -264,12 +269,12 @@ try {
     # Portable: runs through the Microsoft-signed dotnet host, needs the .NET 8 runtime.
     dotnet publish $server -c Release --self-contained false -p:UseAppHost=false -p:DebugType=None `
         -p:DebugSymbols=false -p:StationGodServerRoot="$(Join-Path $staging 'build-portable')" `
-        -p:PublishDir="$portable" -nologo -v q
+        -p:PublishDir="$portable" -nologo -v q @srcRev
     if ($LASTEXITCODE -ne 0) { throw "Portable sidecar publish failed with exit code $LASTEXITCODE." }
     # Self-contained single executable: no runtime needed, but unsigned.
     dotnet publish $server -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:DebugType=None `
         -p:DebugSymbols=false -p:StationGodServerRoot="$(Join-Path $staging 'build-native')" `
-        -p:PublishDir="$native" -nologo -v q
+        -p:PublishDir="$native" -nologo -v q @srcRev
     if ($LASTEXITCODE -ne 0) { throw "Self-contained sidecar publish failed with exit code $LASTEXITCODE." }
 
     if (Test-Path $stamp) { Remove-Item $stamp -Force }
