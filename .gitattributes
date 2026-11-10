@@ -4,3 +4,9 @@
 *.zip binary
 # The verb model's identity is the SHA-256 of catalogue/verbs/*.json's exact bytes: keep them LF.
 catalogue/** text eol=lf
+
+# Everything the compiler hashes or embeds is LF in every checkout: the PDB records each source file's hash, so a CRLF
+# checkout (core.autocrlf=true) built a different dll than an LF one from the same commit (P47).
+*.cs text eol=lf
+lint-rules.json text eol=lf
+generated/** text eol=lf
