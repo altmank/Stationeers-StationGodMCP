@@ -39,8 +39,7 @@ test rig, never a server or save anyone plays. Two ways; both end in the same `b
 ### On a VM rig, with a client as host (no server)
 
 `vm-build-world.ps1 -World <world> -Mods <StationGod build> -Hub <hub build>
-[-RigVMCommit <minimum>] [-LockWaitMinutes 120]`, with the rest given as parameters or environment variables (`STATIONGOD_RIGVM`,
-RigVM's host folder; `STATIONGOD_TEST_WORLDS`; `SG_RIG_SETTINGS`; `SG_RIG_PYTHON_ZIP`; `SG_RIG_DOTNET_ZIP`; `Get-Help`
+[-RigVMCommit <minimum>] [-LockWaitMinutes 120]`, with the rest given as parameters or environment variables (`STATIONGOD_TEST_WORLDS`; `SG_RIG_SETTINGS`; `SG_RIG_PYTHON_ZIP`; `SG_RIG_DOTNET_ZIP`; `Get-Help`
 lists them). Start it in the background through `run-hidden.ps1` (a run takes longer than a foreground call).
 
 It is a thin caller of RigVM's shared client run, `host\vm-client-run.ps1` (pool lock, the pool picks the rig, transcript,

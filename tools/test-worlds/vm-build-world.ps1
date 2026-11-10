@@ -31,7 +31,7 @@
     Load the stored world from the library (-load) instead of building one: pass when StationGod answers server info
     and the loaded world's thing count (find thing total) equals the save file's. Nothing is changed or stored.
 .PARAMETER RigVM
-    RigVM's host folder, holding vm-client-run.ps1 and rig-lib.ps1 (default: STATIONGOD_RIGVM).
+    RigVM's host folder, holding vm-client-run.ps1 and rig-lib.ps1 (default: the sibling RigVM repo's host folder).
 .PARAMETER RigVMCommit
     The minimum RigVM commit (default 7cc64ca: -WorldBuild, RigGuard and the saved player), passed as vm-client-run's -RigVMPin: rig-lib's Assert-RigVMMinimum
     ends the run as infra when RigVM doesn't contain it, and result.json records the pin and the actual HEAD. The
@@ -62,7 +62,7 @@ param(
     # Load the library's stored <World> instead of building it: StationGod answers and the thing count is the save's.
     [switch] $Check,
     [string] $Owner = 'sg-test-worlds build',
-    [string] $RigVM = $env:STATIONGOD_RIGVM,
+    [string] $RigVM,
     [string] $RigVMCommit = '7cc64ca',
     [int] $LockWaitMinutes = 120,
     [string] $Library = $env:STATIONGOD_TEST_WORLDS,
@@ -90,6 +90,8 @@ if ($PSVersionTable.PSEdition -eq 'Desktop') {
     $env:PSModulePath = (($env:PSModulePath -split ';') | ? { $_ -match '\\WindowsPowerShell\\' }) -join ';'
 }
 $here = $PSScriptRoot
+. (Join-Path (Split-Path $here) 'rigvm-host.ps1')
+if (-not $RigVM) { $RigVM = Get-DefaultRigVMHost $here }
 # Minutes: expected length, the build (or load) phase limit, the stall limit. The timeout is the stall plus 3 min.
 $RUN_LIMITS = @{
     # The builders wait for the lander first (up to 7 min; P46: tightened once a run measures it).

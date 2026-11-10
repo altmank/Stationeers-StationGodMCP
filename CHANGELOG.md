@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Tooling: the VM scripts find RigVM's `host\` folder by default** (the sibling RigVM repo, found relative to the script); `STATIONGOD_RIGVM` and `STATIONGOD_RIG_LIB` are gone. Pass `-RigVM` / `-RigLib` for a different folder.
 - **New: `[Rig] MaxFps`, an opt-in frame cap** (default 0 = off; `-sgfps N` overrides it for one run). The picture rig sets 30.
 - **Build: a deploy no longer keeps the version it replaces.** The backup step 2.17.1 added to `build.ps1 -Deploy` and`
   `-DeployOnly` is gone (source control is the backup); deploys still take the game lock and refuse while the game runs.
