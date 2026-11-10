@@ -1,0 +1,15 @@
+<Project>
+  <PropertyGroup>
+    <RepoRoot>$(MSBuildThisFileDirectory)</RepoRoot>
+    <Deterministic>true</Deterministic>
+    <!-- Source paths are baked into the dlls (PDB paths, caller-info). Mapping the repo root to a fixed prefix makes the
+         same commit build byte-identical dlls from any folder. src\*\Directory.Build.props import this file: MSBuild
+         reads only the nearest one. A trailing backslash in the root is part of the map. -->
+  </PropertyGroup>
+  <!-- Not the test projects: they ship nothing, and several find the source tree from [CallerFilePath]. -->
+  <PropertyGroup Condition="!$(MSBuildProjectDirectory.StartsWith('$(RepoRoot)tests', System.StringComparison.OrdinalIgnoreCase))">
+    <PathMap>$(RepoRoot)=/_/</PathMap>
+    <!-- SourceLink otherwise keeps the real folder path in the source-link document. -->
+    <DeterministicSourcePaths>true</DeterministicSourcePaths>
+  </PropertyGroup>
+</Project>
