@@ -40,6 +40,7 @@ settings also read an environment variable, which wins over the file (handy for 
 | `Ghosts` | `Tint` | `cyan` | none | The colour new ghosts take. The names are listed in the setting's description. |
 | `Ghosts` | `TooltipScale` | `1` | none | The ghost tooltip's size: 1 fits the screen's height, 1.5 half again as large. Clamped to 0.5 to 3. |
 | `Ghosts` | `ShowTooltip` | `false` | none | Show the ghost tooltip: the panel under the crosshair for the ghost there (its plan, next steps, materials and ports). It hides while the game's UI is hidden either way (Loom planning, the hide-UI key). The ghost under the crosshair is drawn brighter whether it is on or off. |
+| `Rig` | `MaxFps` | `0` | none | Frame cap for rendered rig runs, to lower GPU load: above 0 sets `vSyncCount` 0 and `targetFrameRate`; 0 touches neither. `-sgfps N` on the command line overrides it. |
 
 Environment values: `true` or `false` for `Enabled`, a number for `Port`. An invalid value is logged and the file's
 value used.
