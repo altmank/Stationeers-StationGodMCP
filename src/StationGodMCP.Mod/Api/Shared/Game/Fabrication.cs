@@ -75,9 +75,11 @@ internal static class Fabrication
             stock.Add(Scaled(load.Ingot, load.Quantity));
         }
 
-        if (order.Make && !stock.Contains(recipe))
+        Dictionary<string, double> missing = order.Make
+            ? ScaledShortfall(fab, recipe, stock)
+            : new Dictionary<string, double>();
+        if (missing.Count > 0)
         {
-            Dictionary<string, double> missing = PrefabRecipes.Inputs(recipe.GetMissingReagents(stock));
             throw ApiErrors.Refused("missing_reagents",
                 FabricateRule.MissingReagents(Names.Of(fab), missing, IngotsOf(missing)), new Dictionary<string, object?> { ["missing"] = missing });
         }
@@ -99,8 +101,9 @@ internal static class Fabrication
         BuildStateManufacturingDat dat = fab.CurrentBuildState.ManufactureDat;
         if (plan.Product != null)
         {
+            // The fabricator's selected recipe is set to the product, as the game's own make has it set.
             fab.CurrentHash = plan.Product.PrefabHash;
-            if (!fab.ReagentMixture.Contains(plan.Recipe))
+            if (ScaledShortfall(fab, plan.Recipe, fab.ReagentMixture).Count > 0)
             {
                 throw new ApiException("internal_error",
                     "The fabricator's stock lost an ingredient between the check and the make.");
@@ -131,6 +134,12 @@ internal static class Fabrication
 
         return View(plan, before, Stock(stock), Loaded(plan), new List<FabricateMadeView>());
     }
+
+    // What the stock lacks for the recipe at the current build state's material multiplier (what Make subtracts).
+    private static Dictionary<string, double> ScaledShortfall(SimpleFabricatorBase fab, Recipe recipe,
+        ReagentMixture stock) =>
+        FabricateRule.Shortfall(PrefabRecipes.Inputs(recipe), fab.CurrentBuildState.ManufactureDat.MaterialCostMultiplier,
+            Stock(stock));
 
     private static FabricateView View(FabricationPlan plan, Dictionary<string, double> before,
         Dictionary<string, double> after, List<FabricateLoadView> loaded, List<FabricateMadeView> made)
@@ -168,7 +177,8 @@ internal static class Fabrication
         List<FabricateMadeView> made = new List<FabricateMadeView>();
         Slot export = fab.ExportSlot;
         int slot = fab.Slots.IndexOf(export);
-        for (int index = 0; index < count; index++)
+        bool stackable = product is Stackable;
+        for (int index = 0; FabricateRule.MoreCopies(index, count, stackable, export.Get() != null); index++)
         {
             DynamicThing item = Thing.Create<DynamicThing>(product, export.Location.position,
                 export.Location.rotation, 0L);
@@ -177,10 +187,6 @@ internal static class Fabrication
             DynamicThing.ItemManufactured(item, count);
             made.Add(new FabricateMadeView(new ThingId(item.ReferenceId), item.PrefabName, item.DisplayName,
                 item is Stackable stack ? stack.Quantity : 1.0, slot));
-            if (item is Stackable)
-            {
-                break;
-            }
         }
 
         return made;
@@ -329,7 +335,12 @@ internal static class Fabrication
         {
             if (reagents.ContainsKey(pair.Key.TypeNameShort))
             {
-                ingots[pair.Key.TypeNameShort] = pair.Value.PrefabName;
+                // Two ingots of one reagent: the first by name, so the message does not change from run to run.
+                if (!ingots.TryGetValue(pair.Key.TypeNameShort, out string? known) ||
+                    string.CompareOrdinal(pair.Value.PrefabName, known) < 0)
+                {
+                    ingots[pair.Key.TypeNameShort] = pair.Value.PrefabName;
+                }
             }
         }
 

@@ -15,6 +15,7 @@
   `-DeployOnly` is gone (source control is the backup); deploys still take the game lock and refuse while the game runs.
 - **write fabricator: make a recipe's item on a fabricator at once.** A cheat that finishes one make on any Autolathe, Tool Manufactory, Electronics Printer or other printer-family machine in a single call, optionally loading ingots first, and replies with the item made, the stock before and after and what was consumed. It uses the fabricator's own recipes, tier and multipliers; the recipe's time and energy are skipped.
 
+  The stock must cover the recipe times the build state's material multiplier (stricter than the game's own check), and a product that is not stackable makes one item, since the output slot holds one.
 ## 2.17.1
 
 - **Fix: `show ghost` says why a ghost was not taken off.** With Lattice, a refused removal was reported as "ids named

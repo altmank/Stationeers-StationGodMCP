@@ -153,6 +153,46 @@ public sealed class WriteFabricatorTests
     }
 
     [Fact]
+    public void AMaterialMultiplierAboveOneScalesTheCostTheStockMustCover()
+    {
+        Dictionary<string, double> recipe = new() { ["Iron"] = 3.0, ["Electrum"] = 2.0 };
+        // Stock covers the base cost (3 and 2) but not 1.5 times it (4.5 and 3).
+        Dictionary<string, double> stock = new() { ["Iron"] = 4.0, ["Electrum"] = 2.5 };
+
+        Assert.Empty(FabricateRule.Shortfall(recipe, 1.0, stock));
+        Dictionary<string, double> missing = FabricateRule.Shortfall(recipe, 1.5, stock);
+        Assert.Equal(2, missing.Count);
+        Assert.Equal(0.5, missing["Iron"]);
+        Assert.Equal(0.5, missing["Electrum"]);
+        Assert.Contains("0.5 Iron", FabricateRule.MissingReagents("Fab", missing, new Dictionary<string, string>()));
+    }
+
+    [Fact]
+    public void AStockThatCoversTheScaledCostOrHoldsNothingIsAnsweredExactly()
+    {
+        Dictionary<string, double> recipe = new() { ["Iron"] = 2.0 };
+        Assert.Empty(FabricateRule.Shortfall(recipe, 1.5, new Dictionary<string, double> { ["Iron"] = 3.0 }));
+        Assert.Equal(3.0, FabricateRule.Shortfall(recipe, 1.5, new Dictionary<string, double>())["Iron"]);
+        // A multiplier below one asks for less.
+        Assert.Empty(FabricateRule.Shortfall(recipe, 0.5, new Dictionary<string, double> { ["Iron"] = 1.0 }));
+    }
+
+    [Fact]
+    public void OnlyAsManyCopiesAreMadeAsTheOutputSlotHolds()
+    {
+        // A non-stackable product with an output multiplier of 3: one fits the slot; no copy is made with nowhere to go.
+        Assert.True(FabricateRule.MoreCopies(0, 3, false, false));
+        Assert.False(FabricateRule.MoreCopies(1, 3, false, true));
+        // Even if the slot read free again, the count is a limit.
+        Assert.False(FabricateRule.MoreCopies(3, 3, false, false));
+        // A stackable product is one item, its quantity the multiplier.
+        Assert.True(FabricateRule.MoreCopies(0, 3, true, false));
+        Assert.False(FabricateRule.MoreCopies(1, 3, true, false));
+        // A taken slot at the start (the check refuses this earlier) makes nothing.
+        Assert.False(FabricateRule.MoreCopies(0, 1, false, true));
+    }
+
+    [Fact]
     public void ALoadOnlyCallConsumesNothing()
     {
         Dictionary<string, double> none = new Dictionary<string, double>();

@@ -61,6 +61,36 @@ internal static class FabricateRule
         return error != 0 ? "error" : null;
     }
 
+    /// <summary>
+    /// What a stock lacks for a recipe made at a material multiplier: per reagent, recipe amount x multiplier - stock,
+    /// rounded to 6 places, keeping only values above the trace. Empty when the stock covers the scaled cost. (The
+    /// game's own make checks the unscaled recipe and then subtracts the scaled one, SimpleFabricatorBase.cs:867-869;
+    /// this check is the stricter one, so the stock never goes short of what Subtract takes.)
+    /// </summary>
+    internal static Dictionary<string, double> Shortfall(IReadOnlyDictionary<string, double> recipe, double multiplier,
+        IReadOnlyDictionary<string, double> stock)
+    {
+        Dictionary<string, double> missing = new Dictionary<string, double>();
+        foreach (KeyValuePair<string, double> input in recipe)
+        {
+            double lack = Math.Round(input.Value * multiplier - Get(stock, input.Key), 6);
+            if (lack > Trace)
+            {
+                missing[input.Key] = lack;
+            }
+        }
+
+        return missing;
+    }
+
+    /// <summary>
+    /// Whether another copy of the product is created: the output multiplier asks for `count` copies, but the one export
+    /// slot holds a single item, so a non-stackable product stops once the slot is taken, and a stackable one is a
+    /// single item whose quantity is the multiplier. Nothing is created that has nowhere to go.
+    /// </summary>
+    internal static bool MoreCopies(int made, int count, bool stackable, bool slotTaken) =>
+        made < count && !slotTaken && !(stackable && made > 0);
+
     /// <summary>Per reagent, before + loaded - after rounded to 6 places, keeping only values above the trace.</summary>
     internal static Dictionary<string, double> Consumed(IReadOnlyDictionary<string, double> before,
         IReadOnlyDictionary<string, double> loaded, IReadOnlyDictionary<string, double> after)
