@@ -1,8 +1,12 @@
 """Runs the failure-semantics suite (PLAN 3.3) against a test instance and writes results.json and RESULTS.md.
 
-    py -3 tests/gate/run_gate.py --pipe StationGodMCP-SGT1 [--only <substring>] [--out <dir>]
+    py -3 tests/gate/run_gate.py --pipe <test pipe> [--fixtures <file>] [--reset <command>]
+                                 [--only <substring>] [--out <dir>]
 
-The instance must be a copy of the test save on the spike-branch mod build, free to change. Never LU's live server.
+The instance must have loaded a copy of the sg-gate test world (tools/test-worlds), free to change, with its
+required mods. --fixtures defaults to SG_GATE_FIXTURES, else sg-gate/fixtures.json in STATIONGOD_TEST_WORLDS (the
+world library). --reset (else SG_GATE_RESET) is the command the world-load case runs to reload the sg-gate world
+on the instance; see cases.reset_command. Never LU's live server.
 """
 import argparse
 import json
@@ -19,12 +23,16 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--pipe", required=True)
     parser.add_argument("--exe")
+    parser.add_argument("--fixtures")
+    parser.add_argument("--reset", help="command that reloads the sg-gate world (default: SG_GATE_RESET)")
     parser.add_argument("--only", action="append", default=[])
     parser.add_argument("--skip", action="append", default=[])
     parser.add_argument("--out", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "out"))
     args = parser.parse_args()
     if "StationeersDedicated" in args.pipe or args.pipe == "StationGodMCP":
         sys.exit("refusing: the suite runs on test instances only")
+    cases.use_fix(args.fixtures)
+    cases.RESET = args.reset
     os.makedirs(args.out, exist_ok=True)
     results = []
     for group, name, fn in cases.CASES:
