@@ -34,6 +34,15 @@
   sg client has `sg.show('picture', ...)`. A player's front is its body's facing (the way it last looked while
   standing), not the world's north, and the reply's `target.front` says which way that was.
 
+- **Build: the same commit builds byte-identical dlls from any folder.** A root `Directory.Build.props` maps the repo
+  root to a fixed path (PathMap) for the mod, the sidecar and the client, so no folder name is baked into a build.
+
+- **Fix: no Lattice errors in the log of a game without Lattice.** StationGod worked there since 2.16.1, but its log
+  still held about 68 alarming lines (TypeLoadException naming `StationGodMCP.LatticeLink`, and a HarmonyX
+  `ReflectionTypeLoadException` warning) as StationeersLaunchPad and the patch setup read through the mod's types.
+  The parts that use Lattice no longer name Lattice's types where those reads look, and the build checks that they
+  stay that way.
+
 - **Build: deploys take the game lock themselves.** `build.ps1 -Deploy` and `-DeployOnly` take
   the game lock (`-LockScript`, default `STATIONEERS_GAME_LOCK`), only around removing and copying the mod
   folder, and release it even when the copy fails. `-NoLock` deploys without one; `-LockHeld` is for a caller that

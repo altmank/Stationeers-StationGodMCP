@@ -19,13 +19,29 @@ namespace StationGodMCP.LatticeLink.Json;
 /// </summary>
 internal sealed partial class LatticeIn
 {
-    private readonly L.IGhostSystem _system;
-    private Dictionary<string, L.PrefabKey>? _pieces;
-    private Dictionary<string, L.KitKey>? _kits;
+    // Fields typed object, read through the typed properties below: a game without Lattice lays LatticeIn out when it
+    // reads the mod's types, and a field typed with Lattice's types fails then (LatticeFieldsTests).
+    private readonly object _systemHeld;
+    private object? _piecesHeld;
+    private object? _kitsHeld;
 
     internal LatticeIn(L.IGhostSystem system)
     {
-        _system = system;
+        _systemHeld = system;
+    }
+
+    private L.IGhostSystem _system => (L.IGhostSystem)_systemHeld;
+
+    private Dictionary<string, L.PrefabKey>? _pieces
+    {
+        get => (Dictionary<string, L.PrefabKey>?)_piecesHeld;
+        set => _piecesHeld = value;
+    }
+
+    private Dictionary<string, L.KitKey>? _kits
+    {
+        get => (Dictionary<string, L.KitKey>?)_kitsHeld;
+        set => _kitsHeld = value;
     }
 
     internal List<string> Problems { get; } = new List<string>();

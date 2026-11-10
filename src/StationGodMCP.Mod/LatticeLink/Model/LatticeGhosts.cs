@@ -49,8 +49,18 @@ internal static class LatticeNames
 
     internal static readonly L.ModuleName Render = Must(L.ModuleName.Create("render"));
 
-    internal static T Must<T>(L.Result<T, L.Reason> result) where T : notnull =>
-        result.Match(static value => value, static why => throw new InvalidOperationException(LatticeText.Of(why)));
+    // TryGet, not Match with lambdas: a lambda taking a Reason is cached in a field typed with Lattice's types, which a
+    // game without Lattice lays out and fails on (LatticeFieldsTests).
+    internal static T Must<T>(L.Result<T, L.Reason> result) where T : notnull
+    {
+        if (result.TryGet(out T value))
+        {
+            return value;
+        }
+
+        result.TryGetError(out L.Reason why);
+        throw new InvalidOperationException(LatticeText.Of(why));
+    }
 }
 
 /// <summary>Lattice's reasons as one line of text: the code, then its facts.</summary>

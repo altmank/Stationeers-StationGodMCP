@@ -40,7 +40,7 @@ param(
     [switch]$Draft,
     [switch]$Clobber,
     [switch]$Summary,
-    [string]$Remote = 'github',
+    [string]$Remote = 'origin',
     [string]$GameDir = $env:STATIONEERS_DIR
 )
 
@@ -67,7 +67,13 @@ function VersionAt([string]$rev) {
     if (-not $csproj) { return $null }
     ([regex]::Match(($csproj -join "`n"), '<Version>([^<]+)</Version>')).Groups[1].Value
 }
-function Sha256([string]$path) { (Get-FileHash -Algorithm SHA256 -LiteralPath $path).Hash.ToLowerInvariant() }
+function Sha256([string]$path) {
+    # Not Get-FileHash: the Windows PowerShell child build changes PSModulePath, so module autoload can fail under pwsh 7.
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    $stream = [System.IO.File]::OpenRead($path)
+    try { -join ($sha.ComputeHash($stream) | ForEach-Object { $_.ToString('x2') }) }
+    finally { $stream.Dispose(); $sha.Dispose() }
+}
 
 if ($Summary) {
     . (Join-Path $root 'tools\summary.ps1')
@@ -91,6 +97,8 @@ if ($Summary) {
 }
 
 # The GitHub repository behind the remote, for gh -R.
+$remotes = @(Get-GitOutput remote)
+if ($remotes -notcontains $Remote) { throw "Remote '$Remote' does not exist. Remotes here: $(if ($remotes.Count) { $remotes -join ', ' } else { '(none)' }). Pass -Remote <name>." }
 $url = (Invoke-Git remote get-url $Remote) | Select-Object -First 1
 $match = [regex]::Match($url, 'github\.com[:/]([^/]+/[^/]+?)(\.git)?$')
 if (-not $match.Success) { throw "Remote '$Remote' ($url) is not a GitHub repository." }

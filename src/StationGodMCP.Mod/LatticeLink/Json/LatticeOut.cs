@@ -18,18 +18,24 @@ namespace StationGodMCP.LatticeLink.Json;
 /// </summary>
 internal sealed class LatticeOut
 {
-    private readonly L.IGhostSystem _system;
+    // Typed object, read through _system: a game without Lattice lays LatticeOut out when it reads the mod's types, and a
+    // field typed with Lattice's types fails then (LatticeFieldsTests).
+    private readonly object _systemHeld;
     private readonly Func<int, string?> _itemName;
 
     internal LatticeOut(L.IGhostSystem system, Func<int, string?>? itemName = null)
     {
-        _system = system;
+        _systemHeld = system;
         _itemName = itemName ?? (static _ => null);
     }
+
+    private L.IGhostSystem _system => (L.IGhostSystem)_systemHeld;
 
     // ---- values ------------------------------------------------------------------------------------------------
 
     internal static JArray Cell(L.Cell cell) => new JArray(Round(cell.X * 0.1), Round(cell.Y * 0.1), Round(cell.Z * 0.1));
+
+    private static JToken CellToken(L.Cell cell) => Cell(cell);
 
     internal static JArray Offset(L.CellOffset offset) =>
         new JArray(Round(offset.X * 0.1), Round(offset.Y * 0.1), Round(offset.Z * 0.1));
@@ -272,12 +278,14 @@ internal sealed class LatticeOut
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static void PlanBuilders(JObject written, L.Plan plan)
     {
-        written["build_by"] = Each(plan.BuildBy, builder => new JValue(builder.Value));
+        written["build_by"] = Each(plan.BuildBy, BuilderId);
         if (plan.Colour.TryGet(out L.Tint colour))
         {
             written["colour"] = Rgba(colour.R, colour.G, colour.B, colour.A);
         }
     }
+
+    private static JToken BuilderId(L.ExecutorId builder) => new JValue(builder.Value);
 
     internal JObject Finished(L.FinishedPlan plan) => new JObject
     {
@@ -300,11 +308,13 @@ internal sealed class LatticeOut
         {
             ["done"] = facts.Progress.Done, ["started"] = facts.Progress.Started, ["remaining"] = facts.Progress.Remaining
         },
-        ["consequences"] = Each(facts.Consequences, warning => new JObject
-        {
-            ["why"] = Reason(warning.Why), ["ghosts"] = Ids(warning.Ghosts)
-        }),
+        ["consequences"] = Each(facts.Consequences, Consequence),
         ["cost"] = Bill(facts.Cost),
+    };
+
+    private static JToken Consequence(L.SafetyWarning warning) => new JObject
+    {
+        ["why"] = Reason(warning.Why), ["ghosts"] = Ids(warning.Ghosts)
     };
 
     private JToken Validity(L.Validity validity) => validity switch
@@ -371,8 +381,10 @@ internal sealed class LatticeOut
         }),
         ["plans_opened"] = Each(changes.PlansOpened, Plan),
         ["plans_changed"] = Each(changes.PlansChanged, change => new JObject { ["before"] = Plan(change.Before), ["after"] = Plan(change.After) }),
-        ["plans_finished"] = Each(changes.PlansFinished, plan => new JValue(plan.Value)),
+        ["plans_finished"] = Each(changes.PlansFinished, PlanIdValue),
     };
+
+    private static JToken PlanIdValue(L.PlanId plan) => new JValue(plan.Value);
 
     private JToken Cause(L.RemovalCause cause) => cause switch
     {
@@ -423,7 +435,7 @@ internal sealed class LatticeOut
             {
                 L.BuildScope.Any => new JValue("any"),
                 L.BuildScope.Kits kits => new JObject { ["kits"] = Each(kits.Of, kit => Kit(kit)) },
-                L.BuildScope.Families families => new JObject { ["families"] = Each(families.Of, family => new JValue(family.Value)) },
+                L.BuildScope.Families families => new JObject { ["families"] = Each(families.Of, FamilyValue) },
                 _ => new JValue(builder.Info.Builds.GetType().Name)
             },
             ["area"] = builder.Area.TryGet(out L.BuilderArea area) ? Area(area) : null,
@@ -496,10 +508,14 @@ internal sealed class LatticeOut
     [MethodImpl(MethodImplOptions.NoInlining)]
     internal JArray Quantities(L.ValueList<L.ItemQuantity> items) => Each(items, Quantity);
 
-    internal JArray Refusals(L.ValueList<L.Refusal> refusals) => Each(refusals, refusal => new JObject
+    internal JArray Refusals(L.ValueList<L.Refusal> refusals) => Each(refusals, Refusal);
+
+    private static JToken Refusal(L.Refusal refusal) => new JObject
     {
         ["why"] = Reason(refusal.Why), ["ghosts"] = Ids(refusal.Ghosts)
-    });
+    };
+
+    private static JToken FamilyValue(L.PieceFamily family) => new JValue(family.Value);
 
     // ---- previews, analysis, steps -----------------------------------------------------------------------------
 
@@ -524,7 +540,7 @@ internal sealed class LatticeOut
     {
         JObject written = new JObject
         {
-            ["cells"] = Each(run.Cells, cell => Cell(cell)),
+            ["cells"] = Each(run.Cells, CellToken),
             ["pieces"] = Each(run.Pieces, Placement),
             ["cost"] = Bill(run.Cost),
             ["cost_as_singles"] = Bill(run.CostAsSingles),
@@ -602,76 +618,88 @@ internal sealed class LatticeOut
 
     internal JObject Analysis(L.AnalysisReport report) => new JObject
     {
-        ["networks"] = Each(report.Networks, effect => (JToken)(effect switch
-        {
-            L.NetworkEffect.Joins joins => new JObject { ["joins"] = new JArray(joins.A.Value, joins.B.Value) },
-            L.NetworkEffect.Splits splits => new JObject { ["splits"] = splits.Network.Value },
-            L.NetworkEffect.Load load => new JObject
-            {
-                ["load"] = new JObject
-                {
-                    ["network"] = load.Network.Value, ["before_w"] = load.Before.Value, ["after_w"] = load.After.Value,
-                    ["rating_w"] = load.Rating.TryGet(out L.Watts rating) ? rating.Value : null
-                }
-            },
-            _ => new JObject { ["unknown"] = effect.GetType().Name }
-        })),
-        ["rooms"] = Each(report.Rooms, effect => (JToken)(effect switch
-        {
-            L.RoomEffect.Opens opens => new JObject { ["opens"] = opens.Room.Value },
-            L.RoomEffect.Seals seals => new JObject { ["seals"] = new JObject { ["cells"] = seals.Cells } },
-            L.RoomEffect.Resizes resizes => new JObject
-            {
-                ["resizes"] = new JObject { ["room"] = resizes.Room.Value, ["before"] = resizes.Before, ["after"] = resizes.After }
-            },
-            _ => new JObject { ["unknown"] = effect.GetType().Name }
-        })),
-        ["gas"] = Each(report.Gas, effect => (JToken)(effect switch
-        {
-            L.GasEffect.Releases releases => new JObject
-            {
-                ["releases"] = new JObject
-                {
-                    ["at"] = Cell(releases.At),
-                    ["into"] = releases.Into.TryGet(out L.RoomRef room) ? room.Value : null,
-                    ["gas"] = GasMix(releases.Gas)
-                }
-            },
-            L.GasEffect.Pollutes pollutes => new JObject
-            {
-                ["pollutes"] = new JObject { ["room"] = pollutes.Room.Value, ["mol"] = pollutes.Amount.Value }
-            },
-            _ => new JObject { ["unknown"] = effect.GetType().Name }
-        })),
-        ["facts"] = Each(report.Facts, fact =>
-        {
-            JObject values = new JObject();
-            foreach (KeyValuePair<string, string> value in fact.Values)
-            {
-                values[value.Key] = value.Value;
-            }
-
-            return new JObject { ["from"] = fact.From.Value, ["code"] = fact.Code.Value, ["values"] = values };
-        }),
+        ["networks"] = Each(report.Networks, NetworkEffect),
+        ["rooms"] = Each(report.Rooms, RoomEffect),
+        ["gas"] = Each(report.Gas, GasEffect),
+        ["facts"] = Each(report.Facts, AnalyzerFact),
     };
+
+    private static JToken NetworkEffect(L.NetworkEffect effect) => effect switch
+    {
+        L.NetworkEffect.Joins joins => new JObject { ["joins"] = new JArray(joins.A.Value, joins.B.Value) },
+        L.NetworkEffect.Splits splits => new JObject { ["splits"] = splits.Network.Value },
+        L.NetworkEffect.Load load => new JObject
+        {
+            ["load"] = new JObject
+            {
+                ["network"] = load.Network.Value, ["before_w"] = load.Before.Value, ["after_w"] = load.After.Value,
+                ["rating_w"] = load.Rating.TryGet(out L.Watts rating) ? rating.Value : null
+            }
+        },
+        _ => new JObject { ["unknown"] = effect.GetType().Name }
+    };
+
+    private static JToken RoomEffect(L.RoomEffect effect) => effect switch
+    {
+        L.RoomEffect.Opens opens => new JObject { ["opens"] = opens.Room.Value },
+        L.RoomEffect.Seals seals => new JObject { ["seals"] = new JObject { ["cells"] = seals.Cells } },
+        L.RoomEffect.Resizes resizes => new JObject
+        {
+            ["resizes"] = new JObject { ["room"] = resizes.Room.Value, ["before"] = resizes.Before, ["after"] = resizes.After }
+        },
+        _ => new JObject { ["unknown"] = effect.GetType().Name }
+    };
+
+    private static JToken GasEffect(L.GasEffect effect) => effect switch
+    {
+        L.GasEffect.Releases releases => new JObject
+        {
+            ["releases"] = new JObject
+            {
+                ["at"] = Cell(releases.At),
+                ["into"] = releases.Into.TryGet(out L.RoomRef room) ? room.Value : null,
+                ["gas"] = GasMix(releases.Gas)
+            }
+        },
+        L.GasEffect.Pollutes pollutes => new JObject
+        {
+            ["pollutes"] = new JObject { ["room"] = pollutes.Room.Value, ["mol"] = pollutes.Amount.Value }
+        },
+        _ => new JObject { ["unknown"] = effect.GetType().Name }
+    };
+
+    private static JToken AnalyzerFact(L.AnalyzerFact fact)
+    {
+        JObject values = new JObject();
+        foreach (KeyValuePair<string, string> value in fact.Values)
+        {
+            values[value.Key] = value.Value;
+        }
+
+        return new JObject { ["from"] = fact.From.Value, ["code"] = fact.Code.Value, ["values"] = values };
+    }
 
     private static JObject GasMix(L.GasMix mix) => new JObject
     {
-        ["gases"] = Each(mix.Gases, gas => new JObject { ["gas"] = gas.Gas.Value, ["mol"] = gas.Amount.Value }),
+        ["gases"] = Each(mix.Gases, GasAmount),
         ["temperature_k"] = mix.Temperature.Value,
     };
+
+    private static JToken GasAmount(L.GasAmount gas) => new JObject { ["gas"] = gas.Gas.Value, ["mol"] = gas.Amount.Value };
 
     internal JObject Steps(L.StepPlan plan) => new JObject
     {
         ["ghost"] = plan.Ghost.Value,
         ["steps"] = Each(plan.Steps, Step),
-        ["constraints"] = Each(plan.Constraints, constraint => (JToken)(constraint switch
-        {
-            L.Constraint.OnePipeJoinPerTick => new JValue("one_pipe_join_per_tick"),
-            L.Constraint.NetworkOff off => new JObject { ["network_off"] = off.Network.Value },
-            L.Constraint.After after => new JObject { ["after"] = after.Ghost.Value },
-            _ => new JObject { ["unknown"] = constraint.GetType().Name }
-        })),
+        ["constraints"] = Each(plan.Constraints, Constraint),
+    };
+
+    private static JToken Constraint(L.Constraint constraint) => constraint switch
+    {
+        L.Constraint.OnePipeJoinPerTick => new JValue("one_pipe_join_per_tick"),
+        L.Constraint.NetworkOff off => new JObject { ["network_off"] = off.Network.Value },
+        L.Constraint.After after => new JObject { ["after"] = after.Ghost.Value },
+        _ => new JObject { ["unknown"] = constraint.GetType().Name }
     };
 
     private JObject Step(L.Step step) => step switch
@@ -816,17 +844,19 @@ internal sealed class LatticeOut
     {
         ["plan"] = story.Plan.Value,
         ["entries"] = Each(story.Entries, Entry),
-        ["branches"] = Each(story.Branches, branch =>
-        {
-            JArray saves = new JArray();
-            foreach (L.SaveName save in branch.Saves)
-            {
-                saves.Add(save.Value);
-            }
-
-            return new JObject { ["follows"] = branch.Follows.Value, ["head"] = branch.Head.Value, ["saves"] = saves };
-        }),
+        ["branches"] = Each(story.Branches, Branch),
     };
+
+    private static JToken Branch(L.Branch branch)
+    {
+        JArray saves = new JArray();
+        foreach (L.SaveName save in branch.Saves)
+        {
+            saves.Add(save.Value);
+        }
+
+        return new JObject { ["follows"] = branch.Follows.Value, ["head"] = branch.Head.Value, ["saves"] = saves };
+    }
 
     private static JObject Entry(L.HistoryEntry entry) => new JObject
     {
