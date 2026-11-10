@@ -75,6 +75,19 @@ def must(reply, what):
     return reply
 
 
+def field(reply, key):
+    """A reply's key, read from the reply or (a one-id call answers {results: [row]}) from that row or its payload."""
+    if not isinstance(reply, dict):
+        return None
+    if key in reply:
+        return reply[key]
+    row = one(reply)
+    if isinstance(row, dict) and key in row:
+        return row[key]
+    payload = row.get("payload") if isinstance(row, dict) else None
+    return payload.get(key) if isinstance(payload, dict) else None
+
+
 def one(reply):
     """A one-id reply's row: the reply itself, or the single row of a results list."""
     rows = reply.get("results") if isinstance(reply, dict) else None
@@ -153,7 +166,7 @@ def power_port(thing_id, prefer):
     ends = must(sgcall.call("inspect", "connections", id=thing_id), "inspect connections").get("ends") or []
     ends = [e for e in ends if "power" in str(e.get("type_name") or e.get("type")).lower()]
     if not ends:
-        raise Fail(f"{thing_id} has no power port")
+        raise Fail(f"{thing_id} has no power port: {seen}")
     for e in ends:
         if prefer and prefer in str(e.get("role_name") or e.get("role") or "").lower():
             return e["index"]
@@ -183,7 +196,7 @@ def switch_on(thing_id):
 def wait_powered(thing_id, timeout_s=90.0):
     end = time.monotonic() + timeout_s
     while time.monotonic() < end:
-        if sgcall.call("read", "logic", id=thing_id, logic="Power").get("value") == 1:
+        if field(sgcall.call("read", "logic", id=thing_id, logic="Power"), "value") == 1:
             return
         time.sleep(2.0)
     raise Fail(f"{thing_id} never read Power 1")
@@ -266,7 +279,7 @@ def step_states(log, ids):
 
 def stock_of(thing_id):
     reply = must(sgcall.call("inspect", "reagents", id=thing_id), "inspect reagents")
-    row = (reply.get("reagents") or [])
+    row = field(reply, "reagents") or []
     # inspect reagents names a reagent by its type name ("Reagents.Iron"); write fabricator says "Iron".
     return {r["reagent"].replace("Reagents.", ""): round(r["quantity"], 6) for r in row}
 
