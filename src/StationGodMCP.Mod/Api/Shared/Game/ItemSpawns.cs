@@ -107,6 +107,19 @@ internal static class ItemSpawns
     // A loaded item prefab by its whole name (any case) or hash; a structure or anything else is refused.
     private static Item ItemPrefab(PrefabPattern pattern)
     {
+        Thing found = ThingPrefab(pattern);
+        if (!(found is Item item) || item == null)
+        {
+            throw ApiErrors.InvalidArgument(
+                $"{found.PrefabName} is a {found.GetType().Name}, not an item; build structure places structures.");
+        }
+
+        return item;
+    }
+
+    /// <summary>A loaded thing prefab by its whole name (any case) or hash; prefab_missing when none is loaded.</summary>
+    internal static Thing ThingPrefab(PrefabPattern pattern)
+    {
         Thing? found = pattern switch
         {
             PrefabPattern.Hash hash => Prefab.Find(hash.Value),
@@ -122,13 +135,7 @@ internal static class ItemSpawns
                 "(e.g. ItemIntegratedCircuit10).");
         }
 
-        if (!(found is Item item) || item == null)
-        {
-            throw ApiErrors.InvalidArgument(
-                $"{found.PrefabName} is a {found.GetType().Name}, not an item; build structure places structures.");
-        }
-
-        return item;
+        return found;
     }
 
     private static string Shown(PrefabPattern pattern) => pattern switch

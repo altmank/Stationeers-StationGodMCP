@@ -35,4 +35,8 @@ internal static class ApiErrors
         new ApiException(ThingNotFoundCode, $"No thing with reference id {id}.");
 
     internal static ApiException Refused(string code, string message) => new ApiException(code, message);
+
+    /// <summary>A refusal that carries data (the error's data object).</summary>
+    internal static ApiException Refused(string code, string message, object? details) =>
+        new ApiException(code, message, details);
 }

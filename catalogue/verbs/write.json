@@ -1,17 +1,17 @@
 {
   "verb": "write",
-  "description": "Set values and states. Typed ids act at once; a ref or network reports until confirm: true. memory, battery, genes and health are cheats: ask the user.",
+  "description": "Set values and states. Typed ids act at once; a ref or network reports until confirm: true. Cheats (ask the user): memory, battery, fabricator, genes, health.",
   "text": [
     "A write on a device that a chip or another writer drives warns driven_by (inspect {what: \"controllers\", id} lists them). Opening a vent, valve or pump runs the network lint: a problem refuses unless allow: [\"lint\"]."
   ],
   "read_only": false,
   "tool": {
     "options": {
-      "allow": "lint: pass a network lint problem.",
-      "name": "write script: the script's name (letters, digits, underscores).",
-      "code": "write chip: the IC10 source; write script: the Python source, which must define main(...).",
-      "description": "write script: one line saying what the script does.",
-      "scope": "write script: shared (any world, no hard-coded ids), or world (bound to this world)."
+      "allow": "lint: pass a lint problem.",
+      "name": "write script: name (letters, digits, underscores).",
+      "code": "write chip: IC10 source; write script: Python source defining main(...).",
+      "description": "write script: what it does, one line.",
+      "scope": "write script: shared (any world, no hard-coded ids) or world (this world)."
     }
   },
   "whats": {
@@ -137,7 +137,7 @@
           }
         ]
       },
-      "brief": "logic values on devices"
+      "brief": "device logic values"
     },
     "memory": {
       "summary": "up to 512 values into a device's memory from start, as a chip's put does",
@@ -525,7 +525,7 @@
           }
         ]
       },
-      "brief": "press a screen control"
+      "brief": "press a control"
     },
     "label": {
       "summary": "rename things as the hand Labeller does; empty name gives back the game's name",
@@ -735,7 +735,7 @@
           }
         ]
       },
-      "brief": "paint things or a network"
+      "brief": "paint things, networks"
     },
     "flight_log": {
       "summary": "start, stop or clear a rocket flight recorder (server state; never the world); read it with read flight_log",
@@ -863,7 +863,7 @@
           }
         ]
       },
-      "brief": "start, stop, clear a recorder"
+      "brief": "start, stop, clear recorder"
     },
     "uplink": {
       "summary": "point a Logic Rocket Uplink at a Logic Rocket Downlink",
@@ -931,7 +931,7 @@
           }
         ]
       },
-      "brief": "point an uplink"
+      "brief": "point uplink"
     },
     "battery": {
       "summary": "set the charge of batteries and cells: full by default, or a ratio or joules",
@@ -1027,6 +1027,131 @@
         ]
       },
       "brief": "set charge"
+    },
+    "fabricator": {
+      "summary": "make a recipe's item on a fabricator at once (time and energy skipped), optionally loading ingots first: replies with the item made, the stock before and after, and what was consumed",
+      "brief": "make a recipe item",
+      "options": {
+        "id": {
+          "schema": {
+            "type": "string"
+          },
+          "description": "One fabricator's reference id (Autolathe, Tool Manufactory, Electronics Printer, Pipe Bender...).",
+          "required": true,
+          "x-script": "same"
+        },
+        "prefab": {
+          "use": "prefab",
+          "schema": {
+            "type": [
+              "string",
+              "integer"
+            ]
+          },
+          "description": "The item to make: a whole prefab name or hash (ItemMKIIWrench). Needed unless make is false."
+        },
+        "load": {
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "prefab": {
+                  "type": [
+                    "string",
+                    "integer"
+                  ]
+                },
+                "quantity": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                }
+              },
+              "required": [
+                "prefab",
+                "quantity"
+              ]
+            },
+            "maxItems": 16
+          },
+          "description": "Ingots added to the fabricator's stock first, as its import would: [{prefab, quantity}], quantity in ingot units.",
+          "x-script": "same"
+        },
+        "make": {
+          "schema": {
+            "type": "boolean"
+          },
+          "description": "false: only load; nothing is made.",
+          "default": "true",
+          "x-script": "same"
+        },
+        "confirm": {
+          "use": "confirm"
+        }
+      },
+      "text": [
+        "A cheat: the item is made at once; the recipe's time and energy are skipped, and no power is drawn. The reply's `skipped` says how much.",
+        "Uses the fabricator's own recipes, tier and build-state multipliers, and the game's own make (stock subtracted, item created in the output slot). The game then exports the item as usual; find it later by id or `find thing {made_by}`.",
+        "Refused, with nothing loaded or made, when: the fabricator has no such recipe or its tier is too low; it is busy (making, open, or its output slot taken); it is off, unpowered, in error or unfinished; or its stock (after load) lacks an ingredient."
+      ],
+      "example": {
+        "id": "5200100",
+        "prefab": "ItemMKIIWrench",
+        "load": [
+          {
+            "prefab": "ItemIronIngot",
+            "quantity": 3
+          },
+          {
+            "prefab": "ItemElectrumIngot",
+            "quantity": 3
+          }
+        ],
+        "confirm": true
+      },
+      "x-cost": {
+        "class": "instant",
+        "growth": "by-id"
+      },
+      "x-cost-report": {
+        "class": "instant"
+      },
+      "reply": {
+        "list": "made",
+        "variants": [
+          {
+            "keys": {
+              "ready": "bool",
+              "fabricator": "Thing",
+              "tier": "str",
+              "recipe": "{prefab_name: str, display_name: str | None, tier: str, time_s: float, energy_j: float, inputs: dict[str, float]} | None",
+              "multipliers": "{time: float, energy: float, material: float, output: int}",
+              "loaded": "list[{prefab_name: str, reagent: str, quantity: float}]",
+              "stock_before": "dict[str, float]",
+              "stock_after": "dict[str, float]",
+              "consumed": "dict[str, float]",
+              "missing": "dict[str, float]",
+              "made": "list[{reference_id: str, prefab_name: str, display_name: str | None, quantity: float, slot: int}]",
+              "skipped": "{time_s: float, energy_j: float} | None"
+            }
+          }
+        ],
+        "types": [
+          "Thing"
+        ]
+      },
+      "write": {
+        "route": "confirm",
+        "cheat": "always",
+        "x-undo": "cannot",
+        "x-undo-mark": "[cannot undo: item made]",
+        "x-target": [
+          {
+            "path": "id",
+            "role": "acts-on"
+          }
+        ]
+      }
     },
     "genes": {
       "summary": "edit plant genes as the Gene Splicer does",
@@ -1190,7 +1315,7 @@
           }
         ]
       },
-      "brief": "heal a player"
+      "brief": "heal player"
     },
     "script": {
       "hub": true,
@@ -1262,7 +1387,7 @@
           }
         ]
       },
-      "brief": "save a script"
+      "brief": "save script"
     },
     "lattice": {
       "summary": "any Lattice command: place, remove, change, move ghosts; plans; runs and routes; swaps, removals, finishes, splits, transforms, templates; repair, take down, reopen, revert, batch; executors",

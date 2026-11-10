@@ -17,6 +17,7 @@ these tools need a gateway.
 | `find food` | Every food and drink in the world, with nutrition, hydration, food quality and time until it decays; packages counted by content. | none |
 | `move item` | Move an item, or part of a stack, into a slot. | `id`, `quantity`, `to`, `slot`, `merge`, `allow: ["in_use"]`, `force` (cheat); or `moves: [...]` |
 | `build item` | Make items out of nothing (chips, boards, kits, ingots) into a holder's slots or loose at a point. A cheat (`cheats_off` outside creative unless cheats are on at the console); works with no player. `placed` names the new items. | `prefab`, `quantity` (in full stacks, at most 64), `to` + `slot`, or `at`, `confirm` |
+| `write fabricator` | Make a recipe's item on a fabricator at once, optionally loading ingots into its stock first (see *Making a recipe on a fabricator*). A cheat. | `id`, `prefab`, `load: [{prefab, quantity}]`, `make`, `confirm` |
 | `write label` | Rename things as the hand Labeller does. | `id`, `label`; or `labels: [...]` |
 | `write paint` | Paint things as a spray can does, no paint used; or list the colours. | `id` with `color`, or `items: [{id, color}]` |
 
@@ -123,6 +124,22 @@ Put 50 iron ingots into a locker's first free slot, `move item`:
 ```json
 { "id": "160455", "quantity": 50, "to": "148870", "slot": "auto" }
 ```
+
+## Making a recipe on a fabricator
+
+`write fabricator` makes one recipe's item on a fabricator of the printer family (Autolathe, Tool Manufactory, Electronics Printer, Pipe Bender and their siblings; `find device` lists them) in a single call. It is a cheat (`cheats_off` outside creative unless cheats are on at the console) and works only on the host.
+
+```json
+{ "id": "5200100", "prefab": "ItemMKIIWrench",
+  "load": [{ "prefab": "ItemIronIngot", "quantity": 3 }, { "prefab": "ItemElectrumIngot", "quantity": 3 }],
+  "confirm": true }
+```
+
+- **Options.** `id` is one fabricator. `prefab` is the item to make (a whole name or a hash; needed unless `make` is false). `load` adds up to 16 ingot entries to the fabricator's stock first, as its import would (quantity in ingot units; entries of one ingot are merged). `make: false` only loads. Without `confirm` the call reports and changes nothing.
+- **What it does.** It uses the fabricator's own recipe table, tier filter and build-state multipliers, then the game's own finish of a make: the recipe is subtracted from the stock (times the material multiplier) and the item is created in the output slot (once per output multiplier while the slot is free: a stackable product is one item whose quantity is the multiplier, and any other product makes one, since the slot holds one). The stock must cover the recipe times the material multiplier, which is stricter than the game's own check of the unscaled recipe. The game then exports the item as usual: find it by id or `find thing {made_by}`.
+- **Time and energy are skipped.** No power is drawn and nothing waits; the reply's `skipped` gives the time and energy a real make would have taken. The game's own timed run is still available with `write logic` `RecipeHash`, then `Activate` 1.
+- **The reply.** `made` (id, prefab, quantity, slot), `loaded`, `stock_before`, `stock_after`, `consumed`, `multipliers`, `recipe`, `tier`, `skipped`.
+- **Refusals,** each with nothing loaded or made: `not_a_fabricator`, `prefab_missing`, `not_a_recipe` (the message names the machines that make it), `wrong_tier` (build the fabricator on to a higher state with `build finish`), `not_accepted` (a load entry is not an ingot the machine takes), `fabricator_busy` (`data.reason`: making, open, output_occupied), `fabricator_unpowered` (`data.reason`: not_built, off, unpowered, error; only when making) and `missing_reagents` (`data.missing`).
 
 ## Labels and paint
 

@@ -83,3 +83,27 @@ internal static class ItemSpawnReplies
         return Report.Of(targets, reading);
     }
 }
+
+/// <summary>
+/// write fabricator's report: the view as its body (made empty), one target per load [fabricator id, ingot, stock ->
+/// stock + quantity] and one for the make [fabricator id, item, nothing -> 1] with the what's undo mark.
+/// </summary>
+internal static class FabricateReplies
+{
+    internal static ReportReply Reported(FabricateView reading, string undoMark)
+    {
+        string id = reading.Fabricator.ReferenceId.ToString();
+        List<ReportTarget> targets = new List<ReportTarget>(reading.Loaded.Count + 1);
+        foreach (FabricateLoadView load in reading.Loaded)
+        {
+            targets.Add(new ReportTarget(id, null, load.PrefabName, null, load.Quantity, undoMark));
+        }
+
+        if (reading.Recipe is { } recipe)
+        {
+            targets.Add(new ReportTarget(id, null, recipe.PrefabName, null, reading.Multipliers.Output, undoMark));
+        }
+
+        return Report.Of(targets, reading);
+    }
+}

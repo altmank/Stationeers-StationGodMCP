@@ -67,8 +67,8 @@ def write(what, *, fields=None, as_player=None, id=None, logic=None, value=None,
         allow=None, start=None, values=None, code=None, code_file=None, pins=None, run=None, include=None,
         surface=None, element=None, pixel=None, event=None, text=None, label=None, labels=None, network=None,
         kind=None, color=None, items=None, action=None, interval_s=None, capacity=None, csv=None, downlink=None,
-        rocket=None, within=None, ratio=None, joules=None, unit=None, genes=None, player=None, name=None,
-        description=None, scope=None, command=None, **options):
+        rocket=None, within=None, ratio=None, joules=None, prefab=None, load=None, make=None, unit=None, genes=None,
+        player=None, name=None, description=None, scope=None, command=None, **options):
     """Set values and states. sg.help('write', what) gives a what in full."""
     return verb_call('write', what, {'fields': fields, 'as_player': as_player, 'id': id, 'logic': logic, 'value':
                      value, 'writes': writes, 'gateway': gateway, 'allow': allow, 'start': start, 'values': values,
@@ -76,9 +76,9 @@ def write(what, *, fields=None, as_player=None, id=None, logic=None, value=None,
                      surface, 'element': element, 'pixel': pixel, 'event': event, 'text': text, 'label': label,
                      'labels': labels, 'network': network, 'kind': kind, 'color': color, 'items': items, 'action':
                      action, 'interval_s': interval_s, 'capacity': capacity, 'csv': csv, 'downlink': downlink,
-                     'rocket': rocket, 'within': within, 'ratio': ratio, 'joules': joules, 'unit': unit, 'genes':
-                     genes, 'player': player, 'name': name, 'description': description, 'scope': scope, 'command':
-                     command}, options)
+                     'rocket': rocket, 'within': within, 'ratio': ratio, 'joules': joules, 'prefab': prefab, 'load':
+                     load, 'make': make, 'unit': unit, 'genes': genes, 'player': player, 'name': name,
+                     'description': description, 'scope': scope, 'command': command}, options)
 
 
 def plan(what, *, fields=None, as_player=None, kind=None, start=None, end=None, reroute=None, trunk=None,
