@@ -80,9 +80,9 @@ as `sg-smoke` copied back into the run folder; nothing built, nothing stored.
 ### Migrating an old (nested) library
 
 Entries once stored as `<world>\<world>\<world>.save` plus `md5.txt` convert in place, one shot, with no game:
-`py -3.12 tools/test-worlds/twlib.py migrate --library <library>` (all nested entries; `--world <name>` for one). It moves
-the save to `<world>\<world>.save`, removes the nested folder and `md5.txt`, and writes `world.txt`. It refuses an entry
-holding two different saves. Run it when no other run is using the library.
+`py -3.12 tools/test-worlds/twlib.py migrate --library <library>` (every nested `sg-*` entry; other mods' entries are skipped and reported; `--world <name>` names one, repeatable). It moves
+the save to `<world>\<world>.save`, removes the nested folder and `md5.txt`, and merges into `world.txt` (an existing one keeps its other lines and keys; only the six StationGod keys are added or refreshed; `store` does the same). It refuses an entry
+holding two different saves, reports every refusal at the end and exits 1 if any. Run it when no other run is using the library.
 
 ### sg-cost-large
 

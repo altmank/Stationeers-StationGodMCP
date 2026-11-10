@@ -481,7 +481,9 @@ class Library(unittest.TestCase):
         # a flat entry already in the library is left alone by the library sweep's other entries
         write_save(os.path.join(lib, "flat-one", "x"), "flat-one")
         want = twlib.md5_of(os.path.join(nested, "sg-silo.save"))
-        self.assertEqual(twlib.migrate_library(lib), {"sg-silo": "migrated"})
+        done, skipped, refused = twlib.migrate_library(lib)
+        self.assertEqual((done, refused), ({"sg-silo": "migrated"}, {}))
+        self.assertIn("flat-one", skipped)
         self.assertEqual(sorted(os.listdir(entry)), ["README.md", "fixtures.json", "sg-silo.save", "world.txt"])
         self.assertEqual(text(os.path.join(entry, "README.md")), "keep me")
         meta = dict(l.split(" ", 1) for l in text(os.path.join(entry, "world.txt")).splitlines())
@@ -492,14 +494,81 @@ class Library(unittest.TestCase):
         self.assertEqual(twlib.migrate_entry(lib, "sg-silo"), "flat")
         self.assertEqual(twlib.md5_of(os.path.join(entry, "sg-silo.save")), want)
 
-    def test_migrate_refuses_an_entry_with_two_different_saves(self):
+    def test_migrate_refuses_an_entry_with_two_different_saves_and_goes_on(self):
         lib = os.path.join(self.tmp, "worlds")
         write_save(os.path.join(lib, "sg-silo", "sg-silo"), "sg-silo")
         with open(os.path.join(lib, "sg-silo", "sg-silo.save"), "wb") as f:
             f.write(b"different")
+        write_save(os.path.join(lib, "sg-gate", "sg-gate"), "sg-gate")
         with self.assertRaises(SystemExit):
             twlib.migrate_entry(lib, "sg-silo")
+        done, _skipped, refused = twlib.migrate_library(lib)
+        self.assertEqual(done, {"sg-gate": "migrated"})
+        self.assertEqual(list(refused), ["sg-silo"])
         self.assertTrue(os.path.isdir(os.path.join(lib, "sg-silo", "sg-silo")))
+
+    def test_the_cli_exits_non_zero_when_an_entry_is_refused(self):
+        lib = os.path.join(self.tmp, "worlds")
+        write_save(os.path.join(lib, "sg-silo", "sg-silo"), "sg-silo")
+        with open(os.path.join(lib, "sg-silo", "sg-silo.save"), "wb") as f:
+            f.write(b"different")
+        import subprocess
+        r = subprocess.run([sys.executable, os.path.join(HERE, "twlib.py"), "migrate", "--library", lib],
+                           capture_output=True, text=True)
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("sg-silo", r.stdout)
+
+    def _tree(self, root):
+        out = {}
+        for dirpath, _dirs, files in os.walk(root):
+            for name in files:
+                full = os.path.join(dirpath, name)
+                with open(full, "rb") as f:
+                    out[os.path.relpath(full, root)] = f.read()
+        return out
+
+    def test_migrate_leaves_another_mods_nested_entry_byte_identical(self):
+        lib = os.path.join(self.tmp, "worlds")
+        other = os.path.join(lib, "lattice-gen-big")
+        write_save(os.path.join(other, "lattice-gen-big"), "lattice-gen-big")
+        with open(os.path.join(other, "md5.txt"), "w") as f:
+            f.write("abc  lattice-gen-big.save\n")
+        with open(os.path.join(other, "world.txt"), "w", newline="") as f:
+            f.write("md5 abc\r\ntsv-sha1 1234\nseed 77\nlanding yes\n")
+        write_save(os.path.join(lib, "sg-silo", "sg-silo"), "sg-silo")
+        before = self._tree(other)
+        done, skipped, refused = twlib.migrate_library(lib)
+        self.assertEqual((done, refused), ({"sg-silo": "migrated"}, {}))
+        self.assertIn("lattice-gen-big", skipped)
+        self.assertEqual(self._tree(other), before)
+        # naming it explicitly is the only way in, and then the merge still keeps its keys
+        done, _s, refused = twlib.migrate_library(lib, ["lattice-gen-big"])
+        self.assertEqual(done, {"lattice-gen-big": "migrated"})
+        kept = text(os.path.join(other, "world.txt"))
+        for want in ("tsv-sha1 1234", "seed 77", "landing yes"):
+            self.assertIn(want, kept)
+
+    def test_world_txt_merge_keeps_hand_written_keys_and_refreshes_ours(self):
+        entry = os.path.join(self.tmp, "entry")
+        write_save(entry, "sg-silo")
+        with open(os.path.join(entry, "world.txt"), "w") as f:
+            f.write("player 100 63 200\n# a note\nmd5 stale\nstructures 99\n")
+        info = twlib.write_world_txt(entry, "sg-silo", True)
+        lines = text(os.path.join(entry, "world.txt")).splitlines()
+        self.assertEqual(lines[:2], ["player 100 63 200", "# a note"])
+        self.assertEqual(lines[2], "md5 " + info["md5"])
+        self.assertEqual(lines[3], "structures 2")
+        self.assertEqual([l.split()[0] for l in lines[4:]], ["things", "world", "landed", "game-version"])
+
+    def test_store_merges_into_an_existing_world_txt(self):
+        lib = os.path.join(self.tmp, "worlds")
+        os.makedirs(os.path.join(lib, "sg-silo"))
+        with open(os.path.join(lib, "sg-silo", "world.txt"), "w") as f:
+            f.write("player 1 2 3\n")
+        saves = os.path.join(self.tmp, "saves", "sg-silo")
+        write_save(saves, "sg-silo")
+        twlib.store("sg-silo", saves, lib, {"landed": dict(LANDED)}, "")
+        self.assertEqual(text(os.path.join(lib, "sg-silo", "world.txt")).splitlines()[0], "player 1 2 3")
 
     def test_store_cli_needs_a_library(self):
         saves = os.path.join(self.tmp, "saves", "sg-minimal")

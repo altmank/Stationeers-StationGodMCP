@@ -15,7 +15,7 @@
     Refused before anything starts:
     - a package that is not the build under test: package-build.txt (beside package\, written by build.ps1) must name
       HEAD with a clean tree, and the tree must still be clean;
-    - no sg-silo world (<Library>\sg-silo\sg-silo\sg-silo.save and fixtures.json); the library entry is only read,
+    - no sg-silo world (<Library>\sg-silo\sg-silo.save and fixtures.json); the library entry is only read,
       vm-client-run copies the save into the run;
     - the live pipe name.
     vm-client-run refuses (infra) a RigVM whose HEAD does not contain -RigVMCommit (-RigVMPin, Assert-RigVMMinimum),
