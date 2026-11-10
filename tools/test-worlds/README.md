@@ -1,8 +1,10 @@
 # Test worlds
 
 StationGod's purpose-built test worlds (P36: no test uses LU's Vulcan2_4 base). Each lives in the world library,
-`<library>\<world>\`: the save folder `<world>\`, `README.md` (what it holds and where, how it was built), `md5.txt`
-and `fixtures.json` (each fixture's role and reference id).
+`<library>\<world>\`, flat like the shared library's other worlds: `<world>.save`, `world.txt` (`key value` lines:
+`md5`, `structures`, `things`, `world`, `landed yes|no`, `game-version`; other mods' tools read these), `README.md`
+(what it holds and where, how it was built) and `fixtures.json` (each fixture's role and reference id). A run that needs
+the game's `<saves>\<world>\<world>.save` folder shape builds it at staging time, from the flat save.
 
 The library is `--library <folder>`, else the environment variable `STATIONGOD_TEST_WORLDS`; with neither the tools
 refuse. They write nothing outside it. The gate suite finds `sg-gate\fixtures.json` there (or `--fixtures`, or
@@ -73,7 +75,14 @@ as `sg-smoke` copied back into the run folder; nothing built, nothing stored.
    `<world>`.
 4. Stop the client and the server, release the lock.
 5. `py -3.12 build_world.py store --world <world> --save-folder <server saves>\<world> --manifest <run>\manifest.json`
-   copies the save (a folder named `<world>`) into the library and writes its README, md5 and fixtures.
+   copies the save's `<world>.save` into the library (flat) and writes `world.txt`, the README and fixtures.
+
+### Migrating an old (nested) library
+
+Entries once stored as `<world>\<world>\<world>.save` plus `md5.txt` convert in place, one shot, with no game:
+`py -3.12 tools/test-worlds/twlib.py migrate --library <library>` (all nested entries; `--world <name>` for one). It moves
+the save to `<world>\<world>.save`, removes the nested folder and `md5.txt`, and writes `world.txt`. It refuses an entry
+holding two different saves. Run it when no other run is using the library.
 
 ### sg-cost-large
 

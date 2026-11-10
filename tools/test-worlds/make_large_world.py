@@ -3,7 +3,7 @@ r"""The cost gate's larger world (sg-cost-large): a test world from the library 
     py -3.12 make_large_world.py [--world sg-silo] [--library <library>] [--out sg-cost-large]
 
 The retarget of the scoreboard's instance/make_large_save.py, which read the pristine Vulcan2_4 copy (P36: no test
-uses LU's base). The library is --library, else STATIONGOD_TEST_WORLDS. It reads <library>\<world>\<world>\<world>.save and writes <library>\<out>\<out>\<out>.save, with
+uses LU's base). The library is --library, else STATIONGOD_TEST_WORLDS. It reads <library>\<world>\<world>.save and writes <library>\<out>\<out>.save, with
 copies of three ordinary things appended to world.xml's AllThings, each with a fresh ReferenceId above the save's
 highest, on the 2 m grid's cell centres far from the world's own things (200 m past the largest x and z, 200 m above
 the highest y, in the air):
@@ -12,7 +12,7 @@ the highest y, in the air):
   - ITEMS  ItemIronSheets stacks, each resting on one frame of a one-layer platform (loose items).
 Nothing of the source world changes, so every question asked of it has the same answer in both; only the size grows.
 The counts stay as the Vulcan-based world had them added (24,859 things), checked against the game's caps.
-Then `build_world.py store`-style files: README.md, md5.txt, fixtures.json (the source's fixtures, unchanged).
+Then `build_world.py store`-style files: world.txt, README.md, fixtures.json (the source's fixtures, unchanged).
 """
 import argparse
 import json
@@ -152,9 +152,9 @@ def main(argv=None):
     ap.add_argument("--out", default="sg-cost-large")
     a = ap.parse_args(argv)
     a.library = twlib.library_root(a.library)
-    src = os.path.join(a.library, a.world, a.world)
+    src = twlib.save_path(a.library, a.world)
     twlib.check_write(os.path.join(a.library, a.out), a.library)
-    with zipfile.ZipFile(os.path.join(src, a.world + ".save")) as z:
+    with zipfile.ZipFile(src) as z:
         parts = {i.filename: z.read(i.filename) for i in z.infolist()}
     world, added = grow(parts["world.xml"].decode("utf-8"))
     parts["world.xml"] = world.encode("utf-8")
@@ -164,9 +164,6 @@ def main(argv=None):
     with zipfile.ZipFile(os.path.join(dst, a.out + ".save"), "w", zipfile.ZIP_DEFLATED) as z:
         for name, data in parts.items():
             z.writestr(name, data)
-    for f in os.listdir(src):
-        if f != a.world + ".save" and os.path.isfile(os.path.join(src, f)):
-            shutil.copyfile(os.path.join(src, f), os.path.join(dst, f))
     with open(os.path.join(a.library, a.world, "fixtures.json"), encoding="utf-8") as f:
         source = json.load(f)
     fixtures = source.get("fixtures", {})

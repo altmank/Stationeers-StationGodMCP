@@ -332,7 +332,7 @@ def write_save(folder, name, xml=None):
     os.makedirs(folder, exist_ok=True)
     with zipfile.ZipFile(os.path.join(folder, name + ".save"), "w") as z:
         z.writestr("world.xml", xml)
-        z.writestr("world_meta.xml", "<meta/>")
+        z.writestr("world_meta.xml", f"<WorldMetaData><WorldName>{name}</WorldName><GameVersion>0.2.6429.27802</GameVersion></WorldMetaData>")
     with open(os.path.join(folder, "lint-rules.json"), "w") as f:
         f.write("{}")
 
@@ -413,12 +413,14 @@ class Library(unittest.TestCase):
         size = twlib.store("sg-silo", saves, lib, manifest, "spec text")
         entry = os.path.join(lib, "sg-silo")
         self.assertEqual(size["structures"], 2)
-        self.assertTrue(os.path.isfile(os.path.join(entry, "sg-silo", "sg-silo.save")))
-        md5 = text(os.path.join(entry, "md5.txt")).splitlines()
-        self.assertEqual([l.split("  ")[1] for l in md5], ["lint-rules.json", "sg-silo.save"])
-        self.assertEqual(md5[1].split()[0], twlib.md5_of(os.path.join(entry, "sg-silo", "sg-silo.save")))
+        self.assertTrue(os.path.isfile(os.path.join(entry, "sg-silo.save")))
+        self.assertEqual(sorted(os.listdir(entry)), ["README.md", "fixtures.json", "sg-silo.save", "world.txt"])
+        md5 = twlib.md5_of(os.path.join(entry, "sg-silo.save"))
+        meta = dict(l.split(" ", 1) for l in text(os.path.join(entry, "world.txt")).splitlines())
+        self.assertEqual(meta, {"md5": md5, "structures": "2", "things": "5", "world": "sg-silo", "landed": "yes",
+                                "game-version": "0.2.6429.27802"})
         readme = text(os.path.join(entry, "README.md"))
-        for want in ("spec text", "`silo_ore`: StructureSDBSilo id 6", "structures: 2", md5[1]):
+        for want in ("spec text", "`silo_ore`: StructureSDBSilo id 6", "structures: 2", md5):
             self.assertIn(want, readme)
         self.assertEqual(json.loads(text(os.path.join(entry, "fixtures.json")))["size"]["structures"], 2)
         # a second store replaces the first
@@ -439,6 +441,66 @@ class Library(unittest.TestCase):
             twlib.store("sg-silo", src, lib, {}, "")
         self.assertTrue(os.path.isfile(os.path.join(src, "sg-silo.save")))
 
+    def test_store_replaces_a_nested_entry_with_the_flat_one(self):
+        lib = os.path.join(self.tmp, "worlds")
+        write_save(os.path.join(lib, "sg-silo", "sg-silo"), "sg-silo")
+        with open(os.path.join(lib, "sg-silo", "md5.txt"), "w") as f:
+            f.write("old\n")
+        saves = os.path.join(self.tmp, "saves", "sg-silo")
+        write_save(saves, "sg-silo")
+        twlib.store("sg-silo", saves, lib, {"landed": dict(LANDED)}, "")
+        self.assertEqual(sorted(os.listdir(os.path.join(lib, "sg-silo"))),
+                         ["README.md", "fixtures.json", "sg-silo.save", "world.txt"])
+
+    def test_stage_save_folder_builds_the_games_shape(self):
+        lib = os.path.join(self.tmp, "worlds")
+        saves = os.path.join(self.tmp, "saves")
+        write_save(saves, "sg-silo")
+        entry = os.path.join(lib, "sg-silo")
+        os.makedirs(entry)
+        shutil.copyfile(os.path.join(saves, "sg-silo.save"), os.path.join(entry, "sg-silo.save"))
+        stage = os.path.join(self.tmp, "stage")
+        folder = twlib.stage_save_folder(lib, "sg-silo", stage)
+        self.assertEqual(folder, os.path.join(stage, "sg-silo"))
+        self.assertTrue(os.path.isfile(os.path.join(folder, "sg-silo.save")))
+        with self.assertRaises(SystemExit):
+            twlib.stage_save_folder(lib, "nope", stage)
+
+    def test_migrate_converts_a_nested_entry_to_flat(self):
+        lib = os.path.join(self.tmp, "worlds")
+        nested = os.path.join(lib, "sg-silo", "sg-silo")
+        write_save(nested, "sg-silo")
+        os.makedirs(os.path.join(nested, "autosave"))
+        entry = os.path.join(lib, "sg-silo")
+        with open(os.path.join(entry, "md5.txt"), "w") as f:
+            f.write("old\n")
+        with open(os.path.join(entry, "fixtures.json"), "w") as f:
+            json.dump({"fixtures": {}, "landed": LANDED}, f)
+        with open(os.path.join(entry, "README.md"), "w") as f:
+            f.write("keep me")
+        # a flat entry already in the library is left alone by the library sweep's other entries
+        write_save(os.path.join(lib, "flat-one", "x"), "flat-one")
+        want = twlib.md5_of(os.path.join(nested, "sg-silo.save"))
+        self.assertEqual(twlib.migrate_library(lib), {"sg-silo": "migrated"})
+        self.assertEqual(sorted(os.listdir(entry)), ["README.md", "fixtures.json", "sg-silo.save", "world.txt"])
+        self.assertEqual(text(os.path.join(entry, "README.md")), "keep me")
+        meta = dict(l.split(" ", 1) for l in text(os.path.join(entry, "world.txt")).splitlines())
+        self.assertEqual((meta["md5"], meta["structures"], meta["things"], meta["landed"], meta["world"]),
+                         (want, "2", "5", "yes", "sg-silo"))
+        self.assertEqual(twlib.verify_stored("sg-silo", lib), [])
+        # run again: already flat, world.txt refreshed, nothing lost
+        self.assertEqual(twlib.migrate_entry(lib, "sg-silo"), "flat")
+        self.assertEqual(twlib.md5_of(os.path.join(entry, "sg-silo.save")), want)
+
+    def test_migrate_refuses_an_entry_with_two_different_saves(self):
+        lib = os.path.join(self.tmp, "worlds")
+        write_save(os.path.join(lib, "sg-silo", "sg-silo"), "sg-silo")
+        with open(os.path.join(lib, "sg-silo", "sg-silo.save"), "wb") as f:
+            f.write(b"different")
+        with self.assertRaises(SystemExit):
+            twlib.migrate_entry(lib, "sg-silo")
+        self.assertTrue(os.path.isdir(os.path.join(lib, "sg-silo", "sg-silo")))
+
     def test_store_cli_needs_a_library(self):
         saves = os.path.join(self.tmp, "saves", "sg-minimal")
         write_save(saves, "sg-minimal")
@@ -453,7 +515,7 @@ class Library(unittest.TestCase):
             lib = os.path.join(self.tmp, "worlds")
             with redirect_stdout(io.StringIO()):
                 build_world.main(args + ["--library", lib])
-            self.assertTrue(os.path.isfile(os.path.join(lib, "sg-minimal", "md5.txt")))
+            self.assertTrue(os.path.isfile(os.path.join(lib, "sg-minimal", "world.txt")))
         finally:
             if held is not None:
                 os.environ[twlib.LIBRARY_ENV] = held
@@ -590,15 +652,17 @@ class LargeWorld(unittest.TestCase):
         tmp = tempfile.mkdtemp(prefix="tw-large-")
         try:
             lib = os.path.join(tmp, "worlds")
-            write_save(os.path.join(lib, "sg-silo", "sg-silo"), "sg-silo")
+            write_save(os.path.join(tmp, "src"), "sg-silo")
+            os.makedirs(os.path.join(lib, "sg-silo"), exist_ok=True)
+            shutil.copyfile(os.path.join(tmp, "src", "sg-silo.save"), os.path.join(lib, "sg-silo", "sg-silo.save"))
             with open(os.path.join(lib, "sg-silo", "fixtures.json"), "w") as f:
                 json.dump({"fixtures": {"silo_ore": {"id": "6"}}, "landed": LANDED}, f)
             with redirect_stdout(io.StringIO()):
                 make_large_world.main(["--library", lib])
             self.assertEqual(twlib.verify_stored("sg-cost-large", lib), [])
             out = os.path.join(lib, "sg-cost-large")
-            self.assertTrue(os.path.isfile(os.path.join(out, "sg-cost-large", "sg-cost-large.save")))
-            self.assertTrue(os.path.isfile(os.path.join(out, "sg-cost-large", "lint-rules.json")))
+            self.assertTrue(os.path.isfile(os.path.join(out, "sg-cost-large.save")))
+            self.assertTrue(os.path.isfile(os.path.join(out, "world.txt")))
             self.assertEqual(json.loads(text(os.path.join(out, "fixtures.json")))["fixtures"], {"silo_ore": {"id": "6"}})
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
@@ -930,7 +994,8 @@ class Landed(unittest.TestCase):
             stored = json.loads(text(os.path.join(lib, "sg-silo", "fixtures.json")))
             self.assertEqual(stored["landed"]["player"]["owner"], "123")
             self.assertIn("owner id 123", text(os.path.join(lib, "sg-silo", "README.md")))
-            write_save(os.path.join(lib, "sg-silo", "sg-silo"), "sg-silo", landed_xml(parent=39))
+            write_save(os.path.join(tmp, "bad"), "sg-silo", landed_xml(parent=39))
+            shutil.copyfile(os.path.join(tmp, "bad", "sg-silo.save"), os.path.join(lib, "sg-silo", "sg-silo.save"))
             self.assertIn("seated", twlib.verify_stored("sg-silo", lib)[0])
         finally:
             shutil.rmtree(tmp, ignore_errors=True)

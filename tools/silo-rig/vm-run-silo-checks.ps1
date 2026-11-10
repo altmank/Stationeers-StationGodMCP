@@ -106,9 +106,9 @@ $why = Get-PackageRefusal -Stamp $(if (Test-Path -LiteralPath $stampFile) { @(Ge
     -Head "$(& git -C $repo rev-parse HEAD 2>$null)".Trim() -Dirty ([bool](& git -C $repo status --porcelain 2>$null)) `
     -HasDll (Test-Path (Join-Path $package 'StationGodMCP.dll'))
 if ($why) { Refuse $why }
-$worldSave = Join-Path $Library "$World\$World"
+$worldFile = Join-Path $Library "$World\$World.save"
 $fixtures = Join-Path $Library "$World\fixtures.json"
-if (-not (Test-Path (Join-Path $worldSave "$World.save")) -or -not (Test-Path $fixtures)) { Refuse "no $World world in the library ($worldSave, $fixtures)" }
+if (-not (Test-Path $worldFile) -or -not (Test-Path $fixtures)) { Refuse "no $World world in the library ($worldFile, $fixtures)" }
 if (-not (Test-Path (Join-Path $Hub 'StationGodMCP.Server.dll'))) { Refuse "no StationGodMCP.Server.dll in $Hub" }
 $hubFile = if ((Test-Path (Join-Path $Hub 'StationGodMCP.Server.exe')) -and (Test-Path (Join-Path $Hub 'hostfxr.dll'))) { 'StationGodMCP.Server.exe' } else { 'StationGodMCP.Server.dll' }
 foreach ($z in @($PythonZip) + @(if ($hubFile -like '*.dll') { $DotnetZip })) { if ($z -and -not (Test-Path $z)) { Refuse "missing $z" } }
@@ -125,6 +125,10 @@ try {
     Get-ChildItem "$sg\clients" -Recurse -Directory -Filter __pycache__ | Remove-Item -Recurse -Force
     Copy-Item -Recurse $Hub "$sg\hub"
     Copy-Item $fixtures "$sg\fixtures.json"
+    # The game's saves folder shape (<saves>\<world>\<world>.save), built here from the library's flat entry.
+    $worldSave = Join-Path $stage "saves\$World"
+    New-Item -ItemType Directory -Force $worldSave | Out-Null
+    Copy-Item $worldFile (Join-Path $worldSave "$World.save")
     if ($PythonZip) { Copy-Item $PythonZip "$sg\python.zip" }
     if ($hubFile -like '*.dll' -and $DotnetZip) { Copy-Item $DotnetZip "$sg\dotnet.zip" }
 
