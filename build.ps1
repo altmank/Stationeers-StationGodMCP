@@ -22,7 +22,7 @@
 .PARAMETER LockScript
   The game-lock script both deploys take around the remove and copy, and only there (default
   $env:STATIONEERS_GAME_LOCK). It is called as <script> acquire|release -Owner <name>; acquire waits while another
-  owner holds the lock. With no lock script found, a deploy refuses unless -NoLock or -LockHeld is passed.
+  owner holds the lock. It passes -Owner, -Item and -ExpectedMinutes 2 (P76; see -LockOwner). With no lock script found, a deploy refuses unless -NoLock or -LockHeld is passed.
 
 .PARAMETER NoLock
   Deploy without any game lock: for a machine that has none, such as a player building from source.
@@ -50,6 +50,10 @@ param(
     [string]$LockScript = $env:STATIONEERS_GAME_LOCK,
     [switch]$NoLock,
     [switch]$LockHeld,
+    # The deploy's game-lock owner and board item (P76; -LockItem <id> or <Mod>/<id>, sent as item:<Mod>/<id>).
+    # Default: a worktree's lane name and item:StationGodMCP/<lane>; in the main checkout, beta-stationgod and no item.
+    [string]$LockOwner,
+    [string]$LockItem,
     [switch]$Summary,
     [string]$SidecarPath = (Join-Path $env:LOCALAPPDATA 'StationGodMCP\server'),
     [string]$Target = (Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'My Games\Stationeers\mods\StationGodMCP')
@@ -104,9 +108,17 @@ function Install-Package([string]$portableDir) {
     }
     # The game lock is held while a game runs or for a deploy copy, never across a build: take it only around the
     # remove and copy, whatever the target, and always give it back. acquire waits while another owner holds it.
-    $owner = "stationgod-deploy $(Split-Path $root -Leaf) pid $PID"
+    # P76: the owner is the lane (a worktree's folder is its lane's name) or the lead; -Item names the board item.
+    $leaf = Split-Path $root -Leaf
+    $inWorktree = (Split-Path (Split-Path $root) -Leaf) -eq '.worktrees'
+    $owner = if ($LockOwner) { $LockOwner } elseif ($inWorktree) { $leaf } else { 'beta-stationgod' }
+    $item = if ($LockItem) { $LockItem } elseif ($inWorktree) { "StationGodMCP/$leaf" } else { '' }
+    if ($item -and $item -notmatch '/') { $item = "StationGodMCP/$item" }
+    if ($item -and $item -notmatch '^item:') { $item = "item:$item" }
+    if (-not $item) { Write-Warning 'No board item for the game lock: pass -LockItem <id> (the lock will refuse this once P76 enforces).' }
+    [string[]] $itemArgs = @(if ($item) { '-Item', $item })
     if ($takeLock) {
-        & $LockScript acquire -Owner $owner | ForEach-Object { Write-Host "   $_" }
+        & $LockScript acquire -Owner $owner -ExpectedMinutes 2 @itemArgs | ForEach-Object { Write-Host "   $_" }
         if ($LASTEXITCODE -ne 0) { throw 'Deploy failed: could not take the game lock.' }
     }
     try {
