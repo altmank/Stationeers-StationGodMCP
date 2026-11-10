@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 2.18.0
 
 - **New: `inspect player` reports worn gear** (`gear`): the suit and helmet, the jetpack the game's own lookup finds
   (its stabilizer switch, and whether the player is in jetpack mode), and the suit's live speed and storm-speed multipliers (null with no storm) and slot count.
@@ -11,7 +11,7 @@
 - **Fix: a ghost placed before the save's board is read is kept.** Without Lattice it is merged with the file's ghosts (keeping its id unless the file's ghost has it); with Lattice it is placed into Lattice when Lattice attaches (Lattice assigns the id, logged old to new; a ghost Lattice already holds at that spot is not placed twice). Before, it was dropped.
 - **Tooling: the VM scripts find RigVM's `host\` folder by default** (the sibling RigVM repo, found relative to the script); `STATIONGOD_RIGVM` and `STATIONGOD_RIG_LIB` are gone. Pass `-RigVM` / `-RigLib` for a different folder.
 - **New: `[Rig] MaxFps`, an opt-in frame cap** (default 0 = off; `-sgfps N` overrides it for one run). The picture rig sets 30.
-- **Build: a deploy no longer keeps the version it replaces.** The backup step 2.17.1 added to `build.ps1 -Deploy` and`
+- **Build: a deploy no longer keeps the version it replaces.** The backup step 2.17.1 added to `build.ps1 -Deploy` and
   `-DeployOnly` is gone (source control is the backup); deploys still take the game lock and refuse while the game runs.
 - **write fabricator: make a recipe's item on a fabricator at once.** A cheat that finishes one make on any Autolathe, Tool Manufactory, Electronics Printer or other printer-family machine in a single call, optionally loading ingots first, and replies with the item made, the stock before and after and what was consumed. It uses the fabricator's own recipes, tier and multipliers; the recipe's time and energy are skipped.
 
