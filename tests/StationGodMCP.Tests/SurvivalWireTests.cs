@@ -86,7 +86,7 @@ public sealed class SurvivalWireTests
             new BodyState(false, true, false, false, false, true, true),
             new VitalsRates(new ThirstTemperatureView(293.15, "suit"),
                 NewDrain(new HungerFactorsView(1f, 1f, 1f)), NewDrain(new ThirstFactorsView(1.2f, 1f, 1f)), 0.5f),
-            new DifficultyView("Normal", 1f, 1f, 0.1f), new VitalsWarningsView(2f, 1f, 2f, 1f));
+            new DifficultyView("Normal", 1f, 1f, 0.1f), new VitalsWarningsView(2f, 1f, 2f, 1f), new PlayerGearView(null, null, null, null));
         Dictionary<string, string> renames = new Dictionary<string, string>
         {
             ["thirst_temperature.kelvin"] = "temperature_k",
@@ -96,7 +96,27 @@ public sealed class SurvivalWireTests
             ["thirst.seconds_left_awake"] = "time_left_awake_s",
             ["game_tick_seconds"] = "game_tick_s"
         };
-        WireCheck.SameAfterDrops(old, view, renames, new[] { "thirst_temperature.celsius" });
+        WireCheck.SameAfterDrops(old, view, renames, new[] { "thirst_temperature.celsius" }, "gear");
+    }
+
+    [Fact]
+    public void PlayerGearShape()
+    {
+        PlayerGearView worn = new PlayerGearView(new ThingView(new ThingId(5), "ItemHardSuit", "Hardsuit"),
+            new ThingView(new ThingId(6), "ItemHardsuitHelmet", "Helmet"),
+            new JetpackView(new ThingView(new ThingId(7), "ItemJetpackBasic", "Jetpack"), true, false),
+            new SuitMovementView(0.8f, 1f, 9));
+        WireCheck.Same(new
+        {
+            suit = new { reference_id = "5", prefab_name = "ItemHardSuit", display_name = "Hardsuit" },
+            helmet = new { reference_id = "6", prefab_name = "ItemHardsuitHelmet", display_name = "Helmet" },
+            jetpack = new { reference_id = "7", prefab_name = "ItemJetpackBasic", display_name = "Jetpack", stabilizer = true, active = false },
+            suit_movement = new { speed_multiplier = 0.8f, storm_speed_multiplier = (float?)1f, slot_count = 9 }
+        }, worn);
+        WireCheck.Same(new
+        {
+            suit = (object?)null, helmet = (object?)null, jetpack = (object?)null, suit_movement = (object?)null
+        }, new PlayerGearView(null, null, null, null));
     }
 
     [Fact]

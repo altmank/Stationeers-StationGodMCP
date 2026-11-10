@@ -8,7 +8,7 @@ namespace StationGodMCP.Api.Views;
 internal sealed class PlayerVitalsView
 {
     internal PlayerVitalsView(ThingView player, BodyStores stores, BodyState state, VitalsRates rates,
-        DifficultyView difficulty, VitalsWarningsView warnings)
+        DifficultyView difficulty, VitalsWarningsView warnings, PlayerGearView gear)
     {
         ReferenceId = player.ReferenceId;
         DisplayName = player.DisplayName;
@@ -25,6 +25,7 @@ internal sealed class PlayerVitalsView
         Hunger = rates.Hunger;
         Thirst = rates.Thirst;
         Warnings = warnings;
+        Gear = gear;
         GameTickS = rates.GameTickS;
     }
 
@@ -73,6 +74,8 @@ internal sealed class PlayerVitalsView
     public DrainView? Thirst { get; }
 
     public VitalsWarningsView Warnings { get; }
+
+    public PlayerGearView Gear { get; }
 
     public float GameTickS { get; }
 }
