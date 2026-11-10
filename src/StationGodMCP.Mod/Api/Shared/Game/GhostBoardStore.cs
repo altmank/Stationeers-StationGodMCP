@@ -46,7 +46,7 @@ internal static class GhostBoardStore
 
     // The board file in the folder a save created since the board was last written (a save under a new name): the live
     // folder is gone by the time the world is left, so this is where the last write goes.
-    private static string? _savedAs;
+    private static readonly List<string> _savedAs = new List<string>();
 
     /// <summary>The board: the host's own, or on a client the host's as last sent.</summary>
     internal static GhostBoard Board => _board;
@@ -483,15 +483,16 @@ internal static class GhostBoardStore
     {
         LatticePresence.Forget();
         Restoring.Clear();
-        if (_loaded && (_saveAt < float.PositiveInfinity || _savedAs != null))
+        if (_loaded && (_saveAt < float.PositiveInfinity || _savedAs.Count > 0))
         {
-            string? last = GhostSaveTarget.OnLeaving(_file, _savedAs, _saveAt < float.PositiveInfinity, _board.Count,
-                out bool notKept);
-            if (last != null)
+            List<string> last = GhostSaveTarget.OnLeaving(_file, _savedAs, _saveAt < float.PositiveInfinity,
+                _board.Count, out bool notKept);
+            foreach (string file in last)
             {
-                Write(last);
+                Write(file);
             }
-            else if (notKept)
+
+            if (notKept)
             {
                 StationGodMod.LogWarning("The ghosts were not kept: the world was never saved.");
             }
@@ -500,7 +501,7 @@ internal static class GhostBoardStore
         _board = new GhostBoard();
         _loaded = false;
         _file = null;
-        _savedAs = null;
+        _savedAs.Clear();
         _saveAt = float.PositiveInfinity;
         Ghosts.ClearBoard();
     }
@@ -580,11 +581,21 @@ internal static class GhostBoardStore
 
         try
         {
-            _board = GhostBoard.FromJson(JObject.Parse(File.ReadAllText(file)), out int skipped);
+            GhostBoard read = GhostBoard.FromJson(JObject.Parse(File.ReadAllText(file)), out int skipped);
             if (skipped > 0)
             {
                 StationGodMod.LogWarning($"{skipped} ghosts in {file} did not read and were left out.");
             }
+
+            // Ghosts placed before the file was read (not running yet) are kept on top of the file's.
+            if (_board.Count > 0)
+            {
+                read.AddAll(_board.All);
+                Ghosts.ClearBoard();
+                _saveAt = 0f;
+            }
+
+            _board = read;
 
             foreach (BoardGhost ghost in _board.All)
             {
@@ -609,9 +620,10 @@ internal static class GhostBoardStore
     internal static void SaveFolderCreated(string folder)
     {
         string file = Path.Combine(folder, FileName);
-        if (_loaded && Keeps && !LatticePresence.ApiLoaded && GhostSaveTarget.Moved(_file, file))
+        if (_loaded && Keeps && !LatticePresence.ApiLoaded && GhostSaveTarget.Moved(_file, file) &&
+            !_savedAs.Contains(file))
         {
-            _savedAs = file;
+            _savedAs.Add(file);
         }
     }
 
@@ -628,7 +640,7 @@ internal static class GhostBoardStore
             return;
         }
 
-        _savedAs = null;
+        _savedAs.Clear();
         Write(file);
     }
 

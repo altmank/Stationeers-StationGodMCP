@@ -1,6 +1,7 @@
 #nullable enable
 
 using System;
+using System.Collections.Generic;
 
 namespace StationGodMCP.Pure;
 
@@ -20,11 +21,17 @@ internal static class GhostSaveTarget
     /// (savedAs), else the captured file when a write was pending, else none. notKept is true when ghosts were owed a
     /// file and there is none (the world was never saved).
     /// </summary>
-    internal static string? OnLeaving(string? captured, string? savedAs, bool pending, int ghosts, out bool notKept)
+    internal static List<string> OnLeaving(string? captured, IReadOnlyList<string> savedAs, bool pending, int ghosts,
+        out bool notKept)
     {
-        string? file = savedAs ?? (pending ? captured : null);
-        notKept = file == null && (pending || savedAs != null) && ghosts > 0;
-        return file;
+        List<string> files = new List<string>(savedAs);
+        if (files.Count == 0 && pending && captured != null)
+        {
+            files.Add(captured);
+        }
+
+        notKept = files.Count == 0 && (pending || savedAs.Count > 0) && ghosts > 0;
+        return files;
     }
 
     /// <summary>Whether the save folder moved since the last read or write, so the whole board is owed to the new one.</summary>

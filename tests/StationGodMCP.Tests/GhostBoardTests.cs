@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Pure;
 using StationGodMCP.Pure.RemoteView;
@@ -38,6 +39,23 @@ public sealed class GhostBoardTests
         Assert.Equal(2, second.Id);
         Assert.Equal(3, third.Id);
         Assert.False(board.Remove(99));
+    }
+
+    [Fact]
+    public void GhostsPlacedBeforeTheFileWasReadAreKeptOnTopOfIt()
+    {
+        GhostBoard read = new GhostBoard();
+        read.Add(Ghost(1, 0), out _);
+        read.Add(Ghost(2, 5), out _);
+        GhostBoard early = new GhostBoard();
+        early.Add(Ghost(3, 10), out _);
+        early.Add(Ghost(1, 0, label: "placed"), out _);
+
+        read.AddAll(early.All);
+
+        Assert.Equal(3, read.Count);
+        Assert.Equal(new[] { 2, 3, 1 }, read.All.Select(ghost => ghost.PrefabHash));
+        Assert.Equal("placed", read.All[2].Label);
     }
 
     [Fact]

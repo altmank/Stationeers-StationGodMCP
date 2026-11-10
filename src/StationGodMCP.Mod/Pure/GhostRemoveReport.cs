@@ -57,8 +57,13 @@ internal static class GhostRemoveReport
             notes.Add(refusal);
         }
 
-        int waiting = present - gone;
-        if (refused.Count == 0 && waiting > 0)
+        // Lattice answers a removal as one command, so a refusal covers every id sent in it: nothing is left waiting.
+        int waiting = refused.Count == 0 ? present - gone : 0;
+        if (waiting == 1)
+        {
+            notes.Add("1 ghost removal was sent to Lattice and is not yet answered.");
+        }
+        else if (waiting > 1)
         {
             notes.Add($"{waiting} ghost removals were sent to Lattice and are not yet answered.");
         }

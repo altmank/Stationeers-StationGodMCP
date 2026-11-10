@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Fix: `show ghost` with Lattice no longer answers "named no ghost" for a ghost placed the same frame.** Every id is
+  sent to Lattice; one not yet answered is reported as pending.
+- **Fix: `show ghost` keeps the "not yet answered" note when some removals are refused**, and says "1 ghost removal" for one.
+- **Fix: two saves under new names in a row both get the ghost board** when the world is left right after.
+- **Fix: a ghost placed before the save's board is read is kept** (merged with the file's ghosts) instead of dropped.
 - **Tooling: the VM scripts find RigVM's `host\` folder by default** (the sibling RigVM repo, found relative to the script); `STATIONGOD_RIGVM` and `STATIONGOD_RIG_LIB` are gone. Pass `-RigVM` / `-RigLib` for a different folder.
 - **New: `[Rig] MaxFps`, an opt-in frame cap** (default 0 = off; `-sgfps N` overrides it for one run). The picture rig sets 30.
 - **Build: a deploy no longer keeps the version it replaces.** The backup step 2.17.1 added to `build.ps1 -Deploy` and`

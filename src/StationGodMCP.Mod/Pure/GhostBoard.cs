@@ -104,6 +104,15 @@ internal sealed class GhostBoard
         return added;
     }
 
+    /// <summary>Adds each ghost (new ids); the board keeps the earlier ghosts' order after what it already held.</summary>
+    internal void AddAll(IEnumerable<BoardGhost> ghosts)
+    {
+        foreach (BoardGhost ghost in ghosts)
+        {
+            Add(ghost, out _);
+        }
+    }
+
     /// <summary>Takes the ghost off; false when there is none with that id.</summary>
     internal bool Remove(long id)
     {

@@ -241,7 +241,7 @@ internal static class ShowGhost
         List<long> removed = new List<long>();
         if (order.Remove.Count > 0)
         {
-            removed.AddRange(GhostRemoveReport.Run(order.Remove, id => GhostBoardStore.Board.Find(id) != null,
+            removed.AddRange(GhostRemoveReport.Run(order.Remove, id => LatticePresence.Running || GhostBoardStore.Board.Find(id) != null,
                 (ids, refused) => GhostBoardStore.Remove(ids, GhostSource.Agent, null, refused), notes));
         }
 

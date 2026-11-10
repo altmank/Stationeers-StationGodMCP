@@ -60,6 +60,23 @@ public sealed class GhostRemoveReportTests
     }
 
     [Fact]
+    public void ARefusedStepAndAnUnansweredStepEachKeepTheirNote()
+    {
+        List<string> notes = new List<string>();
+        notes.AddRange(GhostRemoveReport.Notes(0, 2, 0, new[] { "Lattice refused it: locked" }));
+        notes.AddRange(GhostRemoveReport.Notes(0, 3, 0, new string[0]));
+        Assert.Equal(new[] { "Lattice refused it: locked", "3 ghost removals were sent to Lattice and are not yet answered." },
+            notes);
+    }
+
+    [Fact]
+    public void OneUnansweredRemovalReadsSingular()
+    {
+        List<string> notes = Run(new long[] { 1 }, new long[] { 1 }, (ids, refused) => new List<long>(), out _);
+        Assert.Equal(new[] { "1 ghost removal was sent to Lattice and is not yet answered." }, notes);
+    }
+
+    [Fact]
     public void ARepeatedIdCountsOnce()
     {
         List<string> notes = Run(new long[] { 9, 9 }, new long[0], (ids, refused) => ids.ToList(), out _);
