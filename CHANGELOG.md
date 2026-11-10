@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **New: `inspect player` reports worn gear** (`gear`): the suit and helmet, the jetpack the game's own lookup finds
+  (its stabilizer switch, and whether the player is in jetpack mode), and the suit's live speed and storm-speed multipliers (null with no storm) and slot count.
 - **Fix: `show ghost` with Lattice no longer answers "named no ghost" for a ghost placed the same frame.** Every id is
   sent to Lattice; one not yet answered is reported as pending.
 - **Fix: `show ghost` keeps the "not yet answered" note when some removals are refused**, and says "1 ghost removal" for one.

@@ -15,7 +15,7 @@ whats:
 - rocket: every rocket now, or one by id or name ('Tanker'): position, target, mass, fuel, engines, landing confidence, cargo, power. For a flight or landing check use plan flight
 - vault: what each Ingot Vault stores, and every Remote Vault's link
 - looking_at: what the player's crosshair is on, and where a longer look ray lands
-- player: the player's hunger and thirst: nutrition, hydration, drain, time left
+- player: the player's hunger and thirst (nutrition, hydration, drain, time left) and worn gear (suit, helmet, jetpack, suit speed)
 - planet: the planet's atmosphere: gases, pressure, temperature, day range, sea, ice caps
 - weather: the storm schedule, weather events and season
 - job: one build, removal, swap or gas move by its id (place-41), or a script run (script-14): running, queued or finished. With no id: runs with notices pending (stopped or killed with something left, writes not done, or done and not yet seen)
