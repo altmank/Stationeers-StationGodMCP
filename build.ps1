@@ -19,6 +19,11 @@
 .PARAMETER Target
   The mod folder -Deploy and -DeployOnly replace (default Documents\My Games\Stationeers\mods\StationGodMCP).
 
+.PARAMETER BackupRoot
+  Where a deploy into the player's own mods folder (a path under My Games\Stationeers\mods) keeps the version it
+  replaces, as <BackupRoot>\StationGodMCP\<old version>-<yyyyMMdd-HHmmss> (default $env:STATIONEERS_MOD_BACKUPS, else
+  LocalAppData\StationGodMCP\backups). If the old folder can't be moved there, the deploy refuses and changes nothing.
+
 .PARAMETER LockScript
   The game-lock script both deploys take around the remove and copy, and only there (default
   $env:STATIONEERS_GAME_LOCK). It is called as <script> acquire|release -Owner <name>; acquire waits while another
@@ -52,6 +57,7 @@ param(
     [switch]$LockHeld,
     [switch]$Summary,
     [string]$SidecarPath = (Join-Path $env:LOCALAPPDATA 'StationGodMCP\server'),
+    [string]$BackupRoot = $(if ($env:STATIONEERS_MOD_BACKUPS) { $env:STATIONEERS_MOD_BACKUPS } else { Join-Path $env:LOCALAPPDATA 'StationGodMCP\backups' }),
     [string]$Target = (Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'My Games\Stationeers\mods\StationGodMCP')
 )
 
@@ -110,7 +116,27 @@ function Install-Package([string]$portableDir) {
         if ($LASTEXITCODE -ne 0) { throw 'Deploy failed: could not take the game lock.' }
     }
     try {
-        if (Test-Path $Target) { Remove-Item $Target -Recurse -Force }
+        if (Test-Path $Target) {
+            # A deploy into the player's own mods folder keeps the version it replaces: moved out of the mods folder
+            # (so the game never loads it) to <BackupRoot>\StationGodMCP\<old version>-<stamp>, inside this lock window.
+            # Test installs elsewhere are replaced as before.
+            if ($Target -match '[\\/]My Games[\\/]Stationeers[\\/]mods[\\/]') {
+                $old = 'unknown'
+                $about = Join-Path $Target 'About\About.xml'
+                if (Test-Path -LiteralPath $about) {
+                    $m = [regex]::Match([IO.File]::ReadAllText($about), '<Version>\s*([^<\s]+)\s*</Version>')
+                    if ($m.Success) { $old = $m.Groups[1].Value }
+                }
+                $kept = Join-Path $BackupRoot "StationGodMCP\$old-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+                try {
+                    New-Item -ItemType Directory -Path (Split-Path $kept) -Force | Out-Null
+                    Move-Item -LiteralPath $Target -Destination $kept -ErrorAction Stop
+                }
+                catch { throw "Deploy refused: could not keep the installed $old at $kept ($($_.Exception.Message)); nothing was replaced." }
+                Write-Host "Kept the installed $old at $kept"
+            }
+            else { Remove-Item $Target -Recurse -Force }
+        }
         New-Item -ItemType Directory -Path $Target -Force | Out-Null
         Copy-Item "$package\*" $Target -Recurse
     }
