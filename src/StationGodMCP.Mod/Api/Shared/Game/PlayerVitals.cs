@@ -52,7 +52,31 @@ internal static class PlayerVitals
         VitalsWarningsView warnings = new VitalsWarningsView(human.WarningNutrition, human.CriticalNutrition,
             human.WarningHydration, human.CriticalHydration);
         return new PlayerVitalsView(GameLookup.ViewOf(human), stores, state, Drains(human, state, rates), rates,
-            warnings);
+            warnings, GearOf(human));
+    }
+
+    // Worn gear. The jetpack comes from Human.TryGetJetpack, the lookup MovementController uses; the speed multiplier is
+    // read off Human.Suit and the storm one off the SuitBase in the suit slot, as MovementController reads them.
+    private static PlayerGearView GearOf(Human human)
+    {
+        Thing? suit = human.SuitSlot?.Get();
+        Thing? helmet = human.HelmetSlot?.Get();
+        JetpackView? jetpack = null;
+        if (human.TryGetJetpack(out Jetpack found) && found != null)
+        {
+            jetpack = new JetpackView(GameLookup.ViewOf(found), found.OnOff);
+        }
+
+        SuitMovementView? movement = null;
+        if (suit != null)
+        {
+            float speed = human.Suit != null ? human.Suit.MovementSpeedMultiplier : 1f;
+            float? storm = suit is SuitBase suitBase ? suitBase.StormMovementSpeedMultiplier : null;
+            movement = new SuitMovementView(speed, storm, suit.Slots != null ? suit.Slots.Count : 0);
+        }
+
+        return new PlayerGearView(suit != null ? GameLookup.ViewOf(suit) : null,
+            helmet != null ? GameLookup.ViewOf(helmet) : null, jetpack, movement);
     }
 
     // Worn: Human.Suit, or a suit in any suit-class slot. Human.SuitSlot is only the last suit-class slot Awake found,
