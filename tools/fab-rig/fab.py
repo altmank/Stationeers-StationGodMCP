@@ -163,8 +163,8 @@ def label_id(label, prefab):
 
 
 def power_port(thing_id, prefer):
-    ends = must(sgcall.call("inspect", "connections", id=thing_id), "inspect connections").get("ends") or []
-    ends = [e for e in ends if "power" in str(e.get("type_name") or e.get("type")).lower()]
+    seen = field(must(sgcall.call("inspect", "connections", id=thing_id), "inspect connections"), "ends") or []
+    ends = [e for e in seen if "power" in str(e.get("type_name") or e.get("type")).lower()]
     if not ends:
         raise Fail(f"{thing_id} has no power port: {seen}")
     for e in ends:
