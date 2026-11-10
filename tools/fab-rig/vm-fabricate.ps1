@@ -17,8 +17,8 @@
 #>
 param(
     [string] $Owner = 'sg-fabricate',
-    # RigVM's host folder (vm-client-run.ps1 and rig-lib.ps1): a fresh extract of RigVM main.
-    [string] $RigVM = $env:STATIONGOD_RIGVM,
+    # RigVM's host folder (vm-client-run.ps1 and rig-lib.ps1); default: the sibling RigVM repo's host\ folder.
+    [string] $RigVM,
     [string] $RigVMCommit = '7cc64ca',
     [int] $LockWaitMinutes = 120,
     # The world library and the world in it (a landed save, P51: never a new game); the game loads it by its folder name.
@@ -34,13 +34,17 @@ param(
     # about 20 calls); every limit is that plus a margin, not a blanket one.
     [double] $ExpectedMinutes = 8,
     [int] $TimeoutSeconds = 0,
-    [int] $PhaseSeconds = 0
+    [int] $PhaseSeconds = 0,
+    # [Rig] MaxFps for the guest game (a rendered run; lowers host GPU load); 0 = uncapped.
+    [int] $MaxFps = 30
 )
 $ErrorActionPreference = 'Stop'
 if ($PSVersionTable.PSEdition -eq 'Desktop') {
     $env:PSModulePath = (($env:PSModulePath -split ';') | ? { $_ -match '\\WindowsPowerShell\\' }) -join ';'
 }
 $here = $PSScriptRoot
+. (Join-Path (Split-Path $here) 'rigvm-host.ps1')
+if (-not $RigVM) { $RigVM = Get-DefaultRigVMHost $here }
 if ($TimeoutSeconds -le 0) { $TimeoutSeconds = [int]($ExpectedMinutes * 60 * 2) }
 if ($PhaseSeconds -le 0) { $PhaseSeconds = [int]($ExpectedMinutes * 60) }
 $repo = Split-Path (Split-Path $here)
@@ -75,7 +79,7 @@ $env:SG_FAB_CONTEXT = $ctxFile
 
 $pipeRe = [regex]::Escape($Pipe) -replace '\\', '\\'
 $phases = '{"bepinex":"Chainloader startup complete","stationgod":"Pipe name: ' + $pipeRe + '"}'
-$bepCfg = '{"net.xceled.stationeers.stationgodmcp.cfg":"[Pipe]\r\n\r\nName = ' + $Pipe + '\r\n"}'
+$bepCfg = '{"net.xceled.stationeers.stationgodmcp.cfg":"[Pipe]\r\n\r\nName = ' + $Pipe + '\r\n\r\n[Rig]\r\n\r\nMaxFps = ' + $MaxFps + '\r\n"}'
 $runArgs = @{
     Mod = 'sg-fabricate'; Owner = $Owner; Mods = @($mod); Save = $worldSave; RigVMPin = $RigVMCommit; LockWaitMinutes = $LockWaitMinutes
     GameArgs = $GameArgs     # last: on launch every later '-' word starts another command
