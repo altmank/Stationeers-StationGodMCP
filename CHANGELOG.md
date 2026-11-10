@@ -1,5 +1,25 @@
 # Changelog
 
+## Unreleased
+
+- **Fix: `show ghost` says why a ghost was not taken off.** With Lattice, a refused removal was reported as "ids named
+  no ghost on the board"; the reply now carries Lattice's reason (also for `clear`), says when removals were sent and
+  not yet answered, and uses "named no ghost" only for ids that were not on the board.
+
+- **Fix: a ghost placed just after a world loads is no longer lost.** The save's ghost board is read by whichever
+  comes first of the first running frame and the first ghost change, so a ghost placed before the first frame no longer
+  vanishes from `find ghost` and the file when the board is read.
+
+- **Fix: ghosts follow a save under a new name even if the world is left at once.** The board is written to the new
+  save's folder when the world is left right after the save; leaving a world that was never saved logs that the ghosts
+  were not kept.
+
+- **Fix: once-only warnings come back in the next world** and say so when they stop at the cap, instead of going
+  silent for the rest of the session.
+
+- Docs: the ghost tooltip is named as off by default (`[Ghosts] ShowTooltip`) everywhere, and `docs/configuration.md`
+  lists every `[Ghosts]` setting and says which settings read an environment variable.
+
 ## 2.17.0
 
 - **`show picture`: a PNG of a thing or the player from a placed camera.** `id` (default `"player"`), `yaw` (0 the

@@ -28,7 +28,7 @@
             },
             "maxItems": 512
           },
-          "description": "As build structure's placements; each may give its own tint, and its label shows as the ghost's tooltip.",
+          "description": "As build structure's placements; each may give its own tint, and its label shows as the ghost's tooltip (with `[Ghosts] ShowTooltip` on; off by default).",
           "x-script": "same"
         },
         "prefab": {
@@ -111,7 +111,7 @@
           "schema": {
             "type": "string"
           },
-          "description": "What the placement is, shown as a tooltip when the crosshair is on its ghost (as build structure's label).",
+          "description": "What the placement is, shown as the ghost's tooltip when the crosshair is on it, with `[Ghosts] ShowTooltip` on (off by default); as build structure's label.",
           "x-script": "same"
         },
         "run": {
@@ -447,7 +447,7 @@
           "schema": {
             "type": "string"
           },
-          "description": "What the ghosts are, shown as a tooltip when the crosshair is on one, and in find ghost; a placement's own label wins.",
+          "description": "What the ghosts are, shown as the ghost's tooltip when the crosshair is on one, with `[Ghosts] ShowTooltip` on (off by default), and in find ghost; a placement's own label wins.",
           "x-script": "same"
         },
         "look": {

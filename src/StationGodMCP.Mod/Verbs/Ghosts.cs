@@ -1,5 +1,6 @@
 #nullable enable
 
+using System;
 using System.Collections.Generic;
 using Assets.Scripts.Objects;
 using Newtonsoft.Json.Linq;
@@ -240,21 +241,25 @@ internal static class ShowGhost
         List<long> removed = new List<long>();
         if (order.Remove.Count > 0)
         {
-            List<long> gone = GhostBoardStore.Remove(order.Remove);
-            removed.AddRange(gone);
-            if (gone.Count < order.Remove.Count)
-            {
-                notes.Add($"{order.Remove.Count - gone.Count} of the ids named no ghost on the board.");
-            }
+            removed.AddRange(GhostRemoveReport.Run(order.Remove, id => GhostBoardStore.Board.Find(id) != null,
+                (ids, refused) => GhostBoardStore.Remove(ids, GhostSource.Agent, null, refused), notes));
         }
 
-        if (order.Clear == "all")
+        if (order.Clear == "all" || order.Clear == "agent")
         {
-            removed.AddRange(GhostBoardStore.RemoveWhere(static _ => true));
-        }
-        else if (order.Clear == "agent")
-        {
-            removed.AddRange(GhostBoardStore.RemoveWhere(static ghost => ghost.Source == GhostSource.Agent));
+            Predicate<BoardGhost> rule = order.Clear == "all"
+                ? static _ => true
+                : static ghost => ghost.Source == GhostSource.Agent;
+            List<string> refused = new List<string>();
+            int picked = 0;
+            List<long> gone = GhostBoardStore.RemoveWhere(ghost =>
+            {
+                bool pick = rule(ghost);
+                picked += pick ? 1 : 0;
+                return pick;
+            }, refused);
+            removed.AddRange(gone);
+            notes.AddRange(GhostRemoveReport.Notes(0, picked, gone.Count, refused));
         }
 
         List<PlacedGhostView> placed = new List<PlacedGhostView>();

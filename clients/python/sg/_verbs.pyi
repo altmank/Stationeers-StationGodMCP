@@ -3819,7 +3819,7 @@ def trade(what: Literal['sell'], *,
 @overload
 def show(what: Literal['preview'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
-    placements: list = None,  # As build structure's placements; each may give its own tint, and its label shows as the ghost's tooltip.
+    placements: list = None,  # As build structure's placements; each may give its own tint, and its label shows as the ghost's tooltip (with `[Ghosts] ShowTooltip` on; off by default).
     prefab: str | int = None,  # Prefab: a whole name, a hash, or parts with * ('*Battery*', '*Tank*Insulated*': each part, any order); or a list of them.
     at: list | dict | str = None,  # A point, "looking_at", or a relative or look-face form (help positions).
     rotation: list = None,  # [x, y, z] degrees, multiples of 90.
@@ -3829,7 +3829,7 @@ def show(what: Literal['preview'], *,
     orient: dict = None,  # {mount, upright, controls_toward, ports: [{role, index, type, toward}], flow: {from, to}}: choose the turn by intent. mount: wall, floor, ceiling or an axis; a target (controls_toward, toward, from, to): an axis, room, player, a point or a thing's id.
     above_floor: float = None,  # Bottom this many metres above the floor below at.
     build_state: str | int = None,  # finished (default), first, or a state index.
-    label: str = None,  # What the placement is, shown as a tooltip when the crosshair is on its ghost (as build structure's label).
+    label: str = None,  # What the placement is, shown as the ghost's tooltip when the crosshair is on it, with `[Ghosts] ShowTooltip` on (off by default); as build structure's label.
     run: dict = None,  # A cable, pipe or chute run to plan and draw: build cable, pipe or chute's options with what ({what: "pipe", grade, waypoints, ...}); nothing is built.
     from_plan: str = None,  # A plan route or plan spot reply (p = sg.plan('route', ...)), or one spot (p['spots'][2]): preview its build_arguments.
     style: Literal['boxes', 'ghost', 'both'] = 'boxes',  # boxes: footprint, body and port wire boxes; ghost: the structures' own meshes at the build state, see-through and tinted; both.
@@ -3903,7 +3903,7 @@ def show(what: Literal['ghost'], *,
     build_state: str | int = None,  # finished (default), first, or a state index.
     from_plan: str = None,  # A plan spot reply (p = sg.plan('spot', ...)) or one spot (p['spots'][2]): put it on the board.
     tint: str | list = None,  # The ghosts' colour, yours to choose: a name (cyan, magenta, yellow, green, orange, blue, red, white, purple, pink, khaki, brown, black, gray), [r, g, b] or [r, g, b, a] each 0 to 1.
-    label: str = None,  # What the ghosts are, shown as a tooltip when the crosshair is on one, and in find ghost; a placement's own label wins.
+    label: str = None,  # What the ghosts are, shown as the ghost's tooltip when the crosshair is on one, with `[Ghosts] ShowTooltip` on (off by default), and in find ghost; a placement's own label wins.
     look: Literal['plan', 'solid', 'wire', 'pulse', 'quiet'] = None,  # With Lattice: plan (the default), solid, wire, pulse, or quiet (no markers). A ghost whose plan has problems pulses red.
     xray: bool = None,  # Shows through walls, frames and terrain; on unless false.
     xray_strength: float = None,  # X-ray strength, 0 to 1 (1 unless given).

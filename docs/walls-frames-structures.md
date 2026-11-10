@@ -288,8 +288,9 @@ In the game:
 | `RemoveGhostKey` | Delete | In ghost mode or while placing from the menu: takes off the ghost under the crosshair (drawn brighter). |
 | `ShowGhostsKey` | Ctrl+H | Hides or shows every ghost in your game. |
 
-`Enabled = false` turns these off; `Tint` is the colour new ghosts start with. Hovering any ghost shows its label,
-its structure and who placed it.
+`Enabled = false` turns these off; `Tint` is the colour new ghosts start with. Hovering a ghost shows its tooltip (its
+label, its structure and who placed it) only with `[Ghosts] ShowTooltip = true`: it is off by default, and it never
+shows while the game's UI is hidden. See [Configuration](configuration.md).
 
 For agents: `find ghost` lists the board (`near`, `radius`, `prefab`, `owner`, `source`, `ids`), each ghost with
 `build_arguments`, and the page's `build_arguments` as one build; `build {from_plan: "r5"}` builds every listed ghost,

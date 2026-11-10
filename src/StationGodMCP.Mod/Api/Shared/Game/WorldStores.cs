@@ -61,6 +61,7 @@ internal static class WorldStores
         scope.Register("previews", static () => Previews.Clear());
         scope.Register("ghosts", static () => Ghosts.ClearAll());
         scope.Register("ghost_board", GhostBoardStore.Forget);
+        scope.Register("once_log", Net.OnceLog.Clear);
         scope.Register("remote_views", Net.RemoteViews.Clear);
         scope.Register("world_index", WorldModel.ThingIndex.Reset);
         scope.Register("frame_faces", WorldModel.FrameFaces.Clear);
