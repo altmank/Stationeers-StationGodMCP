@@ -233,6 +233,15 @@ if (-not $tree) { $tree = [pscustomobject]@{ Head = 'unknown'; State = 'not a gi
 $revOut = @(& git -C $root rev-parse HEAD 2>$null)
 $revSha = if ($revOut.Count) { "$($revOut[0])".Trim() } else { '' }
 [string[]] $srcRev = @(if ($LASTEXITCODE -eq 0 -and $revSha -match '^[0-9a-f]{40}$') { "-p:SourceRevisionId=$revSha" })
+# A script function named after a PowerShell alias (rd, del, ls, r, ...) is never called: the alias wins. That is how a
+# RigVM helper deleted result.json files on 11-10. Refuse one in any tracked script, for both PowerShell editions.
+$aliasNames = @(@(Get-Alias | ForEach-Object Name) + @(& powershell.exe -NoProfile -Command 'Get-Alias | % Name')) |
+    Sort-Object -Unique
+$shadowed = @(foreach ($script in @(& git -C $root ls-files '*.ps1' '*.psm1' 2>$null)) {
+    Select-String -LiteralPath (Join-Path $root $script) -Pattern '^\s*function\s+([\w-]+)' | Where-Object {
+        $aliasNames -contains $_.Matches[0].Groups[1].Value } | ForEach-Object { "${script}:$($_.LineNumber)" } })
+if ($shadowed) { throw "A function is named after a PowerShell alias, so the alias runs instead: $($shadowed -join ', ')" }
+
 Write-Host "Testing $version"
 dotnet test (Join-Path $root 'tests\StationGodMCP.Tests\StationGodMCP.Tests.csproj') -nologo -v q @srcRev
 if ($LASTEXITCODE -ne 0) { throw "Tests failed with exit code $LASTEXITCODE; nothing was built." }
