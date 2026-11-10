@@ -20,7 +20,7 @@
 #>
 param(
     [string] $Owner = 'sg-camera-shot',
-    [string] $RigVM = $env:STATIONGOD_RIGVM,
+    [string] $RigVM,
     [string] $RigVMCommit = '7cc64ca',
     [int] $LockWaitMinutes = 120,
     [string] $SettingFrom = $env:SG_RIG_SETTINGS,
@@ -46,6 +46,8 @@ if ($PSVersionTable.PSEdition -eq 'Desktop') {
     $env:PSModulePath = (($env:PSModulePath -split ';') | ? { $_ -match '\\WindowsPowerShell\\' }) -join ';'
 }
 $here = $PSScriptRoot
+. (Join-Path (Split-Path $here) 'rigvm-host.ps1')
+if (-not $RigVM) { $RigVM = Get-DefaultRigVMHost $here }
 if ($TimeoutSeconds -le 0) { $TimeoutSeconds = [int]($ExpectedMinutes * 60 * 2) }
 if ($PhaseSeconds -le 0) { $PhaseSeconds = [int]($ExpectedMinutes * 60) }
 $repo = Split-Path (Split-Path $here)

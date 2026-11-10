@@ -38,7 +38,7 @@
     info.checks), 2 timeout, stall or crash, 3 infra or a refusal here.
 
 .PARAMETER RigLib
-    RigVM's host\rig-lib.ps1 (default: STATIONGOD_RIG_LIB); vm-client-run.ps1 is taken from the same folder.
+    RigVM's host\rig-lib.ps1 (default: hostig-lib.ps1 in the sibling RigVM repo); vm-client-run.ps1 is taken from the same folder.
 .PARAMETER RigVMCommit
     The minimum RigVM commit, passed as vm-client-run's -RigVMPin: RigVM's HEAD must contain it. Default fcbb38f
     (callers never name a rig, the OnEnd hook, Assert-RigVMMinimum, the stuck rule, -PhaseLimitJson, -WatchLogs).
@@ -65,7 +65,7 @@
 #>
 param(
     [string] $Owner = 'sg-silo checks',
-    [string] $RigLib = $env:STATIONGOD_RIG_LIB,
+    [string] $RigLib,
     [string] $RigVMCommit = '7cc64ca',
     [string] $Library = $env:STATIONGOD_TEST_WORLDS,
     [string] $SettingsTemplate = $env:SG_RIG_SETTINGS,
@@ -85,6 +85,8 @@ if ($PSVersionTable.PSEdition -eq 'Desktop') {
     $env:PSModulePath = (($env:PSModulePath -split ';') | ? { $_ -match '\\WindowsPowerShell\\' }) -join ';'
 }
 $here = $PSScriptRoot
+. (Join-Path (Split-Path $here) 'rigvm-host.ps1')
+if (-not $RigLib) { $RigLib = Join-Path (Get-DefaultRigVMHost $here) 'rig-lib.ps1' }
 $repo = Split-Path (Split-Path $here)
 $World = 'sg-silo'
 . (Join-Path $here 'vm-hooks\silo-vm-lib.ps1')
