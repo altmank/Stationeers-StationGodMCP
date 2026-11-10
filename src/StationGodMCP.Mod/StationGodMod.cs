@@ -128,6 +128,17 @@ public sealed class StationGodMod : ModBehaviour
             ProtocolLog.ReplyWritten = MethodStats.RecordReply;
             Api.Shared.Game.Runs.LayoutSettings.Load(configuration);
             PerformanceSettings.Load(configuration);
+            int? fpsCap = Pure.FrameCap.Choose(configuration.Bind("Rig", "MaxFps", Pure.FrameCap.DefaultMaxFps,
+                "Frame cap for rendered runs, to lower GPU load (sets vSyncCount 0 and targetFrameRate). 0 = off, " +
+                "touching neither. -sgfps N on the command line overrides it. Restart the game to apply.").Value,
+                Environment.GetCommandLineArgs());
+            if (fpsCap != null)
+            {
+                QualitySettings.vSyncCount = 0;
+                Application.targetFrameRate = fpsCap.Value;
+                Log($"Frame cap: {fpsCap.Value} fps.");
+            }
+
             ProfilingControl.Load(typeof(StationGodMod).Assembly, PerformanceSettings.Profiling);
             WorldModel.ThingIndex.Verify = PerformanceSettings.VerifyWorldIndex;
             WorldModel.FrameFaces.Verify = PerformanceSettings.VerifyFacts;

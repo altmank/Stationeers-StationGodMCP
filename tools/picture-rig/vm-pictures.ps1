@@ -37,7 +37,9 @@ param(
     # 1 min; the 4096x4096 one the longest); every limit is that plus a margin, not a blanket one.
     [double] $ExpectedMinutes = 6,
     [int] $TimeoutSeconds = 0,
-    [int] $PhaseSeconds = 0
+    [int] $PhaseSeconds = 0,
+    # [Rig] MaxFps for the guest game (frame cap, lowers host GPU load); 0 = uncapped.
+    [int] $MaxFps = 30
 )
 $ErrorActionPreference = 'Stop'
 if ($PSVersionTable.PSEdition -eq 'Desktop') {
@@ -65,7 +67,7 @@ $env:SG_PIC_CONTEXT = $ctxFile
 
 $pipeRe = [regex]::Escape($Pipe) -replace '\\', '\\'
 $phases = '{"bepinex":"Chainloader startup complete","stationgod":"Pipe name: ' + $pipeRe + '"}'
-$bepCfg = '{"net.xceled.stationeers.stationgodmcp.cfg":"[Pipe]\r\n\r\nName = ' + $Pipe + '\r\n\r\n[Pictures]\r\n\r\nFolder = {out}\\shots\r\n"}'
+$bepCfg = '{"net.xceled.stationeers.stationgodmcp.cfg":"[Pipe]\r\n\r\nName = ' + $Pipe + '\r\n\r\n[Pictures]\r\n\r\nFolder = {out}\\shots\r\n\r\n[Rig]\r\n\r\nMaxFps = ' + $MaxFps + '\r\n"}'
 $runArgs = @{
     Mod = 'sg-camera-shot'; Owner = $Owner; Mods = @(@($Mod) + $WithMods); RigVMPin = $RigVMCommit; LockWaitMinutes = $LockWaitMinutes
     Save = $World; GameArgs = '-load {savename}'
