@@ -212,26 +212,9 @@ internal static class ShowGhost
     private static VerbOutcome Placed(GhostOrder order, RunPlan? run)
     {
         List<string> notes = new List<string>();
-        List<long> removed = new List<long>();
-        if (order.Remove.Count > 0)
-        {
-            List<long> gone = GhostBoardStore.Remove(order.Remove);
-            removed.AddRange(gone);
-            if (gone.Count < order.Remove.Count)
-            {
-                notes.Add($"{order.Remove.Count - gone.Count} of the ids named no ghost on the board.");
-            }
-        }
 
-        if (order.Clear == "all")
-        {
-            removed.AddRange(GhostBoardStore.RemoveWhere(static _ => true));
-        }
-        else if (order.Clear == "agent")
-        {
-            removed.AddRange(GhostBoardStore.RemoveWhere(static ghost => ghost.Source == GhostSource.Agent));
-        }
-
+        // Restyle goes first: it is the only step that can refuse the whole call (Lattice turning the label down), and
+        // it changes nothing when it does, so a Refused reply leaves the board as it was.
         List<long> restyled = new List<long>();
         if (order.Restyle.Count > 0)
         {
@@ -252,6 +235,26 @@ internal static class ShowGhost
 
                 notes.AddRange(refused);
             }
+        }
+
+        List<long> removed = new List<long>();
+        if (order.Remove.Count > 0)
+        {
+            List<long> gone = GhostBoardStore.Remove(order.Remove);
+            removed.AddRange(gone);
+            if (gone.Count < order.Remove.Count)
+            {
+                notes.Add($"{order.Remove.Count - gone.Count} of the ids named no ghost on the board.");
+            }
+        }
+
+        if (order.Clear == "all")
+        {
+            removed.AddRange(GhostBoardStore.RemoveWhere(static _ => true));
+        }
+        else if (order.Clear == "agent")
+        {
+            removed.AddRange(GhostBoardStore.RemoveWhere(static ghost => ghost.Source == GhostSource.Agent));
         }
 
         List<PlacedGhostView> placed = new List<PlacedGhostView>();

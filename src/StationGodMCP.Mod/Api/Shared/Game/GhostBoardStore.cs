@@ -103,10 +103,16 @@ internal static class GhostBoardStore
             Load();
         }
 
+        // The save folder moved (a new world's first save, a save under a new name): the whole board goes there too.
+        if (_board.Count > 0 && GhostSaveTarget.Moved(_file, SaveFile))
+        {
+            _saveAt = 0f;
+        }
+
         if (Time.realtimeSinceStartup >= _saveAt)
         {
             _saveAt = float.PositiveInfinity;
-            Save();
+            Save(worldLeft: false);
         }
     }
 
@@ -441,7 +447,7 @@ internal static class GhostBoardStore
         Restoring.Clear();
         if (_loaded && _saveAt < float.PositiveInfinity)
         {
-            Save();
+            Save(worldLeft: true);
         }
 
         _board = new GhostBoard();
@@ -551,13 +557,24 @@ internal static class GhostBoardStore
         }
     }
 
-    private static void Save()
+    // Written to the save folder as it is now, not as it was when the board was read; with no folder yet the write
+    // stays pending. After the world was left only the captured file is right.
+    private static void Save(bool worldLeft)
     {
-        string? file = _file;
+        string? file = GhostSaveTarget.Of(_file, worldLeft ? null : SaveFile, worldLeft);
         if (file == null)
         {
+            if (!worldLeft)
+            {
+                _saveAt = Time.realtimeSinceStartup + SaveAfterS;
+                OnceLog.Warning("ghost_no_folder",
+                    "The ghost board has no save folder yet: it is written once the world has one.");
+            }
+
             return;
         }
+
+        _file = file;
 
         try
         {
