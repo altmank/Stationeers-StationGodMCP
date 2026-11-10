@@ -64,7 +64,8 @@ internal static class ServerInfo
             counters ? Counters() : null, shape,
             counters ? StationGodMod.Updates.Read(UnityEngine.Time.frameCount) : null,
             new FactsView(WorldModel.FrameFaces.View(), WorldModel.DamagedThings.View(),
-                Api.Shared.Game.GatewayMaps.View()), Subscriptions());
+                Api.Shared.Game.GatewayMaps.View()), Subscriptions(),
+            counters ? StationGodMod.GameFrames.Read(UnityEngine.Time.realtimeSinceStartup) : null);
 
     private static SubscriptionsView Subscriptions()
     {

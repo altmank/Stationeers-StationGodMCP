@@ -329,7 +329,7 @@ of the game tick by length, profiling on or off: `under_100ms`, `under_1s`, `und
 (60 s or more), each bucket from its lower edge. `runtime.print_log` gives the
 print provenance `records` held and their `capacity`; `runtime.lint_chip_programs` the chip programs the lint cache holds
 parsed; `runtime.batch_console` the `lines` a dedicated server printed since load and `lines_per_minute` over the last
-full minute. `runtime.frame_ms` gives StationGod's main-thread request time per frame since load as `frames`, `p50`,
+full minute. `runtime.game_frame_ms` gives the game's whole frame time (not StationGod's share) over the last 60 s of real time: `frames`, `mean`, `p50`, `p95`, `p99` and `max` in ms (nearest rank; null with no frames). `runtime.frame_ms` gives StationGod's main-thread request time per frame since load as `frames`, `p50`,
 `p90`, `p99`, `over_8ms` and `buckets`. It counts the frames `runtime.frames.busy_frames` counts: those that served a
 call or stopped at the request budget (a frame that only took subscription samples is left out; a counted frame's time
 includes its samples). The times fall into 20 fixed buckets with upper edges 0.1, 0.25, 0.5, 1, 1.5, 2, 3, 4, 5, 6, 8,

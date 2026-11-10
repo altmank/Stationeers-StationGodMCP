@@ -57,6 +57,9 @@ public sealed class StationGodMod : ModBehaviour
     /// <summary>StationGod's whole Update per frame, job steps included: server info's update_ms.</summary>
     internal static UpdateStats Updates { get; } = new UpdateStats();
 
+    /// <summary>The game's whole frame time (Time.unscaledDeltaTime) over the last 60 s: server info's game_frame_ms.</summary>
+    internal static GameFrameWindow GameFrames { get; } = new GameFrameWindow();
+
     // The parts of Update a long frame's log line names (LongFrames, review D R-D-28).
     private const int StoresPart = 0, FactsPart = 1, WorldPart = 2, RequestsPart = 3, AfterPart = 4;
 
@@ -209,7 +212,9 @@ public sealed class StationGodMod : ModBehaviour
     {
         ProfilingControl.Tick();
         int gcNow = GC.CollectionCount(0);
-        string? longFrame = LongFrameNotes.Check(Time.unscaledDeltaTime * 1000.0, gcNow, Time.realtimeSinceStartup);
+        double gameFrameMs = Time.unscaledDeltaTime * 1000.0;
+        GameFrames.Add(gameFrameMs, Time.realtimeSinceStartup);
+        string? longFrame = LongFrameNotes.Check(gameFrameMs, gcNow, Time.realtimeSinceStartup);
         if (longFrame != null)
         {
             Log(longFrame);

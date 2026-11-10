@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **New: `runtime.game_frame_ms` in `server info` counters**: the game's whole frame time over the last 60 s of real time (`frames`, `mean`, `p50`, `p95`, `p99`, `max`, in ms; null with no frames), from `Time.unscaledDeltaTime`.
+
 ## 2.18.0
 
 - **New: `inspect player` reports worn gear** (`gear`): the suit and helmet, the jetpack the game's own lookup finds
