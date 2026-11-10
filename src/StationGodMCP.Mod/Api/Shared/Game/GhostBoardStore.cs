@@ -478,6 +478,23 @@ internal static class GhostBoardStore
         }
     }
 
+    /// <summary>
+    /// Lattice is attaching on the host: the ghosts placed on the local board before it did, taken off the board (its
+    /// reset would empty them) to be replayed into Lattice. None on a client or once the board is Lattice's mirror.
+    /// </summary>
+    internal static List<BoardGhost> TakeEarly()
+    {
+        List<BoardGhost> early = new List<BoardGhost>();
+        if (!Keeps || LatticePresence.Running)
+        {
+            return early;
+        }
+
+        early.AddRange(_board.All);
+        _board.Clear();
+        return early;
+    }
+
     /// <summary>The world changed: the board and its drawing go; the next world's is read when it runs.</summary>
     internal static void Forget()
     {

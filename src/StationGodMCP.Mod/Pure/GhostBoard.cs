@@ -147,6 +147,46 @@ internal sealed class GhostBoard
         return remapped;
     }
 
+    /// <summary>
+    /// The candidates no held ghost already stands for (same prefab, spot and turn), in order; a candidate repeating an
+    /// earlier candidate's spot is left out too, so nothing is placed twice.
+    /// </summary>
+    internal static List<BoardGhost> NotHeldBy(IEnumerable<BoardGhost> candidates, IReadOnlyList<BoardGhost> held)
+    {
+        List<BoardGhost> fresh = new List<BoardGhost>();
+        foreach (BoardGhost candidate in candidates)
+        {
+            bool known = false;
+            foreach (BoardGhost other in held)
+            {
+                if (StandsFor(other, candidate.PrefabHash, candidate.Position, candidate.Euler))
+                {
+                    known = true;
+                    break;
+                }
+            }
+
+            if (!known)
+            {
+                foreach (BoardGhost other in fresh)
+                {
+                    if (StandsFor(other, candidate.PrefabHash, candidate.Position, candidate.Euler))
+                    {
+                        known = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!known)
+            {
+                fresh.Add(candidate);
+            }
+        }
+
+        return fresh;
+    }
+
     /// <summary>Takes the ghost off; false when there is none with that id.</summary>
     internal bool Remove(long id)
     {

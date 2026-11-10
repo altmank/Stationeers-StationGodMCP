@@ -42,6 +42,40 @@ public sealed class GhostBoardTests
     }
 
     [Fact]
+    public void EarlyGhostsLatticeAlreadyHoldsAreNotPlacedAgain()
+    {
+        GhostBoard held = new GhostBoard();
+        held.Add(Ghost(1, 0), out _);
+        held.Add(Ghost(2, 5), out _);
+        GhostBoard early = new GhostBoard();
+        early.Add(Ghost(1, 0, label: "same spot"), out _);
+        early.Add(Ghost(2, 5, yTurn: 90), out _);
+        early.Add(Ghost(3, 10), out _);
+
+        List<BoardGhost> fresh = GhostBoard.NotHeldBy(early.All, held.All);
+
+        Assert.Equal(new[] { 2, 3 }, fresh.Select(ghost => ghost.PrefabHash));
+    }
+
+    [Fact]
+    public void EarlyGhostsRepeatingAnEarlierSpotArePlacedOnce()
+    {
+        BoardGhost[] twice = { Ghost(1, 0), Ghost(1, 0, label: "again"), Ghost(1, 3) };
+
+        List<BoardGhost> fresh = GhostBoard.NotHeldBy(twice, new GhostBoard().All);
+
+        Assert.Equal(2, fresh.Count);
+        Assert.Null(fresh[0].Label);
+    }
+
+    [Fact]
+    public void NoEarlyGhostsOrNoneHeldKeepsEveryGhost()
+    {
+        Assert.Empty(GhostBoard.NotHeldBy(new BoardGhost[0], new GhostBoard().All));
+        Assert.Equal(1, GhostBoard.NotHeldBy(new[] { Ghost(4, 1) }, new GhostBoard().All).Count);
+    }
+
+    [Fact]
     public void GhostsPlacedBeforeTheFileWasReadAreKeptOnTopOfIt()
     {
         GhostBoard read = new GhostBoard();

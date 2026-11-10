@@ -560,6 +560,8 @@ internal static class LatticeBoard
             LatticeLooks.Ensure(system, seen, null);
         }
 
+        // Ghosts placed on the local board before Lattice attached: kept aside, the reset would empty them.
+        List<BoardGhost> early = GhostBoardStore.TakeEarly();
         GhostBoardStore.FromLattice(true, AllBuildGhosts(system), new List<long>());
         StationGodMod.Log($"Ghosts are Lattice's (contract {system.Version.Major}.{system.Version.Minor}" +
                           $"{(Draws ? ", Lattice draws them" : ", StationGod draws them")}): " +
@@ -567,7 +569,84 @@ internal static class LatticeBoard
         if (NetworkManager.IsServer)
         {
             MoveBoardFile(system);
+            ReplayEarly(early);
             CloseEmptyAgentPlans(system);
+        }
+    }
+
+    // The early local ghosts go into Lattice by the path a show ghost takes (Place), except those Lattice already holds
+    // at the same spot, prefab and turn. Lattice assigns ids: old -> new is logged.
+    private static void ReplayEarly(List<BoardGhost> early)
+    {
+        if (early.Count == 0)
+        {
+            return;
+        }
+
+        try
+        {
+            ReplayEarlyInto(early);
+        }
+        catch (Exception exception)
+        {
+            StationGodMod.LogWarning($"The {early.Count} ghosts placed before Lattice attached could not be placed " +
+                                     $"into Lattice and are lost (ids {string.Join(", ", early.ConvertAll(ghost => ghost.Id))}): " +
+                                     exception.Message);
+        }
+    }
+
+    private static void ReplayEarlyInto(List<BoardGhost> early)
+    {
+        List<BoardGhost> fresh = GhostBoard.NotHeldBy(early, GhostBoardStore.Board.All);
+        int already = early.Count - fresh.Count;
+        List<string> changes = new List<string>();
+        List<string> gone = new List<string>();
+        int replayedAsHost = 0;
+        foreach (GhostSource source in new[] { GhostSource.Agent, GhostSource.Player })
+        {
+            List<BoardGhost> group = fresh.FindAll(ghost => ghost.Source == source);
+            if (group.Count == 0)
+            {
+                continue;
+            }
+
+            List<GhostPlacement> placements = new List<GhostPlacement>(group.Count);
+            foreach (BoardGhost ghost in group)
+            {
+                placements.Add(new GhostPlacement(ghost.PrefabHash, ghost.BuildState, ghost.Position, ghost.Euler,
+                    ghost.Tint, ghost.Label));
+            }
+
+            List<string> refused = new List<string>();
+            List<BoardGhost> placed = Place(placements, source, null, refused, new List<string>());
+            GhostReplay result = GhostReplay.Of(group, placed.ConvertAll(ghost => ghost.Id), refused);
+            foreach ((long Old, long New) pair in result.Mapped)
+            {
+                changes.Add($"{pair.Old} is now {pair.New}");
+            }
+
+            gone.AddRange(result.RefusedLines);
+            if (source == GhostSource.Player)
+            {
+                replayedAsHost = result.Mapped.Count;
+            }
+        }
+
+        StationGodMod.Log($"Ghost board: {early.Count} ghosts placed before Lattice attached: " +
+                          $"{fresh.Count - gone.Count} placed into Lattice, {already} already there" +
+                          $"{(gone.Count > 0 ? $", {gone.Count} not placed" : "")}." +
+                          (changes.Count > 0 ? " Ids changed (an id may be held by an agent): " +
+                                               string.Join(", ", changes) + "." : ""));
+        if (replayedAsHost > 0)
+        {
+            StationGodMod.Log($"{replayedAsHost} early player ghosts were replayed as the host: their owner and look " +
+                              "are reset (tint and label kept).");
+        }
+
+        if (gone.Count > 0)
+        {
+            StationGodMod.LogWarning($"{gone.Count} early ghosts were refused by Lattice and are gone for good: " +
+                                     string.Join("; ", gone) + ".");
         }
     }
 
