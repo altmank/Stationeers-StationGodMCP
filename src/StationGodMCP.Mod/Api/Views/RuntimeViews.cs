@@ -24,8 +24,9 @@ internal sealed class RuntimeView : ITruncatingView
         MemoryView memory, List<MethodTiming> methods, List<ConnectionView>? connections = null,
         ProfilingSummaryView? profiling = null, JobSettlesView? jobSettles = null, WorldIndexView? worldIndex = null,
         GameCountersView? counters = null, ShapeRequest? shape = null, UpdateReading? updates = null, FactsView? facts = null,
-        SubscriptionsView? subscriptions = null)
+        SubscriptionsView? subscriptions = null, GameFrameReading? gameFrames = null)
     {
+        GameFrameMs = counters != null && gameFrames != null ? new GameFrameMsView(gameFrames) : null;
         WorldIndex = worldIndex ?? new WorldIndexView(false, false, 0, 0, WorldIndexView.NoClasses, 0, 0);
         Facts = facts ?? FactsView.Off;
         Subscriptions = subscriptions ?? SubscriptionsView.None;
@@ -107,6 +108,10 @@ internal sealed class RuntimeView : ITruncatingView
     /// <summary>The busy frames' request ms percentiles (FrameHistogram), only with include_counters.</summary>
     [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
     public FrameHistogramView? FrameMs { get; }
+
+    /// <summary>The game's whole frame ms over the last 60 s (GameFrameWindow), only with include_counters.</summary>
+    [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+    public GameFrameMsView? GameFrameMs { get; }
 
     /// <summary>StationGod's whole Update per frame, job steps included (UpdateStats), only with include_counters.</summary>
     [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
@@ -717,6 +722,34 @@ internal sealed class BatchConsoleView
     public long Lines { get; }
 
     public double LinesPerMinute { get; }
+}
+
+/// <summary>The game's whole frame ms over the last 60 s: frames, mean, p50, p95, p99, max (null with no frames).</summary>
+internal sealed class GameFrameMsView
+{
+    internal GameFrameMsView(GameFrameReading reading)
+    {
+        Frames = reading.Frames;
+        Mean = Rounded(reading.Mean);
+        P50 = Rounded(reading.P50);
+        P95 = Rounded(reading.P95);
+        P99 = Rounded(reading.P99);
+        Max = Rounded(reading.Max);
+    }
+
+    public int Frames { get; }
+
+    public double? Mean { get; }
+
+    public double? P50 { get; }
+
+    public double? P95 { get; }
+
+    public double? P99 { get; }
+
+    public double? Max { get; }
+
+    private static double? Rounded(double? ms) => ms.HasValue ? Math.Round(ms.Value, 2) : null;
 }
 
 /// <summary>
