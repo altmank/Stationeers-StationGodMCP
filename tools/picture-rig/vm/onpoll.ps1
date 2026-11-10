@@ -5,10 +5,11 @@ if (-not $global:SgPicStarted -and $r.PhaseAt.Keys -contains 'stationgod') {
     $global:SgPicStarted = $true
     $picCtx = Get-Content -Raw $env:SG_PIC_CONTEXT | ConvertFrom-Json
     Rig-Log 'StationGod up: starting shots.py in the guest'
-    Invoke-Rig -ArgumentList "SG-Pictures-$($r.RunId)", "$gRes\sg", $picCtx.pipe, $gOut, "$gRes\logs\shots.log" {
-        param($task, $sg, $pipe, $out, $logFile)
+    $picFlags = if ($picCtx.frames) { '--frames' } else { '' }
+    Invoke-Rig -ArgumentList "SG-Pictures-$($r.RunId)", "$gRes\sg", $picCtx.pipe, $gOut, "$gRes\logs\shots.log", $picFlags {
+        param($task, $sg, $pipe, $out, $logFile, $flags)
         $cmd = "`"$sg\tools\python\python.exe`" `"$sg\tools\picture-rig\shots.py`" --pipe $pipe " +
-               "--hub `"$sg\hub\StationGodMCP.Server.exe`" --done `"$out`" > `"$logFile`" 2>&1"
+               "--hub `"$sg\hub\StationGodMCP.Server.exe`" --done `"$out`" $flags > `"$logFile`" 2>&1"
         Set-Content "$sg\shots-run.cmd" ("@set PYTHONUNBUFFERED=1`r`n@set PYTHONIOENCODING=utf-8`r`n@$cmd`r`n")
         Set-Content "$sg\shots-run.ps1" "& cmd.exe /d /c `"$sg\shots-run.cmd`"`r`nexit `$LASTEXITCODE"
         $act = New-ScheduledTaskAction -Execute powershell.exe -Argument "-NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File $sg\shots-run.ps1" -WorkingDirectory $sg

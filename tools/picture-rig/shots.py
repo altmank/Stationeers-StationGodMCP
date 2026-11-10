@@ -158,6 +158,7 @@ def read_front(log, key):
 
 
 def run(log):
+    log["world_seen_at"] = time.monotonic()
     log["player"] = start = wait_player()
     if judge_shots.seated(start):
         raise SystemExit(f"the player is seated at the start ({start.get('held_in')}): test worlds start after landing")
@@ -187,11 +188,33 @@ def run(log):
     return timings
 
 
+def frame_reads(log, done, after_load_s=60.0, gap_s=30.0):
+    """The game's whole frame time (server info counters, runtime.game_frame_ms, a 60 s window): one read at least
+    after_load_s after the world was seen and one gap_s later, written to <done>/frames.json."""
+    reads = []
+    wait = log["world_seen_at"] + after_load_s - time.monotonic()
+    if wait > 0:
+        time.sleep(wait)
+    for n in range(2):
+        if n:
+            time.sleep(gap_s)
+        reply = sgcall.call("server", "info", include=["counters"])
+        runtime = reply.get("runtime") if isinstance(reply, dict) else None
+        reads.append({"seconds_after_load": round(time.monotonic() - log["world_seen_at"], 1),
+                      "game_frame_ms": (runtime or {}).get("game_frame_ms"),
+                      "error": reply.get("error") if isinstance(reply, dict) else None})
+    log["frames"] = reads
+    with open(os.path.join(done, "frames.json"), "w", encoding="utf-8") as f:
+        json.dump(reads, f, indent=1)
+    say("frames: " + json.dumps(reads))
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--pipe", required=True)
     ap.add_argument("--hub", required=True)
     ap.add_argument("--done", required=True)
+    ap.add_argument("--frames", action="store_true", help="after the pictures, two game frame-time reads to frames.json")
     a = ap.parse_args(argv)
     os.makedirs(a.done, exist_ok=True)
     log = {}
@@ -199,6 +222,8 @@ def main(argv=None):
     try:
         sgcall.connect(a.pipe, a.hub)
         timings = run(log)
+        if a.frames:
+            frame_reads(log, a.done)
         failures, notes = judge_shots.judge(log)
         log["verdict"] = {"failures": failures, "notes": notes}
         ok = not failures

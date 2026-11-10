@@ -39,8 +39,12 @@ param(
     [int] $TimeoutSeconds = 0,
     [int] $PhaseSeconds = 0,
     # [Rig] MaxFps for the guest game (frame cap, lowers host GPU load); 0 = uncapped.
-    [int] $MaxFps = 30
+    [int] $MaxFps = 30,
+    # After the pictures, two reads of the game's whole frame time (server info counters, runtime.game_frame_ms; main
+    # c8ea3c03 and later): one at least 60 s after the world loaded, one 30 s later, to out\frames.json. Adds about 1.5 min.
+    [switch] $FrameReads
 )
+if ($FrameReads) { $ExpectedMinutes += 1.5 }
 $ErrorActionPreference = 'Stop'
 if ($PSVersionTable.PSEdition -eq 'Desktop') {
     $env:PSModulePath = (($env:PSModulePath -split ';') | ? { $_ -match '\\WindowsPowerShell\\' }) -join ';'
@@ -64,7 +68,7 @@ if (-not (Test-Path (Join-Path $Hub 'StationGodMCP.Server.exe')) -or -not (Test-
 
 $ctxFile = Join-Path ([IO.Path]::GetTempPath()) "sg-pictures-$PID.json"
 [ordered]@{ pipe = $Pipe; expectedMin = $ExpectedMinutes; repo = $repo; here = $here; hub = $Hub; pythonZip = $PythonZip
-    repoAt = (& git -C $repo rev-parse --short HEAD 2>$null) } | ConvertTo-Json | Set-Content -Encoding UTF8 $ctxFile
+    frames = [bool] $FrameReads; repoAt = (& git -C $repo rev-parse --short HEAD 2>$null) } | ConvertTo-Json | Set-Content -Encoding UTF8 $ctxFile
 $env:SG_PIC_CONTEXT = $ctxFile
 
 $pipeRe = [regex]::Escape($Pipe) -replace '\\', '\\'
