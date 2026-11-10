@@ -9,5 +9,7 @@
   <!-- Not the test projects: they ship nothing, and several find the source tree from [CallerFilePath]. -->
   <PropertyGroup Condition="!$(MSBuildProjectDirectory.StartsWith('$(RepoRoot)tests', System.StringComparison.OrdinalIgnoreCase))">
     <PathMap>$(RepoRoot)=/_/</PathMap>
+    <!-- SourceLink otherwise keeps the real folder path in the source-link document. -->
+    <DeterministicSourcePaths>true</DeterministicSourcePaths>
   </PropertyGroup>
 </Project>
