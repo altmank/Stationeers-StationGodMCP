@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- **Build: a deploy no longer keeps the version it replaces.** The backup step 2.17.1 added to `build.ps1 -Deploy` and`
+  `-DeployOnly` is gone (source control is the backup); deploys still take the game lock and refuse while the game runs.
+
 ## 2.17.1
 
 - **Fix: `show ghost` says why a ghost was not taken off.** With Lattice, a refused removal was reported as "ids named
