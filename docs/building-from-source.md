@@ -9,7 +9,7 @@ For maintainers and anyone who wants to build the mod themselves.
 - Stationeers installed, with BepInEx 5.4 and StationeersLaunchPad. The mod compiles against the game's own
   assemblies, which are not in this repository.
 - The .NET 8 SDK.
-- PowerShell, for `build.ps1`.
+- PowerShell 7.5 or later (`pwsh`), for `build.ps1`.
 
 ## Layout
 
