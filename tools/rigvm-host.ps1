@@ -27,7 +27,7 @@ function Invoke-RigVMEntry {
         $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($command))
         # pwsh's module paths break 5.1's core modules: give the child the WindowsPowerShell folders only.
         $env:PSModulePath = (($env:PSModulePath -split ';') | Where-Object { $_ -like '*\WindowsPowerShell\*' }) -join ';'
-        & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand $encoded | Out-Host
+        & powershell.exe -NoProfile -NonInteractive -OutputFormat Text -ExecutionPolicy Bypass -EncodedCommand $encoded | Out-Host
         return $LASTEXITCODE
     }
     finally {
