@@ -47,7 +47,7 @@ public sealed class GameLinkHubTests
         await using GameLink link = new(new ClientOptions(game.Target));
         await link.ConnectAsync();
         await link.EndStreamIfConnectedAsync(4);
-        await WaitUntil(() => game.Received.Any(message => Type(message) == "stream_end"));
+        await TestWait.UntilAsync(() => game.Received.Any(message => Type(message) == "stream_end"), "game.Received.Any(message => Type(message) == \"stream_end\")");
 
         JsonElement ended = game.Received.First(message => Type(message) == "stream_end");
         Assert.Equal(4, ended.GetProperty("stream").GetInt64());
@@ -81,16 +81,6 @@ public sealed class GameLinkHubTests
 
     private static string? Type(JsonElement message) =>
         message.TryGetProperty("type", out JsonElement type) ? type.GetString() : null;
-
-    private static async Task WaitUntil(Func<bool> condition)
-    {
-        DateTime until = DateTime.UtcNow + TimeSpan.FromSeconds(10);
-        while (!condition())
-        {
-            Assert.True(DateTime.UtcNow < until, "The condition did not come true in time.");
-            await Task.Delay(10);
-        }
-    }
 
     private static JsonElement Json(string text)
     {

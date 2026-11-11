@@ -32,6 +32,9 @@ public sealed class RunHostSettings
     /// </summary>
     public TimeSpan CleanupWindow { get; init; } = TimeSpan.FromMilliseconds(300);
 
+    /// <summary>The clock of the session-end cleanup window only (EndSessionAsync); a test passes a manual one.</summary>
+    public TimeProvider Time { get; init; } = TimeProvider.System;
+
     /// <summary>
     /// How many written targets the hub keeps for undo over all its ended runs; past it the oldest runs' write logs
     /// are let go and their undo answers undo_expired, naming what it can no longer revert.

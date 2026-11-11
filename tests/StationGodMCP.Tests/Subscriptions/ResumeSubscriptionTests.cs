@@ -113,11 +113,11 @@ public sealed class ResumeSubscriptionTests
                     ["interval"] = 0.1
                 }
             }.ToString(Formatting.None));
-            WaitUntil(() =>
+            TestWait.Until(() =>
             {
                 Frame(rig, atS: 0.0);
                 return hub.SampleRuns == 1;
-            });
+            }, "hub.SampleRuns == 1");
         }
 
         WaitHeldAndClosed(rig);
@@ -210,21 +210,7 @@ public sealed class ResumeSubscriptionTests
     // The host holds the token (Holds.Held, then the hub's Held) before it passes the close on (the hub's Closed, then
     // ClosedSources), all on the connection's thread: once ClosedSources has it, the next frame takes in both.
     private static void WaitHeldAndClosed(PipeRig rig) =>
-        WaitUntil(() => rig.Holds.Held == 1 && rig.Mod.ClosedSources.Count == 1);
-
-    private static void WaitUntil(Func<bool> condition)
-    {
-        Stopwatch watch = Stopwatch.StartNew();
-        while (!condition())
-        {
-            if (watch.ElapsedMilliseconds > 5000)
-            {
-                throw new TimeoutException("the condition never held");
-            }
-
-            Thread.Sleep(10);
-        }
-    }
+        TestWait.Until(() => rig.Holds.Held == 1 && rig.Mod.ClosedSources.Count == 1, "rig.Holds.Held == 1 && rig.Mod.ClosedSources.Count == 1");
 
     /// <summary>One device whose On value the test sets.</summary>
     private sealed class ValueReader : IDeviceReader<ReadDevicesView>

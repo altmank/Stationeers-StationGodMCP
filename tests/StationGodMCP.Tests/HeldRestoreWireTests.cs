@@ -67,7 +67,7 @@ public sealed class HeldRestoreWireTests
         Assert.Equal(1, _devices.Get(Pump, On));
 
         _clock.Advance(1);
-        WaitUntil(() => _devices.Get(Pump, On) == 0);
+        TestWait.Until(() => _devices.Get(Pump, On) == 0, "_devices.Get(Pump, On) == 0");
         Assert.Equal(1, _restores.Applied);
         Assert.Equal(0, _restores.Held);
     }
@@ -84,7 +84,7 @@ public sealed class HeldRestoreWireTests
 
         WaitHeld(rig);
         _clock.Advance(WindowMs);
-        WaitUntil(() => _restores.Applied == 1);
+        TestWait.Until(() => _restores.Applied == 1, "_restores.Applied == 1");
         using (V2Client second = await Resume(rig))
         {
             JObject report = (JObject)second.Welcome["restores"]!;
@@ -95,7 +95,7 @@ public sealed class HeldRestoreWireTests
                 ["applied"] = new JArray(applied), ["skipped"] = new JArray(), ["dropped"] = 0
             }, report);
             second.Send("""{"type":"bye"}""");
-            Assert.True(second.WaitClosed(5000));
+            Assert.True(second.WaitClosed(V2Client.ClientWaitMs));
         }
 
         using V2Client third = await Resume(rig);
@@ -111,10 +111,10 @@ public sealed class HeldRestoreWireTests
             Write(client, "w1", Pump, "On", 1, stream: 3);
             Hold(client, "h1", 3, Set(Pump, "On", 0));
             client.Send("""{"type":"bye"}""");
-            Assert.True(client.WaitClosed(5000));
+            Assert.True(client.WaitClosed(V2Client.ClientWaitMs));
         }
 
-        WaitUntil(() => _restores.Held == 0);
+        TestWait.Until(() => _restores.Held == 0, "_restores.Held == 0");
         _clock.Advance(WindowMs);
         Settle(rig);
 
@@ -131,10 +131,10 @@ public sealed class HeldRestoreWireTests
             Write(client, "w1", Pump, "On", 1, stream: 3);
             Hold(client, "h1", 3, Set(Pump, "On", 0));
             client.Send("""{"type":"bye"}""");
-            Assert.True(client.WaitClosed(5000));
+            Assert.True(client.WaitClosed(V2Client.ClientWaitMs));
         }
 
-        WaitUntil(() => _restores.Held == 0);
+        TestWait.Until(() => _restores.Held == 0, "_restores.Held == 0");
         Settle(rig);
 
         Assert.Equal(1, _devices.Get(Pump, On));
@@ -150,7 +150,7 @@ public sealed class HeldRestoreWireTests
             Write(client, "w1", Pump, "On", 1, stream: 3);
             Hold(client, "h1", 3, Set(Pump, "On", 0));
             client.Send("""{"type":"stream_end","stream":3}""");
-            WaitUntil(() => _restores.Held == 0);
+            TestWait.Until(() => _restores.Held == 0, "_restores.Held == 0");
         }
 
         WaitHeld(rig);
@@ -174,7 +174,7 @@ public sealed class HeldRestoreWireTests
         _devices.Set(Pump, Setting, 70);
         WaitHeld(rig);
         _clock.Advance(WindowMs);
-        WaitUntil(() => _restores.Skipped == 1);
+        TestWait.Until(() => _restores.Skipped == 1, "_restores.Skipped == 1");
 
         Assert.Equal(70, _devices.Get(Pump, Setting));
         using V2Client second = await Resume(rig);
@@ -197,7 +197,7 @@ public sealed class HeldRestoreWireTests
 
         WaitHeld(rig);
         _clock.Advance(WindowMs);
-        WaitUntil(() => _devices.Get(Pump, On) == 0);
+        TestWait.Until(() => _devices.Get(Pump, On) == 0, "_devices.Get(Pump, On) == 0");
         Assert.Equal(1, _restores.Applied);
     }
 
@@ -213,7 +213,7 @@ public sealed class HeldRestoreWireTests
 
         WaitHeld(rig);
         _clock.Advance(WindowMs);
-        WaitUntil(() => _restores.Skipped == 1);
+        TestWait.Until(() => _restores.Skipped == 1, "_restores.Skipped == 1");
         Assert.Equal(1, _devices.Get(Pump, On));
     }
 
@@ -254,7 +254,7 @@ public sealed class HeldRestoreWireTests
         _world = "world-b";
 
         client.Send("""{"type":"session_end"}""");
-        WaitUntil(() => _restores.Dropped == 1);
+        TestWait.Until(() => _restores.Dropped == 1, "_restores.Dropped == 1");
 
         Assert.Equal(1, _devices.Get(Pump, On));
         Assert.Equal(0, _restores.Applied);
@@ -271,7 +271,7 @@ public sealed class HeldRestoreWireTests
         Hold(client, "h2", 5, Set(Valve, "On", 0));
 
         client.Send("""{"type":"session_end"}""");
-        WaitUntil(() => _restores.Applied == 2);
+        TestWait.Until(() => _restores.Applied == 2, "_restores.Applied == 2");
 
         Assert.Equal(0, _devices.Get(Pump, On));
         Assert.Equal(0, _devices.Get(Valve, On));
@@ -287,11 +287,11 @@ public sealed class HeldRestoreWireTests
         using V2Client client = await V2Client.Connect(rig, "hub");
         client.Send(WriteLine("w1", Pump, "On", 1, 3));
         client.Send(HoldLine("h1", 3, Set(Pump, "On", 0)));
-        WaitUntil(() =>
+        TestWait.Until(() =>
         {
             rig.Mod.RunPending();
             return _restores.Held == 1;
-        });
+        }, "_restores.Held == 1");
         Assert.Equal(1, _devices.Get(Pump, On));
         Assert.True((bool)NextReply(client, "w1")["ok"]!);
         Assert.True((bool)NextReply(client, "h1")["ok"]!);
@@ -299,11 +299,11 @@ public sealed class HeldRestoreWireTests
         client.Send(WriteLine("late", Pump, "On", 1, 3));
         client.Send("""{"type":"session_end"}""");
         JObject cancelled = NextReply(client, "late");
-        WaitUntil(() =>
+        TestWait.Until(() =>
         {
             rig.Mod.RunPending();
             return _restores.Applied == 1;
-        });
+        }, "_restores.Applied == 1");
         rig.Mod.RunPending();
 
         Assert.Equal("cancelled", (string?)cancelled["error"]!["code"]);
@@ -321,7 +321,7 @@ public sealed class HeldRestoreWireTests
             Hold(client, "h1", 3, Set(Pump, "On", 0));
         }
 
-        WaitUntil(() => _devices.Get(Pump, On) == 0);
+        TestWait.Until(() => _devices.Get(Pump, On) == 0, "_devices.Get(Pump, On) == 0");
         Assert.Equal(1, _restores.Applied);
     }
 
@@ -421,7 +421,7 @@ public sealed class HeldRestoreWireTests
         using PipeRig rig = Rig();
         using V2Client client = await V2Client.Connect(rig, "hub");
         client.Send("""{"type":"session_end"}""");
-        WaitUntil(() => rig.Mod.SessionEnds.Count == 1);
+        TestWait.Until(() => rig.Mod.SessionEnds.Count == 1, "rig.Mod.SessionEnds.Count == 1");
         Settle(rig);
 
         Assert.Null(client.NextOrNull(100));
@@ -440,7 +440,7 @@ public sealed class HeldRestoreWireTests
 
         client.Send("""{"type":"session_end"}""");
         JObject late = Write(client, "w2", Pump, "On", 1, stream: 3);
-        WaitUntil(() => _restores.Applied == 1);
+        TestWait.Until(() => _restores.Applied == 1, "_restores.Applied == 1");
         Settle(rig);
 
         Assert.False((bool)late["ok"]!);
@@ -482,7 +482,7 @@ public sealed class HeldRestoreWireTests
         Hold(other, "o2", 3, Set(Valve, "On", 0));
 
         ending.Send("""{"type":"session_end"}""");
-        WaitUntil(() => _restores.Applied == 1);
+        TestWait.Until(() => _restores.Applied == 1, "_restores.Applied == 1");
 
         Assert.Equal(0, _devices.Get(Pump, On));
         Assert.True((bool)Write(other, "o3", Pump, "On", 1, stream: 3)["ok"]!);
@@ -501,7 +501,7 @@ public sealed class HeldRestoreWireTests
             Hold(client, "h1", 3, Set(Pump, "On", 0));
             client.Send("""{"type":"stream_end","stream":5}""");
             client.Send("""{"type":"session_end"}""");
-            WaitUntil(() => _restores.Applied == 1);
+            TestWait.Until(() => _restores.Applied == 1, "_restores.Applied == 1");
         }
 
         using V2Client second = await Resume(rig);
@@ -510,7 +510,7 @@ public sealed class HeldRestoreWireTests
         Assert.Single((JArray)second.Welcome["restores"]!["applied"]!);
         Assert.True((bool)Write(second, "w2", Pump, "On", 1, stream: 5)["ok"]!);
         Assert.Equal(1, _devices.Get(Pump, On));
-        WaitUntil(() => rig.Holds.Held == 0);
+        TestWait.Until(() => rig.Holds.Held == 0, "rig.Holds.Held == 0");
     }
 
     [Fact]
@@ -519,7 +519,7 @@ public sealed class HeldRestoreWireTests
         using PipeRig rig = Rig();
         using V2Client first = await Resume(rig);
         first.Send("""{"type":"session_end"}""");
-        WaitUntil(() => rig.Mod.SessionEnds.Count == 1);
+        TestWait.Until(() => rig.Mod.SessionEnds.Count == 1, "rig.Mod.SessionEnds.Count == 1");
 
         using V2Client second = await Resume(rig);
         JObject goodbye = first.Next();
@@ -542,7 +542,7 @@ public sealed class HeldRestoreWireTests
             _devices.Fill(new Dictionary<string, double> { ["Nitrogen"] = 40.0, ["Oxygen"] = 12.5 });
 
             client.Send("""{"type":"session_end"}""");
-            WaitUntil(() => _restores.Skipped == 1);
+            TestWait.Until(() => _restores.Skipped == 1, "_restores.Skipped == 1");
         }
 
         Assert.Equal(0, _devices.Get(Vent, On));
@@ -568,7 +568,7 @@ public sealed class HeldRestoreWireTests
         Write(client, "w1", Vent, "On", 0, stream: 3);
 
         client.Send("""{"type":"session_end"}""");
-        WaitUntil(() => _restores.Applied == 1);
+        TestWait.Until(() => _restores.Applied == 1, "_restores.Applied == 1");
 
         Assert.Equal(1, _devices.Get(Vent, On));
         Assert.Equal(1, _devices.Lints);
@@ -586,7 +586,7 @@ public sealed class HeldRestoreWireTests
         Write(client, "w1", Vent, "On", 1, stream: 3);
 
         client.Send("""{"type":"session_end"}""");
-        WaitUntil(() => _restores.Applied == 1);
+        TestWait.Until(() => _restores.Applied == 1, "_restores.Applied == 1");
 
         Assert.Equal(0, _devices.Get(Vent, On));
         Assert.Equal(0, _devices.Lints);
@@ -604,7 +604,7 @@ public sealed class HeldRestoreWireTests
             _devices.LintFails = true;
 
             client.Send("""{"type":"session_end"}""");
-            WaitUntil(() => _restores.Skipped == 1);
+            TestWait.Until(() => _restores.Skipped == 1, "_restores.Skipped == 1");
         }
 
         Assert.Equal(0, _devices.Get(Vent, On));
@@ -626,7 +626,7 @@ public sealed class HeldRestoreWireTests
             _devices.Fill(new Dictionary<string, double> { ["Methane"] = 10.0, ["Oxygen"] = 20.0 }, 650.0);
 
             client.Send("""{"type":"session_end"}""");
-            WaitUntil(() => _restores.Applied == 1);
+            TestWait.Until(() => _restores.Applied == 1, "_restores.Applied == 1");
         }
 
         Assert.Equal(1, _devices.Get(Vent, On));
@@ -645,7 +645,7 @@ public sealed class HeldRestoreWireTests
             Hold(client, "h1", 3, Set(Vent, "On", 1));
             Write(client, "w1", Vent, "On", 0, stream: 3);
             client.Send("""{"type":"session_end"}""");
-            WaitUntil(() => _restores.Applied == 1);
+            TestWait.Until(() => _restores.Applied == 1, "_restores.Applied == 1");
         }
 
         using V2Client second = await Resume(rig);
@@ -830,27 +830,13 @@ public sealed class HeldRestoreWireTests
         return client;
     }
 
-    private static void WaitHeld(PipeRig rig) => WaitUntil(() => rig.Holds.Held == 1);
+    private static void WaitHeld(PipeRig rig) => TestWait.Until(() => rig.Holds.Held == 1, "one hold is held");
 
     // Two frames on the fake main thread, so whatever was posted before has been taken in.
     private static void Settle(PipeRig rig)
     {
         rig.Mod.RunFrame();
         rig.Mod.RunFrame();
-    }
-
-    private static void WaitUntil(Func<bool> condition)
-    {
-        Stopwatch watch = Stopwatch.StartNew();
-        while (!condition())
-        {
-            if (watch.ElapsedMilliseconds > 5000)
-            {
-                throw new TimeoutException("the condition never held");
-            }
-
-            Thread.Sleep(10);
-        }
     }
 
     /// <summary>

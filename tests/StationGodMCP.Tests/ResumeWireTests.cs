@@ -106,7 +106,7 @@ public sealed class ResumeWireTests
 
         WaitHeld(rig, 1);
         _clock.Advance(WindowMs);
-        WaitUntil(() => _cursors.Count == 0);
+        TestWait.Until(() => _cursors.Count == 0, "_cursors.Count == 0");
         using V2Client second = await Resume(rig);
         JObject expired = Walk(second, "2", cursor, stream: 4);
 
@@ -126,7 +126,7 @@ public sealed class ResumeWireTests
             Assert.Equal(1, _cursors.Count);
         }
 
-        WaitUntil(() => _cursors.Count == 0);
+        TestWait.Until(() => _cursors.Count == 0, "_cursors.Count == 0");
         Assert.Equal(0, rig.Holds.Held);
     }
 
@@ -142,7 +142,7 @@ public sealed class ResumeWireTests
             Walk(client, "1", null, stream: 4);
         }
 
-        WaitUntil(() => _cursors.Count == 0);
+        TestWait.Until(() => _cursors.Count == 0, "_cursors.Count == 0");
         using V2Client again = await Resume(rig);
         Assert.False((bool)again.Welcome["resume"]!["resumed"]!);
         Assert.Equal(0, rig.Holds.Held);
@@ -175,10 +175,10 @@ public sealed class ResumeWireTests
         {
             Walk(first, "1", null, stream: 4);
             first.Send("""{"type":"bye"}""");
-            Assert.True(first.WaitClosed(5000));
+            Assert.True(first.WaitClosed(V2Client.ClientWaitMs));
         }
 
-        WaitUntil(() => _cursors.Count == 0);
+        TestWait.Until(() => _cursors.Count == 0, "_cursors.Count == 0");
         using V2Client second = await Resume(rig);
 
         Assert.False((bool)second.Welcome["resume"]!["resumed"]!);
@@ -196,7 +196,7 @@ public sealed class ResumeWireTests
 
         WaitHeld(rig, 1);
         rig.Holds.WorldChanged();
-        WaitUntil(() => _cursors.Count == 0);
+        TestWait.Until(() => _cursors.Count == 0, "_cursors.Count == 0");
         using V2Client second = await Resume(rig);
 
         Assert.False((bool)second.Welcome["resume"]!["resumed"]!);
@@ -217,9 +217,9 @@ public sealed class ResumeWireTests
         Assert.True((bool)second.Welcome["resume"]!["resumed"]!);
         Assert.Equal("goodbye", (string?)goodbye["type"]);
         Assert.Equal("resumed_elsewhere", (string?)goodbye["reason"]);
-        Assert.True(first.WaitClosed(5000));
+        Assert.True(first.WaitClosed(V2Client.ClientWaitMs));
         Assert.Equal(new JArray("3", "4"), next["result"]!["things"]);
-        WaitUntil(() => rig.Host.Open.Count == 1);
+        TestWait.Until(() => rig.Host.Open.Count == 1, "rig.Host.Open.Count == 1");
         Assert.Equal(0, rig.Holds.Held);
         Assert.Equal(1, _cursors.Count);
     }
@@ -416,21 +416,7 @@ public sealed class ResumeWireTests
         }
     }
 
-    private static void WaitHeld(PipeRig rig, int held) => WaitUntil(() => rig.Holds.Held == held);
-
-    private static void WaitUntil(Func<bool> condition)
-    {
-        Stopwatch watch = Stopwatch.StartNew();
-        while (!condition())
-        {
-            if (watch.ElapsedMilliseconds > 5000)
-            {
-                throw new TimeoutException("the condition never held");
-            }
-
-            Thread.Sleep(10);
-        }
-    }
+    private static void WaitHeld(PipeRig rig, int held) => TestWait.Until(() => rig.Holds.Held == held, $"{held} hold(s) held");
 
     // A connection that never starts: what ResumeHolds keys by, without a transport behind it.
     private static Connection Unstarted(ICallQueue calls) =>

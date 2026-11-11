@@ -49,7 +49,7 @@ public sealed class ProtocolV2Tests
         Assert.Equal(JTokenType.Null, refused["id"]!.Type);
         Assert.Equal(line, (string?)refused["error"]!["data"]!["line_start"]);
         Assert.Equal("protocol_error", (string?)client.Next()["reason"]);
-        Assert.True(client.WaitClosed(5000));
+        Assert.True(client.WaitClosed(V2Client.ClientWaitMs));
         Assert.Equal(0, rig.Mod.Ran);
     }
 
@@ -428,7 +428,7 @@ public sealed class ProtocolV2Tests
         Assert.Equal("request_too_large", (string?)refused["error"]!["code"]);
         Assert.Equal(JTokenType.Null, refused["id"]!.Type);
         Assert.Equal(4194304, (int)refused["error"]!["data"]!["limit"]!);
-        Assert.True(client.WaitClosed(5000));
+        Assert.True(client.WaitClosed(V2Client.ClientWaitMs));
         await sending;
     }
 
@@ -452,7 +452,7 @@ public sealed class ProtocolV2Tests
         JObject goodbye = client.Next();
         Assert.Equal("goodbye", (string?)goodbye["type"]);
         Assert.Equal("protocol_error", (string?)goodbye["reason"]);
-        Assert.True(client.WaitClosed(5000));
+        Assert.True(client.WaitClosed(V2Client.ClientWaitMs));
     }
 
     [Fact]
@@ -465,7 +465,7 @@ public sealed class ProtocolV2Tests
         JObject refused = client.Next();
         Assert.Equal("unsupported_protocol", (string?)refused["error"]!["code"]);
         Assert.Equal(new[] { 2 }, refused["error"]!["data"]!["supported"]!.Values<int>());
-        Assert.True(client.WaitClosed(5000));
+        Assert.True(client.WaitClosed(V2Client.ClientWaitMs));
     }
 
     [Fact]
@@ -520,7 +520,7 @@ public sealed class ProtocolV2Tests
         Assert.Equal("shutting_down", (string?)client.Next()["error"]!["code"]);
         JObject goodbye = client.Next();
         Assert.Equal("shutting_down", (string?)goodbye["reason"]);
-        Assert.True(client.WaitClosed(5000));
+        Assert.True(client.WaitClosed(V2Client.ClientWaitMs));
         rig.Mod.RunPending();
         Assert.Equal(0, rig.Mod.Ran);
     }
@@ -658,6 +658,9 @@ public sealed class ProtocolV2Tests
 // <summary>A version-2 test client on a real pipe: a reader task collects every line the server sends.</summary>
 internal sealed class V2Client : IDisposable
 {
+    /// <summary>The bound on a wait for the server: a safety net for a broken test, not a speed check.</summary>
+    internal const int ClientWaitMs = 30_000;
+
     private readonly Stream _pipe;
     private readonly BlockingCollection<string> _lines = new BlockingCollection<string>();
     private readonly ManualResetEventSlim _closed = new ManualResetEventSlim(false);
@@ -703,7 +706,7 @@ internal sealed class V2Client : IDisposable
         _pipe.Write(bytes, 0, bytes.Length);
     }
 
-    internal JObject Next(int timeoutMs = 5000) =>
+    internal JObject Next(int timeoutMs = ClientWaitMs) =>
         NextOrNull(timeoutMs) ?? throw new TimeoutException("no line from the server");
 
     internal JObject? NextOrNull(int timeoutMs) =>
@@ -716,7 +719,7 @@ internal sealed class V2Client : IDisposable
         return JObject.Load(reader);
     }
 
-    internal JObject Call(string id, string method, JObject parameters, int timeoutMs = 5000)
+    internal JObject Call(string id, string method, JObject parameters, int timeoutMs = ClientWaitMs)
     {
         Send(new JObject { ["type"] = "call", ["id"] = id, ["method"] = method, ["params"] = parameters }.ToString(Formatting.None));
         Stopwatch watch = Stopwatch.StartNew();

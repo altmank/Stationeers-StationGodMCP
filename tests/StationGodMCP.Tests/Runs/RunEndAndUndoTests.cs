@@ -192,10 +192,14 @@ public sealed class RunEndAndUndoTests : IDisposable
     [PythonFact]
     public async Task AtEofSessionEndGoesWhenTheWindowEndsThoughACleanupIsStillWaiting()
     {
+        // The window runs on a clock the test moves: no wall-clock race with the stop crossing to the Python worker.
+        TimeSpan window = TimeSpan.FromSeconds(2);
+        ManualTimeProvider time = new();
         await using RunBench bench = new(adjust: settings => new RunHostSettings
         {
             SgRoot = settings.SgRoot,
-            CleanupWindow = TimeSpan.FromSeconds(2)
+            CleanupWindow = window,
+            Time = time
         });
         TaskCompletionSource arrived = new(TaskCreationOptions.RunContinuationsAsynchronously);
         Task never = new TaskCompletionSource().Task;
@@ -212,13 +216,14 @@ public sealed class RunEndAndUndoTests : IDisposable
         await bench.StartAsync("sg.write('logic', id='1', logic='On', value=1)\ntry:\n    sg.wait(30)\nfinally:\n" +
                                "    sg.write('logic', id='1', logic='On', value=0)", confirm: true, line: 3);
 
-        Stopwatch eof = Stopwatch.StartNew();
-        await bench.Host.EndSessionAsync();
+        Task end = bench.Host.EndSessionAsync();
+        await arrived.Task.WaitAsync(TestWait.DefaultLimit);
 
-        // The cleanup write never ends; session_end still goes once the window is over. The window is seconds, not
-        // milliseconds: the stop crosses to the Python worker and its finally write crosses back, which under a loaded
-        // thread pool can take longer than a short window, and this test is about a write that was sent and is waiting.
-        Assert.True(eof.Elapsed >= TimeSpan.FromSeconds(2), "session_end went before the window ended");
+        // The cleanup write never ends: session_end waits for the window, then goes though that write is still waiting.
+        Assert.False(end.IsCompleted, "session_end went before the window ended");
+        time.Advance(window);
+        await end.WaitAsync(TestWait.DefaultLimit);
+
         Assert.NotNull(bench.World.SessionEndedAt);
         Assert.True(arrived.Task.IsCompleted);
     }
