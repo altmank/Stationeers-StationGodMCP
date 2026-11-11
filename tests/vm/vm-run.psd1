@@ -2,10 +2,10 @@
     Schema = 1
     Mod = 'StationGodMCP'
     OwnerPrefix = 'sg'
-    RigVMPin = 'a68067e'
+    # 7feb8ef: the kit runs Build.Command under pwsh 7 (P99); build.ps1 needs 7.5.
+    RigVMPin = '7feb8ef'
     Build = @{
-        # The kit runs this under 5.1 (powershell.exe; a bare x.ps1 becomes & .\x.ps1), and build.ps1 needs pwsh 7.5.
-        Command = 'pwsh -NoProfile -ExecutionPolicy Bypass -File .\build.ps1'
+        Command = 'build.ps1'
         Package = 'package'
         # The kit caches a build by commit: the env vars a non-deploy build reads (build.ps1 and StationGodMCP.csproj).
         Inputs = @{ Env = @('STATIONEERS_DIR', 'LATTICE_API_DIR') }

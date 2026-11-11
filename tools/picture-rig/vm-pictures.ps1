@@ -22,8 +22,8 @@
 param(
     [string] $Owner = 'sg-camera-shot',
     [string] $RigVM,
-    # The minimum RigVM commit (main 6b07eb4, rigvm-min.txt: P72 -CheckScripts, P83, P88 -Item and -ExpectedMinutes).
-    [string] $RigVMCommit = '6b07eb4',
+    # The minimum RigVM commit (main 7feb8ef, rigvm-min.txt: P72 -CheckScripts, P83, P88 -Item and -ExpectedMinutes).
+    [string] $RigVMCommit = '7feb8ef',
     # The board item this run serves (RigVM P88 asks for it): item:StationGodMCP/<id>, the prefix included. No default.
     [string] $Item,
     [int] $LockWaitMinutes = 120,
