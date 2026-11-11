@@ -20,8 +20,8 @@ param(
     [string] $Owner = 'sg-fabricate',
     # RigVM's host folder (vm-client-run.ps1 and rig-lib.ps1); default: the sibling RigVM repo's host\ folder.
     [string] $RigVM,
-    # The minimum RigVM commit (main 0f8c2af, rigvm-min.txt: P72 -CheckScripts, P83, P88 -Item and -ExpectedMinutes).
-    [string] $RigVMCommit = '0f8c2af',
+    # The minimum RigVM commit (main 6b07eb4, rigvm-min.txt: P72 -CheckScripts, P83, P88 -Item and -ExpectedMinutes).
+    [string] $RigVMCommit = '6b07eb4',
     # The board item this run serves (RigVM P88 asks for it): item:StationGodMCP/<id>, the prefix included. No default.
     [string] $Item,
     [int] $LockWaitMinutes = 120,
