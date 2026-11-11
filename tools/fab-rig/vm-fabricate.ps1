@@ -1,3 +1,4 @@
+#Requires -Version 7.5
 <#
 .SYNOPSIS
     write fabricator's in-game proof in a VM pool rig: a rendered client loads a landed save (P51: never a new game,
@@ -39,9 +40,6 @@ param(
     [int] $MaxFps = 30
 )
 $ErrorActionPreference = 'Stop'
-if ($PSVersionTable.PSEdition -eq 'Desktop') {
-    $env:PSModulePath = (($env:PSModulePath -split ';') | ? { $_ -match '\\WindowsPowerShell\\' }) -join ';'
-}
 $here = $PSScriptRoot
 . (Join-Path (Split-Path $here) 'rigvm-host.ps1')
 if (-not $RigVM) { $RigVM = Get-DefaultRigVMHost $here }
@@ -74,7 +72,7 @@ Copy-Item -Recurse $package $mod
 
 $ctxFile = Join-Path ([IO.Path]::GetTempPath()) "sg-fab-$PID.json"
 [ordered]@{ pipe = $Pipe; expectedMin = $ExpectedMinutes; repo = $repo; here = $here; hub = $Hub; pythonZip = $PythonZip
-    repoAt = (& git -C $repo rev-parse --short HEAD 2>$null) } | ConvertTo-Json | Set-Content -Encoding UTF8 $ctxFile
+    repoAt = (& git -C $repo rev-parse --short HEAD 2>$null) } | ConvertTo-Json | Set-Content -Encoding utf8BOM $ctxFile
 $env:SG_FAB_CONTEXT = $ctxFile
 
 $pipeRe = [regex]::Escape($Pipe) -replace '\\', '\\'

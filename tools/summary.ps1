@@ -1,3 +1,4 @@
+#Requires -Version 7.5
 # -Summary for build.ps1 and release.ps1 (dot-sourced by both): the script runs again as a child, without -Summary,
 # its whole output going to a log; the console gets each step and whether it passed, the test totals, failing test
 # names, the warning and error counts, and a last line naming the log. The exit code is the child's.
@@ -33,7 +34,7 @@ function Invoke-Logged([string]$script, [string[]]$arguments, [string]$log) {
     [System.IO.File]::WriteAllText($runner, $body, (New-Object System.Text.UTF8Encoding($true)))
     try {
         # cmd's own redirection writes the log, so stderr stays plain text. The child shares this console: no window.
-        $line = "chcp 65001 >nul & powershell -NoProfile -ExecutionPolicy Bypass -File `"$runner`" > `"$log`" 2>&1"
+        $line = "chcp 65001 >nul & pwsh -NoProfile -ExecutionPolicy Bypass -File `"$runner`" > `"$log`" 2>&1"
         & cmd.exe /d /s /c "`"$line`""
         $LASTEXITCODE
     }

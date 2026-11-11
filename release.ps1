@@ -1,3 +1,4 @@
+#Requires -Version 7.5
 <#
 .SYNOPSIS
   Build a tagged StationGod MCP version and upload it as a GitHub Release.
@@ -68,7 +69,7 @@ function VersionAt([string]$rev) {
     ([regex]::Match(($csproj -join "`n"), '<Version>([^<]+)</Version>')).Groups[1].Value
 }
 function Sha256([string]$path) {
-    # Not Get-FileHash: the Windows PowerShell child build changes PSModulePath, so module autoload can fail under pwsh 7.
+    # Not Get-FileHash: a module autoload can fail when PSModulePath was changed by a parent process.
     $sha = [System.Security.Cryptography.SHA256]::Create()
     $stream = [System.IO.File]::OpenRead($path)
     try { -join ($sha.ComputeHash($stream) | ForEach-Object { $_.ToString('x2') }) }
@@ -165,7 +166,7 @@ Invoke-Git worktree prune | Out-Null
 Invoke-Git worktree add --detach $work $commit | Out-Null
 try {
     Write-Host "Building $tag ($($commit.Substring(0, 7))) in $work"
-    & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $work 'build.ps1') -GameDir $GameDir
+    & pwsh -NoProfile -ExecutionPolicy Bypass -File (Join-Path $work 'build.ps1') -GameDir $GameDir
     if ($LASTEXITCODE -ne 0) { throw "build.ps1 failed with exit code $LASTEXITCODE." }
     dotnet test (Join-Path $work 'tests\StationGodMCP.Tests\StationGodMCP.Tests.csproj') -c Release -nologo -v q
     if ($LASTEXITCODE -ne 0) { throw "Tests failed with exit code $LASTEXITCODE." }

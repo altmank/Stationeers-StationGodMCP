@@ -667,10 +667,10 @@ class GateFixtures(unittest.TestCase):
     def test_reset_command_option_then_env_else_named_error(self):
         env = {"SG_GATE_RESET": r"X:\rig\reset-env.cmd sg-gate"}
         self.assertEqual(cases.reset_command(r"X:\rig\reload.ps1 -World sg-gate", env),
-                         ["powershell", "-NoProfile", "-File", r"X:\rig\reload.ps1", "-World", "sg-gate"])
+                         ["pwsh", "-NoProfile", "-File", r"X:\rig\reload.ps1", "-World", "sg-gate"])
         self.assertEqual(cases.reset_command(None, env), [r"X:\rig\reset-env.cmd", "sg-gate"])
         self.assertEqual(cases.reset_command(r'"X:\a rig\reload.PS1" sg-gate', {}),
-                         ["powershell", "-NoProfile", "-File", r"X:\a rig\reload.PS1", "sg-gate"])
+                         ["pwsh", "-NoProfile", "-File", r"X:\a rig\reload.PS1", "sg-gate"])
         held = cases.RESET
         try:
             cases.RESET = r"X:\from-option.ps1"

@@ -1,3 +1,4 @@
+#Requires -Version 7.5
 <#
 .SYNOPSIS
     show picture's in-game proof in a VM pool rig: a rendered client (no -batchmode) hosts a saved test world staged
@@ -46,9 +47,6 @@ param(
 )
 if ($FrameReads) { $ExpectedMinutes += 1.5 }
 $ErrorActionPreference = 'Stop'
-if ($PSVersionTable.PSEdition -eq 'Desktop') {
-    $env:PSModulePath = (($env:PSModulePath -split ';') | ? { $_ -match '\\WindowsPowerShell\\' }) -join ';'
-}
 $here = $PSScriptRoot
 . (Join-Path (Split-Path $here) 'rigvm-host.ps1')
 if (-not $RigVM) { $RigVM = Get-DefaultRigVMHost $here }
@@ -68,7 +66,7 @@ if (-not (Test-Path (Join-Path $Hub 'StationGodMCP.Server.exe')) -or -not (Test-
 
 $ctxFile = Join-Path ([IO.Path]::GetTempPath()) "sg-pictures-$PID.json"
 [ordered]@{ pipe = $Pipe; expectedMin = $ExpectedMinutes; repo = $repo; here = $here; hub = $Hub; pythonZip = $PythonZip
-    frames = [bool] $FrameReads; repoAt = (& git -C $repo rev-parse --short HEAD 2>$null) } | ConvertTo-Json | Set-Content -Encoding UTF8 $ctxFile
+    frames = [bool] $FrameReads; repoAt = (& git -C $repo rev-parse --short HEAD 2>$null) } | ConvertTo-Json | Set-Content -Encoding utf8BOM $ctxFile
 $env:SG_PIC_CONTEXT = $ctxFile
 
 $pipeRe = [regex]::Escape($Pipe) -replace '\\', '\\'
