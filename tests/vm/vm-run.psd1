@@ -2,8 +2,8 @@
     Schema = 1
     Mod = 'StationGodMCP'
     OwnerPrefix = 'sg'
-    # 7feb8ef: the kit runs Build.Command under pwsh 7 (P99); build.ps1 needs 7.5.
-    RigVMPin = '7feb8ef'
+    # rigvm-min (P105). Since 7feb8ef the kit runs Build.Command under pwsh 7 (P99); build.ps1 needs 7.5.
+    RigVMPin = 'a122e5a'
     Build = @{
         Command = 'build.ps1'
         Package = 'package'
