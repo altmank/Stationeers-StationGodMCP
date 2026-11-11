@@ -34,7 +34,7 @@
 .PARAMETER RigVM
     RigVM's host folder, holding vm-client-run.ps1 and rig-lib.ps1 (default: the sibling RigVM repo's host folder).
 .PARAMETER RigVMCommit
-    The minimum RigVM commit (default ef52e98, RigVM main: -WorldBuild, RigGuard, the saved player, -CheckScripts, -Item), passed as vm-client-run's -RigVMPin: rig-lib's Assert-RigVMMinimum
+    The minimum RigVM commit (default 0f8c2af, RigVM main: -WorldBuild, RigGuard, the saved player, -CheckScripts, -Item), passed as vm-client-run's -RigVMPin: rig-lib's Assert-RigVMMinimum
     ends the run as infra when RigVM doesn't contain it, and result.json records the pin and the actual HEAD. The
     pool picks the rig (P45: callers never name one).
 .PARAMETER LockWaitMinutes
@@ -64,7 +64,7 @@ param(
     [switch] $Check,
     [string] $Owner = 'sg-test-worlds-build',
     [string] $RigVM,
-    [string] $RigVMCommit = 'ef52e98',
+    [string] $RigVMCommit = '0f8c2af',
     # The board item this run serves (RigVM P88 asks for it): item:StationGodMCP/<id>, the prefix included. No default.
     [string] $Item,
     [int] $LockWaitMinutes = 120,
@@ -116,7 +116,7 @@ if ($missing) { Refuse "no $($missing -join ', ') (give the parameter or its env
 if ($Pipe -eq 'StationGodMCP') { Refuse 'the live pipe StationGodMCP' }
 if ($Item -notmatch '^item:StationGodMCP/\S+$') { Refuse "-Item must be item:StationGodMCP/<id> (the prefix is required), got '$Item'" }
 $clientRun = Join-Path $RigVM 'vm-client-run.ps1'
-if (-not (Test-Path $clientRun)) { Refuse "no vm-client-run.ps1 in $RigVM (RigVM ef52e98 or later)" }
+if (-not (Test-Path $clientRun)) { Refuse "no vm-client-run.ps1 in $RigVM (RigVM 0f8c2af or later)" }
 foreach ($p in @($Hub, $PythonZip) + $Mods + @($SettingFrom | ? { $_ })) { if (-not (Test-Path $p)) { Refuse "missing $p" } }
 if (-not (Test-Path (Join-Path $Hub 'StationGodMCP.Server.dll'))) { Refuse "no StationGodMCP.Server.dll in $Hub" }
 # Self-contained: the exe carries its runtime (hostfxr.dll beside it); else dotnet runs the dll.
