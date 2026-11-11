@@ -22,7 +22,10 @@
 param(
     [string] $Owner = 'sg-camera-shot',
     [string] $RigVM,
-    [string] $RigVMCommit = '7cc64ca',
+    # The minimum RigVM commit (main f2a0822, rigvm-min.txt: P72 -CheckScripts, P83, P88 -Item and -ExpectedMinutes).
+    [string] $RigVMCommit = 'f2a0822',
+    # The board item this run serves (RigVM P88 asks for it): item:StationGodMCP/<id>, the prefix included. No default.
+    [string] $Item,
     [int] $LockWaitMinutes = 120,
     [string] $SettingFrom = $env:SG_RIG_SETTINGS,
     # StationGod's staged package folder (its leaf is the mod's folder name); the only mod.
@@ -54,9 +57,10 @@ if ($TimeoutSeconds -le 0) { $TimeoutSeconds = [int]($ExpectedMinutes * 60 * 2) 
 if ($PhaseSeconds -le 0) { $PhaseSeconds = [int]($ExpectedMinutes * 60) }
 $repo = Split-Path (Split-Path $here)
 
-function Refuse([string] $Why) { Write-Error "refusing: $Why"; exit 3 }
+function Refuse([string] $Why) { Write-Error "refusing: $Why" -ErrorAction Continue; exit 3 }
 $missing = @(foreach ($n in 'RigVM', 'Mod', 'World', 'Hub', 'PythonZip') { if (-not (Get-Variable $n -ValueOnly)) { $n } })
 if ($missing) { Refuse "no $($missing -join ', ') (give the parameter or its environment variable)" }
+if ($Item -notmatch '^item:StationGodMCP/\S+$') { Refuse "-Item must be item:StationGodMCP/<id> (the prefix is required), got '$Item'" }
 if ($Pipe -eq 'StationGodMCP') { Refuse 'the live pipe StationGodMCP' }
 $clientRun = Join-Path $RigVM 'vm-client-run.ps1'
 if (-not (Test-Path $clientRun)) { Refuse "no vm-client-run.ps1 in $RigVM" }
@@ -78,11 +82,14 @@ $runArgs = @{
     PhasesJson = $phases; DoneGlob = '{out}\done-*'; Require = @('stationgod'); BepCfgJson = $bepCfg
     PreLaunch = "$here\vm\prelaunch.ps1"; OnPoll = "$here\vm\onpoll.ps1"; Judge = "$here\vm\judge.ps1"
     OnEnd = "$here\vm\onend.ps1"
+    Item = $Item; ExpectedMinutes = [int][math]::Ceiling($ExpectedMinutes)
+    CheckScripts = @("$here\vm", "$here\shots.py", "$here\judge_shots.py", (Join-Path (Split-Path $here) 'silo-rig\sgcall.py'))
     TimeoutSeconds = $TimeoutSeconds; StallSeconds = $PhaseSeconds
     WatchLogs = @('{res}\logs\shots.log')
     IgnoreErrorRegex = 'StationGodMCP\.LatticeLink|Lattice\.Api'
     PhaseLimitJson = '{"bepinex":' + $PhaseSeconds + ',"stationgod":' + $PhaseSeconds + '}'
 }
 if ($SettingFrom) { $runArgs.SettingFrom = $SettingFrom }
-try { & $clientRun @runArgs; $code = $LASTEXITCODE } finally { Remove-Item $ctxFile -Force -ErrorAction SilentlyContinue }
+# P92: RigVM starts under Windows PowerShell 5.1, never in-process from this pwsh 7 script.
+try { $code = Invoke-RigVMEntry -Script $clientRun -Arguments $runArgs } finally { Remove-Item $ctxFile -Force -ErrorAction SilentlyContinue }
 exit $code

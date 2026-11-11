@@ -6,7 +6,7 @@
     fabricator through its build states and calls write fabricator at each, then makes ItemMKIIWrench.
 
 .DESCRIPTION
-    A thin caller of RigVM's shared client run, hostm-client-run.ps1:
+    A thin caller of RigVM's shared client run, host\vm-client-run.ps1:
       PreLaunch: fab.py, sgcall.py, the sg client, the hub and a portable Python go onto the run's results disk;
       OnPoll: once StationGod's pipe is up, fab.py starts in the guest (a hidden task as the rig user);
       Judge: fab.py's done file decides, with replies.json and fab.log (collected);
@@ -20,7 +20,10 @@ param(
     [string] $Owner = 'sg-fabricate',
     # RigVM's host folder (vm-client-run.ps1 and rig-lib.ps1); default: the sibling RigVM repo's host\ folder.
     [string] $RigVM,
-    [string] $RigVMCommit = '7cc64ca',
+    # The minimum RigVM commit (main f2a0822, rigvm-min.txt: P72 -CheckScripts, P83, P88 -Item and -ExpectedMinutes).
+    [string] $RigVMCommit = 'f2a0822',
+    # The board item this run serves (RigVM P88 asks for it): item:StationGodMCP/<id>, the prefix included. No default.
+    [string] $Item,
     [int] $LockWaitMinutes = 120,
     # The world library and the world in it (a landed save, P51: never a new game); the game loads it by its folder name.
     [string] $Library = $env:STATIONGOD_TEST_WORLDS,
@@ -47,9 +50,10 @@ if ($TimeoutSeconds -le 0) { $TimeoutSeconds = [int]($ExpectedMinutes * 60 * 2) 
 if ($PhaseSeconds -le 0) { $PhaseSeconds = [int]($ExpectedMinutes * 60) }
 $repo = Split-Path (Split-Path $here)
 
-function Refuse([string] $Why) { Write-Error "refusing: $Why"; exit 3 }
+function Refuse([string] $Why) { Write-Error "refusing: $Why" -ErrorAction Continue; exit 3 }
 $missing = @(foreach ($n in 'RigVM', 'Hub', 'PythonZip', 'Library') { if (-not (Get-Variable $n -ValueOnly)) { $n } })
 if ($missing) { Refuse "no $($missing -join ', ') (give the parameter or its environment variable)" }
+if ($Item -notmatch '^item:StationGodMCP/\S+$') { Refuse "-Item must be item:StationGodMCP/<id> (the prefix is required), got '$Item'" }
 if ($Pipe -eq 'StationGodMCP') { Refuse 'the live pipe StationGodMCP' }
 $clientRun = Join-Path $RigVM 'vm-client-run.ps1'
 if (-not (Test-Path $clientRun)) { Refuse "no vm-client-run.ps1 in $RigVM" }
@@ -84,11 +88,14 @@ $runArgs = @{
     PhasesJson = $phases; DoneGlob = '{out}\done-*'; Require = @('stationgod'); BepCfgJson = $bepCfg
     PreLaunch = "$here\vm\prelaunch.ps1"; OnPoll = "$here\vm\onpoll.ps1"; Judge = "$here\vm\judge.ps1"
     OnEnd = "$here\vm\onend.ps1"
+    Item = $Item; ExpectedMinutes = [int][math]::Ceiling($ExpectedMinutes)
+    CheckScripts = @("$here\vm", "$here\fab.py", (Join-Path (Split-Path $here) 'silo-rig\sgcall.py'))
     TimeoutSeconds = $TimeoutSeconds; StallSeconds = $PhaseSeconds
     WatchLogs = @('{res}\logs\fab.log')
     IgnoreErrorRegex = 'StationGodMCP\.LatticeLink|Lattice\.Api'
     PhaseLimitJson = '{"bepinex":' + $PhaseSeconds + ',"stationgod":' + $PhaseSeconds + '}'
 }
 if ($SettingFrom) { $runArgs.SettingFrom = $SettingFrom }
-try { & $clientRun @runArgs; $code = $LASTEXITCODE } finally { Remove-Item $ctxFile -Force -ErrorAction SilentlyContinue; Remove-Item -Recurse -Force $stage -ErrorAction SilentlyContinue }
+# P92: RigVM starts under Windows PowerShell 5.1, never in-process from this pwsh 7 script.
+try { $code = Invoke-RigVMEntry -Script $clientRun -Arguments $runArgs } finally { Remove-Item $ctxFile -Force -ErrorAction SilentlyContinue; Remove-Item -Recurse -Force $stage -ErrorAction SilentlyContinue }
 exit $code
