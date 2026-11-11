@@ -262,6 +262,10 @@ $shadowed = @(foreach ($script in @(& git -C $root ls-files '*.ps1' '*.psm1' 2>$
         $aliasNames -contains $_.Matches[0].Groups[1].Value } | ForEach-Object { "${script}:$($_.LineNumber)" } })
 if ($shadowed) { throw "A function is named after a PowerShell alias, so the alias runs instead: $($shadowed -join ', ')" }
 
+# The RigVM launcher helper (tools\rigvm-host.ps1): a fake entry script proves it starts 5.1 and passes the arguments intact.
+& pwsh -NoProfile -File (Join-Path $root 'tools\test-rigvm-host.ps1')
+if ($LASTEXITCODE -ne 0) { throw "tools\test-rigvm-host.ps1 failed ($LASTEXITCODE assertions); nothing was built." }
+
 Write-Host "Testing $version"
 dotnet test (Join-Path $root 'tests\StationGodMCP.Tests\StationGodMCP.Tests.csproj') -nologo -v q @srcRev
 if ($LASTEXITCODE -ne 0) { throw "Tests failed with exit code $LASTEXITCODE; nothing was built." }

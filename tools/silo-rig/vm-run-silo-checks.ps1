@@ -39,9 +39,9 @@
     info.checks), 2 timeout, stall or crash, 3 infra or a refusal here.
 
 .PARAMETER RigLib
-    RigVM's host\rig-lib.ps1 (default: hostig-lib.ps1 in the sibling RigVM repo); vm-client-run.ps1 is taken from the same folder.
+    RigVM's host\rig-lib.ps1 (default: host\rig-lib.ps1 in the sibling RigVM repo); vm-client-run.ps1 is taken from the same folder.
 .PARAMETER RigVMCommit
-    The minimum RigVM commit, passed as vm-client-run's -RigVMPin: RigVM's HEAD must contain it. Default fcbb38f
+    The minimum RigVM commit, passed as vm-client-run's -RigVMPin: RigVM's HEAD must contain it. Default f2a0822 (RigVM main)
     (callers never name a rig, the OnEnd hook, Assert-RigVMMinimum, the stuck rule, -PhaseLimitJson, -WatchLogs).
 .PARAMETER StallSeconds
     rig-lib's stall rule: no growth in any watched log for this long ends the run. Default 900. The checks' own log is
@@ -65,9 +65,11 @@
     StationGod's pipe name in the guest (never the live StationGodMCP).
 #>
 param(
-    [string] $Owner = 'sg-silo checks',
+    [string] $Owner = 'sg-silo-checks',
     [string] $RigLib,
-    [string] $RigVMCommit = '7cc64ca',
+    [string] $RigVMCommit = 'f2a0822',
+    # The board item this run serves (RigVM P88 asks for it): item:StationGodMCP/<id>, the prefix included. No default.
+    [string] $Item,
     [string] $Library = $env:STATIONGOD_TEST_WORLDS,
     [string] $SettingsTemplate = $env:SG_RIG_SETTINGS,
     [string] $Hub,
@@ -94,6 +96,7 @@ function Refuse([string] $why) { Write-Error "refusing: $why" -ErrorAction Conti
 $missing = @(foreach ($n in 'RigLib', 'Hub', 'Library') { if (-not (Get-Variable $n -ValueOnly)) { $n } })
 if ($missing) { Refuse "no $($missing -join ', ') (give the parameter or its environment variable; see Get-Help $PSCommandPath)" }
 if ($Pipe -eq 'StationGodMCP') { Refuse 'the live pipe StationGodMCP' }
+if ($Item -notmatch '^item:StationGodMCP/\S+$') { Refuse "-Item must be item:StationGodMCP/<id> (the prefix is required), got '$Item'" }
 $clientRun = Join-Path (Split-Path $RigLib) 'vm-client-run.ps1'
 if (-not (Test-Path $RigLib) -or -not (Test-Path $clientRun)) { Refuse "no rig-lib.ps1 and vm-client-run.ps1 at $(Split-Path $RigLib)" }
 $package = Join-Path $repo 'package'
@@ -143,12 +146,14 @@ try {
         GameArgs = Get-SiloGameArgs; PhasesJson = $phases; DoneGlob = '{out}\done-*'; BepCfgJson = $bepCfg
         PreLaunch = Join-Path $hooks 'silo-prelaunch.ps1'; OnPoll = Join-Path $hooks 'silo-onpoll.ps1'
         Judge = Join-Path $hooks 'silo-judge.ps1'; OnEnd = Join-Path $hooks 'silo-onend.ps1'; RigVMPin = $RigVMCommit
+        Item = $Item; ExpectedMinutes = (Get-SiloExpectedMinutes)
+        CheckScripts = @($hooks, (Join-Path $here 'silo_checks.py'), (Join-Path $here 'sgcall.py'))
         NoteRegex = '(?m)^(FAIL  |Traceback|SystemExit|RuntimeError)[^\r\n]*'
         TimeoutSeconds = $TimeoutSeconds; StallSeconds = $StallSeconds; PhaseLimitJson = $limits; WatchLogs = @(Get-SiloChecksLog); Dxdiag = $Dxdiag
     }
     if ($SettingsTemplate) { $run.SettingFrom = $SettingsTemplate }
-    & $clientRun @run
-    $code = $LASTEXITCODE
+    # P92: RigVM starts under Windows PowerShell 5.1, never in-process from this pwsh 7 script.
+    $code = Invoke-RigVMEntry -Script $clientRun -Arguments $run
 }
 finally {
     Remove-Item -Recurse -Force $stage -ErrorAction SilentlyContinue

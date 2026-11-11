@@ -34,7 +34,7 @@
 .PARAMETER RigVM
     RigVM's host folder, holding vm-client-run.ps1 and rig-lib.ps1 (default: the sibling RigVM repo's host folder).
 .PARAMETER RigVMCommit
-    The minimum RigVM commit (default 7cc64ca: -WorldBuild, RigGuard and the saved player), passed as vm-client-run's -RigVMPin: rig-lib's Assert-RigVMMinimum
+    The minimum RigVM commit (default f2a0822, RigVM main: -WorldBuild, RigGuard, the saved player, -CheckScripts, -Item), passed as vm-client-run's -RigVMPin: rig-lib's Assert-RigVMMinimum
     ends the run as infra when RigVM doesn't contain it, and result.json records the pin and the actual HEAD. The
     pool picks the rig (P45: callers never name one).
 .PARAMETER LockWaitMinutes
@@ -62,9 +62,11 @@ param(
     [Parameter(Mandatory)] [ValidateSet('sg-smoke', 'sg-silo', 'sg-minimal', 'sg-gate', 'sg-cost-large')] [string] $World,
     # Load the library's stored <World> instead of building it: StationGod answers and the thing count is the save's.
     [switch] $Check,
-    [string] $Owner = 'sg-test-worlds build',
+    [string] $Owner = 'sg-test-worlds-build',
     [string] $RigVM,
-    [string] $RigVMCommit = '7cc64ca',
+    [string] $RigVMCommit = 'f2a0822',
+    # The board item this run serves (RigVM P88 asks for it): item:StationGodMCP/<id>, the prefix included. No default.
+    [string] $Item,
     [int] $LockWaitMinutes = 120,
     [string] $Library = $env:STATIONGOD_TEST_WORLDS,
     [string] $SettingFrom = $env:SG_RIG_SETTINGS,
@@ -108,12 +110,13 @@ $Mods = @($Mods | % { $_ -split ',' } | ? { $_ })
 $NeedMods = @{}   # every test world is vanilla plus StationGod (LU: StationGod's testing depends on no other mod)
 
 # Refusals before the run starts (no transcript yet: nothing has started).
-function Refuse([string] $Why) { Write-Error "refusing: $Why"; exit 3 }
+function Refuse([string] $Why) { Write-Error "refusing: $Why" -ErrorAction Continue; exit 3 }
 $missing = @(foreach ($n in @('RigVM', 'Hub', 'PythonZip') + @(if ($World -ne 'sg-smoke') { 'Library' })) { if (-not (Get-Variable $n -ValueOnly)) { $n } })
 if ($missing) { Refuse "no $($missing -join ', ') (give the parameter or its environment variable; see Get-Help $PSCommandPath)" }
 if ($Pipe -eq 'StationGodMCP') { Refuse 'the live pipe StationGodMCP' }
+if ($Item -notmatch '^item:StationGodMCP/\S+$') { Refuse "-Item must be item:StationGodMCP/<id> (the prefix is required), got '$Item'" }
 $clientRun = Join-Path $RigVM 'vm-client-run.ps1'
-if (-not (Test-Path $clientRun)) { Refuse "no vm-client-run.ps1 in $RigVM (RigVM 7cc64ca or later)" }
+if (-not (Test-Path $clientRun)) { Refuse "no vm-client-run.ps1 in $RigVM (RigVM f2a0822 or later)" }
 foreach ($p in @($Hub, $PythonZip) + $Mods + @($SettingFrom | ? { $_ })) { if (-not (Test-Path $p)) { Refuse "missing $p" } }
 if (-not (Test-Path (Join-Path $Hub 'StationGodMCP.Server.dll'))) { Refuse "no StationGodMCP.Server.dll in $Hub" }
 # Self-contained: the exe carries its runtime (hostfxr.dll beside it); else dotnet runs the dll.
@@ -150,6 +153,8 @@ $runArgs = @{
     PhasesJson = $phases; DoneGlob = '{out}\done-*'; Require = @('stationgod'); BepCfgJson = $bepCfg
     PreLaunch = "$here\vm\prelaunch.ps1"; OnPoll = "$here\vm\onpoll.ps1"; Judge = "$here\vm\judge.ps1"
     OnEnd = "$here\vm\onend.ps1"
+    Item = $Item; ExpectedMinutes = [int]$expectedMin
+    CheckScripts = @("$here\vm", "$here\build_world.py", "$here\builder.py", "$here\twlib.py")
     TimeoutSeconds = $TimeoutSeconds; StallSeconds = $StallSeconds; Dxdiag = [bool]$Dxdiag
     WatchLogs = @('{res}\logs\build.log')
     # StationGod 2.16.1 without Lattice logs a caught TypeLoadException for its Lattice link (LatticeLink types that
@@ -171,7 +176,8 @@ try {
         Copy-Item $libSave (Join-Path $savedFolder "$World.save")
         $runArgs.Save = $savedFolder; $runArgs.GameArgs = '-load {savename}'
     }
-    & $clientRun @runArgs; $code = $LASTEXITCODE
+    # P92: RigVM starts under Windows PowerShell 5.1, never in-process from this pwsh 7 script.
+    $code = Invoke-RigVMEntry -Script $clientRun -Arguments $runArgs
 } finally {
     Remove-Item $ctxFile -Force -ErrorAction SilentlyContinue
     if ($savedFolder) { Remove-Item (Split-Path $savedFolder) -Recurse -Force -ErrorAction SilentlyContinue }
