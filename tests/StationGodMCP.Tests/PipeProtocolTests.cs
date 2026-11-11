@@ -127,11 +127,15 @@ public sealed class PipeProtocolTests
     {
         using PipeRig rig = new PipeRig(maxConnections: 1, firstLineMs: 300);
         using NamedPipeClientStream silent = await rig.ConnectAsync();
+        Connection connection = rig.WaitConnected();
         byte[] buffer = new byte[16];
 
-        Stopwatch watch = Stopwatch.StartNew();
         Assert.Equal(0, await silent.ReadAsync(buffer, 0, buffer.Length));
-        Assert.InRange(watch.ElapsedMilliseconds, 200, 3000);
+
+        // Measured where the deadline starts: no sooner than the 300 ms first-line deadline (a Windows wait can fire up
+        // to a timer tick early, hence 250). No upper bound: a late continuation on a loaded pool must not fail it.
+        Assert.True(connection.Stopped.WaitOne(V2Client.ClientWaitMs), "the silent connection was never stopped");
+        Assert.True(QueuedCall.MillisecondsSince(connection.ConnectedAt) >= 250, "dropped before the first-line deadline");
 
         using V2Client next = await V2Client.Connect(rig);
         Assert.True((bool)next.Call("n", "read", TestVerbs.Clock())["ok"]!);
@@ -209,7 +213,7 @@ public sealed class PipeProtocolTests
             }
 
             raw.Dispose();
-            Assert.True(connection.Stopped.WaitOne(5000), $"client {index} left its pipe instance taken {when}");
+            Assert.True(connection.Stopped.WaitOne(V2Client.ClientWaitMs), $"client {index} left its pipe instance taken {when}");
 
             using V2Client next = await V2Client.Connect(rig, "after-death" + index);
             Assert.True((bool)next.Call("n", "read", TestVerbs.Clock())["ok"]!);
@@ -232,7 +236,7 @@ public sealed class PipeProtocolTests
         Assert.Throws<TimeoutException>(() => waiting.Connect(500));
 
         held[0].Dispose();
-        await waiting.ConnectAsync(5000);
+        await waiting.ConnectAsync(V2Client.ClientWaitMs);
         using V2Client next = new V2Client(waiting);
         next.Hello("waiting");
         Assert.Equal("welcome", (string?)next.Next()["type"]);
@@ -262,7 +266,7 @@ public sealed class PipeProtocolTests
     {
         List<byte> line = new List<byte>();
         byte[] one = new byte[1];
-        using CancellationTokenSource timeout = new CancellationTokenSource(5000);
+        using CancellationTokenSource timeout = new CancellationTokenSource(V2Client.ClientWaitMs);
         while (true)
         {
             int read = await stream.ReadAsync(one, 0, 1, timeout.Token);
@@ -344,12 +348,12 @@ internal sealed class PipeRig : IDisposable
     internal async Task<NamedPipeClientStream> ConnectAsync()
     {
         NamedPipeClientStream client = new NamedPipeClientStream(".", Name, PipeDirection.InOut, PipeOptions.Asynchronous);
-        await client.ConnectAsync(5000);
+        await client.ConnectAsync(V2Client.ClientWaitMs);
         return client;
     }
 
     internal Connection WaitConnected() =>
-        _connected.TryTake(out Connection? connection, 5000) ? connection : throw new TimeoutException();
+        _connected.TryTake(out Connection? connection, V2Client.ClientWaitMs) ? connection : throw new TimeoutException();
 
     public void Dispose()
     {

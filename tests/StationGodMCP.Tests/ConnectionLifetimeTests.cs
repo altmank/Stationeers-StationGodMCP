@@ -35,7 +35,7 @@ public sealed class ConnectionLifetimeTests
             hub.Kill(entireProcessTree: false);
             hub.WaitForExit(5000);
 
-            Assert.True(connection.Stopped.WaitOne(5000),
+            Assert.True(connection.Stopped.WaitOne(V2Client.ClientWaitMs),
                 $"the killed hub's pipe instance stayed taken; hub stderr: {errors}");
         }
         finally

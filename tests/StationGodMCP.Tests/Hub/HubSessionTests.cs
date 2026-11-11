@@ -154,7 +154,7 @@ public sealed class HubSessionTests
         await caller.HelloAsync();
 
         caller.Send(HubCaller.Call("9", "read", """{"what":"sample","id":"5","logic":"On"}"""));
-        await WaitUntil(() => link.CallsTo("read").Count == 1);
+        await TestWait.UntilAsync(() => link.CallsTo("read").Count == 1, "link.CallsTo(\"read\").Count == 1");
         caller.Send("""{"type":"cancel","id":"9"}""");
         JsonElement reply = await caller.NextAsync();
 
@@ -660,16 +660,6 @@ public sealed class HubSessionTests
     }
 
     private static long StreamOf(JsonElement reply) => reply.GetProperty("result").GetProperty("stream").GetInt64();
-
-    private static async Task WaitUntil(Func<bool> condition)
-    {
-        DateTime until = DateTime.UtcNow + TimeSpan.FromSeconds(10);
-        while (!condition())
-        {
-            Assert.True(DateTime.UtcNow < until, "The condition did not come true in time.");
-            await Task.Delay(10);
-        }
-    }
 
     private sealed class FaceGate : IWriteGate
     {

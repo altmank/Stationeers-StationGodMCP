@@ -38,17 +38,20 @@ public sealed class GameLinkTests
         string name = "StationGodMCP-fake-late-" + Guid.NewGuid().ToString("N");
         await using GameLink link = new(new ClientOptions(new GameTarget.Pipe(name)));
         int ups = 0;
-        link.LinkUp += () => Interlocked.Increment(ref ups);
+        TaskCompletionSource up = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        link.LinkUp += () =>
+        {
+            Interlocked.Increment(ref ups);
+            up.TrySetResult();
+        };
 
         Assert.False(await link.ConnectAsync());
         Assert.Null(link.Welcome);
 
         await using FakeGame game = FakeGame.OnPipe(name);
-        Stopwatch watch = Stopwatch.StartNew();
-        while (link.Welcome == null && watch.ElapsedMilliseconds < 15000)
-        {
-            await Task.Delay(50);
-        }
+
+        // Welcome is set under the link's lock and LinkUp fires after, off it: wait for the event, not the property.
+        await up.Task.WaitAsync(TimeSpan.FromSeconds(30));
 
         Assert.NotNull(link.Welcome);
         Assert.Equal("world-1", link.WorldId);

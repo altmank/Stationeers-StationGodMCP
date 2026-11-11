@@ -144,7 +144,7 @@ public sealed class JobPinWireTests
             Assert.True(Pinned(rig, "place-1"));
         }
 
-        WaitUntil(() => !Pinned(rig, "place-1"));
+        TestWait.Until(() => !Pinned(rig, "place-1"), "!Pinned(rig, \"place-1\")");
     }
 
     [Fact]
@@ -156,7 +156,7 @@ public sealed class JobPinWireTests
 
         client.Send("""{"type":"session_end"}""");
 
-        WaitUntil(() => !Pinned(rig, "place-1"));
+        TestWait.Until(() => !Pinned(rig, "place-1"), "!Pinned(rig, \"place-1\")");
     }
 
     [Fact]
@@ -168,7 +168,7 @@ public sealed class JobPinWireTests
             Start(first, "place-1", stream: 4);
         }
 
-        WaitUntil(() => rig.Holds.Held == 1);
+        TestWait.Until(() => rig.Holds.Held == 1, "rig.Holds.Held == 1");
         using (V2Client second = await Resume(rig))
         {
             Assert.True((bool)second.Welcome["resume"]!["resumed"]!);
@@ -176,10 +176,10 @@ public sealed class JobPinWireTests
             Assert.True(Pinned(rig, "place-1"));
         }
 
-        WaitUntil(() => rig.Holds.Held == 1);
+        TestWait.Until(() => rig.Holds.Held == 1, "rig.Holds.Held == 1");
         Assert.True(Pinned(rig, "place-1"));
         _clock.Advance(WindowMs);
-        WaitUntil(() => !Pinned(rig, "place-1"));
+        TestWait.Until(() => !Pinned(rig, "place-1"), "!Pinned(rig, \"place-1\")");
     }
 
     [Fact]
@@ -289,20 +289,6 @@ public sealed class JobPinWireTests
         client.Welcome = client.Next();
         Assert.Equal("welcome", (string?)client.Welcome["type"]);
         return client;
-    }
-
-    private static void WaitUntil(Func<bool> condition)
-    {
-        Stopwatch watch = Stopwatch.StartNew();
-        while (!condition())
-        {
-            if (watch.ElapsedMilliseconds > 5000)
-            {
-                throw new TimeoutException("the condition never held");
-            }
-
-            Thread.Sleep(10);
-        }
     }
 
     private sealed class IdleRunner : ICallRunner

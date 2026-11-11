@@ -44,7 +44,7 @@ public sealed class HubSessionBoundsTests
         await using HubCaller caller = HubCaller.Start(link);
         await caller.HelloAsync();
         caller.Send(HubCaller.Call("1", "find"));
-        await WaitUntil(() => link.Calls.Count == 1);
+        await TestWait.UntilAsync(() => link.Calls.Count == 1, "link.Calls.Count == 1");
         link.Reachable = false;
 
         Stopwatch closing = Stopwatch.StartNew();
@@ -332,7 +332,7 @@ public sealed class HubSessionBoundsTests
         await caller.HelloAsync();
         await caller.CallAsync("1", "subscribe", "{}");
         caller.Send(HubCaller.Call("2", "read", """{"what":"sample","id":"5","logic":"On"}"""));
-        await WaitUntil(() => link.CallsTo("read").Count == 1);
+        await TestWait.UntilAsync(() => link.CallsTo("read").Count == 1, "link.CallsTo(\"read\").Count == 1");
 
         await caller.EndAsync();
 
@@ -363,16 +363,6 @@ public sealed class HubSessionBoundsTests
         Assert.Equal("unknown_subscription", unknown.GetProperty("error").GetProperty("code").GetString());
         Assert.Equal("3", next.GetProperty("id").GetString());
         Assert.Empty(link.CallsTo("unsubscribe"));
-    }
-
-    private static async Task WaitUntil(Func<bool> condition)
-    {
-        DateTime until = DateTime.UtcNow + Patience;
-        while (!condition())
-        {
-            Assert.True(DateTime.UtcNow < until, "The condition did not come true in time.");
-            await Task.Delay(10);
-        }
     }
 
     /// <summary>An output whose every write fails with something other than an IO fault.</summary>

@@ -22,7 +22,7 @@ public sealed partial class RunHost
     /// </summary>
     internal async Task EndSessionAsync(Task? direct = null)
     {
-        DateTime started = DateTime.UtcNow;
+        long started = _settings.Time.GetTimestamp();
         lock (_gate)
         {
             if (Phase != SessionPhase.Open)
@@ -41,7 +41,7 @@ public sealed partial class RunHost
             ended.Add(run.Ended);
         }
 
-        TimeSpan left = _settings.CleanupWindow - (DateTime.UtcNow - started);
+        TimeSpan left = _settings.CleanupWindow - _settings.Time.GetElapsedTime(started);
         if (direct != null)
         {
             ended.Add(direct);
@@ -49,7 +49,7 @@ public sealed partial class RunHost
 
         if (ended.Count > 0 && left > TimeSpan.Zero)
         {
-            await Task.WhenAny(Task.WhenAll(ended), Task.Delay(left)).ConfigureAwait(false);
+            await Task.WhenAny(Task.WhenAll(ended), Task.Delay(left, _settings.Time)).ConfigureAwait(false);
         }
 
         lock (_gate)

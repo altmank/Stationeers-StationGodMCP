@@ -31,7 +31,7 @@ public sealed class CallWorldTests
         using PipeRig rig = Rig();
         using V2Client client = await V2Client.Connect(rig);
         client.Send(CallLine("1", WorldA.Id));
-        WaitUntil(() => Queued(rig));
+        TestWait.Until(() => Queued(rig), "Queued(rig)");
         _world = WorldB;
 
         // In flight is counted when the connection reads the call, a moment before it reaches the main thread's queue:
@@ -151,17 +151,4 @@ public sealed class CallWorldTests
         throw new TimeoutException("no reply");
     }
 
-    private static void WaitUntil(Func<bool> condition)
-    {
-        Stopwatch watch = Stopwatch.StartNew();
-        while (!condition())
-        {
-            if (watch.ElapsedMilliseconds > 5000)
-            {
-                throw new TimeoutException("the condition never held");
-            }
-
-            Thread.Sleep(10);
-        }
-    }
 }
