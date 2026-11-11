@@ -1,3 +1,4 @@
+#Requires -Version 7.5
 <#
 .SYNOPSIS
     The silo checks on a VM rig: a client loads a copy of the sg-silo test world itself (it hosts the world and is
@@ -79,11 +80,6 @@ param(
     [switch] $Dxdiag
 )
 $ErrorActionPreference = 'Stop'
-# Windows PowerShell started from pwsh 7 inherits pwsh's module path, then loads pwsh's Microsoft.PowerShell.Security
-# and fails on ConvertTo-SecureString (at rig-lib's Get-RigCred; as in vm-build-world.ps1). Keep only its own folders.
-if ($PSVersionTable.PSEdition -eq 'Desktop') {
-    $env:PSModulePath = (($env:PSModulePath -split ';') | ? { $_ -match '\\WindowsPowerShell\\' }) -join ';'
-}
 $here = $PSScriptRoot
 . (Join-Path (Split-Path $here) 'rigvm-host.ps1')
 if (-not $RigLib) { $RigLib = Join-Path (Get-DefaultRigVMHost $here) 'rig-lib.ps1' }

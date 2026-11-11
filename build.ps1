@@ -1,3 +1,4 @@
+#Requires -Version 7.5
 <#
 .SYNOPSIS
   Build StationGod MCP and stage the Steam Workshop package.
@@ -247,7 +248,14 @@ $revSha = if ($revOut.Count) { "$($revOut[0])".Trim() } else { '' }
 [string[]] $srcRev = @(if ($LASTEXITCODE -eq 0 -and $revSha -match '^[0-9a-f]{40}$') { "-p:SourceRevisionId=$revSha" })
 # A script function named after a PowerShell alias (rd, del, ls, r, ...) is never called: the alias wins. That is how a
 # RigVM helper deleted result.json files on 11-10. Refuse one in any tracked script, for both PowerShell editions.
-$aliasNames = @(@(Get-Alias | ForEach-Object Name) + @(& powershell.exe -NoProfile -Command 'Get-Alias | % Name')) |
+# The powershell.exe child reads 5.1's alias names, because the guest scripts run under 5.1. It must see only the
+# WindowsPowerShell module folders: pwsh's inherited PSModulePath breaks 5.1's core modules. The parent's value is restored.
+$savedModulePath = $env:PSModulePath
+try {
+    $env:PSModulePath = (($env:PSModulePath -split ';') | Where-Object { $_ -match '\\WindowsPowerShell\\' }) -join ';'
+    $desktopAliases = @(& powershell.exe -NoProfile -Command 'Get-Alias | % Name')
+} finally { $env:PSModulePath = $savedModulePath }
+$aliasNames = @(@(Get-Alias | ForEach-Object Name) + $desktopAliases) |
     Sort-Object -Unique
 $shadowed = @(foreach ($script in @(& git -C $root ls-files '*.ps1' '*.psm1' 2>$null)) {
     Select-String -LiteralPath (Join-Path $root $script) -Pattern '^\s*function\s+([\w-]+)' | Where-Object {

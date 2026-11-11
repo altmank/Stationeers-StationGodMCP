@@ -1,3 +1,4 @@
+#Requires -Version 7.5
 <#
 .SYNOPSIS
     Builds one test world in a VM pool rig: a client starts a new Lunar Creative world itself (it hosts the world and
@@ -84,11 +85,6 @@ param(
     [switch] $Dxdiag
 )
 $ErrorActionPreference = 'Stop'
-# Windows PowerShell started from pwsh 7 through cmd inherits pwsh's module path and then fails on
-# ConvertTo-SecureString (11-01 23:04). run-hidden.ps1 fixes it too; this covers a run started some other way.
-if ($PSVersionTable.PSEdition -eq 'Desktop') {
-    $env:PSModulePath = (($env:PSModulePath -split ';') | ? { $_ -match '\\WindowsPowerShell\\' }) -join ';'
-}
 $here = $PSScriptRoot
 . (Join-Path (Split-Path $here) 'rigvm-host.ps1')
 if (-not $RigVM) { $RigVM = Get-DefaultRigVMHost $here }
@@ -141,7 +137,7 @@ $ctxFile = Join-Path ([IO.Path]::GetTempPath()) "sg-test-worlds-$PID.json"
     world = $World; check = [bool]$Check; expectedMin = $expectedMin; limits = $limitsText; expect = $expect; pipe = $Pipe; lift = $Lift; library = $Library; repo = $repo; here = $here
     hub = $Hub; hubFile = $hubFile; pythonZip = $PythonZip; dotnetZip = $(if ($hubFile -like '*.dll') { $DotnetZip } else { '' })
     repoAt = (& git -C $repo rev-parse --short HEAD 2>$null)
-} | ConvertTo-Json | Set-Content -Encoding UTF8 $ctxFile
+} | ConvertTo-Json | Set-Content -Encoding utf8BOM $ctxFile
 $env:SG_TW_CONTEXT = $ctxFile
 
 $pipeRe = [regex]::Escape($Pipe) -replace '\\', '\\'

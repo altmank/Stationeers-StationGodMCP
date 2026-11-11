@@ -26,7 +26,7 @@ RESET = None      # run_gate.py --reset; else SG_GATE_RESET (reset_command)
 def reset_command(given=None, environ=None):
     """The command that reloads the sg-gate world on the test instance: --reset, else SG_GATE_RESET, else a named
     error. It must stop the instance, put a fresh copy of the sg-gate world from the library in its saves, start it
-    on that world and return 0 (the rig's run tool provides one). A .ps1 runs with powershell -NoProfile -File; any
+    on that world and return 0 (the rig's run tool provides one). A .ps1 runs with pwsh -NoProfile -File; any
     other command runs as given. It is split like a command line, so quote a path with spaces."""
     environ = os.environ if environ is None else environ
     command = given or RESET or environ.get("SG_GATE_RESET")
@@ -36,7 +36,7 @@ def reset_command(given=None, environ=None):
     argv = shlex.split(command, posix=False)
     argv = [a[1:-1] if len(a) > 1 and a[0] == a[-1] == '"' else a for a in argv]
     if argv[0].lower().endswith(".ps1"):
-        argv = ["powershell", "-NoProfile", "-File"] + argv
+        argv = ["pwsh", "-NoProfile", "-File"] + argv
     return argv
 
 def fixtures_path(given=None, environ=None):
