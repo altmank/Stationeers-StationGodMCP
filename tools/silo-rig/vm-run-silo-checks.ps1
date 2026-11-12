@@ -41,7 +41,7 @@
 .PARAMETER RigLib
     RigVM's host\rig-lib.ps1 (default: host\rig-lib.ps1 in the sibling RigVM repo); vm-client-run.ps1 is taken from the same folder.
 .PARAMETER RigVMCommit
-    The minimum RigVM commit, passed as vm-client-run's -RigVMPin: RigVM's HEAD must contain it. Default a122e5a (RigVM main)
+    The minimum RigVM commit, passed as vm-client-run's -RigVMPin: RigVM's HEAD must contain it. Default 31b4f68 (RigVM main)
     (callers never name a rig, the OnEnd hook, Assert-RigVMMinimum, the stuck rule, -PhaseLimitJson, -WatchLogs).
 .PARAMETER StallSeconds
     rig-lib's stall rule: no growth in any watched log for this long ends the run. Default 900. The checks' own log is
@@ -67,7 +67,7 @@
 param(
     [string] $Owner = 'sg-silo-checks',
     [string] $RigLib,
-    [string] $RigVMCommit = 'a122e5a',
+    [string] $RigVMCommit = '31b4f68',
     # The board item this run serves (RigVM P88 asks for it): item:StationGodMCP/<id>, the prefix included. No default.
     [string] $Item,
     [string] $Library = $env:STATIONGOD_TEST_WORLDS,
@@ -152,7 +152,7 @@ try {
         TimeoutSeconds = $TimeoutSeconds; StallSeconds = $StallSeconds; PhaseLimitJson = $limits; WatchLogs = @(Get-SiloChecksLog); Dxdiag = $Dxdiag
     }
     if ($SettingsTemplate) { $run.SettingFrom = $SettingsTemplate }
-    # P92: RigVM starts under Windows PowerShell 5.1, never in-process from this pwsh 7 script.
+    # RigVM runs in its own pwsh child process (Invoke-RigVMEntry), so its exit ends that child, not this script.
     $code = Invoke-RigVMEntry -Script $clientRun -Arguments $run
 }
 finally {

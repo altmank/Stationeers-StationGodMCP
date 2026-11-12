@@ -21,22 +21,19 @@ exit 7
 '@
     $json = '{"bepinex":"Chainloader startup complete","x":"Pipe name: Foo\.Bar"}'
     $env:SG_TEST_CTX = 'ctx-value'
-    $before = $env:PSModulePath
     $code = Invoke-RigVMEntry -Script $fake -Arguments @{
         Mod = 'm'; Owner = 'sg-lane'; Mods = @('C:\a b\one', 'C:\two'); PhasesJson = $json; ExpectedMinutes = 6
         Front = $true; Dxdiag = $false; OutFile = $out }
     Remove-Item Env:SG_TEST_CTX
     $r = Get-Content -Raw -LiteralPath $out | ConvertFrom-Json
     Assert-That ($code -eq 7) 'exit code of the entry script comes back (7)'
-    Assert-That ($r.Edition -eq 'Desktop' -and $r.Version -like '5.1*') "entry ran under Windows PowerShell 5.1 (got $($r.Edition) $($r.Version))"
+    Assert-That ($r.Edition -eq 'Core' -and [version]$r.Version -ge [version]'7.5') "entry ran under pwsh 7.5+ (got $($r.Edition) $($r.Version))"
     Assert-That ($r.Mod -eq 'm' -and $r.Owner -eq 'sg-lane') 'string parameters bind'
     Assert-That (@($r.Mods).Count -eq 2 -and $r.Mods[0] -eq 'C:\a b\one' -and $r.Mods[1] -eq 'C:\two') 'string[] parameter binds'
     Assert-That ($r.Phases -ceq $json) 'JSON string arrives byte for byte'
     Assert-That ($r.Minutes -eq 6) 'int parameter binds'
     Assert-That ($r.Front -eq $true -and $r.Dxdiag -eq $false) 'switch parameters bind (true and false)'
     Assert-That ($r.Ctx -eq 'ctx-value') 'env vars reach the child'
-    Assert-That (-not (@($r.Module -split ';') | Where-Object { $_ -notlike '*' + [char]92 + 'WindowsPowerShell' + [char]92 + '*' })) 'child PSModulePath holds WindowsPowerShell folders only'
-    Assert-That ($env:PSModulePath -ceq $before) "parent's PSModulePath restored"
     Assert-That (-not (Get-ChildItem ([IO.Path]::GetTempPath()) -Filter 'sg-rigvm-args-*.xml' -ErrorAction SilentlyContinue)) 'temp argument file deleted'
 }
 finally { Remove-Item -Recurse -Force $dir -ErrorAction SilentlyContinue }

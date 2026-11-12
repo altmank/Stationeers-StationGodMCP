@@ -22,8 +22,8 @@
 param(
     [string] $Owner = 'sg-camera-shot',
     [string] $RigVM,
-    # The minimum RigVM commit (main a122e5a, rigvm-min.txt: P72 -CheckScripts, P83, P88 -Item and -ExpectedMinutes).
-    [string] $RigVMCommit = 'a122e5a',
+    # The minimum RigVM commit (main 31b4f68, rigvm-min.txt: P72 -CheckScripts, P83, P88 -Item and -ExpectedMinutes).
+    [string] $RigVMCommit = '31b4f68',
     # The board item this run serves (RigVM P88 asks for it): item:StationGodMCP/<id>, the prefix included. No default.
     [string] $Item,
     [int] $LockWaitMinutes = 120,
@@ -90,6 +90,6 @@ $runArgs = @{
     PhaseLimitJson = '{"bepinex":' + $PhaseSeconds + ',"stationgod":' + $PhaseSeconds + '}'
 }
 if ($SettingFrom) { $runArgs.SettingFrom = $SettingFrom }
-# P92: RigVM starts under Windows PowerShell 5.1, never in-process from this pwsh 7 script.
+# RigVM runs in its own pwsh child process (Invoke-RigVMEntry), so its exit ends that child, not this script.
 try { $code = Invoke-RigVMEntry -Script $clientRun -Arguments $runArgs } finally { Remove-Item $ctxFile -Force -ErrorAction SilentlyContinue }
 exit $code
