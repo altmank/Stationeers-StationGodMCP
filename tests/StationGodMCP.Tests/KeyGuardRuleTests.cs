@@ -29,6 +29,26 @@ public class KeyGuardRuleTests
     public void NoFactAllowsKeys() => Assert.True(KeyGuardRule.KeysAllowed(default));
 
     [Fact]
+    public void OurOpenMenuAloneDoesNotBlockKeys() =>
+        Assert.True(KeyGuardRule.KeysAllowed(new KeyFacts(true, false, false, false, false, OwnMenuOpen: true)));
+
+    [Fact]
+    public void OurOpenMenuWithItsSearchFocusedBlocksKeys() =>
+        Assert.False(KeyGuardRule.KeysAllowed(new KeyFacts(true, false, false, false, true, OwnMenuOpen: true)));
+
+    [Fact]
+    public void OurOpenMenuWithTheConsoleOpenBlocksKeys() =>
+        Assert.False(KeyGuardRule.KeysAllowed(new KeyFacts(true, true, false, false, false, OwnMenuOpen: true)));
+
+    [Fact]
+    public void OurOpenMenuWithAFocusedGameFieldBlocksKeys() =>
+        Assert.False(KeyGuardRule.KeysAllowed(new KeyFacts(true, false, false, true, false, OwnMenuOpen: true)));
+
+    [Fact]
+    public void TypingWithOurMenuClosedBlocksKeys() =>
+        Assert.False(KeyGuardRule.KeysAllowed(new KeyFacts(true, false, false, false, false, OwnMenuOpen: false)));
+
+    [Fact]
     public void EscapeClosesOurMenuWithOnlyOurOwnTypingState()
     {
         KeyFacts ours = new KeyFacts(GameTyping: true, false, false, false, OwnSearchFocused: true);

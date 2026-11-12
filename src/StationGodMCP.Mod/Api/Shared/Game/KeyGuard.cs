@@ -36,7 +36,8 @@ internal static class KeyGuard
         Read(() => ConsoleWindow.IsOpen),
         Read(() => InputWindowBase.IsInputWindow),
         Read(FieldFocused),
-        Read(() => GhostControls.MenuOpen && GhostOverlay.SearchFocused));
+        Read(() => GhostControls.MenuOpen && GhostOverlay.SearchFocused),
+        GhostControls.MenuOpen);
 
     private static bool FieldFocused()
     {

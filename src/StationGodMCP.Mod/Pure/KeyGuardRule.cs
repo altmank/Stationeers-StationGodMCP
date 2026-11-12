@@ -9,13 +9,15 @@ namespace StationGodMCP.Pure;
 /// <param name="ConsoleOpen">The console window is open.</param>
 /// <param name="InputWindowOpen">An InputWindowBase is open (labeller, sign, IC10 editor).</param>
 /// <param name="UiFieldFocused">Unity's selected object is a focused text field (TMP_InputField or InputField).</param>
-/// <param name="OwnSearchFocused">StationGod's own ghost menu search field has focus.</param>
+/// <param name="OwnSearchFocused">StationGod's own ghost menu search field has focus (an IMGUI field, not an EventSystem one).</param>
+/// <param name="OwnMenuOpen">StationGod's ghost menu is open. It pushes KeyInputState.Typing itself, so GameTyping says nothing while it is open.</param>
 internal readonly record struct KeyFacts(
     bool GameTyping,
     bool ConsoleOpen,
     bool InputWindowOpen,
     bool UiFieldFocused,
-    bool OwnSearchFocused);
+    bool OwnSearchFocused,
+    bool OwnMenuOpen = false);
 
 /// <summary>
 /// The promise: while any text field has keyboard focus, no StationGod key fires (LU, 2026-11-11: "mod key commands
@@ -25,9 +27,13 @@ internal readonly record struct KeyFacts(
 /// </summary>
 internal static class KeyGuardRule
 {
-    /// <summary>True when no fact says someone is typing.</summary>
+    /// <summary>
+    /// True when no fact says someone is typing. GameTyping is ignored while our own menu is open: the menu pushed that
+    /// state itself, and every other text UI that matters is still caught (the console, input windows, and Unity's
+    /// focused fields, which include the Stationpedia search). Our own search focus still blocks.
+    /// </summary>
     internal static bool KeysAllowed(KeyFacts facts) =>
-        !(facts.GameTyping || facts.ConsoleOpen || facts.InputWindowOpen || facts.UiFieldFocused ||
+        !((facts.GameTyping && !facts.OwnMenuOpen) || facts.ConsoleOpen || facts.InputWindowOpen || facts.UiFieldFocused ||
           facts.OwnSearchFocused);
 
     /// <summary>
