@@ -288,6 +288,8 @@ In the game:
 | `RemoveGhostKey` | Delete | In ghost mode or while placing from the menu: takes off the ghost under the crosshair (drawn brighter). |
 | `ShowGhostsKey` | Ctrl+H | Hides or shows every ghost in your game. |
 
+The ghost keys are ignored while any text field has focus (the Stationpedia search, the console, a labeller or sign, the IC10 editor); Escape still closes the ghost menu.
+
 `Enabled = false` turns these off; `Tint` is the colour new ghosts start with. Hovering a ghost shows its tooltip (its
 label, its structure and who placed it) only with `[Ghosts] ShowTooltip = true`: it is off by default, and it never
 shows while the game's UI is hidden. See [Configuration](configuration.md).

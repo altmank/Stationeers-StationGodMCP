@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Fix: StationGod's ghost keys no longer fire while you type**: in the Stationpedia search, the console, a labeller or sign, the IC10 editor, or any other game text field. Escape still closes the ghost menu, even with its search focused.
 - **Tests: the five timing-window flakes made deterministic**: one `TestWait` helper with 30 s safety-net bounds replaces eight private copies; the first-line drop is timed from the server side; the GameLink retry test waits for `LinkUp`; the session-end cleanup window runs on a `TimeProvider` (`RunHostSettings.Time`, used only there).
 - **Tooling: the four VM rig launchers start RigVM in its own pwsh child process** (`Invoke-RigVMEntry` in `tools\rigvm-host.ps1`, tested by `tools\test-rigvm-host.ps1`, run by `build.ps1`; RigVM's host side is pwsh 7.5 only), and pass what RigVM main now needs: `-CheckScripts`, a required `-Item item:StationGodMCP/<id>`, `-ExpectedMinutes`, a dashed owner, and the `31b4f68` pin.
 - **Tooling: host scripts run on PowerShell 7 only**: build.ps1, release.ps1, summary.ps1 and the four rig launchers need pwsh 7.5 (`#Requires`) and start `pwsh`; the VM guest scripts keep 5.1 syntax.

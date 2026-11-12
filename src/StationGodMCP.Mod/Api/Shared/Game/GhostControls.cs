@@ -142,11 +142,11 @@ internal static class GhostControls
             Picking = null;
         }
 
-        if (MenuOpen && Escape.IsDown())
+        if (KeyGuard.MenuEscapeDown(Escape))
         {
             SetMenu(false);
         }
-        else if (!Typing())
+        else
         {
             Keys();
         }
@@ -278,34 +278,30 @@ internal static class GhostControls
 
     private static void Keys()
     {
-        if (GhostSettings.MenuKey.IsDown())
+        if (KeyGuard.Down(GhostSettings.MenuKey))
         {
             SetMenu(!MenuOpen);
             return;
         }
 
-        if (GhostSettings.ModeKey.IsDown())
+        if (KeyGuard.Down(GhostSettings.ModeKey))
         {
             SetGhostMode(!GhostMode);
         }
 
-        if (GhostSettings.VisibleKey.IsDown())
+        if (KeyGuard.Down(GhostSettings.VisibleKey))
         {
             Ghosts.BoardVisible = !Ghosts.BoardVisible;
             Say(Ghosts.BoardVisible ? "Ghosts shown." : "Ghosts hidden.");
         }
 
-        if (Placing && Ghosts.Picked != 0 && GhostSettings.RemoveKey.IsDown())
+        if (Placing && Ghosts.Picked != 0 && KeyGuard.Down(GhostSettings.RemoveKey))
         {
             long id = Ghosts.Picked;
             string? refused = GhostBoardStore.RequestRemove(id);
             Say(refused == null ? $"Ghost {id} taken off." : $"Ghost {id} stays: {refused}.");
         }
     }
-
-    // The chat, the console or another input window has the keyboard (the menu's own search field included).
-    private static bool Typing() =>
-        ConsoleWindow.IsOpen || InputWindowBase.IsInputWindow || (MenuOpen && GhostOverlay.SearchFocused);
 
     private static void Stop()
     {
