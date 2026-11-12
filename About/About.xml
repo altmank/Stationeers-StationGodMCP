@@ -3,7 +3,7 @@
   <Name>StationGod MCP</Name>
   <ModID>net.xceled.stationeers.stationgodmcp</ModID>
   <Author>XCeled</Author>
-  <Version>2.19.1</Version>
+  <Version>2.19.2</Version>
   <Description>[h1]Let an AI agent read and run your Stationeers base[/h1]
 StationGod MCP connects an AI agent such as Claude Code or Codex to your running game through the Model Context Protocol (MCP), the standard way these agents call outside tools. The agent can then read every device, chip, room, network and planet value you could look up yourself, and act on them: write logic, program chips, move gas and items, and build or rebuild cables, pipes, chutes, walls and frames with the checks the game itself applies.
 
@@ -69,7 +69,7 @@ Developed with the use of generative AI, and tokens aren't free. Buy me a coffee
 [url=https://ko-fi.com/xceled]ko-fi.com/xceled[/url]
   </Description>
   <ChangeLog>
-v2.19.1
+v2.19.2
 - Ghost keys no longer fire while you type in a game text field; frame time in server info.
 
 v2.18.0
@@ -155,7 +155,7 @@ v2.6.0
 - Runs survive hub restarts; inspect job whole; plan route keeps device ports free.
 
 v2.5.1
-- Script helpers (sg 0.4.9): sg.ok and sg.failed, sg.values, sg.trace, sg.until_job, sg.geom.
+- Script helpers (sg 0.4.9): sg.ok, sg.values, sg.trace, more.
 
 v2.5.0
 - New cheats build item and move gas source create; refused builds fail loudly.
@@ -167,7 +167,7 @@ v2.4.2
 - spread keeps its last step; server info works at the main menu.
 
 v2.4.1
-- build terrain restores ground against frame faces, into frames, and the generated material.
+- build terrain restores ground against and into frames.
 
 v2.4.0
 - New cheat build terrain; find void; inside_frames routes stay in frames.
@@ -200,7 +200,7 @@ v1.31.0
 - Prefab filters read an index, not every thing; new prefabs: several in one call.
 
 v1.30.2
-- Jobs keep a joined client's pipe networks the same as the host's (no more errors every packet).
+- Jobs keep a joined client's pipe networks in step with the host's.
 
 v1.30.1
 - Shorter frames: slow calls wait their turn; per-connection counts in mod_info.
@@ -212,7 +212,7 @@ v1.29.0
 - New silo_withdraw and silo_deposit for SDB Silos; lists see a silo's store.
 
 v1.28.3
-- Find tools: exact prefab, near/radius_m; describe_prefab cells opt-in; route plan summary.
+- Find tools: exact prefab, near/radius_m; route plan summary.
 
 v1.28.2
 - move_player safe_ground in low orbit lands on the structure there.
@@ -287,7 +287,7 @@ v1.14.1
 - Fixes: chute removal links; move_item slot recheck; exact build state costs.
 
 v1.14.0
-- Small default replies (under 8 KB on a big base); truncated says what was held back; new omit.
+- Small default replies; truncated says what was held back; new omit.
 
 v1.13.0
 - Rocket tools fly every rocket the game builds; new rocket_mining_options.
@@ -332,7 +332,7 @@ v1.4.4
 - Mesh boxes decide clashes; undo_job puts back removed pipes and cables.
 
 v1.4.3
-- Placement and layout tools: orient, wall_map, find_spot, lint_layout, undo_job, show_preview.
+- Placement and layout tools: orient, wall_map, find_spot, lint_layout, more.
 
 v1.4.2
 - Broken structures: find_things and thing_health find them; remove_structure allow_broken.
@@ -354,6 +354,21 @@ v1.3.3
 
 v1.3.2
 - Landing pads in the gas tools; move_gas checks the receiving side.
+
+v1.3.1
+- Live-run fixes: placement, walls.
+
+v1.3.0
+- Network refactor tools: split reports, remove_redundant, queued jobs.
+
+v1.2.0
+- assume_removed, trunks, feed_paths, plan_removal; refunds.
+
+v1.1.1
+- inside_frames takes beam tops; APC reroutes.
+
+v1.1.0
+- paste_blueprint (with BlueprintMod); [Pipe] Name setting.
 
 v1.0.0
 - First release: 71 tools.
