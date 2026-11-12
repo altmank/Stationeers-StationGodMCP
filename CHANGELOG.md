@@ -1,6 +1,8 @@
 # Changelog
 
-## 2.19.0
+## 2.19.1
+
+2.19.0 was tagged but never released: its build stopped because the Workshop change notes were over their 8000-character limit. 2.19.1 is the same code with the oldest notes (1.1.0 to 1.3.1) dropped from About.xml.
 
 - **Tooling: the picture rig proves the key guard in the game** (`vm-pictures.ps1 -KeyGuard`, `keyguard_check.py`): after the pictures it sends keys in the guest and fails if a ghost key fires while the Stationpedia search has focus (a control first shows keys reach the game). The ghost menu logs `[Ghosts] menu open` / `menu closed`.
 - **Fix: StationGod's ghost keys no longer fire while you type**: in the Stationpedia search, the console, a labeller or sign, the IC10 editor, or any other game text field. Escape still closes the ghost menu, even with its search focused.
