@@ -1,6 +1,5 @@
 #nullable enable
 
-using System.Collections.Generic;
 using StationGodMCP.Pure;
 using Xunit;
 
@@ -9,19 +8,22 @@ namespace StationGodMCP.Tests;
 /// <summary>The promise: any text focus blocks every StationGod key; our own menu's Escape still closes it.</summary>
 public class KeyGuardRuleTests
 {
-    public static IEnumerable<object[]> EachFact() => new[]
-    {
-        new object[] { "GameTyping", new KeyFacts(true, false, false, false, false) },
-        new object[] { "ConsoleOpen", new KeyFacts(false, true, false, false, false) },
-        new object[] { "InputWindowOpen", new KeyFacts(false, false, true, false, false) },
-        new object[] { "UiFieldFocused", new KeyFacts(false, false, false, true, false) },
-        new object[] { "OwnSearchFocused", new KeyFacts(false, false, false, false, true) },
-    };
-
     [Theory]
-    [MemberData(nameof(EachFact))]
-    public void AnyOneFactBlocksKeys(string name, KeyFacts facts)
+    [InlineData("GameTyping")]
+    [InlineData("ConsoleOpen")]
+    [InlineData("InputWindowOpen")]
+    [InlineData("UiFieldFocused")]
+    [InlineData("OwnSearchFocused")]
+    public void AnyOneFactBlocksKeys(string name)
     {
+        KeyFacts facts = name switch
+        {
+            "GameTyping" => new KeyFacts(true, false, false, false, false),
+            "ConsoleOpen" => new KeyFacts(false, true, false, false, false),
+            "InputWindowOpen" => new KeyFacts(false, false, true, false, false),
+            "UiFieldFocused" => new KeyFacts(false, false, false, true, false),
+            _ => new KeyFacts(false, false, false, false, true),
+        };
         Assert.False(KeyGuardRule.KeysAllowed(facts), name);
     }
 
