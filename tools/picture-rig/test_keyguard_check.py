@@ -5,11 +5,24 @@
 import keyguard_check as k
 
 LOG = "\n".join([
-    "[Info   :StationGod] started",
-    "[Info   :StationGod] [Ghosts] menu open",
-    "[Info   :StationGod] [Ghosts] menu closed",
-    "[Info   :StationGod] [Ghosts] menu open",
+    "[StationGodMCP] started",
+    "[StationGodMCP] [Ghosts] menu open",
+    "[StationGodMCP] [Ghosts] menu closed",
+    "[StationGodMCP] [Ghosts] menu open",
 ])
+
+
+def test_game_window_prefers_unity_class():
+    windows = [(1, "Windows PowerShell", "ConsoleWindowClass"), (2, "Stationeers", "UnityWndClass")]
+    assert k.pick_game_window(windows) == 2
+
+
+def test_game_window_falls_back_to_title():
+    assert k.pick_game_window([(1, "x", "y"), (5, "Stationeers", "Other")]) == 5
+
+
+def test_no_game_window():
+    assert k.pick_game_window([(1, "Windows PowerShell", "ConsoleWindowClass")]) is None
 
 
 def test_menu_lines_in_order():
