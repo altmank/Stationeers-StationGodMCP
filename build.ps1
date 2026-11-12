@@ -117,7 +117,9 @@ function Install-Package([string]$portableDir) {
     if ($item -and $item -notmatch '/') { $item = "StationGodMCP/$item" }
     if ($item -and $item -notmatch '^item:') { $item = "item:$item" }
     if (-not $item) { Write-Warning 'No board item for the game lock: pass -LockItem <id> (the lock will refuse this once P76 enforces).' }
-    [string[]] $itemArgs = @(if ($item) { '-Item', $item })
+    # A hashtable: an array splat passes '-Item' to a script as a positional string, not as the parameter name.
+    $itemArgs = @{}
+    if ($item) { $itemArgs.Item = $item }
     if ($takeLock) {
         & $LockScript acquire -Owner $owner -ExpectedMinutes 2 @itemArgs | ForEach-Object { Write-Host "   $_" }
         if ($LASTEXITCODE -ne 0) { throw 'Deploy failed: could not take the game lock.' }

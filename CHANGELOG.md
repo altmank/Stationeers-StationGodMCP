@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Build: a deploy given a board item passes it to the game lock.** \uild.ps1 -Deploy -LockItem <id>\ failed with `A positional parameter cannot be found that accepts argument '-Item'`.
+
 ## 2.19.2
 
 2.19.0 and 2.19.1 were tagged but never released: their builds stopped on the Workshop change notes (over the 8,000-character limit, then missing old versions). 2.19.2 is the same code, with six old note lines in About.xml shortened.
