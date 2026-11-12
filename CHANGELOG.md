@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Build: a checkout whose line endings differ from `.gitattributes` is refused** (`tools\working-eol.ps1`, checked before the tests). A CRLF working copy of an `eol=lf` file built a different dll than a fresh checkout of the same commit.
 - **Build: a deploy given a board item passes it to the game lock.** `build.ps1 -Deploy -LockItem <id>` failed with `A positional parameter cannot be found that accepts argument '-Item'`.
 
 ## 2.19.2
