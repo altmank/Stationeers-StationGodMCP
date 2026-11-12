@@ -220,6 +220,11 @@ if ($pageLength -ge 8000) { throw "About.xml Description is $pageLength characte
 $changeLength = $about.ModMetadata.ChangeLog.Length
 if ($changeLength -ge 8000) { throw "About.xml ChangeLog is $changeLength characters; the limit is under 8000." }
 
+# P47: a working copy whose line endings differ from .gitattributes builds a different dll than a fresh checkout of the
+# same commit (the PDB records each source's hash; lint-rules.json is embedded). Refuse it here, before the tests.
+. (Join-Path $root 'tools\working-eol.ps1')
+Test-WorkingEol $root
+
 # Lattice's contract (Lattice.Api.dll) is referenced, never shipped: LATTICE_API_DIR, else the Lattice repo's build
 # beside this one (Lattice's build.ps1 makes it). A worktree elsewhere (the deploy queue's under %TEMP%) looks beside
 # the repo it belongs to.
@@ -267,6 +272,10 @@ if ($shadowed) { throw "A function is named after a PowerShell alias, so the ali
 # The RigVM launcher helper (tools\rigvm-host.ps1): a fake entry script proves it starts 5.1 and passes the arguments intact.
 & pwsh -NoProfile -File (Join-Path $root 'tools\test-rigvm-host.ps1')
 if ($LASTEXITCODE -ne 0) { throw "tools\test-rigvm-host.ps1 failed ($LASTEXITCODE assertions); nothing was built." }
+
+# The working-copy line-ending check (tools\working-eol.ps1): a temp git repo with one eol=lf file, CRLF (refused) and LF (passes).
+& pwsh -NoProfile -File (Join-Path $root 'tools\test-working-eol.ps1')
+if ($LASTEXITCODE -ne 0) { throw "tools\test-working-eol.ps1 failed ($LASTEXITCODE assertions); nothing was built." }
 
 Write-Host "Testing $version"
 dotnet test (Join-Path $root 'tests\StationGodMCP.Tests\StationGodMCP.Tests.csproj') -nologo -v q @srcRev

@@ -185,61 +185,61 @@ v2.0.2
 - build from_plan builds the whole plan even when fields or omit hid parts.
 
 v2.0.1
-- build from_plan works on its own: build {from_plan: "r1"} builds the plan's route or spot.
+- build from_plan works on its own.
 
 v2.0.0
-- Tools become 17 verbs with refs and run_script; 1.x tool names are gone.
+- Tools become 17 verbs with refs and run_script.
 
 v1.33.2
-- Client desync fix; vault_transfer; parts in use are not taken; much smaller replies.
+- Client desync fix; vault_transfer; much smaller replies.
 
 v1.32.0
-- Lint problems refuse builds; new lint rules; one route planner style.
+- Lint problems refuse builds; new lint rules.
 
 v1.31.0
-- Prefab filters read an index, not every thing; new prefabs: several in one call.
+- Prefab filters read an index; new prefabs: several in one call.
 
 v1.30.2
-- Jobs keep a joined client's pipe networks in step with the host's.
+- Jobs keep a joined client's pipe networks in step.
 
 v1.30.1
-- Shorter frames: slow calls wait their turn; per-connection counts in mod_info.
+- Shorter frames; per-connection counts in mod_info.
 
 v1.30.0
-- New live profiling: StationGod's cost per frame, call and job tick hold.
+- New live profiling of StationGod's cost per frame.
 
 v1.29.0
-- New silo_withdraw and silo_deposit for SDB Silos; lists see a silo's store.
+- New silo_withdraw and silo_deposit for SDB Silos.
 
 v1.28.3
-- Find tools: exact prefab, near/radius_m; route plan summary.
+- Find tools: exact prefab, near/radius_m.
 
 v1.28.2
-- move_player safe_ground in low orbit lands on the structure there.
+- move_player safe_ground lands on structures in low orbit.
 
 v1.28.1
-- move_item force (a cheat): put an item into a hidden slot.
+- move_item force (a cheat): fill a hidden slot.
 
 v1.28.0
-- New move_player: move a player anywhere (a cheat).
+- New move_player (a cheat).
 
 v1.27.2
-- remove_structure allow_unsupported: take frames from under a mounted device.
+- remove_structure allow_unsupported.
 
 v1.27.1
-- Building tools find non-stacking build parts in from_id containers.
+- Building tools find non-stacking parts in from_id containers.
 
 v1.27.0
-- List tools: order reference_id gives pages that hold while you move.
+- List tools: order reference_id gives stable pages.
 
 v1.26.0
-- New set_battery_charge: set the charge of single batteries (a cheat).
+- New set_battery_charge (a cheat).
 
 v1.25.0
 - Broken pieces touching a network are reported.
 
 v1.24.0
-- Shorter default replies; rocket, logic type and looking_at detail on request.
+- Shorter default replies; rocket and logic type detail on request.
 
 v1.23.1
 - Fixed checks on removed game objects.
@@ -248,7 +248,7 @@ v1.23.0
 - screen_read, screen_press; mine switches miners on.
 
 v1.22.0
-- advance_build_state; build states shown; connections summarize.
+- advance_build_state; build states shown.
 
 v1.21.2
 - find_things colours; run device counts.
@@ -257,7 +257,7 @@ v1.21.1
 - rocket_status lists every pipe network.
 
 v1.21.0
-- remove_structure gas_to keeps a device's gas; shorter split warnings.
+- remove_structure gas_to keeps a device's gas.
 
 v1.20.0
 - Rocket verdicts; container filters.
@@ -266,76 +266,76 @@ v1.19.1
 - describe_prefab: engine thrust, feed, limits.
 
 v1.19.0
-- from_id takes a list of lockers, tried in order per material.
+- from_id takes a list of lockers.
 
 v1.18.1
 - output_file and unbuildable-prefab refusals say what to do.
 
 v1.18.0
-- upgrade_pipes to repair replaces burst pipes in place; thing_health says why a pipe burst.
+- upgrade_pipes to repair replaces burst pipes; thing_health says why.
 
 v1.17.0
-- fields works on every reply; smaller replies; find_things box filter.
+- fields works on every reply; find_things box filter.
 
 v1.16.0
-- New clean_chutes: removes chute pieces no item passes through, never dropping items.
+- New clean_chutes: removes unused chute pieces, never items.
 
 v1.15.0
 - Short tool descriptions; long help in tool_info.
 
 v1.14.1
-- Fixes: chute removal links; move_item slot recheck; exact build state costs.
+- Fixes: chute removal links; move_item slot recheck.
 
 v1.14.0
-- Small default replies; truncated says what was held back; new omit.
+- Small default replies; new omit.
 
 v1.13.0
-- Rocket tools fly every rocket the game builds; new rocket_mining_options.
+- Rocket tools fly every rocket; new rocket_mining_options.
 
 v1.12.1
-- Fix: a player who rejoined a dedicated server lost the camera tools (no_view).
+- Fix: a rejoined player on a dedicated server kept the camera tools.
 
 v1.12.0
 - Dedicated servers: view tools work for a player running StationGod.
 
 v1.11.0
-- Dedicated servers: "the player" is the one connected player when there is no local one.
+- Dedicated servers: "the player" is the one connected player.
 
 v1.10.0
-- New read_devices: logic, slots, atmospheres, reagents of up to 128 things.
+- New read_devices: up to 128 things at once.
 
 v1.9.1
-- mod_info runtime: what the mod costs the game; new setting [Performance] RequestBudgetMs.
+- mod_info runtime; setting [Performance] RequestBudgetMs.
 
 v1.9.0
-- Large replies: output_file writes a reply to a file; fields keeps only the named keys.
+- Large replies: output_file; fields keeps named keys.
 
 v1.8.0
-- rocket_status, rocket_forecast (a rocket flown by the rules) and rocket_flight_log.
+- rocket_status, rocket_forecast, rocket_flight_log.
 
 v1.7.0
-- Smaller replies: grid_survey sections, network_ids, compact; get_ic_status include_source.
+- Smaller replies: grid_survey sections, compact.
 
 v1.6.2
 - Fix: remove_structure gives a frame's cell back to the air.
 
 v1.6.1
-- Fix: chutes join rocket chute umbilicals either way.
+- Fix: chutes join rocket umbilicals either way.
 
 v1.6.0
-- Rockets: place_structure builds every rocket part; build tools work in rockets.
+- Rockets: place_structure builds every rocket part.
 
 v1.5.0
-- Safety fixes: gas kept through splits and swaps, no items lost in hidden slots.
+- Safety fixes: gas kept through splits and swaps.
 
 v1.4.4
-- Mesh boxes decide clashes; undo_job puts back removed pipes and cables.
+- Mesh boxes decide clashes; undo_job restores pipes and cables.
 
 v1.4.3
-- Placement and layout tools: orient, wall_map, find_spot, lint_layout, more.
+- Placement and layout tools: orient, wall_map, find_spot.
 
 v1.4.2
-- Broken structures: find_things and thing_health find them; remove_structure allow_broken.
+- find_things and thing_health find broken structures.
 
 v1.4.1
 - Fix: pipe jobs merging networks twice lost gas.
@@ -344,31 +344,31 @@ v1.4.0
 - vault_contents, vault_deposit, vault_withdraw (Ingot Vault mod).
 
 v1.3.5
-- Layout helpers: rotations, port preview, reservations, move_gas dry_run.
+- Layout helpers: rotations, port preview, move_gas dry_run.
 
 v1.3.4
 - move_gas takes rooms.
 
 v1.3.3
-- move_gas deletes gases from the planet's air (Terraforming Reloaded).
+- move_gas deletes gases from the planet's air.
 
 v1.3.2
-- Landing pads in the gas tools; move_gas checks the receiving side.
+- Landing pads in the gas tools.
 
 v1.3.1
 - Live-run fixes: placement, walls.
 
 v1.3.0
-- Network refactor tools: split reports, remove_redundant, queued jobs.
+- Network refactor tools: split reports, queued jobs.
 
 v1.2.0
-- assume_removed, trunks, feed_paths, plan_removal; refunds.
+- assume_removed, trunks, feed_paths, refunds.
 
 v1.1.1
 - inside_frames takes beam tops; APC reroutes.
 
 v1.1.0
-- paste_blueprint (with BlueprintMod); [Pipe] Name setting.
+- paste_blueprint (with BlueprintMod).
 
 v1.0.0
 - First release: 71 tools.
