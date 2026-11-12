@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- **Build: a deploy given a board item passes it to the game lock.** \uild.ps1 -Deploy -LockItem <id>\ failed with `A positional parameter cannot be found that accepts argument '-Item'`.
+- **Build: a deploy given a board item passes it to the game lock.** `build.ps1 -Deploy -LockItem <id>` failed with `A positional parameter cannot be found that accepts argument '-Item'`.
 
 ## 2.19.2
 
