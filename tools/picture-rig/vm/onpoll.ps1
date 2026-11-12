@@ -6,6 +6,8 @@ if (-not $global:SgPicStarted -and $r.PhaseAt.Keys -contains 'stationgod') {
     $picCtx = Get-Content -Raw $env:SG_PIC_CONTEXT | ConvertFrom-Json
     Rig-Log 'StationGod up: starting shots.py in the guest'
     $picFlags = if ($picCtx.frames) { '--frames' } else { '' }
+    # The key guard check reads the game's log: StationGod logs through Unity, so its lines are in Player.log.
+    if ($picCtx.keyguard) { $picFlags += " --keyguard --game-log `"$gRes\logs\Player.log`"" }
     Invoke-Rig -ArgumentList "SG-Pictures-$($r.RunId)", "$gRes\sg", $picCtx.pipe, $gOut, "$gRes\logs\shots.log", $picFlags {
         param($task, $sg, $pipe, $out, $logFile, $flags)
         $cmd = "`"$sg\tools\python\python.exe`" `"$sg\tools\picture-rig\shots.py`" --pipe $pipe " +

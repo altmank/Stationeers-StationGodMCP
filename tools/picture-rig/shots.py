@@ -29,6 +29,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(HERE, "..", "silo-rig"))
 import judge_shots  # noqa: E402
+import keyguard_check  # noqa: E402
 import sgcall  # noqa: E402
 
 FOLDER = "suit"
@@ -215,7 +216,12 @@ def main(argv=None):
     ap.add_argument("--hub", required=True)
     ap.add_argument("--done", required=True)
     ap.add_argument("--frames", action="store_true", help="after the pictures, two game frame-time reads to frames.json")
+    ap.add_argument("--keyguard", action="store_true",
+                    help="after the pictures, the key guard check: ghost keys do nothing while the Stationpedia search has focus")
+    ap.add_argument("--game-log", default="", help="the guest's game log, Player.log (StationGod logs through Unity; the key guard check reads it)")
     a = ap.parse_args(argv)
+    if a.keyguard and not a.game_log:
+        ap.error("--keyguard needs --game-log")
     os.makedirs(a.done, exist_ok=True)
     log = {}
     ok, reason = False, ""
@@ -225,6 +231,11 @@ def main(argv=None):
         if a.frames:
             frame_reads(log, a.done)
         failures, notes = judge_shots.judge(log)
+        if a.keyguard:
+            guard_failures, guard_notes = keyguard_check.run(a.game_log, log, say)
+            log["keyguard"] = {"failures": guard_failures, "notes": guard_notes}
+            failures += guard_failures
+            notes += guard_notes
         log["verdict"] = {"failures": failures, "notes": notes}
         ok = not failures
         reason = "; ".join(failures) if failures else (
