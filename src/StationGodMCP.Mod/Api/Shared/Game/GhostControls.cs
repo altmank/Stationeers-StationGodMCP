@@ -191,6 +191,7 @@ internal static class GhostControls
         }
 
         MenuOpen = open;
+        StationGodMod.Log(open ? "[Ghosts] menu open" : "[Ghosts] menu closed");
         if (open)
         {
             MouseModeController.AddModal(GhostMenuModal.Instance);

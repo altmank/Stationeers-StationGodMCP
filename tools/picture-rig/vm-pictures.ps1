@@ -46,9 +46,13 @@ param(
     [int] $MaxFps = 30,
     # After the pictures, two reads of the game's whole frame time (server info counters, runtime.game_frame_ms; main
     # c8ea3c03 and later): one at least 60 s after the world loaded, one 30 s later, to out\frames.json. Adds about 1.5 min.
-    [switch] $FrameReads
+    [switch] $FrameReads,
+    # After the pictures, the key guard check (keyguard_check.py): the ghost keys must do nothing while the Stationpedia
+    # search has focus. Adds about 0.5 min.
+    [switch] $KeyGuard
 )
 if ($FrameReads) { $ExpectedMinutes += 1.5 }
+if ($KeyGuard) { $ExpectedMinutes += 0.5 }
 $ErrorActionPreference = 'Stop'
 $here = $PSScriptRoot
 . (Join-Path (Split-Path $here) 'rigvm-host.ps1')
@@ -70,7 +74,7 @@ if (-not (Test-Path (Join-Path $Hub 'StationGodMCP.Server.exe')) -or -not (Test-
 
 $ctxFile = Join-Path ([IO.Path]::GetTempPath()) "sg-pictures-$PID.json"
 [ordered]@{ pipe = $Pipe; expectedMin = $ExpectedMinutes; repo = $repo; here = $here; hub = $Hub; pythonZip = $PythonZip
-    frames = [bool] $FrameReads; repoAt = (& git -C $repo rev-parse --short HEAD 2>$null) } | ConvertTo-Json | Set-Content -Encoding utf8BOM $ctxFile
+    frames = [bool] $FrameReads; keyguard = [bool] $KeyGuard; repoAt = (& git -C $repo rev-parse --short HEAD 2>$null) } | ConvertTo-Json | Set-Content -Encoding utf8BOM $ctxFile
 $env:SG_PIC_CONTEXT = $ctxFile
 
 $pipeRe = [regex]::Escape($Pipe) -replace '\\', '\\'
@@ -83,7 +87,7 @@ $runArgs = @{
     PreLaunch = "$here\vm\prelaunch.ps1"; OnPoll = "$here\vm\onpoll.ps1"; Judge = "$here\vm\judge.ps1"
     OnEnd = "$here\vm\onend.ps1"
     Item = $Item; ExpectedMinutes = [int][math]::Ceiling($ExpectedMinutes)
-    CheckScripts = @("$here\vm", "$here\shots.py", "$here\judge_shots.py", (Join-Path (Split-Path $here) 'silo-rig\sgcall.py'))
+    CheckScripts = @("$here\vm", "$here\shots.py", "$here\judge_shots.py", "$here\keyguard_check.py", (Join-Path (Split-Path $here) 'silo-rig\sgcall.py'))
     TimeoutSeconds = $TimeoutSeconds; StallSeconds = $PhaseSeconds
     WatchLogs = @('{res}\logs\shots.log')
     IgnoreErrorRegex = 'StationGodMCP\.LatticeLink|Lattice\.Api'
