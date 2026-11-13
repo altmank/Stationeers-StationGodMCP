@@ -510,6 +510,7 @@ def inspect(what: Literal['prefab'], *,
 ) -> dict:  # main list: r['ports']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """A prefab before it stands anywhere: placement kind, turns, cells, ports; its game data and recipes; a list or pattern compares a family.
     One buildable prefab answers its placement view; any other prefab (an item, a kit) its facts; a list or a pattern a row of facts per prefab (prefabs, matched, listed).
+    slots lists the prefab's own slots from its template (nothing is spawned): index, display_name, string_key, slot_class and general; general_slots counts them. A slot is general when its class is None and it names no specific prefabs, so it takes any item; a classed slot, or one that names prefabs, is not.
     recipes inputs are the game's Recipe amounts by name: grams of an ingot (Iron, Copper, Solder), units of a reagent; a furnace recipe adds its temperature_k and pressure_kpa range.
     Reply, one of:
     (DescribePrefabView)
@@ -539,6 +540,8 @@ def inspect(what: Literal['prefab'], *,
       data: dict[str, Any] | None
       recipes: list[{maker: str | None, maker_display_name: str | None, time_s: float, energy_j: float, inputs: dict[str, float], temperature_k:
           {start: float, stop: float} | None, pressure_kpa: {start: float, stop: float} | None, source: str | None}] | None
+      slots: list[{index: int, display_name: str | None, string_key: str | None, slot_class: {id: int, name: str | None}, general: bool}] | None
+      general_slots: int | None
     (PrefabFactsView)
       prefab_name: str | None
       prefab_hash: int
@@ -548,10 +551,14 @@ def inspect(what: Literal['prefab'], *,
       data: dict[str, Any] | None
       recipes: list[{maker: str | None, maker_display_name: str | None, time_s: float, energy_j: float, inputs: dict[str, float], temperature_k:
           {start: float, stop: float} | None, pressure_kpa: {start: float, stop: float} | None, source: str | None}] | None
+      slots: list[{index: int, display_name: str | None, string_key: str | None, slot_class: {id: int, name: str | None}, general: bool}] | None
+      general_slots: int | None
     (PrefabListView)
       prefabs: list[{prefab_name: str | None, prefab_hash: int, display_name: str | None, runtime_type: str, buildable: bool, data: dict[str, Any] |
           None, recipes: list[{maker: str | None, maker_display_name: str | None, time_s: float, energy_j: float, inputs: dict[str, float],
-          temperature_k: {start: float, stop: float} | None, pressure_kpa: {start: float, stop: float} | None, source: str | None}] | None}]
+          temperature_k: {start: float, stop: float} | None, pressure_kpa: {start: float, stop: float} | None, source: str | None}] | None, slots:
+          list[{index: int, display_name: str | None, string_key: str | None, slot_class: {id: int, name: str | None}, general: bool}] | None,
+          general_slots: int | None}]
       matched: int
       listed: int
     Types: Vec3 = {x: float, y: float, z: float}

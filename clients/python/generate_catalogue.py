@@ -101,6 +101,29 @@ def first_sentence(text):
     return text if end < 0 else text[:end + 1]
 
 
+# Dropped options whose refusal text is not the plain one (the hub's OptionCheck words them: confirm belongs to the run,
+# max_wait names the call that waits); a script is left to the per-call check for them.
+OWN_REFUSAL_TEXT = ("confirm", "max_wait")
+
+
+def script_refused_options(shared, verbs):
+    """Option names a script call is refused for, whichever what it is on: marked x-script: drop (in the shared file
+    or in a what) and taken as a script option by no what or verb, so a keyword of that name can only be refused. The
+    hub's OptionCheck words the refusal (OptionCheck.FaceProblem): 'not taken in a script'."""
+    dropped, taken = set(), set(EXTRA_OPTIONS.get("undo", []))
+    for name, option in shared["options"].items():
+        if option.get("x-script") == "drop":
+            dropped.add(name)
+    for verb in verbs:
+        if verb["verb"] in NOT_GENERATED:
+            continue
+        for what in verb["whats"].values():
+            for name, option in (what.get("options") or {}).items():
+                (dropped if resolve(option, shared).get("x-script") == "drop" else taken).add(name)
+        taken.update(script_options(verb, shared) if not not_generated(verb) else [])
+    return sorted(dropped - taken - set(OWN_REFUSAL_TEXT) - set(RESERVED))
+
+
 def render_catalogue(shared, verbs):
     main_lists, write_whats, whats = {}, {}, {}
     for verb in verbs:
@@ -128,6 +151,9 @@ def render_catalogue(shared, verbs):
         "",
         "# The whats that write (they carry a write block in the catalogue), per verb.",
         "WRITE_WHATS = " + pprint.pformat(write_whats, width=116, sort_dicts=False),
+        "",
+        "# Options a script call is refused for before the script runs (the hub's per-call check says the same).",
+        f"SCRIPT_REFUSED_OPTIONS = {tuple(script_refused_options(shared, verbs))!r}",
         "",
         "# Each (verb, what)'s main list: the reply key a for loop walks (reply.list in the catalogue).",
         "MAIN_LISTS = " + pprint.pformat(main_lists, width=116, sort_dicts=False),

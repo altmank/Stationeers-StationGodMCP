@@ -417,11 +417,22 @@ internal sealed class DescribePrefabView
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public List<RecipeView>? Recipes { get; private set; }
 
-    /// <summary>The view with the data and recipes asked for added.</summary>
-    internal DescribePrefabView With(Newtonsoft.Json.Linq.JObject? data, List<RecipeView>? recipes)
+    /// <summary>The template's slots, one row each; left out for a prefab with none.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public IReadOnlyList<PrefabSlotView>? Slots { get; private set; }
+
+    /// <summary>How many of the slots take any item; left out with Slots.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public int? GeneralSlots { get; private set; }
+
+    /// <summary>The view with the data, recipes and slots asked for added.</summary>
+    internal DescribePrefabView With(Newtonsoft.Json.Linq.JObject? data, List<RecipeView>? recipes,
+        PrefabSlotsView? slots)
     {
         Data = data;
         Recipes = recipes;
+        Slots = slots?.Slots;
+        GeneralSlots = slots?.GeneralSlots;
         return this;
     }
 }

@@ -104,6 +104,17 @@ class AnalysisTests(unittest.TestCase):
         analysis = analyse("with sg.hold(['1'], 'On', value=1):\n    sg.wait(5)")
         self.assertEqual((False, True), (analysis.writes, analysis.holds))
 
+    def test_an_option_a_script_does_not_take_is_refused_naming_the_line(self):
+        refusal = analyse("sg.build('structure')\nsg.inspect('contents', id=1, whole=True)\n").refusal
+        self.assertTrue(refusal.startswith("line 2: sg.inspect('contents', id=1, whole=True)\n"), refusal)
+        self.assertIn("invalid_argument: inspect contents: whole: not taken in a script", refusal)
+
+    def test_a_spread_of_options_and_taken_options_are_not_refused_up_front(self):
+        for code in ("opts = {'whole': True}\nsg.inspect('contents', id=1, **opts)",
+                     "sg.inspect('contents', id=1, fields=['id'])", "sg.help('read', 'logic', lang='python')",
+                     "def whole(**k): pass\nwhole(whole=True)"):
+            self.assertIsNone(analyse(code).refusal, code)
+
     def test_a_syntax_error_is_reported_with_its_line(self):
         self.assertEqual("line 2: SyntaxError: '(' was never closed", analyse("x = 1\ny = (\n").syntax_error)
 
@@ -124,6 +135,13 @@ class WorkerTests(WorkerCase):
         self.assertEqual({"type": "run_analysis", "literals": ["thing", 1], "while_lines": [2, 3], "writes": False,
                           "holds": False, "syntax_error": None}, analysis)
         self.assertEqual("sg-worker", hub.of_type("hello")[0]["client"]["name"])
+
+    def test_a_script_with_an_option_it_does_not_take_fails_before_any_call_runs(self):
+        hub, end = self.serve_one("sg.find('thing')\nsg.inspect('contents', id=1, whole=True)\n", find_handler)
+        self.assertEqual("failed", end["state"])
+        self.assertIn("inspect contents: whole: not taken in a script", end["error"])
+        self.assertEqual([], [message for message in hub.messages if message["type"] not in
+                              ("hello", "run_analysis", "run_end", "_eof")])
 
     def test_the_final_bare_expression_is_returned(self):
         _, end = self.serve_one("r = sg.find('thing')\n{'n': len(r['things']), 'id': r['things'][0]['reference_id']}",

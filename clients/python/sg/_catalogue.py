@@ -96,6 +96,9 @@ WRITE_WHATS = {'write': ('logic',
  'undo': ('-',),
  'server': ('profiling', 'command', 'stop')}
 
+# Options a script call is refused for before the script runs (the hub's per-call check says the same).
+SCRIPT_REFUSED_OPTIONS = ('cursor', 'from_step', 'list_limits', 'omit', 'output_file', 'queue', 'repeat', 'whole')
+
 # Each (verb, what)'s main list: the reply key a for loop walks (reply.list in the catalogue).
 MAIN_LISTS = {('find', 'thing'): 'things',
  ('find', 'item'): 'items',
