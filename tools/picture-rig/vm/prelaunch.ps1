@@ -6,7 +6,7 @@ $r.Info.pipe = $picCtx.pipe; $r.Info.repo = $picCtx.repoAt; $r.Info.expectedMin 
 $picStage = Join-Path $r.Res 'sg-stage\sg'
 Measure-RigStep picturesStage {
     New-Item -ItemType Directory -Force "$picStage\tools\picture-rig", "$picStage\tools\silo-rig", "$picStage\clients" | Out-Null
-    Copy-Item (Join-Path $picCtx.here 'shots.py'), (Join-Path $picCtx.here 'judge_shots.py'), (Join-Path $picCtx.here 'keyguard_check.py') "$picStage\tools\picture-rig"
+    Copy-Item (Join-Path $picCtx.here 'shots.py'), (Join-Path $picCtx.here 'judge_shots.py'), (Join-Path $picCtx.here 'keyguard_check.py'), (Join-Path $picCtx.here 'item_check.py') "$picStage\tools\picture-rig"
     Copy-Item (Join-Path $picCtx.repo 'tools\silo-rig\sgcall.py') "$picStage\tools\silo-rig"
     Copy-Item -Recurse (Join-Path $picCtx.repo 'clients\python') "$picStage\clients\python"
     Get-ChildItem "$picStage\clients" -Recurse -Directory -Filter __pycache__ | Remove-Item -Recurse -Force

@@ -7,6 +7,7 @@
 - **A script that passes an option scripts don't take is refused before it runs.** `sg.inspect('contents', ..., whole=True)` used to fail only at that call, after earlier builds in the script had already run.
 - **Build: a checkout whose line endings differ from `.gitattributes` is refused** (`tools\working-eol.ps1`, checked before the tests). A CRLF working copy of an `eol=lf` file built a different dll than a fresh checkout of the same commit.
 - **Build: a deploy given a board item passes it to the game lock.** `build.ps1 -Deploy -LockItem <id>` failed with `A positional parameter cannot be found that accepts argument '-Item'`.
+- **Tooling: the picture rig has an item check.** `vm-pictures.ps1 -ItemChecks` compares `inspect prefab` slot rows with a live thing's slots (index, name, class, and the `general` flag) and runs the `remove item` cases in the VM's throwaway world; evidence goes to `out\items.json`.
 
 ## 2.19.2
 
