@@ -247,7 +247,7 @@ internal static class ConsoleBridge
 
     internal static void Echo(string command)
     {
-        ConsoleWindow.Print("mcp> " + command, ConsoleColor.Cyan);
+        ConsoleWindow.Print("agent> " + command, ConsoleColor.Cyan);
     }
 
     /// <summary>

@@ -99,13 +99,13 @@ internal sealed class GhostCard
     internal static string Word(GhostStanding standing) => standing switch
     {
         GhostStanding.Preview => "PREVIEW",
-        GhostStanding.Planned => "PLANNED",
-        GhostStanding.Ready => "READY",
-        GhostStanding.Started => "STARTED",
-        GhostStanding.Waiting => "WAITING",
-        GhostStanding.Warned => "WARNING",
-        GhostStanding.Blocked => "BLOCKED",
-        _ => "STALE"
+        GhostStanding.Planned => "PLACED",
+        GhostStanding.Ready => "CAN BUILD",
+        GhostStanding.Started => "PART BUILT",
+        GhostStanding.Waiting => "NEEDS ANOTHER FIRST",
+        GhostStanding.Warned => "BUILD WITH CARE",
+        GhostStanding.Blocked => "CAN'T BUILD",
+        _ => "OUT OF DATE"
     };
 
     /// <summary>The badge's colour (red, green, blue), each 0 to 1; each standing its own, readable on a dark panel.</summary>

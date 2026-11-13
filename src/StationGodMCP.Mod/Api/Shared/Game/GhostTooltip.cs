@@ -119,8 +119,7 @@ internal sealed class GhostTooltip
             GUI.Label(pill, badge, _badge);
         }
 
-        string sub = card.Intent + (card.Label != null ? " · " + card.Piece : string.Empty) +
-                     (card.Id != 0 ? $" · ghost {card.Id}" : string.Empty);
+        string sub = card.Intent + (card.Label != null ? " · " + card.Piece : string.Empty);
         y += 2f * scale + Text(new Rect(left, y + 2f * scale, inner, 0f), sub, _sub, Soft, draw);
         if (card.Reason != null)
         {
@@ -132,7 +131,7 @@ internal sealed class GhostTooltip
         List<(string Key, string Value)> rows = new List<(string Key, string Value)>();
         if (card.Plan != null)
         {
-            rows.Add(("PLAN", card.Plan));
+            rows.Add(("PART OF", card.Plan));
         }
 
         if (card.PlacedBy != null)
@@ -148,12 +147,12 @@ internal sealed class GhostTooltip
                 steps += $"\n+{card.StepsLeft - card.Steps.Count} more steps";
             }
 
-            rows.Add((card.StepsLeft == 1 ? "NEXT STEP" : $"NEXT ({card.StepsLeft})", steps));
+            rows.Add((card.StepsLeft == 1 ? "NEXT STEP" : $"NEXT STEPS ({card.StepsLeft})", steps));
         }
 
         if (card.Needed.Count > 0)
         {
-            rows.Add(("NEEDS", string.Join("\n", card.NeededLines())));
+            rows.Add(("STILL NEEDS", string.Join("\n", card.NeededLines())));
         }
 
         if (card.Tools.Count > 0)

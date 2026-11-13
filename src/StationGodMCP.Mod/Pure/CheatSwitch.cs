@@ -77,6 +77,10 @@ internal sealed class CheatSwitch : ICheatGate
         $"'{CommandKey}' turns StationGod's cheats on or off, and only someone typing at the game's console can run " +
         "it. Ask the user.";
 
+    /// <summary>What the player reads at the console when the switch's command comes through StationGod instead.</summary>
+    internal static string ConsoleOnlyNotice() =>
+        "Only you, typing at the console, can turn the agent's cheats on or off.";
+
     public VerbError? Admit(WhatSpec what, JObject? parameters)
     {
         if (what.Write?.IsCheat(parameters) != true || _creative())
@@ -158,9 +162,9 @@ internal sealed class CheatSwitch : ICheatGate
     {
         string creative = _creative() ? " This world is creative, so cheats are allowed anyway." : string.Empty;
         return MinutesLeft is { } left
-            ? $"StationGod cheats are ON for {left.ToString("0.0", CultureInfo.InvariantCulture)} more minutes " +
-              $"({_runs.Count} cheat calls logged in this world).{creative}"
-            : $"StationGod cheats are OFF.{creative}";
+            ? $"Agent cheats are ON for {left.ToString("0.0", CultureInfo.InvariantCulture)} more minutes " +
+              $"(the agent has used {_runs.Count} cheats in this world).{creative}"
+            : $"Agent cheats are OFF.{creative}";
     }
 
     private static bool Is(string argument, string word) => string.Equals(argument, word, StringComparison.OrdinalIgnoreCase);
