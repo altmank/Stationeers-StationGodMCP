@@ -164,3 +164,8 @@ def test_pick_backpack_prefers_a_plain_pack_with_slots():
     assert c.pick_backpack(listing) == "ItemMiningBackPack"
     assert c.pick_backpack({"prefabs": [{"prefab_name": "ItemHardBackpack", "slots": [{}]}]}) == "ItemHardBackpack"
     assert c.pick_backpack({"error": {"code": "invalid_prefab"}}) is None
+
+
+def test_pick_backpack_skips_a_machine_that_matches_the_pattern():
+    listing = {"prefabs": [{"prefab_name": "AppliancePackagingMachine", "slots": [{}]}]}
+    assert c.pick_backpack(listing) is None

@@ -115,7 +115,8 @@ def message_of(reply):
 
 def pick_backpack(listing):
     """The name of a plain (not hard) pack with slots in an inspect prefab list reply, else any pack with slots, else None."""
-    packs = [row for row in (listing or {}).get("prefabs") or [] if row.get("slots")]
+    packs = [row for row in (listing or {}).get("prefabs") or []
+             if row.get("slots") and str(row.get("prefab_name")).startswith("Item")]
     plain = [row for row in packs if "hard" not in str(row.get("prefab_name")).lower()]
     chosen = (plain or packs or [None])[0]
     return chosen["prefab_name"] if chosen else None
