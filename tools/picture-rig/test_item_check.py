@@ -150,3 +150,17 @@ def test_ingot_with_slots_fails():
 def test_placed_ids_are_the_reply_strings():
     assert c.placed_ids({"placed": ["12", "13"], "items": [{"reference_id": "12"}]}) == ["12", "13"]
     assert c.placed_ids({"error": {"code": "no_room"}}) == []
+
+
+def test_a_one_id_answer_in_results_form_reads_its_error():
+    reply = {"results": [{"index": 0, "ok": False, "error": {"code": "thing_not_found", "message": "No thing"}}]}
+    assert c.gone(reply) and c.code_of(reply) == "thing_not_found"
+    assert not c.gone({"results": [{"index": 0, "ok": True, "reference_id": "5"}]})
+
+
+def test_pick_backpack_prefers_a_plain_pack_with_slots():
+    listing = {"prefabs": [{"prefab_name": "ItemHardBackpack", "slots": [{}]}, {"prefab_name": "ItemMiningBackPack", "slots": [{}]},
+                           {"prefab_name": "ItemPackNoSlots"}]}
+    assert c.pick_backpack(listing) == "ItemMiningBackPack"
+    assert c.pick_backpack({"prefabs": [{"prefab_name": "ItemHardBackpack", "slots": [{}]}]}) == "ItemHardBackpack"
+    assert c.pick_backpack({"error": {"code": "invalid_prefab"}}) is None

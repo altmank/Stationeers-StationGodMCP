@@ -18,7 +18,7 @@ import os
 SLOT_GROUPS = {
     "suit": ("ItemEvaSuit",),
     "hard_suit": ("ItemHardSuit",),
-    "backpack": ("ItemBackpack",),
+    "backpack": (),  # found by pick_backpack from a *Pack* list: the game's plain pack has no fixed name we know
     "hard_backpack": ("ItemHardBackpack", "ItemHardMiningBackPack"),
     "tool_belt": ("ItemToolBelt",),
     "uniform": ("UniformOrangeJumpSuit", "UniformCommander", "UniformScientist", "UniformMarine"),
@@ -96,12 +96,29 @@ def slot_failures(group, template, live):
     return [f"{group}: {text}" for text in compare_rows(template, live) + general_failures(template, live)]
 
 
+def error_of(reply):
+    """The refusal in a reply: top level, or the first row of a results list (a one-id call may answer either way)."""
+    reply = reply or {}
+    if reply.get("error"):
+        return reply["error"]
+    rows = reply.get("results")
+    return (rows[0].get("error") if rows and isinstance(rows[0], dict) else None) or {}
+
+
 def code_of(reply):
-    return ((reply or {}).get("error") or {}).get("code")
+    return error_of(reply).get("code")
 
 
 def message_of(reply):
-    return str(((reply or {}).get("error") or {}).get("message") or "")
+    return str(error_of(reply).get("message") or "")
+
+
+def pick_backpack(listing):
+    """The name of a plain (not hard) pack with slots in an inspect prefab list reply, else any pack with slots, else None."""
+    packs = [row for row in (listing or {}).get("prefabs") or [] if row.get("slots")]
+    plain = [row for row in packs if "hard" not in str(row.get("prefab_name")).lower()]
+    chosen = (plain or packs or [None])[0]
+    return chosen["prefab_name"] if chosen else None
 
 
 def gone(reply):
@@ -243,7 +260,11 @@ def detailed(sgcall, thing_id):
 
 def slots_part(sgcall, log, at):
     slots, notes = {}, []
+    listing = _call(sgcall, "inspect", "prefab", prefab="*Pack*")
+    log["pack_listing"] = listing
+    log["backpack_prefab"] = pick_backpack(listing)
     for group, names in SLOT_GROUPS.items():
+        names = (log["backpack_prefab"],) if group == "backpack" and log["backpack_prefab"] else names
         for name in names:
             reply = _call(sgcall, "inspect", "prefab", prefab=name)
             if code_of(reply):
@@ -281,7 +302,7 @@ def remove_part(sgcall, log, at, say):
     if rows:
         holder, kind = str(rows[0]["reference_id"]), "locker"
     else:
-        holder, kind = build(sgcall, "ItemBackpack", at=at), "built ItemBackpack"
+        holder, kind = build(sgcall, log["backpack_prefab"], at=at), "built " + log["backpack_prefab"]
     item = build(sgcall, "ItemIronIngot", to=holder, slot=_first_free_slot(sgcall, holder))
     case = remove["container"] = {"item_id": item, "holder": holder, "holder_kind": kind}
     case["confirm"] = _call(sgcall, "remove", "item", id=item, confirm=True)
@@ -298,7 +319,7 @@ def remove_part(sgcall, log, at, say):
     case["player_after"] = _call(sgcall, "inspect", "contents", id="player", depth=4)
     say(f"remove carried: refused {code_of(case['refused'])}, allowed {case['allowed']}")
     # d. a backpack holding two items
-    pack = build(sgcall, "ItemBackpack", at=at)
+    pack = build(sgcall, log["backpack_prefab"], at=at)
     first, second = _first_two_free(sgcall, pack)
     held = [build(sgcall, "ItemIronIngot", to=pack, slot=first), build(sgcall, "ItemCopperIngot", to=pack, slot=second)]
     case = remove["contents"] = {"pack": pack, "held": held}
