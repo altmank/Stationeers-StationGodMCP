@@ -1,2 +1,3 @@
 # lane.ps1 land runs these on the merged tree (P108); each runs under pwsh from the tree root and must exit 0.
-fast-gate | pwsh -NoProfile -File tools\tests\fast-gate.ps1; exit $LASTEXITCODE
+# nocache (P127): fast-gate compiles the mod against the installed game's assemblies (P113), outside the tree.
+fast-gate | pwsh -NoProfile -File tools\tests\fast-gate.ps1; exit $LASTEXITCODE | nocache
