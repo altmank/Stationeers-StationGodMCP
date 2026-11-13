@@ -30,7 +30,7 @@ internal static class Cheats
     private sealed class CheatCommand : CommandBase
     {
         public override string HelpText =>
-            "Lets StationGod cheat in a world that is not creative, for some minutes. Only typed here, never by StationGod.";
+            "Lets the AI agent use cheats in a world that is not creative, for some minutes. Only you can turn it on, here at the console.";
 
         public override string[] Arguments => new[] { "cheats on <minutes>", "cheats off", "cheats" };
 
@@ -42,7 +42,7 @@ internal static class Cheats
         {
             if (ConsoleBridge.RunningForStationGod)
             {
-                ConsoleWindow.PrintError(CheatSwitch.ConsoleOnlyRefusal(), suppressStacktrace: true);
+                ConsoleWindow.PrintError(CheatSwitch.ConsoleOnlyNotice(), suppressStacktrace: true);
                 return null;
             }
 

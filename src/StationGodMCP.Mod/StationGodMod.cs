@@ -132,8 +132,8 @@ public sealed class StationGodMod : ModBehaviour
             Api.Shared.Game.Runs.LayoutSettings.Load(configuration);
             PerformanceSettings.Load(configuration);
             int? fpsCap = Pure.FrameCap.Choose(configuration.Bind("Rig", "MaxFps", Pure.FrameCap.DefaultMaxFps,
-                "Frame cap for rendered runs, to lower GPU load (sets vSyncCount 0 and targetFrameRate). 0 = off, " +
-                "touching neither. -sgfps N on the command line overrides it. Restart the game to apply.").Value,
+                "Limits frames per second for rendered runs, to lower the graphics card's load. Turns off vertical sync while " +
+                "set. 0 = no limit. -sgfps N on the command line overrides it. Restart the game to apply.").Value,
                 Environment.GetCommandLineArgs());
             if (fpsCap != null)
             {
@@ -537,14 +537,14 @@ internal sealed class RemoteSettings
     internal static RemoteSettings Load(ConfigFile configuration)
     {
         ConfigEntry<bool> enabled = configuration.Bind(Section, "Enabled", false,
-            "Listen for authenticated StationGod MCP sidecars over plain TCP. Only enable this on the authoritative " +
-            "server.");
+            "Let AI agents on other computers connect to this game over the network. Only turn this on for the server " +
+            "that runs the world.");
         ConfigEntry<string> bindAddress = configuration.Bind(Section, "BindAddress", DefaultBindAddress,
-            "IP address on which the remote StationGod MCP transport listens.");
+            "The network address this game listens on for agents on other computers.");
         ConfigEntry<int> port = configuration.Bind(Section, "Port", DefaultPort,
-            "TCP port used by remote StationGod MCP sidecars.");
+            "The network port agents on other computers connect to.");
         ConfigEntry<string> secret = configuration.Bind(Section, "Secret", string.Empty,
-            "Shared secret required from every remote StationGod MCP sidecar. Sent over plain TCP.");
+            "Password every agent on another computer must send. It travels unencrypted, so use a long random one.");
         RemoteSettings settings = new RemoteSettings(
             EnvironmentBoolean("STATIONGODMCP_REMOTE_ENABLED", enabled.Value),
             EnvironmentString("STATIONGODMCP_REMOTE_BIND_ADDRESS", bindAddress.Value),
@@ -640,24 +640,21 @@ internal sealed class ServerSettings
         ConfigEntry<int> connections = configuration.Bind(Section, "MaxPipeConnections",
             ProtocolSettings.DefaultMaxPipeConnections,
             new ConfigDescription(
-                "The most local pipe connections at once; a client past it waits until one closes. Restart the game " +
-                "to apply.",
+                "The most agents that can connect at once from this computer; one past it waits until another disconnects. " +
+                "Restart the game to apply.",
                 new AcceptableValueRange<int>(ProtocolSettings.MinimumPipeConnections, ProtocolSettings.MaximumPipeConnections)));
         ConfigEntry<bool> strict = configuration.Bind(Section, "StrictArguments", true,
-            "Check calls against the method catalogue in full (names at every depth, types, ranges, enums, patterns, " +
-            "required arguments, the shape) before they run. false checks only top-level argument names. Restart " +
-            "the game to apply.");
+            "Check every agent request in full before running it. Off checks only the top-level names. Restart the " +
+            "game to apply.");
         ConfigEntry<int> tcp = configuration.Bind(Section, "MaxTcpConnections", DefaultMaxTcpConnections,
             new ConfigDescription(
-                "The most TCP connections at once, counted apart from the pipe's, so remote clients and unfinished " +
-                "sign-ins never take a local client's place. Restart the game to apply.",
+                "The most agents that can connect at once over the network, counted apart from this computer's, so they " +
+                "never take a local agent's place. Restart the game to apply.",
                 new AcceptableValueRange<int>(1, 64)));
         ConfigEntry<int> resume = configuration.Bind(Section, "ResumeWindowSeconds", ResumeHolds.DefaultWindowSeconds,
             new ConfigDescription(
-                "Seconds a client's walk cursors, subscriptions, ended streams and stream cost counters are kept " +
-                "after its connection breaks, when its hello carried a resume token, so a client that reconnects " +
-                "within them goes on where it was. Calls in flight are not kept. 0 turns resuming off. Restart the " +
-                "game to apply.",
+                "Seconds the game remembers an agent that lost its connection, so it can carry on where it was. " +
+                "Requests it was waiting on are lost. 0 = forget at once. Restart the game to apply.",
                 new AcceptableValueRange<int>(0, ResumeHolds.MaximumWindowSeconds)));
         int maximum = connections.Value;
         if (maximum < ProtocolSettings.MinimumPipeConnections || maximum > ProtocolSettings.MaximumPipeConnections)
@@ -688,12 +685,9 @@ internal static class MultiplayerSettings
 {
     internal static bool ShareViews(ConfigFile configuration) =>
         configuration.Bind("Multiplayer", "ShareViews", true,
-            "Share views between games: a client tells a server running StationGod where its player looks, so the " +
-            "server's camera tools (inspect looking_at, crosshair placement, show preview, show highlight...) work for that " +
-            "player, and the server's drawings show on that player's screen. StationGod stays optional on every " +
-            "machine. It registers StationGod with LaunchPadBooster's networking, which makes a game expect " +
-            "LaunchPadBooster networking on the other side of a join: on a server where no other mod uses it, " +
-            "false lets players join whose game runs no such mod. Restart the game to apply.").Value;
+            "Let a joined player's game tell the server where they look, so the agent's camera tools and highlights " +
+            "work for them. Turn off if players can't join because their game lacks a networking mod. Restart the " +
+            "game to apply.").Value;
 }
 
 /// <summary>
@@ -729,9 +723,10 @@ internal static class PerformanceSettings
     internal static void Load(ConfigFile configuration)
     {
         ConfigEntry<double> budget = configuration.Bind(Section, "RequestBudgetMs", FrameBudget.DefaultMs,
-            "Main-thread milliseconds one frame may spend answering requests; the rest wait for the next frame. The " +
-            "first request of a frame always runs. 0 = unlimited. While a job holds the game tick the budget is at " +
-            $"most {FrameBudget.JobHeldMs} ms. Restart the game to apply.");
+            "How many milliseconds of each game frame the AI agent's requests may use; the rest wait for the next " +
+            "frame. Lower keeps the game smoother, higher answers faster. The first request of a frame always runs. " +
+            $"0 = no limit. While a build is pausing the game's clock it is at most {FrameBudget.JobHeldMs} ms. " +
+            "Restart the game to apply.");
         double? configured = FrameBudget.Configured(budget.Value);
         if (configured == null)
         {
@@ -742,14 +737,13 @@ internal static class PerformanceSettings
         RequestBudgetMs = configured ?? FrameBudget.DefaultMs;
         double subscriptions = NonNegative(configuration.Bind(Section, "SubscriptionBudgetMs",
             SchedulerSettings.DefaultSubscriptionBudgetMs,
-            "Main-thread milliseconds of each frame for subscription and read sample samples, taken out of the same " +
-            "frame and at most half of RequestBudgetMs. The first due sample of a frame always runs. 0 turns " +
-            "subscriptions off. Restart the game to apply."), SchedulerSettings.DefaultSubscriptionBudgetMs);
+            "Milliseconds of each frame for the agent's live watches, at most half of RequestBudgetMs. 0 turns them " +
+            "off. Restart the game to apply."), SchedulerSettings.DefaultSubscriptionBudgetMs);
         double heavy = NonNegative(configuration.Bind(Section, "HeavyThresholdMs", SchedulerSettings.DefaultHeavyThresholdMs,
-            "A call predicted to take longer than this on the main thread waits in the heavy lane, which runs at most " +
-            "one call a frame. Restart the game to apply."), SchedulerSettings.DefaultHeavyThresholdMs);
+            "A request expected to take longer than this runs alone, one per frame, so the game doesn't stutter. " +
+            "Restart the game to apply."), SchedulerSettings.DefaultHeavyThresholdMs);
         ConfigEntry<int> wait = configuration.Bind(Section, "HeavyMaxWaitFrames", SchedulerSettings.DefaultHeavyMaxWaitFrames,
-            "A heavy call passed over this many frames runs even when the frame is over budget. Restart the game to apply.");
+            "A slow request that has waited this many frames runs even if the frame is busy. Restart the game to apply.");
         int frames = wait.Value >= 0 ? wait.Value : SchedulerSettings.DefaultHeavyMaxWaitFrames;
         if (wait.Value < 0)
         {
@@ -760,19 +754,14 @@ internal static class PerformanceSettings
         Scheduler = new SchedulerSettings(RequestBudgetMs, subscriptions, heavy, frames, Protocol.CallSession.MaxInFlight,
             Protocol.CallSession.MaxInFlightPerConnection);
         Profiling = configuration.Bind(Section, "Profiling", false,
-            "Start the runtime profiler when the mod loads (what the server profiling method's action on does, with " +
-            $"slow_frame_ms {SlowFrameLimits.DefaultMs} and no CSV). It times StationGod's main-thread work per frame, " +
-            "call and job tick hold; off, it costs one check per timed piece. The server profiling method switches it at any " +
-            "time. Restart the game to apply.").Value;
+            "Records how much frame time StationGod uses, for bug reports. Starts when the game loads. Restart the " +
+            "game to apply.").Value;
         VerifyWorldIndex = configuration.Bind(Section, "VerifyWorldIndex", false,
-            "Debug: every query the world index answers (things by prefab or by class: structures, frames, devices, " +
-            "items, ...) also walks the game's own list for it and logs a warning when the two differ (server info " +
-            "runtime.world_index counts the checks and differences). Costs a full walk per query. Restart the game to " +
-            "apply.").Value;
+            "Debug only, slows the game: double-checks StationGod's lookups against the game and logs any difference. " +
+            "Restart the game to apply.").Value;
         VerifyFacts = configuration.Bind(Section, "VerifyFacts", false,
-            "Debug: every read of a followed fact (a frame's exposed faces, the damaged things, a gateway's device map) " +
-            "also reads it again from the game and logs a warning when the two differ (server info runtime.facts " +
-            "counts the checks and differences). find damaged then walks every thing. Restart the game to apply.").Value;
+            "Debug only, slows the game: double-checks StationGod's lookups against the game and logs any difference. " +
+            "Restart the game to apply.").Value;
     }
 
     private static double NonNegative(ConfigEntry<double> entry, double fallback)
@@ -799,9 +788,8 @@ internal static class PipeSettings
     internal static PipeName Load(ConfigFile configuration)
     {
         ConfigEntry<string> name = configuration.Bind("Pipe", "Name", PipeName.DefaultValue,
-            @"Name of the local named pipe the mod listens on (\\.\pipe\<Name>). A second game or dedicated " +
-            "server on the same machine needs its own name, or sidecars reach whichever started first. Must not be " +
-            @"empty or contain \, / or :. Restart the game to apply.");
+            "Name the AI agent's program uses to find this game. Give a second game or server on this computer its own " +
+            @"name, or agents reach whichever started first. Must not be empty or contain \, / or :. Restart the game to apply.");
         PipeNameChoice choice = PipeName.Choose(Environment.GetEnvironmentVariable(EnvironmentName), EnvironmentName,
             name.Value);
         if (choice.Warning != null)

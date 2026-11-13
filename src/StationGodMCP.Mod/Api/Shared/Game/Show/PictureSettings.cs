@@ -23,8 +23,8 @@ internal static class PictureSettings
     internal static void Load(ConfigFile configuration)
     {
         string given = configuration.Bind(Section, "Folder", string.Empty,
-            "The folder show picture writes PNGs under (a caller names only a file and a subfolder inside it). Blank: " +
-            "BepInEx\\StationGodMCP\\pictures. Must be an absolute path. Restart the game to apply.").Value.Trim();
+            "Folder where the agent's screenshots are saved. Blank: BepInEx\\StationGodMCP\\pictures. Must be a full " +
+            "path. Restart the game to apply.").Value.Trim();
         if (given.Length == 0)
         {
             Folder = DefaultFolder;

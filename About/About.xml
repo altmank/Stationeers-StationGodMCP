@@ -22,7 +22,7 @@ StationGod MCP connects an AI agent such as Claude Code or Codex to your running
 [*][b]Blueprints:[/b] with BlueprintMod installed, paste a blueprint at an exact spot and quarter turn, even on a dedicated server with no player, then check or undo it.
 [*][b]Console:[/b] run the game's console commands and read the console.
 [/list]
-Every call that changes the world reports first: it lists every target with its current value, and nothing acts until the agent passes confirm: true. A call given typed ids acts at once. Everything else reports first - a build, swap, removal, trade or undo, a whole network, or targets from an earlier reply. The real run holds the game tick, changes everything in one step, takes from your inventory what the game would charge, gives back what deconstruction would, and checks the result afterwards: connections, pipe contents, rooms and air.
+Every call that changes the world reports first: it lists every target with its current value, and nothing acts until the agent passes confirm: true. A call that names its targets by id acts at once; everything else reports first: a build, swap, removal, trade or undo, a whole network, or targets from an earlier reply. The real run pauses the game's clock while it works, changes everything in one step, takes from your inventory what the game would charge, gives back what deconstruction would, and checks the result afterwards: connections, pipe contents, rooms and air.
 
 [hr][/hr]
 [h2]Setup[/h2]
@@ -38,11 +38,11 @@ Every call that changes the world reports first: it lists every target with its 
 A single local game needs none. StationeersLaunchPad config editor, or BepInEx/config/net.xceled.stationeers.stationgodmcp.cfg: Name in section Pipe, the rest in section Remote MCP (reaching a dedicated server over the network). Read when the game starts.
 [table]
 [tr][th]Setting[/th][th]Default[/th][th]What it does[/th][/tr]
-[tr][td][b]Name[/b][/td][td]StationGodMCP[/td][td]Name of the local pipe. Give a second game or test server on the same machine its own.[/td][/tr]
-[tr][td][b]Enabled[/b][/td][td]Off[/td][td]Accept sidecars over TCP. Stays off without a secret.[/td][/tr]
+[tr][td][b]Name[/b][/td][td]StationGodMCP[/td][td]Name the agent's program uses to find this game. Give a second game on the same computer its own name.[/td][/tr]
+[tr][td][b]Enabled[/b][/td][td]Off[/td][td]Let agents connect over the network. Stays off without a secret.[/td][/tr]
 [tr][td][b]BindAddress[/b][/td][td]0.0.0.0[/td][td]Address the server listens on.[/td][/tr]
 [tr][td][b]Port[/b][/td][td]8765[/td][td]TCP port.[/td][/tr]
-[tr][td][b]Secret[/b][/td][td]empty[/td][td]Shared secret every sidecar must send. Sent unencrypted: use a long random value.[/td][/tr]
+[tr][td][b]Secret[/b][/td][td]empty[/td][td]Shared secret every connecting agent must send. Sent unencrypted: use a long random value.[/td][/tr]
 [/table]
 Each also reads an environment variable (STATIONGODMCP_PIPE_NAME, STATIONGODMCP_REMOTE_ENABLED, _BIND_ADDRESS, _PORT, _SECRET), handy for Docker.
 
@@ -70,26 +70,25 @@ Developed with the use of generative AI, and tokens aren't free. Buy me a coffee
   </Description>
   <ChangeLog>
 v2.20.0
-- inspect prefab lists a prefab's slots without spawning one; new remove item; scripts refuse bad options up front.
+- The agent can look up what slots an item or machine has without spawning one, and can remove items. Bad requests are refused before anything runs.
 
 v2.19.2
-- Ghost keys no longer fire while you type in a game text field; frame time in server info.
+- Ghost keys no longer fire while you type in a game text field. The agent can see how long each frame takes.
 
 v2.18.0
-- write fabricator; inspect player gear; opt-in frame cap; early ghosts kept.
+- The agent can set up fabricators and look at what a player wears. Optional frame limit for recorded runs. Ghosts placed early are no longer lost.
 
 v2.17.1
-- Ghost fixes: refusals explained, save-as keeps ghosts. No Lattice log noise.
+- Ghost fixes: refused ghosts say why, and Save As keeps your ghosts. Less log noise.
 
 v2.17.0
-- show picture: a PNG of a thing or the player from a placed camera.
-- The sg client's hub starts with no console window.
+- The agent can take a picture of a thing or of you from a camera it places. No console window pops up when the agent's program starts.
 
 v2.16.1
-- Fix: StationGod answers calls again in games without the Lattice mod.
+- Fix: StationGod answers the agent again in games without the Lattice mod.
 
 v2.16.0
-- inspect prefab: game data, recipes, families. New swap door, links repointed.
+- The agent can look up an item's game data, recipes and families, and can swap a door for another kind.
 
 v2.15.0
 - Ghost tooltip off by default; [Ghosts] ShowTooltip turns it on.

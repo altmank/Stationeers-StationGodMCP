@@ -215,7 +215,7 @@ internal static class GhostBoardStore
             GhostPlacement placement = placements[index];
             if (!(Prefab.Find(placement.PrefabHash) is Structure prefab) || prefab == null)
             {
-                refused.Add($"{index}: no structure prefab with hash {placement.PrefabHash}");
+                refused.Add($"{index}: {NoStructureFragment} with hash {placement.PrefabHash}");
                 continue;
             }
 
@@ -226,7 +226,7 @@ internal static class GhostBoardStore
                 out BoardGhost? replaced);
             if (ghost == null)
             {
-                refused.Add($"{index}: the board is full ({GhostBoard.Maximum} ghosts)");
+                refused.Add($"{index}: {BoardFullFragment} ({GhostBoard.Maximum} ghosts)");
                 continue;
             }
 
@@ -335,6 +335,20 @@ internal static class GhostBoardStore
         }
     }
 
+    private const string ServerCannotKeepGhosts = "this server doesn't have StationGod 2.9.0 or later, so it can't keep ghosts";
+    private const string GhostAlreadyGone = "that ghost is already gone";
+    private const string NoStructureFragment = "no structure prefab";
+    private const string BoardFullFragment = "the board is full";
+
+    /// <summary>
+    /// The player's words for a refusal the agent also reads: the agent's text names the placement index and prefab
+    /// hash, the player's says only what went wrong. Refusals of other kinds (Lattice's own) pass through.
+    /// </summary>
+    private static string PlayerReason(string refusal) =>
+        refusal.Contains(NoStructureFragment) ? "that structure can't be placed"
+        : refusal.Contains(BoardFullFragment) ? $"the world already holds the most ghosts it can ({GhostBoard.Maximum})"
+        : refusal;
+
     /// <summary>This game's player places a ghost: on the host at once, from a client by asking the host.</summary>
     internal static string? RequestPlace(GhostPlacement placement)
     {
@@ -342,19 +356,19 @@ internal static class GhostBoardStore
         {
             List<string> refused = new List<string>();
             LatticePresence.Place(new[] { placement }, GhostSource.Player, null, refused, new List<string>());
-            return refused.Count > 0 ? refused[0] : null;
+            return refused.Count > 0 ? PlayerReason(refused[0]) : null;
         }
 
         if (Keeps)
         {
             List<string> refused = new List<string>();
             Place(new[] { placement }, GhostSource.Player, LocalName(), refused);
-            return refused.Count > 0 ? refused[0] : null;
+            return refused.Count > 0 ? PlayerReason(refused[0]) : null;
         }
 
         if (!ViewReporter.HostListens)
         {
-            return "the server runs no StationGod that keeps ghosts (2.9.0 or later)";
+            return ServerCannotKeepGhosts;
         }
 
         return StationGodNet.SendGhostRequest(GhostWire.Encode(new GhostRequest.Place(new[] { placement })))
@@ -369,17 +383,17 @@ internal static class GhostBoardStore
         {
             List<string> refused = new List<string>();
             List<long> gone = LatticePresence.Remove(new[] { id }, GhostSource.Player, null, refused);
-            return refused.Count > 0 ? refused[0] : Keeps && gone.Count == 0 ? $"no ghost {id}" : null;
+            return refused.Count > 0 ? refused[0] : Keeps && gone.Count == 0 ? GhostAlreadyGone : null;
         }
 
         if (Keeps)
         {
-            return Remove(new[] { id }).Count > 0 ? null : $"no ghost {id}";
+            return Remove(new[] { id }).Count > 0 ? null : GhostAlreadyGone;
         }
 
         if (!ViewReporter.HostListens)
         {
-            return "the server runs no StationGod that keeps ghosts (2.9.0 or later)";
+            return ServerCannotKeepGhosts;
         }
 
         return StationGodNet.SendGhostRequest(GhostWire.Encode(new GhostRequest.Remove(new[] { id })))

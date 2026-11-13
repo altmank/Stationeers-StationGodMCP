@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Plainer wording in the ghost menu, the ghost card, the `stationgod` console command and the mod settings.
+
 ## 2.20.0
 
 - **New: `remove item` deletes items by id** (a cheat, nothing refunded, cannot be undone): in one call or from a script (`sg.remove('item', id=[...])`, no longer stopped as an untargeted write). Items a player carries need `allow: ["carried"]`, items holding items `allow: ["contents"]`; a refused id never stops the others.

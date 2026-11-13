@@ -169,18 +169,18 @@ internal static class GhostControls
         if (InventoryManager.ConstructionCursor == null)
         {
             InventoryManager.CurrentMode = InventoryManager.Mode.Normal;
-            Say($"The game has no cursor for {prefab.DisplayName}.");
+            Say($"{prefab.DisplayName} can't be placed as a ghost.");
             return;
         }
 
         Picking = prefab;
-        Say($"Placing ghosts of {prefab.DisplayName}: click to place, right click to stop.");
+        Say($"Placing {prefab.DisplayName} ghosts: click to place, right click to stop");
     }
 
     internal static void SetGhostMode(bool on)
     {
         GhostMode = on;
-        Say(on ? "Ghost mode on: placing with a kit places a ghost." : "Ghost mode off.");
+        Say(on ? "Ghost mode on: placing a kit now places a ghost, nothing is built." : "Ghost mode off.");
     }
 
     internal static void SetMenu(bool open)
@@ -229,7 +229,7 @@ internal static class GhostControls
         int finished = prefab.BuildStates != null && prefab.BuildStates.Count > 0 ? prefab.BuildStates.Count - 1 : 0;
         string? refused = GhostBoardStore.RequestPlace(new GhostPlacement(cursor.PrefabHash, finished,
             Bodies.V(cursor.ThingTransformPosition), euler, Tint, null));
-        Say(refused == null ? $"Ghost of {prefab.DisplayName} placed." : $"No ghost: {refused}.");
+        Say(refused == null ? $"Ghost of {prefab.DisplayName} placed." : $"Can't place a ghost: {refused}.");
         return true;
     }
 
@@ -300,7 +300,7 @@ internal static class GhostControls
         {
             long id = Ghosts.Picked;
             string? refused = GhostBoardStore.RequestRemove(id);
-            Say(refused == null ? $"Ghost {id} taken off." : $"Ghost {id} stays: {refused}.");
+            Say(refused == null ? "Ghost removed." : $"Can't remove the ghost: {refused}.");
         }
     }
 
@@ -369,11 +369,11 @@ internal sealed class GhostOverlay : MonoBehaviour
         if (GhostControls.Placing)
         {
             string mode = GhostControls.Picking != null
-                ? $"GHOST: {GhostControls.Picking.DisplayName}   click place   right click stop"
-                : $"GHOST MODE   click place   {GhostSettings.ModeKey} off";
+                ? $"Placing {GhostControls.Picking.DisplayName} ghosts: click to place, right click to stop"
+                : $"Ghost mode: click to place a ghost, {GhostSettings.ModeKey} to turn off";
             if (Ghosts.Picked != 0)
             {
-                mode += $"   {GhostSettings.RemoveKey} remove ghost {Ghosts.Picked}";
+                mode += $"   {GhostSettings.RemoveKey} to remove this ghost";
             }
 
             Shadowed(new Rect(0f, 40f, Screen.width, 26f), mode,
@@ -424,7 +424,7 @@ internal sealed class GhostOverlay : MonoBehaviour
         Ghosts.BoardVisible = shown;
         GUILayout.EndHorizontal();
 
-        GUILayout.Label($"Tint: {GhostControls.TintName}   ghosts in the world: {GhostBoardStore.Board.Count}");
+        GUILayout.Label($"Colour: {GhostControls.TintName}   ghosts placed: {GhostBoardStore.Board.Count}");
         GUILayout.BeginHorizontal();
         int column = 0;
         foreach (string name in GhostTints.Names)
@@ -457,7 +457,7 @@ internal sealed class GhostOverlay : MonoBehaviour
 
             if (++listed > ListLimit)
             {
-                GUILayout.Label($"More match: type more of the name.");
+                GUILayout.Label("More structures match: type more of the name.");
                 break;
             }
 
