@@ -347,6 +347,30 @@ public sealed class RunRouteTests
         Assert.Equal(0, bench.World.Count("move.item"));
     }
 
+    // remove item names its ids (x-target id): a typed id is a targeted write the run checks, not the untargeted stop.
+    [PythonFact]
+    public async Task AConfirmedRunRemovingItemsByTypedIdsActs()
+    {
+        await using RunBench bench = new();
+
+        string text = await bench.RunAsync("sg.remove('item', id=['5200100', '5200101'])", confirm: true);
+
+        Assert.StartsWith("script-1 done\n", text);
+        Assert.DoesNotContain("untargeted_write", text);
+        Assert.Equal(1, bench.World.Count("remove.item"));
+    }
+
+    [PythonFact]
+    public async Task AConfirmedRunRemovingAnItemTheSessionNeverSawStopsAsAnyTargetedWriteDoes()
+    {
+        await using RunBench bench = new();
+
+        string text = await bench.RunAsync("i = str(5200000 + 100)\nsg.remove('item', id=[i])", confirm: true);
+
+        Assert.StartsWith("script-1 stopped: unseen_target (line 2: remove item names targets not seen; nothing acted.)", text);
+        Assert.Equal(0, bench.World.Count("remove.item"));
+    }
+
     [PythonFact]
     public async Task AnUnseenPrefabTakenOutOfAStoreIsStillASpreadAndStops()
     {

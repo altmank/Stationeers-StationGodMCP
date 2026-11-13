@@ -1,4 +1,4 @@
-Take things away as a player would, with refunds and guards. Reports first; confirm: true removes and answers when the job is done. terrain is a cheat: ask the user.
+Take things away as a player would, with refunds and guards. Reports first; confirm: true removes and answers when the job is done. item and terrain are cheats: ask the user.
 A report carries report_only: true and lists every target with its current and new value.
 
 whats:
@@ -7,6 +7,7 @@ whats:
 - pipe: pipe pieces as a player remove them: by id, or the piece in each cell of waypoints or cells, never emptying or splitting a network that holds gas
 - chute: chute pieces as a player remove them: by id, or the piece in each cell of waypoints or cells
 - terrain: dig out every terrain voxel in a box at once, the ore in it dropped where it lay or discarded (cheat)
+- item: delete loose items by id (up to 256): on the ground, in a slot, or carried, nothing refunded (cheat)
 - script: delete a saved script and every version kept beside it
 
 On every call: fields, omit, list_limits, output_file, whole, repeat, as_player (help {topic: "shaping"}).

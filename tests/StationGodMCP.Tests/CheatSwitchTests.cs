@@ -53,6 +53,7 @@ public sealed class CheatSwitchTests
         new object[] { "build", "chute", "free" }, new object[] { "build", "finish", "free" },
         new object[] { "move", "item", "force" }, new object[] { "move", "gas", null! },
         new object[] { "move", "player", null! }, new object[] { "remove", "terrain", null! },
+        new object[] { "remove", "item", null! },
         new object[] { "server", "command", null! }, new object[] { "write", "memory", null! },
         new object[] { "write", "battery", null! }, new object[] { "write", "fabricator", null! },
         new object[] { "write", "genes", null! },

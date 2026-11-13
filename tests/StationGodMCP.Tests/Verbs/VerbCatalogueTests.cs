@@ -388,6 +388,7 @@ public sealed class VerbCatalogueTests
               "undo": "plan",
               "write.memory": "instant", "write.battery": "instant", "write.fabricator": "instant", "write.genes": "bounded",
               "remove.terrain": "world", "write.health": "instant", "build.terrain": "world", "build.item": "instant",
+              "remove.item": "instant",
               "write.lattice": "bounded"
             }
             """)!.AsObject();
@@ -435,7 +436,7 @@ public sealed class VerbCatalogueTests
 
         Assert.True(problems.Count == 0, string.Join("\n", problems));
         Assert.True(expected.Count == 0, "no x-cost-report for: " + string.Join(", ", expected.Select(pair => pair.Key)));
-        Assert.Equal(31, confirmRoute);
+        Assert.Equal(32, confirmRoute);
     }
 
     /// <summary>
@@ -466,7 +467,7 @@ public sealed class VerbCatalogueTests
             Assert.Equal(acting, spec.CostFor(JObject.Parse("""{"confirm": true}""")).Class);
         }
 
-        Assert.Equal(31, confirmRoute);
+        Assert.Equal(32, confirmRoute);
     }
 
     // The cost class a catalogue word names.

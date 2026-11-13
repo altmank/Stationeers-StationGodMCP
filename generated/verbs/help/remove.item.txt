@@ -1,0 +1,12 @@
+Delete loose items by id (up to 256): on the ground, in a slot, or carried, nothing refunded.
+Reports first; confirm: true does it.
+Cheat.
+Options:
+- id (string or array, required): The items: ids, a list, or a ref.
+- allow (list of contents | carried): contents: an item holding items is deleted with them; carried: an item a player carries (hands, inventory, suit) may go.
+- include (list of notes): Parts to add to the reply.
+- confirm (boolean, default false): true acts; false only reports, whatever the call names (typed ids included). Left out, the write rule decides: typed ids act at once where the verb acts on them; a ref, network or spread reports.
+A cheat (cheats_off outside creative unless the user turned cheats on): no player deletes an item outright, and nothing is refunded. Reports until confirm: each item that would go [id, name, where: ground, in <holder> slot N, carried by <player>], and each refused id as a problem. A structure, a player or an entity is refused (remove structure takes structures down); a carried item needs allow carried, an item holding items needs allow contents (those go too and are listed). A refused id never stops the others. Cannot be undone: build item makes new ones.
+Any what that takes an id takes a list: one row per id, {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the one-id reply; a bad id is a row with error.
+Reply: () results [{index, ok, reference_id, name, where, contents, ok, reference_id, error}], count, success_count, error_count | (ItemReport) items, ids, notes, problems [{code, message, index, reference_id}]
+Example: remove {what: "item", id: ["5200100", "5200101"], confirm: true}
