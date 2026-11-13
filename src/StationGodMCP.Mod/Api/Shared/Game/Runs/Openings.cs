@@ -105,9 +105,8 @@ internal static class LayoutSettings
     {
         _doorBand = configuration.Bind("Layout", "DoorKeepOutBand", Pure.DoorBand.DefaultMetres,
             new ConfigDescription(
-                "Metres either side of a door's face plane that the route planners keep free and the place tools " +
-                "flag (in_door_keepout), inside the door's own rectangle. 0 to 2 in 0.5 steps; 0 keeps only the " +
-                "face plane (jambs, top edge, threshold). Applies to the next request.",
+                "Metres on each side of a door kept clear when the agent plans cables, pipes and chutes. 0 to 2 in 0.5 " +
+                "steps; 0 keeps only the doorway itself. Applies to the next request.",
                 new AcceptableValueRange<double>(0.0, Pure.DoorBand.MaximumMetres)));
         if (Pure.DoorBand.FromMetres(_doorBand.Value, out string? error) == null)
         {
