@@ -127,7 +127,7 @@ def test_script_untargeted_write_fails():
 def whole():
     template, live = rows()
     entry = {"prefab": "x", "template": template, "live": live, "general_slots": 1}
-    return {"slots": {"suit": entry, "backpack": entry, "tool_belt": entry}, "no_slots": {"prefab_name": "ItemIronIngot"},
+    return {"slots": {"suit": entry, "hard_backpack": entry, "tool_belt": entry}, "no_slots": {"prefab_name": "ItemIronIngot"},
             "remove": passing_remove()}
 
 
@@ -137,8 +137,8 @@ def test_whole_run_passes():
 
 def test_missing_slots_group_fails():
     evidence = whole()
-    del evidence["slots"]["backpack"]
-    assert c.verdict(evidence)[0] == ["backpack: no slots evidence"]
+    del evidence["slots"]["hard_backpack"]
+    assert c.verdict(evidence)[0] == ["hard_backpack: no slots evidence"]
 
 
 def test_ingot_with_slots_fails():
@@ -156,16 +156,3 @@ def test_a_one_id_answer_in_results_form_reads_its_error():
     reply = {"results": [{"index": 0, "ok": False, "error": {"code": "thing_not_found", "message": "No thing"}}]}
     assert c.gone(reply) and c.code_of(reply) == "thing_not_found"
     assert not c.gone({"results": [{"index": 0, "ok": True, "reference_id": "5"}]})
-
-
-def test_pick_backpack_prefers_a_plain_pack_with_slots():
-    listing = {"prefabs": [{"prefab_name": "ItemHardBackpack", "slots": [{}]}, {"prefab_name": "ItemMiningBackPack", "slots": [{}]},
-                           {"prefab_name": "ItemPackNoSlots"}]}
-    assert c.pick_backpack(listing) == "ItemMiningBackPack"
-    assert c.pick_backpack({"prefabs": [{"prefab_name": "ItemHardBackpack", "slots": [{}]}]}) == "ItemHardBackpack"
-    assert c.pick_backpack({"error": {"code": "invalid_prefab"}}) is None
-
-
-def test_pick_backpack_skips_a_machine_that_matches_the_pattern():
-    listing = {"prefabs": [{"prefab_name": "AppliancePackagingMachine", "slots": [{}]}]}
-    assert c.pick_backpack(listing) is None

@@ -18,12 +18,12 @@ import os
 SLOT_GROUPS = {
     "suit": ("ItemEvaSuit",),
     "hard_suit": ("ItemHardSuit",),
-    "backpack": (),  # found by pick_backpack from a *Pack* list: the game's plain pack has no fixed name we know
     "hard_backpack": ("ItemHardBackpack", "ItemHardMiningBackPack"),
     "tool_belt": ("ItemToolBelt",),
     "uniform": ("UniformOrangeJumpSuit", "UniformCommander", "UniformScientist", "UniformMarine"),
 }
 NO_SLOTS = "ItemIronIngot"
+PACK = "ItemHardBackpack"  # the pack the remove cases fill: 20 general slots; a plain ItemBackpack is not a loaded prefab
 # A live slot name containing one of these takes only that kind of thing, so it must not read general.
 SPECIAL_WORDS = ("water", "food", "waste", "cable", "ammo", "ammunition", "tank", "battery", "canister", "filter",
                  "helmet", "suit", "jetpack", "tool", "plant", "seed", "ore", "cartridge", "chip", "eject")
@@ -111,15 +111,6 @@ def code_of(reply):
 
 def message_of(reply):
     return str(error_of(reply).get("message") or "")
-
-
-def pick_backpack(listing):
-    """The name of a plain (not hard) pack with slots in an inspect prefab list reply, else any pack with slots, else None."""
-    packs = [row for row in (listing or {}).get("prefabs") or []
-             if row.get("slots") and str(row.get("prefab_name")).startswith("Item")]
-    plain = [row for row in packs if "hard" not in str(row.get("prefab_name")).lower()]
-    chosen = (plain or packs or [None])[0]
-    return chosen["prefab_name"] if chosen else None
 
 
 def gone(reply):
@@ -213,7 +204,7 @@ def verdict(evidence):
     """(failures, notes) of a whole run's items.json content."""
     failures, notes = [], []
     slots = evidence.get("slots") or {}
-    for group in ("suit", "backpack", "tool_belt"):
+    for group in ("suit", "hard_backpack", "tool_belt"):
         if group not in slots:
             failures.append(f"{group}: no slots evidence")
     for group, row in slots.items():
@@ -261,11 +252,8 @@ def detailed(sgcall, thing_id):
 
 def slots_part(sgcall, log, at):
     slots, notes = {}, []
-    listing = _call(sgcall, "inspect", "prefab", prefab="*Pack*")
-    log["pack_listing"] = listing
-    log["backpack_prefab"] = pick_backpack(listing)
+    log["backpack_prefab"] = PACK
     for group, names in SLOT_GROUPS.items():
-        names = (log["backpack_prefab"],) if group == "backpack" and log["backpack_prefab"] else names
         for name in names:
             reply = _call(sgcall, "inspect", "prefab", prefab=name)
             if code_of(reply):
