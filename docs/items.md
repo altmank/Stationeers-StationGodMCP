@@ -125,6 +125,23 @@ Put 50 iron ingots into a locker's first free slot, `move item`:
 { "id": "160455", "quantity": 50, "to": "148870", "slot": "auto" }
 ```
 
+## Deleting items
+
+`remove item` deletes items by id, in one call or from a script (`sg.remove('item', id=[...])`), as the game deletes a
+made item (`OnServer.Destroy`), so clients see them go. It is a cheat (ask first), nothing is refunded, and it cannot
+be undone: `build item` makes new ones.
+
+- `id` is one id, a list or a ref, at most 256. Without `confirm` the call reports each item that would go
+  (`[id, name, where]`, where being `ground`, `in <holder> slot N` or `carried by <player>`) and deletes nothing.
+- Each id is judged alone and a refused id never stops the others: a structure, a player or an entity is refused
+  (`remove structure` takes structures down); an item a player carries (hands, inventory, suit) needs
+  `allow: ["carried"]`; an item holding items needs `allow: ["contents"]`, and then those go too and are listed.
+- From a script the ids are checked against what the run has seen, as for any targeted write.
+
+```json
+{ "id": ["5200100", "5200101"], "confirm": true }
+```
+
 ## Making a recipe on a fabricator
 
 `write fabricator` makes one recipe's item on a fabricator of the printer family (Autolathe, Tool Manufactory, Electronics Printer, Pipe Bender and their siblings; `find device` lists them) in a single call. It is a cheat (`cheats_off` outside creative unless cheats are on at the console) and works only on the host.

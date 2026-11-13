@@ -14,6 +14,7 @@ Outside a creative world every cheat is refused as cheats_off unless the user tu
 - build item: make items out of nothing (chips, boards, kits, ingots): by prefab and quantity, into a holder's slots or on the ground at a point
 - build finish with free: true: build a placed structure on to a later build state, paying each state's materials
 - remove terrain: dig out every terrain voxel in a box at once, the ore in it dropped where it lay or discarded
+- remove item: delete loose items by id (up to 256): on the ground, in a slot, or carried, nothing refunded
 - move item with force: true: items and kits (a kit such as Kit (Battery Large) is an item; a built structure is not) into a slot or the player's hands with the game's own moves; into or out of a vault or silo store
 - move gas: move gas and liquid between atmospheres or rooms, delete it, or make it out of nothing, with no pipe or pump
 - move player: move a player anywhere at once: to a point, beside a thing or another player
