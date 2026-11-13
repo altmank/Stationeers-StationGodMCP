@@ -156,3 +156,27 @@ def test_a_one_id_answer_in_results_form_reads_its_error():
     reply = {"results": [{"index": 0, "ok": False, "error": {"code": "thing_not_found", "message": "No thing"}}]}
     assert c.gone(reply) and c.code_of(reply) == "thing_not_found"
     assert not c.gone({"results": [{"index": 0, "ok": True, "reference_id": "5"}]})
+
+
+def test_done_file_names_the_failing_cases(tmp_path, monkeypatch):
+    import shots
+    monkeypatch.setattr(shots.sgcall, "connect", lambda pipe, hub: None)
+    monkeypatch.setattr(shots, "wait_player", lambda: {})
+    monkeypatch.setattr(shots.sgcall, "wait_ready", lambda: None)
+    monkeypatch.setattr(shots.item_check, "run", lambda sgcall, done, log, say: (["remove script: refused (x)"], []))
+    assert shots.finish_items(str(tmp_path), {}, "pipe", "hub") == 1
+    assert (tmp_path / "done-fail").read_text(encoding="utf-8") == "remove script: refused (x)"
+    assert not (tmp_path / "done-ok").exists()
+
+
+def test_done_file_carries_an_exception_and_items_json_its_failure(tmp_path, monkeypatch):
+    import json
+    import shots
+    monkeypatch.setattr(shots.sgcall, "connect", lambda pipe, hub: None)
+
+    def boom():
+        raise SystemExit("no player")
+    monkeypatch.setattr(shots, "wait_player", boom)
+    assert shots.finish_items(str(tmp_path), {}, "pipe", "hub") == 1
+    assert "no player" in (tmp_path / "done-fail").read_text(encoding="utf-8")
+    assert json.loads((tmp_path / "items.json").read_text(encoding="utf-8"))["failures"]

@@ -211,10 +211,12 @@ def frame_reads(log, done, after_load_s=60.0, gap_s=30.0):
     say("frames: " + json.dumps(reads))
 
 
-def finish_items(done, log):
-    """The item check alone: wait for the player and the clock, run it, write the done file; the exit code."""
+def finish_items(done, log, pipe, hub):
+    """The item check alone: connect, wait for the player and the clock, run it, write the done file (the failing
+    cases and their messages are its text, and items.json's `failures`); the exit code."""
     ok, reason = False, ""
     try:
+        sgcall.connect(pipe, hub)
         wait_player()
         sgcall.wait_ready()
         failures, notes = item_check.run(sgcall, done, log, say)
@@ -222,6 +224,7 @@ def finish_items(done, log):
         reason = "; ".join(failures) if failures else "item check passed: " + "; ".join(notes)
     except BaseException as error:  # noqa: BLE001 - any end other than success is a done-fail for the watcher
         reason = f"{type(error).__name__}: {error}"
+        log["failures"] = [reason]
     finally:
         with open(os.path.join(done, "items.json"), "w", encoding="utf-8") as f:
             json.dump(log, f, indent=1, default=str)
@@ -248,11 +251,11 @@ def main(argv=None):
         ap.error("--keyguard needs --game-log")
     os.makedirs(a.done, exist_ok=True)
     log = {}
+    if a.item_checks:
+        return finish_items(a.done, log, a.pipe, a.hub)
     ok, reason = False, ""
     try:
         sgcall.connect(a.pipe, a.hub)
-        if a.item_checks:
-            return finish_items(a.done, log)
         timings = run(log)
         if a.frames:
             frame_reads(log, a.done)
