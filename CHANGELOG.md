@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 2.20.1
+
 - Plainer wording in the ghost menu, the ghost card, the `stationgod` console command and the mod settings.
 
 ## 2.20.0
