@@ -59,6 +59,13 @@ internal sealed class RangeView
     public float Stop { get; }
 }
 
+/// <summary>One slot of a prefab's template: its place in the list, names, class, and whether it takes any item.</summary>
+internal sealed record PrefabSlotView(int Index, string? DisplayName, string? StringKey, EnumValueView SlotClass,
+    bool General);
+
+/// <summary>A prefab's slots as the template lists them; the rows never change after it is built.</summary>
+internal sealed record PrefabSlotsView(IReadOnlyList<PrefabSlotView> Slots, int GeneralSlots);
+
 /// <summary>
 /// inspect prefab of a prefab that is no buildable structure (an item, a kit), and each row of a list: what it is, its
 /// game data and its recipes when asked.
@@ -66,8 +73,10 @@ internal sealed class RangeView
 internal sealed class PrefabFactsView
 {
     internal PrefabFactsView(string? prefabName, int prefabHash, string? displayName, string runtimeType,
-        bool buildable, JObject? data, List<RecipeView>? recipes)
+        bool buildable, JObject? data, List<RecipeView>? recipes, PrefabSlotsView? slots = null)
     {
+        Slots = slots?.Slots;
+        GeneralSlots = slots?.GeneralSlots;
         PrefabName = prefabName;
         PrefabHash = prefabHash;
         DisplayName = displayName;
@@ -93,6 +102,14 @@ internal sealed class PrefabFactsView
 
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public List<RecipeView>? Recipes { get; }
+
+    /// <summary>The template's slots, one row each; left out for a prefab with none.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public IReadOnlyList<PrefabSlotView>? Slots { get; }
+
+    /// <summary>How many of the slots take any item; left out with Slots.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public int? GeneralSlots { get; }
 }
 
 /// <summary>inspect prefab of a list or a pattern: a row per prefab it names, by name, at most MaximumRows.</summary>

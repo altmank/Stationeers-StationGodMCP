@@ -163,6 +163,8 @@ def run_one(transport, run):
     transport.send(analysis.message())
     if analysis.code is None:
         return _run_end("failed", None, "", analysis.syntax_error)
+    if analysis.refusal is not None:
+        return _run_end("failed", None, "", analysis.refusal)
 
     import sg  # the package itself, as the code sees it
     namespace = {"__name__": "__script__", "__builtins__": builtins, "sg": sg, "print": run_print}

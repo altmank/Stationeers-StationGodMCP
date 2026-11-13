@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **inspect prefab lists a prefab's slots.** `slots` (index, name, key, class, and whether it takes any item) and `general_slots` come from the prefab itself, so counting a suit's or backpack's slots no longer needs spawning one; `fields: ["slots"]` selects them.
+- **A script that passes an option scripts don't take is refused before it runs.** `sg.inspect('contents', ..., whole=True)` used to fail only at that call, after earlier builds in the script had already run.
 - **Build: a checkout whose line endings differ from `.gitattributes` is refused** (`tools\working-eol.ps1`, checked before the tests). A CRLF working copy of an `eol=lf` file built a different dll than a fresh checkout of the same commit.
 - **Build: a deploy given a board item passes it to the game lock.** `build.ps1 -Deploy -LockItem <id>` failed with `A positional parameter cannot be found that accepts argument '-Item'`.
 
