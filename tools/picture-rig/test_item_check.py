@@ -145,3 +145,8 @@ def test_ingot_with_slots_fails():
     evidence = whole()
     evidence["no_slots"] = TEMPLATE_REPLY
     assert c.verdict(evidence)[0]
+
+
+def test_placed_ids_are_the_reply_strings():
+    assert c.placed_ids({"placed": ["12", "13"], "items": [{"reference_id": "12"}]}) == ["12", "13"]
+    assert c.placed_ids({"error": {"code": "no_room"}}) == []

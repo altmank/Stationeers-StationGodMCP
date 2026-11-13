@@ -216,8 +216,8 @@ def _call(sgcall, verb, what=None, **options):
 
 
 def placed_ids(reply):
-    """The reference ids of the items a build item reply placed."""
-    return [str(row["reference_id"]) for row in (reply or {}).get("placed") or [] if row.get("reference_id") is not None]
+    """The ids of the items a build item reply placed (`placed` is a list of id strings)."""
+    return [str(item) for item in (reply or {}).get("placed") or []]
 
 
 def build(sgcall, prefab, **where):
@@ -307,7 +307,7 @@ def remove_part(sgcall, log, at, say):
     case["after"] = {thing: _call(sgcall, "inspect", "contents", id=thing) for thing in [pack] + held}
     say(f"remove contents: refused {code_of(case['refused'])}, allowed {case['allowed']}")
     # e. a structure id
-    structure = _call(sgcall, "find", "thing", category="Structure", limit=1, fields=["reference_id"])
+    structure = _call(sgcall, "find", "thing", category="structure", limit=1, fields=["reference_id"])
     things = structure.get("things") if isinstance(structure, dict) else None
     if things:
         remove["structure"] = {"id": str(things[0]["reference_id"]),
