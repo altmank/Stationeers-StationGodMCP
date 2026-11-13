@@ -58,7 +58,7 @@ internal static class PrefabDescriptions
 
             return WorldModel.Prefabs.Build.Find(reference, out _) is { } buildable
                 ? Describe(reference, withCells).With(withData ? PrefabData.Of(buildable) : null,
-                    withRecipes ? PrefabRecipes.Of(buildable) : null)
+                    withRecipes ? PrefabRecipes.Of(buildable) : null, SlotsOf(buildable))
                 : Facts(thing, withData, withRecipes);
         }
 
@@ -89,7 +89,33 @@ internal static class PrefabDescriptions
         new PrefabFactsView(prefab.PrefabName, prefab.PrefabHash, ThingName.Displayed(prefab.DisplayName,
                 prefab.PrefabName), prefab.GetType().Name,
             prefab is Structure && WorldModel.Prefabs.Build.Find(new PrefabRef.Hashed(prefab.PrefabHash), out _) != null,
-            withData ? PrefabData.Of(prefab) : null, withRecipes ? PrefabRecipes.Of(prefab) : null);
+            withData ? PrefabData.Of(prefab) : null, withRecipes ? PrefabRecipes.Of(prefab) : null,
+            SlotsOf(prefab));
+
+    // The template's own slot list (Thing.Slots on the prefab), read without spawning. A slot whose SlotIndex is not
+    // set on the template takes its list position.
+    private static PrefabSlotsView? SlotsOf(Thing prefab)
+    {
+        if (prefab.Slots == null || prefab.Slots.Count == 0)
+        {
+            return null;
+        }
+
+        List<PrefabSlotView> rows = new List<PrefabSlotView>(prefab.Slots.Count);
+        List<PrefabSlotFacts> facts = new List<PrefabSlotFacts>(prefab.Slots.Count);
+        for (int position = 0; position < prefab.Slots.Count; position++)
+        {
+            Slot slot = prefab.Slots[position];
+            PrefabSlotFacts slotFacts = new PrefabSlotFacts(slot.Type == Slot.Class.None,
+                slot.SpecificTypePrefabHashes ?? System.Array.Empty<int>());
+            facts.Add(slotFacts);
+            rows.Add(new PrefabSlotView(position, ThingName.Displayed(slot.DisplayName, null), slot.StringKey,
+                new EnumValueView((int)slot.Type, EnumNames<Slot.Class>.Of(slot.Type)),
+                PrefabSlotRule.IsGeneral(slotFacts)));
+        }
+
+        return new PrefabSlotsView(rows, PrefabSlotRule.GeneralCount(facts));
+    }
 
     /// <summary>The prefab named, every small cell's offset with withCells; invalid_prefab when none is loaded.</summary>
     internal static DescribePrefabView Describe(PrefabRef reference, bool withCells)

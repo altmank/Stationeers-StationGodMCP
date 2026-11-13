@@ -19,7 +19,7 @@ import ast
 import importlib
 import math
 
-from ._catalogue import WRITE_WHATS
+from ._catalogue import SCRIPT_REFUSED_OPTIONS, VERBS, WRITE_WHATS
 from ._session import SCRIPT_FILENAME
 
 RUN_FUNCTION = "__sg_run__"
@@ -35,6 +35,7 @@ class Analysis:
         self.holds = False
         self.syntax_error = None
         self.code = None
+        self.refusal = None
 
     def message(self):
         return {"type": "run_analysis", "literals": self.literals, "while_lines": self.while_lines,
@@ -50,6 +51,7 @@ def analyse(source):
         analysis.while_lines = while_lines(tree)
         analysis.writes, analysis.holds = writes_and_holds(tree)
         analysis.code = compile(as_function(tree), SCRIPT_FILENAME, "exec")
+        analysis.refusal = refused_option(tree, source)
     except SyntaxError as error:
         analysis.syntax_error = f"line {error.lineno or 1}: SyntaxError: {error.msg}"
         analysis.code = None
@@ -57,6 +59,51 @@ def analyse(source):
         analysis.syntax_error = f"line 1: {type(error).__name__}: {error}"
         analysis.code = None
     return analysis
+
+
+def refused_option(tree, source):
+    """The text a run is refused with when a call written as sg.<verb>(...) passes an option a script does not take as
+    a literal keyword (whole=True, repeat=3): the refusal the hub's per-call check gives, said before any call runs
+    and naming the line. None when every literal keyword is one a script takes. A **options spread is left to the
+    per-call check."""
+    module_names, function_names = _sg_names(tree)
+    source_lines = source.splitlines()
+    found = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        verb = _verb_called(node.func, module_names, function_names)
+        if verb is None:
+            continue
+        for keyword in node.keywords:
+            if keyword.arg in SCRIPT_REFUSED_OPTIONS:
+                found.append((node.lineno, node.col_offset, verb, node, keyword.arg))
+    if not found:
+        return None
+    line, _, verb, call, option = min(found, key=lambda entry: entry[:2])
+    what = _constant_what(call)
+    label = f"{verb} {what}" if what else verb
+    text = source_lines[line - 1].strip() if 0 < line <= len(source_lines) else ""
+    return (f"line {line}: {text}\nError: invalid_argument: {label}: {option}: not taken in a script. "
+            "Nothing ran: the script was refused before its first call.")
+
+
+def _verb_called(function, module_names, function_names):
+    """The verb of sg.<verb> (or a name from `from sg import <verb>`), None for anything else."""
+    if isinstance(function, ast.Attribute) and _is_sg_module(function.value, module_names):
+        name = function.attr
+    elif isinstance(function, ast.Name) and function.id in function_names:
+        name = function_names[function.id]
+    else:
+        return None
+    return name if name in VERBS and name != "help" else None
+
+
+def _constant_what(call):
+    """The call's what when it is a string constant (first argument, or what=), else None."""
+    what = call.args[0] if call.args else next((keyword.value for keyword in call.keywords
+                                                if keyword.arg == "what"), None)
+    return what.value if isinstance(what, ast.Constant) and isinstance(what.value, str) else None
 
 
 def literals(tree):
