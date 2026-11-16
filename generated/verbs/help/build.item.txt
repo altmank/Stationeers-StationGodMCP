@@ -2,13 +2,14 @@ Make items out of nothing (chips, boards, kits, ingots): by prefab and quantity,
 Reports first; confirm: true does it.
 Cheat.
 Options:
-- prefab (string or integer, required): The item: a whole prefab name or hash (ItemIntegratedCircuit10, ItemKitConsole).
+- prefab (string or integer): The item: a whole prefab name or hash (ItemIntegratedCircuit10, ItemKitConsole); or give items.
 - quantity (number, default 1): How many: a count of items, or of units for a stacking item (ore, ingot grams, coils), made in full stacks; at most 64 stacks.
 - to (string): The holder that gets them: a container, device, suit or "player"; or give at.
-- slot (integer): A slot index of to; left out, matching stacks are topped up, then empty slots are filled.
+- slot (integer or string, default auto): A slot index of to, or a slot key (string_key of inspect contents; to a player, left_hand or right_hand); "auto": matching stacks topped up, then empty slots filled.
+- items (list): Instead of prefab, quantity and slot: up to 64 lines {prefab, quantity = 1, slot}, planned together first; one that does not fit refuses no_room with its index, and nothing is made.
 - at (list): [x, y, z] in metres: the items appear there, loose; or give to.
 - confirm (boolean, default false): true acts; false only reports, whatever the call names (typed ids included). Left out, the write rule decides: typed ids act at once where the verb acts on them; a ref, network or spread reports.
-A cheat (cheats_off outside creative unless the user turned cheats on): no player makes items from nothing. Works with no player in the world. Into a holder, what its slots cannot take is refused (no_room) and nothing is made. The report lists each stack it would make; placed names the new items' ids.
+A cheat (cheats_off outside creative unless the user turned cheats on): no player makes items from nothing. Works with no player in the world. Into a holder, what its slots cannot take is refused (no_room) and nothing is made. The report lists each stack it would make; placed names the new items' ids. With items, prefab_name, display_name and quantity are null; each items row names its line.
 placed: on a job reply the new ids (a run's log.placed, a structure job's result.placed; a brief poll counts them in log.placed_count), on a run report a count of the cells it would build.
-Reply: placed, prefab_name, display_name, quantity, to {reference_id, prefab_name, display_name}, at {x, y, z}, items [{where, slot, quantity, reference_id}]
+Reply: placed, prefab_name, display_name, quantity, to {reference_id, prefab_name, display_name}, at {x, y, z}, items [{line, where, slot, quantity, reference_id}]
 Example: build {what: "item", prefab: "ItemIntegratedCircuit10", quantity: 2, to: "5200100", confirm: true}

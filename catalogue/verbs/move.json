@@ -26,7 +26,7 @@
         },
         "slot": {
           "schema": {"type": ["integer", "string"]},
-          "description": "A slot index of to, or \"auto\" (the default: matching stacks topped up to their most, the rest into an empty slot; to a player, the slots of what it wears (belt, backpack), then a free hand). Given, the move is a slot move even into a vault's or silo's own slots; force needs an index.",
+          "description": "A slot index of to, a slot key (the string_key inspect contents shows; matched exactly, on to's own slots), or \"auto\" (the default: matching stacks topped up to their most, the rest into an empty slot; to a player, the slots of what it wears (belt, backpack), then a free hand). To a player, left_hand and right_hand are its hand slots. A key that no slot or several slots carry is refused (slot_not_found, ambiguous_slot); an occupied hand is slot_occupied, never a silent no-op. Given, the move is a slot move even into a vault's or silo's own slots; force needs an index.",
           "default": "auto",
           "x-script": "same"
         },
@@ -119,7 +119,7 @@
               "reference_id": "str",
               "display_name": "str",
               "from": "{id: str, slot: int} | None",
-              "to": "{id: str, slot: int}",
+              "to": "{id: str, slot: int, slot_key: str | None}",
               "quantity_moved": "int",
               "merged_into": "str | None",
               "destination_reference_id": "str",

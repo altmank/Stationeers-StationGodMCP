@@ -53,7 +53,15 @@ internal static class PlayerVitals
         VitalsWarningsView warnings = new VitalsWarningsView(human.WarningNutrition, human.CriticalNutrition,
             human.WarningHydration, human.CriticalHydration);
         return new PlayerVitalsView(GameLookup.ViewOf(human), stores, state, Drains(human, state, rates), rates,
-            warnings, GearOf(human));
+            warnings, GearOf(human), WornOf(human));
+    }
+
+    private static WornView WornOf(Human human)
+    {
+        ThingView? In(string slotName) =>
+            ScopedTarget.WornIn(human, slotName) is { } thing ? GameLookup.ViewOf(thing) : null;
+        return new WornView(In("suit"), In("helmet"), In("backpack"), In("toolbelt"), In("uniform"), In("glasses"),
+            In("left_hand"), In("right_hand"));
     }
 
     // Worn gear. The suit is the one SuitWorn finds, so gear.suit agrees with suit_worn, and the speed comes from that

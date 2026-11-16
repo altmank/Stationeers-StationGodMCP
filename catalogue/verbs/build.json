@@ -5,8 +5,8 @@
   "read_only": false,
   "tool": {
     "options": {
-      "from_plan": "A plan route or spot ref ('r9'): build its build_arguments; options given win, what may be left out.",
-      "grade": "cable: default heavy; pipe: required; chute: chute."
+      "from_plan": "A plan route or spot ref ('r9'): its build_arguments; given options win.",
+      "grade": "cable: default heavy; pipe: required."
     }
   },
   "whats": {
@@ -843,8 +843,8 @@
         "prefab": {
           "use": "prefab",
           "schema": {"type": ["string", "integer"]},
-          "description": "The item: a whole prefab name or hash (ItemIntegratedCircuit10, ItemKitConsole).",
-          "required": true
+          "description": "The item: a whole prefab name or hash (ItemIntegratedCircuit10, ItemKitConsole); or give items.",
+          "x-script": "same"
         },
         "quantity": {
           "schema": {"type": "number", "minimum": 0},
@@ -858,8 +858,14 @@
           "x-script": "same"
         },
         "slot": {
-          "schema": {"type": "integer", "minimum": 0},
-          "description": "A slot index of to; left out, matching stacks are topped up, then empty slots are filled.",
+          "schema": {"type": ["integer", "string"]},
+          "description": "A slot index of to, or a slot key (string_key of inspect contents; to a player, left_hand or right_hand); \"auto\": matching stacks topped up, then empty slots filled.",
+          "default": "auto",
+          "x-script": "same"
+        },
+        "items": {
+          "schema": {"type": "array", "items": {"type": "object"}, "maxItems": 64},
+          "description": "Instead of prefab, quantity and slot: up to 64 lines {prefab, quantity = 1, slot}, planned together first; one that does not fit refuses no_room with its index, and nothing is made.",
           "x-script": "same"
         },
         "at": {
@@ -870,7 +876,7 @@
         "confirm": {"use": "confirm"}
       },
       "text": [
-        "A cheat (cheats_off outside creative unless the user turned cheats on): no player makes items from nothing. Works with no player in the world. Into a holder, what its slots cannot take is refused (no_room) and nothing is made. The report lists each stack it would make; placed names the new items' ids."
+        "A cheat (cheats_off outside creative unless the user turned cheats on): no player makes items from nothing. Works with no player in the world. Into a holder, what its slots cannot take is refused (no_room) and nothing is made. The report lists each stack it would make; placed names the new items' ids. With items, prefab_name, display_name and quantity are null; each items row names its line."
       ],
       "example": {"prefab": "ItemIntegratedCircuit10", "quantity": 2, "to": "5200100", "confirm": true},
       "x-cost": {"class": "instant", "growth": "by-id"},
@@ -881,12 +887,12 @@
           {
             "keys": {
               "placed": "list[str]",
-              "prefab_name": "str",
+              "prefab_name": "str | None",
               "display_name": "str | None",
-              "quantity": "float",
+              "quantity": "float | None",
               "to": "Thing | None",
               "at": "Vec3 | None",
-              "items": "list[{where: str, slot: {id: str, slot: int} | None, quantity: float, reference_id: str | None}]"
+              "items": "list[{line: int, where: str, slot: {id: str, slot: int} | None, quantity: float, reference_id: str | None}]"
             }
           }
         ],
@@ -899,7 +905,7 @@
         "x-undo-mark": "[cannot undo: items made]",
         "x-target": [{"path": "to", "role": "acts-on"}]
       },
-      "brief": "make items by prefab (a cheat)"
+      "brief": "make items (a cheat)"
     },
     "finish": {
       "summary": "build a placed structure on to a later build state, paying each state's materials",

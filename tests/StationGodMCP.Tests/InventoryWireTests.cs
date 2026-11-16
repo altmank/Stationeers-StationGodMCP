@@ -145,7 +145,7 @@ public sealed class InventoryWireTests
             {
                 new
                 {
-                    index = 0, display_name = "Slot", slot_class = "None", empty = false,
+                    index = 0, display_name = "Slot", string_key = (string?)null, slot_class = "None", empty = false,
                     occupant = new
                     {
                         reference_id = "41", prefab_name = "ItemBackpack", display_name = "Backpack", quantity = 1.0,
@@ -154,7 +154,7 @@ public sealed class InventoryWireTests
                 },
                 new
                 {
-                    index = 1, display_name = "Slot", slot_class = "None", empty = true, occupant = (object?)null
+                    index = 1, display_name = "Slot", string_key = (string?)null, slot_class = "None", empty = true, occupant = (object?)null
                 }
             }
         };

@@ -8,7 +8,7 @@ namespace StationGodMCP.Api.Views;
 internal sealed class PlayerVitalsView
 {
     internal PlayerVitalsView(ThingView player, BodyStores stores, BodyState state, VitalsRates rates,
-        DifficultyView difficulty, VitalsWarningsView warnings, PlayerGearView gear)
+        DifficultyView difficulty, VitalsWarningsView warnings, PlayerGearView gear, WornView? worn = null)
     {
         ReferenceId = player.ReferenceId;
         DisplayName = player.DisplayName;
@@ -26,6 +26,7 @@ internal sealed class PlayerVitalsView
         Thirst = rates.Thirst;
         Warnings = warnings;
         Gear = gear;
+        Worn = worn ?? WornView.Nothing;
         GameTickS = rates.GameTickS;
     }
 
@@ -77,7 +78,17 @@ internal sealed class PlayerVitalsView
 
     public PlayerGearView Gear { get; }
 
+    /// <summary>What the player wears and holds, by slot: the ids to give inspect contents or a slot move.</summary>
+    public WornView Worn { get; }
+
     public float GameTickS { get; }
+}
+
+/// <summary>What a player has in each worn slot (ScopedTarget.WornSlotsOf); null for an empty one.</summary>
+internal sealed record WornView(ThingView? Suit, ThingView? Helmet, ThingView? Backpack, ThingView? Toolbelt,
+    ThingView? Uniform, ThingView? Glasses, ThingView? LeftHand, ThingView? RightHand)
+{
+    internal static WornView Nothing { get; } = new(null, null, null, null, null, null, null, null);
 }
 
 /// <summary>What the body holds.</summary>

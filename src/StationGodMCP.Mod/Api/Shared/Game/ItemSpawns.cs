@@ -23,57 +23,133 @@ internal static class ItemSpawns
 {
     private const string PlayerWord = "player";
 
-    /// <summary>The checked spawn; every refusal is thrown here, before anything is made.</summary>
+    /// <summary>
+    /// The checked spawn; every refusal is thrown here, before anything is made. An items list is planned as one: each
+    /// line takes the slots the lines before it left, and a line that does not fit refuses the whole call.
+    /// </summary>
     internal static ItemSpawnPlan Check(ItemSpawnOrder order, string label)
     {
         HostOnly.Require();
 
-        Item prefab = ItemPrefab(order.Prefab);
-        double full = Delivery.FullStack(prefab);
-        if (ItemSpawnRule.QuantityRefusal(order.Quantity, full, !(prefab is Consumable), prefab.PrefabName) is { } bad)
+        List<Item> prefabs = new List<Item>(order.Lines.Count);
+        List<double> fulls = new List<double>(order.Lines.Count);
+        for (int line = 0; line < order.Lines.Count; line++)
         {
-            throw ApiErrors.InvalidArgument($"{label}: {bad}");
+            ItemLine asked = order.Lines[line];
+            Item prefab = ItemPrefab(asked.Prefab, Where(order, line));
+            double full = Delivery.FullStack(prefab);
+            if (ItemSpawnRule.QuantityRefusal(asked.Quantity, full, !(prefab is Consumable), prefab.PrefabName) is { } bad)
+            {
+                throw ApiErrors.InvalidArgument($"{label}: {Where(order, line)}{bad}");
+            }
+
+            prefabs.Add(prefab);
+            fulls.Add(full);
         }
 
         if (order.At is { } at)
         {
-            return new ItemSpawnPlan(prefab, order.Quantity, null, null,
-                ItemSpawnRule.AtPoint(order.Quantity, full), new Vector3((float)at.X, (float)at.Y, (float)at.Z));
+            ItemLine only = order.Lines[0];
+            return new ItemSpawnPlan(order.FromList, null,
+                new[]
+                {
+                    new SpawnLine(prefabs[0], only.Quantity, null, ItemSpawnRule.AtPoint(only.Quantity, fulls[0]))
+                },
+                new Vector3((float)at.X, (float)at.Y, (float)at.Z));
         }
 
         Thing holder = string.Equals(order.To, PlayerWord, StringComparison.OrdinalIgnoreCase)
             ? PlayerOrigin.RequireHuman()
             : TargetIds.Thing(order.To!, label);
-        Delivery delivery = Delivery.Survey(holder,
-            order.Slot is { } index ? new SlotChoice.Exact(index) : new SlotChoice.Auto(), prefab);
-        StackPlan plan = StackPlacement.Plan(order.Quantity, full, delivery.Rooms, delivery.Empty.Count, false);
-        if (!plan.Fits)
+        List<Delivery> deliveries = new List<Delivery>(order.Lines.Count);
+        Dictionary<Slot, int> slotIds = new Dictionary<Slot, int>();
+        List<LineSurvey> surveys = new List<LineSurvey>(order.Lines.Count);
+        for (int line = 0; line < order.Lines.Count; line++)
         {
-            throw ApiErrors.Refused("no_room",
-                $"{Names.Of(holder)} takes {VaultAmount.Of(plan.Placed)} of {order.Quantity} {Names.Of(prefab)}; free a " +
-                "slot, name another holder, or give at. Nothing was made.");
+            Delivery delivery;
+            try
+            {
+                delivery = Delivery.Survey(holder, SlotChoice.Of(order.Lines[line].Slot), prefabs[line]);
+            }
+            catch (ApiException refused) when (order.FromList)
+            {
+                throw ApiErrors.Refused(refused.Code, $"{Where(order, line)}{refused.Message} Nothing was made.",
+                    refused.Details);
+            }
+
+            deliveries.Add(delivery);
+            surveys.Add(new LineSurvey(IdsOf(delivery.StackSlots, slotIds), delivery.Rooms,
+                IdsOf(delivery.Empty, slotIds), order.Lines[line].Quantity, fulls[line]));
         }
 
-        return new ItemSpawnPlan(prefab, order.Quantity, holder, delivery, plan, null);
+        switch (ItemListPlanner.Plan(surveys))
+        {
+            case ItemListPlan.Fits fits:
+                List<SpawnLine> lines = new List<SpawnLine>(order.Lines.Count);
+                for (int line = 0; line < order.Lines.Count; line++)
+                {
+                    lines.Add(new SpawnLine(prefabs[line], order.Lines[line].Quantity, deliveries[line],
+                        fits.Lines[line]));
+                }
+
+                return new ItemSpawnPlan(order.FromList, holder, lines, null);
+            case ItemListPlan.NoRoom noRoom:
+                ItemLine refused = order.Lines[noRoom.Line];
+                double placed = refused.Quantity - noRoom.Unplaced;
+                throw ApiErrors.Refused("no_room",
+                    $"{Where(order, noRoom.Line)}{Names.Of(holder)} takes {VaultAmount.Of(placed)} of " +
+                    $"{refused.Quantity} {Names.Of(prefabs[noRoom.Line])}" +
+                    (noRoom.Line > 0 ? " after the lines before it" : "") +
+                    "; free a slot, name another holder, or give at. Nothing was made.");
+            default:
+                throw ApiErrors.InvalidArgument("Unknown item list plan.");
+        }
     }
 
-    /// <summary>The items made: into the holder, or loose at the point.</summary>
+    // "items[2]: " for a line of a list; nothing for the one-prefab form.
+    private static string Where(ItemSpawnOrder order, int line) => order.FromList ? $"items[{line}]: " : "";
+
+    private static List<int> IdsOf(List<Slot> slots, Dictionary<Slot, int> ids)
+    {
+        List<int> numbers = new List<int>(slots.Count);
+        foreach (Slot slot in slots)
+        {
+            if (!ids.TryGetValue(slot, out int id))
+            {
+                id = ids.Count;
+                ids[slot] = id;
+            }
+
+            numbers.Add(id);
+        }
+
+        return numbers;
+    }
+
+    /// <summary>The items made: into the holder, or loose at the point, line by line.</summary>
     internal static ItemSpawnView Make(ItemSpawnPlan plan)
     {
-        List<PlacedView> items;
-        if (plan.Delivery != null)
+        List<SpawnedView> items = new List<SpawnedView>();
+        for (int line = 0; line < plan.Lines.Count; line++)
         {
-            items = plan.Delivery.Deliver(plan.Stacks, plan.Prefab, NothingTaken.Instance, plan.Quantity);
-        }
-        else
-        {
-            items = new List<PlacedView>(plan.Stacks.Steps.Count);
-            foreach (PlacementStep step in plan.Stacks.Steps)
+            SpawnLine made = plan.Lines[line];
+            List<PlacedView> rows;
+            if (made.Delivery != null)
             {
-                Item made = OnServer.Create<Item>(plan.Prefab, plan.Point!.Value, Quaternion.identity);
-                Delivery.SetAmount(made, step.Quantity);
-                items.Add(new PlacedView(PlacedView.Ground, null, step.Quantity, new ThingId(made.ReferenceId)));
+                rows = made.Delivery.Deliver(made.Stacks, made.Prefab, NothingTaken.Instance, made.Quantity);
             }
+            else
+            {
+                rows = new List<PlacedView>(made.Stacks.Steps.Count);
+                foreach (PlacementStep step in made.Stacks.Steps)
+                {
+                    Item item = OnServer.Create<Item>(made.Prefab, plan.Point!.Value, Quaternion.identity);
+                    Delivery.SetAmount(item, step.Quantity);
+                    rows.Add(new PlacedView(PlacedView.Ground, null, step.Quantity, new ThingId(item.ReferenceId)));
+                }
+            }
+
+            Tag(items, line, made.Prefab, rows);
         }
 
         return View(plan, items);
@@ -82,36 +158,56 @@ internal static class ItemSpawns
     /// <summary>What the call would make, nothing made.</summary>
     internal static ItemSpawnView Preview(ItemSpawnPlan plan)
     {
-        List<PlacedView> items;
-        if (plan.Delivery != null)
+        List<SpawnedView> items = new List<SpawnedView>();
+        for (int line = 0; line < plan.Lines.Count; line++)
         {
-            items = plan.Delivery.Preview(plan.Stacks);
-        }
-        else
-        {
-            items = new List<PlacedView>(plan.Stacks.Steps.Count);
-            foreach (PlacementStep step in plan.Stacks.Steps)
+            SpawnLine would = plan.Lines[line];
+            List<PlacedView> rows;
+            if (would.Delivery != null)
             {
-                items.Add(new PlacedView(PlacedView.Ground, null, step.Quantity, null));
+                rows = would.Delivery.Preview(would.Stacks);
             }
+            else
+            {
+                rows = new List<PlacedView>(would.Stacks.Steps.Count);
+                foreach (PlacementStep step in would.Stacks.Steps)
+                {
+                    rows.Add(new PlacedView(PlacedView.Ground, null, step.Quantity, null));
+                }
+            }
+
+            Tag(items, line, would.Prefab, rows);
         }
 
         return View(plan, items);
     }
 
-    private static ItemSpawnView View(ItemSpawnPlan plan, List<PlacedView> items) =>
-        new ItemSpawnView(ItemSpawnView.PlacedOf(items), plan.Prefab.PrefabName, Names.Of(plan.Prefab), plan.Quantity,
+    private static void Tag(List<SpawnedView> items, int line, Item prefab, List<PlacedView> rows)
+    {
+        foreach (PlacedView row in rows)
+        {
+            items.Add(new SpawnedView(line, prefab.PrefabName, row));
+        }
+    }
+
+    private static ItemSpawnView View(ItemSpawnPlan plan, List<SpawnedView> items)
+    {
+        SpawnLine first = plan.Lines[0];
+        bool one = !plan.FromList;
+        return new ItemSpawnView(ItemSpawnView.PlacedOf(items), one ? first.Prefab.PrefabName : null,
+            one ? Names.Of(first.Prefab) : null, one ? first.Quantity : (double?)null,
             plan.Holder != null ? GameLookup.ViewOf(plan.Holder) : null,
             plan.Point is { } point ? new PositionView(point.x, point.y, point.z) : null, items);
+    }
 
     // A loaded item prefab by its whole name (any case) or hash; a structure or anything else is refused.
-    private static Item ItemPrefab(PrefabPattern pattern)
+    private static Item ItemPrefab(PrefabPattern pattern, string where)
     {
         Thing found = ThingPrefab(pattern);
         if (!(found is Item item) || item == null)
         {
             throw ApiErrors.InvalidArgument(
-                $"{found.PrefabName} is a {found.GetType().Name}, not an item; build structure places structures.");
+                $"{where}{found.PrefabName} is a {found.GetType().Name}, not an item; build structure places structures.");
         }
 
         return item;
@@ -164,29 +260,8 @@ internal static class ItemSpawns
     }
 }
 
-/// <summary>A checked build item: the prefab, the quantity, and where each stack goes (a holder's slots, or a point).</summary>
-internal sealed class ItemSpawnPlan
-{
-    internal ItemSpawnPlan(Item prefab, double quantity, Thing? holder, Delivery? delivery, StackPlan stacks,
-        Vector3? point)
-    {
-        Prefab = prefab;
-        Quantity = quantity;
-        Holder = holder;
-        Delivery = delivery;
-        Stacks = stacks;
-        Point = point;
-    }
+/// <summary>One line of a checked build item: the prefab, how many, and where its stacks go (a holder's slots, or a point).</summary>
+internal sealed record SpawnLine(Item Prefab, double Quantity, Delivery? Delivery, StackPlan Stacks);
 
-    internal Item Prefab { get; }
-
-    internal double Quantity { get; }
-
-    internal Thing? Holder { get; }
-
-    internal Delivery? Delivery { get; }
-
-    internal StackPlan Stacks { get; }
-
-    internal Vector3? Point { get; }
-}
+/// <summary>A checked build item: its lines in order, the holder they go into or the point they appear at.</summary>
+internal sealed record ItemSpawnPlan(bool FromList, Thing? Holder, IReadOnlyList<SpawnLine> Lines, Vector3? Point);

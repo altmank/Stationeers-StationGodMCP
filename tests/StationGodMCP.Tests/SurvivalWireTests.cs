@@ -96,7 +96,7 @@ public sealed class SurvivalWireTests
             ["thirst.seconds_left_awake"] = "time_left_awake_s",
             ["game_tick_seconds"] = "game_tick_s"
         };
-        WireCheck.SameAfterDrops(old, view, renames, new[] { "thirst_temperature.celsius" }, "gear");
+        WireCheck.SameAfterDrops(old, view, renames, new[] { "thirst_temperature.celsius" }, "gear", "worn");
     }
 
     [Fact]

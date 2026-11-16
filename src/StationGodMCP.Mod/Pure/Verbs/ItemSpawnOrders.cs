@@ -2,64 +2,50 @@
 
 using System;
 using System.Collections.Generic;
+using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 
 namespace StationGodMCP.Pure.Verbs;
 
+/// <summary>One line of a build item call: a prefab (a whole name or a hash), how many (more than 0) and the slot it goes into.</summary>
+internal sealed record ItemLine(PrefabPattern Prefab, double Quantity, SlotRequest Slot);
+
 /// <summary>
-/// build item's call, checked without the game: one prefab (a whole name or a hash), the quantity (1 when left out,
-/// more than 0), and where the items go: to (a holder's id or "player", with an optional slot) or at (a point in
-/// metres), exactly one of them.
+/// build item's call, checked without the game: the lines to make (one prefab and quantity, or an items list of up to
+/// MaximumLines lines, never both) and where they go: to (a holder's id or "player", each line with an optional slot)
+/// or at (a point in metres, one prefab only), exactly one of them. A line's quantity is 1 when left out.
 /// </summary>
 internal sealed class ItemSpawnOrder
 {
-    private ItemSpawnOrder(PrefabPattern prefab, double quantity, string? to, int? slot, Metres? at)
+    /// <summary>The most lines one items list holds.</summary>
+    internal const int MaximumLines = 64;
+
+    private static readonly string[] LineOptions = { "prefab", "quantity", "slot" };
+
+    private ItemSpawnOrder(IReadOnlyList<ItemLine> lines, bool fromList, string? to, Metres? at)
     {
-        Prefab = prefab;
-        Quantity = quantity;
+        Lines = lines;
+        FromList = fromList;
         To = to;
-        Slot = slot;
         At = at;
     }
 
-    /// <summary>A whole name or a hash.</summary>
-    public PrefabPattern Prefab { get; }
+    /// <summary>The lines in order; one for the prefab and quantity form.</summary>
+    public IReadOnlyList<ItemLine> Lines { get; }
 
-    public double Quantity { get; }
+    /// <summary>Whether the lines came from items (the reply's rows then carry line numbers and no one prefab).</summary>
+    public bool FromList { get; }
 
     /// <summary>The holder's id or "player"; null when the items go to a point.</summary>
     public string? To { get; }
 
-    /// <summary>A slot index of to; null fills matching stacks, then empty slots.</summary>
-    public int? Slot { get; }
-
     /// <summary>The point the items appear at; null when they go into a holder.</summary>
     public Metres? At { get; }
 
-    internal static ItemSpawnOrder? Of(PrefabFilter? prefab, double? quantity, string? to, long? slot,
-        Newtonsoft.Json.Linq.JToken? at, List<OptionProblem> problems)
+    internal static ItemSpawnOrder? Of(PrefabFilter? prefab, double? quantity, string? to, JToken? slot,
+        Newtonsoft.Json.Linq.JToken? at, JToken? items, List<OptionProblem> problems)
     {
         int before = problems.Count;
-        PrefabPattern? pattern = null;
-        if (prefab == null)
-        {
-            problems.Add(new OptionProblem("prefab", "is needed: the item's prefab name or hash"));
-        }
-        else if (prefab.Patterns.Count == 1 && prefab.Patterns[0] is PrefabPattern.Whole or PrefabPattern.Hash)
-        {
-            pattern = prefab.Patterns[0];
-        }
-        else
-        {
-            problems.Add(new OptionProblem("prefab", "is one item's whole name or its hash, not a * pattern or a list"));
-        }
-
-        double amount = quantity ?? 1.0;
-        if (!(amount > 0.0) || double.IsInfinity(amount))
-        {
-            problems.Add(new OptionProblem("quantity", "must be more than 0"));
-        }
-
         string? holder = to?.Trim();
         if (holder is { Length: 0 })
         {
@@ -80,19 +66,126 @@ internal sealed class ItemSpawnOrder
                     : "or at is needed: the holder that gets the items, or the point they appear at"));
         }
 
-        if (slot != null && holder == null)
+        List<ItemLine> lines = new List<ItemLine>();
+        if (items != null)
         {
-            problems.Add(new OptionProblem("slot", "goes with to: a slot of the holder"));
+            ListLines(items, prefab, quantity, slot, at, holder, lines, problems);
+        }
+        else
+        {
+            if (slot != null && holder == null)
+            {
+                problems.Add(new OptionProblem("slot", "goes with to: a slot of the holder"));
+            }
+
+            if (Line(prefab, "prefab", quantity, "quantity", slot, "slot", problems) is { } line)
+            {
+                lines.Add(line);
+            }
         }
 
-        if (slot is > int.MaxValue)
+        return problems.Count == before ? new ItemSpawnOrder(lines, items != null, holder, point) : null;
+    }
+
+    private static void ListLines(JToken items, PrefabFilter? prefab, double? quantity, JToken? slot, JToken? at,
+        string? holder, List<ItemLine> lines, List<OptionProblem> problems)
+    {
+        foreach ((string name, bool given) in new[]
+                 {
+                     ("prefab", prefab != null), ("quantity", quantity != null), ("slot", slot != null),
+                     ("at", at != null)
+                 })
         {
-            problems.Add(new OptionProblem("slot", "is a slot index"));
+            if (given)
+            {
+                problems.Add(new OptionProblem(name,
+                    name == "at"
+                        ? "goes without items: a list goes into a holder (to)"
+                        : "goes without items: each items line gives its own prefab, quantity and slot"));
+            }
         }
 
-        return problems.Count == before
-            ? new ItemSpawnOrder(pattern!, amount, holder, slot is { } index ? (int)index : (int?)null, point)
-            : null;
+        if (holder == null && at == null)
+        {
+            return;
+        }
+
+        if (items is not JArray entries || entries.Count == 0)
+        {
+            problems.Add(new OptionProblem("items", "is a list of {prefab, quantity, slot}, at least one"));
+            return;
+        }
+
+        if (entries.Count > MaximumLines)
+        {
+            problems.Add(new OptionProblem("items", $"holds at most {MaximumLines} lines; this has {entries.Count}"));
+            return;
+        }
+
+        for (int index = 0; index < entries.Count; index++)
+        {
+            string path = $"items[{index}]";
+            if (entries[index] is not JObject entry)
+            {
+                problems.Add(new OptionProblem(path, "is an object {prefab, quantity, slot}"));
+                continue;
+            }
+
+            int before = problems.Count;
+            foreach (JProperty key in entry.Properties())
+            {
+                if (System.Array.IndexOf(LineOptions, key.Name) < 0)
+                {
+                    problems.Add(new OptionProblem(path + "." + key.Name,
+                        "is no items line option (prefab, quantity, slot)", NearestNames.Of(key.Name, LineOptions)));
+                }
+            }
+
+            PrefabFilter? entryPrefab = entry["prefab"] is { } token && PrefabPattern.Of(token) is { } pattern
+                ? new PrefabFilter(new[] { pattern })
+                : null;
+            JToken? quantityToken = entry["quantity"];
+            double? entryQuantity = OptionReader.NumberOf(quantityToken);
+            if (quantityToken != null && entryQuantity == null)
+            {
+                problems.Add(new OptionProblem(path + ".quantity", "must be more than 0"));
+            }
+
+            if (problems.Count == before &&
+                Line(entryPrefab, path + ".prefab", entryQuantity, path + ".quantity", entry["slot"], path + ".slot",
+                    problems) is { } line)
+            {
+                lines.Add(line);
+            }
+        }
+    }
+
+    private static ItemLine? Line(PrefabFilter? prefab, string prefabPath, double? quantity, string quantityPath,
+        JToken? slot, string slotPath, List<OptionProblem> problems)
+    {
+        int before = problems.Count;
+        PrefabPattern? pattern = null;
+        if (prefab == null)
+        {
+            problems.Add(new OptionProblem(prefabPath, "is needed: the item's prefab name or hash"));
+        }
+        else if (prefab.Patterns.Count == 1 && prefab.Patterns[0] is PrefabPattern.Whole or PrefabPattern.Hash)
+        {
+            pattern = prefab.Patterns[0];
+        }
+        else
+        {
+            problems.Add(new OptionProblem(prefabPath, "is one item's whole name or its hash, not a * pattern or a list"));
+        }
+
+        double amount = quantity ?? 1.0;
+        if (!(amount > 0.0) || double.IsInfinity(amount))
+        {
+            problems.Add(new OptionProblem(quantityPath, "must be more than 0"));
+        }
+
+        SlotRequest? request = SlotRequest.Parse(slot, slotPath, problems);
+        return problems.Count == before ? new ItemLine(pattern!, amount, request!) : null;
     }
 }
 

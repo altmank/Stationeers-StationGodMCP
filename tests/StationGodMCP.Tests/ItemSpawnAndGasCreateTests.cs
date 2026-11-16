@@ -26,23 +26,24 @@ public sealed class ItemSpawnAndGasCreateTests
     private static PrefabFilter Prefab(string name) => new(new[] { PrefabPattern.Of(new JValue(name))! });
 
     private static ItemSpawnOrder? Order(out List<OptionProblem> problems, string? prefab = "ItemIntegratedCircuit10",
-        double? quantity = null, string? to = null, long? slot = null, JToken? at = null)
+        double? quantity = null, string? to = null, long? slot = null, JToken? at = null, JToken? items = null)
     {
         problems = new List<OptionProblem>();
-        return ItemSpawnOrder.Of(prefab == null ? null : Prefab(prefab), quantity, to, slot, at, problems);
+        return ItemSpawnOrder.Of(prefab == null ? null : Prefab(prefab), quantity, to,
+            slot == null ? null : new JValue(slot.Value), at, items, problems);
     }
 
     [Fact]
     public void AnOrderNamesOnePrefabAndGoesIntoAHolderOrToAPoint()
     {
         ItemSpawnOrder order = Order(out _, quantity: 3, to: "5200100", slot: 2)!;
-        Assert.Equal(3, order.Quantity);
+        Assert.Equal(3, order.Lines[0].Quantity);
         Assert.Equal("5200100", order.To);
-        Assert.Equal(2, order.Slot);
+        Assert.Equal(new SlotRequest.Index(2), order.Lines[0].Slot);
         Assert.Null(order.At);
 
         ItemSpawnOrder loose = Order(out _, prefab: "ItemLuaChip", at: new JArray(10.5, 241, -3))!;
-        Assert.Equal(1, loose.Quantity);
+        Assert.Equal(1, loose.Lines[0].Quantity);
         Assert.Null(loose.To);
         Assert.Equal(241, loose.At!.Value.Y);
 

@@ -240,7 +240,7 @@ internal static class ItemMoveMissing
 /// how many off the stack (null for the whole item), merge, and whether a part in use may be taken.</summary>
 internal sealed class SlotMoveOrder
 {
-    internal SlotMoveOrder(int index, string item, string to, int? slot, int? quantity, bool merge, bool allowInUse)
+    internal SlotMoveOrder(int index, string item, string to, SlotRequest slot, int? quantity, bool merge, bool allowInUse)
     {
         Index = index;
         Item = item;
@@ -257,7 +257,7 @@ internal sealed class SlotMoveOrder
 
     public string To { get; }
 
-    public int? Slot { get; }
+    public SlotRequest Slot { get; }
 
     public int? Quantity { get; }
 
@@ -273,8 +273,6 @@ internal sealed class SlotMoveOrder
 /// </summary>
 internal sealed class SlotMoveOrders
 {
-    private const string AutoWord = "auto";
-
     private static readonly string[] EntryOptions = { "id", "to", "slot", "quantity", "merge", "allow" };
 
     private SlotMoveOrders(List<SlotMoveOrder> orders, bool answersRows)
@@ -294,7 +292,7 @@ internal sealed class SlotMoveOrders
         string label = MoveItemOptions.Spec.Label;
         int before = problems.Count;
         PerIdList? ids = options.Selector.Ids;
-        int? slot = SlotOf(options.Slot, "slot", problems);
+        SlotRequest? slot = SlotRequest.Parse(options.Slot, "slot", problems);
         int? quantity = QuantityOf(options.Quantity, "quantity", problems);
         bool merge = options.Merge ?? true;
         bool inUse = ItemMoveGiven.Allows(options, "in_use");
@@ -331,9 +329,9 @@ internal sealed class SlotMoveOrders
             {
                 problems.Add(new OptionProblem("force", "is for one move by id, with slot as an index"));
             }
-            else if (slot == null && problems.Count == before)
+            else if (slot is not SlotRequest.Index && problems.Count == before)
             {
-                problems.Add(new OptionProblem("force", "needs slot as an index, not \"auto\""));
+                problems.Add(new OptionProblem("force", "needs slot as an index, not \"auto\" or a key"));
             }
         }
 
@@ -351,13 +349,13 @@ internal sealed class SlotMoveOrders
         List<SlotMoveOrder> orders = new List<SlotMoveOrder>(ids.Ids.Count);
         foreach (string id in ids.Ids)
         {
-            orders.Add(new SlotMoveOrder(orders.Count, id, to.Trim(), slot, quantity, merge, inUse));
+            orders.Add(new SlotMoveOrder(orders.Count, id, to.Trim(), slot!, quantity, merge, inUse));
         }
 
         return new SlotMoveOrders(orders, ids.GivenAsList);
     }
 
-    private static List<SlotMoveOrder> Entries(MoveItemOptions options, int? slot, bool merge, bool inUse,
+    private static List<SlotMoveOrder> Entries(MoveItemOptions options, SlotRequest? slot, bool merge, bool inUse,
         List<OptionProblem> problems)
     {
         List<SlotMoveOrder> orders = new List<SlotMoveOrder>();
@@ -392,7 +390,7 @@ internal sealed class SlotMoveOrders
             string? entryTo = entry["to"] != null || to == null
                 ? TextOf(entry["to"], path + ".to", "the holder that gets the item, an id or \"player\"", problems)
                 : to;
-            int? entrySlot = entry["slot"] != null ? SlotOf(entry["slot"], path + ".slot", problems) : slot;
+            SlotRequest? entrySlot = entry["slot"] != null ? SlotRequest.Parse(entry["slot"], path + ".slot", problems) : slot;
             int? entryQuantity = QuantityOf(OptionReader.NumberOf(entry["quantity"]), path + ".quantity", problems);
             if (entry["quantity"] != null && entry["quantity"]!.Type is not (JTokenType.Integer or JTokenType.Float))
             {
@@ -415,29 +413,11 @@ internal sealed class SlotMoveOrders
             bool entryInUse = entry["allow"] != null ? AllowOf(entry["allow"]!, path + ".allow", problems) : inUse;
             if (problems.Count == before)
             {
-                orders.Add(new SlotMoveOrder(index, id!, entryTo!, entrySlot, entryQuantity, entryMerge, entryInUse));
+                orders.Add(new SlotMoveOrder(index, id!, entryTo!, entrySlot!, entryQuantity, entryMerge, entryInUse));
             }
         }
 
         return orders;
-    }
-
-    // A slot index, or "auto" (null).
-    private static int? SlotOf(JToken? slot, string path, List<OptionProblem> problems)
-    {
-        switch (slot)
-        {
-            case null:
-                return null;
-            case { Type: JTokenType.String } when string.Equals(((string)slot!).Trim(), AutoWord,
-                StringComparison.OrdinalIgnoreCase):
-                return null;
-            case { Type: JTokenType.Integer } when (long)slot >= 0 && (long)slot <= int.MaxValue:
-                return (int)(long)slot;
-            default:
-                problems.Add(new OptionProblem(path, "is a slot index (0 or more) or \"auto\""));
-                return null;
-        }
     }
 
     // A slot move counts whole items.
