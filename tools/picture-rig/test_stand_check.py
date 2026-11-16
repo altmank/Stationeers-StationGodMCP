@@ -151,8 +151,6 @@ class FakeGame:
             if o.get("runtime_type") == "Human":
                 return {"things": [{"reference_id": "1", "position": dict(self.player)}]}
             return {"things": [{"reference_id": i, "position": p} for i, (_, p) in self.things.items()]}
-        if (verb, what) == ("plan", "spot"):
-            return self.plan_spot(o)
         if (verb, what) == ("build", "structure"):
             return self.build_structure(o)
         if (verb, what) == ("inspect", "job"):
@@ -168,38 +166,13 @@ class FakeGame:
             return self.press(o)
         raise AssertionError((verb, what, o))
 
-    def plan_spot(self, o):
-        """plan spot as the catalogue's reply shape says: the top-level keys and each spot's row keys are the declared
-        ones; the spots are 1 m steps around `near` that the game would accept (registered as supported)."""
-        keys, row_keys = plan_spot_shape()
-        near = o["near"]
-        if near == "player":
-            near = [self.player["x"], self.player["y"], self.player["z"]]
-        spots = []
-        for dx, dz in self.spot_offsets:
-            at = [round(near[0] + dx, 2), near[1], round(near[2] + dz, 2)]
-            if any(abs(p["x"] - at[0]) < 0.3 and abs(p["z"] - at[2]) < 0.3 for _, p in self.things.values()):
-                continue
-            self.planned.add((at[0], at[2]))
-            row = {name: None for name in row_keys}
-            row.update(position={"x": at[0], "y": at[1], "z": at[2]}, distance_m=1.0, penalty=0, plane="none",
-                       conflicts=[], orientation={"facing": "+z", "up": "+y", "euler": {"x": 0, "y": 0, "z": 0}},
-                       build_arguments={"what": "structure", "prefab": o["prefab"], "at": at, "facing": "+z", "up": "+y"})
-            spots.append(row)
-        reply = {name: None for name in keys}
-        reply.update(prefab_name=o["prefab"], planes=[], spots=spots[:o["limit"]], tried=len(spots), filtered=0,
-                     checked=len(spots), rejected=0, reasons=[])
-        return reply
-
     def supported(self, o):
         """A small piece needs a frame in the 2 m cell below it, as the game's cursor says."""
         if o["prefab"] != c.BATTERY:
             return True
         at = o["at"]
-        if (round(at[0], 2), round(at[2], 2)) in self.planned:
-            return True
-        return any(prefab == c.FRAME and abs(p["x"] - c.even(at[0])) < 0.01 and abs(p["y"] - (at[1] - 1.5)) < 0.01
-                   and abs(p["z"] - c.even(at[2])) < 0.01 for prefab, p in self.things.values())
+        return any(prefab == c.FRAME and abs(p["x"] - at[0]) <= 1.0 and abs(p["y"] - (at[1] - 1.5)) < 0.01
+                   and abs(p["z"] - at[2]) <= 1.0 for prefab, p in self.things.values())
 
     def build_structure(self, o):
         assert "max_wait" not in o and o["free"] is True, o
@@ -212,6 +185,8 @@ class FakeGame:
         self.next_id += 1
         made = str(self.next_id)
         at = o["at"]
+        if o["prefab"] == c.FRAME:
+            at = [c.even(v) + 1.0 for v in at]  # the game puts a frame on its own grid, not where it was asked
         self.things[made] = (o["prefab"], {"x": at[0], "y": at[1], "z": at[2]})
         if o["prefab"] == c.BATTERY:
             self.battery_ids.append(made)
@@ -268,37 +243,17 @@ def test_a_frame_ring_that_cannot_be_built_stops_the_check_with_the_replies():
         raise AssertionError("expected the check to stop")
 
 
-def test_a_battery_without_a_frame_below_gets_one_and_is_then_built():
+def test_a_battery_is_put_on_the_frame_where_the_game_put_it_not_where_it_was_asked():
     game = FakeGame()
     log = {}
-    made = c.place(game, c.BATTERY, (4.5, 1.0, 6.0), log, "b")
-    assert made is not None
-    assert any(prefab == c.FRAME for prefab, _ in game.things.values())
-    assert [row["attempt"] for row in log["b"]] == [0, 1]
-    assert log["b"][0]["ready"] is False and "Frame below" in log["b"][0]["problems"]
-
-
-def test_the_fake_plan_spot_answers_exactly_the_catalogues_keys():
-    keys, row_keys = plan_spot_shape()
-    reply = FakeGame().call("plan", "spot", prefab="StructureBattery", near="player", radius=8, limit=5)
-    assert set(reply) == set(keys)
-    assert reply["spots"] and all(set(row) == set(row_keys) for row in reply["spots"])
-    assert {"position", "build_arguments", "orientation"} <= set(row_keys)
-
-
-def test_planned_spots_are_used_before_any_frame_is_added():
-    game = FakeGame()
-    made, at = c.place_planned(game, c.BATTERY, c.plan_spots(game, c.BATTERY, "player", 8, {}, "k"), {}, "b")
-    assert made and at
-    assert not any(prefab == c.FRAME for prefab, _ in game.things.values())
-
-
-def test_with_no_planned_spots_the_frame_under_fallback_still_builds_both_batteries(tmp_path):
-    game = FakeGame()
-    game.spot_offsets = []
-    failures, notes = c.run(game, str(tmp_path), {}, say=lambda text: None)
-    assert failures == [], failures
-    assert any(prefab == c.FRAME and p["y"] < 0 for prefab, p in game.things.values())
+    frame = c.anchored_frame(game, (4.0, 2.0, 6.0), log, "f")
+    assert frame is not None
+    asked = log["f_centre"][0]["asked"]
+    assert list(frame[1]) != asked  # the fake snapped it
+    fx, fy, fz = frame[1]
+    assert c.place(game, c.BATTERY, (fx, fy + 1.5, fz), log, "b", support=False) is not None
+    assert c.place(game, c.BATTERY, (4.0, 2.0, 6.0), log, "b2", support=False) is None
+    assert "Frame below" in log["b2"][0]["problems"]
 
 
 def test_a_spot_that_is_never_ready_builds_nothing_and_records_why():
