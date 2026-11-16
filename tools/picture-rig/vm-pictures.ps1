@@ -55,7 +55,9 @@ param(
     [switch] $ItemChecks,
     # The slot check alone (slot_check.py), the pictures skipped: a slot named by its key, the player's hands, a build
     # item list and a cut reply's shape; evidence in out\slots.json.
-    [switch] $SlotChecks
+    [switch] $SlotChecks,
+    # Why this run was started (RigVM r08b): passed on to RigVM as typed.
+    [string] $Why = '', [string] $WhyNote = '', [string] $Prev = ''
 )
 if ($FrameReads) { $ExpectedMinutes += 1.5 }
 if ($KeyGuard) { $ExpectedMinutes += 0.5 }
@@ -102,6 +104,7 @@ $runArgs = @{
     PhaseLimitJson = '{"bepinex":' + $PhaseSeconds + ',"stationgod":' + $PhaseSeconds + '}'
 }
 if ($SettingFrom) { $runArgs.SettingFrom = $SettingFrom }
+foreach ($pair in @(@('Why', $Why), @('WhyNote', $WhyNote), @('Prev', $Prev))) { if ($pair[1]) { $runArgs[$pair[0]] = $pair[1] } }
 # RigVM runs in its own pwsh child process (Invoke-RigVMEntry), so its exit ends that child, not this script.
 try { $code = Invoke-RigVMEntry -Script $clientRun -Arguments $runArgs } finally { Remove-Item $ctxFile -Force -ErrorAction SilentlyContinue }
 exit $code
