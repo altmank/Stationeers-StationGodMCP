@@ -110,7 +110,13 @@ def test_a_cut_note_may_come_as_the_clients_truncated_refusal():
 
 def test_a_case_that_did_not_run_fails():
     failures, _ = c.verdict({})
-    assert len(failures) == 4
+    assert len(failures) == 5
+    assert any("did not run" in f for f in failures)
+
+
+def test_a_full_run_without_the_marker_fails():
+    failures, _ = c.verdict({"keys": good_keys(), "hand": {}, "list": good_list(), "cut": {}})
+    assert any("did not run" in f for f in failures)
 
 
 class FakeGame:

@@ -17,6 +17,8 @@ HAND_OTHER = "ItemIronIngot"
 PACK = item_check.PACK
 MADE_UP_KEY = "NoSuchSlotKey"
 CUT_TO = 3
+CASES = ("slots-by-key", "hand", "locker-list", "cut-reply-shape")
+MARKER = "slot-check ran: " + ",".join(CASES)
 
 
 # ---- pure parts ----
@@ -203,7 +205,9 @@ def cut_failures(evidence):
 def verdict(evidence):
     """(failures, notes) of a whole run's slots.json content."""
     failures = key_failures(evidence) + hand_failures(evidence) + list_failures(evidence) + cut_failures(evidence)
-    notes = []
+    if evidence.get("marker") != MARKER:
+        failures.append("the slot check did not run: its marker is missing from the evidence")
+    notes = [MARKER] if evidence.get("marker") == MARKER else []
     keys = evidence.get("keys") or {}
     analysis = keys.get("analysis")
     if analysis:
@@ -304,6 +308,7 @@ def run(sgcall, done, log, say=print):
         say(f"slot check: {name} done")
     cut_part(sgcall, log)
     say("slot check: cut-reply-shape done")
+    log["marker"] = MARKER
     failures, notes = verdict(log)
     log["verdict"] = {"failures": failures, "notes": notes}
     with open(os.path.join(done, "slots.json"), "w", encoding="utf-8") as f:
