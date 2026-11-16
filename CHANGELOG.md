@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 2.21.0
+
 - inspect slots lists up to 32 slots before cutting; generated cuts.json lists every reply list that can be cut.
 
 ## 2.20.1
