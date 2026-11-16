@@ -203,6 +203,7 @@
       },
       "example": {"network": "3768865", "kind": "cable", "summarize": true},
       "x-cost": {"class": "bounded", "growth": "index"},
+      "x-handler-cuts": [{"path": "broken_neighbours", "lifted_by": null}],
       "reply": {
         "list": "members",
         "variants": [

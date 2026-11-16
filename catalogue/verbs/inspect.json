@@ -155,7 +155,7 @@
       ],
       "example": {"id": "1199811"},
       "x-cost": {"class": "instant", "growth": "by-id"},
-      "x-default-limits": {"slots": 5},
+      "x-default-limits": {"slots": 32},
       "reply": {
         "list": "slots",
         "variants": [
@@ -213,6 +213,7 @@
       ],
       "example": {"id": "player"},
       "x-cost": {"class": "instant", "growth": "by-id"},
+      "x-handler-cuts": [{"path": "slots (nested past depth)", "lifted_by": "depth"}],
       "reply": {
         "list": "slots",
         "variants": [
@@ -270,6 +271,7 @@
       },
       "example": {"network": "5012345", "kind": "pipe", "damaged_only": true},
       "x-cost": {"class": "bounded", "per": "id", "growth": "by-id"},
+      "x-handler-cuts": [{"path": "broken_neighbours", "lifted_by": null}],
       "reply": {
         "list": "things",
         "variants": [
@@ -535,6 +537,7 @@
       "example": {"id": "4820585", "parts": ["status", "source"]},
       "x-cost": {"class": "instant", "growth": "by-id"},
       "x-default-limits": {"stable_selectors": 12},
+      "x-handler-cuts": [{"path": "values", "lifted_by": "count"}, {"path": "lines", "lifted_by": "log"}],
       "reply": {
         "list": "pins",
         "variants": [
@@ -906,6 +909,7 @@
       ],
       "example": {"id": "place-41"},
       "x-cost": {"class": "instant", "growth": "by-id"},
+      "x-handler-cuts": [{"path": "log.placed", "lifted_by": "verbose"}],
       "reply": {
         "variants": [
           {"label": "a build or removal job", "job_view": "BuildJob"},

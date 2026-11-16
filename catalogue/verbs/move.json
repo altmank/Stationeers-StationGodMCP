@@ -106,6 +106,7 @@
       ],
       "example": {"id": "3311223", "to": "player"},
       "x-cost": {"class": "instant", "growth": "by-id"},
+      "x-handler-cuts": [{"path": "items.results", "lifted_by": "at_most"}],
       "reply": {
         "list": "results",
         "variants": [

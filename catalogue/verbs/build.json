@@ -116,6 +116,7 @@
       "example": {"prefab": "StructureWallLight", "at": [716, 203, 668], "facing": "-x", "confirm": true},
       "x-cost": {"class": "job", "growth": "plan"},
       "x-cost-report": {"class": "plan"},
+      "x-handler-cuts": [{"path": "placements[].layout", "lifted_by": null}],
       "reply": {
         "list": "placements",
         "variants": [
@@ -274,6 +275,7 @@
       "example": {"waypoints": [[700, 202, 660], [700, 202, 668]], "confirm": true},
       "x-cost": {"class": "job", "growth": "plan"},
       "x-cost-report": {"class": "plan"},
+      "x-handler-cuts": [{"path": "cells", "lifted_by": "rows"}, {"path": "networks_before[].items", "lifted_by": null}],
       "reply": {
         "list": "cells",
         "variants": [
@@ -450,6 +452,7 @@
       "example": {"grade": "insulated_gas", "cells": [[1, 2, 3], [1.5, 2, 3]]},
       "x-cost": {"class": "job", "growth": "plan"},
       "x-cost-report": {"class": "plan"},
+      "x-handler-cuts": [{"path": "cells", "lifted_by": "rows"}, {"path": "networks_before[].items", "lifted_by": null}],
       "reply": {
         "list": "cells",
         "variants": [
@@ -625,6 +628,7 @@
       "example": {"waypoints": [[10, 2, 4], [10, 2, 9]], "confirm": true},
       "x-cost": {"class": "job", "growth": "plan"},
       "x-cost-report": {"class": "plan"},
+      "x-handler-cuts": [{"path": "cells", "lifted_by": "rows"}, {"path": "networks_before[].items", "lifted_by": null}],
       "reply": {
         "list": "cells",
         "variants": [
