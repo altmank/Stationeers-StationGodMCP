@@ -10,6 +10,9 @@ if (-not $end) {
 } elseif ($end[0].name -ne 'done-ok') {
     $r.Info.done = "$($end[0].name): $($end[0].text)"
     Complete-Rig fail "shots.py ended $($end[0].name): $($end[0].text)"
+} elseif ((Get-Content -Raw $env:SG_PIC_CONTEXT | ConvertFrom-Json).standChecks -and $end[0].text -notmatch 'stand-check ran: ') {
+    $r.Info.done = "done-ok without the stand check's marker: $($end[0].text)"
+    Complete-Rig fail "done-ok, but the stand check did not run (no marker): $($end[0].text)"
 } else {
     $r.Info.done = "done-ok: $($end[0].text)"
     Complete-Rig pass "pictures written: $($shots -join '; ')"
