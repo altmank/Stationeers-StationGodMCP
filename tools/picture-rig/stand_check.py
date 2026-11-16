@@ -10,6 +10,7 @@ Cases: stand-clear, stand-none, interact.
 import json
 import math
 import os
+import time
 
 import item_check
 from item_check import code_of, message_of
@@ -171,17 +172,37 @@ def _call(sgcall, verb, what=None, **options):
     return sgcall.call(verb, what, **options)
 
 
+FINAL = ("applied", "applied_with_differences", "applied_unchecked", "stopped", "gas_lost", "refused")
+JOB_WAIT_S = 60.0
+
+
 def placed_id(reply):
-    placed = ((reply or {}).get("result") or {}).get("placed") or []
-    return str(placed[0]["reference_id"]) if placed and not code_of(reply) else None
+    """The id of the first thing a finished build structure job placed, or None."""
+    for holder in (reply or {}, (reply or {}).get("result") or {}, (reply or {}).get("log") or {}):
+        placed = holder.get("placed")
+        if isinstance(placed, list) and placed and not code_of(reply):
+            first = placed[0]
+            return str(first["reference_id"] if isinstance(first, dict) else first)
+    return None
+
+
+def build_job(sgcall, sleep=time.sleep, **options):
+    """build structure confirmed, waited to its end: the reply is a job until its status is final (inspect job)."""
+    reply = _call(sgcall, "build", "structure", confirm=True, max_wait=30, **options)
+    end = time.monotonic() + JOB_WAIT_S
+    while not code_of(reply) and reply.get("status") not in FINAL and reply.get("job_id") and time.monotonic() < end:
+        sleep(1.0)
+        reply = _call(sgcall, "inspect", "job", id=reply["job_id"])
+    return reply
 
 
 def build_free(sgcall, prefab, spots, log, key):
     """(id, position) of a prefab built free at the first spot of `spots` the game accepts; SystemExit when none."""
     tried = log.setdefault(key, [])
     for spot in spots:
-        reply = _call(sgcall, "build", "structure", prefab=prefab, at=list(spot), free=True, confirm=True)
-        tried.append({"at": list(spot), "code": code_of(reply), "message": message_of(reply)[:160]})
+        reply = build_job(sgcall, prefab=prefab, at=list(spot), free=True)
+        tried.append({"at": list(spot), "code": code_of(reply), "message": message_of(reply)[:160],
+                      "status": reply.get("status"), "reply": reply if not placed_id(reply) else None})
         made = placed_id(reply)
         if made:
             return made
@@ -229,8 +250,7 @@ def none_part(sgcall, log, at):
         for dz in (-2.0, 0.0, 2.0):
             if dx == 0.0 and dz == 0.0:
                 continue
-            reply = _call(sgcall, "build", "structure", prefab=FRAME, at=[middle[0] + dx, middle[1], middle[2] + dz],
-                          free=True, confirm=True)
+            reply = build_job(sgcall, prefab=FRAME, at=[middle[0] + dx, middle[1], middle[2] + dz], free=True)
             frames.append({"dx": dx, "dz": dz, "id": placed_id(reply), "code": code_of(reply),
                            "message": message_of(reply)[:160]})
     none["frames"] = frames

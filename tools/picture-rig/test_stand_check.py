@@ -114,6 +114,7 @@ class FakeGame:
         self.next_id = 100
         self.power = 0
         self.battery_ids = []
+        self.jobs = {}
 
     def call(self, verb, what=None, **o):
         if (verb, what) == ("find", "thing"):
@@ -121,13 +122,17 @@ class FakeGame:
                 return {"things": [{"reference_id": "1", "position": dict(self.player)}]}
             return {"things": [{"reference_id": i, "position": p} for i, (_, p) in self.things.items()]}
         if (verb, what) == ("build", "structure"):
+            assert o["confirm"] is True and o["max_wait"] > 0, o
             self.next_id += 1
             made = str(self.next_id)
             at = o["at"]
             self.things[made] = (o["prefab"], {"x": at[0], "y": at[1], "z": at[2]})
             if o["prefab"] == c.BATTERY:
                 self.battery_ids.append(made)
-            return {"result": {"placed": [{"reference_id": made}]}}
+            self.jobs["J" + made] = {"status": "applied", "result": {"placed": [{"reference_id": made}]}}
+            return {"status": "queued", "job_id": "J" + made}
+        if (verb, what) == ("inspect", "job"):
+            return self.jobs[o["id"]]
         if (verb, what) == ("inspect", "prefab"):
             return {"render_box": {"size": {"x": 1.0, "y": 1.0, "z": 1.0}}}
         if (verb, what) == ("inspect", "device"):
