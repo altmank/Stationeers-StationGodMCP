@@ -70,6 +70,7 @@ Developed with the use of generative AI, and tokens aren't free. Buy me a coffee
   </Description>
   <ChangeLog>
 v2.21.0
+- The AI agent can put an item into a named suit slot or your hand, and fill a locker from a list in one go.
 - The AI agent reads up to 32 slots of a machine at once, so a full machine no longer comes back cut short.
 
 v2.20.1
