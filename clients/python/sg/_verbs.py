@@ -65,20 +65,22 @@ def read(what, *, fields=None, as_player=None, id=None, logic=None, reads=None, 
 
 def write(what, *, fields=None, as_player=None, id=None, logic=None, value=None, writes=None, gateway=None,
         allow=None, start=None, values=None, code=None, code_file=None, pins=None, run=None, include=None,
-        surface=None, element=None, pixel=None, event=None, text=None, label=None, labels=None, network=None,
-        kind=None, color=None, items=None, action=None, interval_s=None, capacity=None, csv=None, downlink=None,
-        rocket=None, within=None, ratio=None, joules=None, prefab=None, load=None, make=None, unit=None, genes=None,
-        player=None, name=None, description=None, scope=None, command=None, **options):
+        surface=None, element=None, pixel=None, event=None, text=None, interactable=None, state=None, hand=None,
+        force=None, label=None, labels=None, network=None, kind=None, color=None, items=None, action=None,
+        interval_s=None, capacity=None, csv=None, downlink=None, rocket=None, within=None, ratio=None, joules=None,
+        prefab=None, load=None, make=None, unit=None, genes=None, player=None, name=None, description=None,
+        scope=None, command=None, **options):
     """Set values and states. sg.help('write', what) gives a what in full."""
     return verb_call('write', what, {'fields': fields, 'as_player': as_player, 'id': id, 'logic': logic, 'value':
                      value, 'writes': writes, 'gateway': gateway, 'allow': allow, 'start': start, 'values': values,
                      'code': code, 'code_file': code_file, 'pins': pins, 'run': run, 'include': include, 'surface':
-                     surface, 'element': element, 'pixel': pixel, 'event': event, 'text': text, 'label': label,
-                     'labels': labels, 'network': network, 'kind': kind, 'color': color, 'items': items, 'action':
-                     action, 'interval_s': interval_s, 'capacity': capacity, 'csv': csv, 'downlink': downlink,
-                     'rocket': rocket, 'within': within, 'ratio': ratio, 'joules': joules, 'prefab': prefab, 'load':
-                     load, 'make': make, 'unit': unit, 'genes': genes, 'player': player, 'name': name,
-                     'description': description, 'scope': scope, 'command': command}, options)
+                     surface, 'element': element, 'pixel': pixel, 'event': event, 'text': text, 'interactable':
+                     interactable, 'state': state, 'hand': hand, 'force': force, 'label': label, 'labels': labels,
+                     'network': network, 'kind': kind, 'color': color, 'items': items, 'action': action,
+                     'interval_s': interval_s, 'capacity': capacity, 'csv': csv, 'downlink': downlink, 'rocket':
+                     rocket, 'within': within, 'ratio': ratio, 'joules': joules, 'prefab': prefab, 'load': load,
+                     'make': make, 'unit': unit, 'genes': genes, 'player': player, 'name': name, 'description':
+                     description, 'scope': scope, 'command': command}, options)
 
 
 def plan(what, *, fields=None, as_player=None, kind=None, start=None, end=None, reroute=None, trunk=None,
@@ -170,7 +172,8 @@ def remove(what, *, fields=None, as_player=None, id=None, box=None, prefab=None,
 def move(what, *, fields=None, as_player=None, id=None, quantity=None, to=None, slot=None, merge=None, force=None,
         allow=None, moves=None, source=None, prefab=None, reagent=None, items=None, name=None, location=None,
         within=None, near=None, radius=None, category=None, at_most=None, delete=None, gases=None, amount_mol=None,
-        temperature_k=None, joined=None, player=None, at=None, to_player=None, safe_ground=None, **options):
+        temperature_k=None, joined=None, player=None, at=None, to_player=None, safe_ground=None, stand=None,
+        **options):
     """Move items, gas and players. sg.help('move', what) gives a what in full."""
     return verb_call('move', what, {'fields': fields, 'as_player': as_player, 'id': id, 'quantity': quantity, 'to':
                      to, 'slot': slot, 'merge': merge, 'force': force, 'allow': allow, 'moves': moves, 'source':
@@ -178,7 +181,7 @@ def move(what, *, fields=None, as_player=None, id=None, quantity=None, to=None, 
                      location, 'within': within, 'near': near, 'radius': radius, 'category': category, 'at_most':
                      at_most, 'delete': delete, 'gases': gases, 'amount_mol': amount_mol, 'temperature_k':
                      temperature_k, 'joined': joined, 'player': player, 'at': at, 'to_player': to_player,
-                     'safe_ground': safe_ground}, options)
+                     'safe_ground': safe_ground, 'stand': stand}, options)
 
 
 def trade(what, *, fields=None, as_player=None, id=None, card=None, items=None, **options):
