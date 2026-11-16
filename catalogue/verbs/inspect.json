@@ -16,8 +16,8 @@
         "gateway": {"use": "gateway"},
         "include": {
           "use": "include",
-          "schema": {"type": "array", "items": {"type": "string", "enum": ["logic_types"]}},
-          "description": "logic_types: every logic type with id and access."
+          "schema": {"type": "array", "items": {"type": "string", "enum": ["logic_types", "interactables"]}},
+          "description": "logic_types: every logic type with id and access. interactables: its switches and buttons, for write interact."
         }
       },
       "text": [
@@ -39,6 +39,7 @@
               "umbilical": "{role: str, open: bool, partner: Thing | None, partner_distance: int, search: {found: str | None, partner_distance: int, how: str, stops: list[{column: int, step: int, reason: str}] | None}} | None",
               "uplink": "{downlink: {reference_id: str, prefab_name: str | None, display_name: str | None, rocket: {network_id: str, name: str, state: str, dry_mass_kg: float, hull_pieces: int, internals: int} | None} | None, connected: bool, choices: list[{reference_id: str, prefab_name: str | None, display_name: str | None, rocket: {network_id: str, name: str, state: str, dry_mass_kg: float, hull_pieces: int, internals: int} | None}]} | None",
               "logic_types": "list[{id: int, name: str | None, readable: bool, writable: bool}] | None",
+              "interactables": "list[{index: int, name: str, action: str, state: int | None, states: int | None}] | None",
               "logic_type_count": "int",
               "writable": "list[str]"
             }
@@ -58,8 +59,8 @@
         },
         "include": {
           "use": "include",
-          "schema": {"type": "array", "items": {"type": "string", "enum": ["small_cells", "data", "recipes"]}},
-          "description": "small_cells: each cell's offset. data: the prefab's own game data, every field the game serializes on it (maxPressureDelta, -1 for no limit; flashpointTemperature, autoignitionTemperature; MaxQuantity; UsedPower; BuildStates with each state's tool and cost) and mass_kg; fields: [\"data.maxPressureDelta\"] narrows it, output_file takes it whole. recipes: what makes it: each machine, its inputs, time and energy."
+          "schema": {"type": "array", "items": {"type": "string", "enum": ["small_cells", "data", "recipes", "interactables"]}},
+          "description": "interactables: its switches and buttons. small_cells: each cell's offset. data: the prefab's own game data, every field the game serializes on it (maxPressureDelta, -1 for no limit; flashpointTemperature, autoignitionTemperature; MaxQuantity; UsedPower; BuildStates with each state's tool and cost) and mass_kg; fields: [\"data.maxPressureDelta\"] narrows it, output_file takes it whole. recipes: what makes it: each machine, its inputs, time and energy."
         }
       },
       "text": [
@@ -99,7 +100,8 @@
               "data": "dict[str, Any] | None",
               "recipes": "list[{maker: str | None, maker_display_name: str | None, time_s: float, energy_j: float, inputs: dict[str, float], temperature_k: {start: float, stop: float} | None, pressure_kpa: {start: float, stop: float} | None, source: str | None}] | None",
               "slots": "list[{index: int, display_name: str | None, string_key: str | None, slot_class: {id: int, name: str | None}, general: bool}] | None",
-              "general_slots": "int | None"
+              "general_slots": "int | None",
+              "interactables": "list[{index: int, name: str, action: str, state: int | None, states: int | None}] | None"
             }
           },
           {

@@ -85,6 +85,7 @@ internal static partial class VerbSurface
             WriteMemoryOptions.Spec,
             WriteChipOptions.Spec,
             WriteScreenOptions.Spec,
+            WriteInteractOptions.Spec,
             WriteLabelOptions.Spec,
             WritePaintOptions.Spec,
             WriteFlightLogOptions.Spec,

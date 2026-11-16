@@ -273,6 +273,14 @@
   },
   "no_flight_log": {"description": "This rocket has no flight log. Start one with run start."},
   "no_free_slot": {"description": "No slot of the container takes the item. Free a slot, or pick another container."},
+  "no_clear_stand": {
+    "description": "No point near the target is clear of bodies, on a floor and in reach. The message counts each reason; loosen clear_m or floor, or clear the space.",
+    "see": {"verb": "move", "what": "player"}
+  },
+  "interactable_not_found": {
+    "description": "The thing has no such switch or button. The message lists its names.",
+    "see": {"verb": "write", "what": "interact"}
+  },
   "no_fuel_line": {
     "description": "No engine on this rocket has a pipe network on its input, so there is nothing to burn. Connect the fuel line."
   },
@@ -340,7 +348,7 @@
   "not_a_silo": {"description": "That thing is not an SDB Silo. find thing {prefab: \"Silo\"} lists them."},
   "not_a_vault": {"description": "That thing is not an Ingot Vault or a Remote Vault. find thing lists vaults."},
   "not_accepted": {
-    "description": "A load entry is not an ingot this fabricator takes. load takes ingots only.",
+    "description": "A load entry is not an ingot this fabricator takes, or the game refused a press (its text is in the message).",
     "see": {"verb": "write", "what": "fabricator"}
   },
   "not_aimable": {
@@ -400,7 +408,7 @@
     "see": {"verb": "inspect", "what": "job"}
   },
   "out_of_range": {
-    "description": "The gene text is outside the game's range. Use a text inside it, or pass allow to write it anyway.",
+    "description": "The gene text is outside the game's range. Use a text inside it, or pass allow to write it anyway. A press: the player's eye is over 3 m from the thing.",
     "see": {"verb": "inspect", "what": "genes"}
   },
   "outside_world": {

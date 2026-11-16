@@ -13,12 +13,13 @@ namespace StationGodMCP.Pure.Verbs;
 /// <summary>The options of move player, in verb names (catalogue/verbs/move.json).</summary>
 internal sealed class MovePlayerOptions
 {
-    internal static WhatSpec Spec { get; } = new WhatSpec("move", "player", null, null, new WriteSpec("confirm", "cannot", "[cannot undo: player move]", "always"), new WhatCost(CostClass.Instant), new WhatCost(CostClass.Instant), null,
+    internal static WhatSpec Spec { get; } = new WhatSpec("move", "player", null, null, new WriteSpec("confirm", "cannot", "[cannot undo: player move]", "always"), new WhatCost(CostClass.Instant, when: new[] { new CostWhen("stand", CostClass.Bounded) }), new WhatCost(CostClass.Instant), null,
         new OptionSpec("player", "{\"type\":\"string\"}"),
         new OptionSpec("at", "{\"type\":\"array\"}"),
         new OptionSpec("to", "{\"type\":\"string\"}"),
         new OptionSpec("to_player", "{\"type\":\"string\"}"),
         new OptionSpec("safe_ground", "{\"type\":\"boolean\"}", false, "false"),
+        new OptionSpec("stand", "{\"type\":\"object\"}"),
         new OptionSpec("confirm", "{\"type\":\"boolean\"}", false, "false"));
 
     internal Fields Fields { get; private set; } = Fields.None;
@@ -35,6 +36,8 @@ internal sealed class MovePlayerOptions
 
     internal bool? SafeGround { get; private set; }
 
+    internal JToken? Stand { get; private set; }
+
     internal static MovePlayerOptions Bind(OptionReader options) => new MovePlayerOptions
     {
         Fields = Fields.Bind(options),
@@ -44,5 +47,6 @@ internal sealed class MovePlayerOptions
         To = options.Text("to"),
         ToPlayer = options.Text("to_player"),
         SafeGround = options.Flag("safe_ground") ?? options.DefaultFlag("safe_ground"),
+        Stand = options.Raw("stand"),
     };
 }

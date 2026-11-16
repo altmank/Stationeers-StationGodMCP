@@ -28,7 +28,7 @@ internal static class InspectPrefab
     internal static VerbOutcome Run(InspectPrefabOptions options) =>
         options.Selector.Prefab is { } filter
             ? Answer.Of(PrefabDescriptions.Inspect(filter, options.Fields.Includes(SmallCells),
-                options.Fields.Includes(Data), options.Fields.Includes(Recipes)))
+                options.Fields.Includes(Data), options.Fields.Includes(Recipes), options.Fields.Includes("interactables")))
             : new VerbOutcome.Refused(OptionProblem.Refusal(InspectPrefabOptions.Spec.Label,
                 new[] { new OptionProblem("prefab", "names no prefab") }));
 }

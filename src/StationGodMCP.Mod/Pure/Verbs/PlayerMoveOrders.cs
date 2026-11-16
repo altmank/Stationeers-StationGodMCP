@@ -15,11 +15,12 @@ namespace StationGodMCP.Pure.Verbs;
 /// </summary>
 internal sealed class PlayerMoveOrder
 {
-    internal PlayerMoveOrder(string? player, MoveDestination destination, bool safeGround)
+    internal PlayerMoveOrder(string? player, MoveDestination destination, bool safeGround, StandOptions? stand = null)
     {
         Player = player;
         Destination = destination;
         SafeGround = safeGround;
+        Stand = stand;
     }
 
     public string? Player { get; }
@@ -28,9 +29,12 @@ internal sealed class PlayerMoveOrder
 
     public bool SafeGround { get; }
 
+    /// <summary>The stand asked for (with to or at), or null for the plain move.</summary>
+    public StandOptions? Stand { get; }
+
     /// <summary>The order the options give; null with every problem added.</summary>
     internal static PlayerMoveOrder? Of(string? player, JToken? at, string? to, string? toPlayer, bool safeGround,
-        List<OptionProblem> problems)
+        List<OptionProblem> problems, JToken? stand = null)
     {
         int before = problems.Count;
         if (player != null && player.Trim().Length == 0)
@@ -39,7 +43,108 @@ internal sealed class PlayerMoveOrder
         }
 
         MoveDestination? destination = MoveDestination.Of(at, to, toPlayer, problems);
-        return problems.Count == before ? new PlayerMoveOrder(player, destination!, safeGround) : null;
+        StandOptions? standing = stand == null ? null : StandOrder.Of(stand, toPlayer != null, safeGround, problems);
+        return problems.Count == before ? new PlayerMoveOrder(player, destination!, safeGround, standing) : null;
+    }
+}
+
+/// <summary>move player's stand option, checked: {reach_m, clear_m, floor, on}, used with to or at.</summary>
+internal static class StandOrder
+{
+    private static readonly string[] Keys = { "reach_m", "clear_m", "floor", "on" };
+
+    internal static StandOptions? Of(JToken stand, bool withToPlayer, bool safeGround, List<OptionProblem> problems)
+    {
+        int before = problems.Count;
+        if (stand is not JObject given)
+        {
+            problems.Add(new OptionProblem("stand", "is an object {reach_m, clear_m, floor, on}"));
+            return null;
+        }
+
+        if (withToPlayer)
+        {
+            problems.Add(new OptionProblem("stand", "goes with to or at, not to_player"));
+        }
+
+        if (safeGround)
+        {
+            problems.Add(new OptionProblem("stand", "goes without safe_ground: the stand finds its own floor"));
+        }
+
+        foreach (JProperty property in given.Properties())
+        {
+            if (Array.IndexOf(Keys, property.Name) < 0)
+            {
+                problems.Add(new OptionProblem("stand." + property.Name, "is not a stand option: " + string.Join(", ", Keys)));
+            }
+        }
+
+        StandOptions fresh = StandOptions.Default;
+        double reach = Number(given, "reach_m", fresh.ReachM, problems);
+        if (reach <= 0 || reach > StandOptions.MaxReachM)
+        {
+            problems.Add(new OptionProblem("stand.reach_m", $"is above 0 and at most {StandOptions.MaxReachM:0} m, the game's reach"));
+        }
+
+        double clear = Number(given, "clear_m", fresh.ClearM, problems);
+        if (clear < 0 || clear > 2)
+        {
+            problems.Add(new OptionProblem("stand.clear_m", "is 0 to 2 metres"));
+        }
+
+        FloorRule floor = fresh.Floor;
+        if (given["floor"] is { Type: not JTokenType.Null } floorText)
+        {
+            string? name = floorText.Type == JTokenType.String ? (string)floorText! : null;
+            if (name == "required")
+            {
+                floor = FloorRule.Required;
+            }
+            else if (name == "any")
+            {
+                floor = FloorRule.Any;
+            }
+            else
+            {
+                problems.Add(new OptionProblem("stand.floor", "is required or any"));
+            }
+        }
+
+        bool on = Flag(given, "on", fresh.On, problems);
+        return problems.Count == before ? new StandOptions(reach, clear, floor, on) : null;
+    }
+
+    private static double Number(JObject given, string key, double fallback, List<OptionProblem> problems)
+    {
+        if (given[key] is not { Type: not JTokenType.Null } token)
+        {
+            return fallback;
+        }
+
+        if (token.Type is JTokenType.Integer or JTokenType.Float)
+        {
+            return (double)token;
+        }
+
+        problems.Add(new OptionProblem("stand." + key, "is a number"));
+        return fallback;
+    }
+
+    private static bool Flag(JObject given, string key, bool fallback, List<OptionProblem> problems)
+    {
+        if (given[key] is not { Type: not JTokenType.Null } token)
+        {
+            return fallback;
+        }
+
+        if (token.Type == JTokenType.Boolean)
+        {
+            return (bool)token;
+        }
+
+        problems.Add(new OptionProblem("stand." + key, "is true or false"));
+        return fallback;
     }
 }
 

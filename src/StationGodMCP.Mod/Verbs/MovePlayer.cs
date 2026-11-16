@@ -21,7 +21,7 @@ internal static class MovePlayer
         string label = MovePlayerOptions.Spec.Label;
         List<OptionProblem> problems = new List<OptionProblem>();
         PlayerMoveOrder? order = PlayerMoveOrder.Of(options.Player, options.At, options.To, options.ToPlayer,
-            options.SafeGround == true, problems);
+            options.SafeGround == true, problems, options.Stand);
         if (order == null)
         {
             return new VerbOutcome.Refused(OptionProblem.Refusal(label, problems));

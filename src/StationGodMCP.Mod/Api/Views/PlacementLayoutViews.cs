@@ -425,6 +425,16 @@ internal sealed class DescribePrefabView
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public int? GeneralSlots { get; private set; }
 
+    /// <summary>The prefab's switches and buttons (include interactables); left out otherwise.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<InteractableRow>? Interactables { get; private set; }
+
+    internal DescribePrefabView WithInteractables(List<InteractableRow>? rows)
+    {
+        Interactables = rows;
+        return this;
+    }
+
     /// <summary>The view with the data, recipes and slots asked for added.</summary>
     internal DescribePrefabView With(Newtonsoft.Json.Linq.JObject? data, List<RecipeView>? recipes,
         PrefabSlotsView? slots)

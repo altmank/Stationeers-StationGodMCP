@@ -1,0 +1,12 @@
+Press a thing's switch or button as the player does.
+Cheat when force: true.
+Options:
+- id (string, required): One id, or "looking_at".
+- interactable (string or integer, required): Its name or index (inspect device include interactables).
+- state (integer): The state to leave it in; default what a click does.
+- hand (empty | held, default empty): held: press with what the player holds.
+- force (boolean, default false): Press from out of reach. Cheat.
+- as_player (string): The player the call is for, by name or id: near "player", looking_at, materials or to "player", show's screen. Needed with several players on a dedicated server; show without it draws for each.
+The game is asked first whether the press works (not_accepted gives its own text); then it is made. Out of reach (3 m from the eye) is out_of_range: move player {to, stand} first.
+Reply: thing {reference_id, prefab_name, display_name}, interactable {name, index}, before, after, player, message
+Example: write {what: "interact", id: "4860097", interactable: "OnOff"}
