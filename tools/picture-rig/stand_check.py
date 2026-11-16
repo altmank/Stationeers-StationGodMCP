@@ -197,25 +197,53 @@ def build_job(sgcall, sleep=time.sleep, **options):
     return reply
 
 
+def plan_spots(sgcall, prefab, near, radius, log, key, limit=20):
+    """The build_arguments of the spots plan spot answers for a prefab near a point or "player": the game's own cursor
+    passed each. Each call's counts and reasons go into log[key]."""
+    reply = _call(sgcall, "plan", "spot", prefab=prefab, near=near, radius=radius, limit=limit)
+    spots = body(reply).get("spots") or []
+    log.setdefault(key, []).append({"near": near, "radius": radius, "code": code_of(reply), "spots": len(spots),
+                                    "checked": body(reply).get("checked"), "reasons": body(reply).get("reasons")})
+    return [spot["build_arguments"] for spot in spots if isinstance(spot.get("build_arguments"), dict)]
+
+
+def args_extra(args):
+    """The orientation options of a spot's build_arguments (the rest is the prefab and the point)."""
+    return {name: args[name] for name in ("facing", "up") if args.get(name)}
+
+
+def place_planned(sgcall, prefab, spots, log, key, accept=lambda at: True):
+    """(id, at) of the first planned spot that builds (and passes `accept`), else (None, None)."""
+    for args in spots:
+        at = args.get("at")
+        if not at or not accept(at):
+            continue
+        made = place(sgcall, prefab, at, log, key, support=False, extra=args_extra(args))
+        if made:
+            return made, list(at)
+    return None, None
+
+
 def even(value):
     """The nearest even number: the centre of a 2 m frame cell."""
     return float(round(value / 2.0) * 2)
 
 
-def place(sgcall, prefab, spot, log, key, support=True):
+def place(sgcall, prefab, spot, log, key, support=True, extra=None):
     """The id of a prefab built free at `spot`, or None. The call is reported first (no confirm) and built only when the
     report is ready; a small piece that "requires a Frame below" gets a frame under it (one 2 m cell) and one more try.
     Every report and reply goes into log[key]."""
     tried = log.setdefault(key, [])
     at = [spot[0], spot[1], spot[2]]
+    extra = dict(extra or {})
     for attempt in range(2):
-        report = _call(sgcall, "build", "structure", prefab=prefab, at=at, free=True)
+        report = _call(sgcall, "build", "structure", prefab=prefab, at=at, free=True, **extra)
         problems = " ".join(str(p.get("message")) for p in (report.get("problems") or []) if isinstance(p, dict))
         row = {"at": at, "attempt": attempt, "ready": report.get("ready"), "code": code_of(report),
                "problems": problems[:240]}
         tried.append(row)
         if report.get("ready") is True and not code_of(report):
-            job = build_job(sgcall, prefab=prefab, at=at, free=True)
+            job = build_job(sgcall, prefab=prefab, at=at, free=True, **extra)
             row["job"] = job
             return placed_id(job)
         if attempt == 0 and support and "Frame below" in problems:
@@ -257,30 +285,44 @@ def body_of(sgcall, thing_id, centre):
 
 def clear_part(sgcall, log, at):
     clear = log["clear"] = {"reach_m": REACH_M}
-    cells = [(even(at[0] + dx), even(at[2] + dz)) for dx, dz in ((4, 0), (4, 4), (-4, 0), (0, 4), (0, -4))]
-    first = None
-    for cx, cz in cells:
-        first = place(sgcall, BATTERY, (cx - 0.5, at[1], cz), log, "clear_build_a")
-        if first:
-            break
+    first, spot = place_planned(sgcall, BATTERY, plan_spots(sgcall, BATTERY, "player", 8, log, "clear_plan_a"), log,
+                                "clear_build_a")
+    if not first:
+        for dx, dz in ((4, 0), (4, 4), (-4, 0), (0, 4), (0, -4)):
+            cx, cz = even(at[0] + dx), even(at[2] + dz)
+            first = place(sgcall, BATTERY, (cx - 0.5, at[1], cz), log, "clear_build_a")
+            if first:
+                spot = [cx - 0.5, at[1], cz]
+                break
     if not first:
         raise SystemExit("stand check: no battery could be built for stand-clear: " + json.dumps(log, default=str)[:3000])
-    spot = (cx - 0.5, at[1], cz)
-    second = place(sgcall, BATTERY, (cx + 0.5, at[1], cz), log, "clear_build_b")
+    near = plan_spots(sgcall, BATTERY, spot, 2, log, "clear_plan_b")
+    second, spot_b = place_planned(sgcall, BATTERY, near, log, "clear_build_b",
+                                   accept=lambda p: 0.4 <= level_distance(p, spot) <= 2.0)
+    if not second:
+        spot_b = [spot[0] + 1.0, spot[1], spot[2]]
+        second = place(sgcall, BATTERY, spot_b, log, "clear_build_b")
     if not second:
         raise SystemExit("stand check: the second battery could not be built: " + json.dumps(log, default=str)[:3000])
     clear["target"], clear["neighbour"] = first, second
-    clear["bodies"] = {first: body_of(sgcall, first, spot), second: body_of(sgcall, second, (cx + 0.5, at[1], cz))}
+    clear["bodies"] = {first: body_of(sgcall, first, spot), second: body_of(sgcall, second, spot_b)}
     clear["reply"] = _call(sgcall, "move", "player", to=first, stand={"reach_m": REACH_M}, confirm=True)
 
 
 def none_part(sgcall, log, at):
     none = log["none"] = {}
-    cx, cz = even(at[0] - 12.0), even(at[2] - 12.0)
-    target = place(sgcall, BATTERY, (cx, at[1], cz), log, "none_build_target")
+    far = [at[0] - 12.0, at[1], at[2] - 12.0]
+    spots = plan_spots(sgcall, BATTERY, far, 6, log, "none_plan")
+    # A battery near the centre of a 2 m cell fits inside a ring of frames on the even grid.
+    target, spot = place_planned(sgcall, BATTERY, spots, log, "none_build_target",
+                                 accept=lambda p: abs(p[0] - even(p[0])) <= 0.5 and abs(p[2] - even(p[2])) <= 0.5)
+    if not target:
+        cx, cz = even(far[0]), even(far[2])
+        target = place(sgcall, BATTERY, (cx, at[1], cz), log, "none_build_target")
+        spot = [cx, at[1], cz]
     if not target:
         raise SystemExit("stand check: the battery for stand-none was not built: " + json.dumps(log, default=str)[:3000])
-    ring_y = at[1] + 0.5
+    cx, cz, ring_y = even(spot[0]), even(spot[2]), spot[1] + 0.5
     frames = []
     for dx in (-2.0, 0.0, 2.0):
         for dz in (-2.0, 0.0, 2.0):
@@ -300,8 +342,11 @@ def none_part(sgcall, log, at):
 
 def interact_part(sgcall, log, at):
     press = log["interact"] = {}
-    spots = [(even(at[0] + dx), at[1], even(at[2] + dz)) for dx, dz in ((0, 8), (8, 8), (-8, 8), (0, -8), (8, -8))]
-    battery = build_free(sgcall, BATTERY, spots, log, "interact_build")
+    battery, _ = place_planned(sgcall, BATTERY, plan_spots(sgcall, BATTERY, [at[0], at[1], at[2] + 8.0], 6, log,
+                                                          "interact_plan"), log, "interact_build")
+    if not battery:
+        spots = [(even(at[0] + dx), at[1], even(at[2] + dz)) for dx, dz in ((0, 8), (8, 8), (-8, 8), (0, -8), (8, -8))]
+        battery = build_free(sgcall, BATTERY, spots, log, "interact_build")
     press["thing"] = battery
     press["rows"] = interactable_rows(_call(sgcall, "inspect", "device", id=battery, include=["interactables"]))
     row = pressable(press["rows"])
