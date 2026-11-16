@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- write needs sets a player's nutrition, hydration and waste and reads them back; inspect player shows the waste ratio.
+
 ## 2.22.0
 
 (2.21.0 was tagged but never released; its changes ship here.)

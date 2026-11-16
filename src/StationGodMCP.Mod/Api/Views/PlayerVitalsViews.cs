@@ -8,7 +8,8 @@ namespace StationGodMCP.Api.Views;
 internal sealed class PlayerVitalsView
 {
     internal PlayerVitalsView(ThingView player, BodyStores stores, BodyState state, VitalsRates rates,
-        DifficultyView difficulty, VitalsWarningsView warnings, PlayerGearView gear, WornView? worn = null)
+        DifficultyView difficulty, VitalsWarningsView warnings, PlayerGearView gear, WornView? worn = null,
+        double? wasteRatio = null, bool sanitation = true)
     {
         ReferenceId = player.ReferenceId;
         DisplayName = player.DisplayName;
@@ -28,6 +29,8 @@ internal sealed class PlayerVitalsView
         Gear = gear;
         Worn = worn ?? WornView.Nothing;
         GameTickS = rates.GameTickS;
+        WasteRatio = wasteRatio;
+        Sanitation = sanitation;
     }
 
     private readonly BodyState _state;
@@ -82,6 +85,12 @@ internal sealed class PlayerVitalsView
     public WornView Worn { get; }
 
     public float GameTickS { get; }
+
+    /// <summary>The stomach's waste ratio (Stomach.GetWasteRatio, 0..1); null without a stomach, a robot's body.</summary>
+    public double? WasteRatio { get; }
+
+    /// <summary>DifficultySetting Sanitation: with it off the waste ratio reads 0 and the stomach never fills.</summary>
+    public bool Sanitation { get; }
 }
 
 /// <summary>What a player has in each worn slot (ScopedTarget.WornSlotsOf); null for an empty one.</summary>

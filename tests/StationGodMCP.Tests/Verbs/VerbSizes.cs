@@ -29,6 +29,9 @@ internal static class VerbSizes
     /// </summary>
     internal const int TodayPerFreshContext = 1_832 + 3_315;
 
+    /// <summary>sg-test-setup and sg-ui-by-label (11-15 gap round; LU: build all five): new test-tooling whats and options; the agent pays these tokens per fresh context.</summary>
+    internal const int TestToolingAllowance = 300;
+
     /// <summary>The verbs' deferred listing (17 tool names plus the instructions), measured on the generated list.</summary>
     internal const int VerbListingTokens = 646;
 

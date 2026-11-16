@@ -10,6 +10,7 @@ if (-not $global:SgPicStarted -and $r.PhaseAt.Keys -contains 'stationgod') {
     if ($picCtx.keyguard) { $picFlags += " --keyguard --game-log `"$gRes\logs\Player.log`"" }
     if ($picCtx.itemChecks) { $picFlags += ' --item-checks' }
     if ($picCtx.slotChecks) { $picFlags += ' --slot-checks' }
+    if ($picCtx.needsChecks) { $picFlags += ' --needs-checks' }
     Invoke-Rig -ArgumentList "SG-Pictures-$($r.RunId)", "$gRes\sg", $picCtx.pipe, $gOut, "$gRes\logs\shots.log", $picFlags {
         param($task, $sg, $pipe, $out, $logFile, $flags)
         $cmd = "`"$sg\tools\python\python.exe`" `"$sg\tools\picture-rig\shots.py`" --pipe $pipe " +

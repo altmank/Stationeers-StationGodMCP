@@ -53,7 +53,8 @@ internal static class PlayerVitals
         VitalsWarningsView warnings = new VitalsWarningsView(human.WarningNutrition, human.CriticalNutrition,
             human.WarningHydration, human.CriticalHydration);
         return new PlayerVitalsView(GameLookup.ViewOf(human), stores, state, Drains(human, state, rates), rates,
-            warnings, GearOf(human), WornOf(human));
+            warnings, GearOf(human), WornOf(human), human.OrganStomach != null ? (double?)human.OrganStomach.GetWasteRatio() : null,
+            difficulty.Sanitation);
     }
 
     private static WornView WornOf(Human human)
