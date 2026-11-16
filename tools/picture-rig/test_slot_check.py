@@ -180,3 +180,12 @@ def test_the_whole_check_runs_against_a_fake_game(tmp_path):
     failures, notes = c.run(FakeGame(), str(tmp_path), {}, say=lambda text: None)
     assert failures == [], failures
     assert (tmp_path / "slots.json").exists()
+
+
+def test_the_slot_checks_flag_runs_the_slot_check_and_not_the_pictures(tmp_path, monkeypatch):
+    import shots
+    called = []
+    monkeypatch.setattr(shots, "finish_slots", lambda done, log, pipe, hub: called.append("slots") or 0)
+    monkeypatch.setattr(shots, "run", lambda log: called.append("pictures"))
+    assert shots.main(["--pipe", "p", "--hub", "h", "--done", str(tmp_path), "--slot-checks"]) == 0
+    assert called == ["slots"]

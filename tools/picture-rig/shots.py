@@ -280,6 +280,8 @@ def main(argv=None):
     log = {}
     if a.item_checks:
         return finish_items(a.done, log, a.pipe, a.hub)
+    if a.slot_checks:
+        return finish_slots(a.done, log, a.pipe, a.hub)
     ok, reason = False, ""
     try:
         sgcall.connect(a.pipe, a.hub)
