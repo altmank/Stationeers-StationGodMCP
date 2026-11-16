@@ -234,6 +234,7 @@
         "class": "instant",
         "growth": "by-id"
       },
+      "x-handler-cuts": [{"path": "placements[].layout", "lifted_by": null}],
       "reply": {
         "variants": [
           {
@@ -586,6 +587,7 @@
         "class": "instant",
         "growth": "by-id"
       },
+      "x-handler-cuts": [{"path": "placements[].layout", "lifted_by": null}],
       "reply": {
         "variants": [
           {

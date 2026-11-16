@@ -152,6 +152,7 @@
       },
       "example": {"kind": "pipe", "grade": "gas", "start": {"id": "720259", "port": 1}, "end": {"network": "5012345"}},
       "x-cost": {"class": "plan", "growth": "plan"},
+      "x-handler-cuts": [{"path": "build_report.cells", "lifted_by": "rows"}, {"path": "build_report.networks_before[].items", "lifted_by": null}],
       "reply": {
         "variants": [
           {
@@ -219,6 +220,7 @@
       },
       "example": {"kind": "cable", "network": "3768865"},
       "x-cost": {"class": "plan", "growth": "plan"},
+      "x-handler-cuts": [{"path": "cells", "lifted_by": "rows"}, {"path": "networks_before[].items", "lifted_by": null}],
       "reply": {
         "list": "removals",
         "variants": [
@@ -309,6 +311,7 @@
       },
       "example": {"prefab": "StructureWallLight", "looking": true},
       "x-cost": {"class": "plan", "growth": "plan"},
+      "x-handler-cuts": [{"path": "reasons", "lifted_by": null}],
       "reply": {
         "list": "spots",
         "variants": [
@@ -425,6 +428,7 @@
       },
       "example": {"id": "4067059", "node": "pad"},
       "x-cost": {"class": "plan", "growth": "plan"},
+      "x-handler-cuts": [{"path": "blockers", "lifted_by": null}],
       "reply": {
         "list": "legs",
         "variants": [

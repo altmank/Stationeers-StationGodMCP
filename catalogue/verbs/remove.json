@@ -147,6 +147,7 @@
       "example": {"id": ["3763565"]},
       "x-cost": {"class": "job", "growth": "plan"},
       "x-cost-report": {"class": "plan"},
+      "x-handler-cuts": [{"path": "cells", "lifted_by": "rows"}, {"path": "networks_before[].items", "lifted_by": null}],
       "reply": {
         "list": "removals",
         "variants": [
@@ -246,6 +247,7 @@
       "example": {"id": ["3763565"]},
       "x-cost": {"class": "job", "growth": "plan"},
       "x-cost-report": {"class": "plan"},
+      "x-handler-cuts": [{"path": "cells", "lifted_by": "rows"}, {"path": "networks_before[].items", "lifted_by": null}],
       "reply": {
         "list": "removals",
         "variants": [
@@ -344,6 +346,7 @@
       "example": {"id": ["3763565"]},
       "x-cost": {"class": "job", "growth": "plan"},
       "x-cost-report": {"class": "plan"},
+      "x-handler-cuts": [{"path": "cells", "lifted_by": "rows"}, {"path": "networks_before[].items", "lifted_by": null}],
       "reply": {
         "list": "removals",
         "variants": [

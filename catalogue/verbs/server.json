@@ -23,6 +23,7 @@
       "example": {},
       "x-cost": {"class": "instant", "growth": "by-id"},
       "x-default-limits": {"methods": 10, "reflection": 10},
+      "x-handler-cuts": [{"path": "runtime.methods", "lifted_by": "list_limits.methods"}],
       "reply": {
         "list": "methods",
         "variants": [
@@ -104,6 +105,7 @@
       },
       "example": {"lines": 80},
       "x-cost": {"class": "instant", "growth": "by-id"},
+      "x-handler-cuts": [{"path": "lines", "lifted_by": "lines"}],
       "reply": {
         "list": "lines",
         "variants": [
@@ -142,6 +144,7 @@
       "example": {"command": "help", "confirm": true},
       "x-cost": {"class": "world", "growth": "by-id"},
       "x-cost-report": {"class": "instant"},
+      "x-handler-cuts": [{"path": "output", "lifted_by": "lines"}],
       "reply": {
         "list": "output",
         "variants": [

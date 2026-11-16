@@ -130,6 +130,7 @@
       },
       "example": {"id": "4820585", "start": 0, "count": 32},
       "x-cost": {"class": "instant", "growth": "by-id"},
+      "x-handler-cuts": [{"path": "values", "lifted_by": "count"}],
       "reply": {
         "variants": [
           {

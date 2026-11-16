@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- inspect slots lists up to 32 slots before cutting; generated cuts.json lists every reply list that can be cut.
+
 ## 2.20.1
 
 - Plainer wording in the ghost menu, the ghost card, the `stationgod` console command and the mod settings.
