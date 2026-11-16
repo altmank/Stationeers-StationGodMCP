@@ -121,16 +121,17 @@ def test_the_slot_count_is_read_from_the_reply_not_typed():
     assert c.slots_total({"results": [{"device": {"slot_count": 7}, "slots": []}]}) == 7
 
 
-def test_a_cut_with_no_reachable_thing_is_a_noted_skip_not_a_pass():
-    failures, notes = c.verdict({"keys": good_keys(), "hand": {}, "list": good_list(),
-                                 "cut": {"skipped": "nothing", "looked_at": []}, "marker": c.MARKER})
-    assert not any("cut-reply-shape" in f for f in failures)
-    assert any("SKIPPED" in n for n in notes)
+def test_the_verdict_judges_exactly_the_three_cases_and_not_the_cut_check():
+    failures, notes = c.verdict({"keys": good_keys(), "hand": {"first": {"items": [{"slot": {"slot": 1}}]},
+                                 "second": err("slot_occupied"), "worn_right": {"reference_id": "7"}},
+                                 "list": good_list(), "cut": {"tried": []}, "marker": c.MARKER})
+    assert failures == []
+    assert c.MARKER == "slot-check ran: slots-by-key,hand,locker-list"
 
 
 def test_a_case_that_did_not_run_fails():
     failures, _ = c.verdict({})
-    assert len(failures) == 5
+    assert len(failures) == 4
     assert any("did not run" in f for f in failures)
 
 
