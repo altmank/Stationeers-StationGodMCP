@@ -15,7 +15,7 @@ import time
 import item_check
 from item_check import code_of, message_of
 
-BATTERY = "StructureBattery"
+BATTERY = "StructureBatteryLarge"  # the battery tools/test-worlds/builder.py builds on its frame floor (sg-silo, 11-02)
 FRAME = "StructureFrame"
 CASES = ("stand-clear", "stand-none", "interact")
 MARKER = "stand-check ran: " + ",".join(CASES)
@@ -168,22 +168,48 @@ def verdict(evidence):
 
 # ---- guest-only parts ----
 
-def _call(sgcall, verb, what=None, **options):
-    return sgcall.call(verb, what, **options)
-
-
 FINAL = ("applied", "applied_with_differences", "applied_unchecked", "stopped", "gas_lost", "refused")
 JOB_WAIT_S = 60.0
 
 
-def placed_id(reply):
-    """The id of the first thing a finished build structure job placed, or None."""
-    for holder in (reply or {}, (reply or {}).get("result") or {}, (reply or {}).get("log") or {}):
-        placed = holder.get("placed")
-        if isinstance(placed, list) and placed and not code_of(reply):
-            first = placed[0]
-            return str(first["reference_id"] if isinstance(first, dict) else first)
-    return None
+# ---- guest-only parts ----
+# The scene is laid the way tools/test-worlds/builder.py lays a site (proven in a real rig run): a floor of StructureFrame on
+# the game's 2 m grid (cell centres on odd metres), then each fixture at the centre of the cell one up from the floor.
+
+WIDTH, DEPTH = 9, 6
+LIFT_M = 4.0
+LIFT_STEPS = (0.0, 4.0, 8.0, 12.0)
+
+
+def _call(sgcall, verb, what=None, **options):
+    return sgcall.call(verb, what, **options)
+
+
+def odd(value):
+    """The nearest odd whole metre: a 2 m cell's centre (twlib.odd)."""
+    n = int(math.floor(value))
+    return n if n % 2 else n + 1
+
+
+class Floor:
+    """Cell (i, k) is the 2 m cell at x0 + 2i, z0 + 2k on the floor; fixtures stand one cell above it (twlib.Site)."""
+
+    def __init__(self, x0, floor_y, z0):
+        self.x0, self.floor_y, self.z0 = odd(x0), odd(floor_y), odd(z0)
+
+    def cell(self, i, k, up=1):
+        return [self.x0 + 2 * i, self.floor_y + 2 * up, self.z0 + 2 * k]
+
+    def frames(self):
+        return [self.cell(i, k, up=0) for k in range(DEPTH) for i in range(WIDTH)]
+
+
+def placed_ids(job):
+    for holder in (job, (job or {}).get("result") or {}):
+        rows = holder.get("placed")
+        if isinstance(rows, list):
+            return [str(r["reference_id"]) if isinstance(r, dict) else str(r) for r in rows]
+    return []
 
 
 def build_job(sgcall, sleep=time.sleep, **options):
@@ -197,62 +223,48 @@ def build_job(sgcall, sleep=time.sleep, **options):
     return reply
 
 
-def frame_position(sgcall, frame_id, near):
-    """The position the game gave a placed frame (a frame snaps to its own 2 m grid), read back with find thing."""
-    found = thing_positions(_call(sgcall, "find", "thing", near=list(near), radius=6, prefab=FRAME, limit=50))
-    return found.get(str(frame_id))
-
-
-def anchored_frame(sgcall, base, log, key):
-    """(id, centre) of a frame built under `base` (a point on the ground), at the centre the game gave it, else None.
-    Batteries and the frame ring are then put at offsets from that centre, so they sit on the game's own grid."""
-    near = (even(base[0]), base[1] - 1.5, even(base[2]))
-    made = place(sgcall, FRAME, near, log, key, support=False)
-    if not made:
+def build_rows(sgcall, rows, log, key):
+    """Placements reported first and built only when the report is ready, as builder.py does. Returns the ids placed, or
+    None with the report's problems verbatim in log[key]."""
+    report = _call(sgcall, "build", "structure", placements=rows, free=True)
+    entry = {"rows": len(rows), "ready": report.get("ready"), "code": code_of(report),
+             "problems": report.get("problems") if report.get("ready") is not True else None,
+             "message": message_of(report)}
+    log.setdefault(key, []).append(entry)
+    if report.get("ready") is not True or code_of(report):
         return None
-    centre = frame_position(sgcall, made, near)
-    log.setdefault(key + "_centre", []).append({"id": made, "asked": list(near), "got": centre})
-    return (made, xyz(centre)) if centre else None
-
-
-def even(value):
-    """The nearest even number: the centre of a 2 m frame cell."""
-    return float(round(value / 2.0) * 2)
-
-
-def place(sgcall, prefab, spot, log, key, support=True, extra=None):
-    """The id of a prefab built free at `spot`, or None. The call is reported first (no confirm) and built only when the
-    report is ready; a small piece that "requires a Frame below" gets a frame under it (one 2 m cell) and one more try.
-    Every report and reply goes into log[key]."""
-    tried = log.setdefault(key, [])
-    at = [spot[0], spot[1], spot[2]]
-    extra = dict(extra or {})
-    for attempt in range(2):
-        report = _call(sgcall, "build", "structure", prefab=prefab, at=at, free=True, **extra)
-        problems = " ".join(str(p.get("message")) for p in (report.get("problems") or []) if isinstance(p, dict))
-        row = {"at": at, "attempt": attempt, "ready": report.get("ready"), "code": code_of(report),
-               "problems": problems[:240]}
-        tried.append(row)
-        if report.get("ready") is True and not code_of(report):
-            job = build_job(sgcall, prefab=prefab, at=at, free=True, **extra)
-            row["job"] = job
-            return placed_id(job)
-        if attempt == 0 and support and "Frame below" in problems:
-            row["support"] = place(sgcall, FRAME, [even(at[0]), at[1] - 1.5, even(at[2])], log, key + "_support",
-                                   support=False)
-            continue
+    job = build_job(sgcall, placements=rows, free=True)
+    entry["status"] = job.get("status")
+    if code_of(job) or job.get("status") != "applied":
+        entry["job"] = job
         return None
-    return None
+    ids = placed_ids(job)
+    entry["placed"] = len(ids)
+    return ids
 
 
-def build_free(sgcall, prefab, spots, log, key):
-    """The id of a prefab built free at the first spot of `spots` the game accepts; SystemExit with every report else."""
-    for spot in spots:
-        made = place(sgcall, prefab, spot, log, key)
-        if made:
-            log[key + "_at"] = list(spot)
-            return made
-    raise SystemExit(f"stand check: {prefab} was not built at any spot: {json.dumps(log.get(key), default=str)[:3000]}")
+def lay_floor(sgcall, at, log):
+    """The frame floor LIFT_M above the player (a step higher each time the report refuses it, as builder.floor_site)."""
+    for step in LIFT_STEPS:
+        floor = Floor(at[0] + 4, at[1] + LIFT_M + step, at[2] + 4)
+        rows = [{"prefab": FRAME, "at": cell} for cell in floor.frames()]
+        ids = []
+        for start in range(0, len(rows), 64):
+            made = build_rows(sgcall, rows[start:start + 64], log, "floor")
+            if made is None:
+                ids = None
+                break
+            ids += made
+        if ids is not None:
+            log["floor_at"] = {"x0": floor.x0, "floor_y": floor.floor_y, "z0": floor.z0, "frames": len(ids)}
+            return floor
+    raise SystemExit("stand check: the frame floor was refused at every height: " + json.dumps(log, default=str)[:3500])
+
+
+def place_one(sgcall, prefab, cell, log, key, label):
+    """The id of one thing built at a cell centre, or None (the report's problems are in log[key])."""
+    made = build_rows(sgcall, [{"prefab": prefab, "at": cell, "label": label}], log, key)
+    return made[0] if made else None
 
 
 def player_position(sgcall):
@@ -264,78 +276,51 @@ def player_position(sgcall):
 
 
 def body_of(sgcall, thing_id, centre):
-    """(centre, half-width) of a placed thing: its position from find thing near its spot, and the smaller horizontal
-    half-size of its prefab's render box (the box is read from inspect prefab, unturned, so the smaller half is a
-    turn-proof lower bound of its reach)."""
+    """(centre, half-width) of a placed thing: its position from find thing near its cell, and the smaller horizontal
+    half-size of its prefab's render box (read from inspect prefab, unturned, so the smaller half is a turn-proof lower
+    bound of its reach)."""
     box = body(_call(sgcall, "inspect", "prefab", prefab=BATTERY)).get("render_box") or {}
     size = box.get("size") or {}
     half = min(size.get("x", 0.0), size.get("z", 0.0)) / 2.0
-    found = thing_positions(_call(sgcall, "find", "thing", near=list(xyz(centre)), radius=2, limit=50))
+    found = thing_positions(_call(sgcall, "find", "thing", near=list(xyz(centre)), radius=3, limit=50))
     return found.get(thing_id, centre), half
 
 
-def base_spots(at, offsets):
-    return [(at[0] + dx, at[1], at[2] + dz) for dx, dz in offsets]
-
-
-def clear_part(sgcall, log, at):
+def clear_part(sgcall, log, floor):
     clear = log["clear"] = {"reach_m": REACH_M}
-    for base in base_spots(at, ((4, 0), (4, 4), (-4, 0), (0, 4), (0, -4))):
-        frame = anchored_frame(sgcall, base, log, "clear_frame")
-        if not frame:
-            continue
-        fx, fy, fz = frame[1]
-        spot_a, spot_b = (fx - 0.5, fy + 1.5, fz), (fx + 0.5, fy + 1.5, fz)
-        first = place(sgcall, BATTERY, spot_a, log, "clear_build_a", support=False)
-        second = place(sgcall, BATTERY, spot_b, log, "clear_build_b", support=False) if first else None
-        if first and second:
-            clear["target"], clear["neighbour"] = first, second
-            clear["bodies"] = {first: body_of(sgcall, first, spot_a), second: body_of(sgcall, second, spot_b)}
-            clear["reply"] = _call(sgcall, "move", "player", to=first, stand={"reach_m": REACH_M}, confirm=True)
-            return
-    raise SystemExit("stand check: two batteries could not be built for stand-clear: "
-                     + json.dumps(log, default=str)[:3500])
+    cell_a, cell_b = floor.cell(1, 1), floor.cell(2, 1)
+    first = place_one(sgcall, BATTERY, cell_a, log, "clear_build_a", "SC a")
+    second = place_one(sgcall, BATTERY, cell_b, log, "clear_build_b", "SC b") if first else None
+    if not (first and second):
+        raise SystemExit("stand check: two batteries could not be built for stand-clear: "
+                         + json.dumps(log, default=str)[:3500])
+    clear["target"], clear["neighbour"] = first, second
+    clear["bodies"] = {first: body_of(sgcall, first, cell_a), second: body_of(sgcall, second, cell_b)}
+    clear["reply"] = _call(sgcall, "move", "player", to=first, stand={"reach_m": REACH_M}, confirm=True)
 
 
-def none_part(sgcall, log, at):
+def none_part(sgcall, log, floor):
     none = log["none"] = {}
-    for base in base_spots(at, ((-12, -12), (-12, -18), (-18, -12))):
-        frame = anchored_frame(sgcall, base, log, "none_frame")
-        if not frame:
-            continue
-        fx, fy, fz = frame[1]
-        target = place(sgcall, BATTERY, (fx, fy + 1.5, fz), log, "none_build_target", support=False)
-        if not target:
-            continue
-        frames = []
-        for dx in (-2.0, 0.0, 2.0):
-            for dz in (-2.0, 0.0, 2.0):
-                if dx == 0.0 and dz == 0.0:
-                    continue
-                made = place(sgcall, FRAME, (fx + dx, fy + 2.0, fz + dz), log, "none_build_ring", support=False)
-                frames.append({"dx": dx, "dz": dz, "id": made})
-        none["frames"] = frames
-        if not all(f["id"] for f in frames):
-            raise SystemExit("stand check: the frame ring around the battery was not built: "
-                             + json.dumps(log.get("none_build_ring"), default=str)[:3500])
-        none["target"] = target
-        none["before"] = player_position(sgcall)
-        none["reply"] = _call(sgcall, "move", "player", to=target, stand={"reach_m": NONE_REACH_M}, confirm=True)
-        none["after"] = player_position(sgcall)
-        return
-    raise SystemExit("stand check: the battery for stand-none could not be built: " + json.dumps(log, default=str)[:3500])
+    ci, ck = 6, 1
+    target = place_one(sgcall, BATTERY, floor.cell(ci, ck), log, "none_build_target", "SC boxed")
+    if not target:
+        raise SystemExit("stand check: the battery for stand-none could not be built: " + json.dumps(log, default=str)[:3500])
+    ring = [{"prefab": FRAME, "at": floor.cell(ci + di, ck + dk)} for di in (-1, 0, 1) for dk in (-1, 0, 1)
+            if (di, dk) != (0, 0)]
+    made = build_rows(sgcall, ring, log, "none_build_ring")
+    if made is None:
+        raise SystemExit("stand check: the frame ring around the battery was refused: "
+                         + json.dumps(log.get("none_build_ring"), default=str)[:3500])
+    none["frames"] = len(made)
+    none["target"] = target
+    none["before"] = player_position(sgcall)
+    none["reply"] = _call(sgcall, "move", "player", to=target, stand={"reach_m": NONE_REACH_M}, confirm=True)
+    none["after"] = player_position(sgcall)
 
 
-def interact_part(sgcall, log, at):
+def interact_part(sgcall, log, floor):
     press = log["interact"] = {}
-    battery = None
-    for base in base_spots(at, ((0, 8), (8, 8), (-8, 8), (0, -8), (8, -8))):
-        frame = anchored_frame(sgcall, base, log, "interact_frame")
-        if frame:
-            fx, fy, fz = frame[1]
-            battery = place(sgcall, BATTERY, (fx, fy + 1.5, fz), log, "interact_build", support=False)
-        if battery:
-            break
+    battery = place_one(sgcall, BATTERY, floor.cell(3, 4), log, "interact_build", "SC press")
     if not battery:
         raise SystemExit("stand check: no battery could be built for interact: " + json.dumps(log, default=str)[:3500])
     press["thing"] = battery
@@ -358,8 +343,10 @@ def run(sgcall, done, log, say=print):
     """The whole check against the live guest game. Returns (failures, notes); evidence goes to <done>\\stand.json."""
     position = player_position(sgcall)
     at = [xyz(position)[0], xyz(position)[1], xyz(position)[2]]
+    floor = lay_floor(sgcall, at, log)
+    say("stand check: the frame floor is built")
     for name, part in (("stand-clear", clear_part), ("stand-none", none_part), ("interact", interact_part)):
-        part(sgcall, log, at)
+        part(sgcall, log, floor)
         say(f"stand check: {name} done")
     log["marker"] = MARKER
     failures, notes = verdict(log)
