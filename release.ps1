@@ -7,10 +7,13 @@
   GitHub Actions cannot build this mod (it compiles against the game's own assemblies), so releases are built here.
 
   For version X.Y.Z (default: the version in HEAD's StationGodMCP.csproj):
-    1. Tag vX.Y.Z must exist, or HEAD must be the commit that bumped the csproj to X.Y.Z (the tag is then created
-       as an annotated tag, which needs a clean working tree). The tag is pushed to the remote if missing there,
-       and must point at the same commit on the remote and be contained in the remote's main.
-    2. The tagged commit is checked out in a git worktree at <repo>\.worktrees\release-vX.Y.Z (never the working
+    1. Tag vX.Y.Z exists, or HEAD must be the commit that bumped the csproj to X.Y.Z (needs a clean working tree).
+       This script never creates or pushes a tag: a tag is permanent, so one made before the build and tests pass
+       burns the version. With no tag, the release is created against HEAD's commit (gh release create --target)
+       and GitHub makes the tag only when the release is published, after every gate below passed. An existing
+       tag is used as is (pushed if missing on the remote; same commit on both). The commit must be contained in
+       the remote's main.
+    2. The release commit is checked out in a git worktree at <repo>\.worktrees\release-vX.Y.Z (never the working
        tree, which may hold unfinished edits), built with its own build.ps1 and tested with dotnet test. The
        worktree exists only while this script runs and is removed at the end, pass or fail; lane.ps1 sweep lists
        it as a worktree with no lane while a release is running, which is expected.
@@ -109,33 +112,38 @@ if (-not $Version) { $Version = VersionAt 'HEAD' }
 if (-not $Version) { throw 'No <Version> in HEAD:StationGodMCP.csproj; pass -Version.' }
 $tag = "v$Version"
 
-# 1. The tag: exists, or HEAD is the version commit and gets it now.
+# 1. The commit to release. No tag is made or pushed here: a tag is permanent, so one made before the build and tests
+# pass burns the version when they fail (v2.21.0, 11-16). Without a tag, the release is created against the commit
+# (gh release create --target) and GitHub makes the tag when the release is published, after every gate below.
 Invoke-Git fetch $Remote main --quiet | Out-Null
 $commit = Get-GitOutput rev-parse --verify --quiet "refs/tags/$tag^{commit}"
-if (-not $commit) {
+$tagExists = [bool]$commit
+$remoteTag = Invoke-Git ls-remote --tags $Remote "refs/tags/$tag" "refs/tags/$tag^{}"
+if ($tagExists) {
+    # An existing tag keeps its commit. A tag only here is pushed; one on the remote must be the same commit.
+    $commit = "$commit".Trim()
+    if (-not $remoteTag) {
+        Invoke-Git push $Remote "refs/tags/${tag}:refs/tags/$tag" | Out-Null
+        $remoteTag = Invoke-Git ls-remote --tags $Remote "refs/tags/$tag" "refs/tags/$tag^{}"
+        Write-Host "Pushed $tag to $Remote"
+    }
+    # An annotated tag lists its peeled commit as <tag>^{}; a lightweight one lists the commit itself.
+    $peeled = @($remoteTag | Where-Object { $_ -match '\^\{\}$' }) + @($remoteTag) | Select-Object -First 1
+    if (($peeled -split '\s+')[0] -ne $commit) { throw "Tag $tag on $Remote is not $commit locally: $($remoteTag -join '; '). Resolve by hand." }
+}
+else {
+    if ($remoteTag) { throw "Tag $tag exists on $Remote but not here; fetch it (git fetch $Remote tag $tag) and run again." }
     if ((VersionAt 'HEAD') -ne $Version) { throw "Tag $tag does not exist and HEAD is not version $Version." }
     if ((VersionAt 'HEAD~1') -eq $Version) {
         throw "Tag $tag does not exist and HEAD is not the commit that bumped to $Version; tag that commit by hand (git tag -a $tag -m $Version <commit>)."
     }
     if (Get-GitOutput status --porcelain) { throw "Tag $tag does not exist and the working tree is not clean; commit first." }
-    Invoke-Git tag -a $tag -m $Version | Out-Null
-    $commit = Get-GitOutput rev-parse --verify --quiet "refs/tags/$tag^{commit}"
-    Write-Host "Tagged $tag on $commit"
+    $commit = "$(Get-GitOutput rev-parse --verify HEAD)".Trim()
+    Write-Host "No tag $tag yet: releasing $commit; the tag is made when the release is published."
 }
-$commit = "$commit".Trim()
-if ((VersionAt $commit) -ne $Version) { throw "Tag $tag points at $commit, whose csproj version is $(VersionAt $commit)." }
-
-$remoteTag = Invoke-Git ls-remote --tags $Remote "refs/tags/$tag" "refs/tags/$tag^{}"
-if (-not $remoteTag) {
-    Invoke-Git push $Remote "refs/tags/${tag}:refs/tags/$tag" | Out-Null
-    $remoteTag = Invoke-Git ls-remote --tags $Remote "refs/tags/$tag" "refs/tags/$tag^{}"
-    Write-Host "Pushed $tag to $Remote"
-}
-# An annotated tag lists its peeled commit as <tag>^{}; a lightweight one lists the commit itself.
-$peeled = @($remoteTag | Where-Object { $_ -match '\^\{\}$' }) + @($remoteTag) | Select-Object -First 1
-if (($peeled -split '\s+')[0] -ne $commit) { throw "Tag $tag on $Remote is not $commit locally: $($remoteTag -join '; '). Resolve by hand." }
+if ((VersionAt $commit) -ne $Version) { throw "$tag points at $commit, whose csproj version is $(VersionAt $commit)." }
 & git.exe -C $root merge-base --is-ancestor $commit "$Remote/main"
-if ($LASTEXITCODE -ne 0) { throw "$tag ($commit) is not on $Remote/main; push main first (git push $Remote main --follow-tags)." }
+if ($LASTEXITCODE -ne 0) { throw "$tag ($commit) is not on $Remote/main; push main first (git push $Remote main)." }
 
 if (-not $GameDir) { $GameDir = 'C:\Program Files (x86)\Steam\steamapps\common\Stationeers' }
 $existing = $null
@@ -218,14 +226,16 @@ try {
         if ($LASTEXITCODE -ne 0) { throw "gh release edit failed with exit code $LASTEXITCODE." }
     }
     else {
-        $flags = @('--title', "StationGod MCP $Version", '--notes-file', $notesFile, '--verify-tag')
+        # An existing tag must still exist; with none, --target makes GitHub create it at publish, on the tested commit.
+        $flags = @('--title', "StationGod MCP $Version", '--notes-file', $notesFile)
+        if ($tagExists) { $flags += '--verify-tag' } else { $flags += @('--target', $commit) }
         if ($Draft) { $flags += '--draft' } else { $flags += '--latest' }
         & gh release create $tag @paths -R $repo @flags
         if ($LASTEXITCODE -ne 0) { throw "gh release create failed with exit code $LASTEXITCODE." }
     }
 
     # 6. Verify what GitHub holds: every asset, its size, and its sha256 after a fresh download.
-    $release = (& gh release view $tag -R $repo --json url,isDraft,assets) | ConvertFrom-Json
+    $release = (& gh release view $tag -R $repo --json url,isDraft,assets,targetCommitish) | ConvertFrom-Json
     $check = Join-Path $work 'obj\release-check'
     New-Item -ItemType Directory -Path $check -Force | Out-Null
     & gh release download $tag -R $repo -D $check
@@ -241,6 +251,9 @@ try {
     foreach ($line in $sums) {
         $hash, $name = $line -split '  ', 2
         if ((Sha256 (Join-Path $check $name)) -ne $hash) { throw "$name does not match SHA256SUMS.txt." }
+    }
+    if (-not $tagExists -and $release.isDraft -and $release.targetCommitish -ne $commit) {
+        throw "Draft $tag targets $($release.targetCommitish), not the tested commit $commit."
     }
     $state = if ($release.isDraft) { 'draft' } else { 'published' }
     Write-Host "Release $tag ($state): $($release.url)"
