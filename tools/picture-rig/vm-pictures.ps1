@@ -57,8 +57,7 @@ param(
     # item list and a cut reply's shape; evidence in out\slots.json.
     [switch] $SlotChecks,
     # The needs check alone (needs_check.py), the pictures skipped: write needs, inspect player's waste_ratio and
-    # sanitation, and undo; evidence in out
-eeds.json.
+    # sanitation, and undo; evidence in out\needs.json.
     [switch] $NeedsChecks,
     # Why this run was started (RigVM r08b): passed on to RigVM as typed.
     [string] $Why = '', [string] $WhyNote = '', [string] $Prev = ''
