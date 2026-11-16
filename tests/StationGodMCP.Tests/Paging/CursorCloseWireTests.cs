@@ -36,11 +36,7 @@ public sealed class CursorCloseWireTests
         using V2Client client = await V2Client.Connect(rig);
         client.Send("""{"type":"cursor_close","cursor_id":"k12"}""");
 
-        Stopwatch watch = Stopwatch.StartNew();
-        while (rig.Mod.CursorCloses.IsEmpty && watch.ElapsedMilliseconds < 5000)
-        {
-            Thread.Sleep(10);
-        }
+        rig.Mod.WaitHandled(() => !rig.Mod.CursorCloses.IsEmpty, "the cursor_close handled");
 
         Assert.True(rig.Mod.CursorCloses.TryDequeue(out (string ConnectionId, string CursorId) closed));
         Assert.Equal(((string)client.Welcome["client_id"]!, "k12"), closed);

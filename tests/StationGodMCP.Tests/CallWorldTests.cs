@@ -139,7 +139,7 @@ public sealed class CallWorldTests
     private static JObject RunUntilReply(PipeRig rig, V2Client client)
     {
         Stopwatch watch = Stopwatch.StartNew();
-        while (watch.ElapsedMilliseconds < 5000)
+        while (watch.ElapsedMilliseconds < V2Client.ClientWaitMs)
         {
             rig.Mod.RunPending();
             if (client.NextOrNull(20) is JObject reply)
