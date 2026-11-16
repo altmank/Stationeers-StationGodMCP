@@ -137,7 +137,11 @@ class FakeGame:
                 return CONTENTS
             return {"slots": [{"index": i, "display_name": "Slot", "string_key": None, "slot_class": "None",
                                "occupant": ({"reference_id": r} if r else None)} for i, r in enumerate(self.packs[o["id"]])]}
+        if (verb, what) == ("find", "device"):
+            return {"devices": [{"reference_id": "d1"}, {"reference_id": "d2"}]}
         if (verb, what) == ("inspect", "slots"):
+            if o["id"] == "d1":
+                return {"slots": [{}]}
             n = o.get("list_limits", {}).get("slots", 5)
             reply = {"slots": [{}] * min(n, 5)}
             if n < 5:
@@ -170,9 +174,12 @@ class FakeGame:
             slot = o["slot"]
             if slot == "" : return err("invalid_argument")
             if slot == "Dup": return err("ambiguous_slot", "slot indexes 2, 3")
+            if slot == "AirTank": return err("slot_occupied", "holds a canister")
             if slot == "SharedPower1": return {"placed": [made], "items": [{"line": 0, "slot": {"id": "5", "slot": 0}}]}
             return err("slot_not_found", "its slot keys are SharedPower1, SharedPower2, Dup")
         if o.get("to") == "player":
+            if o["slot"] == "left_hand":
+                return {"placed": [made], "items": [{"line": 0, "slot": {"id": "p", "slot": 5}}]}
             if self.right_hand is None and o["prefab"] == c.GENERAL_ITEM:
                 self.right_hand = {"reference_id": made}
                 return {"placed": [made], "items": [{"line": 0, "slot": {"id": "p", "slot": 6}}]}

@@ -108,6 +108,10 @@ def key_failures(evidence):
             failures.append(f"slots-by-key: duplicate key {key!r} answered {code_of(reply) or 'ok'}, not ambiguous_slot")
         elif not all(str(i) in message_of(reply) for i in indexes):
             failures.append(f"slots-by-key: ambiguous_slot for {key!r} does not list indexes {indexes}")
+    for key, reply in (keys.get("resolved") or {}).items():
+        if code_of(reply) in ("slot_not_found", "ambiguous_slot", "invalid_argument"):
+            failures.append(f"slots-by-key: the unique key {key!r} answered {code_of(reply)}, not a slot refusal "
+                            "or a made item")
     built = keys.get("built")
     if built:
         if code_of(built["reply"]):
@@ -140,6 +144,12 @@ def hand_failures(evidence):
     if moved is not None and code_of(moved) != "slot_occupied":
         failures.append(f"hand: move item into the occupied right hand answered {code_of(moved) or 'ok'}, "
                         "not slot_occupied")
+    if "left" in hand:
+        if code_of(hand["left"]) or landed_index(hand["left"]) is None:
+            failures.append(f"hand: build into the empty left_hand answered {code_of(hand['left']) or 'nothing made'}")
+        to = (hand.get("left_moved") or {}).get("to") or {}
+        if code_of(hand.get("left_moved")) or to.get("slot_key") != "left_hand":
+            failures.append(f"hand: move into the empty left_hand answered {code_of(hand.get('left_moved'))} to {to}")
     if hand.get("worn_right") is None:
         failures.append("hand: inspect player worn.right_hand is None with the hand occupied")
     return failures
@@ -177,6 +187,8 @@ def cut_failures(evidence):
     if not cut:
         return ["cut-reply-shape: not run"]
     failures = []
+    if "whole" not in cut:
+        return ["cut-reply-shape: no device in the world has more than %d slots: %s" % (CUT_TO, cut.get("looked_at"))]
     whole, total = cut.get("whole"), cut.get("total")
     if code_of(whole):
         failures.append(f"cut-reply-shape: inspect slots refused {code_of(whole)}")
@@ -243,6 +255,9 @@ def keys_part(sgcall, log, at):
     keys["empty_key"] = _call(sgcall, "build", "item", prefab=GENERAL_ITEM, to=suit, slot="", confirm=True)
     keys["ambiguous"] = {key: _call(sgcall, "build", "item", prefab=GENERAL_ITEM, to=suit, slot=key, confirm=True)
                          for key in analysis["duplicates"]}
+    first_unique = sorted(analysis["unique"])[:1]
+    keys["resolved"] = {key: _call(sgcall, "build", "item", prefab=GENERAL_ITEM, to=suit, slot=key, confirm=True)
+                        for key in first_unique}
     tried = keys["tried"] = []
     for key, index in candidates(rows, analysis):
         reply = _call(sgcall, "build", "item", prefab=GENERAL_ITEM, to=suit, slot=key, confirm=True)
@@ -272,6 +287,10 @@ def hand_part(sgcall, log, at):
     loose = item_check.build(sgcall, HAND_OTHER, at=at)
     hand["moved"] = _call(sgcall, "move", "item", id=loose, to="player", slot="right_hand")
     hand["worn_right"] = (_call(sgcall, "inspect", "player").get("worn") or {}).get("right_hand")
+    if (hand["before"] or {}).get("left_hand") is None:
+        hand["left"] = _call(sgcall, "build", "item", prefab=GENERAL_ITEM, to="player", slot="left_hand", confirm=True)
+        loose = item_check.build(sgcall, GENERAL_ITEM, at=at)
+        hand["left_moved"] = _call(sgcall, "move", "item", id=loose, to="player", slot="left_hand")
 
 
 def list_part(sgcall, log, at):
@@ -289,10 +308,19 @@ def list_part(sgcall, log, at):
 
 
 def cut_part(sgcall, log):
-    suit = log["keys"]["suit_id"]
-    cut = log["cut"] = {"total": len(log["keys"]["rows"])}
-    cut["whole"] = _call(sgcall, "inspect", "slots", id=suit)
-    cut["limited"] = _call(sgcall, "inspect", "slots", id=suit, list_limits={"slots": CUT_TO})
+    """inspect slots reaches devices and logic-capable worn items (a vanilla suit has no logic), so the cut is read on
+    the first device of the world with more than CUT_TO slots."""
+    found = _call(sgcall, "find", "device", limit=60, fields=["reference_id"])
+    cut = log["cut"] = {"looked_at": []}
+    for row in (found.get("devices") or []) if isinstance(found, dict) else []:
+        thing = str(row["reference_id"])
+        whole = _call(sgcall, "inspect", "slots", id=thing)
+        count = slots_returned(whole)
+        cut["looked_at"].append({"id": thing, "slots": count, "code": code_of(whole)})
+        if count > CUT_TO and not truncated_note(whole):
+            cut.update(id=thing, total=count, whole=whole)
+            cut["limited"] = _call(sgcall, "inspect", "slots", id=thing, list_limits={"slots": CUT_TO})
+            return
 
 
 def run(sgcall, done, log, say=print):

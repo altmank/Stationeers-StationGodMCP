@@ -852,8 +852,7 @@
         },
         "quantity": {
           "schema": {"type": "number", "minimum": 0},
-          "description": "How many: a count of items, or of units for a stacking item (ore, ingot grams, coils), made in full stacks; at most 64 stacks.",
-          "default": "1",
+          "description": "How many: a count of items, or of units for a stacking item (ore, ingot grams, coils), made in full stacks; at most 64 stacks; 1 when left out.",
           "x-script": "same"
         },
         "to": {
