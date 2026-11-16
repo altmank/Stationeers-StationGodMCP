@@ -122,15 +122,7 @@ class FakeGame:
                 return {"things": [{"reference_id": "1", "position": dict(self.player)}]}
             return {"things": [{"reference_id": i, "position": p} for i, (_, p) in self.things.items()]}
         if (verb, what) == ("build", "structure"):
-            assert o["confirm"] is True and "max_wait" not in o, o
-            self.next_id += 1
-            made = str(self.next_id)
-            at = o["at"]
-            self.things[made] = (o["prefab"], {"x": at[0], "y": at[1], "z": at[2]})
-            if o["prefab"] == c.BATTERY:
-                self.battery_ids.append(made)
-            self.jobs["J" + made] = {"status": "applied", "result": {"placed": [{"reference_id": made}]}}
-            return {"status": "queued", "job_id": "J" + made}
+            return self.build_structure(o)
         if (verb, what) == ("inspect", "job"):
             return self.jobs[o["id"]]
         if (verb, what) == ("inspect", "prefab"):
@@ -144,12 +136,37 @@ class FakeGame:
             return self.press(o)
         raise AssertionError((verb, what, o))
 
+    def supported(self, o):
+        """A small piece needs a frame in the 2 m cell below it, as the game's cursor says."""
+        if o["prefab"] != c.BATTERY:
+            return True
+        at = o["at"]
+        return any(prefab == c.FRAME and abs(p["x"] - c.even(at[0])) < 0.01 and abs(p["y"] - (at[1] - 1.5)) < 0.01
+                   and abs(p["z"] - c.even(at[2])) < 0.01 for prefab, p in self.things.values())
+
+    def build_structure(self, o):
+        assert "max_wait" not in o and o["free"] is True, o
+        if not o.get("confirm"):
+            if not self.supported(o):
+                return {"ready": False, "problems": [{"index": 0, "code": "cannot_place",
+                                                      "message": "Placement requires a Frame below for support"}]}
+            return {"ready": True, "problems": []}
+        assert self.supported(o), o
+        self.next_id += 1
+        made = str(self.next_id)
+        at = o["at"]
+        self.things[made] = (o["prefab"], {"x": at[0], "y": at[1], "z": at[2]})
+        if o["prefab"] == c.BATTERY:
+            self.battery_ids.append(made)
+        self.jobs["J" + made] = {"status": "applied", "result": {"placed": [{"reference_id": made}]}}
+        return {"status": "queued", "job_id": "J" + made}
+
     def move(self, o):
         if "at" in o:
             self.player = {"x": o["at"][0], "y": o["at"][1], "z": o["at"][2]}
             return {"after": {"position": dict(self.player)}}
         target = self.things[o["to"]][1]
-        boxed = any(p for k, (prefab, p) in self.things.items() if prefab == c.FRAME
+        boxed = any(p for k, (prefab, p) in self.things.items() if prefab == c.FRAME and p["y"] > target["y"] + 0.2
                     and abs(p["x"] - target["x"]) < 2.5 and abs(p["z"] - target["z"]) < 2.5)
         if boxed:
             return err("no_clear_stand", "30 points tried; overlaps 9: 30")
@@ -181,8 +198,8 @@ def test_the_whole_check_runs_against_a_fake_game(tmp_path):
 def test_a_frame_ring_that_cannot_be_built_stops_the_check_with_the_replies():
     class Refuses(FakeGame):
         def call(self, verb, what=None, **o):
-            if (verb, what) == ("build", "structure") and o["prefab"] == c.FRAME:
-                return err("overlaps_placement", "taken")
+            if (verb, what) == ("build", "structure") and o["prefab"] == c.FRAME and o["at"][1] > 0:
+                return {"ready": False, "problems": [{"index": 0, "code": "overlaps_placement", "message": "taken"}]}
             return super().call(verb, what, **o)
 
     log = {}
@@ -192,6 +209,26 @@ def test_a_frame_ring_that_cannot_be_built_stops_the_check_with_the_replies():
         assert "frame ring" in str(stop)
     else:
         raise AssertionError("expected the check to stop")
+
+
+def test_a_battery_without_a_frame_below_gets_one_and_is_then_built():
+    game = FakeGame()
+    log = {}
+    made = c.place(game, c.BATTERY, (4.5, 1.0, 6.0), log, "b")
+    assert made is not None
+    assert any(prefab == c.FRAME for prefab, _ in game.things.values())
+    assert [row["attempt"] for row in log["b"]] == [0, 1]
+    assert log["b"][0]["ready"] is False and "Frame below" in log["b"][0]["problems"]
+
+
+def test_a_spot_that_is_never_ready_builds_nothing_and_records_why():
+    class Never(FakeGame):
+        def build_structure(self, o):
+            return {"ready": False, "problems": [{"message": "no"}]}
+
+    log = {}
+    assert c.place(Never(), c.BATTERY, (0, 0, 0), log, "b") is None
+    assert log["b"][0]["problems"] == "no"
 
 
 def test_the_stand_checks_flag_runs_the_stand_check_and_not_the_pictures(tmp_path, monkeypatch):
