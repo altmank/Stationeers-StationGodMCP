@@ -431,7 +431,7 @@ public sealed class StreamCostsTests
         System.Diagnostics.Stopwatch watch = System.Diagnostics.Stopwatch.StartNew();
         while (!condition())
         {
-            if (watch.ElapsedMilliseconds > 5000)
+            if (watch.ElapsedMilliseconds > V2Client.ClientWaitMs)
             {
                 throw new TimeoutException("the condition never held");
             }

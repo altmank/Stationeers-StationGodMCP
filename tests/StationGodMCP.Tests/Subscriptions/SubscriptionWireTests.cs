@@ -207,11 +207,7 @@ public sealed class SubscriptionWireTests
         Assert.Equal(1, hub.CountOf(clientId));
 
         client.Dispose();
-        Stopwatch waited = Stopwatch.StartNew();
-        while (rig.Mod.ClosedSources.IsEmpty && waited.ElapsedMilliseconds < 5000)
-        {
-            await Task.Delay(20);
-        }
+        rig.Mod.WaitClosed(1);
 
         Frame(rig, atS: 1.0);
         Assert.Equal(0, hub.CountOf(clientId));
@@ -232,7 +228,7 @@ public sealed class SubscriptionWireTests
         Assert.Equal(1, hub.CountOf(ClientId(client)));
 
         client.Dispose();
-        Assert.True(connection.Stopped.WaitOne(5000), "the pipe instance was not freed after the client vanished");
+        Assert.True(connection.Stopped.WaitOne(V2Client.ClientWaitMs), "the pipe instance was not freed after the client vanished");
 
         using V2Client next = await V2Client.Connect(rig, "after-kill");
         Assert.Equal("welcome", (string?)next.Welcome["type"]);
@@ -250,7 +246,7 @@ public sealed class SubscriptionWireTests
         {
             // The last probe's connection leaves the host's list on its own thread: wait for it (review D, R-D-19).
             Stopwatch left = Stopwatch.StartNew();
-            while (rig.Host.Open.Count() > 0 && left.ElapsedMilliseconds < 5000)
+            while (rig.Host.Open.Count() > 0 && left.ElapsedMilliseconds < V2Client.ClientWaitMs)
             {
                 await Task.Delay(1);
             }
@@ -279,7 +275,7 @@ public sealed class SubscriptionWireTests
 
             await Task.Delay(index % 3);
             client.Dispose();
-            Assert.True(connection.Stopped.WaitOne(5000),
+            Assert.True(connection.Stopped.WaitOne(V2Client.ClientWaitMs),
                 $"client {index} (kind {index % 5}) left its pipe instance taken");
 
             using V2Client next = await V2Client.Connect(rig, "probe" + index);
@@ -303,7 +299,7 @@ public sealed class SubscriptionWireTests
 
         client.Send("""{"type":"stream_end","stream":4}""");
         Stopwatch waited = Stopwatch.StartNew();
-        while (hub.CountOf(ClientId(client)) != 1 && waited.ElapsedMilliseconds < 5000)
+        while (hub.CountOf(ClientId(client)) != 1 && waited.ElapsedMilliseconds < V2Client.ClientWaitMs)
         {
             Frame(rig, atS: 0.5);
             await Task.Delay(10);

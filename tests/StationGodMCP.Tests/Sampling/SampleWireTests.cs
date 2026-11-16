@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Diagnostics;
+using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -175,12 +176,7 @@ public sealed class SampleWireTests
         StartRuns(rig, hub, 1, atS: 0.0);
 
         client.Dispose();
-        Stopwatch waited = Stopwatch.StartNew();
-        while (rig.Mod.ClosedSources.IsEmpty)
-        {
-            Assert.True(waited.ElapsedMilliseconds < 30000, "the close never reached the mod");
-            await Task.Delay(20);
-        }
+        rig.Mod.WaitClosed(1);
 
         Frame(rig, 0.5);
         Assert.Equal(0, hub.SampleRuns);
@@ -197,11 +193,36 @@ public sealed class SampleWireTests
         StartRuns(rig, hub, 2, atS: 0.0);
 
         client.Send("""{"type":"stream_end","stream":3}""");
+        rig.Mod.WaitStreamEnds(1);
         JObject reply = NextAfterFrames(rig, client, 0.0);
 
         Assert.Equal("1", (string?)reply["id"]);
         Assert.False((bool)reply["ok"]!);
         Assert.Equal("cancelled", (string?)reply["error"]!["code"]);
+        Assert.Equal(1, hub.SampleRuns);
+    }
+
+    [Fact]
+    public async Task WithTheReaderHeldTheCancelledReplyComesBeforeTheHubHasHeardTheStreamEnd()
+    {
+        SubscriptionHub hub = Hub();
+        using PipeRig rig = Rig(hub);
+        using ManualResetEventSlim gate = new ManualResetEventSlim(false);
+        rig.Mod.StreamEndGate = gate;
+        using V2Client client = await V2Client.Connect(rig);
+        client.Send(CallOn("1", Watching(5, 0.5), 3));
+        client.Send(CallOn("2", Watching(5, 0.5), 0));
+        StartRuns(rig, hub, 2, atS: 0.0);
+
+        client.Send("""{"type":"stream_end","stream":3}""");
+        rig.Mod.WaitHandled(() => rig.Mod.EndsAtGate == 1, "the reader held at the stream_end");
+        JObject reply = NextAfterFrames(rig, client, 0.0);
+
+        Assert.Equal("cancelled", (string?)reply["error"]!["code"]);
+        Assert.Equal(2, hub.SampleRuns);
+        gate.Set();
+        rig.Mod.WaitStreamEnds(1);
+        Frame(rig, 0.0);
         Assert.Equal(1, hub.SampleRuns);
     }
 

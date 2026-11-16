@@ -193,7 +193,7 @@ public sealed class ResumeSubscriptionTests
             ["type"] = "call", ["id"] = id, ["method"] = method, ["params"] = parameters, ["stream"] = stream
         }.ToString(Formatting.None));
         Stopwatch watch = Stopwatch.StartNew();
-        while (watch.ElapsedMilliseconds < 5000)
+        while (watch.ElapsedMilliseconds < V2Client.ClientWaitMs)
         {
             _frame++;
             rig.Mod.RunFrame();
@@ -210,7 +210,7 @@ public sealed class ResumeSubscriptionTests
     // The host holds the token (Holds.Held, then the hub's Held) before it passes the close on (the hub's Closed, then
     // ClosedSources), all on the connection's thread: once ClosedSources has it, the next frame takes in both.
     private static void WaitHeldAndClosed(PipeRig rig) =>
-        TestWait.Until(() => rig.Holds.Held == 1 && rig.Mod.ClosedSources.Count == 1, "rig.Holds.Held == 1 && rig.Mod.ClosedSources.Count == 1");
+        rig.Mod.WaitHandled(() => rig.Holds.Held == 1 && rig.Mod.ClosedSources.Count == 1, "the token held and its connection closed");
 
     /// <summary>One device whose On value the test sets.</summary>
     private sealed class ValueReader : IDeviceReader<ReadDevicesView>
