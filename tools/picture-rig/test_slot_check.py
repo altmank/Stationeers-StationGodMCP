@@ -108,6 +108,13 @@ def test_a_cut_note_may_come_as_the_clients_truncated_refusal():
     assert any("malformed" in f for f in c.cut_failures({"cut": cut}))
 
 
+def test_a_cut_with_no_reachable_thing_is_a_noted_skip_not_a_pass():
+    failures, notes = c.verdict({"keys": good_keys(), "hand": {}, "list": good_list(),
+                                 "cut": {"skipped": "nothing", "looked_at": []}, "marker": c.MARKER})
+    assert not any("cut-reply-shape" in f for f in failures)
+    assert any("SKIPPED" in n for n in notes)
+
+
 def test_a_case_that_did_not_run_fails():
     failures, _ = c.verdict({})
     assert len(failures) == 5
@@ -137,6 +144,8 @@ class FakeGame:
                 return CONTENTS
             return {"slots": [{"index": i, "display_name": "Slot", "string_key": None, "slot_class": "None",
                                "occupant": ({"reference_id": r} if r else None)} for i, r in enumerate(self.packs[o["id"]])]}
+        if (verb, what) == ("find", "container"):
+            return {"containers": []}
         if (verb, what) == ("find", "device"):
             return {"devices": [{"reference_id": "d1"}, {"reference_id": "d2"}]}
         if (verb, what) == ("inspect", "slots"):

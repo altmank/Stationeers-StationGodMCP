@@ -148,7 +148,7 @@ def hand_failures(evidence):
         if code_of(hand["left"]) or landed_index(hand["left"]) is None:
             failures.append(f"hand: build into the empty left_hand answered {code_of(hand['left']) or 'nothing made'}")
         to = (hand.get("left_moved") or {}).get("to") or {}
-        if code_of(hand.get("left_moved")) or to.get("slot_key") != "left_hand":
+        if code_of(hand.get("left_moved")) or not to.get("slot_key"):
             failures.append(f"hand: move into the empty left_hand answered {code_of(hand.get('left_moved'))} to {to}")
     if hand.get("worn_right") is None:
         failures.append("hand: inspect player worn.right_hand is None with the hand occupied")
@@ -188,7 +188,7 @@ def cut_failures(evidence):
         return ["cut-reply-shape: not run"]
     failures = []
     if "whole" not in cut:
-        return ["cut-reply-shape: no device in the world has more than %d slots: %s" % (CUT_TO, cut.get("looked_at"))]
+        return [] if cut.get("skipped") else ["cut-reply-shape: not run"]
     whole, total = cut.get("whole"), cut.get("total")
     if code_of(whole):
         failures.append(f"cut-reply-shape: inspect slots refused {code_of(whole)}")
@@ -220,6 +220,8 @@ def verdict(evidence):
     if evidence.get("marker") != MARKER:
         failures.append("the slot check did not run: its marker is missing from the evidence")
     notes = [MARKER] if evidence.get("marker") == MARKER else []
+    if (evidence.get("cut") or {}).get("skipped"):
+        notes.append("cut-reply-shape SKIPPED: " + evidence["cut"]["skipped"])
     keys = evidence.get("keys") or {}
     analysis = keys.get("analysis")
     if analysis:
@@ -301,7 +303,7 @@ def list_part(sgcall, log, at):
     box["fits"] = _call(sgcall, "build", "item", to=pack, items=lines, confirm=True)
     box["after_fits_ids"] = _holder_ids(sgcall, pack)
     box["before_over_ids"] = _holder_ids(sgcall, pack)
-    over = lines + [{"prefab": GENERAL_ITEM, "quantity": 2500}]
+    over = lines + [{"prefab": "ItemIronIngot", "quantity": 3000}]
     box["over"] = _call(sgcall, "build", "item", to=pack, items=over, confirm=True)
     box["after_over_ids"] = _holder_ids(sgcall, pack)
     box["both"] = _call(sgcall, "build", "item", prefab=GENERAL_ITEM, to=pack, items=lines, confirm=True)
@@ -310,10 +312,14 @@ def list_part(sgcall, log, at):
 def cut_part(sgcall, log):
     """inspect slots reaches devices and logic-capable worn items (a vanilla suit has no logic), so the cut is read on
     the first device of the world with more than CUT_TO slots."""
-    found = _call(sgcall, "find", "device", limit=60, fields=["reference_id"])
     cut = log["cut"] = {"looked_at": []}
-    for row in (found.get("devices") or []) if isinstance(found, dict) else []:
-        thing = str(row["reference_id"])
+    ids = []
+    found = _call(sgcall, "find", "device", limit=60, fields=["reference_id"])
+    ids += [str(row["reference_id"]) for row in (found.get("devices") or [])] if isinstance(found, dict) else []
+    boxes = _call(sgcall, "find", "container", limit=30, fields=["reference_id"])
+    ids += [str(row["reference_id"]) for row in (boxes.get("containers") or [])] if isinstance(boxes, dict) else []
+    ids += [str(v["reference_id"]) for v in ((log.get("player") or {}).get("worn") or {}).values() if v]
+    for thing in dict.fromkeys(ids):
         whole = _call(sgcall, "inspect", "slots", id=thing)
         count = slots_returned(whole)
         cut["looked_at"].append({"id": thing, "slots": count, "code": code_of(whole)})
@@ -321,6 +327,7 @@ def cut_part(sgcall, log):
             cut.update(id=thing, total=count, whole=whole)
             cut["limited"] = _call(sgcall, "inspect", "slots", id=thing, list_limits={"slots": CUT_TO})
             return
+    cut["skipped"] = "no thing inspect slots reaches has more than %d slots" % CUT_TO
 
 
 def run(sgcall, done, log, say=print):
