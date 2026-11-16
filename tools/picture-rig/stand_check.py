@@ -187,8 +187,9 @@ def placed_id(reply):
 
 
 def build_job(sgcall, sleep=time.sleep, **options):
-    """build structure confirmed, waited to its end: the reply is a job until its status is final (inspect job)."""
-    reply = _call(sgcall, "build", "structure", confirm=True, max_wait=30, **options)
+    """build structure confirmed, waited to its end: the reply is a queued job until its status is final (inspect job;
+    max_wait is the hub's own option and the game refuses it over the pipe)."""
+    reply = _call(sgcall, "build", "structure", confirm=True, **options)
     end = time.monotonic() + JOB_WAIT_S
     while not code_of(reply) and reply.get("status") not in FINAL and reply.get("job_id") and time.monotonic() < end:
         sleep(1.0)

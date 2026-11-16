@@ -122,7 +122,7 @@ class FakeGame:
                 return {"things": [{"reference_id": "1", "position": dict(self.player)}]}
             return {"things": [{"reference_id": i, "position": p} for i, (_, p) in self.things.items()]}
         if (verb, what) == ("build", "structure"):
-            assert o["confirm"] is True and o["max_wait"] > 0, o
+            assert o["confirm"] is True and "max_wait" not in o, o
             self.next_id += 1
             made = str(self.next_id)
             at = o["at"]
