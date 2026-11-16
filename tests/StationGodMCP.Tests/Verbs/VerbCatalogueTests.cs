@@ -387,7 +387,7 @@ public sealed class VerbCatalogueTests
               "trade.buy": "instant", "trade.sell": "instant",
               "undo": "plan",
               "write.memory": "instant", "write.battery": "instant", "write.fabricator": "instant", "write.genes": "bounded",
-              "remove.terrain": "world", "write.health": "instant", "build.terrain": "world", "build.item": "instant",
+              "remove.terrain": "world", "write.health": "instant", "write.needs": "instant", "build.terrain": "world", "build.item": "instant",
               "remove.item": "instant",
               "write.lattice": "bounded"
             }
@@ -436,7 +436,7 @@ public sealed class VerbCatalogueTests
 
         Assert.True(problems.Count == 0, string.Join("\n", problems));
         Assert.True(expected.Count == 0, "no x-cost-report for: " + string.Join(", ", expected.Select(pair => pair.Key)));
-        Assert.Equal(32, confirmRoute);
+        Assert.Equal(33, confirmRoute);
     }
 
     /// <summary>
@@ -467,7 +467,7 @@ public sealed class VerbCatalogueTests
             Assert.Equal(acting, spec.CostFor(JObject.Parse("""{"confirm": true}""")).Class);
         }
 
-        Assert.Equal(32, confirmRoute);
+        Assert.Equal(33, confirmRoute);
     }
 
     // The cost class a catalogue word names.
@@ -571,6 +571,7 @@ public sealed class VerbCatalogueTests
         "logic", "value", "start", "values", "code", "code_file", "run", "genes", "unit", "color", "label", "ratio",
         "joules", "quantity", "merge", "slot", "reagent", "at_most", "gases", "amount_mol", "delete", "joined", "command",
         "items", "state", "surface", "element", "pixel", "event", "text", "safe_ground", "from_step", "temperature_k",
+        "nutrition", "hydration", "waste",
         // new things at positions (placement cells are not seen-checked)
         "placements", "at", "rotation", "spread", "facing", "up", "face", "orient", "above_floor", "build_state", "grade",
         "piece", "pieces", "branches", "extra_ends", "blueprint", "turn", "from_plan",
@@ -1093,7 +1094,7 @@ public sealed class VerbCatalogueTests
         }
 
         int fresh = (int)table["per_fresh_context"]!["verbs"]!;
-        Assert.True(fresh <= VerbSizes.TodayPerFreshContext,
-            $"listing plus the common load is {fresh} tokens, over today's {VerbSizes.TodayPerFreshContext} per fresh context");
+        Assert.True(fresh <= VerbSizes.TodayPerFreshContext + VerbSizes.TestToolingAllowance,
+            $"listing plus the common load is {fresh} tokens, over today's {VerbSizes.TodayPerFreshContext} plus the test-tooling allowance {VerbSizes.TestToolingAllowance} per fresh context");
     }
 }

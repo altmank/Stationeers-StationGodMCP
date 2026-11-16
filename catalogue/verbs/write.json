@@ -1317,6 +1317,95 @@
       },
       "brief": "heal player"
     },
+    "needs": {
+      "summary": "set a player's nutrition, hydration and waste, as the console's player setnutrition does, and read them back",
+      "options": {
+        "player": {
+          "schema": {
+            "type": "string"
+          },
+          "description": "The player, by name or id, in the game or not; default the player.",
+          "x-script": "same"
+        },
+        "nutrition": {
+          "schema": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "description": "Share of the body's nutrition storage (50 for a human).",
+          "x-script": "same"
+        },
+        "hydration": {
+          "schema": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1.75
+          },
+          "description": "Share of 5, the game's hydration ratio; 1.75 is its cap.",
+          "x-script": "same"
+        },
+        "waste": {
+          "schema": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "description": "The stomach's waste ratio.",
+          "x-script": "same"
+        },
+        "confirm": {
+          "use": "confirm"
+        }
+      },
+      "text": [
+        "A cheat. Give at least one of nutrition, hydration, waste (missing_target names them); one left out stays. Every check runs before anything is set, so a refused call changes nothing. Waste is refused sanitation_off while Sanitation is off, and the whole call no_organ for a body with no stomach. The reply reads the values back (waste after the next atmospherics tick, at most 2 s): each as a share before and after. warnings: wets_next_tick (waste 1 wets the suit at the next life tick), drains (the values fall from the next life tick at inspect player's rates)."
+      ],
+      "example": {
+        "nutrition": 0.5,
+        "hydration": 0.5,
+        "waste": 0.5,
+        "confirm": true
+      },
+      "x-cost": {
+        "class": "instant",
+        "growth": "by-id"
+      },
+      "x-cost-report": {
+        "class": "instant"
+      },
+      "reply": {
+        "variants": [
+          {
+            "label": "NeedsWritten",
+            "keys": {
+              "player": "Thing",
+              "nutrition": "{before: float, after: float, capacity: float}",
+              "hydration": "{before: float, after: float, capacity: float}",
+              "waste": "{before: float, after: float} | None",
+              "sanitation": "bool",
+              "warnings": "list[{code: str, message: str}]"
+            }
+          }
+        ],
+        "types": [
+          "Thing"
+        ]
+      },
+      "write": {
+        "route": "confirm",
+        "cheat": "always",
+        "x-undo": "undo",
+        "x-undo-mark": "[undo: restores the value, not what happened since]",
+        "x-target": [
+          {
+            "path": "player",
+            "role": "acts-on"
+          }
+        ]
+      },
+      "brief": "set needs"
+    },
     "script": {
       "hub": true,
       "summary": "save a Python script under a name: the next version, every older one kept",

@@ -1,0 +1,12 @@
+Set a player's nutrition, hydration and waste, as the console's player setnutrition does, and read them back.
+Reports first; confirm: true does it.
+Cheat.
+Options:
+- player (string): The player, by name or id, in the game or not; default the player.
+- nutrition (number): Share of the body's nutrition storage (50 for a human).
+- hydration (number): Share of 5, the game's hydration ratio; 1.75 is its cap.
+- waste (number): The stomach's waste ratio.
+- confirm (boolean, default false): true acts; false only reports, whatever the call names (typed ids included). Left out, the write rule decides: typed ids act at once where the verb acts on them; a ref, network or spread reports.
+A cheat. Give at least one of nutrition, hydration, waste (missing_target names them); one left out stays. Every check runs before anything is set, so a refused call changes nothing. Waste is refused sanitation_off while Sanitation is off, and the whole call no_organ for a body with no stomach. The reply reads the values back (waste after the next atmospherics tick, at most 2 s): each as a share before and after. warnings: wets_next_tick (waste 1 wets the suit at the next life tick), drains (the values fall from the next life tick at inspect player's rates).
+Reply: player {reference_id, prefab_name, display_name}, nutrition {before, after, capacity}, hydration {before, after, capacity}, waste {before, after}, sanitation, warnings [{code, message}]
+Example: write {what: "needs", nutrition: 0.5, hydration: 0.5, waste: 0.5, confirm: true}

@@ -32,6 +32,8 @@ def inspect(what: Literal['player'], *,
       worn: {suit: Thing | None, helmet: Thing | None, backpack: Thing | None, toolbelt: Thing | None, uniform: Thing | None, glasses: Thing | None,
           left_hand: Thing | None, right_hand: Thing | None}
       game_tick_s: float
+      waste_ratio: float | None
+      sanitation: bool
     Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}
     Example: sg.inspect('player')
     """

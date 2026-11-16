@@ -13,6 +13,9 @@ if (-not $end) {
 } elseif ((Get-Content -Raw $env:SG_PIC_CONTEXT | ConvertFrom-Json).slotChecks -and $end[0].text -notmatch 'slot-check ran: ') {
     $r.Info.done = "done-ok without the slot check's marker: $($end[0].text)"
     Complete-Rig fail "done-ok, but the slot check did not run (no marker): $($end[0].text)"
+} elseif ((Get-Content -Raw $env:SG_PIC_CONTEXT | ConvertFrom-Json).needsChecks -and $end[0].text -notmatch 'needs-check ran: ') {
+    $r.Info.done = "done-ok without the needs check's marker: $($end[0].text)"
+    Complete-Rig fail "done-ok, but the needs check did not run (no marker): $($end[0].text)"
 } else {
     $r.Info.done = "done-ok: $($end[0].text)"
     Complete-Rig pass "pictures written: $($shots -join '; ')"

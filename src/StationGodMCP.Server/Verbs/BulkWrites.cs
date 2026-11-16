@@ -213,7 +213,7 @@ internal sealed class BulkWrites
                 continue;
             }
 
-            if (JsonNodes.Text(row["reference_id"]) is not { } id)
+            if ((JsonNodes.Text(row["reference_id"]) ?? NeedsPlayer(what, row)) is not { } id)
             {
                 continue;
             }
@@ -275,6 +275,8 @@ internal sealed class BulkWrites
                 };
                 return new BulkStep(number, back, Row(id, row["color"], color, "[undo]"), null);
             }
+            case "write.needs":
+                return NeedsStep(number, id, row);
             case "move.item":
             {
                 if (store)
@@ -305,6 +307,31 @@ internal sealed class BulkWrites
                 return Cannot(number, id, null, "[cannot undo]");
         }
     }
+
+    // write needs answers one player, named in its reply's player rather than by a reference_id of its own.
+    private static string? NeedsPlayer(WhatEntry what, JsonObject row) =>
+        what.Key == "write.needs" ? JsonNodes.Text(row["player"]?["reference_id"]) : null;
+
+    // The needs the write moved (nutrition, hydration, waste as shares), each written back to its share before; a need
+    // the write left alone is not written, so what drained since stays.
+    private static BulkStep NeedsStep(int number, string id, JsonObject row)
+    {
+        JsonObject back = new() { ["player"] = id };
+        foreach (string need in new[] { "nutrition", "hydration", "waste" })
+        {
+            if (row[need] is JsonObject change && JsonNodes.Number(change["before"]) is { } before &&
+                JsonNodes.Number(change["after"]) is { } after && Math.Abs(after - before) > NeedsMoved)
+            {
+                back[need] = before;
+            }
+        }
+
+        return back.Count == 1
+            ? Cannot(number, id, null, "[cannot undo: no need moved]")
+            : new BulkStep(number, back, Row(id, null, null, "[undo]"), null);
+    }
+
+    private const double NeedsMoved = 1e-4;
 
     private static BulkStep Cannot(int number, string id, JsonNode? left, string mark) =>
         new(number, null, Row(id, left, null, mark), null);
