@@ -143,18 +143,17 @@ class FakeGame:
             if o["id"] == "5":
                 return CONTENTS
             return {"slots": [{"index": i, "display_name": "Slot", "string_key": None, "slot_class": "None",
-                               "occupant": ({"reference_id": r} if r else None)} for i, r in enumerate(self.packs[o["id"]])]}
-        if (verb, what) == ("find", "container"):
-            return {"containers": []}
-        if (verb, what) == ("find", "device"):
-            return {"devices": [{"reference_id": "d1"}, {"reference_id": "d2"}]}
+                               "occupant": ({"reference_id": r["id"], "prefab_name": r["prefab"], "quantity": r["qty"],
+                                             "max_quantity": 50} if r else None)}
+                              for i, r in enumerate(self.packs[o["id"]])]}
+        if (verb, what) == ("build", "structure"):
+            return {"result": {"placed": [{"reference_id": "L1"}]}}
         if (verb, what) == ("inspect", "slots"):
-            if o["id"] == "d1":
-                return {"slots": [{}]}
-            n = o.get("list_limits", {}).get("slots", 5)
-            reply = {"slots": [{}] * min(n, 5)}
-            if n < 5:
-                reply["truncated"] = [{"list": "slots", "returned": n, "total": 5, "more": "pass list_limits"}]
+            assert o["id"] == "L1", o
+            n = o.get("list_limits", {}).get("slots", 32)
+            reply = {"slots": [{}] * min(n, 21)}
+            if n < 21:
+                reply["truncated"] = [{"list": "slots", "returned": n, "total": 21, "more": "pass list_limits"}]
             return reply
         if (verb, what) == ("build", "item"):
             return self.build(o)
@@ -169,12 +168,19 @@ class FakeGame:
             return err("invalid_argument")
         if "items" in o:
             pack = self.packs[o["to"]]
-            if any(line.get("quantity", 1) > 100 for line in o["items"]):
+            ingots = sum(line.get("quantity", 1) for line in o["items"] if line["prefab"] == "ItemIronIngot")
+            have = sum(r["qty"] for r in pack if r and r["prefab"] == "ItemIronIngot")
+            stacks = sum(1 for r in pack if r and r["prefab"] == "ItemIronIngot")
+            if have + ingots > 50 * (stacks + sum(1 for r in pack if r is None)):
                 return err("no_room", "items[2]: takes 0 of 2500")
             placed = []
-            for line, _ in enumerate(o["items"]):
+            for line, spec in enumerate(o["items"]):
                 self.next_id += 1
-                pack[pack.index(None)] = str(self.next_id)
+                mine = next((r for r in pack if r and r["prefab"] == spec["prefab"] and r["qty"] < 50), None)
+                if mine is not None:
+                    mine["qty"] += spec.get("quantity", 1)
+                else:
+                    pack[pack.index(None)] = {"id": str(self.next_id), "prefab": spec["prefab"], "qty": spec.get("quantity", 1)}
                 placed.append(str(self.next_id))
             return {"placed": placed, "items": [{"line": i, "slot": {"id": o["to"], "slot": i}} for i in range(len(placed))]}
         self.next_id += 1
@@ -211,3 +217,22 @@ def test_the_slot_checks_flag_runs_the_slot_check_and_not_the_pictures(tmp_path,
     monkeypatch.setattr(shots, "run", lambda log: called.append("pictures"))
     assert shots.main(["--pipe", "p", "--hub", "h", "--done", str(tmp_path), "--slot-checks"]) == 0
     assert called == ["slots"]
+
+
+def test_the_over_full_size_comes_from_the_storage_and_the_prefabs_max_stack():
+    contents = {"slots": [
+        {"index": 0, "occupant": {"prefab_name": "ItemIronIngot", "quantity": 1, "max_quantity": 50}},
+        {"index": 1, "occupant": {"prefab_name": "ItemCopperIngot", "quantity": 1, "max_quantity": 50}},
+        {"index": 2, "occupant": None}, {"index": 3, "occupant": None}]}
+    assert c.stack_capacity(contents, "ItemIronIngot") == 49 + 2 * 50
+    assert c.stack_capacity(contents, "ItemGoldIngot") is None
+
+
+def test_a_refused_locker_build_is_a_noted_skip_with_its_reason():
+    class Refuses:
+        def call(self, verb, what=None, **o):
+            return err("not_ready", "no floor here")
+    log = {}
+    c.cut_part(Refuses(), log, [0, 0, 0])
+    assert "not_ready" in log["cut"]["skipped"]
+    assert c.cut_failures(log) == []

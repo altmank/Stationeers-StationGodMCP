@@ -79,6 +79,22 @@ def slots_returned(reply):
     return len((reply or {}).get("slots") or [])
 
 
+def stack_capacity(contents, prefab):
+    """How many more of `prefab` an inspect contents reply (empty and detail) can take: the room left on its stacks plus
+    a full stack for every empty slot. None when no stack of it is there to read its max stack from."""
+    result = ((contents or {}).get("results") or [contents or {}])[0]
+    rows = (result.get("payload") or result).get("slots") or []
+    room, full, empty = 0.0, None, 0
+    for row in rows:
+        occupant = row.get("occupant")
+        if not occupant:
+            empty += 1
+        elif occupant.get("prefab_name") == prefab and occupant.get("max_quantity"):
+            full = occupant["max_quantity"]
+            room += occupant["max_quantity"] - (occupant.get("quantity") or 0)
+    return None if full is None else room + empty * full
+
+
 def key_failures(evidence):
     failures = []
     keys = evidence.get("keys")
@@ -303,31 +319,46 @@ def list_part(sgcall, log, at):
     box["fits"] = _call(sgcall, "build", "item", to=pack, items=lines, confirm=True)
     box["after_fits_ids"] = _holder_ids(sgcall, pack)
     box["before_over_ids"] = _holder_ids(sgcall, pack)
-    over = lines + [{"prefab": "ItemIronIngot", "quantity": 3000}]
+    capacity = box["capacity"] = stack_capacity(item_check.detailed(sgcall, pack), "ItemIronIngot")
+    if capacity is None:
+        raise SystemExit("slot check: no iron ingot stack in the storage to read its max stack from")
+    # More than fits: the line before it takes 1 of the room, so asking for the whole capacity cannot fit.
+    over = lines + [{"prefab": "ItemIronIngot", "quantity": capacity}]
     box["over"] = _call(sgcall, "build", "item", to=pack, items=over, confirm=True)
     box["after_over_ids"] = _holder_ids(sgcall, pack)
     box["both"] = _call(sgcall, "build", "item", prefab=GENERAL_ITEM, to=pack, items=lines, confirm=True)
 
 
-def cut_part(sgcall, log):
-    """inspect slots reaches devices and logic-capable worn items (a vanilla suit has no logic), so the cut is read on
-    the first device of the world with more than CUT_TO slots."""
-    cut = log["cut"] = {"looked_at": []}
-    ids = []
-    found = _call(sgcall, "find", "device", limit=60, fields=["reference_id"])
-    ids += [str(row["reference_id"]) for row in (found.get("devices") or [])] if isinstance(found, dict) else []
-    boxes = _call(sgcall, "find", "container", limit=30, fields=["reference_id"])
-    ids += [str(row["reference_id"]) for row in (boxes.get("containers") or [])] if isinstance(boxes, dict) else []
-    ids += [str(v["reference_id"]) for v in ((log.get("player") or {}).get("worn") or {}).values() if v]
-    for thing in dict.fromkeys(ids):
-        whole = _call(sgcall, "inspect", "slots", id=thing)
-        count = slots_returned(whole)
-        cut["looked_at"].append({"id": thing, "slots": count, "code": code_of(whole)})
-        if count > CUT_TO and not truncated_note(whole):
-            cut.update(id=thing, total=count, whole=whole)
-            cut["limited"] = _call(sgcall, "inspect", "slots", id=thing, list_limits={"slots": CUT_TO})
-            return
-    cut["skipped"] = "no thing inspect slots reaches has more than %d slots" % CUT_TO
+LOCKER = "StructureStorageLocker"
+
+
+def build_locker(sgcall, at):
+    """(id, replies): a vanilla storage locker placed free beside the player, at the first spot the game accepts."""
+    replies = []
+    for dx, dz in ((3, 0), (4, 0), (3, 3), (-3, 0), (0, 3), (0, -3), (5, 2)):
+        reply = _call(sgcall, "build", "structure", prefab=LOCKER, at=[at[0] + dx, at[1] - 0.5, at[2] + dz],
+                      free=True, confirm=True)
+        replies.append(reply)
+        placed = ((reply or {}).get("result") or {}).get("placed") or []
+        if not code_of(reply) and placed:
+            return str(placed[0]["reference_id"]), replies
+    return None, replies
+
+
+def cut_part(sgcall, log, at):
+    """inspect slots reaches devices and logic-capable worn items (a vanilla suit has no logic), so a vanilla locker is
+    built free beside the player and its slots read whole and with list_limits {slots: CUT_TO}."""
+    cut = log["cut"] = {}
+    locker, replies = build_locker(sgcall, at)
+    cut["build_replies"] = replies
+    if locker is None:
+        cut["skipped"] = "the locker build was refused every time: " + "; ".join(
+            f"{code_of(r) or 'nothing placed'} {message_of(r)}"[:120] for r in replies[:3])
+        return
+    cut["id"] = locker
+    cut["whole"] = _call(sgcall, "inspect", "slots", id=locker)
+    cut["total"] = slots_returned(cut["whole"])
+    cut["limited"] = _call(sgcall, "inspect", "slots", id=locker, list_limits={"slots": CUT_TO})
 
 
 def run(sgcall, done, log, say=print):
@@ -341,7 +372,7 @@ def run(sgcall, done, log, say=print):
     for name, part in (("slots-by-key", keys_part), ("hand", hand_part), ("locker-list", list_part)):
         part(sgcall, log, at)
         say(f"slot check: {name} done")
-    cut_part(sgcall, log)
+    cut_part(sgcall, log, at)
     say("slot check: cut-reply-shape done")
     log["marker"] = MARKER
     failures, notes = verdict(log)
