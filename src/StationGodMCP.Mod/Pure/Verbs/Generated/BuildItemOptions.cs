@@ -15,7 +15,7 @@ internal sealed class BuildItemOptions
 {
     internal static WhatSpec Spec { get; } = new WhatSpec("build", "item", "items", null, new WriteSpec("confirm", "cannot", "[cannot undo: items made]", "always"), new WhatCost(CostClass.Instant), new WhatCost(CostClass.Instant), null,
         new OptionSpec("prefab", "{\"type\":[\"string\",\"integer\"]}"),
-        new OptionSpec("quantity", "{\"type\":\"number\",\"minimum\":0}", false, "1"),
+        new OptionSpec("quantity", "{\"type\":\"number\",\"minimum\":0}"),
         new OptionSpec("to", "{\"type\":\"string\"}"),
         new OptionSpec("slot", "{\"type\":[\"integer\",\"string\"]}", false, "auto"),
         new OptionSpec("items", "{\"type\":\"array\",\"items\":{\"type\":\"object\"},\"maxItems\":64}"),
@@ -43,7 +43,7 @@ internal sealed class BuildItemOptions
         Selector = Selector.Bind(options),
         Fields = Fields.Bind(options),
         Report = ReportConfirm.Bind(options),
-        Quantity = options.Number("quantity") ?? options.DefaultNumber("quantity"),
+        Quantity = options.Number("quantity"),
         To = options.Text("to"),
         Slot = options.Raw("slot"),
         Items = options.Raw("items"),

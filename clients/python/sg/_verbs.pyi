@@ -2750,7 +2750,7 @@ def build(what: Literal['terrain'], *,
 def build(what: Literal['item'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
     prefab: str | int = None,  # The item: a whole prefab name or hash (ItemIntegratedCircuit10, ItemKitConsole); or give items.
-    quantity: float = 1,  # How many: a count of items, or of units for a stacking item (ore, ingot grams, coils), made in full stacks; at most 64 stacks.
+    quantity: float = None,  # How many: a count of items, or of units for a stacking item (ore, ingot grams, coils), made in full stacks; at most 64 stacks; 1 when left out.
     to: str = None,  # The holder that gets them: a container, device, suit or "player"; or give at.
     slot: int | str = 'auto',  # A slot index of to, or a slot key (string_key of inspect contents; to a player, left_hand or right_hand); "auto": matching stacks topped up, then empty slots filled.
     items: list = None,  # Instead of prefab, quantity and slot: up to 64 lines {prefab, quantity = 1, slot}, planned together first; one that does not fit refuses no_room with its index, and nothing is made.
