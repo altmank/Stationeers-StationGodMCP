@@ -282,4 +282,32 @@ public sealed class SlotKeyTests
             Assert.Equal(JTokenType.Null, json[empty]!.Type);
         }
     }
+
+    // The binder fills a default into an option the call left out, so these bind real JSON arguments through the
+    // generated options class, as the verb handler does, instead of passing a hand-made null.
+    private static ItemSpawnOrder? BoundOrder(string json, out List<OptionProblem> problems)
+    {
+        BuildItemOptions options = BuildItemOptions.Bind(new OptionReader(BuildItemOptions.Spec, JObject.Parse(json)));
+        problems = new List<OptionProblem>();
+        return ItemSpawnOrder.Of(options.Selector.Prefab, options.Quantity, options.To, options.Slot, options.At,
+            options.Items, problems);
+    }
+
+    [Fact]
+    public void AnAbsentQuantityBindsAsOneAndTheItemsFormIsAcceptedWithoutOne()
+    {
+        ItemSpawnOrder single = BoundOrder("""{"prefab":"ItemIronSheets","to":"5200100"}""", out List<OptionProblem> none)!;
+        Assert.Empty(none);
+        Assert.Equal(1, Assert.Single(single.Lines).Quantity);
+
+        ItemSpawnOrder list = BoundOrder(
+            """{"to":"5200100","items":[{"prefab":"ItemIronFrames","quantity":2},{"prefab":"ItemIronSheets"}]}""",
+            out List<OptionProblem> accepted)!;
+        Assert.Empty(accepted);
+        Assert.Equal(new[] { 2.0, 1.0 }, list.Lines.Select(line => line.Quantity));
+
+        Assert.Null(BoundOrder("""{"prefab":"ItemIronSheets","to":"5200100","quantity":3,"items":[{"prefab":"X"}]}""",
+            out List<OptionProblem> both));
+        Assert.Contains(both, problem => problem.Path == "quantity");
+    }
 }
