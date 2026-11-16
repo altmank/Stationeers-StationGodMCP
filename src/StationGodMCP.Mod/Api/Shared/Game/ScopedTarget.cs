@@ -82,17 +82,50 @@ internal sealed class ScopedTarget
             }
 
             string wearer = human.DisplayName;
-            AddWorn(worn, wearer, "suit", human.SuitSlot);
-            AddWorn(worn, wearer, "helmet", human.HelmetSlot);
-            AddWorn(worn, wearer, "backpack", human.BackpackSlot);
-            AddWorn(worn, wearer, "toolbelt", human.ToolbeltSlot);
-            AddWorn(worn, wearer, "glasses", human.GlassesSlot);
-            AddWorn(worn, wearer, "uniform", human.UniformSlot);
-            AddWorn(worn, wearer, "left_hand", human.LeftHandSlot);
-            AddWorn(worn, wearer, "right_hand", human.RightHandSlot);
+            foreach ((string name, Slot? slot) in WornSlotsOf(human))
+            {
+                AddWorn(worn, wearer, name, slot);
+            }
         }
 
         return worn;
+    }
+
+    /// <summary>The slots a human wears or holds items in, by the names the API gives them, in a fixed order.</summary>
+    internal static IReadOnlyList<(string Name, Slot? Slot)> WornSlotsOf(Human human) => new (string, Slot?)[]
+    {
+        ("suit", human.SuitSlot),
+        ("helmet", human.HelmetSlot),
+        ("backpack", human.BackpackSlot),
+        ("toolbelt", human.ToolbeltSlot),
+        ("glasses", human.GlassesSlot),
+        ("uniform", human.UniformSlot),
+        ("left_hand", human.LeftHandSlot),
+        ("right_hand", human.RightHandSlot)
+    };
+
+    /// <summary>What the human has in the worn slot of that name (WornSlotsOf), or null when it is empty.</summary>
+    internal static Thing? WornIn(Human human, string slotName)
+    {
+        foreach ((string name, Slot? slot) in WornSlotsOf(human))
+        {
+            if (name != slotName)
+            {
+                continue;
+            }
+
+            try
+            {
+                return slot?.Get();
+            }
+            catch (Exception)
+            {
+                // Slot.Get on a slot mid-swap can throw; read it as empty this request.
+                return null;
+            }
+        }
+
+        return null;
     }
 
     /// <summary>The worn or held item with this reference id, or null.</summary>

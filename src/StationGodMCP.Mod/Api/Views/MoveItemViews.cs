@@ -7,7 +7,7 @@ using StationGodMCP.Api.Shared;
 namespace StationGodMCP.Api.Views;
 
 /// <summary>A slot on a thing: the thing's id and the slot's index in its Slots.</summary>
-internal sealed class SlotRefView
+internal class SlotRefView
 {
     internal SlotRefView(ThingId id, int slot)
     {
@@ -18,6 +18,19 @@ internal sealed class SlotRefView
     public ThingId Id { get; }
 
     public int Slot { get; }
+}
+
+/// <summary>A slot on a thing, with the key the slot carries (Slot.StringKey); null when it has none.</summary>
+internal sealed class KeyedSlotRefView : SlotRefView
+{
+    internal KeyedSlotRefView(ThingId id, int slot, string? slotKey)
+        : base(id, slot)
+    {
+        SlotKey = string.IsNullOrEmpty(slotKey) ? null : slotKey;
+    }
+
+    [JsonProperty(Order = 1)]
+    public string? SlotKey { get; }
 }
 
 /// <summary>A slot a move would fill, and how many would go there.</summary>
@@ -67,7 +80,7 @@ internal sealed class SlotFilledView
 /// </summary>
 internal sealed class ItemMovedView : BatchItemView
 {
-    internal ItemMovedView(int index, ThingId referenceId, string displayName, SlotRefView? from, SlotRefView to,
+    internal ItemMovedView(int index, ThingId referenceId, string displayName, SlotRefView? from, KeyedSlotRefView to,
         int quantityMoved, ThingId? mergedInto, ThingId destinationReferenceId, string? warning = null,
         List<SlotFilledView>? filled = null)
         : base(index, ok: true)
@@ -90,7 +103,7 @@ internal sealed class ItemMovedView : BatchItemView
     /// <summary>Where the item was; null when it lay loose in the world.</summary>
     public SlotRefView? From { get; }
 
-    public SlotRefView To { get; }
+    public KeyedSlotRefView To { get; }
 
     public int QuantityMoved { get; }
 

@@ -20,6 +20,10 @@
     "description": "The device sits on several networks of that category. Name one with {id, port}; the message lists the ports."
   },
   "ambiguous_rocket": {"description": "There are several rockets. Give id; the message lists them."},
+  "ambiguous_slot": {
+    "description": "Several slots of the holder carry that key (the game does not keep keys unique). The message lists their indexes; name one by its index.",
+    "see": {"verb": "inspect", "what": "contents"}
+  },
   "assumed_present": {
     "description": "A thing named in assume_removed still stands, so the real run cannot go ahead. Remove it first, then run again."
   },

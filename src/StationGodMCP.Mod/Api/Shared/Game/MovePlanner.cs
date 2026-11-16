@@ -37,6 +37,25 @@ internal abstract class SlotChoice
     internal sealed class Auto : SlotChoice
     {
     }
+
+    /// <summary>A slot named by the key it carries (Slot.StringKey); SlotKeys settles which index that is.</summary>
+    internal sealed class Key : SlotChoice
+    {
+        internal Key(string value)
+        {
+            Value = value;
+        }
+
+        public string Value { get; }
+    }
+
+    /// <summary>The choice a call's slot request makes.</summary>
+    internal static SlotChoice Of(StationGodMCP.Pure.Verbs.SlotRequest request) => request switch
+    {
+        StationGodMCP.Pure.Verbs.SlotRequest.Index index => new Exact(index.Value),
+        StationGodMCP.Pure.Verbs.SlotRequest.Key key => new Key(key.Value),
+        _ => new Auto()
+    };
 }
 
 /// <summary>
@@ -285,6 +304,21 @@ internal static class MovePlanner
                 }
 
                 return refused;
+            case SlotChoice.Key key:
+                ApiException? unkeyed = SlotKeys.Resolve(target, key.Value, out int keyed);
+                if (unkeyed != null)
+                {
+                    return unkeyed;
+                }
+
+                ApiException? keyRefused = ExactSlot(move, item, target, quantity, keyed, out Slot? keySlot,
+                    out Stackable? keyMergeInto);
+                if (keyRefused == null)
+                {
+                    parts.Add(new MovePart(keySlot!, quantity, keyMergeInto));
+                }
+
+                return keyRefused;
             case SlotChoice.Auto _:
                 return AutoSlot(move, item, target, quantity, parts, out staging);
             default:
@@ -703,7 +737,9 @@ internal sealed class MovePlan
                 now is Stackable stack && stack == landed[at] ? stack.Quantity : (int?)null));
         }
 
-        return new ItemMovedView(index, itemId, name, from, filled[0].To, moved,
+        Slot first = Parts[0].Slot;
+        return new ItemMovedView(index, itemId, name, from,
+            new KeyedSlotRefView(new ThingId(first.Parent.ReferenceId), first.SlotIndex, first.StringKey), moved,
             filled[0].Merged ? filled[0].ReferenceId : (ThingId?)null, filled[0].ReferenceId, filled: filled);
     }
 
@@ -750,7 +786,7 @@ internal sealed class MovePlan
     private ItemMovedView ApplyOne(int index)
     {
         SlotRefView? from = From();
-        SlotRefView to = To();
+        KeyedSlotRefView to = To();
         ThingId itemId = new ThingId(Item.ReferenceId);
         string name = Item.DisplayName;
         ThingId? merged = Merged();
@@ -789,7 +825,8 @@ internal sealed class MovePlan
         ? null
         : new SlotRefView(new ThingId(Item.ParentSlot.Parent.ReferenceId), Item.ParentSlot.SlotIndex);
 
-    private SlotRefView To() => new SlotRefView(new ThingId(Slot.Parent.ReferenceId), Slot.SlotIndex);
+    private KeyedSlotRefView To() =>
+        new KeyedSlotRefView(new ThingId(Slot.Parent.ReferenceId), Slot.SlotIndex, Slot.StringKey);
 
     private ThingId? Merged() => MergeInto != null ? new ThingId(MergeInto.ReferenceId) : (ThingId?)null;
 

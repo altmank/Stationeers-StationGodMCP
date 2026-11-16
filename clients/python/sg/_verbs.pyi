@@ -611,8 +611,8 @@ def inspect(what: Literal['contents'], *,
       display_name: str | None
       position: Vec3
       distance_m: float | None
-      slots: list[{slot: int, reference_id: str, prefab_name: str | None, quantity: float, slots: list[ContentSlot] | None, slots_not_shown: int |
-          None}]
+      slots: list[{slot: int, string_key: str | None, reference_id: str, prefab_name: str | None, quantity: float, slots: list[ContentSlot] | None,
+          slots_not_shown: int | None}]
       empty_slots_omitted: int | None
       silo: {count: int, entries_known: bool, importing: bool | None, exporting: bool | None, dispense_slot: int | None, total: int, offset: int,
           entries: list[{index: int, prefab_name: str | None, display_name: str | None, quantity: float, max_quantity: float | None, children: int,
@@ -623,8 +623,9 @@ def inspect(what: Literal['contents'], *,
       display_name: str | None
       position: Vec3
       distance_m: float | None
-      slots: list[{index: int, display_name: str | None, slot_class: str, occupant: {reference_id: str, prefab_name: str | None, display_name: str |
-          None, quantity: float, max_quantity: float | None, slots: list[SlotView] | None, slots_not_shown: int | None} | None}]
+      slots: list[{index: int, display_name: str | None, string_key: str | None, slot_class: str, occupant: {reference_id: str, prefab_name: str |
+          None, display_name: str | None, quantity: float, max_quantity: float | None, slots: list[SlotView] | None, slots_not_shown: int | None} |
+          None}]
       empty_slots_omitted: int | None
       silo: {count: int, entries_known: bool, importing: bool | None, exporting: bool | None, dispense_slot: int | None, total: int, offset: int,
           entries: list[{index: int, prefab_name: str | None, display_name: str | None, quantity: float, max_quantity: float | None, children: int,
@@ -1010,6 +1011,8 @@ def inspect(what: Literal['player'], *,
       warnings: {nutrition_warning: float, nutrition_critical: float, hydration_warning: float, hydration_critical: float}
       gear: {suit: Thing | None, helmet: Thing | None, jetpack: {reference_id: str, prefab_name: str | None, display_name: str | None, stabilizer:
           bool, active: bool} | None, suit_movement: {speed_multiplier: float, storm_speed_multiplier: float | None, slot_count: int} | None}
+      worn: {suit: Thing | None, helmet: Thing | None, backpack: Thing | None, toolbelt: Thing | None, uniform: Thing | None, glasses: Thing | None,
+          left_hand: Thing | None, right_hand: Thing | None}
       game_tick_s: float
     Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}
     Example: sg.inspect('player')
@@ -2746,25 +2749,26 @@ def build(what: Literal['terrain'], *,
 @overload
 def build(what: Literal['item'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
-    prefab: str | int,  # The item: a whole prefab name or hash (ItemIntegratedCircuit10, ItemKitConsole).
-    quantity: float = 1,  # How many: a count of items, or of units for a stacking item (ore, ingot grams, coils), made in full stacks; at most 64 stacks.
+    prefab: str | int = None,  # The item: a whole prefab name or hash (ItemIntegratedCircuit10, ItemKitConsole); or give items.
+    quantity: float = None,  # How many: a count of items, or of units for a stacking item (ore, ingot grams, coils), made in full stacks; at most 64 stacks; 1 when left out.
     to: str = None,  # The holder that gets them: a container, device, suit or "player"; or give at.
-    slot: int = None,  # A slot index of to; left out, matching stacks are topped up, then empty slots are filled.
+    slot: int | str = 'auto',  # A slot index of to, or a slot key (string_key of inspect contents; to a player, left_hand or right_hand); "auto": matching stacks topped up, then empty slots filled.
+    items: list = None,  # Instead of prefab, quantity and slot: up to 64 lines {prefab, quantity = 1, slot}, planned together first; one that does not fit refuses no_room with its index, and nothing is made.
     at: list = None,  # [x, y, z] in metres: the items appear there, loose; or give to.
 ) -> dict:  # main list: r['items']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """Make items out of nothing (chips, boards, kits, ingots): by prefab and quantity, into a holder's slots or on the ground at a point.
-    A cheat (cheats_off outside creative unless the user turned cheats on): no player makes items from nothing. Works with no player in the world. Into a holder, what its slots cannot take is refused (no_room) and nothing is made. The report lists each stack it would make; placed names the new items' ids.
+    A cheat (cheats_off outside creative unless the user turned cheats on): no player makes items from nothing. Works with no player in the world. Into a holder, what its slots cannot take is refused (no_room) and nothing is made. The report lists each stack it would make; placed names the new items' ids. With items, prefab_name, display_name and quantity are null; each items row names its line.
     Reports in a report run; acts in a confirmed run.
     Cheat: ask the user first.
     placed: list[str] on a job reply, the new ids (a run's log.placed, a structure job's result.placed; a brief poll counts them in log.placed_count); int on a run report, the cells it would build.
     Reply:
       placed: list[str]
-      prefab_name: str
+      prefab_name: str | None
       display_name: str | None
-      quantity: float
+      quantity: float | None
       to: Thing | None
       at: Vec3 | None
-      items: list[{where: str, slot: {id: str, slot: int} | None, quantity: float, reference_id: str | None}]
+      items: list[{line: int, where: str, slot: {id: str, slot: int} | None, quantity: float, reference_id: str | None}]
     Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}; Vec3 = {x: float, y: float, z: float}
     Example: sg.build('item', prefab='ItemIntegratedCircuit10', quantity=2, to='5200100')
     """
@@ -3534,7 +3538,7 @@ def move(what: Literal['item'], *,
     id: str | list[str] = None,  # The item(s); for a vault or silo deposit, whole things by id.
     quantity: float = None,  # Slot move: how many off the stack, default the whole item. Out of a vault: grams of ingot or a count of ore or ice; out of a silo: an item count; required for both.
     to: str = None,  # The holder that gets them: a container, belt, suit, "player", a vault or a silo.
-    slot: int | str = 'auto',  # A slot index of to, or "auto" (the default: matching stacks topped up to their most, the rest into an empty slot; to a player, the slots of what it wears (belt, backpack), then a free hand). Given, the move is a slot move even into a vault's or silo's own slots; force needs an index.
+    slot: int | str = 'auto',  # A slot index of to, a slot key (the string_key inspect contents shows; matched exactly, on to's own slots), or "auto" (the default: matching stacks topped up to their most, the rest into an empty slot; to a player, the slots of what it wears (belt, backpack), then a free hand). To a player, left_hand and right_hand are its hand slots. A key that no slot or several slots carry is refused (slot_not_found, ambiguous_slot); an occupied hand is slot_occupied, never a silent no-op. Given, the move is a slot move even into a vault's or silo's own slots; force needs an index.
     merge: bool = True,  # Join a matching stack in the slot.
     force: bool = False,  # Into an empty slot by index even when hidden. Cheat.
     allow: list[Literal['in_use', 'ground']] = None,  # in_use: take a part its device is using; ground: what does not fit goes on the ground.
@@ -3565,7 +3569,7 @@ def move(what: Literal['item'], *,
       reference_id: str
       display_name: str
       from: {id: str, slot: int} | None
-      to: {id: str, slot: int}
+      to: {id: str, slot: int, slot_key: str | None}
       quantity_moved: int
       merged_into: str | None
       destination_reference_id: str

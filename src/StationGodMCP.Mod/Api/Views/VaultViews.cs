@@ -259,7 +259,7 @@ internal sealed class VaultDepositView
 }
 
 /// <summary>Where one part of a withdrawal went: merged (onto a stack), slot (a new stack) or ground.</summary>
-internal sealed class PlacedView
+internal class PlacedView
 {
     internal const string Merged = "merged";
     internal const string InSlot = "slot";

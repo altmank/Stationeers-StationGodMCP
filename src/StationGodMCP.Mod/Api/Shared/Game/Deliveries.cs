@@ -44,6 +44,9 @@ internal sealed class Delivery
 
     internal List<Slot> Empty { get; }
 
+    /// <summary>The slots of matching stacks with room, in the order Rooms gives their room.</summary>
+    internal List<Slot> StackSlots => Stacks;
+
     // Named empty slots whose class is checked on the made item (Pure/MadeItemSlotRule): the prefab reports none.
     private HashSet<Slot> CheckOnMade { get; } = new HashSet<Slot>();
 
@@ -63,6 +66,14 @@ internal sealed class Delivery
         {
             case SlotChoice.Exact exact:
                 delivery.OfferExact(exact.Index, prefab);
+                break;
+            case SlotChoice.Key key:
+                if (SlotKeys.Resolve(holder, key.Value, out int keyed) is { } unkeyed)
+                {
+                    throw unkeyed;
+                }
+
+                delivery.OfferExact(keyed, prefab);
                 break;
             default:
                 foreach (Slot slot in body != null ? Refunds.InventorySlots(body, body) : new List<Slot>(holder.Slots))

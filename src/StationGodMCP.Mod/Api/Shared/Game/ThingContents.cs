@@ -89,7 +89,7 @@ internal static class ThingContents
 
             DynamicThing occupant = slot.Get();
             slots.Add(new SlotView(index, slot.DisplayName, slot.Type.ToString(),
-                occupant == null ? null : OccupantOf(occupant, depth - 1, includeEmpty)));
+                occupant == null ? null : OccupantOf(occupant, depth - 1, includeEmpty), slot.StringKey));
         }
 
         return slots;

@@ -73,11 +73,11 @@ internal static class ItemSpawnReplies
     internal static ReportReply Reported(ItemSpawnView reading, string undoMark)
     {
         List<ReportTarget> targets = new List<ReportTarget>(reading.Items.Count);
-        foreach (PlacedView stack in reading.Items)
+        foreach (SpawnedView stack in reading.Items)
         {
             string? holder = stack.Slot?.Id.ToString() ?? reading.To?.ReferenceId.ToString();
             object? cell = holder == null && reading.At is { } at ? new[] { at.X, at.Y, at.Z } : null;
-            targets.Add(new ReportTarget(holder, cell, reading.PrefabName, null, stack.Quantity, undoMark));
+            targets.Add(new ReportTarget(holder, cell, stack.PrefabName, null, stack.Quantity, undoMark));
         }
 
         return Report.Of(targets, reading);

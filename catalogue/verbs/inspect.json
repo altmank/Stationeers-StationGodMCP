@@ -225,7 +225,7 @@
               "display_name": "str | None",
               "position": "Vec3",
               "distance_m": "float | None",
-              "slots": "list[{slot: int, reference_id: str, prefab_name: str | None, quantity: float, slots: list[ContentSlot] | None, slots_not_shown: int | None}]",
+              "slots": "list[{slot: int, string_key: str | None, reference_id: str, prefab_name: str | None, quantity: float, slots: list[ContentSlot] | None, slots_not_shown: int | None}]",
               "empty_slots_omitted": "int | None",
               "silo": "{count: int, entries_known: bool, importing: bool | None, exporting: bool | None, dispense_slot: int | None, total: int, offset: int, entries: list[{index: int, prefab_name: str | None, display_name: str | None, quantity: float, max_quantity: float | None, children: int, contents: list[{prefab_name: str | None, quantity: float}], rots_when_taken: bool}], cursor_id: str | None} | None"
             }
@@ -238,7 +238,7 @@
               "display_name": "str | None",
               "position": "Vec3",
               "distance_m": "float | None",
-              "slots": "list[{index: int, display_name: str | None, slot_class: str, occupant: {reference_id: str, prefab_name: str | None, display_name: str | None, quantity: float, max_quantity: float | None, slots: list[SlotView] | None, slots_not_shown: int | None} | None}]",
+              "slots": "list[{index: int, display_name: str | None, string_key: str | None, slot_class: str, occupant: {reference_id: str, prefab_name: str | None, display_name: str | None, quantity: float, max_quantity: float | None, slots: list[SlotView] | None, slots_not_shown: int | None} | None}]",
               "empty_slots_omitted": "int | None",
               "silo": "{count: int, entries_known: bool, importing: bool | None, exporting: bool | None, dispense_slot: int | None, total: int, offset: int, entries: list[{index: int, prefab_name: str | None, display_name: str | None, quantity: float, max_quantity: float | None, children: int, contents: list[{prefab_name: str | None, quantity: float}], rots_when_taken: bool}], cursor_id: str | None} | None"
             }
@@ -796,6 +796,7 @@
               "thirst": "{per_second: float, per_hour: float, awake_per_second: float, awake_per_hour: float, time_left_s: float | None, time_left_awake_s: float | None, factors: Any} | None",
               "warnings": "{nutrition_warning: float, nutrition_critical: float, hydration_warning: float, hydration_critical: float}",
               "gear": "{suit: Thing | None, helmet: Thing | None, jetpack: {reference_id: str, prefab_name: str | None, display_name: str | None, stabilizer: bool, active: bool} | None, suit_movement: {speed_multiplier: float, storm_speed_multiplier: float | None, slot_count: int} | None}",
+    "worn": "{suit: Thing | None, helmet: Thing | None, backpack: Thing | None, toolbelt: Thing | None, uniform: Thing | None, glasses: Thing | None, left_hand: Thing | None, right_hand: Thing | None}",
               "game_tick_s": "float"
             }
           }

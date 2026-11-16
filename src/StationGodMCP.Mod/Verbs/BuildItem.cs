@@ -21,7 +21,7 @@ internal static class BuildItem
         string label = BuildItemOptions.Spec.Label;
         List<OptionProblem> problems = new List<OptionProblem>();
         ItemSpawnOrder? order = ItemSpawnOrder.Of(options.Selector.Prefab, options.Quantity, options.To, options.Slot,
-            options.At, problems);
+            options.At, options.Items, problems);
         if (order == null)
         {
             return new VerbOutcome.Refused(OptionProblem.Refusal(label, problems));
