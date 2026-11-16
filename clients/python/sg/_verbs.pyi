@@ -478,7 +478,7 @@ def inspect(what: Literal['device'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
     id: str | list[str],  # Target: an id, a list of ids, or "looking_at" (the thing the crosshair is on); "player" where the what says.
     gateway: str = 'world',  # "world" (default) or a gateway id: only devices on its data networks.
-    include: list[Literal['logic_types']] = None,  # logic_types: every logic type with id and access.
+    include: list[Literal['logic_types', 'interactables']] = None,  # logic_types: every logic type with id and access. interactables: its switches and buttons, for write interact.
 ) -> dict:  # main list: r['logic_types']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """A device: logic types it reads and writes, writable ones by name, rocket, umbilical and uplink details.
     A list of ids answers {results: [{index, ok, reference_id, payload | error}], count, success_count, error_count}, payload the reply below; fields name its keys.
@@ -495,6 +495,7 @@ def inspect(what: Literal['device'], *,
           None, display_name: str | None, rocket: {network_id: str, name: str, state: str, dry_mass_kg: float, hull_pieces: int, internals: int} |
           None}]} | None
       logic_types: list[{id: int, name: str | None, readable: bool, writable: bool}] | None
+      interactables: list[{index: int, name: str, action: str, state: int | None, states: int | None}] | None
       logic_type_count: int
       writable: list[str]
     Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}
@@ -506,7 +507,7 @@ def inspect(what: Literal['device'], *,
 def inspect(what: Literal['prefab'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
     prefab: str | int | list,  # A whole prefab name or hash; or a list, or parts with * ("*Door*"): a row per loaded prefab, by name, at most 64.
-    include: list[Literal['small_cells', 'data', 'recipes']] = None,  # small_cells: each cell's offset. data: the prefab's own game data, every field the game serializes on it (maxPressureDelta, -1 for no limit; flashpointTemperature, autoignitionTemperature; MaxQuantity; UsedPower; BuildStates with each state's tool and cost) and mass_kg; fields: ["data.maxPressureDelta"] narrows it, output_file takes it whole. recipes: what makes it: each machine, its inputs, time and energy.
+    include: list[Literal['small_cells', 'data', 'recipes', 'interactables']] = None,  # interactables: its switches and buttons. small_cells: each cell's offset. data: the prefab's own game data, every field the game serializes on it (maxPressureDelta, -1 for no limit; flashpointTemperature, autoignitionTemperature; MaxQuantity; UsedPower; BuildStates with each state's tool and cost) and mass_kg; fields: ["data.maxPressureDelta"] narrows it, output_file takes it whole. recipes: what makes it: each machine, its inputs, time and energy.
 ) -> dict:  # main list: r['ports']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """A prefab before it stands anywhere: placement kind, turns, cells, ports; its game data and recipes; a list or pattern compares a family.
     One buildable prefab answers its placement view; any other prefab (an item, a kit) its facts; a list or a pattern a row of facts per prefab (prefabs, matched, listed).
@@ -542,6 +543,7 @@ def inspect(what: Literal['prefab'], *,
           {start: float, stop: float} | None, pressure_kpa: {start: float, stop: float} | None, source: str | None}] | None
       slots: list[{index: int, display_name: str | None, string_key: str | None, slot_class: {id: int, name: str | None}, general: bool}] | None
       general_slots: int | None
+      interactables: list[{index: int, name: str, action: str, state: int | None, states: int | None}] | None
     (PrefabFactsView)
       prefab_name: str | None
       prefab_hash: int
@@ -1640,6 +1642,30 @@ def write(what: Literal['screen'], *,
       accepted: bool
     Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}
     Example: sg.write('screen', id='4860097', element='start')
+    """
+
+@overload
+def write(what: Literal['interact'], *,
+    fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
+    id: str,  # One id, or "looking_at".
+    interactable: str | int,  # Its name or index (inspect device include interactables).
+    state: int = None,  # The state to leave it in; default what a click does.
+    hand: Literal['empty', 'held'] = 'empty',  # held: press with what the player holds.
+    force: bool = False,  # Press from out of reach. Cheat.
+    as_player: str = None,  # The player the call is for, by name or id: near "player", looking_at, materials or to "player", show's screen. Needed with several players on a dedicated server; show without it draws for each.
+) -> dict:
+    """Press a thing's switch or button as the player does.
+    The game is asked first whether the press works (not_accepted gives its own text); then it is made. Out of reach (3 m from the eye) is out_of_range: move player {to, stand} first.
+    Cheat when force: true: ask the user first.
+    Reply:
+      thing: Thing
+      interactable: {name: str, index: int}
+      before: int
+      after: int
+      player: str
+      message: str | None
+    Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}
+    Example: sg.write('interact', id='4860097', interactable='OnOff')
     """
 
 @overload
@@ -3719,6 +3745,7 @@ def move(what: Literal['player'], *,
     to: str = None,  # Destination: beside this thing (an id).
     to_player: str = None,  # Destination: beside this player (a name).
     safe_ground: bool = False,  # Drop the point onto the highest safe surface, 4 m above it.
+    stand: dict = None,  # With to or at: stand the player within reach of it, clear of every body and on a floor: {reach_m: 2.5 (at most 3), clear_m: 0.1, floor: required|any, on: false (stand on top of it)}. The reply's stand names the floor; no_clear_stand counts why none passed. It does not turn the player.
 ) -> dict:
     """Move a player anywhere at once: to a point, beside a thing or another player.
     Reports in a report run; acts in a confirmed run.
@@ -3731,6 +3758,7 @@ def move(what: Literal['player'], *,
       destination: {form: str, next_to: Thing | None, safe_ground: bool | None}
       distance_m: float
       note: str | None
+      stand: {position: Vec3, distance_m: float, eye_to_target_m: float, floor: str, tried: int, rejected: list[{reason: str, count: int}]} | None
     Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}; Vec3 = {x: float, y: float, z: float}
     Example: sg.move('player', to_player='xceled')
     """

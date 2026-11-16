@@ -16,7 +16,7 @@ internal sealed class InspectDeviceOptions
     internal static WhatSpec Spec { get; } = new WhatSpec("inspect", "device", "logic_types", null, null, new WhatCost(CostClass.Instant), null, null,
         new OptionSpec("id", "{\"type\":[\"string\",\"array\"],\"items\":{\"type\":\"string\"}}", true),
         new OptionSpec("gateway", "{\"type\":\"string\"}", false, "world"),
-        new OptionSpec("include", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"logic_types\"]}}"));
+        new OptionSpec("include", "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"logic_types\",\"interactables\"]}}"));
 
     internal Selector Selector { get; private set; } = Selector.None;
 

@@ -337,10 +337,16 @@
           "default": "false",
           "x-script": "same"
         },
+        "stand": {
+          "schema": {"type": "object"},
+          "description": "With to or at: stand the player within reach of it, clear of every body and on a floor: {reach_m: 2.5 (at most 3), clear_m: 0.1, floor: required|any, on: false (stand on top of it)}. The reply's stand names the floor; no_clear_stand counts why none passed. It does not turn the player.",
+          "x-script": "same"
+        },
         "confirm": {"use": "confirm"}
       },
       "example": {"to_player": "xceled", "confirm": true},
       "x-cost": {"class": "instant", "growth": "by-id"},
+      "x-cost-when": [{"given": "stand", "class": "bounded"}],
       "x-cost-report": {"class": "instant"},
       "reply": {
         "variants": [
@@ -352,7 +358,8 @@
               "after": "{position: Vec3, room_id: str | None, room_type: str | None, outside: bool | None}",
               "destination": "{form: str, next_to: Thing | None, safe_ground: bool | None}",
               "distance_m": "float",
-              "note": "str | None"
+              "note": "str | None",
+              "stand": "{position: Vec3, distance_m: float, eye_to_target_m: float, floor: str, tried: int, rejected: list[{reason: str, count: int}]} | None"
             }
           }
         ],

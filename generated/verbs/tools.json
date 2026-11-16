@@ -157,6 +157,7 @@
             "items": {
               "enum": [
                 "logic_types",
+                "interactables",
                 "small_cells",
                 "data",
                 "recipes",
@@ -331,6 +332,7 @@
               "memory",
               "chip",
               "screen",
+              "interact",
               "label",
               "paint",
               "flight_log",
@@ -343,7 +345,7 @@
               "script",
               "lattice"
             ],
-            "description": "logic: device logic values; memory: device memory; chip: chip source, pins, run state; screen: press a control; label: rename things; paint: paint things, networks; flight_log: start, stop, clear recorder; uplink: point uplink; battery: set charge; fabricator: make a recipe item; genes: edit plant genes; health: heal player; needs: set needs; script: save script; lattice: Lattice commands"
+            "description": "logic: device logic values; memory: device memory; chip: chip source, pins, run state; screen: press a control; interact: press a switch or button; label: rename things; paint: paint things, networks; flight_log: start, stop, clear recorder; uplink: point uplink; battery: set charge; fabricator: make a recipe item; genes: edit plant genes; health: heal player; needs: set needs; script: save script; lattice: Lattice commands"
           },
           "id": {"type": ["string", "array"]},
           "logic": {"type": ["string", "integer"]},
@@ -369,6 +371,10 @@
           "event": {"enum": ["click", "change", "toggle"]},
           "text": {"type": "string"},
           "as_player": {"type": "string"},
+          "interactable": {"type": ["string", "integer"]},
+          "state": {"type": "integer"},
+          "hand": {"enum": ["empty", "held"]},
+          "force": {"type": "boolean"},
           "label": {"type": "string"},
           "labels": {"type": "array"},
           "network": {"type": ["string", "object"]},
@@ -783,6 +789,7 @@
           "at": {"type": "array"},
           "to_player": {"type": "string"},
           "safe_ground": {"type": "boolean"},
+          "stand": {"type": "object"},
           "fields": {"type": "array", "items": {"type": "string"}},
           "omit": {"type": "array", "items": {"type": "string"}},
           "list_limits": {"type": "object"},

@@ -147,8 +147,9 @@ internal sealed class DescribeDeviceView
 {
     internal DescribeDeviceView(DeviceView device, List<LogicAccessView> logicTypes, bool listed,
         RocketPartView? rocket = null, UmbilicalView? umbilical = null, UplinkView? uplink = null,
-        BuildStateView? buildState = null)
+        BuildStateView? buildState = null, List<InteractableRow>? interactables = null)
     {
+        Interactables = interactables;
         BuildState = buildState;
         Device = device;
         LogicTypes = listed ? logicTypes : null;
@@ -160,6 +161,10 @@ internal sealed class DescribeDeviceView
     }
 
     public DeviceView Device { get; }
+
+    /// <summary>Its switches and buttons; left out unless include interactables.</summary>
+    [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+    public List<InteractableRow>? Interactables { get; }
 
     /// <summary>Its build state, current of last, and what the next state takes; absent with a single state.</summary>
     [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]

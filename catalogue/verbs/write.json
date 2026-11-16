@@ -527,6 +527,69 @@
       },
       "brief": "press a control"
     },
+    "interact": {
+      "summary": "press a thing's switch or button as the player does",
+      "options": {
+        "id": {
+          "use": "id",
+          "schema": {"type": "string"},
+          "description": "One id, or \"looking_at\".",
+          "required": true
+        },
+        "interactable": {
+          "schema": {"type": ["string", "integer"]},
+          "description": "Its name or index (inspect device include interactables).",
+          "required": true,
+          "x-script": "same"
+        },
+        "state": {
+          "schema": {"type": "integer"},
+          "description": "The state to leave it in; default what a click does.",
+          "x-script": "same"
+        },
+        "hand": {
+          "schema": {"type": "string", "enum": ["empty", "held"]},
+          "description": "held: press with what the player holds.",
+          "default": "empty",
+          "x-script": "same"
+        },
+        "force": {
+          "schema": {"type": "boolean"},
+          "description": "Press from out of reach. Cheat.",
+          "default": "false",
+          "x-script": "same"
+        },
+        "as_player": {"use": "as_player"}
+      },
+      "text": [
+        "The game is asked first whether the press works (not_accepted gives its own text); then it is made. Out of reach (3 m from the eye) is out_of_range: move player {to, stand} first."
+      ],
+      "example": {"id": "4860097", "interactable": "OnOff"},
+      "x-cost": {"class": "instant", "growth": "by-id"},
+      "reply": {
+        "variants": [
+          {
+            "keys": {
+              "thing": "Thing",
+              "interactable": "{name: str, index: int}",
+              "before": "int",
+              "after": "int",
+              "player": "str",
+              "message": "str | None"
+            }
+          }
+        ],
+        "types": ["Thing"]
+      },
+      "write": {
+        "route": "acts",
+        "cheat": "force: true",
+        "x-undo": "cannot",
+        "x-undo-mark": "[cannot undo: a press]",
+        "x-target": [{"path": "id", "role": "acts-on"}]
+      },
+      "brief": "press a switch or button"
+    },
     "label": {
       "summary": "rename things as the hand Labeller does; empty name gives back the game's name",
       "options": {

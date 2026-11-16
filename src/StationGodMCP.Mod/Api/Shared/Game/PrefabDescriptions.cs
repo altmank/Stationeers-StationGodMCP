@@ -39,7 +39,8 @@ internal static class PrefabDescriptions
     /// prefab's game data (PrefabData) and recipes (PrefabRecipes) when asked. invalid_prefab when nothing loaded
     /// matches.
     /// </summary>
-    internal static object Inspect(PrefabFilter filter, bool withCells, bool withData, bool withRecipes)
+    internal static object Inspect(PrefabFilter filter, bool withCells, bool withData, bool withRecipes,
+        bool withInteractables = false)
     {
         if (filter.Patterns.Count == 1 && OneOf(filter.Patterns[0]) is { } reference)
         {
@@ -59,7 +60,8 @@ internal static class PrefabDescriptions
             return WorldModel.Prefabs.Build.Find(reference, out _) is { } buildable
                 ? Describe(reference, withCells).With(withData ? PrefabData.Of(buildable) : null,
                     withRecipes ? PrefabRecipes.Of(buildable) : null, SlotsOf(buildable))
-                : Facts(thing, withData, withRecipes);
+                    .WithInteractables(withInteractables ? Interactables.Rows(buildable, false) : null)
+                : Facts(thing, withData, withRecipes, withInteractables);
         }
 
         List<Thing> matched = WorldModel.Prefabs.Matching(filter);
@@ -72,7 +74,7 @@ internal static class PrefabDescriptions
         List<PrefabFactsView> rows = new List<PrefabFactsView>(System.Math.Min(matched.Count, MaximumRows));
         for (int index = 0; index < matched.Count && index < MaximumRows; index++)
         {
-            rows.Add(Facts(matched[index], withData, withRecipes));
+            rows.Add(Facts(matched[index], withData, withRecipes, withInteractables));
         }
 
         return new PrefabListView(rows, matched.Count);
@@ -85,12 +87,12 @@ internal static class PrefabDescriptions
         _ => null
     };
 
-    private static PrefabFactsView Facts(Thing prefab, bool withData, bool withRecipes) =>
+    private static PrefabFactsView Facts(Thing prefab, bool withData, bool withRecipes, bool withInteractables) =>
         new PrefabFactsView(prefab.PrefabName, prefab.PrefabHash, ThingName.Displayed(prefab.DisplayName,
                 prefab.PrefabName), prefab.GetType().Name,
             prefab is Structure && WorldModel.Prefabs.Build.Find(new PrefabRef.Hashed(prefab.PrefabHash), out _) != null,
             withData ? PrefabData.Of(prefab) : null, withRecipes ? PrefabRecipes.Of(prefab) : null,
-            SlotsOf(prefab));
+            SlotsOf(prefab)).WithInteractables(withInteractables ? Interactables.Rows(prefab, false) : null);
 
     // The template's own slot list (Thing.Slots on the prefab), read without spawning. A slot whose SlotIndex is not
     // set on the template takes its list position.

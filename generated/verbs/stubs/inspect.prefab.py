@@ -1,7 +1,7 @@
 def inspect(what: Literal['prefab'], *,
     fields: list[str] = None,  # Keys to keep in each entry (dotted paths go deeper).
     prefab: str | int | list,  # A whole prefab name or hash; or a list, or parts with * ("*Door*"): a row per loaded prefab, by name, at most 64.
-    include: list[Literal['small_cells', 'data', 'recipes']] = None,  # small_cells: each cell's offset. data: the prefab's own game data, every field the game serializes on it (maxPressureDelta, -1 for no limit; flashpointTemperature, autoignitionTemperature; MaxQuantity; UsedPower; BuildStates with each state's tool and cost) and mass_kg; fields: ["data.maxPressureDelta"] narrows it, output_file takes it whole. recipes: what makes it: each machine, its inputs, time and energy.
+    include: list[Literal['small_cells', 'data', 'recipes', 'interactables']] = None,  # interactables: its switches and buttons. small_cells: each cell's offset. data: the prefab's own game data, every field the game serializes on it (maxPressureDelta, -1 for no limit; flashpointTemperature, autoignitionTemperature; MaxQuantity; UsedPower; BuildStates with each state's tool and cost) and mass_kg; fields: ["data.maxPressureDelta"] narrows it, output_file takes it whole. recipes: what makes it: each machine, its inputs, time and energy.
 ) -> dict:  # main list: r['ports']: the page answered; .walk() goes through every entry, .all() pages in the rest
     """A prefab before it stands anywhere: placement kind, turns, cells, ports; its game data and recipes; a list or pattern compares a family.
     One buildable prefab answers its placement view; any other prefab (an item, a kit) its facts; a list or a pattern a row of facts per prefab (prefabs, matched, listed).
@@ -37,6 +37,7 @@ def inspect(what: Literal['prefab'], *,
           {start: float, stop: float} | None, pressure_kpa: {start: float, stop: float} | None, source: str | None}] | None
       slots: list[{index: int, display_name: str | None, string_key: str | None, slot_class: {id: int, name: str | None}, general: bool}] | None
       general_slots: int | None
+      interactables: list[{index: int, name: str, action: str, state: int | None, states: int | None}] | None
     (PrefabFactsView)
       prefab_name: str | None
       prefab_hash: int

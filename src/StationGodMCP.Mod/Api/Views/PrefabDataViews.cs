@@ -3,6 +3,7 @@
 using System.Collections.Generic;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using StationGodMCP.Pure;
 
 namespace StationGodMCP.Api.Views;
 
@@ -84,6 +85,16 @@ internal sealed class PrefabFactsView
         Buildable = buildable;
         Data = data;
         Recipes = recipes;
+    }
+
+    /// <summary>The prefab's switches and buttons (include interactables); left out otherwise.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<InteractableRow>? Interactables { get; private set; }
+
+    internal PrefabFactsView WithInteractables(List<InteractableRow>? rows)
+    {
+        Interactables = rows;
+        return this;
     }
 
     public string? PrefabName { get; }

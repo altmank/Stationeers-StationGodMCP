@@ -28,12 +28,13 @@ internal static class InspectDevice
     {
         DeviceScope scope = Devices.Scope(options.Gateway);
         bool listed = options.Fields.Includes(LogicTypesPart);
+        bool pressable = options.Fields.Includes("interactables");
         return IdAnswers.Things(options.Selector.Ids!, InspectDeviceOptions.Spec.Label,
-            id => IdAnswers.Device(scope, id, device => Describe(scope, device, listed)));
+            id => IdAnswers.Device(scope, id, device => Describe(scope, device, listed, pressable)));
     }
 
     [Profiled]
-    private static DescribeDeviceView Describe(DeviceScope scope, ScopedTarget device, bool listed)
+    private static DescribeDeviceView Describe(DeviceScope scope, ScopedTarget device, bool listed, bool pressable)
     {
         List<LogicAccessView> types = new List<LogicAccessView>();
         foreach (LogicType type in LogicTypes.Distinct)
@@ -47,6 +48,7 @@ internal static class InspectDevice
         }
 
         return new DescribeDeviceView(Devices.ViewOf(device, scope), types, listed, RocketReadings.PartOf(device.Thing),
-            RocketReadings.UmbilicalOf(device.Thing), DataLinks.UplinkOf(device.Thing), BuildStates.Of(device.Thing));
+            RocketReadings.UmbilicalOf(device.Thing), DataLinks.UplinkOf(device.Thing), BuildStates.Of(device.Thing),
+            pressable ? Interactables.Rows(device.Thing, true) : null);
     }
 }

@@ -36,9 +36,12 @@ internal sealed class PlayerMovePlan
     private readonly Vector3 _to;
     private readonly PlayerMover _mover;
     private readonly MoveDestinationView _destination;
+    private readonly StandView? _stand;
 
-    private PlayerMovePlan(Human player, Vector3 from, Vector3 to, PlayerMover mover, MoveDestinationView destination)
+    private PlayerMovePlan(Human player, Vector3 from, Vector3 to, PlayerMover mover, MoveDestinationView destination,
+        StandView? stand)
     {
+        _stand = stand;
         _player = player;
         _from = from;
         _to = to;
@@ -55,11 +58,11 @@ internal sealed class PlayerMovePlan
 
         Human player = MovablePlayers.Require(order.Player);
         Vector3 from = player.ThingTransformPosition;
-        Target target = Target.Resolve(order.Destination, player, from, label);
+        Target target = Target.Resolve(order.Destination, player, from, label, order.Stand);
         Vector3 to = order.SafeGround ? SafeGround.Of(target.Point) : target.Point;
         WorldBounds.Require(to);
         return new PlayerMovePlan(player, from, to, PlayerMover.For(player), new MoveDestinationView(
-            order.Destination.Form, target.NextTo, order.SafeGround));
+            order.Destination.Form, target.NextTo, order.SafeGround), target.Stand);
     }
 
     /// <summary>Where the move would put the player; nothing moves.</summary>
@@ -70,31 +73,37 @@ internal sealed class PlayerMovePlan
 
     private MovePlayerView View(Vector3 after, string? note) =>
         new MovePlayerView(GameLookup.ViewOf(_player), _mover.Name, Places.Of(_from), Places.Of(after), _destination,
-            Vector3.Distance(_from, _to), note);
+            Vector3.Distance(_from, _to), note, _stand);
 
     /// <summary>The destination's point, and the thing or player it is next to.</summary>
     private sealed class Target
     {
-        private Target(Vector3 point, ThingView? nextTo)
+        private Target(Vector3 point, ThingView? nextTo, StandView? stand = null)
         {
             Point = point;
             NextTo = nextTo;
+            Stand = stand;
         }
 
         internal Vector3 Point { get; }
 
         internal ThingView? NextTo { get; }
 
-        internal static Target Resolve(MoveDestination destination, Human player, Vector3 from, string label) =>
+        internal StandView? Stand { get; }
+
+        internal static Target Resolve(MoveDestination destination, Human player, Vector3 from, string label,
+            StandOptions? stand) =>
             destination switch
             {
-                MoveDestination.Point point => new Target(Bodies.U(point.At), null),
-                MoveDestination.NextToThing thing => BesideThing(TargetIds.Of(thing.Id, label), player, from),
+                MoveDestination.Point point => stand != null
+                    ? Standing(null, new Box3(point.At, point.At), null, from, stand)
+                    : new Target(Bodies.U(point.At), null),
+                MoveDestination.NextToThing thing => BesideThing(TargetIds.Of(thing.Id, label), player, from, stand),
                 MoveDestination.NextToPlayer other => BesidePlayer(MovablePlayers.Find(other.Player), player, from),
                 _ => throw new System.InvalidOperationException("Unknown destination.")
             };
 
-        private static Target BesideThing(ThingId id, Human player, Vector3 from)
+        private static Target BesideThing(ThingId id, Human player, Vector3 from, StandOptions? stand)
         {
             Thing thing = GameLookup.RequireThing(id);
             Thing place = HolderChain.PlaceOf(thing);
@@ -108,7 +117,31 @@ internal sealed class PlayerMovePlan
             Box3 body = place is Human human
                 ? Landing.PlayerAt(Bodies.V(human.ThingTransformPosition))
                 : Bodies.RenderBox(place);
-            return new Target(Bodies.U(Landing.Beside(body, Bodies.V(from))), GameLookup.ViewOf(thing));
+            return stand != null
+                ? Standing(place, body, GameLookup.ViewOf(thing), from, stand)
+                : new Target(Bodies.U(Landing.Beside(body, Bodies.V(from))), GameLookup.ViewOf(thing));
+        }
+
+        /// <summary>The stand search's point, or the refusal no_clear_stand with every reason's count.</summary>
+        private static Target Standing(Thing? place, Box3 body, ThingView? nextTo, Vector3 from, StandOptions stand)
+        {
+            StandResult result = StandWorld.Search(place, body, Bodies.V(from), stand);
+            if (result is not StandResult.Stand found)
+            {
+                throw ApiErrors.Refused("no_clear_stand",
+                    "No point near the target is clear, on a floor and within reach: " +
+                    ((StandResult.NoStand)result).Describe() + ". Nothing moved.");
+            }
+
+            List<StandRejectionView> rejected = new List<StandRejectionView>(found.Rejected.Count);
+            foreach (StandRejection rejection in found.Rejected)
+            {
+                rejected.Add(new StandRejectionView(rejection.Reason, rejection.Count));
+            }
+
+            StandView view = new StandView(GameLookup.ViewOf(Bodies.U(found.Feet)), found.DistanceM,
+                System.Math.Round(found.EyeToTargetM, 2), found.Floor, found.Tried, rejected);
+            return new Target(Bodies.U(found.Feet), nextTo, view);
         }
 
         private static Target BesidePlayer(Human other, Human player, Vector3 from)

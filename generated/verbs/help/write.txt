@@ -7,6 +7,7 @@ whats:
 - memory: up to 512 values into a device's memory from start, as a chip's put does (cheat)
 - chip: a circuit holder's chip: write source (IC10 or Lua), set pins d0-d5, or pause, step, resume, restart
 - screen: touch a control on a ScriptedScreens screen, as a player's touch does
+- interact: press a thing's switch or button as the player does
 - label: rename things as the hand Labeller does; empty name gives back the game's name
 - paint: paint things as a spray can does; network: a pipe's id, or a device's with kind, paints that network's pieces; with no target, list the colours
 - flight_log: start, stop or clear a rocket flight recorder (server state; never the world); read it with read flight_log

@@ -159,7 +159,7 @@ public sealed class GivenRuleTests
         ["LogicWrites.cs"] = 6,
         ["OptionCheck.cs"] = 1,
         ["PaintWrites.cs"] = 6,
-        ["PlayerMoveOrders.cs"] = 1,
+        ["PlayerMoveOrders.cs"] = 3, // + stand with to_player / safe_ground: stand has no default, safe_ground reaches the order as `== true`
         ["PreviewOrders.cs"] = 1,
         ["ProfilingOrders.cs"] = 2,
         ["RouteOrders.cs"] = 4,
