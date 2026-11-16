@@ -21,9 +21,16 @@ exit 7
 '@
     $json = '{"bepinex":"Chainloader startup complete","x":"Pipe name: Foo\.Bar"}'
     $env:SG_TEST_CTX = 'ctx-value'
-    $code = Invoke-RigVMEntry -Script $fake -Arguments @{
-        Mod = 'm'; Owner = 'sg-lane'; Mods = @('C:\a b\one', 'C:\two'); PhasesJson = $json; ExpectedMinutes = 6
-        Front = $true; Dxdiag = $false; OutFile = $out }
+    # The argument file goes to this test's own temp folder, so a live VM launch's file in the real TEMP can't fail it.
+    $ownTemp = New-Item -ItemType Directory -Force "$dir\tmp"
+    $savedTmp, $savedTemp = $env:TMP, $env:TEMP
+    $env:TMP = $env:TEMP = $ownTemp.FullName
+    try {
+        $code = Invoke-RigVMEntry -Script $fake -Arguments @{
+            Mod = 'm'; Owner = 'sg-lane'; Mods = @('C:\a b\one', 'C:\two'); PhasesJson = $json; ExpectedMinutes = 6
+            Front = $true; Dxdiag = $false; OutFile = $out }
+    }
+    finally { $env:TMP, $env:TEMP = $savedTmp, $savedTemp }
     Remove-Item Env:SG_TEST_CTX
     $r = Get-Content -Raw -LiteralPath $out | ConvertFrom-Json
     Assert-That ($code -eq 7) 'exit code of the entry script comes back (7)'
@@ -34,7 +41,7 @@ exit 7
     Assert-That ($r.Minutes -eq 6) 'int parameter binds'
     Assert-That ($r.Front -eq $true -and $r.Dxdiag -eq $false) 'switch parameters bind (true and false)'
     Assert-That ($r.Ctx -eq 'ctx-value') 'env vars reach the child'
-    Assert-That (-not (Get-ChildItem ([IO.Path]::GetTempPath()) -Filter 'sg-rigvm-args-*.xml' -ErrorAction SilentlyContinue)) 'temp argument file deleted'
+    Assert-That (@(Get-ChildItem -LiteralPath $ownTemp.FullName -Filter 'sg-rigvm-args-*.xml' -ErrorAction SilentlyContinue).Count -eq 0) 'temp argument file deleted'
 }
 finally { Remove-Item -Recurse -Force $dir -ErrorAction SilentlyContinue }
 exit $failed

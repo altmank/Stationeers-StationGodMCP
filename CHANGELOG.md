@@ -3,6 +3,7 @@
 ## Unreleased
 
 - move player can stand the player within reach of a target, clear of things and on a floor; write interact presses a thing's switch or button as the player would; inspect device lists them.
+- release.ps1 -Draft no longer tags before the build and tests pass.
 - write needs sets a player's nutrition, hydration and waste and reads them back; inspect player shows the waste ratio.
 
 ## 2.22.0
