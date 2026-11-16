@@ -339,7 +339,7 @@
         },
         "stand": {
           "schema": {"type": "object"},
-          "description": "With to or at: stand the player within reach of it, clear of every body and on a floor: {reach_m: 2.5 (at most 3), clear_m: 0.1, floor: required|any, on: false (stand on top of it)}. The reply's stand names the floor; no_clear_stand counts why none passed.",
+          "description": "With to or at: stand the player within reach of it, clear of every body and on a floor: {reach_m: 2.5 (at most 3), clear_m: 0.1, floor: required|any, on: false (stand on top of it)}. The reply's stand names the floor; no_clear_stand counts why none passed. It does not turn the player.",
           "x-script": "same"
         },
         "confirm": {"use": "confirm"}
