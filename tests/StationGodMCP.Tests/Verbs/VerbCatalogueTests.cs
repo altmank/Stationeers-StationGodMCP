@@ -163,7 +163,7 @@ public sealed class VerbCatalogueTests
     [Fact]
     public void EveryOtherIdTakesAList()
     {
-        string[] oneId = { "write fabricator", "write chip", "write screen", "write uplink", "write flight_log", "write memory", "write genes", "server stop", "show picture" };
+        string[] oneId = { "write fabricator", "write chip", "write screen", "write uplink", "write flight_log", "write memory", "write genes", "write interact", "server stop", "show picture" };
         List<string> single = new();
         foreach ((string verb, string what, JsonObject source) in VerbCatalogue.Whats())
         {
@@ -361,7 +361,7 @@ public sealed class VerbCatalogueTests
 
         Assert.Equal(new[]
         {
-            "find.device.prefab=bounded", "find.device.name=bounded", "find.room.id=bounded", "show.preview.run=plan"
+            "find.device.prefab=bounded", "find.device.name=bounded", "find.room.id=bounded", "move.player.stand=bounded", "show.preview.run=plan"
         }, stated);
     }
 
@@ -563,14 +563,14 @@ public sealed class VerbCatalogueTests
     {
         // run and reply shaping
         "confirm", "check_only", "queue", "max_wait", "include", "verbose", "rows", "action", "csv", "slow_frame_ms", "lines",
-        "interval_s", "capacity",
+        "interval_s", "capacity", "stand", "hand",
         // guards, consent and routing
         "allow", "acknowledge_gas_lost", "allow_bridge", "assume_removed", "gateway", "skip_unmatched", "free", "force",
         "split_long", "join", "join_trunk", "as_player",
         // values written
         "logic", "value", "start", "values", "code", "code_file", "run", "genes", "unit", "color", "label", "ratio",
         "joules", "quantity", "merge", "slot", "reagent", "at_most", "gases", "amount_mol", "delete", "joined", "command",
-        "items", "state", "surface", "element", "pixel", "event", "text", "safe_ground", "from_step", "temperature_k",
+        "items", "state", "interactable", "surface", "element", "pixel", "event", "text", "safe_ground", "from_step", "temperature_k",
         // new things at positions (placement cells are not seen-checked)
         "placements", "at", "rotation", "spread", "facing", "up", "face", "orient", "above_floor", "build_state", "grade",
         "piece", "pieces", "branches", "extra_ends", "blueprint", "turn", "from_plan",

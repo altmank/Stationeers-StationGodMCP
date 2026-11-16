@@ -36,7 +36,7 @@ public sealed class VerbExampleTests
     public void TheCatalogueHas109WhatsAndThreeWhatlessVerbs()
     {
         int whats = VerbCatalogue.Embedded.Verbs.Where(verb => verb.HasWhats).Sum(verb => verb.WhatNames.Count);
-        Assert.Equal(109, whats);
+        Assert.Equal(110, whats);
         Assert.Equal(new[] { "undo", "help", "run_script" },
             VerbCatalogue.Embedded.Verbs.Where(verb => !verb.HasWhats).Select(verb => verb.Name));
     }

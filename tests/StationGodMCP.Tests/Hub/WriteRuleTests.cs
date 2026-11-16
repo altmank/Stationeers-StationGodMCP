@@ -21,7 +21,7 @@ public sealed class WriteRuleTests
     // Typed ids without confirm: these act; every other write what reports.
     private static readonly string[] Acting =
     {
-        "write.logic", "write.chip", "write.screen", "write.label", "write.paint", "write.flight_log", "write.uplink",
+        "write.logic", "write.chip", "write.screen", "write.label", "write.paint", "write.flight_log", "write.uplink", "write.interact",
         "move.item", "server.profiling", "server.stop"
     };
 

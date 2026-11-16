@@ -57,7 +57,7 @@ public sealed class CheatSwitchTests
         new object[] { "server", "command", null! }, new object[] { "write", "memory", null! },
         new object[] { "write", "battery", null! }, new object[] { "write", "fabricator", null! },
         new object[] { "write", "genes", null! },
-        new object[] { "write", "health", null! }
+        new object[] { "write", "health", null! }, new object[] { "write", "interact", "force" }
     };
 
     private static JObject Call(string what, string? option, bool confirm = true)

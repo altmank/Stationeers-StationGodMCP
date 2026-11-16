@@ -1,6 +1,7 @@
 #nullable enable
 
 using System.Collections.Generic;
+using System.Linq;
 using Newtonsoft.Json.Linq;
 using StationGodMCP.Api.Shared;
 using StationGodMCP.Pure;
@@ -74,10 +75,9 @@ public sealed class StandTests
         StandResult.NoStand none = Assert.IsType<StandResult.NoStand>(Find(Battery, StandOptions.Default, obstacles));
 
         Assert.True(none.Tried > 0);
-        StandRejection first = Assert.Single(none.Rejected);
-        Assert.Equal("overlaps target", first.Reason);
-        Assert.Equal(none.Tried, first.Count);
-        Assert.Contains(first.Reason, none.Describe());
+        Assert.Equal(new[] { "overlaps target", "overlaps wall" }, none.Rejected.Select(r => r.Reason).OrderBy(r => r));
+        Assert.Equal(none.Tried, none.Rejected.Sum(r => r.Count));
+        Assert.Contains("overlaps wall", none.Describe());
     }
 
     [Fact]
