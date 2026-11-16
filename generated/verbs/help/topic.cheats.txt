@@ -6,6 +6,7 @@ Outside a creative world every cheat is refused as cheats_off unless the user tu
 - write fabricator: make a recipe's item on a fabricator at once (time and energy skipped), optionally loading ingots first: replies with the item made, the stock before and after, and what was consumed
 - write genes: edit plant genes as the Gene Splicer does
 - write health: heal a player: every kind of damage to the body and its organs (brain and lungs) set to none
+- write needs: set a player's nutrition, hydration and waste, as the console's player setnutrition does, and read them back
 - build structure with free: true: any structure a kit builds (light, device, frame, wall, tank, rocket part) by prefab, at a point with a turn; several placements are one job
 - build cable with free: true: a cable run or pieces, as a coil builds it, of a grade; guards for bridging, splitting and overload
 - build pipe with free: true: a pipe run or pieces from the grade's kit, with the pipe guards and a gas check

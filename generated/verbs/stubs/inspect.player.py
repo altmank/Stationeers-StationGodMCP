@@ -29,7 +29,11 @@ def inspect(what: Literal['player'], *,
       warnings: {nutrition_warning: float, nutrition_critical: float, hydration_warning: float, hydration_critical: float}
       gear: {suit: Thing | None, helmet: Thing | None, jetpack: {reference_id: str, prefab_name: str | None, display_name: str | None, stabilizer:
           bool, active: bool} | None, suit_movement: {speed_multiplier: float, storm_speed_multiplier: float | None, slot_count: int} | None}
+      worn: {suit: Thing | None, helmet: Thing | None, backpack: Thing | None, toolbelt: Thing | None, uniform: Thing | None, glasses: Thing | None,
+          left_hand: Thing | None, right_hand: Thing | None}
       game_tick_s: float
+      waste_ratio: float | None
+      sanitation: bool
     Types: Thing = {reference_id: str, prefab_name: str | None, display_name: str | None}
     Example: sg.inspect('player')
     """

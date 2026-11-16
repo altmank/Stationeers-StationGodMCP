@@ -18,8 +18,8 @@ def inspect(what: Literal['contents'], *,
       display_name: str | None
       position: Vec3
       distance_m: float | None
-      slots: list[{slot: int, reference_id: str, prefab_name: str | None, quantity: float, slots: list[ContentSlot] | None, slots_not_shown: int |
-          None}]
+      slots: list[{slot: int, string_key: str | None, reference_id: str, prefab_name: str | None, quantity: float, slots: list[ContentSlot] | None,
+          slots_not_shown: int | None}]
       empty_slots_omitted: int | None
       silo: {count: int, entries_known: bool, importing: bool | None, exporting: bool | None, dispense_slot: int | None, total: int, offset: int,
           entries: list[{index: int, prefab_name: str | None, display_name: str | None, quantity: float, max_quantity: float | None, children: int,
@@ -30,8 +30,9 @@ def inspect(what: Literal['contents'], *,
       display_name: str | None
       position: Vec3
       distance_m: float | None
-      slots: list[{index: int, display_name: str | None, slot_class: str, occupant: {reference_id: str, prefab_name: str | None, display_name: str |
-          None, quantity: float, max_quantity: float | None, slots: list[SlotView] | None, slots_not_shown: int | None} | None}]
+      slots: list[{index: int, display_name: str | None, string_key: str | None, slot_class: str, occupant: {reference_id: str, prefab_name: str |
+          None, display_name: str | None, quantity: float, max_quantity: float | None, slots: list[SlotView] | None, slots_not_shown: int | None} |
+          None}]
       empty_slots_omitted: int | None
       silo: {count: int, entries_known: bool, importing: bool | None, exporting: bool | None, dispense_slot: int | None, total: int, offset: int,
           entries: list[{index: int, prefab_name: str | None, display_name: str | None, quantity: float, max_quantity: float | None, children: int,

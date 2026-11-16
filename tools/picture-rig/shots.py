@@ -29,10 +29,12 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(HERE, "..", "silo-rig"))
 import item_check  # noqa: E402
+import needs_check  # noqa: E402
+import slot_check  # noqa: E402
+import stand_check  # noqa: E402
 import judge_shots  # noqa: E402
 import keyguard_check  # noqa: E402
 import sgcall  # noqa: E402
-import stand_check  # noqa: E402
 
 FOLDER = "suit"
 VIEWS = ((0, "front"), (90, "side"), (180, "back"))
@@ -235,6 +237,52 @@ def finish_items(done, log, pipe, hub):
     return 0 if ok else 1
 
 
+def finish_slots(done, log, pipe, hub):
+    """The slot check alone: connect, wait for the player and the clock, run it, write the done file (the failing
+    cases and their messages are its text, and slots.json's `failures`); the exit code."""
+    ok, reason = False, ""
+    try:
+        sgcall.connect(pipe, hub)
+        wait_player()
+        sgcall.wait_ready()
+        failures, notes = slot_check.run(sgcall, done, log, say)
+        ok = not failures
+        reason = "; ".join(failures) if failures else "slot check passed: " + "; ".join(notes)
+    except BaseException as error:  # noqa: BLE001 - any end other than success is a done-fail for the watcher
+        reason = f"{type(error).__name__}: {error}"
+        log["failures"] = [reason]
+    finally:
+        with open(os.path.join(done, "slots.json"), "w", encoding="utf-8") as f:
+            json.dump(log, f, indent=1, default=str)
+        with open(os.path.join(done, "done-ok" if ok else "done-fail"), "w", encoding="utf-8") as f:
+            f.write(reason)
+    say(("ok: " if ok else "fail: ") + reason)
+    return 0 if ok else 1
+
+
+def finish_needs(done, log, pipe, hub):
+    """The needs check alone: connect, wait for the player and the clock, run it, write the done file (the failing
+    cases and their messages are its text, and needs.json's `failures`); the exit code."""
+    ok, reason = False, ""
+    try:
+        sgcall.connect(pipe, hub)
+        wait_player()
+        sgcall.wait_ready()
+        failures, notes = needs_check.run(sgcall, done, log, say)
+        ok = not failures
+        reason = "; ".join(failures) if failures else "needs check passed: " + "; ".join(notes)
+    except BaseException as error:  # noqa: BLE001 - any end other than success is a done-fail for the watcher
+        reason = f"{type(error).__name__}: {error}"
+        log["failures"] = [reason]
+    finally:
+        with open(os.path.join(done, "needs.json"), "w", encoding="utf-8") as f:
+            json.dump(log, f, indent=1, default=str)
+        with open(os.path.join(done, "done-ok" if ok else "done-fail"), "w", encoding="utf-8") as f:
+            f.write(reason)
+    say(("ok: " if ok else "fail: ") + reason)
+    return 0 if ok else 1
+
+
 def finish_stand(done, log, pipe, hub):
     """The stand check alone: connect, wait for the player and the clock, run it, write the done file (the failing
     cases and their messages are its text, and stand.json's `failures`); the exit code."""
@@ -269,8 +317,14 @@ def main(argv=None):
     ap.add_argument("--item-checks", action="store_true",
                     help="the item check alone (item_check.py: prefab slot rows against live slots, remove item cases); "
                          "the pictures are skipped")
+    ap.add_argument("--slot-checks", action="store_true",
+                    help="the slot check alone (slot_check.py: slots by key, hands, build item lists, cut replies); "
+                         "the pictures are skipped")
     ap.add_argument("--stand-checks", action="store_true",
                     help="the stand check alone (stand_check.py: move player stand, write interact); the pictures are skipped")
+    ap.add_argument("--needs-checks", action="store_true",
+                    help="the needs check alone (needs_check.py: write needs, inspect player and undo); "
+                         "the pictures are skipped")
     ap.add_argument("--game-log", default="", help="the guest's game log, Player.log (StationGod logs through Unity; the key guard check reads it)")
     a = ap.parse_args(argv)
     if a.keyguard and not a.game_log:
@@ -279,8 +333,12 @@ def main(argv=None):
     log = {}
     if a.item_checks:
         return finish_items(a.done, log, a.pipe, a.hub)
+    if a.slot_checks:
+        return finish_slots(a.done, log, a.pipe, a.hub)
     if a.stand_checks:
         return finish_stand(a.done, log, a.pipe, a.hub)
+    if a.needs_checks:
+        return finish_needs(a.done, log, a.pipe, a.hub)
     ok, reason = False, ""
     try:
         sgcall.connect(a.pipe, a.hub)

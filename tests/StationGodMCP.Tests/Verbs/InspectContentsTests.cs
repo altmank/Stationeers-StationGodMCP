@@ -147,9 +147,9 @@ public sealed class InspectContentsTests
         string compact = WireCheck.New(new ContainerContentsView(locker, here, null, ShownSlots.Occupied(LockerOfSuits()),
             form: SlotForm.Compact));
 
-        Assert.Equal("""{"reference_id":"40","prefab_name":"StructureStorageLocker","display_name":"Locker","position":{"x":1.0,"y":2.0,"z":3.0},"slots":[{"slot":0,"reference_id":"10","prefab_name":"ItemHardSuit","quantity":1.0},{"slot":1,"reference_id":"11","prefab_name":"ItemHardSuit","quantity":1.0},{"slot":2,"reference_id":"20","prefab_name":"ItemSteelSheets","quantity":37.0}],"empty_slots_omitted":27}""",
+        Assert.Equal("""{"reference_id":"40","prefab_name":"StructureStorageLocker","display_name":"Locker","position":{"x":1.0,"y":2.0,"z":3.0},"slots":[{"slot":0,"string_key":null,"reference_id":"10","prefab_name":"ItemHardSuit","quantity":1.0},{"slot":1,"string_key":null,"reference_id":"11","prefab_name":"ItemHardSuit","quantity":1.0},{"slot":2,"string_key":null,"reference_id":"20","prefab_name":"ItemSteelSheets","quantity":37.0}],"empty_slots_omitted":27}""",
             compact);
-        Assert.DoesNotContain("null", compact);
+        Assert.DoesNotContain("null", compact.Replace("\"string_key\":null,", ""));
     }
 
     [Fact]

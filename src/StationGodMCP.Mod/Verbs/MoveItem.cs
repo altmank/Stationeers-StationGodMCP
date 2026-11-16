@@ -187,7 +187,7 @@ internal static class MoveItem
 
     private static ItemMove Move(SlotMoveOrder order, bool force, string label) =>
         new ItemMove(TargetIds.Of(order.Item, label), order.Quantity, HolderId(order.To, label),
-            order.Slot is { } index ? new SlotChoice.Exact(index) : new SlotChoice.Auto(), order.Merge, force,
+            SlotChoice.Of(order.Slot), order.Merge, force,
             order.AllowInUse);
 
     private static VerbOutcome Deposit(string route, MoveItemOptions options, List<string> given,

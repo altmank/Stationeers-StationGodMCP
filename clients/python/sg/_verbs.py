@@ -68,8 +68,8 @@ def write(what, *, fields=None, as_player=None, id=None, logic=None, value=None,
         surface=None, element=None, pixel=None, event=None, text=None, interactable=None, state=None, hand=None,
         force=None, label=None, labels=None, network=None, kind=None, color=None, items=None, action=None,
         interval_s=None, capacity=None, csv=None, downlink=None, rocket=None, within=None, ratio=None, joules=None,
-        prefab=None, load=None, make=None, unit=None, genes=None, player=None, name=None, description=None,
-        scope=None, command=None, **options):
+        prefab=None, load=None, make=None, unit=None, genes=None, player=None, nutrition=None, hydration=None,
+        waste=None, name=None, description=None, scope=None, command=None, **options):
     """Set values and states. sg.help('write', what) gives a what in full."""
     return verb_call('write', what, {'fields': fields, 'as_player': as_player, 'id': id, 'logic': logic, 'value':
                      value, 'writes': writes, 'gateway': gateway, 'allow': allow, 'start': start, 'values': values,
@@ -79,8 +79,9 @@ def write(what, *, fields=None, as_player=None, id=None, logic=None, value=None,
                      'network': network, 'kind': kind, 'color': color, 'items': items, 'action': action,
                      'interval_s': interval_s, 'capacity': capacity, 'csv': csv, 'downlink': downlink, 'rocket':
                      rocket, 'within': within, 'ratio': ratio, 'joules': joules, 'prefab': prefab, 'load': load,
-                     'make': make, 'unit': unit, 'genes': genes, 'player': player, 'name': name, 'description':
-                     description, 'scope': scope, 'command': command}, options)
+                     'make': make, 'unit': unit, 'genes': genes, 'player': player, 'nutrition': nutrition,
+                     'hydration': hydration, 'waste': waste, 'name': name, 'description': description, 'scope':
+                     scope, 'command': command}, options)
 
 
 def plan(what, *, fields=None, as_player=None, kind=None, start=None, end=None, reroute=None, trunk=None,
@@ -130,7 +131,7 @@ def build(what=None, *, fields=None, as_player=None, placements=None, prefab=Non
         piece=None, pieces=None, branches=None, extra_ends=None, join=None, split_long=None, remove_ids=None,
         assume_removed=None, allow_bridge=None, root=None, join_to=None, join_trunk=None, refund_to=None, rows=None,
         blueprint=None, turn=None, box=None, mode=None, level=None, ores=None, into_frames=None, quantity=None,
-        to=None, slot=None, id=None, state=None, **options):
+        to=None, slot=None, items=None, id=None, state=None, **options):
     """Build new things as a player would, paying materials. sg.help('build', what) gives a what in full."""
     return verb_call('build', what, {'fields': fields, 'as_player': as_player, 'placements': placements, 'prefab':
                      prefab, 'at': at, 'rotation': rotation, 'spread': spread, 'facing': facing, 'up': up, 'face':
@@ -143,7 +144,7 @@ def build(what=None, *, fields=None, as_player=None, placements=None, prefab=Non
                      assume_removed, 'allow_bridge': allow_bridge, 'root': root, 'join_to': join_to, 'join_trunk':
                      join_trunk, 'refund_to': refund_to, 'rows': rows, 'blueprint': blueprint, 'turn': turn, 'box':
                      box, 'mode': mode, 'level': level, 'ores': ores, 'into_frames': into_frames, 'quantity':
-                     quantity, 'to': to, 'slot': slot, 'id': id, 'state': state}, options)
+                     quantity, 'to': to, 'slot': slot, 'items': items, 'id': id, 'state': state}, options)
 
 
 def swap(what, *, fields=None, as_player=None, id=None, room=None, into=None, prefab=None, materials=None,

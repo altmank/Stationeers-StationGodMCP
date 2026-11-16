@@ -9,6 +9,8 @@ if (-not $global:SgPicStarted -and $r.PhaseAt.Keys -contains 'stationgod') {
     # The key guard check reads the game's log: StationGod logs through Unity, so its lines are in Player.log.
     if ($picCtx.keyguard) { $picFlags += " --keyguard --game-log `"$gRes\logs\Player.log`"" }
     if ($picCtx.itemChecks) { $picFlags += ' --item-checks' }
+    if ($picCtx.slotChecks) { $picFlags += ' --slot-checks' }
+    if ($picCtx.needsChecks) { $picFlags += ' --needs-checks' }
     if ($picCtx.standChecks) { $picFlags += ' --stand-checks' }
     Invoke-Rig -ArgumentList "SG-Pictures-$($r.RunId)", "$gRes\sg", $picCtx.pipe, $gOut, "$gRes\logs\shots.log", $picFlags {
         param($task, $sg, $pipe, $out, $logFile, $flags)

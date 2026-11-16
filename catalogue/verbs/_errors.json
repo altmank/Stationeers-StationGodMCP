@@ -20,6 +20,10 @@
     "description": "The device sits on several networks of that category. Name one with {id, port}; the message lists the ports."
   },
   "ambiguous_rocket": {"description": "There are several rockets. Give id; the message lists them."},
+  "ambiguous_slot": {
+    "description": "Several slots of the holder carry that key (the game does not keep keys unique). The message lists their indexes; name one by its index.",
+    "see": {"verb": "inspect", "what": "contents"}
+  },
   "assumed_present": {
     "description": "A thing named in assume_removed still stands, so the real run cannot go ahead. Remove it first, then run again."
   },
@@ -300,6 +304,10 @@
   "no_local_player": {
     "description": "There is no single player: no local player, and none or several connected living players, or as_player names nobody. The message names them; give as_player (a name or id), or give materials."
   },
+  "no_organ": {
+    "description": "The body has no stomach (a robot's), so it has no nutrition, hydration or waste to set.",
+    "see": {"verb": "write", "what": "needs"}
+  },
   "no_network": {"description": "The thing is on no network of that category. Name a piece or device that is on one."},
   "no_programmable_chip": {"description": "The device keeps its memory on a programmable chip and has none installed. Install a chip first."},
   "no_reagents": {"description": "The item carries no inspect reagents; the vault would destroy it and store nothing. Leave it out."},
@@ -503,6 +511,10 @@
   },
   "same_slot": {"description": "The item is already in that slot. Nothing to do."},
   "same_vault": {"description": "Both ids reach one Ingot Vault. Name two different vaults.", "see": {"verb": "move", "what": "item"}},
+  "sanitation_off": {
+    "description": "Sanitation is off in the difficulty, so waste reads 0 and never fills. Drop waste, or turn Sanitation on.",
+    "see": {"verb": "write", "what": "needs"}
+  },
   "save_started": {"description": "A save began while the job waited for the game tick, so nothing ran. Run it again."},
   "screens_changed": {
     "description": "This ScriptedScreens version keeps its screens in a shape StationGod cannot read. StationGod needs an update.",

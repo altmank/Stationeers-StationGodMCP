@@ -380,9 +380,10 @@ internal sealed class ContainerContentsView : ITruncatingView
 /// </summary>
 internal sealed class ContentSlotView
 {
-    private ContentSlotView(int slot, OccupantView occupant)
+    private ContentSlotView(int slot, string? stringKey, OccupantView occupant)
     {
         Slot = slot;
+        StringKey = stringKey;
         ReferenceId = occupant.ReferenceId;
         PrefabName = occupant.PrefabName;
         Quantity = occupant.Quantity;
@@ -391,6 +392,9 @@ internal sealed class ContentSlotView
     }
 
     public int Slot { get; }
+
+    /// <summary>The key the slot carries (Slot.StringKey); null when it has none.</summary>
+    public string? StringKey { get; }
 
     public ThingId ReferenceId { get; }
 
@@ -412,7 +416,7 @@ internal sealed class ContentSlotView
         {
             if (slot.Occupant != null)
             {
-                compact.Add(new ContentSlotView(slot.Index, slot.Occupant));
+                compact.Add(new ContentSlotView(slot.Index, slot.StringKey, slot.Occupant));
             }
         }
 
@@ -422,18 +426,23 @@ internal sealed class ContentSlotView
 
 internal sealed class SlotView
 {
-    internal SlotView(int index, string? displayName, string slotClass, OccupantView? occupant)
+    internal SlotView(int index, string? displayName, string slotClass, OccupantView? occupant,
+        string? stringKey = null)
     {
         Index = index;
         DisplayName = displayName;
         SlotClass = slotClass;
         Occupant = occupant;
+        StringKey = string.IsNullOrEmpty(stringKey) ? null : stringKey;
     }
 
     public int Index { get; }
 
     /// <summary>The slot's shown name (Hand, Back, Slot), as inspect slots names it.</summary>
     public string? DisplayName { get; }
+
+    /// <summary>The key the slot carries (Slot.StringKey), which a slot option names it by; null when it has none.</summary>
+    public string? StringKey { get; }
 
     public string SlotClass { get; }
 

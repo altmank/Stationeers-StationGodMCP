@@ -8,7 +8,8 @@ namespace StationGodMCP.Api.Views;
 internal sealed class PlayerVitalsView
 {
     internal PlayerVitalsView(ThingView player, BodyStores stores, BodyState state, VitalsRates rates,
-        DifficultyView difficulty, VitalsWarningsView warnings, PlayerGearView gear)
+        DifficultyView difficulty, VitalsWarningsView warnings, PlayerGearView gear, WornView? worn = null,
+        double? wasteRatio = null, bool sanitation = true)
     {
         ReferenceId = player.ReferenceId;
         DisplayName = player.DisplayName;
@@ -26,7 +27,10 @@ internal sealed class PlayerVitalsView
         Thirst = rates.Thirst;
         Warnings = warnings;
         Gear = gear;
+        Worn = worn ?? WornView.Nothing;
         GameTickS = rates.GameTickS;
+        WasteRatio = wasteRatio;
+        Sanitation = sanitation;
     }
 
     private readonly BodyState _state;
@@ -77,7 +81,23 @@ internal sealed class PlayerVitalsView
 
     public PlayerGearView Gear { get; }
 
+    /// <summary>What the player wears and holds, by slot: the ids to give inspect contents or a slot move.</summary>
+    public WornView Worn { get; }
+
     public float GameTickS { get; }
+
+    /// <summary>The stomach's waste ratio (Stomach.GetWasteRatio, 0..1); null without a stomach, a robot's body.</summary>
+    public double? WasteRatio { get; }
+
+    /// <summary>DifficultySetting Sanitation: with it off the waste ratio reads 0 and the stomach never fills.</summary>
+    public bool Sanitation { get; }
+}
+
+/// <summary>What a player has in each worn slot (ScopedTarget.WornSlotsOf); null for an empty one.</summary>
+internal sealed record WornView(ThingView? Suit, ThingView? Helmet, ThingView? Backpack, ThingView? Toolbelt,
+    ThingView? Uniform, ThingView? Glasses, ThingView? LeftHand, ThingView? RightHand)
+{
+    internal static WornView Nothing { get; } = new(null, null, null, null, null, null, null, null);
 }
 
 /// <summary>What the body holds.</summary>

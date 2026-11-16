@@ -341,10 +341,11 @@
               "fabricator",
               "genes",
               "health",
+              "needs",
               "script",
               "lattice"
             ],
-            "description": "logic: device logic values; memory: device memory; chip: chip source, pins, run state; screen: press a control; interact: press a switch or button; label: rename things; paint: paint things, networks; flight_log: start, stop, clear recorder; uplink: point uplink; battery: set charge; fabricator: make a recipe item; genes: edit plant genes; health: heal player; script: save script; lattice: Lattice commands"
+            "description": "logic: device logic values; memory: device memory; chip: chip source, pins, run state; screen: press a control; interact: press a switch or button; label: rename things; paint: paint things, networks; flight_log: start, stop, clear recorder; uplink: point uplink; battery: set charge; fabricator: make a recipe item; genes: edit plant genes; health: heal player; needs: set needs; script: save script; lattice: Lattice commands"
           },
           "id": {"type": ["string", "array"]},
           "logic": {"type": ["string", "integer"]},
@@ -395,6 +396,9 @@
           "unit": {"type": "integer"},
           "genes": {"type": "object"},
           "player": {"type": "string"},
+          "nutrition": {"type": "number"},
+          "hydration": {"type": "number"},
+          "waste": {"type": "number"},
           "name": {"type": "string", "description": "write script: name (letters, digits, underscores)."},
           "description": {"type": "string", "description": "write script: what it does, one line."},
           "scope": {
@@ -544,7 +548,7 @@
           "what": {
             "type": "string",
             "enum": ["structure", "cable", "pipe", "chute", "blueprint", "terrain", "item", "finish"],
-            "description": "structure: any structure a kit builds, at a point; cable: a run or pieces; pipe: a run or pieces; chute: a run or pieces; blueprint: paste a blueprint; terrain: fill or level terrain; item: make items by prefab (a cheat); finish: a placed structure to a later state"
+            "description": "structure: any structure a kit builds, at a point; cable: a run or pieces; pipe: a run or pieces; chute: a run or pieces; blueprint: paste a blueprint; terrain: fill or level terrain; item: make items (a cheat); finish: a placed structure to a later state"
           },
           "placements": {"type": "array"},
           "prefab": {"type": ["string", "integer"]},
@@ -568,17 +572,14 @@
           "include": {"type": "array", "items": {"enum": ["notes", "footprint_cells", "links", "network_devices"]}},
           "verbose": {"type": "boolean"},
           "acknowledge_gas_lost": {"type": "string"},
-          "from_plan": {
-            "type": "string",
-            "description": "A plan route or spot ref ('r9'): build its build_arguments; options given win, what may be left out."
-          },
+          "from_plan": {"type": "string", "description": "A plan route or spot ref ('r9'): its build_arguments; given options win."},
           "check_only": {"type": "boolean"},
           "confirm": {"type": "boolean"},
           "queue": {"type": "boolean"},
           "max_wait": {"type": "number"},
           "grade": {
             "enum": ["normal", "heavy", "super_heavy", "gas", "liquid", "insulated_gas", "insulated_liquid", "chute"],
-            "description": "cable: default heavy; pipe: required; chute: chute."
+            "description": "cable: default heavy; pipe: required."
           },
           "waypoints": {"type": "array"},
           "cells": {"type": "array"},
@@ -605,7 +606,8 @@
           "into_frames": {"type": "integer"},
           "quantity": {"type": "number"},
           "to": {"type": "string"},
-          "slot": {"type": "integer"},
+          "slot": {"type": ["integer", "string"]},
+          "items": {"type": "array"},
           "id": {"type": ["string", "array"], "items": {"type": "string"}},
           "state": {"type": "integer"},
           "fields": {"type": "array", "items": {"type": "string"}},

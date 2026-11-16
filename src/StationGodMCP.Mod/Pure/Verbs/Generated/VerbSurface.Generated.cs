@@ -94,6 +94,7 @@ internal static partial class VerbSurface
             WriteFabricatorOptions.Spec,
             WriteGenesOptions.Spec,
             WriteHealthOptions.Spec,
+            WriteNeedsOptions.Spec,
             WriteLatticeOptions.Spec),
         new VerbSpec("plan", true,
             PlanRouteOptions.Spec,

@@ -148,7 +148,7 @@ public sealed class MoveItemTests
         SlotMoveOrders one = SlotMoveOrders.Of(Options("""{"id": "1", "to": "player"}"""), problems, out _)!;
         Assert.False(one.AnswersRows);
         SlotMoveOrder move = Assert.Single(one.Orders);
-        Assert.Equal(("1", "player", (int?)null, (int?)null, true, false),
+        Assert.Equal(("1", "player", (SlotRequest)new SlotRequest.Auto(), (int?)null, true, false),
             (move.Item, move.To, move.Slot, move.Quantity, move.Merge, move.AllowInUse));
 
         SlotMoveOrders list = SlotMoveOrders.Of(Options(
@@ -156,7 +156,7 @@ public sealed class MoveItemTests
             problems, out _)!;
         Assert.True(list.AnswersRows);
         Assert.Equal(new[] { 0, 1 }, list.Orders.ConvertAll(order => order.Index));
-        Assert.Equal(("2", "7", (int?)3, (int?)2, false, true),
+        Assert.Equal(("2", "7", (SlotRequest)new SlotRequest.Index(3), (int?)2, false, true),
             (list.Orders[1].Item, list.Orders[1].To, list.Orders[1].Slot, list.Orders[1].Quantity,
                 list.Orders[1].Merge, list.Orders[1].AllowInUse));
         Assert.Empty(problems);
@@ -172,8 +172,8 @@ public sealed class MoveItemTests
 
         Assert.Empty(problems);
         Assert.True(orders.AnswersRows);
-        Assert.Equal(("7", (int?)null, (int?)null), (orders.Orders[0].To, orders.Orders[0].Slot, orders.Orders[0].Quantity));
-        Assert.Equal(("8", (int?)0, (int?)5), (orders.Orders[1].To, orders.Orders[1].Slot, orders.Orders[1].Quantity));
+        Assert.Equal(("7", (SlotRequest)new SlotRequest.Auto(), (int?)null), (orders.Orders[0].To, orders.Orders[0].Slot, orders.Orders[0].Quantity));
+        Assert.Equal(("8", (SlotRequest)new SlotRequest.Index(0), (int?)5), (orders.Orders[1].To, orders.Orders[1].Slot, orders.Orders[1].Quantity));
     }
 
     [Fact]
@@ -189,7 +189,7 @@ public sealed class MoveItemTests
             "quantity", "id", "quantity", "force", "moves[0].force", "moves[0].id", "moves[1].id", "moves[1].slot",
             "moves[2].to"
         }, Paths(problems));
-        Assert.Equal("is a slot index (0 or more) or \"auto\"", problems[7].Problem);
+        Assert.Equal("is a slot index (0 or more), \"auto\", or a slot key (not empty)", problems[7].Problem);
     }
 
     [Fact]
@@ -197,7 +197,7 @@ public sealed class MoveItemTests
     {
         List<OptionProblem> problems = new List<OptionProblem>();
         Assert.Null(SlotMoveOrders.Of(Options("""{"id": "1", "to": "2", "force": true}"""), problems, out _));
-        Assert.Equal("needs slot as an index, not \"auto\"", Assert.Single(problems).Problem);
+        Assert.Equal("needs slot as an index, not \"auto\" or a key", Assert.Single(problems).Problem);
 
         problems.Clear();
         Assert.Null(SlotMoveOrders.Of(Options("""{"id": ["1", "3"], "to": "2", "slot": 0, "force": true}"""), problems,
@@ -318,11 +318,11 @@ public sealed class MoveItemTests
     public void OneMoveIsItemMovedWithRouteFirstAndTheItemsName()
     {
         ItemMovedView moved = new ItemMovedView(0, new ThingId(110045), "Iron Ore", new SlotRefView(new ThingId(57267), 2),
-            new SlotRefView(new ThingId(273), 3), 100, null, new ThingId(110045));
+            new KeyedSlotRefView(new ThingId(273), 3, null), 100, null, new ThingId(110045));
 
         Assert.Equal(
             "{\"route\":\"slot\",\"index\":0,\"ok\":true,\"reference_id\":\"110045\",\"display_name\":\"Iron Ore\"," +
-            "\"from\":{\"id\":\"57267\",\"slot\":2},\"to\":{\"id\":\"273\",\"slot\":3},\"quantity_moved\":100," +
+            "\"from\":{\"id\":\"57267\",\"slot\":2},\"to\":{\"id\":\"273\",\"slot\":3,\"slot_key\":null},\"quantity_moved\":100," +
             "\"merged_into\":null,\"destination_reference_id\":\"110045\",\"warning\":null}",
             ApiJson.WriteShared(ItemMoveReplies.Routed("slot", moved)));
     }
@@ -332,7 +332,7 @@ public sealed class MoveItemTests
     {
         BatchBuilder batch = new BatchBuilder(2);
         batch.Succeeded(new ItemMovedView(0, new ThingId(1), "Kit (Battery Large)", null,
-            new SlotRefView(new ThingId(273), 0), 1, new ThingId(5), new ThingId(5)));
+            new KeyedSlotRefView(new ThingId(273), 0, null), 1, new ThingId(5), new ThingId(5)));
         batch.Failed(new ItemNotMovedView(1, new ThingId(2), ApiErrors.Refused("stack_full", "full")));
 
         JObject reply = Replies.Tree(ItemMoveReplies.Routed("slot", batch.Build()));
@@ -382,6 +382,7 @@ public sealed class MoveItemTests
     public void AMoveSpreadOverSlotsListsEachFilledSlotReadBack()
     {
         SlotRefView first = new SlotRefView(new ThingId(273), 3);
+        KeyedSlotRefView firstKeyed = new KeyedSlotRefView(new ThingId(273), 3, null);
         List<SlotFilledView> filled = new List<SlotFilledView>
         {
             new SlotFilledView(first, new ThingId(9), 2, true, 5),
@@ -389,8 +390,8 @@ public sealed class MoveItemTests
         };
 
         JObject moved = JObject.Parse(WireCheck.New(new ItemMovedView(0, new ThingId(1), "Iron Ore",
-            new SlotRefView(new ThingId(57), 2), first, 3, new ThingId(9), new ThingId(9), filled: filled)));
-        JObject single = JObject.Parse(WireCheck.New(new ItemMovedView(0, new ThingId(1), "Iron Ore", null, first, 3,
+            new SlotRefView(new ThingId(57), 2), firstKeyed, 3, new ThingId(9), new ThingId(9), filled: filled)));
+        JObject single = JObject.Parse(WireCheck.New(new ItemMovedView(0, new ThingId(1), "Iron Ore", null, firstKeyed, 3,
             null, new ThingId(1))));
 
         Assert.Equal(3, (int)moved["quantity_moved"]!);

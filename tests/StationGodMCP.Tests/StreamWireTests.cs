@@ -236,7 +236,7 @@ public sealed class StreamWireTests
         }
 
         Stopwatch watch = Stopwatch.StartNew();
-        while (rig.Host.Open.Count > 0 && watch.ElapsedMilliseconds < 10000)
+        while (rig.Host.Open.Count > 0 && watch.ElapsedMilliseconds < V2Client.ClientWaitMs)
         {
             Thread.Sleep(50);
         }
@@ -379,11 +379,7 @@ public sealed class StreamWireTests
 
     private static void WaitForStreamEnds(PipeRig rig, int count)
     {
-        Stopwatch watch = Stopwatch.StartNew();
-        while (rig.Mod.StreamEnds.Count < count && watch.ElapsedMilliseconds < 5000)
-        {
-            Thread.Sleep(10);
-        }
+        rig.Mod.WaitStreamEnds(count);
     }
 
     private static string[] Sorted(IEnumerable<string> names)

@@ -53,6 +53,12 @@ param(
     # The item check alone (item_check.py), the pictures skipped: `inspect prefab` slot rows against a live thing's
     # slots, and the remove item cases; evidence in out\items.json. Adds about 1 min.
     [switch] $ItemChecks,
+    # The slot check alone (slot_check.py), the pictures skipped: a slot named by its key, the player's hands, a build
+    # item list and a cut reply's shape; evidence in out\slots.json.
+    [switch] $SlotChecks,
+    # The needs check alone (needs_check.py), the pictures skipped: write needs, inspect player's waste_ratio and
+    # sanitation, and undo; evidence in out\needs.json.
+    [switch] $NeedsChecks,
     # The stand check alone (stand_check.py), the pictures skipped: move player stand, refused when boxed in, and write
     # interact; evidence in out\stand.json.
     [switch] $StandChecks,
@@ -62,6 +68,8 @@ param(
 if ($FrameReads) { $ExpectedMinutes += 1.5 }
 if ($KeyGuard) { $ExpectedMinutes += 0.5 }
 if ($ItemChecks) { $ExpectedMinutes = 4 }
+if ($SlotChecks) { $ExpectedMinutes = 4 }
+if ($NeedsChecks) { $ExpectedMinutes = 4 }
 if ($StandChecks) { $ExpectedMinutes = 4 }
 $ErrorActionPreference = 'Stop'
 $here = $PSScriptRoot
@@ -84,7 +92,7 @@ if (-not (Test-Path (Join-Path $Hub 'StationGodMCP.Server.exe')) -or -not (Test-
 
 $ctxFile = Join-Path ([IO.Path]::GetTempPath()) "sg-pictures-$PID.json"
 [ordered]@{ pipe = $Pipe; expectedMin = $ExpectedMinutes; repo = $repo; here = $here; hub = $Hub; pythonZip = $PythonZip
-    frames = [bool] $FrameReads; keyguard = [bool] $KeyGuard; itemChecks = [bool] $ItemChecks; standChecks = [bool] $StandChecks; repoAt = (& git -C $repo rev-parse --short HEAD 2>$null) } | ConvertTo-Json | Set-Content -Encoding utf8BOM $ctxFile
+    frames = [bool] $FrameReads; keyguard = [bool] $KeyGuard; itemChecks = [bool] $ItemChecks; slotChecks = [bool] $SlotChecks; needsChecks = [bool] $NeedsChecks; standChecks = [bool] $StandChecks; repoAt = (& git -C $repo rev-parse --short HEAD 2>$null) } | ConvertTo-Json | Set-Content -Encoding utf8BOM $ctxFile
 $env:SG_PIC_CONTEXT = $ctxFile
 
 $pipeRe = [regex]::Escape($Pipe) -replace '\\', '\\'
@@ -97,7 +105,7 @@ $runArgs = @{
     PreLaunch = "$here\vm\prelaunch.ps1"; OnPoll = "$here\vm\onpoll.ps1"; Judge = "$here\vm\judge.ps1"
     OnEnd = "$here\vm\onend.ps1"
     Item = $Item; ExpectedMinutes = [int][math]::Ceiling($ExpectedMinutes)
-    CheckScripts = @("$here\vm", "$here\shots.py", "$here\judge_shots.py", "$here\keyguard_check.py", "$here\item_check.py", "$here\stand_check.py", (Join-Path (Split-Path $here) 'silo-rig\sgcall.py'))
+    CheckScripts = @("$here\vm", "$here\shots.py", "$here\judge_shots.py", "$here\keyguard_check.py", "$here\item_check.py", "$here\slot_check.py", "$here\needs_check.py", "$here\stand_check.py", (Join-Path (Split-Path $here) 'silo-rig\sgcall.py'))
     TimeoutSeconds = $TimeoutSeconds; StallSeconds = $PhaseSeconds
     WatchLogs = @('{res}\logs\shots.log')
     IgnoreErrorRegex = 'StationGodMCP\.LatticeLink|Lattice\.Api'

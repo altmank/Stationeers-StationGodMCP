@@ -146,6 +146,11 @@ public sealed partial class VerbPipeline
             return false;
         }
 
+        if (what.Key == "write.needs")
+        {
+            return true;
+        }
+
         if (fromRef || options["id"] is JsonArray)
         {
             return true;

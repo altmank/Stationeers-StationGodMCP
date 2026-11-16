@@ -561,7 +561,7 @@ public sealed class ProtocolV2Tests
         }
 
         Stopwatch watch = Stopwatch.StartNew();
-        while (rig.Host.Open.Count > 0 && watch.ElapsedMilliseconds < 10000)
+        while (rig.Host.Open.Count > 0 && watch.ElapsedMilliseconds < V2Client.ClientWaitMs)
         {
             Thread.Sleep(50);
         }

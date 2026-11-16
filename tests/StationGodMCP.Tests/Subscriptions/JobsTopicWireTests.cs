@@ -104,7 +104,7 @@ public sealed class JobsTopicWireTests
         Assert.True((bool)Call(rig, second, "4", "unsubscribe", new JObject { ["subscription"] = unsubscribed })["ok"]!);
         second.Send("""{"type":"stream_end","stream":5}""");
         Stopwatch waited = Stopwatch.StartNew();
-        while (hub.CountOf(ClientId(second)) != 1 && waited.ElapsedMilliseconds < 5000)
+        while (hub.CountOf(ClientId(second)) != 1 && waited.ElapsedMilliseconds < V2Client.ClientWaitMs)
         {
             Frame(rig);
             await Task.Delay(10);
@@ -193,7 +193,7 @@ public sealed class JobsTopicWireTests
             ["type"] = "call", ["id"] = id, ["method"] = method, ["params"] = parameters, ["stream"] = stream
         }.ToString(Formatting.None));
         Stopwatch watch = Stopwatch.StartNew();
-        while (watch.ElapsedMilliseconds < 5000)
+        while (watch.ElapsedMilliseconds < V2Client.ClientWaitMs)
         {
             Frame(rig);
             JObject? message = client.NextOrNull(20);

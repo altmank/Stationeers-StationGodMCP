@@ -484,14 +484,70 @@ internal sealed class FakeMod : ICallQueue, ICallRunner, IDisposable
         }
     }
 
+    private readonly object _handledChanged = new object();
+
+    /// <summary>
+    /// When set, a stream_end holds the connection's reader after the scheduler has ended its streams and before the
+    /// hub hears of it, until the gate is set: the order in which a reply can come before the hub has handled the message.
+    /// </summary>
+    internal ManualResetEventSlim? StreamEndGate { get; set; }
+
+    /// <summary>How many stream_end messages have reached the gate (read under WaitHandled).</summary>
+    internal int EndsAtGate { get; private set; }
+
+    // A message the reader handed to the fake mod has been handled; wakes WaitHandled.
+    private void Handled()
+    {
+        _added.Release();
+        lock (_handledChanged)
+        {
+            Monitor.PulseAll(_handledChanged);
+        }
+    }
+
+    /// <summary>
+    /// Waits until a message the reader hands to the mod (stream_end, cursor_close, release, a close, a hold, a
+    /// resume) has been handled and condition holds. Throws after the safety bound, naming what never happened.
+    /// </summary>
+    internal void WaitHandled(Func<bool> condition, string what)
+    {
+        lock (_handledChanged)
+        {
+            while (!condition())
+            {
+                if (!Monitor.Wait(_handledChanged, V2Client.ClientWaitMs))
+                {
+                    throw new TimeoutException($"{what} never happened within {V2Client.ClientWaitMs} ms");
+                }
+            }
+        }
+    }
+
+    /// <summary>Waits until count streams in all have ended at the mod.</summary>
+    internal void WaitStreamEnds(int count) => WaitHandled(() => StreamEnds.Count >= count, $"{count} stream_end messages handled");
+
+    /// <summary>Waits until count connections in all have closed at the mod.</summary>
+    internal void WaitClosed(int count) => WaitHandled(() => ClosedSources.Count >= count, $"{count} connections closed");
+
     public void Withdraw(QueuedCall call) => _calls.Withdraw(call);
 
     public void StreamEnded(object source, StationGodMCP.Pure.Protocol.StreamEnd end)
     {
         _calls.EndStreams(source, end);
+        if (StreamEndGate is { } gate)
+        {
+            lock (_handledChanged)
+            {
+                EndsAtGate++;
+                Monitor.PulseAll(_handledChanged);
+            }
+
+            gate.Wait();
+        }
+
         StreamEndedHook?.Invoke(source, end);
         StreamEnds.Enqueue((source, end));
-        _added.Release();
+        Handled();
     }
 
     /// <summary>cursor_close messages, in order, with their connection's owner.</summary>
@@ -502,7 +558,7 @@ internal sealed class FakeMod : ICallQueue, ICallRunner, IDisposable
     {
         _calls.CloseCursor(owner, cursorId);
         CursorCloses.Enqueue((owner, cursorId));
-        _added.Release();
+        Handled();
     }
 
     /// <summary>release messages, in order, with their connection's owner.</summary>
@@ -513,7 +569,7 @@ internal sealed class FakeMod : ICallQueue, ICallRunner, IDisposable
     {
         _calls.ReleasePins(owner, stream);
         PinReleases.Enqueue((owner, stream));
-        _added.Release();
+        Handled();
     }
 
     /// <summary>Owners whose session ended abruptly, in order.</summary>
@@ -523,7 +579,7 @@ internal sealed class FakeMod : ICallQueue, ICallRunner, IDisposable
     {
         _calls.EndSession(owner);
         SessionEnds.Enqueue(owner);
-        _added.Release();
+        Handled();
     }
 
     /// <summary>Runs work on the fake main thread, between frames.</summary>
@@ -539,13 +595,13 @@ internal sealed class FakeMod : ICallQueue, ICallRunner, IDisposable
     {
         HeldHook?.Invoke(owner);
         HeldOwners.Enqueue(owner);
-        _added.Release();
+        Handled();
     }
 
     public void OwnerResumed(string owner, object source)
     {
         ResumedHook?.Invoke(owner, source);
-        _added.Release();
+        Handled();
     }
 
     public void Closed(object source)
@@ -553,7 +609,7 @@ internal sealed class FakeMod : ICallQueue, ICallRunner, IDisposable
         _calls.Close(source);
         ClosedHook?.Invoke(source);
         ClosedSources.Enqueue(source);
-        _added.Release();
+        Handled();
     }
 
     /// <summary>The ids of calls in the order the fake main thread ran them.</summary>
