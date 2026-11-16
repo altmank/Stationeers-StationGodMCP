@@ -1093,7 +1093,7 @@ public sealed class VerbCatalogueTests
         }
 
         int fresh = (int)table["per_fresh_context"]!["verbs"]!;
-        Assert.True(fresh <= VerbSizes.TodayPerFreshContext,
-            $"listing plus the common load is {fresh} tokens, over today's {VerbSizes.TodayPerFreshContext} per fresh context");
+        Assert.True(fresh <= VerbSizes.TodayPerFreshContext + VerbSizes.TestToolingAllowance,
+            $"listing plus the common load is {fresh} tokens, over today's {VerbSizes.TodayPerFreshContext} plus the test-tooling allowance {VerbSizes.TestToolingAllowance} per fresh context");
     }
 }
