@@ -154,7 +154,7 @@ public sealed class SubscriptionWireTests
     [Fact]
     public async Task ASubscriptionOverALimitIsRefusedWithItsData()
     {
-        using PipeRig rig = Rig(new SubscriptionHub(_reader, NoLogic.Instance, new SubscriptionLimits(1, 8192, 1.5)));
+        using PipeRig rig = Rig(new SubscriptionHub(_reader, NoLogic.Instance, new SubscriptionLimits(1, 8192, 1.5), clock: new FakeClock()));
         using V2Client client = await V2Client.Connect(rig);
         Assert.True((bool)Call(rig, client, "1", "subscribe", DeviceParams())["ok"]!);
 
@@ -319,7 +319,7 @@ public sealed class SubscriptionWireTests
     [Fact]
     public async Task AnyStreamOfTheConnectionMayUnsubscribeAndTheLimitsAreTheConnections()
     {
-        using PipeRig rig = Rig(new SubscriptionHub(_reader, NoLogic.Instance, new SubscriptionLimits(1, 8192, 1.5)));
+        using PipeRig rig = Rig(new SubscriptionHub(_reader, NoLogic.Instance, new SubscriptionLimits(1, 8192, 1.5), clock: new FakeClock()));
         using V2Client client = await V2Client.Connect(rig);
         string subscription = (string)Call(rig, client, "1", "subscribe", DeviceParams(), stream: 2)["result"]!["subscription"]!;
 
@@ -411,7 +411,8 @@ public sealed class SubscriptionWireTests
         ["interval_s"] = 1
     };
 
-    private SubscriptionHub Hub() => new SubscriptionHub(_reader, NoLogic.Instance, SubscriptionLimits.Default);
+    // A fake clock: the load a subscription is measured at is what the reader advances it by, never the host's speed.
+    private SubscriptionHub Hub() => new SubscriptionHub(_reader, NoLogic.Instance, SubscriptionLimits.Default, clock: new FakeClock());
 
     private PipeRig Rig(SubscriptionHub? hub = null) =>
         new PipeRig(mainThread: false, subscriptions: hub ?? Hub(), tick: () => new SamplingTick(_frame, _gameTimeS));

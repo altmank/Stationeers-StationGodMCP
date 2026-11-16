@@ -76,22 +76,24 @@ public sealed class ResumeSubscriptionTests
         string subscription;
         using (V2Client first = await Resume(rig))
         {
-            subscription = (string)Call(rig, first, "1", "subscribe", DeviceParams(), stream: 2)["result"]!["subscription"]!;
+            JObject subscribed = Call(rig, first, "1", "subscribe", DeviceParams(), stream: 2);
+            subscription = (string?)subscribed["result"]?["subscription"]
+                ?? throw new Xunit.Sdk.XunitException($"the first subscribe was not answered with a subscription: {subscribed}");
         }
 
         WaitHeldAndClosed(rig);
-        Assert.True(rig.Mod.HeldOwners.TryPeek(out string? owner));
+        Assert.True(rig.Mod.HeldOwners.TryPeek(out string? owner), $"no owner held; held tokens: {rig.Holds.Held}");
         Frame(rig, atS: 0.5);
-        Assert.Equal(1, hub.CountOf(owner!));
+        Assert.True(hub.CountOf(owner!) == 1, $"CountOf after the hold: expected 1, got {hub.CountOf(owner!)}; owner {owner}; held tokens {rig.Holds.Held}");
         _clock.Advance(WindowMs);
         Frame(rig, atS: 1.0);
-        Assert.Equal(0, hub.CountOf(owner!));
+        Assert.True(hub.CountOf(owner!) == 0, $"CountOf after the window: expected 0, got {hub.CountOf(owner!)}; owner {owner}; held tokens {rig.Holds.Held}");
 
         using V2Client second = await Resume(rig);
         JObject gone = Call(rig, second, "2", "unsubscribe", new JObject { ["subscription"] = subscription });
 
-        Assert.False((bool)second.Welcome["resume"]!["resumed"]!);
-        Assert.Equal("unknown_subscription", (string?)gone["error"]!["code"]);
+        Assert.False((bool)second.Welcome["resume"]!["resumed"]!, $"resumed after the window; welcome: {second.Welcome}");
+        Assert.True((string?)gone["error"]?["code"] == "unknown_subscription", $"unsubscribe after the window: expected unknown_subscription, got {gone}");
     }
 
     [Fact]
@@ -150,7 +152,8 @@ public sealed class ResumeSubscriptionTests
         Assert.Equal("b", update.Reading);
     }
 
-    private SubscriptionHub Hub() => new SubscriptionHub(_reader, _logic, SubscriptionLimits.Default);
+    // Its own fake clock: the load a subscription is measured at never depends on the host's speed.
+    private SubscriptionHub Hub() => new SubscriptionHub(_reader, _logic, SubscriptionLimits.Default, clock: new FakeClock());
 
     // strict false: read {what: "sample"} with the sampler's own arguments (PipeRig.IsSampleRun).
     private PipeRig Rig(SubscriptionHub hub, bool strict = true) =>
