@@ -101,8 +101,7 @@ $runArgs = @{
     PreLaunch = "$here\vm\prelaunch.ps1"; OnPoll = "$here\vm\onpoll.ps1"; Judge = "$here\vm\judge.ps1"
     OnEnd = "$here\vm\onend.ps1"
     Item = $Item; ExpectedMinutes = [int][math]::Ceiling($ExpectedMinutes)
-    CheckScripts = @("$here\vm", "$here\shots.py", "$here\judge_shots.py", "$here\keyguard_check.py", "$here\item_check.py", "$here\slot_check.py", "$here
-eeds_check.py", (Join-Path (Split-Path $here) 'silo-rig\sgcall.py'))
+    CheckScripts = @("$here\vm", "$here\shots.py", "$here\judge_shots.py", "$here\keyguard_check.py", "$here\item_check.py", "$here\slot_check.py", "$here\needs_check.py", (Join-Path (Split-Path $here) 'silo-rig\sgcall.py'))
     TimeoutSeconds = $TimeoutSeconds; StallSeconds = $PhaseSeconds
     WatchLogs = @('{res}\logs\shots.log')
     IgnoreErrorRegex = 'StationGodMCP\.LatticeLink|Lattice\.Api'
