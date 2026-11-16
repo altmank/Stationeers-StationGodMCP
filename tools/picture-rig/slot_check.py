@@ -61,13 +61,21 @@ def landed_index(reply):
     return None
 
 
+def body(reply):
+    """The reply of a one-id call: its first result row when the hub wrapped it as {results: [...]}, else the reply."""
+    rows = (reply or {}).get("results")
+    if rows and isinstance(rows[0], dict):
+        return rows[0].get("payload") or rows[0]
+    return reply or {}
+
+
 def truncated_note(reply):
-    """The cut note of a reply: its `truncated` entry for list slots, or the data of the client's truncated refusal."""
+    """The first cut note of a reply (its `truncated` list), or the data of the client's truncated refusal."""
     notes = (reply or {}).get("truncated")
     if isinstance(notes, dict):
         notes = [notes]
     for note in notes or []:
-        if isinstance(note, dict) and note.get("list") == "slots":
+        if isinstance(note, dict):
             return note
     error = (reply or {}).get("error") or {}
     if error.get("code") == "truncated" and isinstance(error.get("data"), dict):
@@ -75,8 +83,30 @@ def truncated_note(reply):
     return None
 
 
+def note_failures(note):
+    """What is malformed in a cut note: it names its list, says how many came of how many, and how to get the rest."""
+    failures = []
+    if not isinstance(note.get("list"), str) or not note["list"]:
+        failures.append("no list")
+    for key in ("returned", "total"):
+        if not isinstance(note.get(key), int):
+            failures.append(f"{key} is not a number")
+    if isinstance(note.get("returned"), int) and isinstance(note.get("total"), int) and note["returned"] > note["total"]:
+        failures.append("returned is more than total")
+    if not note.get("more"):
+        failures.append("no `more` to say how to get the rest")
+    return failures
+
+
 def slots_returned(reply):
-    return len((reply or {}).get("slots") or [])
+    return len(body(reply).get("slots") or [])
+
+
+def slots_total(reply):
+    """The slot count the game itself reports for the thing (device.slot_count, or slot_count on the row)."""
+    row = body(reply)
+    count = row.get("slot_count")
+    return count if count is not None else (row.get("device") or {}).get("slot_count")
 
 
 def stack_capacity(contents, prefab):
@@ -202,31 +232,24 @@ def cut_failures(evidence):
     cut = evidence.get("cut")
     if not cut:
         return ["cut-reply-shape: not run"]
-    failures = []
     if "whole" not in cut:
         return [] if cut.get("skipped") else ["cut-reply-shape: not run"]
-    whole, total = cut.get("whole"), cut.get("total")
+    failures = []
+    whole, total = cut["whole"], cut.get("total")
     if code_of(whole):
-        failures.append(f"cut-reply-shape: inspect slots refused {code_of(whole)}")
+        failures.append(f"cut-reply-shape: inspect slots refused {code_of(whole)} {message_of(whole)}")
     elif truncated_note(whole):
-        failures.append(f"cut-reply-shape: inspect slots on a {total}-slot suit carries a cut note {truncated_note(whole)}")
-    elif slots_returned(whole) != total:
-        failures.append(f"cut-reply-shape: inspect slots answered {slots_returned(whole)} of {total} slots")
-    limited = cut.get("limited")
-    note = truncated_note(limited)
-    if total is not None and total <= CUT_TO:
-        failures.append(f"cut-reply-shape: the suit has only {total} slots; nothing to cut")
-    elif code_of(limited) and not note:
-        failures.append(f"cut-reply-shape: list_limits {{slots: {CUT_TO}}} was refused {code_of(limited)} "
-                        f"{message_of(limited)}")
-    elif not note:
-        failures.append(f"cut-reply-shape: list_limits {{slots: {CUT_TO}}} answered {slots_returned(limited)} slots "
-                        "and no truncated note")
+        failures.append(f"cut-reply-shape: inspect slots on a {total}-slot thing carries a cut note {truncated_note(whole)}")
+    elif total is None or slots_returned(whole) != total:
+        failures.append(f"cut-reply-shape: inspect slots answered {slots_returned(whole)} rows, the game says {total} slots")
+    shape = cut.get("default_cut")
+    if not shape:
+        failures.append("cut-reply-shape: no default-cut reply was found to read a note from: " + str(cut.get("tried")))
     else:
-        if note.get("returned") != CUT_TO or note.get("total") != total or not note.get("more"):
-            failures.append(f"cut-reply-shape: the note is malformed: {note}")
-        if not code_of(limited) and slots_returned(limited) != CUT_TO:
-            failures.append(f"cut-reply-shape: {slots_returned(limited)} slots came, not {CUT_TO}")
+        bad = note_failures(shape["note"])
+        if bad:
+            failures.append(f"cut-reply-shape: the {shape['verb']} {shape['what']} cut note is malformed ({'; '.join(bad)}): "
+                            f"{shape['note']}")
     return failures
 
 
@@ -346,9 +369,10 @@ def build_locker(sgcall, at):
 
 
 def cut_part(sgcall, log, at):
-    """inspect slots reaches devices and logic-capable worn items (a vanilla suit has no logic), so a vanilla locker is
-    built free beside the player and its slots read whole and with list_limits {slots: CUT_TO}."""
-    cut = log["cut"] = {}
+    """A vanilla locker is built free beside the player (inspect slots reaches devices with logic; a vanilla suit has
+    none) and its slots read whole: every row and no cut note. The shape of a real cut note is read from a verb the
+    game cuts by default (a find with no limit); list_limits only keeps more of a cut list, so it is not asked to cut."""
+    cut = log["cut"] = {"tried": []}
     locker, replies = build_locker(sgcall, at)
     cut["build_replies"] = replies
     if locker is None:
@@ -357,8 +381,14 @@ def cut_part(sgcall, log, at):
         return
     cut["id"] = locker
     cut["whole"] = _call(sgcall, "inspect", "slots", id=locker)
-    cut["total"] = slots_returned(cut["whole"])
-    cut["limited"] = _call(sgcall, "inspect", "slots", id=locker, list_limits={"slots": CUT_TO})
+    cut["total"] = slots_total(cut["whole"])
+    for verb, what in (("find", "thing"), ("find", "item"), ("find", "device")):
+        reply = _call(sgcall, verb, what)
+        note = truncated_note(reply)
+        cut["tried"].append({"verb": verb, "what": what, "cut": bool(note), "code": code_of(reply)})
+        if note:
+            cut["default_cut"] = {"verb": verb, "what": what, "note": note}
+            return
 
 
 def run(sgcall, done, log, say=print):

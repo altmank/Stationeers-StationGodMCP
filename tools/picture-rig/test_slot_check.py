@@ -90,22 +90,35 @@ def test_a_good_list_case_passes_and_a_changed_storage_fails():
     assert any("items[2]" in f for f in c.list_failures({"list": box}))
 
 
+def locker_read(rows, slot_count):
+    """A one-id inspect slots reply as the hub answers it (run 4's recorded shape)."""
+    return {"results": [{"index": 0, "ok": True, "slot_count": slot_count, "device": {"slot_count": slot_count},
+                         "slots": [{}] * rows}], "truncated": []}
+
+
+GOOD_NOTE = {"list": "things", "returned": 10, "total": 40, "more": "pass limit"}
+
+
 def test_the_cut_shape():
-    note = {"list": "slots", "returned": 3, "total": 21, "more": "pass list_limits {slots: 21}"}
-    cut = {"total": 21, "whole": {"slots": [{}] * 21}, "limited": {"slots": [{}] * 3, "truncated": [note]}}
+    cut = {"total": 30, "whole": locker_read(30, 30), "default_cut": {"verb": "find", "what": "thing", "note": GOOD_NOTE}}
     assert c.cut_failures({"cut": cut}) == []
-    cut["whole"] = {"slots": [{}] * 5, "truncated": [{"list": "slots", "returned": 5, "total": 21, "more": "x"}]}
+    cut["whole"] = locker_read(5, 30)
+    assert any("30 slots" in f for f in c.cut_failures({"cut": cut}))
+    cut["whole"] = {**locker_read(30, 30), "truncated": [GOOD_NOTE]}
     assert any("carries a cut note" in f for f in c.cut_failures({"cut": cut}))
 
 
-def test_a_cut_note_may_come_as_the_clients_truncated_refusal():
-    note = {"list": "slots", "returned": 3, "total": 21, "more": "pass list_limits"}
-    cut = {"total": 21, "whole": {"slots": [{}] * 21}, "limited": {"error": {"code": "truncated", "data": note}}}
-    assert c.cut_failures({"cut": cut}) == []
-    cut["limited"] = {"slots": [{}] * 3}
-    assert any("no truncated note" in f for f in c.cut_failures({"cut": cut}))
-    cut["limited"] = {"slots": [{}] * 3, "truncated": [{"list": "slots", "returned": 3, "total": 21}]}
-    assert any("malformed" in f for f in c.cut_failures({"cut": cut}))
+def test_a_malformed_default_cut_note_fails():
+    cut = {"total": 30, "whole": locker_read(30, 30),
+           "default_cut": {"verb": "find", "what": "thing", "note": {"list": "things", "returned": 10}}}
+    assert any("malformed" in f and "total" in f and "more" in f for f in c.cut_failures({"cut": cut}))
+    cut["default_cut"] = None
+    assert any("no default-cut reply" in f for f in c.cut_failures({"cut": cut}))
+
+
+def test_the_slot_count_is_read_from_the_reply_not_typed():
+    assert c.slots_total(locker_read(30, 30)) == 30
+    assert c.slots_total({"results": [{"device": {"slot_count": 7}, "slots": []}]}) == 7
 
 
 def test_a_cut_with_no_reachable_thing_is_a_noted_skip_not_a_pass():
@@ -136,6 +149,9 @@ class FakeGame:
 
     def call(self, verb, what=None, **o):
         if (verb, what) == ("find", "thing"):
+            if "limit" not in o:
+                return {"things": [{}] * 10, "truncated": [{"list": "things", "returned": 10, "total": 40,
+                                                              "more": "pass limit"}]}
             return {"things": [{"position": {"x": 0, "y": 0, "z": 0}}]}
         if (verb, what) == ("inspect", "player"):
             return {"worn": {"suit": {"reference_id": "5"}, "right_hand": self.right_hand}}
@@ -149,12 +165,9 @@ class FakeGame:
         if (verb, what) == ("build", "structure"):
             return {"result": {"placed": [{"reference_id": "L1"}]}}
         if (verb, what) == ("inspect", "slots"):
-            assert o["id"] == "L1", o
-            n = o.get("list_limits", {}).get("slots", 32)
-            reply = {"slots": [{}] * min(n, 21)}
-            if n < 21:
-                reply["truncated"] = [{"list": "slots", "returned": n, "total": 21, "more": "pass list_limits"}]
-            return reply
+            assert o["id"] == "L1" and "list_limits" not in o, o
+            return {"results": [{"index": 0, "ok": True, "reference_id": "L1", "slot_count": 21,
+                                 "device": {"slot_count": 21}, "slots": [{}] * 21}], "truncated": []}
         if (verb, what) == ("build", "item"):
             return self.build(o)
         if (verb, what) == ("move", "item"):
