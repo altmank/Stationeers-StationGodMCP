@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- move player can stand the player within reach of a target, clear of things and on a floor; write interact presses a thing's switch or button as the player would; inspect device lists them.
+
 ## 2.21.0
 
 - inspect slots lists up to 32 slots before cutting; generated cuts.json lists every reply list that can be cut.
