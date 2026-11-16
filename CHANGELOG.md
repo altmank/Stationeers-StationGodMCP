@@ -2,10 +2,13 @@
 
 ## Unreleased
 
-## 2.21.0
+## 2.22.0
+
+(2.21.0 was tagged but never released; its changes ship here.)
 
 - Put an item in a slot by its key or in a hand; build item fills a storage from a list, all or nothing; inspect contents shows slot keys and inspect player the worn items.
 - inspect slots lists up to 32 slots before cutting; generated cuts.json lists every reply list that can be cut.
+- Pipe-rig tests wait on a handled signal, not wall time (test only; fixes two flaky tests).
 
 ## 2.20.1
 
