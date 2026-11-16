@@ -19,6 +19,8 @@ internal static class OptionCheck
     /// <summary>The key params name the what with.</summary>
     internal const string WhatKey = "what";
 
+    private const string TakenByTheHub = "taken by the MCP server (or sg), not by the game";
+
     private static readonly string[] HubOptions = { "output_file", "whole", "repeat", "max_wait" };
 
     /// <summary>The call's what, or the invalid_argument that lists every problem with it.</summary>
@@ -64,7 +66,7 @@ internal static class OptionCheck
 
             if (IsHubOption(what, name))
             {
-                problems.Add(new OptionProblem(name, "taken by the MCP server (or sg), not by the game"));
+                problems.Add(new OptionProblem(name, HubOptionProblem(name)));
                 continue;
             }
 
@@ -103,6 +105,12 @@ internal static class OptionCheck
     /// <summary>An id that takes no list: a write that cannot be undone takes one id; several are a script's loop.</summary>
     internal static string OneId(WhatSpec what) =>
         $"takes one id: for several, use run_script (a loop of sg.{what.Verb} calls; this write cannot be undone)";
+
+    /// <summary>The refusal of an option only the hub takes; whole also names the pipe's way to a cut list whole.</summary>
+    internal static string HubOptionProblem(string name) =>
+        name == "whole"
+            ? TakenByTheHub + ". Over the pipe, a cut list is lifted with list_limits {<list>: n} (the reply's truncated names the list)"
+            : TakenByTheHub;
 
     private static bool IsHubOption(WhatSpec what, string name)
     {

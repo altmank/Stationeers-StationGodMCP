@@ -112,10 +112,21 @@ public sealed class ModOptionCheckTests
         VerbError error = Check("write", """{"what": "chip", "id": "1", "code_file": "a.ic10", "whole": true}""", out _)!;
 
         Assert.Equal(new[] { "code_file", "whole" }, Problems(error).Select(problem => (string?)problem["path"]).ToArray());
-        Assert.All(Problems(error), problem =>
-            Assert.Equal("taken by the MCP server (or sg), not by the game", (string?)problem["problem"]));
+        Assert.Equal("taken by the MCP server (or sg), not by the game", (string?)Problems(error)[0]["problem"]);
+        Assert.Equal(OptionCheck.HubOptionProblem("whole"), (string?)Problems(error)[1]["problem"]);
         Assert.DoesNotContain("max_wait",
             TestVerbs.Names(Check("build", """{"what": "cable", "colour": 1}""", out _)!.Data!["valid"]));
+    }
+
+    [Fact]
+    public void WholeOverThePipeIsRefusedNamingListLimits()
+    {
+        VerbError error = Check("inspect", """{"what": "slots", "id": "1", "whole": true}""", out _)!;
+
+        JToken problem = Assert.Single(Problems(error));
+        Assert.Equal("whole", (string?)problem["path"]);
+        Assert.StartsWith("taken by the MCP server (or sg), not by the game", (string?)problem["problem"]);
+        Assert.Contains("list_limits {<list>: n}", (string?)problem["problem"]);
     }
 
     [Fact]

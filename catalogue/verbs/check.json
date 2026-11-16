@@ -95,6 +95,7 @@
       },
       "example": {"action": "explain", "rule": "door_keepout", "id": "1199811"},
       "x-cost": {"class": "instant", "growth": "by-id"},
+      "x-handler-cuts": [{"path": "explained", "lifted_by": null}],
       "reply": {
         "list": "rules",
         "variants": [

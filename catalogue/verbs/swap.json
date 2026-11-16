@@ -51,6 +51,7 @@
       "example": {"room": "17", "into": "StructureCompositeWall"},
       "x-cost": {"class": "job", "growth": "plan"},
       "x-cost-report": {"class": "plan"},
+      "x-handler-cuts": [{"path": "pieces", "lifted_by": "rows"}, {"path": "kept_pieces", "lifted_by": "rows"}, {"path": "unmatched_pieces", "lifted_by": "rows"}],
       "reply": {
         "list": "pieces",
         "variants": [
@@ -141,6 +142,7 @@
       "example": {"room": "17"},
       "x-cost": {"class": "job", "growth": "plan"},
       "x-cost-report": {"class": "plan"},
+      "x-handler-cuts": [{"path": "pieces", "lifted_by": "rows"}, {"path": "kept_pieces", "lifted_by": "rows"}, {"path": "unmatched_pieces", "lifted_by": "rows"}],
       "reply": {
         "list": "pieces",
         "variants": [
@@ -227,6 +229,7 @@
       "example": {"id": "4410", "into": "StructureAirlock"},
       "x-cost": {"class": "job", "growth": "plan"},
       "x-cost-report": {"class": "plan"},
+      "x-handler-cuts": [{"path": "pieces", "lifted_by": "rows"}, {"path": "kept_pieces", "lifted_by": "rows"}, {"path": "unmatched_pieces", "lifted_by": "rows"}],
       "reply": {
         "list": "pieces",
         "variants": [
@@ -358,6 +361,7 @@
       "x-cost": {"class": "job", "growth": "plan"},
       "x-default-limits": {"devices": 5},
       "x-cost-report": {"class": "plan"},
+      "x-handler-cuts": [{"path": "pieces", "lifted_by": "rows"}, {"path": "kept_pieces", "lifted_by": "rows"}, {"path": "unmatched_pieces", "lifted_by": "rows"}, {"path": "dead_end_pieces", "lifted_by": "rows"}, {"path": "riding", "lifted_by": "rows"}, {"path": "redundant.kept", "lifted_by": "rows"}],
       "reply": {
         "list": "pieces",
         "variants": [
@@ -507,6 +511,7 @@
       "x-cost": {"class": "job", "growth": "plan"},
       "x-default-limits": {"devices": 5},
       "x-cost-report": {"class": "plan"},
+      "x-handler-cuts": [{"path": "pieces", "lifted_by": "rows"}, {"path": "kept_pieces", "lifted_by": "rows"}, {"path": "unmatched_pieces", "lifted_by": "rows"}, {"path": "dead_end_pieces", "lifted_by": "rows"}, {"path": "riding", "lifted_by": "rows"}, {"path": "redundant.kept", "lifted_by": "rows"}],
       "reply": {
         "list": "pieces",
         "variants": [
@@ -621,6 +626,7 @@
       "x-cost": {"class": "job", "growth": "plan"},
       "x-default-limits": {"devices": 5},
       "x-cost-report": {"class": "plan"},
+      "x-handler-cuts": [{"path": "pieces", "lifted_by": "rows"}, {"path": "kept_pieces", "lifted_by": "rows"}, {"path": "unmatched_pieces", "lifted_by": "rows"}, {"path": "dead_end_pieces", "lifted_by": "rows"}, {"path": "riding", "lifted_by": "rows"}, {"path": "redundant.kept", "lifted_by": "rows"}],
       "reply": {
         "list": "pieces",
         "variants": [
